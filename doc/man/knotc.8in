@@ -279,8 +279,8 @@ An optional filter \fB+nopurge\fP prevents possibly existing configuration
 database from purging before the import itself.
 Also ensure the server is not using the configuration database at the same time! (*)
 .TP
-\fBconf\-export\fP [\fIfilename\fP]
-Export the configuration database into a config file or stdout. (*)
+\fBconf\-export\fP [\fIfilename\fP] [+schema]
+Export the configuration database (or JSON schema) into a file or stdout. (*)
 .TP
 \fBconf\-list\fP [\fIitem\fP]
 List the configuration database sections or section items.

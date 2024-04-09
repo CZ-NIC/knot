@@ -1,2 +1,5 @@
 dnspython>=2.2.0
+json
+jsonschema
 psutil
+pyyaml
