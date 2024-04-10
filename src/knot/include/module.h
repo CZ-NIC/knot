@@ -493,6 +493,7 @@ knot_rrset_t knotd_qdata_zone_apex_rrset(const knotd_qdata_t *qdata, uint16_t ty
  * \param[in] qdata      Query data.
  * \param[in] zone_name  Optional zone name, the current one otherwise.
  * \param[in] node_name  Optional node name, apex otherwise.
+ * \param[in] type       RRSet type.
  * \param[out] out       Destination rrset to store the output to.
  *
  * \return Error code (KNOT_ENOZONE, KNOT_EEMPTYZONE, KNOT_ENONODE), KNOT_EOK if success.
