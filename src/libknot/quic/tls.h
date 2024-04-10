@@ -14,6 +14,15 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+/*!
+ * \file
+ *
+ * \brief Pure TLS functionality.
+ *
+ * \addtogroup quic
+ * @{
+ */
+
 #pragma once
 
 #include <stdbool.h>
@@ -21,7 +30,7 @@
 #include <sys/types.h>
 
 typedef struct knot_tls_ctx {
-	struct knot_quic_creds *creds;
+	struct knot_creds *creds;
 	unsigned handshake_timeout;
 	unsigned io_timeout;
 	bool server;
@@ -50,7 +59,7 @@ typedef struct knot_tls_conn {
  *
  * \return Initialized context or NULL.
  */
-knot_tls_ctx_t *knot_tls_ctx_new(struct knot_quic_creds *creds, unsigned io_timeout,
+knot_tls_ctx_t *knot_tls_ctx_new(struct knot_creds *creds, unsigned io_timeout,
                                  bool server);
 
 /*!
@@ -127,3 +136,5 @@ ssize_t knot_tls_recv_dns(knot_tls_conn_t *conn, void *data, size_t size);
  * \return Either exactly 'size' or a negative error code.
  */
 ssize_t knot_tls_send_dns(knot_tls_conn_t *conn, void *data, size_t size);
+
+/*! @} */

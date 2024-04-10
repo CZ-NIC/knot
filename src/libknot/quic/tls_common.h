@@ -14,6 +14,15 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+/*!
+ * \file
+ *
+ * \brief Credentials handling common to QUIC and TLS.
+ *
+ * \addtogroup quic
+ * @{
+ */
+
 #pragma once
 
 #include <stdbool.h>
@@ -24,7 +33,7 @@
 
 struct gnutls_session_int;
 struct gnutls_x509_crt_int;
-struct knot_quic_creds;
+struct knot_creds;
 
 /*!
  * \brief Init server TLS certificate for DoQ.
@@ -34,8 +43,7 @@ struct knot_quic_creds;
  *
  * \return Initialized creds.
  */
-struct knot_quic_creds *knot_quic_init_creds(const char *cert_file,
-                                             const char *key_file);
+struct knot_creds *knot_creds_init(const char *cert_file, const char *key_file);
 
 /*!
  * \brief Init peer TLS certificate for DoQ.
@@ -46,9 +54,9 @@ struct knot_quic_creds *knot_quic_init_creds(const char *cert_file,
  *
  * \return Initialized creds.
  */
-struct knot_quic_creds *knot_quic_init_creds_peer(const struct knot_quic_creds *local_creds,
-                                                  const uint8_t *peer_pin,
-                                                  uint8_t peer_pin_len);
+struct knot_creds *knot_creds_init_peer(const struct knot_creds *local_creds,
+                                        const uint8_t *peer_pin,
+                                        uint8_t peer_pin_len);
 
 /*!
  * \brief Gets the certificate from credentials.
@@ -58,12 +66,12 @@ struct knot_quic_creds *knot_quic_init_creds_peer(const struct knot_quic_creds *
  *
  * \return KNOT_E*
  */
-int knot_quic_creds_cert(struct knot_quic_creds *creds, struct gnutls_x509_crt_int **cert);
+int knot_creds_cert(struct knot_creds *creds, struct gnutls_x509_crt_int **cert);
 
 /*!
  * \brief Deinit server TLS certificate for DoQ.
  */
-void knot_quic_free_creds(struct knot_quic_creds *creds);
+void knot_creds_free(struct knot_creds *creds);
 
 /*!
  * \brief Initialize GnuTLS session with credentials, ALPN, etc.
@@ -78,7 +86,7 @@ void knot_quic_free_creds(struct knot_quic_creds *creds);
  * \return KNOT_E*
  */
 int knot_tls_session(struct gnutls_session_int **session,
-                     struct knot_quic_creds *creds,
+                     struct knot_creds *creds,
                      const char *priority,
                      const char *alpn,
                      bool early_data,
@@ -106,4 +114,6 @@ void knot_tls_pin(struct gnutls_session_int *session, uint8_t *pin,
  * \return KNOT_EOK or KNOT_EBADCERTKEY
  */
 int knot_tls_pin_check(struct gnutls_session_int *session,
-                       struct knot_quic_creds *creds);
+                       struct knot_creds *creds);
+
+/*! @} */

@@ -31,7 +31,7 @@
 
 struct server;
 struct knot_xdp_socket;
-struct knot_quic_creds;
+struct knot_creds;
 
 /*!
  * \brief I/O handler structure.
@@ -129,7 +129,7 @@ typedef struct server {
 	zone_backup_ctxs_t backup_ctxs;
 
 	/*! \brief Crendentials context for QUIC. */
-	struct knot_quic_creds *quic_creds;
+	struct knot_creds *quic_creds;
 } server_t;
 
 /*!

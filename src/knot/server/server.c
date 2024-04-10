@@ -609,7 +609,7 @@ static int init_creds(server_t *server, conf_t *conf)
 		log_debug("QUIC/TLS, using self-generated key '%s' with "
 		          "one-time certificate", key_file);
 	}
-	server->quic_creds = knot_quic_init_creds(cert_file, key_file);
+	server->quic_creds = knot_creds_init(cert_file, key_file);
 	free(cert_file);
 	if (server->quic_creds == NULL) {
 		log_error("QUIC/TLS, failed to initialize server credentials with key '%s'",
@@ -901,7 +901,7 @@ void server_deinit(server_t *server)
 	global_sessticket_pool = NULL;
 	knot_unreachables_deinit(&global_unreachables);
 
-	knot_quic_free_creds(server->quic_creds);
+	knot_creds_free(server->quic_creds);
 }
 
 static int server_init_handler(server_t *server, int index, int thread_count,
@@ -1577,7 +1577,7 @@ size_t server_cert_pin(server_t *server, uint8_t *out, size_t out_size)
 	size_t bin_pin_size = sizeof(bin_pin);
 	gnutls_x509_crt_t cert = NULL;
 	if (server->quic_creds != NULL &&
-	    knot_quic_creds_cert(server->quic_creds, &cert) == KNOT_EOK &&
+	    knot_creds_cert(server->quic_creds, &cert) == KNOT_EOK &&
 	    gnutls_x509_crt_get_key_id(cert, GNUTLS_KEYID_USE_SHA256,
 	                               bin_pin, &bin_pin_size) == GNUTLS_E_SUCCESS) {
 		pin_size = knot_base64_encode(bin_pin, bin_pin_size, out, out_size);

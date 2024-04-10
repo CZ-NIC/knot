@@ -28,8 +28,6 @@ typedef struct knot_tls_req_ctx {
 	struct knot_tls_conn *conn;
 } knot_tls_req_ctx_t;
 
-struct knot_quic_creds;
-
 /*!
  * \brief Initialize TLS requestor context.
  *
@@ -43,7 +41,7 @@ struct knot_quic_creds;
  * \return KNOT_E*
  */
 int knot_tls_req_ctx_init(knot_tls_req_ctx_t *ctx, int fd,
-                          const struct knot_quic_creds *local_creds,
+                          const struct knot_creds *local_creds,
                           const uint8_t *peer_pin, uint8_t peer_pin_len,
                           int io_timeout_ms);
 

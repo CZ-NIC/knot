@@ -21,19 +21,18 @@
 #include "libknot/quic/tls.h"
 
 int knot_tls_req_ctx_init(knot_tls_req_ctx_t *ctx, int fd,
-                          const struct knot_quic_creds *local_creds,
+                          const struct knot_creds *local_creds,
                           const uint8_t *peer_pin, uint8_t peer_pin_len,
                           int io_timeout_ms)
 {
-	struct knot_quic_creds *creds = knot_quic_init_creds_peer(local_creds,
-	                                                          peer_pin, peer_pin_len);
+	struct knot_creds *creds = knot_creds_init_peer(local_creds, peer_pin, peer_pin_len);
 	if (creds == NULL) {
 		return KNOT_ENOMEM;
 	}
 
 	ctx->ctx = knot_tls_ctx_new(creds, io_timeout_ms, false);
 	if (ctx->ctx == NULL) {
-		knot_quic_free_creds(creds);
+		knot_creds_free(creds);
 		return KNOT_ENOMEM;
 	}
 
@@ -49,7 +48,7 @@ int knot_tls_req_ctx_init(knot_tls_req_ctx_t *ctx, int fd,
 void knot_tls_req_ctx_deinit(knot_tls_req_ctx_t *ctx)
 {
 	if (ctx != NULL && ctx->ctx != NULL) {
-		knot_quic_free_creds(ctx->ctx->creds);
+		knot_creds_free(ctx->ctx->creds);
 		knot_tls_conn_del(ctx->conn);
 		knot_tls_ctx_free(ctx->ctx);
 		memset(ctx, 0, sizeof(*ctx));

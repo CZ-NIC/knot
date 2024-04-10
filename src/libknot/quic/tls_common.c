@@ -31,14 +31,14 @@
 #include "libknot/attribute.h"
 #include "libknot/error.h"
 
-typedef struct knot_quic_creds {
+typedef struct knot_creds {
 	gnutls_certificate_credentials_t tls_cert;
 	gnutls_anti_replay_t tls_anti_replay;
 	gnutls_datum_t tls_ticket_key;
 	bool peer;
 	uint8_t peer_pin_len;
 	uint8_t peer_pin[];
-} knot_quic_creds_t;
+} knot_creds_t;
 
 static int tls_anti_replay_db_add_func(void *dbf, time_t exp_time,
                                        const gnutls_datum_t *key,
@@ -148,10 +148,9 @@ finish:
 }
 
 _public_
-struct knot_quic_creds *knot_quic_init_creds(const char *cert_file,
-                                             const char *key_file)
+struct knot_creds *knot_creds_init(const char *cert_file, const char *key_file)
 {
-	knot_quic_creds_t *creds = calloc(1, sizeof(*creds));
+	knot_creds_t *creds = calloc(1, sizeof(*creds));
 	if (creds == NULL) {
 		return NULL;
 	}
@@ -186,16 +185,16 @@ struct knot_quic_creds *knot_quic_init_creds(const char *cert_file,
 
 	return creds;
 fail:
-	knot_quic_free_creds(creds);
+	knot_creds_free(creds);
 	return NULL;
 }
 
 _public_
-struct knot_quic_creds *knot_quic_init_creds_peer(const struct knot_quic_creds *local_creds,
-                                                  const uint8_t *peer_pin,
-                                                  uint8_t peer_pin_len)
+struct knot_creds *knot_creds_init_peer(const struct knot_creds *local_creds,
+                                        const uint8_t *peer_pin,
+                                        uint8_t peer_pin_len)
 {
-	knot_quic_creds_t *creds = calloc(1, sizeof(*creds) + peer_pin_len);
+	knot_creds_t *creds = calloc(1, sizeof(*creds) + peer_pin_len);
 	if (creds == NULL) {
 		return NULL;
 	}
@@ -220,7 +219,7 @@ struct knot_quic_creds *knot_quic_init_creds_peer(const struct knot_quic_creds *
 }
 
 _public_
-int knot_quic_creds_cert(struct knot_quic_creds *creds, struct gnutls_x509_crt_int **cert)
+int knot_creds_cert(struct knot_creds *creds, struct gnutls_x509_crt_int **cert)
 {
 	if (creds == NULL || cert == NULL) {
 		return KNOT_EINVAL;
@@ -241,7 +240,7 @@ int knot_quic_creds_cert(struct knot_quic_creds *creds, struct gnutls_x509_crt_i
 }
 
 _public_
-void knot_quic_free_creds(struct knot_quic_creds *creds)
+void knot_creds_free(struct knot_creds *creds)
 {
 	if (creds == NULL) {
 		return;
@@ -259,7 +258,7 @@ void knot_quic_free_creds(struct knot_quic_creds *creds)
 
 _public_
 int knot_tls_session(struct gnutls_session_int **session,
-                     struct knot_quic_creds *creds,
+                     struct knot_creds *creds,
                      const char *priority,
                      const char *alpn,
                      bool early_data,
@@ -355,7 +354,7 @@ error:
 
 _public_
 int knot_tls_pin_check(struct gnutls_session_int *session,
-                       struct knot_quic_creds *creds)
+                       struct knot_creds *creds)
 {
 	if (creds->peer_pin_len == 0) {
 		return KNOT_EOK;

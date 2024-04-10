@@ -37,7 +37,7 @@
 #define EAGAIN_MAX_FOR_GNUTLS 10 // gnutls_record_recv() has been observed to return GNUTLS_E_AGAIN repetitively and excessively, leading to infinite loops. This limits the number of re-tries.
 
 _public_
-knot_tls_ctx_t *knot_tls_ctx_new(struct knot_quic_creds *creds, unsigned io_timeout,
+knot_tls_ctx_t *knot_tls_ctx_new(struct knot_creds *creds, unsigned io_timeout,
                                  bool server)
 {
 	knot_tls_ctx_t *res = calloc(1, sizeof(*res));

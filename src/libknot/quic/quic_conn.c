@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -45,7 +45,7 @@ static int cmp_expiry_heap_nodes(void *c1, void *c2)
 
 _public_
 knot_quic_table_t *knot_quic_table_new(size_t max_conns, size_t max_ibufs, size_t max_obufs,
-                                       size_t udp_payload, struct knot_quic_creds *creds)
+                                       size_t udp_payload, struct knot_creds *creds)
 {
 	size_t table_size = max_conns * BUCKETS_PER_CONNS;
 
