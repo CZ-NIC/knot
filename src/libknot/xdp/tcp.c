@@ -259,6 +259,15 @@ static int tcp_table_add(knot_xdp_msg_t *msg, uint64_t hash, knot_tcp_table_t *t
 	return KNOT_EOK;
 }
 
+_public_
+bool knot_tcp_table_lookup(knot_tcp_lookup_t *res, knot_tcp_table_t *table,
+                           knot_xdp_msg_t *msg)
+{
+	res->pconn = tcp_table_lookup(&msg->ip_from, &msg->ip_to,
+	                              &res->conn_hash, table);
+	return (*res->pconn != NULL);
+}
+
 static bool check_seq_ack(const knot_xdp_msg_t *msg, const knot_tcp_conn_t *conn)
 {
 	if (conn == NULL || conn->seqno != msg->seqno) {
@@ -289,9 +298,9 @@ static void conn_update(knot_tcp_conn_t *conn, const knot_xdp_msg_t *msg)
 _public_
 int knot_tcp_recv(knot_tcp_relay_t *relay, knot_xdp_msg_t *msg,
                   knot_tcp_table_t *tcp_table, knot_tcp_table_t *syn_table,
-                  knot_tcp_ignore_t ignore)
+                  knot_tcp_lookup_t *lookup, knot_tcp_ignore_t ignore)
 {
-	if (relay == NULL || msg == NULL || tcp_table == NULL) {
+	if (relay == NULL || msg == NULL || tcp_table == NULL || lookup == NULL) {
 		return KNOT_EINVAL;
 	}
 	memset(relay, 0, sizeof(*relay));
@@ -302,10 +311,11 @@ int knot_tcp_recv(knot_tcp_relay_t *relay, knot_xdp_msg_t *msg,
 		return KNOT_EOK;
 	}
 
-	uint64_t conn_hash = 0;
-	knot_tcp_conn_t **pconn = tcp_table_lookup(&msg->ip_from, &msg->ip_to,
-	                                           &conn_hash, tcp_table);
-	knot_tcp_conn_t *conn = *pconn;
+	if (lookup->conn_hash == 0) {
+		(void)knot_tcp_table_lookup(lookup, tcp_table, msg);
+	}
+
+	knot_tcp_conn_t *conn = *lookup->pconn;
 	bool seq_ack_match = check_seq_ack(msg, conn);
 	if (seq_ack_match) {
 		assert(conn->mss != 0);
@@ -350,12 +360,12 @@ int knot_tcp_recv(knot_tcp_relay_t *relay, knot_xdp_msg_t *msg,
 			knot_tcp_table_t *add_table = tcp_table;
 			if (syn_table != NULL && !synack) {
 				add_table = syn_table;
-				if (*tcp_table_lookup(&msg->ip_from, &msg->ip_to, &conn_hash, syn_table) != NULL) {
+				if (knot_tcp_table_lookup(lookup, syn_table, msg)) {
 					break;
 				}
 			}
 
-			ret = tcp_table_add(msg, conn_hash, add_table, &relay->conn);
+			ret = tcp_table_add(msg, lookup->conn_hash, add_table, &relay->conn);
 			if (ret == KNOT_EOK) {
 				relay->action = synack ? XDP_TCP_ESTABLISH : XDP_TCP_SYN;
 				if (!(ignore & XDP_TCP_IGNORE_ESTABLISH)) {
@@ -379,11 +389,11 @@ int knot_tcp_recv(knot_tcp_relay_t *relay, knot_xdp_msg_t *msg,
 	case KNOT_XDP_MSG_ACK:
 		if (!seq_ack_match) {
 			if (syn_table != NULL && msg->payload.iov_len == 0 &&
-			    (pconn = tcp_table_lookup(&msg->ip_from, &msg->ip_to, &conn_hash, syn_table)) != NULL &&
-			    (conn = *pconn) != NULL && check_seq_ack(msg, conn)) {
+			    knot_tcp_table_lookup(lookup, syn_table, msg) &&
+			    (conn = *lookup->pconn) != NULL && check_seq_ack(msg, conn)) {
 				// move conn from syn_table to tcp_table
-				tcp_table_remove(pconn, syn_table);
-				tcp_table_insert(conn, conn_hash, tcp_table);
+				tcp_table_remove(lookup->pconn, syn_table);
+				tcp_table_insert(conn, lookup->conn_hash, tcp_table);
 				relay->conn = conn;
 				relay->action = XDP_TCP_ESTABLISH;
 				conn->state = XDP_TCP_NORMAL;
@@ -400,7 +410,7 @@ int knot_tcp_recv(knot_tcp_relay_t *relay, knot_xdp_msg_t *msg,
 				break;
 			case XDP_TCP_CLOSING2:
 				if (msg->payload.iov_len == 0) { // otherwise ignore close
-					tcp_table_remove(pconn, tcp_table);
+					tcp_table_remove(lookup->pconn, tcp_table);
 					relay->answer = XDP_TCP_FREE;
 				}
 				break;
@@ -421,7 +431,7 @@ int knot_tcp_recv(knot_tcp_relay_t *relay, knot_xdp_msg_t *msg,
 				relay->action = XDP_TCP_CLOSE;
 				relay->auto_answer = KNOT_XDP_MSG_ACK;
 				relay->answer = XDP_TCP_FREE;
-				tcp_table_remove(pconn, tcp_table);
+				tcp_table_remove(lookup->pconn, tcp_table);
 			} else if (msg->payload.iov_len == 0) { // otherwise ignore FIN
 				relay->action = XDP_TCP_CLOSE;
 				relay->auto_answer = KNOT_XDP_MSG_FIN | KNOT_XDP_MSG_ACK;
@@ -432,7 +442,7 @@ int knot_tcp_recv(knot_tcp_relay_t *relay, knot_xdp_msg_t *msg,
 	case KNOT_XDP_MSG_RST:
 		if (conn != NULL && msg->seqno == conn->seqno) {
 			relay->action = XDP_TCP_RESET;
-			tcp_table_remove(pconn, tcp_table);
+			tcp_table_remove(lookup->pconn, tcp_table);
 			relay->answer = XDP_TCP_FREE;
 		} else if (conn != NULL) {
 			relay->auto_answer = KNOT_XDP_MSG_ACK;
