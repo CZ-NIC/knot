@@ -187,6 +187,7 @@ libknot.so.15 libknot15 #MINVER#
  knot_tcp_send@Base 3.4.0
  knot_tcp_sweep@Base 3.4.0
  knot_tcp_table_free@Base 3.4.0
+ knot_tcp_table_lookup@Base 3.4.0
  knot_tcp_table_new@Base 3.4.0
  knot_tls_conn_del@Base 3.4.0
  knot_tls_conn_new@Base 3.4.0

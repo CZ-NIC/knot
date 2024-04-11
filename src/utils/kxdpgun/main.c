@@ -719,7 +719,9 @@ void *xdp_gun_thread(void *_ctx)
 
 					for (size_t i = 0; i < recvd; i++) {
 						knot_tcp_relay_t *rl = &relays[i];
-						ret = knot_tcp_recv(rl, &pkts[i], tcp_table, NULL, ctx->ignore2);
+						knot_tcp_lookup_t lkup = { 0 };
+
+						ret = knot_tcp_recv(rl, &pkts[i], tcp_table, NULL, &lkup, ctx->ignore2);
 						if (ret != KNOT_EOK) {
 							errors++;
 							continue;
