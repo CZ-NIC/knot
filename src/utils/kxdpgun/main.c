@@ -714,14 +714,15 @@ void *xdp_gun_thread(void *_ctx)
 				}
 				if (ctx->tcp) {
 					knot_tcp_relay_t relays[recvd];
-					ret = knot_tcp_recv(relays, pkts, recvd, tcp_table, NULL, ctx->ignore2);
-					if (ret != KNOT_EOK) {
-						errors++;
-						break;
-					}
 
 					for (size_t i = 0; i < recvd; i++) {
 						knot_tcp_relay_t *rl = &relays[i];
+						ret = knot_tcp_recv(rl, &pkts[i], tcp_table, NULL, ctx->ignore2);
+						if (ret != KNOT_EOK) {
+							errors++;
+							continue;
+						}
+
 						struct iovec payl;
 						switch (rl->action) {
 						case XDP_TCP_ESTABLISH:
