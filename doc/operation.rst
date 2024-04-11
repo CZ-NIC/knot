@@ -1170,6 +1170,21 @@ If you want to refresh the secondary zones, you can do this with::
 
     $ knotc zone-refresh
 
+.. _Logging:
+
+Logging
+=======
+
+Knot DNS supports :ref:`logging<log section>` to ``syslog`` or ``systemd-journald``
+facility, to a specified file, to standard output, or to standard error output.
+Several different logging targets may be used in parallel.
+
+If ``syslog`` or ``systemd-journald`` is used for logging, log rotation is handled
+by that logging facility. When logging to a specified file, log rotation should
+be done by moving the current log file followed by reopening of the log file with
+either ``knotc -b reload`` or by sending ``SIGHUP`` to the ``knotd`` process (see the
+:ref:`server_pidfile`).
+
 .. _Data and metadata backup:
 
 Data and metadata backup

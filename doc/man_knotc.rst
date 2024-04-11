@@ -80,8 +80,8 @@ Actions
   Stop the server if running.
 
 **reload**
-  Reload the server configuration and modified zone files. All open zone
-  transactions will be aborted!
+  Reload the server configuration and modified zone files, and reopen the log files
+  if they are configured. All open zone transactions will be aborted!
 
 **stats** [*module*\ [\ **.**\ *counter*\ ]]
   Show global statistics counter(s). To print also counters with value 0, use
