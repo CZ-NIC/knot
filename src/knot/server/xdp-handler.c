@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -201,21 +201,23 @@ static void handle_udp(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
 static void handle_tcp(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
                        knotd_qdata_params_t *params)
 {
-	int ret = knot_tcp_recv(ctx->relays, ctx->msg_recv, ctx->msg_recv_count,
-	                        ctx->tcp_table, ctx->syn_table, XDP_TCP_IGNORE_NONE);
-	if (ret != KNOT_EOK) {
-		if (log_enabled_debug()) {
-			log_debug("TCP/XDP, failed to process some packets (%s)", knot_strerror(ret));
-		}
-		return;
-	} else if (knot_tcp_relay_empty(&ctx->relays[0])) { // no TCP traffic
-		return;
-	}
 
 	uint8_t ans_buf[KNOT_WIRE_MAX_PKTSIZE];
 
 	for (uint32_t i = 0; i < ctx->msg_recv_count; i++) {
 		knot_tcp_relay_t *rl = &ctx->relays[i];
+
+		int ret = knot_tcp_recv(rl, &ctx->msg_recv[i], ctx->tcp_table,
+	                                ctx->syn_table, XDP_TCP_IGNORE_NONE);
+		if (ret != KNOT_EOK) {
+			if (log_enabled_debug()) {
+				log_debug("TCP/XDP, failed to process some packets (%s)",
+				          knot_strerror(ret));
+			}
+			continue;
+		} else if (knot_tcp_relay_empty(rl)) {
+			continue;
+		}
 
 		// Process all complete DNS queries in one TCP stream.
 		for (size_t j = 0; rl->inbf != NULL && j < rl->inbf->n_inbufs; j++) {

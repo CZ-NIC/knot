@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -148,18 +148,19 @@ knot_tcp_table_t *knot_tcp_table_new(size_t size, knot_tcp_table_t *secret_share
 void knot_tcp_table_free(knot_tcp_table_t *table);
 
 /*!
- * \brief Process received packets, prepare automatic responses (e.g. ACK), pick incoming data.
+ * \brief Process received packet, prepare automatic response (e.g. ACK), pick incoming data.
  *
- * \param relays      Out: relays to be filled with message/connection details.
- * \param msgs        Packets received by knot_xdp_recv().
- * \param msg_count   Number of received packets.
+ * \param relay       Out: relay to be filled with message/connection details.
+ * \param msg         Packet received by knot_xdp_recv().
  * \param tcp_table   Table of TCP connections.
  * \param syn_table   Optional: extra table for handling partially established connections.
  * \param ignore      Ignore specific TCP packets indication.
  *
+ * \note resulting relay might be knot_tcp_relay_empty()
+ *
  * \return KNOT_E*
  */
-int knot_tcp_recv(knot_tcp_relay_t *relays, knot_xdp_msg_t msgs[], uint32_t msg_count,
+int knot_tcp_recv(knot_tcp_relay_t *relay, knot_xdp_msg_t *msg,
                   knot_tcp_table_t *tcp_table, knot_tcp_table_t *syn_table,
                   knot_tcp_ignore_t ignore);
 

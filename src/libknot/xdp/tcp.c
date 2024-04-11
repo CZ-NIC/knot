@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -287,169 +287,159 @@ static void conn_update(knot_tcp_conn_t *conn, const knot_xdp_msg_t *msg)
 }
 
 _public_
-int knot_tcp_recv(knot_tcp_relay_t *relays, knot_xdp_msg_t msgs[], uint32_t msg_count,
+int knot_tcp_recv(knot_tcp_relay_t *relay, knot_xdp_msg_t *msg,
                   knot_tcp_table_t *tcp_table, knot_tcp_table_t *syn_table,
                   knot_tcp_ignore_t ignore)
 {
-	if (msg_count == 0) {
-		return KNOT_EOK;
-	}
-	if (relays == NULL || msgs == NULL || tcp_table == NULL) {
+	if (relay == NULL || msg == NULL || tcp_table == NULL) {
 		return KNOT_EINVAL;
 	}
-	memset(relays, 0, msg_count * sizeof(*relays));
+	memset(relay, 0, sizeof(*relay));
 
-	knot_tcp_relay_t *relay = relays;
 	int ret = KNOT_EOK;
 
-	for (knot_xdp_msg_t *msg = msgs; msg != msgs + msg_count && ret == KNOT_EOK; msg++) {
-		if (!(msg->flags & KNOT_XDP_MSG_TCP)) {
-			continue;
+	if (!(msg->flags & KNOT_XDP_MSG_TCP)) {
+		return KNOT_EOK;
+	}
+
+	uint64_t conn_hash = 0;
+	knot_tcp_conn_t **pconn = tcp_table_lookup(&msg->ip_from, &msg->ip_to,
+	                                           &conn_hash, tcp_table);
+	knot_tcp_conn_t *conn = *pconn;
+	bool seq_ack_match = check_seq_ack(msg, conn);
+	if (seq_ack_match) {
+		assert(conn->mss != 0);
+		conn_update(conn, msg);
+
+		rem_align_pointers(conn, tcp_table);
+		rem_node(tcp_conn_node(conn));
+		add_tail(tcp_table_timeout(tcp_table), tcp_conn_node(conn));
+
+		if (msg->flags & KNOT_XDP_MSG_ACK) {
+			conn->acked = msg->ackno;
+			knot_tcp_outbufs_ack(&conn->outbufs, msg->ackno, &tcp_table->outbufs_total);
 		}
+	}
 
-		uint64_t conn_hash = 0;
-		knot_tcp_conn_t **pconn = tcp_table_lookup(&msg->ip_from, &msg->ip_to,
-		                                           &conn_hash, tcp_table);
-		knot_tcp_conn_t *conn = *pconn;
-		bool seq_ack_match = check_seq_ack(msg, conn);
-		if (seq_ack_match) {
-			assert(conn->mss != 0);
-			conn_update(conn, msg);
+	relay->msg = msg;
+	relay->conn = conn;
 
-			rem_align_pointers(conn, tcp_table);
-			rem_node(tcp_conn_node(conn));
-			add_tail(tcp_table_timeout(tcp_table), tcp_conn_node(conn));
-
-			if (msg->flags & KNOT_XDP_MSG_ACK) {
-				conn->acked = msg->ackno;
-				knot_tcp_outbufs_ack(&conn->outbufs, msg->ackno, &tcp_table->outbufs_total);
-			}
+	// process incoming data
+	if (seq_ack_match && (msg->flags & KNOT_XDP_MSG_ACK) && msg->payload.iov_len > 0) {
+		if (!(ignore & XDP_TCP_IGNORE_DATA_ACK)) {
+			relay->auto_answer = KNOT_XDP_MSG_ACK;
 		}
+		ret = knot_tcp_inbufs_upd(&conn->inbuf, msg->payload, false,
+		                          &relay->inbf, &tcp_table->inbufs_total);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+		if (conn->inbuf.iov_len > 0 && tcp_table->next_ibuf == NULL) {
+			tcp_table->next_ibuf = conn;
+		}
+	}
 
-		relay->msg = msg;
-		relay->conn = conn;
+	// process TCP connection state
+	switch (msg->flags & (KNOT_XDP_MSG_SYN | KNOT_XDP_MSG_ACK |
+	                      KNOT_XDP_MSG_FIN | KNOT_XDP_MSG_RST)) {
+	case KNOT_XDP_MSG_SYN:
+	case (KNOT_XDP_MSG_SYN | KNOT_XDP_MSG_ACK):
+		if (conn == NULL) {
+			bool synack = (msg->flags & KNOT_XDP_MSG_ACK);
 
-		// process incoming data
-		if (seq_ack_match && (msg->flags & KNOT_XDP_MSG_ACK) && msg->payload.iov_len > 0) {
-			if (!(ignore & XDP_TCP_IGNORE_DATA_ACK)) {
-				relay->auto_answer = KNOT_XDP_MSG_ACK;
+			knot_tcp_table_t *add_table = tcp_table;
+			if (syn_table != NULL && !synack) {
+				add_table = syn_table;
+				if (*tcp_table_lookup(&msg->ip_from, &msg->ip_to, &conn_hash, syn_table) != NULL) {
+					break;
+				}
 			}
-			ret = knot_tcp_inbufs_upd(&conn->inbuf, msg->payload, false,
-			                          &relay->inbf, &tcp_table->inbufs_total);
-			if (ret != KNOT_EOK) {
+
+			ret = tcp_table_add(msg, conn_hash, add_table, &relay->conn);
+			if (ret == KNOT_EOK) {
+				relay->action = synack ? XDP_TCP_ESTABLISH : XDP_TCP_SYN;
+				if (!(ignore & XDP_TCP_IGNORE_ESTABLISH)) {
+					relay->auto_answer = synack ? KNOT_XDP_MSG_ACK : (KNOT_XDP_MSG_SYN | KNOT_XDP_MSG_ACK);
+				}
+
+				conn = relay->conn;
+				conn->state = synack ? XDP_TCP_NORMAL: XDP_TCP_ESTABLISHING;
+				conn->mss = MAX(msg->mss, 536); // minimal MSS, most importantly not zero!
+				conn->window_scale = msg->win_scale;
+				conn_update(conn, msg);
+				if (!synack) {
+					conn->acked = dnssec_random_uint32_t();
+					conn->ackno = conn->acked;
+				}
+			}
+		} else {
+			relay->auto_answer = KNOT_XDP_MSG_ACK;
+		}
+		break;
+	case KNOT_XDP_MSG_ACK:
+		if (!seq_ack_match) {
+			if (syn_table != NULL && msg->payload.iov_len == 0 &&
+			    (pconn = tcp_table_lookup(&msg->ip_from, &msg->ip_to, &conn_hash, syn_table)) != NULL &&
+			    (conn = *pconn) != NULL && check_seq_ack(msg, conn)) {
+				// move conn from syn_table to tcp_table
+				tcp_table_remove(pconn, syn_table);
+				tcp_table_insert(conn, conn_hash, tcp_table);
+				relay->conn = conn;
+				relay->action = XDP_TCP_ESTABLISH;
+				conn->state = XDP_TCP_NORMAL;
+				conn_update(conn, msg);
+			}
+		} else {
+			switch (conn->state) {
+			case XDP_TCP_NORMAL:
+			case XDP_TCP_CLOSING1: // just a mess, ignore
 				break;
-			}
-			if (conn->inbuf.iov_len > 0 && tcp_table->next_ibuf == NULL) {
-				tcp_table->next_ibuf = conn;
-			}
-		}
-
-		// process TCP connection state
-		switch (msg->flags & (KNOT_XDP_MSG_SYN | KNOT_XDP_MSG_ACK |
-		                      KNOT_XDP_MSG_FIN | KNOT_XDP_MSG_RST)) {
-		case KNOT_XDP_MSG_SYN:
-		case (KNOT_XDP_MSG_SYN | KNOT_XDP_MSG_ACK):
-			if (conn == NULL) {
-				bool synack = (msg->flags & KNOT_XDP_MSG_ACK);
-
-				knot_tcp_table_t *add_table = tcp_table;
-				if (syn_table != NULL && !synack) {
-					add_table = syn_table;
-					if (*tcp_table_lookup(&msg->ip_from, &msg->ip_to, &conn_hash, syn_table) != NULL) {
-						break;
-					}
-				}
-
-				ret = tcp_table_add(msg, conn_hash, add_table, &relay->conn);
-				if (ret == KNOT_EOK) {
-					relay->action = synack ? XDP_TCP_ESTABLISH : XDP_TCP_SYN;
-					if (!(ignore & XDP_TCP_IGNORE_ESTABLISH)) {
-						relay->auto_answer = synack ? KNOT_XDP_MSG_ACK : (KNOT_XDP_MSG_SYN | KNOT_XDP_MSG_ACK);
-					}
-
-					conn = relay->conn;
-					conn->state = synack ? XDP_TCP_NORMAL: XDP_TCP_ESTABLISHING;
-					conn->mss = MAX(msg->mss, 536); // minimal MSS, most importantly not zero!
-					conn->window_scale = msg->win_scale;
-					conn_update(conn, msg);
-					if (!synack) {
-						conn->acked = dnssec_random_uint32_t();
-						conn->ackno = conn->acked;
-					}
-				}
-			} else {
-				relay->auto_answer = KNOT_XDP_MSG_ACK;
-			}
-			break;
-		case KNOT_XDP_MSG_ACK:
-			if (!seq_ack_match) {
-				if (syn_table != NULL && msg->payload.iov_len == 0 &&
-				    (pconn = tcp_table_lookup(&msg->ip_from, &msg->ip_to, &conn_hash, syn_table)) != NULL &&
-				    (conn = *pconn) != NULL && check_seq_ack(msg, conn)) {
-					// move conn from syn_table to tcp_table
-					tcp_table_remove(pconn, syn_table);
-					tcp_table_insert(conn, conn_hash, tcp_table);
-					relay->conn = conn;
-					relay->action = XDP_TCP_ESTABLISH;
-					conn->state = XDP_TCP_NORMAL;
-					conn_update(conn, msg);
-				}
-			} else {
-				switch (conn->state) {
-				case XDP_TCP_NORMAL:
-				case XDP_TCP_CLOSING1: // just a mess, ignore
-					break;
-				case XDP_TCP_ESTABLISHING:
-					conn->state = XDP_TCP_NORMAL;
-					relay->action = XDP_TCP_ESTABLISH;
-					break;
-				case XDP_TCP_CLOSING2:
-					if (msg->payload.iov_len == 0) { // otherwise ignore close
-						tcp_table_remove(pconn, tcp_table);
-						relay->answer = XDP_TCP_FREE;
-					}
-					break;
-				}
-			}
-			break;
-		case (KNOT_XDP_MSG_FIN | KNOT_XDP_MSG_ACK):
-			if (ignore & XDP_TCP_IGNORE_FIN) {
+			case XDP_TCP_ESTABLISHING:
+				conn->state = XDP_TCP_NORMAL;
+				relay->action = XDP_TCP_ESTABLISH;
 				break;
-			}
-			if (!seq_ack_match) {
-				if (conn != NULL) {
-					relay->auto_answer = KNOT_XDP_MSG_RST;
-					relay->auto_seqno = msg->ackno;
-				} // else ignore. It would be better and possible, but no big value for the price of CPU.
-			} else {
-				if (conn->state == XDP_TCP_CLOSING1) {
-					relay->action = XDP_TCP_CLOSE;
-					relay->auto_answer = KNOT_XDP_MSG_ACK;
-					relay->answer = XDP_TCP_FREE;
+			case XDP_TCP_CLOSING2:
+				if (msg->payload.iov_len == 0) { // otherwise ignore close
 					tcp_table_remove(pconn, tcp_table);
-				} else if (msg->payload.iov_len == 0) { // otherwise ignore FIN
-					relay->action = XDP_TCP_CLOSE;
-					relay->auto_answer = KNOT_XDP_MSG_FIN | KNOT_XDP_MSG_ACK;
-					conn->state = XDP_TCP_CLOSING2;
+					relay->answer = XDP_TCP_FREE;
 				}
+				break;
 			}
+		}
+		break;
+	case (KNOT_XDP_MSG_FIN | KNOT_XDP_MSG_ACK):
+		if (ignore & XDP_TCP_IGNORE_FIN) {
 			break;
-		case KNOT_XDP_MSG_RST:
-			if (conn != NULL && msg->seqno == conn->seqno) {
-				relay->action = XDP_TCP_RESET;
-				tcp_table_remove(pconn, tcp_table);
-				relay->answer = XDP_TCP_FREE;
-			} else if (conn != NULL) {
+		}
+		if (!seq_ack_match) {
+			if (conn != NULL) {
+				relay->auto_answer = KNOT_XDP_MSG_RST;
+				relay->auto_seqno = msg->ackno;
+			} // else ignore. It would be better and possible, but no big value for the price of CPU.
+		} else {
+			if (conn->state == XDP_TCP_CLOSING1) {
+				relay->action = XDP_TCP_CLOSE;
 				relay->auto_answer = KNOT_XDP_MSG_ACK;
+				relay->answer = XDP_TCP_FREE;
+				tcp_table_remove(pconn, tcp_table);
+			} else if (msg->payload.iov_len == 0) { // otherwise ignore FIN
+				relay->action = XDP_TCP_CLOSE;
+				relay->auto_answer = KNOT_XDP_MSG_FIN | KNOT_XDP_MSG_ACK;
+				conn->state = XDP_TCP_CLOSING2;
 			}
-			break;
-		default:
-			break;
 		}
-
-		if (!knot_tcp_relay_empty(relay)) {
-			relay++;
+		break;
+	case KNOT_XDP_MSG_RST:
+		if (conn != NULL && msg->seqno == conn->seqno) {
+			relay->action = XDP_TCP_RESET;
+			tcp_table_remove(pconn, tcp_table);
+			relay->answer = XDP_TCP_FREE;
+		} else if (conn != NULL) {
+			relay->auto_answer = KNOT_XDP_MSG_ACK;
 		}
+		break;
+	default:
+		break;
 	}
 
 	return ret;
