@@ -107,6 +107,11 @@ typedef struct {
 	knot_tcp_conn_t *conn;
 } knot_tcp_relay_t;
 
+typedef struct {
+	knot_tcp_conn_t **pconn;
+	uint64_t conn_hash;
+} knot_tcp_lookup_t;
+
 /*!
  * \brief Return next TCP sequence number.
  */
@@ -148,12 +153,25 @@ knot_tcp_table_t *knot_tcp_table_new(size_t size, knot_tcp_table_t *secret_share
 void knot_tcp_table_free(knot_tcp_table_t *table);
 
 /*!
+ * \brief Lookup existing TCP connection.
+ *
+ * \param res      Out: lookup result.
+ * \param table    Table of TCP connections.
+ * \param msg      Packet received by knot_xdp_recv().
+ *
+ * \return If existing connection was found.
+ */
+bool knot_tcp_table_lookup(knot_tcp_lookup_t *res, knot_tcp_table_t *table,
+                           knot_xdp_msg_t *msg);
+
+/*!
  * \brief Process received packet, prepare automatic response (e.g. ACK), pick incoming data.
  *
  * \param relay       Out: relay to be filled with message/connection details.
  * \param msg         Packet received by knot_xdp_recv().
  * \param tcp_table   Table of TCP connections.
  * \param syn_table   Optional: extra table for handling partially established connections.
+ * \param lookup      Optional: result of lookup for existing connection. NOTE might be altered by this function.
  * \param ignore      Ignore specific TCP packets indication.
  *
  * \note resulting relay might be knot_tcp_relay_empty()
@@ -162,7 +180,7 @@ void knot_tcp_table_free(knot_tcp_table_t *table);
  */
 int knot_tcp_recv(knot_tcp_relay_t *relay, knot_xdp_msg_t *msg,
                   knot_tcp_table_t *tcp_table, knot_tcp_table_t *syn_table,
-                  knot_tcp_ignore_t ignore);
+                  knot_tcp_lookup_t *lookup, knot_tcp_ignore_t ignore);
 
 /*!
  * \brief Prepare data (payload) to be sent as a response on specific relay.
