@@ -104,8 +104,8 @@ public key pin of the currently used certificate.
 Stop the server if running.
 .TP
 \fBreload\fP
-Reload the server configuration and modified zone files. All open zone
-transactions will be aborted!
+Reload the server configuration and modified zone files, and reopen the log files
+if they are configured. All open zone transactions will be aborted!
 .TP
 \fBstats\fP [\fImodule\fP[\fB\&.\fP\fIcounter\fP]]
 Show global statistics counter(s). To print also counters with value 0, use
