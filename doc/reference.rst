@@ -562,11 +562,9 @@ Maximum EDNS0 UDP payload size for IPv6.
 key-file
 --------
 
-Path to a server key PEM file which is used for DNS over QUIC communication.
+Path to a server key PEM file which is used for DNS over QUIC/TLS communication.
 A non-absolute path of a user specified key file is relative to the
 :file:`@config_dir@` directory.
-
-Change of this parameter requires restart of the Knot server to take effect.
 
 *Default:* auto-generated key
 
@@ -575,10 +573,8 @@ Change of this parameter requires restart of the Knot server to take effect.
 cert-file
 ---------
 
-Path to a server certificate PEM file which is used for DNS over QUIC communication.
+Path to a server certificate PEM file which is used for DNS over QUIC/TLS communication.
 A non-absolute path is relative to the :file:`@config_dir@` directory.
-
-Change of this parameter requires restart of the Knot server to take effect.
 
 *Default:* one-time in-memory certificate
 

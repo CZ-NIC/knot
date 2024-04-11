@@ -46,6 +46,17 @@ struct knot_creds;
 struct knot_creds *knot_creds_init(const char *cert_file, const char *key_file);
 
 /*!
+ * \brief Load new server TLS certificate for DoT/DoQ.
+ *
+ * \param creds         Server credentials where key/cert pair will be replaced
+ * \param cert_file     X509 certificate PEM file path/name (NULL if auto-generated).
+ * \param key_file      Key PEM file path/name.
+ *
+ * \return KNOT_EOK on success, or KNOT_EINVAL on fail.
+ */
+int knot_creds_reset(struct knot_creds *creds, const char *cert_file, const char *key_file);
+
+/*!
  * \brief Init peer TLS certificate for DoQ.
  *
  * \param local_creds   Local credentials if server.

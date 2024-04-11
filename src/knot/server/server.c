@@ -609,9 +609,21 @@ static int init_creds(server_t *server, conf_t *conf)
 		log_debug("QUIC/TLS, using self-generated key '%s' with "
 		          "one-time certificate", key_file);
 	}
-	server->quic_creds = knot_creds_init(cert_file, key_file);
-	free(cert_file);
+
 	if (server->quic_creds == NULL) {
+		server->quic_creds = knot_creds_init(cert_file, key_file);
+	} else {
+		ret = knot_creds_reset(server->quic_creds, cert_file, key_file);
+		if (ret != KNOT_EOK) {
+			// NOTE Just problem with dropped rights - unable to write into storage directory
+			log_warning("QUIC/TLS, keeping old self-signed key",
+			            key_file);
+			ret = KNOT_EOK;
+		}
+	}
+
+	free(cert_file);
+	if (server->quic_creds == NULL || ret != KNOT_EOK) {
 		log_error("QUIC/TLS, failed to initialize server credentials with key '%s'",
 		          key_file);
 		free(key_file);
@@ -1511,6 +1523,11 @@ int server_reconfigure(conf_t *conf, server_t *server)
 
 		if (conf_lmdb_readers(conf) > CONF_MAX_DB_READERS) {
 			log_warning("config, exceeded number of database readers");
+		}
+	} else {
+		if ((ret = init_creds(server, conf)) != KNOT_EOK) {
+			log_error("failed to change TLS credentials");
+			return ret;
 		}
 	}
 
