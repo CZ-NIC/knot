@@ -219,10 +219,16 @@ static void handle_tcp(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
 	uint8_t ans_buf[KNOT_WIRE_MAX_PKTSIZE];
 
 	for (uint32_t i = 0; i < ctx->msg_recv_count; i++) {
+		knot_xdp_msg_t *msg = &ctx->msg_recv[i];
 		knot_tcp_relay_t *rl = &ctx->relays[i];
-		knot_tcp_lookup_t lkup = { 0 };
+		knot_tcp_lookup_t lkup = { 0 }, lkup_syn = { 0 };
+		if (!knot_tcp_table_lookup(&lkup, ctx->tcp_table, msg) &&
+		    !knot_tcp_table_lookup(&lkup_syn, ctx->syn_table, msg) &&
+		    allow_handshake((const struct sockaddr_storage *)&msg->ip_from, params->thread_id) == KNOTD_IN_STATE_ERROR) {
+			continue;
+		}
 
-		int ret = knot_tcp_recv(rl, &ctx->msg_recv[i], ctx->tcp_table,
+		int ret = knot_tcp_recv(rl, msg, ctx->tcp_table,
 	                                ctx->syn_table, &lkup, XDP_TCP_IGNORE_NONE);
 		if (ret != KNOT_EOK) {
 			if (log_enabled_debug()) {
