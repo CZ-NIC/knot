@@ -123,3 +123,14 @@ void handle_quic_streams(knot_quic_conn_t *conn, knotd_qdata_params_t *params,
 #endif // ENABLE_QUIC
 
 void log_swept(knot_sweep_stats_t *stats, bool tcp);
+
+/*!
+ * \brief Determine (query-rate-limiting) if new connection from this address is allowed.
+ *
+ * \param remote_addr   Remote querier IPv4 or v6 address.
+ * \param thred_id      Processing thread ID.
+ *
+ * \retval KNOTD_IN_STATE_ERROR   if handshake denied
+ * \retval KNOTD_IN_STATE_BEGIN   if handshake allowed
+ */
+int allow_handshake(const struct sockaddr_storage *remote_addr, unsigned thread_id);

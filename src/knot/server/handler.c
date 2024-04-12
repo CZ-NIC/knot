@@ -172,3 +172,8 @@ void log_swept(knot_sweep_stats_t *stats, bool tcp)
 	knot_sweep_stats_reset(stats);
 	stats->last_log = sec;
 }
+
+int allow_handshake(const struct sockaddr_storage *remote_addr, unsigned thread_id)
+{
+	return KNOTD_IN_STATE_BEGIN; // TODO
+}

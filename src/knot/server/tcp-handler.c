@@ -261,6 +261,14 @@ static int tcp_event_serve(tcp_context_t *tcp, unsigned i, const iface_t *iface)
 		}
 	}
 
+	// NOTE there is no way to avoid calling accept() on unwanted connections:
+	// it's not possible to read out the remote IP beforehand
+	// moreover, there is no way to pull it out of the queue
+	// so we just accept() those connection (possibly going ahead with the handshake) and close it immediately
+	if (allow_handshake((const struct sockaddr_storage *)remote, tcp->thread_id) == KNOTD_IN_STATE_ERROR) {
+		return KNOT_EDENIED; // results in closing connection
+	}
+
 	/* Establish a TLS session. */
 	knot_tls_conn_t *tls_conn = *fdset_ctx2(&tcp->set, i);
 	assert(iface->tls || tls_conn == NULL);
