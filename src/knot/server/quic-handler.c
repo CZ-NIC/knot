@@ -92,7 +92,11 @@ void quic_handler(knotd_qdata_params_t *params, knot_layer_t *layer,
 
 	rpl.out_payload->iov_len = 0; // prevent send attempt if uq_alloc_reply is not called at all
 
-	knot_quic_conn_t *conn = NULL;
+	knot_quic_conn_t *conn = knot_quic_conn_lookup(table, &rpl);
+	if (conn == NULL && allow_handshake(rpl.ip_rem, params->thread_id) == KNOTD_IN_STATE_ERROR) {
+		return;
+	}
+
 	(void)knot_quic_handle(table, &rpl, idle_close, &conn);
 
 	if (conn != NULL) {

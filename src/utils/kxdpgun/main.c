@@ -777,7 +777,7 @@ void *xdp_gun_thread(void *_ctx)
 #ifdef ENABLE_QUIC
 					for (size_t i = 0; i < recvd; i++) {
 						knot_xdp_msg_t *msg_in = &pkts[i];
-						knot_quic_conn_t *conn;
+						knot_quic_conn_t *conn = NULL;
 
 						quic_reply.ip_rem = (struct sockaddr_storage *)&msg_in->ip_from;
 						quic_reply.ip_loc = (struct sockaddr_storage *)&msg_in->ip_to;
