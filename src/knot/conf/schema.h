@@ -30,6 +30,7 @@
 #define C_ASYNC_START		"\x0B""async-start"
 #define C_AUTO_ACL		"\x0D""automatic-acl"
 #define C_BACKEND		"\x07""backend"
+#define C_BACKLOG		"\x07""backlog"
 #define C_BG_WORKERS		"\x12""background-workers"
 #define C_BLOCK_NOTIFY_XFR	"\x1B""block-notify-after-transfer"
 #define C_BUSYPOLL_BUDGET	"\x0F""busypoll-budget"

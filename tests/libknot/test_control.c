@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -109,7 +109,7 @@ static void ctl_server(const char *socket, size_t argc, knot_ctl_data_t *argv)
 	knot_ctl_t *ctl = knot_ctl_alloc();
 	ok(ctl != NULL, "Allocate control");
 
-	int ret = knot_ctl_bind(ctl, socket);
+	int ret = knot_ctl_bind(ctl, socket, 5);
 	is_int(KNOT_EOK, ret, "Bind control socket");
 
 	ret = knot_ctl_accept(ctl);

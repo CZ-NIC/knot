@@ -911,6 +911,7 @@ Configuration of the server control interface.
 .ft C
 control:
     listen: STR
+    backlog: INT
     timeout: TIME
 .ft P
 .fi
@@ -921,7 +922,16 @@ control:
 A UNIX socket \fI\%path\fP where the server listens for
 control commands.
 .sp
+Change of this parameter requires restart of the Knot server to take effect.
+.sp
 \fIDefault:\fP \fI\%rundir\fP\fB/knot.sock\fP
+.SS backlog
+.sp
+The control UNIX socket listen backlog size.
+.sp
+Change of this parameter requires restart of the Knot server to take effect.
+.sp
+\fIDefault:\fP \fB5\fP
 .SS timeout
 .sp
 Maximum time (in seconds) the control socket operations can take.
