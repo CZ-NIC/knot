@@ -923,6 +923,7 @@ Configuration of the server control interface.
 
  control:
      listen: STR
+     backlog: INT
      timeout: TIME
 
 .. _control_listen:
@@ -933,7 +934,20 @@ listen
 A UNIX socket :ref:`path<default_paths>` where the server listens for
 control commands.
 
+Change of this parameter requires restart of the Knot server to take effect.
+
 *Default:* :ref:`rundir<server_rundir>`\ ``/knot.sock``
+
+.. _control_backlog:
+
+backlog
+-------
+
+The control UNIX socket listen backlog size.
+
+Change of this parameter requires restart of the Knot server to take effect.
+
+*Default:* ``5``
 
 .. _control_timeout:
 

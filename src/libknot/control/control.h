@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -92,6 +92,11 @@ void knot_ctl_set_timeout(knot_ctl_t *ctx, int timeout_ms);
  * \return Error code, KNOT_EOK if successful.
  */
 int knot_ctl_bind(knot_ctl_t *ctx, const char *path);
+
+/*!
+ * Same as knot_ctl_bind() with socket backlog specification.
+ */
+int knot_ctl_bind2(knot_ctl_t *ctx, const char *path, unsigned backlog);
 
 /*!
  * Unbinds a control socket.

@@ -273,7 +273,8 @@ static void event_loop(server_t *server, const char *socket, bool daemonize,
 	log_info("control, binding to '%s'", listen);
 
 	/* Bind the control socket. */
-	int ret = knot_ctl_bind(ctl, listen);
+	uint16_t backlog = conf_get_int(conf(), C_CTL, C_BACKLOG);
+	int ret = knot_ctl_bind2(ctl, listen, backlog);
 	if (ret != KNOT_EOK) {
 		knot_ctl_free(ctl);
 		log_fatal("control, failed to bind socket '%s' (%s)",
