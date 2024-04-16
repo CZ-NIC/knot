@@ -41,13 +41,6 @@ typedef struct knot_tls_conn {
 	struct knot_tls_ctx *ctx;
 	int fd;
 	bool handshake_done;
-
-	// TODO: debug statistics. Remove(?) once well-tuned.
-	size_t recv_count;
-	size_t send_count;
-	size_t err_count;
-	ssize_t iofun_count;
-	int last_err;
 } knot_tls_conn_t;
 
 /*!

@@ -76,25 +76,13 @@ static int poll_func(gnutls_transport_ptr_t ptr, unsigned timeout_ms)
 static ssize_t pull_func(gnutls_transport_ptr_t ptr, void *buf, size_t size)
 {
 	knot_tls_conn_t *conn = (knot_tls_conn_t *)ptr;
-	conn->recv_count++;
-	ssize_t ret = net_stream_recv(conn->fd, buf, size, conn->ctx->io_timeout);
-	if (ret < 0) {
-		conn->err_count++;
-		conn->last_err = ret;
-	}
-	return ret;
+	return net_stream_recv(conn->fd, buf, size, conn->ctx->io_timeout);
 }
 
 static ssize_t push_func(gnutls_transport_ptr_t ptr, const void *buf, size_t size)
 {
 	knot_tls_conn_t *conn = (knot_tls_conn_t *)ptr;
-	conn->send_count++;
-	ssize_t ret = net_stream_send(conn->fd, buf, size, conn->ctx->io_timeout);
-	if (ret < 0) {
-		conn->err_count++;
-		conn->last_err = ret;
-	}
-	return ret;
+	return net_stream_send(conn->fd, buf, size, conn->ctx->io_timeout);
 }
 
 _public_
@@ -182,8 +170,6 @@ static ssize_t tls_io_fun(knot_tls_conn_t *conn, void *data, size_t size,
 			size -= res;
 		}
 	} while (eagain_rcode(res) || (res > 0 && size > 0));
-
-	conn->iofun_count++;
 
 	// TODO filter error codes?
 	return res > 0 ? orig_size : res;
