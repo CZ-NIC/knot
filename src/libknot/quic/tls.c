@@ -15,16 +15,17 @@
  */
 
 #include <arpa/inet.h>
+#include <assert.h>
 #include <gnutls/crypto.h>
 #include <gnutls/gnutls.h>
-#include <poll.h>
-#include <stdio.h>
 #include <stdlib.h>
+#include <sys/types.h>
+#include <sys/socket.h>
 
 #include "libknot/quic/tls.h"
 
 #include "contrib/macros.h"
-#include "contrib/net.h"
+#include "contrib/time.h"
 #include "libknot/attribute.h"
 #include "libknot/error.h"
 #include "libknot/quic/tls_common.h"
@@ -33,8 +34,6 @@
 #define TLS_DEFAULT_VERSION "-VERS-ALL:+VERS-TLS1.3"
 #define TLS_DEFAULT_GROUPS  "-GROUP-ALL:+GROUP-X25519:+GROUP-SECP256R1:+GROUP-SECP384R1:+GROUP-SECP521R1"
 #define TLS_PRIORITIES      "%DISABLE_TLS13_COMPAT_MODE:NORMAL:"TLS_DEFAULT_VERSION":"TLS_DEFAULT_GROUPS
-
-#define EAGAIN_MAX_FOR_GNUTLS 10 // gnutls_record_recv() has been observed to return GNUTLS_E_AGAIN repetitively and excessively, leading to infinite loops. This limits the number of re-tries.
 
 _public_
 knot_tls_ctx_t *knot_tls_ctx_new(struct knot_creds *creds, unsigned io_timeout,
@@ -61,30 +60,6 @@ void knot_tls_ctx_free(knot_tls_ctx_t *ctx)
 	}
 }
 
-static int poll_func(gnutls_transport_ptr_t ptr, unsigned timeout_ms)
-{
-	knot_tls_conn_t *conn = (knot_tls_conn_t *)ptr;
-
-	struct pollfd pfd = {
-		.fd = conn->fd,
-		.events = POLLIN
-	};
-
-	return poll(&pfd, 1, timeout_ms);
-}
-
-static ssize_t pull_func(gnutls_transport_ptr_t ptr, void *buf, size_t size)
-{
-	knot_tls_conn_t *conn = (knot_tls_conn_t *)ptr;
-	return net_stream_recv(conn->fd, buf, size, conn->ctx->io_timeout);
-}
-
-static ssize_t push_func(gnutls_transport_ptr_t ptr, const void *buf, size_t size)
-{
-	knot_tls_conn_t *conn = (knot_tls_conn_t *)ptr;
-	return net_stream_send(conn->fd, buf, size, conn->ctx->io_timeout);
-}
-
 _public_
 knot_tls_conn_t *knot_tls_conn_new(knot_tls_ctx_t *ctx, int sock_fd)
 {
@@ -101,12 +76,8 @@ knot_tls_conn_t *knot_tls_conn_new(knot_tls_ctx_t *ctx, int sock_fd)
 		goto fail;
 	}
 
-	gnutls_transport_set_ptr(res->session, res);
-	gnutls_transport_set_pull_timeout_function(res->session, poll_func);
-	gnutls_transport_set_pull_function(res->session, pull_func);
-	gnutls_transport_set_push_function(res->session, push_func); // TODO employ gnutls_transport_set_vec_push_function for optimization
+	gnutls_transport_set_int(res->session, sock_fd); // Use internal recv/send/poll.
 	gnutls_handshake_set_timeout(res->session, ctx->handshake_timeout);
-	gnutls_record_set_timeout(res->session, ctx->io_timeout);
 
 	return res;
 fail:
@@ -124,108 +95,151 @@ void knot_tls_conn_del(knot_tls_conn_t *conn)
 	}
 }
 
-inline static bool eagain_rcode(ssize_t gnutls_rcode)
-{
-	return gnutls_rcode == GNUTLS_E_AGAIN || gnutls_rcode == GNUTLS_E_INTERRUPTED;
-}
-
 _public_
-int knot_tls_handshake(knot_tls_conn_t *conn)
+int knot_tls_handshake(knot_tls_conn_t *conn, bool oneshot)
 {
 	if (conn->handshake_done) {
-		_Static_assert(KNOT_EOK == GNUTLS_E_SUCCESS, "EOK differs between libknot and GnuTLS");
 		return KNOT_EOK;
 	}
-	int ret, again = EAGAIN_MAX_FOR_GNUTLS;
+
+	/* Check if NB socket is writeable. */
+	int opt;
+	socklen_t opt_len = sizeof(opt);
+	int ret = getsockopt(conn->fd, SOL_SOCKET, SO_ERROR, &opt, &opt_len);
+	if (ret < 0 || opt == ECONNREFUSED) {
+		return KNOT_NET_ECONNECT;
+	}
+
+	gnutls_record_set_timeout(conn->session, conn->ctx->io_timeout);
 	do {
-		if (--again < 0) {
-			return KNOT_ETIMEOUT;
-		}
 		ret = gnutls_handshake(conn->session);
-	} while (eagain_rcode(ret));
-	// TODO filter error codes?
+	} while (!oneshot && ret < 0 && gnutls_error_is_fatal(ret) == 0);
 
-	if (ret == KNOT_EOK) {
+	switch (ret) {
+	case GNUTLS_E_SUCCESS:
 		conn->handshake_done = true;
-		ret = knot_tls_pin_check(conn->session, conn->ctx->creds);
+		return knot_tls_pin_check(conn->session, conn->ctx->creds);
+	case GNUTLS_E_TIMEDOUT:
+		return KNOT_NET_ETIMEOUT;
+	default:
+		if (gnutls_error_is_fatal(ret) == 0) {
+			return KNOT_EAGAIN;
+		} else {
+			return KNOT_NET_EHSHAKE;
+		}
 	}
-	return ret;
 }
 
-static ssize_t tls_io_fun(knot_tls_conn_t *conn, void *data, size_t size,
-                          ssize_t (*io_cb)(gnutls_session_t, void *, size_t))
-{
-	ssize_t res = knot_tls_handshake(conn), orig_size = size, again = EAGAIN_MAX_FOR_GNUTLS;
-	if (res != KNOT_EOK) {
-		return res;
+#define TIMEOUT_CTX_INIT \
+	struct timespec begin, end; \
+	if (*timeout_ptr > 0) { \
+		clock_gettime(CLOCK_MONOTONIC, &begin); \
 	}
 
-	do {
-		if (--again < 0) {
-			return KNOT_ETIMEOUT;
-		}
-		res = io_cb(conn->session, data, size);
+#define TIMEOUT_CTX_UPDATE \
+	if (*timeout_ptr > 0) { \
+		clock_gettime(CLOCK_MONOTONIC, &end); \
+		int running_ms = time_diff_ms(&begin, &end); \
+		*timeout_ptr = MAX(*timeout_ptr - running_ms, 0); \
+	}
+
+static ssize_t recv_data(knot_tls_conn_t *conn, void *data, size_t size, int *timeout_ptr)
+{
+	gnutls_record_set_timeout(conn->session, *timeout_ptr);
+
+	size_t total = 0;
+	ssize_t res;
+	while (total < size) {
+		TIMEOUT_CTX_INIT
+		res = gnutls_record_recv(conn->session, data + total, size - total);
 		if (res > 0) {
-			data += res;
-			size -= res;
+			total += res;
+		} else if (res == 0) {
+			return KNOT_ECONNRESET;
+		} else if (gnutls_error_is_fatal(res) != 0) {
+			return KNOT_NET_ERECV;
 		}
-	} while (eagain_rcode(res) || (res > 0 && size > 0));
+		TIMEOUT_CTX_UPDATE
+		gnutls_record_set_timeout(conn->session, *timeout_ptr);
+	}
 
-	// TODO filter error codes?
-	return res > 0 ? orig_size : res;
-}
-
-static ssize_t gnutls_record_send_noconst(gnutls_session_t session,
-                                          void *data, size_t data_size)
-{
-	// just a wrapper, parameter 'data' is not (const void *) here
-	return gnutls_record_send(session, data, data_size);
-}
-
-_public_
-ssize_t knot_tls_recv(knot_tls_conn_t *conn, void *data, size_t size)
-{
-	return tls_io_fun(conn, data, size, gnutls_record_recv);
-}
-
-_public_
-ssize_t knot_tls_send(knot_tls_conn_t *conn, void *data, size_t size)
-{
-	return tls_io_fun(conn, data, size, gnutls_record_send_noconst);
+	assert(total == size);
+	return size;
 }
 
 _public_
 ssize_t knot_tls_recv_dns(knot_tls_conn_t *conn, void *data, size_t size)
 {
-	uint16_t dns_len;
-	ssize_t ret = knot_tls_recv(conn, &dns_len, sizeof(dns_len));
-	if (ret > 0 && ret < sizeof(dns_len)) {
-		ret = KNOT_EMALF;
-	} else if (ret == sizeof(dns_len)) {
-		dns_len = ntohs(dns_len);
-		if (dns_len > size) {
-			return KNOT_ESPACE;
-		}
-		ret = knot_tls_recv(conn, data, dns_len);
+	if (conn == NULL || data == NULL) {
+		return KNOT_EINVAL;
 	}
 
-	return ret;
+	ssize_t ret = knot_tls_handshake(conn, false);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	int timeout = conn->ctx->io_timeout;
+
+	uint16_t msg_len;
+	ret = recv_data(conn, &msg_len, sizeof(msg_len), &timeout);
+	if (ret != sizeof(msg_len)) {
+		return ret;
+	}
+
+	msg_len = ntohs(msg_len);
+	if (size < msg_len) {
+		return KNOT_ESPACE;
+	}
+
+	ret = recv_data(conn, data, msg_len, &timeout);
+	if (ret != size) {
+		return ret;
+	}
+
+	return msg_len;
 }
 
 _public_
 ssize_t knot_tls_send_dns(knot_tls_conn_t *conn, void *data, size_t size)
 {
-	if (size > UINT16_MAX) {
+	if (conn == NULL || data == NULL || size > UINT16_MAX) {
 		return KNOT_EINVAL;
 	}
 
-	uint16_t dns_len = htons(size);
-	ssize_t ret = knot_tls_send(conn, &dns_len, sizeof(dns_len)); // TODO invent a way how to send length and data at once
-	if (ret > 0 && ret < sizeof(dns_len)) {
-		ret = KNOT_EMALF;
-	} else if (ret == sizeof(dns_len)) {
-		ret = knot_tls_send(conn, data, size);
+	ssize_t res = knot_tls_handshake(conn, false);
+	if (res != KNOT_EOK) {
+		return res;
 	}
 
-	return ret;
+	// Enable data buffering.
+	gnutls_record_cork(conn->session);
+
+	uint16_t msg_len = htons(size);
+	res = gnutls_record_send(conn->session, &msg_len, sizeof(msg_len));
+	if (res != sizeof(msg_len)) {
+		return KNOT_NET_ESEND;
+	}
+
+	res = gnutls_record_send(conn->session, data, size);
+	if (res != size) {
+		return KNOT_NET_ESEND;
+	}
+
+	int timeout = conn->ctx->io_timeout, *timeout_ptr = &timeout;
+	gnutls_record_set_timeout(conn->session, timeout);
+
+	// Send the buffered data.
+	while (gnutls_record_check_corked(conn->session) > 0) {
+		TIMEOUT_CTX_INIT
+		int ret = gnutls_record_uncork(conn->session, 0);
+		if (ret < 0 && gnutls_error_is_fatal(ret) != 0) {
+			return ret == GNUTLS_E_TIMEDOUT ? KNOT_ETIMEOUT :
+			                                  KNOT_NET_ESEND;
+		}
+		TIMEOUT_CTX_UPDATE
+		gnutls_record_set_timeout(conn->session, timeout);
+	}
+
+	return size;
 }

@@ -171,7 +171,16 @@ static int tcp_handle(tcp_context_t *tcp, int fd, knot_tls_conn_t *tls_conn, con
 	if (tls_conn != NULL) {
 		assert(tcp->tls_ctx != NULL);
 		params.tls_session = tls_conn->session;
-		recv = knot_tls_recv_dns(tls_conn, rx->iov_base, rx->iov_len);
+		int ret = knot_tls_handshake(tls_conn, true);
+		switch (ret) {
+		case KNOT_EAGAIN: // Unfinished handshake, continue later.
+			return KNOT_EOK;
+		case KNOT_EOK: // Finished handshake, continue with receiving message.
+			recv = knot_tls_recv_dns(tls_conn, rx->iov_base, rx->iov_len);
+			break;
+		default: // E.g. handshake timeout.
+			return ret;
+		}
 	} else {
 		recv = net_dns_tcp_recv(fd, rx->iov_base, rx->iov_len, tcp->io_timeout);
 	}

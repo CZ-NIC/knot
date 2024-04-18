@@ -81,30 +81,16 @@ void knot_tls_conn_del(knot_tls_conn_t *conn);
  * \brief Perform the TLS handshake (via gnutls_handshake()).
  *
  * \note This is also done by the recv/send functions.
+ *
+ * \param conn     DoT connection.
+ * \param oneshot  If set, don't wait untill the handshake is finished.
+ *
+ * \retval KNOT_EOK           Handshake successfully finished.
+ * \retval KNOT_EGAIN         Handshake not finished, call me again.
+ * \retval KNOT_NET_EHSHAKE   Handshake error.
+ * \retval KNOT_NET_ECONNECT  Socket not connected.
  */
-int knot_tls_handshake(knot_tls_conn_t *conn);
-
-/*!
- * \brief Receive data from a TLS connection.
- *
- * \param conn       DoT connection.
- * \param data       Destination buffer.
- * \param size       Amount to be received.
- *
- * \return Either exactly 'size' or a negative error code.
- */
-ssize_t knot_tls_recv(knot_tls_conn_t *conn, void *data, size_t size);
-
-/*!
- * \brief Send data to a TLS connection.
- *
- * \param conn       DoT connection.
- * \param data       The data.
- * \param size       Amount to be sent.
- *
- * \return Either exactly 'size' or a negative error code.
- */
-ssize_t knot_tls_send(knot_tls_conn_t *conn, void *data, size_t size);
+int knot_tls_handshake(knot_tls_conn_t *conn, bool oneshot);
 
 /*!
  * \brief Receive a size-word-prefixed DNS message.

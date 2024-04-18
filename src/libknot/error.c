@@ -118,6 +118,7 @@ static const struct error errors[] = {
 	{ KNOT_NET_EADDR,    "bad address or host name" },
 	{ KNOT_NET_ESOCKET,  "can't create socket" },
 	{ KNOT_NET_ECONNECT, "can't connect" },
+	{ KNOT_NET_EHSHAKE,  "handshake failed" },
 	{ KNOT_NET_ESEND,    "can't send data" },
 	{ KNOT_NET_ERECV,    "can't receive data" },
 	{ KNOT_NET_ETIMEOUT, "network timeout" },

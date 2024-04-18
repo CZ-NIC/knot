@@ -194,9 +194,7 @@ libknot.so.14 libknot14 #MINVER#
  knot_tls_handshake@Base 3.4.0
  knot_tls_pin@Base 3.4.0
  knot_tls_pin_check@Base 3.4.0
- knot_tls_recv@Base 3.4.0
  knot_tls_recv_dns@Base 3.4.0
- knot_tls_send@Base 3.4.0
  knot_tls_send_dns@Base 3.4.0
  knot_tls_session@Base 3.4.0
  knot_tsig_add@Base 3.3.0
