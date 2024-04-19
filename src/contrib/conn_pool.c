@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -15,6 +15,7 @@
  */
 
 #include <assert.h>
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -255,8 +256,9 @@ void conn_pool_close_cb_dflt(conn_pool_fd_t fd)
 bool conn_pool_invalid_cb_dflt(conn_pool_fd_t fd)
 {
 	uint8_t unused;
+	errno = 0;
 	int peek = recv((int)fd, &unused, 1, MSG_PEEK | MSG_DONTWAIT);
-	return (peek >= 0); // closed or pending data
+	return (peek == 0 || peek > 0 || errno == ECONNRESET); // closed || pending data || reset (alternative: errno != 0 && errno != EAGAIN)
 }
 
 bool conn_pool_invalid_cb_allvalid(conn_pool_fd_t fd)
