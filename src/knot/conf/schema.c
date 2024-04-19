@@ -343,6 +343,7 @@ static const yp_item_t desc_remote[] = {
 	{ C_BLOCK_NOTIFY_XFR, YP_TBOOL, YP_VNONE },
 	{ C_NO_EDNS,          YP_TBOOL, YP_VNONE },
 	{ C_AUTO_ACL,         YP_TBOOL, YP_VBOOL = { true } },
+	{ C_NO_IXFR,          YP_TBOOL, YP_VNONE },
 	{ C_COMMENT,          YP_TSTR,  YP_VNONE },
 	{ NULL }
 };

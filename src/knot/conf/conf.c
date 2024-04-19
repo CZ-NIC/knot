@@ -1434,6 +1434,9 @@ conf_remote_t conf_remote_txn(
 	val = conf_id_get_txn(conf, txn, C_RMT, C_NO_EDNS, id);
 	out.no_edns = conf_bool(&val);
 
+	val = conf_id_get_txn(conf, txn, C_RMT, C_NO_IXFR, id);
+	out.no_ixfr = conf_bool(&val);
+
 	return out;
 }
 

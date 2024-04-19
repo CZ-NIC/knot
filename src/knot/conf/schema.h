@@ -98,6 +98,7 @@
 #define C_MASTER_PIN_TOL	"\x14""master-pin-tolerance"
 #define C_MODULE		"\x06""module"
 #define C_NO_EDNS		"\x07""no-edns"
+#define C_NO_IXFR		"\x07""no-ixfr"
 #define C_NOTIFY		"\x06""notify"
 #define C_NSEC3			"\x05""nsec3"
 #define C_NSEC3_ITER		"\x10""nsec3-iterations"

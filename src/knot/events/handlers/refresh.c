@@ -1331,6 +1331,9 @@ static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master,
 	assert(fallback);
 
 	try_refresh_ctx_t *trctx = ctx;
+	if (master->no_ixfr) {
+		trctx->force_axfr = true;
+	}
 
 	knot_rrset_t soa = { 0 };
 	if (zone->contents) {
