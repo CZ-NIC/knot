@@ -30,6 +30,7 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
+#include <netdb.h>
 
 #include <arpa/inet.h>
 #include <netinet/in.h>
@@ -990,6 +991,41 @@ static int mac_sscan(const char *src, uint8_t *dst)
 	return KNOT_EOK;
 }
 
+static bool resolve_name(char *target_str, xdp_gun_ctx_t *xdpgun_ctx)
+{
+	struct addrinfo *res = NULL, hints = {
+		.ai_family = AF_UNSPEC,
+		.ai_socktype = 0, // any socket type
+		.ai_protocol = 0, // any protocol
+	};
+
+	int err = 0;
+	if ((err = getaddrinfo(target_str, NULL, &hints, &res)) != 0) {
+		ERR2("%s (%s)", gai_strerror(err), target_str);
+		goto cleanup;
+	}
+
+	for (struct addrinfo *i = res; i != NULL; i = i->ai_next) {
+		switch (i->ai_family) {
+		case AF_INET:
+		case AF_INET6:
+			xdpgun_ctx->ipv6 = (i->ai_family == AF_INET6);
+			memcpy(&xdpgun_ctx->target_ip_ss, i->ai_addr, i->ai_addrlen);
+			assert(sizeof(xdpgun_ctx->target_ip_ss) >= i->ai_addrlen);
+			goto cleanup;
+		default:
+			break;
+		};
+	}
+	err = 1;
+
+cleanup:
+	if (res != NULL) {
+		freeaddrinfo(res);
+	}
+	return err ? true : false;
+}
+
 static bool configure_target(char *target_str, char *local_ip, xdp_gun_ctx_t *ctx)
 {
 	int val;
@@ -999,16 +1035,9 @@ static bool configure_target(char *target_str, char *local_ip, xdp_gun_ctx_t *ct
 		*at = '\0';
 	}
 
-	ctx->ipv6 = false;
-	if (inet_pton(AF_INET, target_str, &ctx->target_ip4.sin_addr) <= 0) {
-		ctx->ipv6 = true;
-		ctx->target_ip.sin6_family = AF_INET6;
-		if (inet_pton(AF_INET6, target_str, &ctx->target_ip.sin6_addr) <= 0) {
-			ERR2("invalid target IP");
-			return false;
-		}
-	} else {
-		ctx->target_ip.sin6_family = AF_INET;
+	if (resolve_name(target_str, ctx)) {
+		ERR2("invalid target");
+		return false;
 	}
 
 	struct sockaddr_storage via = { 0 };
