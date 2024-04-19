@@ -32,7 +32,7 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 kxdpgun \- XDP-powered DNS benchmarking tool
 .SH SYNOPSIS
 .sp
-\fBkxdpgun\fP [\fIoptions\fP] \fB\-i\fP \fIfilename\fP \fItarget_IP\fP
+\fBkxdpgun\fP [\fIoptions\fP] \fB\-i\fP \fIfilename\fP \fItarget\fP
 .SH DESCRIPTION
 .sp
 Powerful generator of DNS traffic, sending and receiving packets through XDP.
@@ -50,8 +50,8 @@ configured for the network interface.
 \fIfilename\fP
 Path to the queries file. See the description below regarding the file format.
 .TP
-\fItarget_IP\fP
-The IPv4 or IPv6 address of remote destination.
+\fItarget\fP
+Either the domain name, IPv4 or IPv6 address of a remote target.
 .UNINDENT
 .SS Options
 .INDENT 0.0

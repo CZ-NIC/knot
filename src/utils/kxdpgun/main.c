@@ -30,6 +30,7 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
+#include <netdb.h>
 
 #include <arpa/inet.h>
 #include <netinet/in.h>
@@ -534,8 +535,8 @@ void *xdp_gun_thread(void *_ctx)
 	}
 
 	if (ctx->thread_id == 0) {
-		INFO2("using interface %s, XDP threads %u, %s%s%s, %s mode",
-		      ctx->dev, ctx->n_threads,
+		INFO2("using interface %s, XDP threads %u, IPv%c/%s%s%s, %s mode",
+		      ctx->dev, ctx->n_threads, (ctx->ipv6 ? '6' : '4'),
 		      (ctx->tcp ? "TCP" : ctx->quic ? "QUIC" : "UDP"),
 		      (ctx->sending_mode[0] != '\0' ? " mode " : ""),
 		      (ctx->sending_mode[0] != '\0' ? ctx->sending_mode : ""),
@@ -989,6 +990,41 @@ static int mac_sscan(const char *src, uint8_t *dst)
 	return KNOT_EOK;
 }
 
+static bool resolve_name(char *target_str, xdp_gun_ctx_t *ctx)
+{
+	struct addrinfo *res = NULL, hints = {
+		.ai_family = AF_UNSPEC,
+		.ai_socktype = 0, // any socket type
+		.ai_protocol = 0, // any protocol
+	};
+
+	int err = 0;
+	if ((err = getaddrinfo(target_str, NULL, &hints, &res)) != 0) {
+		ERR2("failed to resolve '%s' (%s)", target_str, gai_strerror(err));
+		goto cleanup;
+	}
+
+	for (struct addrinfo *i = res; i != NULL; i = i->ai_next) {
+		switch (i->ai_family) {
+		case AF_INET:
+		case AF_INET6:
+			ctx->ipv6 = (i->ai_family == AF_INET6);
+			assert(sizeof(ctx->target_ip_ss) >= i->ai_addrlen);
+			memcpy(&ctx->target_ip_ss, i->ai_addr, i->ai_addrlen);
+			goto cleanup;
+		default:
+			break;
+		};
+	}
+	err = 1;
+
+cleanup:
+	if (res != NULL) {
+		freeaddrinfo(res);
+	}
+	return (err == 0);
+}
+
 static bool configure_target(char *target_str, char *local_ip, xdp_gun_ctx_t *ctx)
 {
 	int val;
@@ -998,16 +1034,8 @@ static bool configure_target(char *target_str, char *local_ip, xdp_gun_ctx_t *ct
 		*at = '\0';
 	}
 
-	ctx->ipv6 = false;
-	if (inet_pton(AF_INET, target_str, &ctx->target_ip4.sin_addr) <= 0) {
-		ctx->ipv6 = true;
-		ctx->target_ip.sin6_family = AF_INET6;
-		if (inet_pton(AF_INET6, target_str, &ctx->target_ip.sin6_addr) <= 0) {
-			ERR2("invalid target IP");
-			return false;
-		}
-	} else {
-		ctx->target_ip.sin6_family = AF_INET;
+	if (!resolve_name(target_str, ctx)) {
+		return false;
 	}
 
 	struct sockaddr_storage via = { 0 };
