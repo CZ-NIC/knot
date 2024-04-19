@@ -268,15 +268,15 @@ int knot_tls_session(struct gnutls_session_int **session,
 		return KNOT_EINVAL;
 	}
 
-	gnutls_init_flags_t early_flags = 0;
+	gnutls_init_flags_t flags = GNUTLS_NO_SIGNAL;
 	if (early_data) {
-		early_flags |= GNUTLS_ENABLE_EARLY_DATA;
+		flags |= GNUTLS_ENABLE_EARLY_DATA;
 #ifdef ENABLE_QUIC // Next flags aren't available in older GnuTLS versions.
-		early_flags |= GNUTLS_NO_AUTO_SEND_TICKET | GNUTLS_NO_END_OF_EARLY_DATA;
+		flags |= GNUTLS_NO_AUTO_SEND_TICKET | GNUTLS_NO_END_OF_EARLY_DATA;
 #endif
 	}
 
-	int ret = gnutls_init(session, (server ? GNUTLS_SERVER : GNUTLS_CLIENT) | early_flags);
+	int ret = gnutls_init(session, (server ? GNUTLS_SERVER : GNUTLS_CLIENT) | flags);
 	if (ret == GNUTLS_E_SUCCESS) {
 		gnutls_certificate_send_x509_rdn_sequence(*session, 1);
 		gnutls_certificate_server_set_request(*session, GNUTLS_CERT_REQUEST);
