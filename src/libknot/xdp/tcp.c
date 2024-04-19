@@ -588,7 +588,7 @@ int knot_tcp_send(knot_xdp_socket_t *socket, knot_tcp_relay_t relays[],
 			break;
 		case XDP_TCP_RESET:
 			NEXT_MSG
-			msg->flags |= KNOT_XDP_MSG_RST;
+			msg->flags |= (KNOT_XDP_MSG_RST | KNOT_XDP_MSG_ACK);
 			break;
 		case XDP_TCP_NOOP:
 		default:
