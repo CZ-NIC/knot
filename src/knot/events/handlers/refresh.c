@@ -1331,8 +1331,9 @@ static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master,
 	assert(fallback);
 
 	try_refresh_ctx_t *trctx = ctx;
+	bool force_axfr = trctx->force_axfr;
 	if (master->no_ixfr) {
-		trctx->force_axfr = true;
+		force_axfr = true;
 	}
 
 	knot_rrset_t soa = { 0 };
@@ -1344,7 +1345,7 @@ static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master,
 		.zone = zone,
 		.conf = conf,
 		.remote = (struct sockaddr *)&master->addr,
-		.soa = zone->contents && !trctx->force_axfr ? &soa : NULL,
+		.soa = zone->contents && !force_axfr ? &soa : NULL,
 		.max_zone_size = max_zone_size(conf, zone->name),
 		.edns = query_edns_data_init(conf, master, QUERY_EDNS_OPT_EXPIRE),
 		.expire_timer = EXPIRE_TIMER_INVALID,
