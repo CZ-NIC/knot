@@ -1270,6 +1270,33 @@ finish:
 	return ret;
 }
 
+static int process_trace(const query_t *query) {
+	if (query->quic.enable) {
+		ERR2("+quic is not supported in combination with +trace");
+		return KNOT_ERROR;
+	}
+
+	query_t iter_query;
+	memcpy(&iter_query, query, sizeof(query_t));
+
+	uint16_t type_num = -1;
+	knot_rrtype_from_string("NS", &type_num);
+	iter_query.type_num = type_num;
+
+	net_t net = { .sockfd = -1 };
+
+	char *suffix = strrchr(query->owner, '.') - 1;
+	while (suffix != NULL && suffix > query->owner) {
+		iter_query.owner = suffix + 1;
+		process_query(&iter_query, &net);
+		suffix = memrchr(query->owner, '.', suffix - query->owner);
+	}
+
+	process_query(query, &net);
+
+	return KNOT_EOK;
+}
+
 int kdig_exec(const kdig_params_t *params)
 {
 	node_t *n;
@@ -1300,6 +1327,7 @@ int kdig_exec(const kdig_params_t *params)
 			break;
 #endif // USE_DNSTAP
 		case OPERATION_TRACE:
+			ret = process_trace(query);
 			ERR("+trace not implemented yet :(");
 			break;
 		default:
