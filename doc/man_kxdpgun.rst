@@ -6,7 +6,7 @@
 Synopsis
 --------
 
-:program:`kxdpgun` [*options*] **-i** *filename* *target_IP*
+:program:`kxdpgun` [*options*] **-i** *filename* *target*
 
 Description
 -----------
@@ -27,8 +27,8 @@ Parameters
 *filename*
   Path to the queries file. See the description below regarding the file format.
 
-*target_IP*
-  The IPv4 or IPv6 address of remote destination.
+*target*
+  Either the domain name, IPv4 or IPv6 address of a remote target.
 
 Options
 .......
