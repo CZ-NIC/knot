@@ -83,6 +83,20 @@ void xdp_handle_reconfigure(xdp_handle_ctx_t *ctx)
 
 void xdp_handle_free(xdp_handle_ctx_t *ctx)
 {
+	// send RST on all existing conns
+	knot_tcp_relay_t sweep_relays[XDP_BATCHLEN] = { 0 };
+	int ret = KNOT_EOK;
+	while (ret == KNOT_EOK && ctx->tcp_table->usage > 0) {
+		knot_xdp_send_prepare(ctx->sock);
+		ret = knot_tcp_sweep(ctx->tcp_table, UINT32_MAX, 1, UINT32_MAX, UINT32_MAX, SIZE_MAX,
+		                     SIZE_MAX, sweep_relays, XDP_BATCHLEN, &ctx->tcp_closed);
+		if (ret == KNOT_EOK) {
+			ret = knot_tcp_send(ctx->sock, sweep_relays, XDP_BATCHLEN, XDP_BATCHLEN);
+		}
+		knot_tcp_cleanup(ctx->tcp_table, sweep_relays, XDP_BATCHLEN);
+		(void)knot_xdp_send_finish(ctx->sock);
+	}
+
 	knot_tcp_table_free(ctx->tcp_table);
 	knot_tcp_table_free(ctx->syn_table);
 #ifdef ENABLE_QUIC

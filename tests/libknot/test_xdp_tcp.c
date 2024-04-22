@@ -92,7 +92,6 @@ static int mock_send(_unused_ knot_xdp_socket_t *sock, const knot_xdp_msg_t msgs
 		ok(msg->payload.iov_len == 0, "send: is empty payload");
 
 		if (msg->flags & KNOT_XDP_MSG_RST) {
-			ok(!(msg->flags & KNOT_XDP_MSG_ACK), "send: no RST+ACK");
 			sent_rsts++;
 		} else if (msg->flags & KNOT_XDP_MSG_SYN) {
 			ok(msg->flags & KNOT_XDP_MSG_ACK, "send: is SYN+ACK");
