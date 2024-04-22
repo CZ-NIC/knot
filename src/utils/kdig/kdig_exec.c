@@ -1299,6 +1299,9 @@ int kdig_exec(const kdig_params_t *params)
 			ret = process_dnstap(query);
 			break;
 #endif // USE_DNSTAP
+		case OPERATION_TRACE:
+			ERR("+trace not implemented yet :(");
+			break;
 		default:
 			ERR("unsupported operation");
 			break;

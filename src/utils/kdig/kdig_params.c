@@ -1476,6 +1476,15 @@ static int opt_noproxy(const char *arg, void *query)
 	return KNOT_EOK;
 }
 
+static int opt_trace(const char *arg, void *query)
+{
+	query_t *q = query;
+	q->operation = OPERATION_TRACE;
+	return KNOT_EOK;
+
+	(void)arg;
+}
+
 static const param_t kdig_opts2[] = {
 	{ "multiline",      ARG_NONE,     opt_multiline },
 	{ "nomultiline",    ARG_NONE,     opt_nomultiline },
@@ -1654,6 +1663,8 @@ static const param_t kdig_opts2[] = {
 
 	/* "idn" doesn't work since it must be called before query creation. */
 	{ "noidn",          ARG_NONE,     opt_noidn },
+
+	{ "trace",           ARG_NONE,     opt_trace },
 
 	{ NULL }
 };
@@ -2391,6 +2402,7 @@ static void print_help(void)
 	       "       +[no]proxy=SADDR-DADDR     Add PROXYv2 header with src and dest addresses.\n"
 	       "       +[no]json                  Use JSON for output encoding (RFC 8427).\n"
 	       "       +noidn                     Disable IDN transformation.\n"
+	       "       +[no]trace                 Trace the entire path from DNS root.\n"
 	       "\n"
 	       "       -h, --help                 Print the program help.\n"
 	       "       -V, --version              Print the program version.\n",

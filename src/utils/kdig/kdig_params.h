@@ -39,6 +39,8 @@ typedef enum {
 	OPERATION_XFR,
 	/*!< Dump dnstap file. */
 	OPERATION_LIST_DNSTAP,
+	/*!< Recursively resolve the entire DNS path. */
+	OPERATION_TRACE,
 } operation_t;
 
 /*! \brief DNS header and EDNS flags. */
