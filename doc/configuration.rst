@@ -917,9 +917,10 @@ Opportunistic authentication:
 Primary and secondary can authenticate using TSIG. Fallback to clear-text DNS
 isn't supported.
 
-.. panels::
+.. grid:: 1 1 1 2
+  :gutter: 2
 
-  Primary:
+  .. grid-item-card:: Primary
 
     .. code-block:: console
 
@@ -942,9 +943,7 @@ isn't supported.
         - domain: example.com
           notify: secondary
 
-  ---
-
-  Secondary:
+  .. grid-item-card:: Secondary
 
     .. code-block:: console
 
@@ -973,9 +972,10 @@ Strict authentication:
 Note that the automatic ACL doesn't work in this case due to asymmetrical
 configuration. The secondary can authenticate using TSIG.
 
-.. panels::
+.. grid:: 1 1 1 2
+  :gutter: 2
 
-  Primary:
+  .. grid-item-card:: Primary
 
     .. code-block:: console
 
@@ -1003,9 +1003,7 @@ configuration. The secondary can authenticate using TSIG.
           notify: secondary
           acl: secondary_xfr
 
-  ---
-
-  Secondary:
+  .. grid-item-card:: Secondary
 
     .. code-block:: console
 
@@ -1041,9 +1039,10 @@ The :rfc:`mutual authentication<9103#section-9.3.3>` guarantees authentication
 for both the primary and the secondary. In this case, TSIG would be redundant.
 This mode is recommended if possible.
 
-.. panels::
+.. grid:: 1 1 1 2
+  :gutter: 2
 
-  Primary:
+  .. grid-item-card:: Primary
 
     .. code-block:: console
 
@@ -1061,9 +1060,7 @@ This mode is recommended if possible.
         - domain: example.com
           notify: secondary
 
-  ---
-
-  Secondary:
+  .. grid-item-card:: Secondary
 
     .. code-block:: console
 
