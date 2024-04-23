@@ -887,6 +887,28 @@ class Server(object):
 
         return self.zones[zone.name].dnssec
 
+    def keymgr_timers(self, *args):
+        return tuple(self.default_keymgr_timer() if arg is None else str(arg) for arg in args)
+
+    def ksk_zsk_flag(self, fl, other, dflt):
+        if fl is not None:
+            return fl
+        elif other is None:
+            return dflt
+        elif str(other).lower()[0] in [ "t", "y", "1"]:
+            return False
+        else:
+            return True
+
+    def key_gen(self, zone_name, algorithm="ECDSAP256SHA256", ksk=None, zsk=None, created="+0", pre_active=None, publish="+0", ready=None, active="+0", retire=None, revoke=None, remove=None, size=None, nsec3=None, sep=None):
+
+        ksk = self.ksk_zsk_flag(ksk, zsk, False)
+        zsk = self.ksk_zsk_flag(zsk, ksk, True)
+
+        created, pre_active, publish, ready, active, retire, revoke, remove = self.keymgr_timers(created, pre_active, publish, ready, active, retire, revoke, remove)
+
+        return self.key_gen_check(zone_name, algorithm, ksk, zsk, created, pre_active, publish, ready, active, retire, revoke, remove, size, nsec3, sep)
+
     def enable_nsec3(self, zone, **args):
         zone = zone_arg_check(zone)
 
@@ -1017,6 +1039,21 @@ class Bind(Server):
     def _int(self, conf, name, value):
         if value is not None:
             conf.item(name, str(value))
+
+    def default_keymgr_timer(self):
+        return "none"
+
+    def key_gen_check(self, zone_name, algorithm, ksk, zsk, created, pre_active, publish, ready, active, retire, revoke, remove, size, nsec3, sep):
+        ps = [ 'dnssec-keygen', '-n', 'ZONE', '-a', algorithm, '-K', self.keydir ]
+        if nsec3:
+            ps += [ '-3' ]
+        if size is not None:
+            ps += [ '-b', str(size) ]
+        if ksk:
+            ps += [ '-f', 'KSK' ]
+        ps += [ '-P', publish, '-A', active, '-I', retire, '-R', revoke, '-D', remove ]
+
+        return check_output(ps + [zone_name], stderr=DEVNULL)
 
     def get_config(self):
         s = dnstest.config.BindConf()
@@ -1191,11 +1228,8 @@ class Bind(Server):
                 continue
 
             # unrelated: generate keys as Bind won't do
-            ps = [ 'dnssec-keygen', '-n', 'ZONE', '-a', 'ECDSA256', '-K', self.keydir ]
-            if z.dnssec.nsec3:
-                ps += ['-3']
-            k1 = check_output(ps + [z.name], stderr=DEVNULL)
-            k2 = check_output(ps + ["-f", "KSK"] + [z.name], stderr=DEVNULL)
+            k1 = self.key_gen(z.name, algorithm=z.dnssec.alg or "ECDSAP256SHA256", nsec3=z.dnssec.nsec3)
+            k2 = self.key_gen(z.name, algorithm=z.dnssec.alg or "ECDSAP256SHA256", ksk="True", nsec3=z.dnssec.nsec3)
 
             k1 = self.keydir + '/' + k1.rstrip().decode('ascii')
             k2 = self.keydir + '/' + k2.rstrip().decode('ascii')
@@ -1254,10 +1288,18 @@ class Knot(Server):
         else:
             self.ctl("%szone-flush" % params, wait=wait)
 
-    def key_gen(self, zone_name, **new_params):
-        set_params = [ option + "=" + value for option, value in new_params.items() ]
-        res = dnstest.keys.Keymgr.run_check(self.confile, zone_name, "generate", *set_params)
-        errcode, stdo, stde = res
+    def default_keymgr_timer(self):
+        return "0"
+
+    def key_gen_check(self, zone_name, algorithm, ksk, zsk, created, pre_active, publish, ready, active, retire, revoke, remove, size, nsec3, sep):
+        set_params = [ "created="+created, "pre_active="+pre_active, "publish="+publish, "ready="+ready ]
+        set_params += [ "active="+active, "retire="+retire, "revoke="+revoke, "remove="+remove ]
+        set_params += [ "ksk="+str(ksk).lower(), "zsk="+str(zsk).lower(), "algorithm="+algorithm ]
+        if size is not None:
+            set_params += [ "size="+size ]
+        if sep:
+            set_params += [ "sep="+str(sep) ]
+        errcode, stdo, stde = dnstest.keys.Keymgr.run_check(self.confile, zone_name, "generate", *set_params)
         return stdo.split()[-1]
 
     def key_set(self, zone_name, key_id, **new_values):

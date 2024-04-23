@@ -181,15 +181,17 @@ def tickf(when):
     return "+%d" % (STARTUP + when * TICK)
 
 # generate keys, including manual KSK rollover on the beginning
-key_ksk1 = signer.key_gen(ZONE, ksk="true", created="+0", publish="+0", ready="+0", active="+0", retire=tickf(4), remove=tickf(5))
-key_ksk2 = signer.key_gen(ZONE, ksk="true", created="+0", publish=tickf(3), ready=tickf(4), active=tickf(5), retire="+2h", remove="+3h")
-key_zsk1 = knot.key_gen(ZONE, ksk="false", created="+0", publish="+0", active="+0")
+key_ksk1 = signer.key_gen(ZONE, ksk="true", algorithm="ECDSAP384SHA384", created="+0", publish="+0", ready="+0", active="+0", retire=tickf(4), remove=tickf(5))
+key_ksk2 = signer.key_gen(ZONE, ksk="true", algorithm="ECDSAP384SHA384", created="+0", publish=tickf(3), ready=tickf(4), active=tickf(5), retire="+2h", remove="+3h")
+key_zsk1 = knot.key_gen(ZONE, ksk="false", algorithm="ECDSAP384SHA384", created="+0", publish="+0", active="+0")
+Keymgr.run_check(knot.confile, ZONE, "list")
 
 # pregenerate keys, exchange KSR, pre-sign it, exchange SKR
 KSR = knot.keydir + "/ksr"
 SKR = knot.keydir + "/skr"
 SKR_BROKEN = SKR + "_broken"
 Keymgr.run_check(knot.confile, ZONE, "pregenerate", "+20", "+" + str(FUTURE))
+Keymgr.run_check(knot.confile, ZONE, "list")
 _, out, _ = Keymgr.run_check(knot.confile, ZONE, "generate-ksr", "+0", "+" + str(FUTURE))
 writef(KSR, out)
 _, out, _ = Keymgr.run_check(signer.confile, ZONE, "sign-ksr", KSR)
@@ -231,7 +233,7 @@ check_zone(knot, zone, 2, 1, 1, "ZSK rollover: done")
 
 STARTUP = 1
 signer.key_set(ZONE, key_ksk2, retire=tickf(3), remove=tickf(4))
-key_ksk3 = signer.key_gen(ZONE, ksk="true", created="+0", publish=tickf(1), ready=tickf(2), active=tickf(3), retire="+4h", remove="+5h")
+key_ksk3 = signer.key_gen(ZONE, ksk="true", algorithm="ECDSAP384SHA384", created="+0", publish=tickf(1), ready=tickf(2), active=tickf(3), retire="+4h", remove="+5h")
 
 knot.dnssec(zone).zsk_lifetime = 8 * TICK
 knot.gen_confile()
