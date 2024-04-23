@@ -392,7 +392,7 @@ static void ksr_sign_header(zs_scanner_t *sc)
 	}
 
 	knot_time_t next_timestamp;
-	if (str_to_u64(next_str, &next_timestamp) != KNOT_EOK) {
+	if (knot_time_parse("YMDhms|#", next_str, &next_timestamp) != 0) {
 		// trailing header without timestamp
 		next_timestamp = 0;
 	}
@@ -436,7 +436,7 @@ static void skr_import_header(zs_scanner_t *sc)
 	}
 
 	knot_time_t next_timestamp;
-	if (str_to_u64(next_str, &next_timestamp) != KNOT_EOK) {
+	if (knot_time_parse("YMDhms|#", next_str, &next_timestamp) != 0) {
 		// trailing header without timestamp
 		next_timestamp = 0;
 	}
@@ -476,7 +476,7 @@ static void skr_validate_header(zs_scanner_t *sc)
 	}
 
 	knot_time_t next_timestamp;
-	if (str_to_u64(next_str, &next_timestamp) != KNOT_EOK) {
+	if (knot_time_parse("YMDhms|#", next_str, &next_timestamp) != 0) {
 		// trailing header without timestamp
 		next_timestamp = 0;
 	}
