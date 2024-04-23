@@ -396,8 +396,9 @@ int tcp_master(dthread_t *thread)
 
 	/* Initialize TLS context. */
 	if (tls) {
+		// Set the HS timeout to double the RMT IO one.
 		tcp.tls_ctx = knot_tls_ctx_new(handler->server->quic_creds,
-		                               tcp.io_timeout, true);
+		                               tcp.io_timeout, 2 * tcp.io_timeout, true);
 		if (tcp.tls_ctx == NULL) {
 			ret = KNOT_ENOMEM;
 			goto finish;

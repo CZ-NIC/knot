@@ -48,12 +48,13 @@ typedef struct knot_tls_conn {
  *
  * \param creds       Certificate credentials.
  * \param io_timeout  Connections' IO-timeout (in milliseconds).
+ * \param hs_timeout  Handshake timeout (in milliseconds).
  * \param server      Server context (otherwise client).
  *
  * \return Initialized context or NULL.
  */
 knot_tls_ctx_t *knot_tls_ctx_new(struct knot_creds *creds, unsigned io_timeout,
-                                 bool server);
+                                 unsigned hs_timeout, bool server);
 
 /*!
  * \brief Free DoT answering context.

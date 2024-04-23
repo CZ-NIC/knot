@@ -37,7 +37,7 @@
 
 _public_
 knot_tls_ctx_t *knot_tls_ctx_new(struct knot_creds *creds, unsigned io_timeout,
-                                 bool server)
+                                 unsigned hs_timeout, bool server)
 {
 	knot_tls_ctx_t *res = calloc(1, sizeof(*res));
 	if (res == NULL) {
@@ -45,7 +45,7 @@ knot_tls_ctx_t *knot_tls_ctx_new(struct knot_creds *creds, unsigned io_timeout,
 	}
 
 	res->creds = creds;
-	res->handshake_timeout = GNUTLS_DEFAULT_HANDSHAKE_TIMEOUT;
+	res->handshake_timeout = hs_timeout;
 	res->io_timeout = io_timeout;
 	res->server = server;
 

@@ -30,7 +30,8 @@ int knot_tls_req_ctx_init(knot_tls_req_ctx_t *ctx, int fd,
 		return KNOT_ENOMEM;
 	}
 
-	ctx->ctx = knot_tls_ctx_new(creds, io_timeout_ms, false);
+	// Use equal HS and RMT IO timeouts, as the RMT IO timeout is usually high.
+	ctx->ctx = knot_tls_ctx_new(creds, io_timeout_ms, io_timeout_ms, false);
 	if (ctx->ctx == NULL) {
 		knot_creds_free(creds);
 		return KNOT_ENOMEM;
