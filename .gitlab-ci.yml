@@ -279,6 +279,7 @@ build:archive:
     - cd _build
     - ../configure
     - make distcheck V=1 DISTCHECK_CONFIGURE_FLAGS="--disable-static" -j2
+    - make html singlehtml
   only:
     - master
     - tags
@@ -288,6 +289,20 @@ build:archive:
   artifacts:
     paths:
       - _build/*.tar.xz
+      - _build/doc/_build/html
+      - _build/doc/_build/singlehtml
+
+pages:
+  stage: documentation
+  needs:
+    - build:archive
+  script:
+    - mkdir -p public/master
+    - mv _build/doc/_build/html public/master/html
+    - mv _build/doc/_build/singlehtml public/master/singlehtml
+  artifacts:
+    paths:
+      - public
 
 build:documentation:
   <<: *debian_stable
