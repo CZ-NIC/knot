@@ -202,7 +202,7 @@ General options related to the server.
      quic-idle-close-timeout: TIME
      remote-pool-limit: INT
      remote-pool-timeout: TIME
-     remote-retry-delay: TIME
+     remote-retry-delay: INT
      socket-affinity: BOOL
      udp-max-payload: SIZE
      udp-max-payload-ipv4: SIZE
@@ -875,7 +875,7 @@ tcp-resend-timeout
 ------------------
 
 Resend outgoing data packets (with DNS response payload) if not ACKed
-before this timeout.
+before this timeout (in seconds).
 
 *Minimum:* ``1``
 
@@ -1783,8 +1783,8 @@ rollover must be pushed forward manually.
 check-interval
 --------------
 
-Interval for periodic checks of DS presence on parent's DNS servers, in the
-case of the KSK submission.
+Interval (in seconds) for periodic checks of DS presence on parent's DNS
+servers, in the case of the KSK submission.
 
 *Default:* ``1h`` (1 hour)
 
@@ -1804,9 +1804,9 @@ Set to 0 for infinity.
 parent-delay
 ------------
 
-After successful parent DS check, wait for this period before continuing the next
-key roll-over step. This delay shall cover the propagation delay of update in the
-parent zone.
+After successful parent DS check, wait for this period (in seconds) before
+continuing the next key roll-over step. This delay shall cover the propagation
+delay of update in the parent zone.
 
 *Default:* ``0``
 
@@ -1815,7 +1815,7 @@ parent zone.
 ``dnskey-sync`` section
 =======================
 
-Parameters of DNSKEY dynamic-update synchrnization.
+Parameters of DNSKEY dynamic-update synchronization.
 
 ::
 
@@ -1848,7 +1848,7 @@ check-interval
 --------------
 
 If the last DNSKEY sync failed or resulted in any change, re-check
-the consistence after this interval and re-try if needed.
+the consistence after this interval (in seconds) and re-try if needed.
 
 *Default:* ``60`` (1 minute)
 
@@ -2030,7 +2030,7 @@ Declare (override) maximal TTL value among all the records in zone.
 ksk-lifetime
 ------------
 
-A period between KSK generation and the next rollover initiation.
+A period (in seconds) between KSK generation and the next rollover initiation.
 
 .. NOTE::
    KSK key lifetime is also influenced by propagation-delay, dnskey-ttl,
@@ -2040,14 +2040,14 @@ A period between KSK generation and the next rollover initiation.
 
    This applies for CSK lifetime if single-type-signing is enabled.
 
-*Default:* ``0``
+*Default:* ``0`` (infinity)
 
 .. _policy_zsk-lifetime:
 
 zsk-lifetime
 ------------
 
-A period between ZSK activation and the next rollover initiation.
+A period (in seconds) between ZSK activation and the next rollover initiation.
 
 .. NOTE::
    More exactly, this period is measured since a ZSK is activated,
@@ -2067,8 +2067,8 @@ delete-delay
 ------------
 
 Once a key (KSK or ZSK) is rolled-over and removed from the zone,
-keep it in the KASP database for at least this period before deleting it completely.
-This might be useful in some troubleshooting cases when resurrection
+keep it in the KASP database for at least this period (in seconds) before deleting
+it completely. This might be useful in some troubleshooting cases when resurrection
 is needed.
 
 *Default:* ``0``
@@ -2078,13 +2078,13 @@ is needed.
 propagation-delay
 -----------------
 
-An extra delay added for each key rollover step. This value should be high
-enough to cover propagation of data from the primary server to all
-secondary servers, as well as the duration of signing routine itself and
-possible outages in signing and propagation infrastructure. In other words,
-this delay should ensure that within this period of time after planned
-change of the key set, all public-facing secondaries will already serve
-new DNSKEY RRSet for sure.
+An extra delay added for each key rollover step. This value (in seconds)
+should be high enough to cover propagation of data from the primary server
+to all secondary servers, as well as the duration of signing routine itself
+and possible outages in signing and propagation infrastructure. In other
+words, this delay should ensure that within this period of time after
+planned change of the key set, all public-facing secondaries will already
+serve new DNSKEY RRSet for sure.
 
 .. NOTE::
    Has influence over ZSK key lifetime.
@@ -2096,7 +2096,7 @@ new DNSKEY RRSet for sure.
 rrsig-lifetime
 --------------
 
-A validity period of newly issued signatures.
+A validity period (in seconds) of newly issued signatures.
 
 .. NOTE::
    The RRSIG's signature inception time is set to 90 minutes in the past. This
@@ -2109,8 +2109,9 @@ A validity period of newly issued signatures.
 rrsig-refresh
 -------------
 
-A period how long at least before a signature expiration the signature will be refreshed,
-in order to prevent expired RRSIGs on secondary servers or resolvers' caches.
+A period (in seconds) how long at least before a signature expiration the signature
+will be refreshed, in order to prevent expired RRSIGs on secondary servers or
+resolvers' caches.
 
 *Default:* 0.1 * :ref:`policy_rrsig-lifetime` + :ref:`policy_propagation-delay` + :ref:`policy_zone-max-ttl`
 
@@ -2119,9 +2120,9 @@ in order to prevent expired RRSIGs on secondary servers or resolvers' caches.
 rrsig-pre-refresh
 -----------------
 
-A period how long at most before a signature refresh time the signature might be refreshed,
-in order to refresh RRSIGs in bigger batches on a frequently updated zone
-(avoid re-sign event too often).
+A period (in seconds) how long at most before a signature refresh time the signature
+might be refreshed, in order to refresh RRSIGs in bigger batches on a frequently updated
+zone (avoid re-sign event too often).
 
 *Default:* ``1h`` (1 hour)
 
@@ -2184,7 +2185,7 @@ name before hashing.
 nsec3-salt-lifetime
 -------------------
 
-A validity period of newly issued salt field.
+A validity period (in seconds) of newly issued salt field.
 
 Zero value means infinity.
 
@@ -2555,13 +2556,13 @@ master-pin-tolerance
 If set to a nonzero value on a secondary, always request AXFR/IXFR from the same
 primary as the last time, effectively pinning one primary. Only when another
 primary is updated and the current one lags behind for the specified amount of time
-(defined by this option), change to the updated primary and force AXFR.
+(defined by this option in seconds), change to the updated primary and force AXFR.
 
 This option is useful when multiple primaries may have different zone history
 in their journals, making it unsafe to combine interchanged IXFR
 from different primaries.
 
-*Default:* 0
+*Default:* ``0`` (disabled)
 
 .. _zone_provide-ixfr:
 
@@ -2622,8 +2623,8 @@ Extra checks:
 zonefile-sync
 -------------
 
-The time after which the current zone in memory will be synced with a zone file
-on the disk (see :ref:`file<zone_file>`). The server will serve the latest
+The time in seconds after which the current zone in memory will be synced with
+a zone file on the disk (see :ref:`file<zone_file>`). The server will serve the latest
 zone even after a restart using zone journal, but the zone file on the disk will
 only be synced after ``zonefile-sync`` time has expired (or after manual zone
 flush). This is applicable when the zone is updated via IXFR, DDNS or automatic
@@ -2721,7 +2722,7 @@ ixfr-benevolent
 If enabled, incoming IXFR is applied even when it contains removals of non-existing
 or additions of existing records.
 
-*Default:* off
+*Default:* ``off``
 
 .. _zone_ixfr-by-one:
 

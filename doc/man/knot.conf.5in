@@ -253,7 +253,7 @@ server:
     quic\-idle\-close\-timeout: TIME
     remote\-pool\-limit: INT
     remote\-pool\-timeout: TIME
-    remote\-retry\-delay: TIME
+    remote\-retry\-delay: INT
     socket\-affinity: BOOL
     udp\-max\-payload: SIZE
     udp\-max\-payload\-ipv4: SIZE
@@ -809,7 +809,7 @@ Time in seconds, after which any idle connection is forcibly closed.
 .SS tcp\-resend\-timeout
 .sp
 Resend outgoing data packets (with DNS response payload) if not ACKed
-before this timeout.
+before this timeout (in seconds).
 .sp
 \fIMinimum:\fP \fB1\fP
 .sp
@@ -1636,8 +1636,8 @@ A DNSSEC\-validating resolver can be set as a parent.
 .UNINDENT
 .SS check\-interval
 .sp
-Interval for periodic checks of DS presence on parent\(aqs DNS servers, in the
-case of the KSK submission.
+Interval (in seconds) for periodic checks of DS presence on parent\(aqs DNS
+servers, in the case of the KSK submission.
 .sp
 \fIDefault:\fP \fB1h\fP (1 hour)
 .SS timeout
@@ -1649,14 +1649,14 @@ Set to 0 for infinity.
 \fIDefault:\fP \fB0\fP
 .SS parent\-delay
 .sp
-After successful parent DS check, wait for this period before continuing the next
-key roll\-over step. This delay shall cover the propagation delay of update in the
-parent zone.
+After successful parent DS check, wait for this period (in seconds) before
+continuing the next key roll\-over step. This delay shall cover the propagation
+delay of update in the parent zone.
 .sp
 \fIDefault:\fP \fB0\fP
 .SH DNSKEY-SYNC SECTION
 .sp
-Parameters of DNSKEY dynamic\-update synchrnization.
+Parameters of DNSKEY dynamic\-update synchronization.
 .INDENT 0.0
 .INDENT 3.5
 .sp
@@ -1683,7 +1683,7 @@ DNSKEY/CDNSKEY/CDS records shall be sent to.
 .SS check\-interval
 .sp
 If the last DNSKEY sync failed or resulted in any change, re\-check
-the consistence after this interval and re\-try if needed.
+the consistence after this interval (in seconds) and re\-try if needed.
 .sp
 \fIDefault:\fP \fB60\fP (1 minute)
 .SH POLICY SECTION
@@ -1856,7 +1856,7 @@ really reasonable when records are generated dynamically
 \fIDefault:\fP computed after zone is loaded
 .SS ksk\-lifetime
 .sp
-A period between KSK generation and the next rollover initiation.
+A period (in seconds) between KSK generation and the next rollover initiation.
 .sp
 \fBNOTE:\fP
 .INDENT 0.0
@@ -1870,10 +1870,10 @@ This applies for CSK lifetime if single\-type\-signing is enabled.
 .UNINDENT
 .UNINDENT
 .sp
-\fIDefault:\fP \fB0\fP
+\fIDefault:\fP \fB0\fP (infinity)
 .SS zsk\-lifetime
 .sp
-A period between ZSK activation and the next rollover initiation.
+A period (in seconds) between ZSK activation and the next rollover initiation.
 .sp
 \fBNOTE:\fP
 .INDENT 0.0
@@ -1893,20 +1893,20 @@ Zero (aka infinity) value causes no ZSK rollover as a result.
 .SS delete\-delay
 .sp
 Once a key (KSK or ZSK) is rolled\-over and removed from the zone,
-keep it in the KASP database for at least this period before deleting it completely.
-This might be useful in some troubleshooting cases when resurrection
+keep it in the KASP database for at least this period (in seconds) before deleting
+it completely. This might be useful in some troubleshooting cases when resurrection
 is needed.
 .sp
 \fIDefault:\fP \fB0\fP
 .SS propagation\-delay
 .sp
-An extra delay added for each key rollover step. This value should be high
-enough to cover propagation of data from the primary server to all
-secondary servers, as well as the duration of signing routine itself and
-possible outages in signing and propagation infrastructure. In other words,
-this delay should ensure that within this period of time after planned
-change of the key set, all public\-facing secondaries will already serve
-new DNSKEY RRSet for sure.
+An extra delay added for each key rollover step. This value (in seconds)
+should be high enough to cover propagation of data from the primary server
+to all secondary servers, as well as the duration of signing routine itself
+and possible outages in signing and propagation infrastructure. In other
+words, this delay should ensure that within this period of time after
+planned change of the key set, all public\-facing secondaries will already
+serve new DNSKEY RRSet for sure.
 .sp
 \fBNOTE:\fP
 .INDENT 0.0
@@ -1918,7 +1918,7 @@ Has influence over ZSK key lifetime.
 \fIDefault:\fP \fB1h\fP (1 hour)
 .SS rrsig\-lifetime
 .sp
-A validity period of newly issued signatures.
+A validity period (in seconds) of newly issued signatures.
 .sp
 \fBNOTE:\fP
 .INDENT 0.0
@@ -1931,15 +1931,16 @@ time period is not counted to the signature lifetime.
 \fIDefault:\fP \fB14d\fP (14 days)
 .SS rrsig\-refresh
 .sp
-A period how long at least before a signature expiration the signature will be refreshed,
-in order to prevent expired RRSIGs on secondary servers or resolvers\(aq caches.
+A period (in seconds) how long at least before a signature expiration the signature
+will be refreshed, in order to prevent expired RRSIGs on secondary servers or
+resolvers\(aq caches.
 .sp
 \fIDefault:\fP 0.1 * \fI\%rrsig\-lifetime\fP + \fI\%propagation\-delay\fP + \fI\%zone\-max\-ttl\fP
 .SS rrsig\-pre\-refresh
 .sp
-A period how long at most before a signature refresh time the signature might be refreshed,
-in order to refresh RRSIGs in bigger batches on a frequently updated zone
-(avoid re\-sign event too often).
+A period (in seconds) how long at most before a signature refresh time the signature
+might be refreshed, in order to refresh RRSIGs in bigger batches on a frequently updated
+zone (avoid re\-sign event too often).
 .sp
 \fIDefault:\fP \fB1h\fP (1 hour)
 .SS reproducible\-signing
@@ -1982,7 +1983,7 @@ name before hashing.
 \fIDefault:\fP \fB8\fP
 .SS nsec3\-salt\-lifetime
 .sp
-A validity period of newly issued salt field.
+A validity period (in seconds) of newly issued salt field.
 .sp
 Zero value means infinity.
 .sp
@@ -2349,13 +2350,13 @@ or disallow zone transfers, updates or incoming notifies.
 If set to a nonzero value on a secondary, always request AXFR/IXFR from the same
 primary as the last time, effectively pinning one primary. Only when another
 primary is updated and the current one lags behind for the specified amount of time
-(defined by this option), change to the updated primary and force AXFR.
+(defined by this option in seconds), change to the updated primary and force AXFR.
 .sp
 This option is useful when multiple primaries may have different zone history
 in their journals, making it unsafe to combine interchanged IXFR
 from different primaries.
 .sp
-\fIDefault:\fP 0
+\fIDefault:\fP \fB0\fP (disabled)
 .SS provide\-ixfr
 .sp
 If disabled, the server is forced to respond with AXFR to IXFR queries.
@@ -2422,8 +2423,8 @@ query (malformed message) and triggers a zone bootstrap instead.
 \fIDefault:\fP \fBoff\fP
 .SS zonefile\-sync
 .sp
-The time after which the current zone in memory will be synced with a zone file
-on the disk (see \fI\%file\fP). The server will serve the latest
+The time in seconds after which the current zone in memory will be synced with
+a zone file on the disk (see \fI\%file\fP). The server will serve the latest
 zone even after a restart using zone journal, but the zone file on the disk will
 only be synced after \fBzonefile\-sync\fP time has expired (or after manual zone
 flush). This is applicable when the zone is updated via IXFR, DDNS or automatic
@@ -2530,7 +2531,7 @@ Zone\-in\-journal changeset isn\(aqt counted to the limit.
 If enabled, incoming IXFR is applied even when it contains removals of non\-existing
 or additions of existing records.
 .sp
-\fIDefault:\fP off
+\fIDefault:\fP \fBoff\fP
 .SS ixfr\-by\-one
 .sp
 Within incoming IXFR, process only one changeset at a time, not multiple together.
