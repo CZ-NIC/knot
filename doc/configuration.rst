@@ -921,51 +921,51 @@ isn't supported.
 
   Primary:
 
-  .. code-block:: console
+    .. code-block:: console
 
-    server:
-        listen-quic: ::1
-        automatic-acl: on
+      server:
+          listen-quic: ::1
+          automatic-acl: on
 
-    key:
-      - id: xfr_key
-        algorithm: hmac-sha256
-        secret: S059OFJv1SCDdR2P6JKENgWaM409iq2X44igcJdERhc=
+      key:
+        - id: xfr_key
+          algorithm: hmac-sha256
+          secret: S059OFJv1SCDdR2P6JKENgWaM409iq2X44igcJdERhc=
 
-    remote:
-      - id: secondary
-        address: ::2
-        key: xfr_key  # TSIG for secondary authentication
-        quic: on
+      remote:
+        - id: secondary
+          address: ::2
+          key: xfr_key  # TSIG for secondary authentication
+          quic: on
 
-    zone:
-      - domain: example.com
-        notify: secondary
+      zone:
+        - domain: example.com
+          notify: secondary
 
   ---
 
   Secondary:
 
-  .. code-block:: console
+    .. code-block:: console
 
-    server:
-        listen-quic: ::2
-        automatic-acl: on
+      server:
+          listen-quic: ::2
+          automatic-acl: on
 
-    key:
-      - id: xfr_key
-        algorithm: hmac-sha256
-        secret: S059OFJv1SCDdR2P6JKENgWaM409iq2X44igcJdERhc=
+      key:
+        - id: xfr_key
+          algorithm: hmac-sha256
+          secret: S059OFJv1SCDdR2P6JKENgWaM409iq2X44igcJdERhc=
 
-    remote:
-      - id: primary
-        address: ::1
-        key: xfr_key  # TSIG for primary authentication
-        quic: on
+      remote:
+        - id: primary
+          address: ::1
+          key: xfr_key  # TSIG for primary authentication
+          quic: on
 
-    zone:
-      - domain: example.com
-        master: primary
+      zone:
+        - domain: example.com
+          master: primary
 
 Strict authentication:
 ......................
@@ -977,62 +977,62 @@ configuration. The secondary can authenticate using TSIG.
 
   Primary:
 
-  .. code-block:: console
+    .. code-block:: console
 
-    server:
-        listen-quic: ::1
+      server:
+          listen-quic: ::1
 
-    key:
-      - id: secondary_key
-        algorithm: hmac-sha256
-        secret: S059OFJv1SCDdR2P6JKENgWaM409iq2X44igcJdERhc=
+      key:
+        - id: secondary_key
+          algorithm: hmac-sha256
+          secret: S059OFJv1SCDdR2P6JKENgWaM409iq2X44igcJdERhc=
 
-    remote:
-      - id: secondary
-        address: ::2
-        quic: on
+      remote:
+        - id: secondary
+          address: ::2
+          quic: on
 
-    acl:
-      - id: secondary_xfr
-        address: ::2
-        key: secondary_key  # TSIG for secondary authentication
-        action: transfer
+      acl:
+        - id: secondary_xfr
+          address: ::2
+          key: secondary_key  # TSIG for secondary authentication
+          action: transfer
 
-    zone:
-      - domain: example.com
-        notify: secondary
-        acl: secondary_xfr
+      zone:
+        - domain: example.com
+          notify: secondary
+          acl: secondary_xfr
 
   ---
 
   Secondary:
 
-  .. code-block:: console
+    .. code-block:: console
 
-    server:
-        listen-quic: ::2
+      server:
+          listen-quic: ::2
 
-    key:
-      - id: secondary_key
-        algorithm: hmac-sha256
-        secret: S059OFJv1SCDdR2P6JKENgWaM409iq2X44igcJdERhc=
+      key:
+        - id: secondary_key
+          algorithm: hmac-sha256
+          secret: S059OFJv1SCDdR2P6JKENgWaM409iq2X44igcJdERhc=
 
-    remote:
-      - id: primary
-        address: ::1
-        key: secondary_key  # TSIG for secondary authentication
-        quic: on
+      remote:
+        - id: primary
+          address: ::1
+          key: secondary_key  # TSIG for secondary authentication
+          quic: on
 
-    acl:
-      - id: primary_notify
-        address: ::1
-        cert-key: 0xtdayWpnJh4Py8goi8cei/gXGD4kJQ+HEqcxS++DBw=
-        action: notify
+      acl:
+        - id: primary_notify
+          address: ::1
+          cert-key: 0xtdayWpnJh4Py8goi8cei/gXGD4kJQ+HEqcxS++DBw=
+          action: notify
 
-    zone:
-      - domain: example.com
-        master: primary
-        acl: primary_notify
+      zone:
+        - domain: example.com
+          master: primary
+          acl: primary_notify
 
 Mutual authentication:
 ......................
@@ -1045,41 +1045,41 @@ This mode is recommended if possible.
 
   Primary:
 
-  .. code-block:: console
+    .. code-block:: console
 
-    server:
-        listen-quic: ::1
-        automatic-acl: on
+      server:
+          listen-quic: ::1
+          automatic-acl: on
 
-    remote:
-      - id: secondary
-        address: ::2
-        quic: on
-        cert-key: PXqv7/lXn6N7scg/KJWvfU/TEPe5BoIUHQGRLMPr6YQ=
+      remote:
+        - id: secondary
+          address: ::2
+          quic: on
+          cert-key: PXqv7/lXn6N7scg/KJWvfU/TEPe5BoIUHQGRLMPr6YQ=
 
-    zone:
-      - domain: example.com
-        notify: secondary
+      zone:
+        - domain: example.com
+          notify: secondary
 
   ---
 
   Secondary:
 
-  .. code-block:: console
+    .. code-block:: console
 
-    server:
-        listen-quic: ::2
-        automatic-acl: on
+      server:
+          listen-quic: ::2
+          automatic-acl: on
 
-    remote:
-      - id: primary
-        address: ::1
-        quic: on
-        cert-key: 0xtdayWpnJh4Py8goi8cei/gXGD4kJQ+HEqcxS++DBw=
+      remote:
+        - id: primary
+          address: ::1
+          quic: on
+          cert-key: 0xtdayWpnJh4Py8goi8cei/gXGD4kJQ+HEqcxS++DBw=
 
-    zone:
-      - domain: example.com
-        master: primary
+      zone:
+        - domain: example.com
+          master: primary
 
 .. NOTE::
 
