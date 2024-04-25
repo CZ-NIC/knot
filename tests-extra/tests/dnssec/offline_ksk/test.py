@@ -111,8 +111,9 @@ def writef(filename, contents):
 
 ON_SLAVE = random.choice([True, False])
 IXFR = random.choice([True, False]) if ON_SLAVE else False
+SIGNER_BIND = True
 
-check_log("On-slave signing %s, IXFR enabled %s" % (ON_SLAVE, IXFR))
+check_log("On-slave signing %s, IXFR enabled %s, Bind9 as signer %s" % (ON_SLAVE, IXFR, SIGNER_BIND))
 
 t = Test()
 
@@ -152,10 +153,7 @@ knot.dnssec(zone).rrsig_prerefresh = 1
 # options without any effect
 knot.dnssec(zone).ksk_lifetime = NONSENSE
 
-# needed for keymgr
-knot.gen_confile()
-
-signer = t.server("knot")
+signer = t.server("bind" if SIGNER_BIND else "knot")
 t.link(zone, signer)
 
 # KSK side
@@ -175,7 +173,7 @@ signer.dnssec(zone).ksk_lifetime = NONSENSE * 2
 signer.dnssec(zone).propagation_delay = int(NONSENSE / 10)
 
 # needed for keymgr
-signer.gen_confile()
+t.generate_conf()
 
 def tickf(when):
     return "+%d" % (STARTUP + when * TICK)
@@ -192,7 +190,10 @@ SKR_BROKEN = SKR + "_broken"
 Keymgr.run_check(knot.confile, ZONE, "pregenerate", "+20", "+" + str(FUTURE))
 _, out, _ = Keymgr.run_check(knot.confile, ZONE, "generate-ksr", "+0", "+" + str(FUTURE))
 writef(KSR, out)
-_, out, _ = Keymgr.run_check(signer.confile, ZONE, "sign-ksr", KSR)
+out = signer.sign_ksr(ZONE, KSR)
+if SIGNER_BIND:
+    out = out.decode("utf-8")
+print(out)
 writef(SKR, out)
 
 cripple_skr(SKR, SKR_BROKEN)
@@ -241,7 +242,7 @@ SKR = SKR + "2"
 Keymgr.run_check(knot.confile, ZONE, "pregenerate", "+" + str(FUTURE))
 _, out, _ = Keymgr.run_check(knot.confile, ZONE, "generate-ksr", "+0", "+" + str(FUTURE))
 writef(KSR, out)
-_, out, _ = Keymgr.run_check(signer.confile, ZONE, "sign-ksr", KSR)
+out = signer.sign_ksr(ZONE, KSR)
 writef(SKR, out)
 Keymgr.run_check(knot.confile, ZONE, "import-skr", SKR)
 
@@ -268,6 +269,10 @@ check_zone(knot, zone, 2, 1, 1, "ZSK rollover2: done")
 
 # prepare algorithm roll-over: delete pre-generated ZSKs, arrange all the timestamps
 
+if SIGNER_BIND:
+    t.end()
+    raise Done()
+
 _, out, _ = Keymgr.run_check(knot.confile, ZONE, "list")
 for line in out.split('\n'):
     if len(line) > 0 and line.split()[-1] == "remove=0": # only one key with this property
@@ -289,7 +294,7 @@ KSR = KSR + "3"
 SKR = SKR + "3"
 _, out, _ = Keymgr.run_check(knot.confile, ZONE, "generate-ksr", "+0", str(remove + 1))
 writef(KSR, out)
-_, out, _ = Keymgr.run_check(signer.confile, ZONE, "sign-ksr", KSR)
+out = signer.sign_ksr(ZONE, KSR)
 writef(SKR, out)
 Keymgr.run_check(knot.confile, ZONE, "import-skr", SKR)
 knot.ctl("zone-keys-load")

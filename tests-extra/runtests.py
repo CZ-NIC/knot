@@ -214,6 +214,16 @@ def job(job_id, tasks, results, stop):
 
             fail_cnt += 1
             stop.value = True
+        except dnstest.utils.Done as exc:
+            if ctx.err:
+                msg = "FAILED" + \
+                      ((" (" + ctx.err_msg + ")") if ctx.err_msg else "")
+                log.info(case_str_err + msg)
+                log_failed(outs_dir, case_str_fail + msg)
+                fail_cnt += 1
+                stop.value = True
+            else:
+                log.info(case_str_err + "OK")
         except Exception as exc:
             save_traceback(ctx.out_dir, exc)
 

@@ -16,6 +16,10 @@ class Failed(Exception):
     """Exception for serious error."""
     pass
 
+class Done(Exception):
+    """Exception for terminating tests early with standard evaluation afterwards."""
+    pass
+
 def prepare_dir(path):
     try:
         os.makedirs(path)
