@@ -300,6 +300,8 @@ pages:
     - mkdir -p public/master
     - mv _build/doc/_build/html public/master/html
     - mv _build/doc/_build/singlehtml public/master/singlehtml
+  only:
+    - master
   artifacts:
     paths:
       - public
