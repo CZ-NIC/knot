@@ -33,7 +33,7 @@ RUN apt-get -y install \
 	pkg-config \
 	protobuf-c-compiler \
 	python3-sphinx \
-	python3-sphinx-design \
+	python3-sphinx-panels \
 	texlive \
 	texlive-font-utils \
 	texlive-latex-extra \

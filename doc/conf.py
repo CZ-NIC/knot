@@ -30,6 +30,8 @@ sys.path.insert(0, os.path.abspath('ext'))
 import importlib.util
 if importlib.util.find_spec("sphinx_design"):
     extensions = [ 'sphinx_design' ]
+elif importlib.util.find_spec("sphinx_panels"):
+    extensions = [ 'sphinx_panels' ]
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
 
