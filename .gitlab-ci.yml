@@ -147,7 +147,7 @@ docker:knot-dns:fedora:
   script:
     - autoreconf -fi
     - ./configure --disable-fastparser --enable-quic $EXTRA_CONFIGURE || ( cat config.log && exit 1 )
-    - make -k all V=1
+    - make all V=1
   artifacts:
     untracked: true
     expire_in: '1 hour'
@@ -159,7 +159,7 @@ docker:knot-dns:fedora:
   before_script:
     - find -exec touch -t $(date +%m%d%H%M) {} \;
   script:
-    - make -k check V=1
+    - make check V=1
   except:
     - schedules
 
