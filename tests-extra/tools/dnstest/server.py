@@ -887,6 +887,10 @@ class Server(object):
 
         return self.zones[zone.name].dnssec
 
+    def key_timer_params(self, **new_params):
+        nested_list = [ self.key_timer_param(par_name, par_val) for par_name, par_val in new_params.items() ]
+        return [ x for xs in nested_list for x in xs ]
+
     def enable_nsec3(self, zone, **args):
         zone = zone_arg_check(zone)
 
@@ -993,6 +997,30 @@ class Bind(Server):
         zone_name = (" " + zone.name) if zone else ""
         self.ctl("sync%s" % zone_name, wait=wait)
 
+    def key_timer_param(self, timer_name, timer_val):
+        ktpmap = { 'publish': '-P', 'active': '-A', 'retire': '-I', 'revoke': '-R', 'remove': '-D' }
+        ktpmap |= { 'algorithm': '-a', 'size': '-b' }
+        ignore = [ 'ksk', 'zsk', 'created', 'ready' ]
+        if timer_name == "ksk" and str(timer_val).lower()[0] in [ "y", "t", "1" ]:
+            return [ '-f', 'KSK' ]
+        if timer_name in ignore:
+            return []
+        if timer_name not in ktpmap:
+            assert(0)
+        return [ ktpmap[timer_name], str(timer_val) ]
+
+    def key_gen(self, zone_name, **new_params):
+        z = self.zones[zone_name]
+        alg = "ecdsa256" if z.dnssec.alg is None else z.dnssec.alg
+        ps = [ 'dnssec-keygen', '-n', 'ZONE', '-K', self.keydir ]
+        if z.dnssec.nsec3:
+            ps += ['-3']
+        return check_output(ps + self.key_timer_params(algorithm=alg, **new_params) + [z.name], stderr=DEVNULL)
+
+    def key_set(self, zone_name, key_id, **new_values):
+        ps = [ 'dnssec-settime', '-K', self.keydir ]
+        check_output(ps + self.key_timer_params(**new_params) + [key_id], stderr=DEVNULL)
+
     def check_option(self, option):
         proc = Popen([params.bind_checkconf_bin, "/dev/fd/0"],
                      stdout=PIPE, stderr=PIPE, stdin=PIPE,
@@ -1095,6 +1123,7 @@ class Bind(Server):
             self._int(s, "zone-propagation-delay", z.dnssec.propagation_delay)
             self._int(s, "signatures-validity", z.dnssec.rrsig_lifetime)
             self._int(s, "signatures-refresh", z.dnssec.rrsig_refresh)
+            s.item("signatures-jitter", "0")
             s.item("publish-safety", "1")
             s.item("retire-safety", "1")
             s.item("parent-ds-ttl", "5")
@@ -1191,11 +1220,8 @@ class Bind(Server):
                 continue
 
             # unrelated: generate keys as Bind won't do
-            ps = [ 'dnssec-keygen', '-n', 'ZONE', '-a', 'ECDSA256', '-K', self.keydir ]
-            if z.dnssec.nsec3:
-                ps += ['-3']
-            k1 = check_output(ps + [z.name], stderr=DEVNULL)
-            k2 = check_output(ps + ["-f", "KSK"] + [z.name], stderr=DEVNULL)
+            k1 = self.key_gen(zname)
+            k2 = self.key_gen(zname, ksk="True")
 
             k1 = self.keydir + '/' + k1.rstrip().decode('ascii')
             k2 = self.keydir + '/' + k2.rstrip().decode('ascii')
@@ -1254,14 +1280,17 @@ class Knot(Server):
         else:
             self.ctl("%szone-flush" % params, wait=wait)
 
+    def key_timer_param(self, timer_name, timer_val):
+        return [ timer_name + "=" + timer_val ]
+
     def key_gen(self, zone_name, **new_params):
-        set_params = [ option + "=" + value for option, value in new_params.items() ]
+        set_params = self.key_timer_params(**new_params)
         res = dnstest.keys.Keymgr.run_check(self.confile, zone_name, "generate", *set_params)
         errcode, stdo, stde = res
         return stdo.split()[-1]
 
     def key_set(self, zone_name, key_id, **new_values):
-        set_params = [ option + "=" + value for option, value in new_values.items() ]
+        set_params = self.key_timer_params(**new_values)
         dnstest.keys.Keymgr.run_check(self.confile, zone_name, "set", key_id, *set_params)
 
     def key_import_bind(self, zone_name):
