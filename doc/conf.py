@@ -32,6 +32,8 @@ if importlib.util.find_spec("sphinx_design"):
     extensions = [ 'sphinx_design' ]
 elif importlib.util.find_spec("sphinx_panels"):
     extensions = [ 'sphinx_panels' ]
+    import subprocess
+    subprocess.run(["patch", "-p", "2", "-i", "0001-patch.patch"])
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
 

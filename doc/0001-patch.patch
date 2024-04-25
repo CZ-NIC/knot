@@ -1,0 +1,88 @@
+From 1f0c4e8b01d3d5e33ca6a3aa0182576d99a93c8d Mon Sep 17 00:00:00 2001
+From: Daniel Salzman <daniel.salzman@nic.cz>
+Date: Thu, 25 Apr 2024 15:16:51 +0200
+Subject: [PATCH] patch
+
+---
+ doc/configuration.rst | 27 +++++++++++++++------------
+ 1 file changed, 15 insertions(+), 12 deletions(-)
+
+diff --git a/doc/configuration.rst b/doc/configuration.rst
+index df8cd9a13..50fa2a9d4 100644
+--- a/doc/configuration.rst
++++ b/doc/configuration.rst
+@@ -917,10 +917,9 @@ Opportunistic authentication:
+ Primary and secondary can authenticate using TSIG. Fallback to clear-text DNS
+ isn't supported.
+ 
+-.. grid:: 1 1 1 2
+-  :gutter: 2
++.. panels::
+ 
+-  .. grid-item-card:: Primary
++  Primary:
+ 
+     .. code-block:: console
+ 
+@@ -943,7 +942,9 @@ isn't supported.
+         - domain: example.com
+           notify: secondary
+ 
+-  .. grid-item-card:: Secondary
++  ---
++
++  Secondary:
+ 
+     .. code-block:: console
+ 
+@@ -972,10 +973,9 @@ Strict authentication:
+ Note that the automatic ACL doesn't work in this case due to asymmetrical
+ configuration. The secondary can authenticate using TSIG.
+ 
+-.. grid:: 1 1 1 2
+-  :gutter: 2
++.. panels::
+ 
+-  .. grid-item-card:: Primary
++  Primary:
+ 
+     .. code-block:: console
+ 
+@@ -1003,7 +1003,9 @@ configuration. The secondary can authenticate using TSIG.
+           notify: secondary
+           acl: secondary_xfr
+ 
+-  .. grid-item-card:: Secondary
++  ---
++
++  Secondary:
+ 
+     .. code-block:: console
+ 
+@@ -1039,10 +1041,9 @@ The :rfc:`mutual authentication<9103#section-9.3.3>` guarantees authentication
+ for both the primary and the secondary. In this case, TSIG would be redundant.
+ This mode is recommended if possible.
+ 
+-.. grid:: 1 1 1 2
+-  :gutter: 2
++.. panels::
+ 
+-  .. grid-item-card:: Primary
++  Primary:
+ 
+     .. code-block:: console
+ 
+@@ -1060,7 +1061,9 @@ This mode is recommended if possible.
+         - domain: example.com
+           notify: secondary
+ 
+-  .. grid-item-card:: Secondary
++  ---
++
++  Secondary:
+ 
+     .. code-block:: console
+ 
+-- 
+2.34.1
+
