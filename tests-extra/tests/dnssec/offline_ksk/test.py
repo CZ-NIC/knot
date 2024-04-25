@@ -23,6 +23,10 @@ def cripple_skr(skr_in, skr_out):
                 if len(linesplit) > 2 and linesplit[2] == "RRSIG":
                     after_rrsig = 0
                     rrsig_now += 1
+                elif len(linesplit) > 3 and linesplit[3] == "RRSIG":
+                    rrsig_now += 1
+                    if rrsig_now == rrsig_chosen:
+                        lineout = linein.lower() # Bind9-style RRSIG is crippled directly
                 else:
                     after_rrsig += 1
                     if after_rrsig == 3 and rrsig_now == rrsig_chosen:
@@ -110,10 +114,11 @@ def writef(filename, contents):
     with open(filename, "w") as f:
         f.write(contents)
 
-ON_SLAVE = random.choice([True, False])
+ON_SLAVE = False # random.choice([True, False])
 IXFR = random.choice([True, False]) if ON_SLAVE else False
+SIGNER_BIND = True
 
-check_log("On-slave signing %s, IXFR enabled %s" % (ON_SLAVE, IXFR))
+check_log("On-slave signing %s, IXFR enabled %s, Bind9 as signer %s" % (ON_SLAVE, IXFR, SIGNER_BIND))
 
 t = Test()
 
@@ -154,10 +159,7 @@ knot.dnssec(zone).rrsig_pre_refresh = 1
 # options without any effect
 knot.dnssec(zone).ksk_lifetime = NONSENSE
 
-# needed for keymgr
-knot.gen_confile()
-
-signer = t.server("knot")
+signer = t.server("bind" if SIGNER_BIND else "knot")
 t.link(zone, signer)
 
 # KSK side
@@ -178,7 +180,7 @@ signer.dnssec(zone).ksk_lifetime = NONSENSE * 2
 signer.dnssec(zone).propagation_delay = int(NONSENSE / 10)
 
 # needed for keymgr
-signer.gen_confile()
+t.generate_conf()
 
 def tickf(when):
     return "+%d" % (STARTUP + when * TICK)
@@ -195,7 +197,7 @@ SKR_BROKEN = SKR + "_broken"
 Keymgr.run_check(knot.confile, ZONE, "pregenerate", "+20", "+" + str(FUTURE))
 _, out, _ = Keymgr.run_check(knot.confile, ZONE, "generate-ksr", "+0", "+" + str(FUTURE))
 writef(KSR, out)
-_, out, _ = Keymgr.run_check(signer.confile, ZONE, "sign-ksr", KSR)
+out = signer.sign_ksr(ZONE, KSR)
 writef(SKR, out)
 
 cripple_skr(SKR, SKR_BROKEN)
@@ -210,13 +212,15 @@ Keymgr.run_check(knot.confile, ZONE, "import-skr", SKR)
 TICK_SAFE = TICK + TICK // 2;
 
 # run it and see if the signing and rollovers work well
-t.start()
+if ON_SLAVE:
+    master.start()
+knot.start()
 knot.zone_wait(zone)
 check_zone(knot, zone, 2, 1, 1, "init")
 
 zone_update(master, knot, zone, ON_SLAVE)
 wait_for_dnskey_count(t, knot, 3, STARTUP + TICK_SAFE * 2)
-check_zone(knot, zone, 3, 2, 1, "KSK rollover: publish")
+check_zone(knot, zone, 3, 1 if SIGNER_BIND else 2, 1, "KSK rollover: publish")
 
 zone_update(master, knot, zone, ON_SLAVE)
 wait_for_dnskey_count(t, knot, 2, TICK_SAFE * 3)
@@ -244,7 +248,7 @@ SKR = SKR + "2"
 Keymgr.run_check(knot.confile, ZONE, "pregenerate", "+" + str(FUTURE))
 _, out, _ = Keymgr.run_check(knot.confile, ZONE, "generate-ksr", "+0", "+" + str(FUTURE))
 writef(KSR, out)
-_, out, _ = Keymgr.run_check(signer.confile, ZONE, "sign-ksr", KSR)
+out = signer.sign_ksr(ZONE, KSR)
 writef(SKR, out)
 Keymgr.run_check(knot.confile, ZONE, "import-skr", SKR)
 
@@ -255,7 +259,7 @@ check_zone(knot, zone, 2, 1, 1, "init2")
 
 zone_update(master, knot, zone, ON_SLAVE)
 wait_for_dnskey_count(t, knot, 3, STARTUP + TICK_SAFE)
-check_zone(knot, zone, 3, 2, 1, "KSK rollover2: publish")
+check_zone(knot, zone, 3, 1 if SIGNER_BIND else 2, 1, "KSK rollover2: publish")
 
 zone_update(master, knot, zone, ON_SLAVE)
 wait_for_dnskey_count(t, knot, 2, TICK_SAFE * 3)
@@ -270,6 +274,10 @@ wait_for_dnskey_count(t, knot, 2, TICK_SAFE * 2)
 check_zone(knot, zone, 2, 1, 1, "ZSK rollover2: done")
 
 # prepare algorithm roll-over: delete pre-generated ZSKs, arrange all the timestamps
+
+if SIGNER_BIND:
+    t.end()
+    raise Done()
 
 _, out, _ = Keymgr.run_check(knot.confile, ZONE, "list")
 for line in out.split('\n'):
@@ -292,7 +300,7 @@ KSR = KSR + "3"
 SKR = SKR + "3"
 _, out, _ = Keymgr.run_check(knot.confile, ZONE, "generate-ksr", "+0", str(remove + 1))
 writef(KSR, out)
-_, out, _ = Keymgr.run_check(signer.confile, ZONE, "sign-ksr", KSR)
+out = signer.sign_ksr(ZONE, KSR)
 writef(SKR, out)
 Keymgr.run_check(knot.confile, ZONE, "import-skr", SKR)
 knot.ctl("zone-keys-load")

@@ -1133,6 +1133,11 @@ class Bind(Server):
         ps = [ 'dnssec-settime', '-K', self.keydir ]
         check_output(ps + self.key_timer_params(**new_values) + [key_id], stderr=DEVNULL)
 
+    def sign_ksr(self, zone_name, ksr_file):
+        ps = [ params.bind_dnssec_ksr, '-i', 'now', '-e', '+1h', '-k', zone_name, '-l', self.confile, '-K', self.keydir, '-f', ksr_file, 'sign' ]
+        out = check_output(ps + [zone_name], stderr=open("/tmp/knot_test_dnssec-ksr_stderr.log", "w"))
+        return out.decode('utf-8')
+
     def check_option(self, option):
         proc = Popen([params.bind_checkconf_bin, "/dev/fd/0"],
                      stdout=PIPE, stderr=PIPE, stdin=PIPE,
@@ -1371,7 +1376,7 @@ class Bind(Server):
         for zname in self.zones:
             z = self.zones[zname]
             z.dnssec = self.dnssec(z)
-            if z.dnssec.enable != True:
+            if z.dnssec.enable != True or z.dnssec.offline_ksk == True:
                 continue
 
             # unrelated: generate keys as Bind won't do
@@ -1469,6 +1474,10 @@ class Knot(Server):
             m = re.match(r'K(?P<name>[^+]+)\+(?P<algo>\d+)\+(?P<tag>\d+)\.private', pkey)
             if m and m.group("name") == zone_name.lower():
                 dnstest.keys.Keymgr.run_check(self.confile, zone_name, "import-bind", pkey_path)
+
+    def sign_ksr(self, zone_name, ksr_file):
+        _, out, _ = dnstest.keys.Keymgr.run_check(self.confile, zone_name, "sign-ksr", ksr_file)
+        return out
 
     def _on_str_hex(self, conf, name, value):
         if value == True:
