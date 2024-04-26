@@ -23,6 +23,10 @@ def cripple_skr(skr_in, skr_out):
                 if len(linesplit) > 2 and linesplit[2] == "RRSIG":
                     after_rrsig = 0
                     rrsig_now += 1
+                elif len(linesplit) > 3 and linesplit[3] == "RRSIG":
+                    rrsig_now += 1
+                    if rrsig_now == rrsig_chosen:
+                        lineout = linein.lower() # Bind9-style RRSIG is crippled directly
                 else:
                     after_rrsig += 1
                     if after_rrsig == 3 and rrsig_now == rrsig_chosen:
@@ -193,7 +197,6 @@ writef(KSR, out)
 out = signer.sign_ksr(ZONE, KSR)
 if SIGNER_BIND:
     out = out.decode("utf-8")
-print(out)
 writef(SKR, out)
 
 cripple_skr(SKR, SKR_BROKEN)
