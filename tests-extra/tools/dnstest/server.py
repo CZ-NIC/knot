@@ -1019,7 +1019,7 @@ class Bind(Server):
 
     def key_set(self, zone_name, key_id, **new_values):
         ps = [ 'dnssec-settime', '-K', self.keydir ]
-        check_output(ps + self.key_timer_params(**new_params) + [key_id], stderr=DEVNULL)
+        check_output(ps + self.key_timer_params(**new_values) + [key_id], stderr=DEVNULL)
 
     def sign_ksr(self, zone_name, ksr_file):
         ps = [ 'dnssec-ksr', '-i', 'now', '-e', '+1h', '-k', zone_name, '-l', self.confile, '-K', self.keydir, '-f', ksr_file, 'sign' ]
