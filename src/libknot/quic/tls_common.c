@@ -356,7 +356,7 @@ void knot_creds_free(struct knot_creds *creds)
 _public_
 int knot_tls_session(struct gnutls_session_int **session,
                      struct knot_creds *creds,
-                     const char *priority,
+                     struct gnutls_priority_st *priority,
                      const char *alpn,
                      bool early_data,
                      bool server)
@@ -377,7 +377,7 @@ int knot_tls_session(struct gnutls_session_int **session,
 	if (ret == GNUTLS_E_SUCCESS) {
 		gnutls_certificate_send_x509_rdn_sequence(*session, 1);
 		gnutls_certificate_server_set_request(*session, GNUTLS_CERT_REQUEST);
-		ret = gnutls_priority_set_direct(*session, priority, NULL);
+		ret = gnutls_priority_set(*session, priority);
 	}
 	if (server && ret == GNUTLS_E_SUCCESS) {
 		ret = gnutls_session_ticket_enable_server(*session, &creds->tls_ticket_key);

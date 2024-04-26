@@ -29,6 +29,7 @@
 #include "libdnssec/random.h"
 #include "libknot/attribute.h"
 #include "libknot/error.h"
+#include "libknot/quic/tls_common.h"
 #include "libknot/quic/quic.h"
 #include "libknot/xdp/tcp_iobuf.h"
 #include "libknot/wire.h"
@@ -61,9 +62,17 @@ knot_quic_table_t *knot_quic_table_new(size_t max_conns, size_t max_ibufs, size_
 	res->obufs_max = max_obufs;
 	res->udp_payload_limit = udp_payload;
 
+	int ret = gnutls_priority_init2(&res->priority, KNOT_TLS_PRIORITIES, NULL,
+	                                GNUTLS_PRIORITY_INIT_DEF_APPEND);
+	if (ret != GNUTLS_E_SUCCESS) {
+		free(res);
+		return NULL;
+	}
+
 	res->expiry_heap = malloc(sizeof(struct heap));
 	if (res->expiry_heap == NULL || !heap_init(res->expiry_heap, cmp_expiry_heap_nodes, 0)) {
 		free(res->expiry_heap);
+		gnutls_priority_deinit(res->priority);
 		free(res);
 		return NULL;
 	}
@@ -92,6 +101,7 @@ void knot_quic_table_free(knot_quic_table_t *table)
 		assert(table->ibufs_size == 0);
 		assert(table->obufs_size == 0);
 
+		gnutls_priority_deinit(table->priority);
 		heap_deinit(table->expiry_heap);
 		free(table->expiry_heap);
 		free(table);

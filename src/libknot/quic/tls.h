@@ -29,8 +29,11 @@
 #include <stdint.h>
 #include <sys/types.h>
 
+struct gnutls_priority_st;
+
 typedef struct knot_tls_ctx {
 	struct knot_creds *creds;
+	struct gnutls_priority_st *priority;
 	unsigned handshake_timeout;
 	unsigned io_timeout;
 	bool server;

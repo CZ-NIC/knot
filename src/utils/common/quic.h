@@ -35,10 +35,6 @@ void quic_params_clean(quic_params_t *params);
 
 #include "utils/common/tls.h"
 
-#define QUIC_DEFAULT_VERSION "-VERS-ALL:+VERS-TLS1.3"
-#define QUIC_DEFAULT_GROUPS  "-GROUP-ALL:+GROUP-X25519:+GROUP-SECP256R1:+GROUP-SECP384R1:+GROUP-SECP521R1"
-#define QUIC_PRIORITY        "%DISABLE_TLS13_COMPAT_MODE:NORMAL:"QUIC_DEFAULT_VERSION":"QUIC_DEFAULT_GROUPS
-
 typedef enum {
 	CLOSED,    // Initialized
 	CONNECTED, // RTT-0

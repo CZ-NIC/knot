@@ -29,8 +29,12 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#define KNOT_TLS_PIN_LEN	32
+#define KNOT_TLS_PIN_LEN    32
+#define KNOT_TLS_PRIORITIES "-VERS-ALL:+VERS-TLS1.3:" \
+                            "-GROUP-ALL:+GROUP-X25519:+GROUP-SECP256R1:" \
+                                       "+GROUP-SECP384R1:+GROUP-SECP521R1"
 
+struct gnutls_priority_st;
 struct gnutls_session_int;
 struct gnutls_x509_crt_int;
 struct knot_creds;
@@ -98,7 +102,7 @@ void knot_creds_free(struct knot_creds *creds);
  */
 int knot_tls_session(struct gnutls_session_int **session,
                      struct knot_creds *creds,
-                     const char *priority,
+                     struct gnutls_priority_st *priority,
                      const char *alpn,
                      bool early_data,
                      bool server);

@@ -30,11 +30,6 @@
 #include "libknot/error.h"
 #include "libknot/quic/tls_common.h"
 
-// TODO re-consider those detailed
-#define TLS_DEFAULT_VERSION "-VERS-ALL:+VERS-TLS1.3"
-#define TLS_DEFAULT_GROUPS  "-GROUP-ALL:+GROUP-X25519:+GROUP-SECP256R1:+GROUP-SECP384R1:+GROUP-SECP521R1"
-#define TLS_PRIORITIES      "%DISABLE_TLS13_COMPAT_MODE:NORMAL:"TLS_DEFAULT_VERSION":"TLS_DEFAULT_GROUPS
-
 _public_
 knot_tls_ctx_t *knot_tls_ctx_new(struct knot_creds *creds, unsigned io_timeout,
                                  unsigned hs_timeout, bool server)
@@ -49,6 +44,13 @@ knot_tls_ctx_t *knot_tls_ctx_new(struct knot_creds *creds, unsigned io_timeout,
 	res->io_timeout = io_timeout;
 	res->server = server;
 
+	int ret = gnutls_priority_init2(&res->priority, KNOT_TLS_PRIORITIES, NULL,
+	                                GNUTLS_PRIORITY_INIT_DEF_APPEND);
+	if (ret != GNUTLS_E_SUCCESS) {
+		free(res);
+		return NULL;
+	}
+
 	return res;
 }
 
@@ -56,6 +58,7 @@ _public_
 void knot_tls_ctx_free(knot_tls_ctx_t *ctx)
 {
 	if (ctx != NULL) {
+		gnutls_priority_deinit(ctx->priority);
 		free(ctx);
 	}
 }
@@ -70,7 +73,7 @@ knot_tls_conn_t *knot_tls_conn_new(knot_tls_ctx_t *ctx, int sock_fd)
 	res->ctx = ctx;
 	res->fd = sock_fd;
 
-	int ret = knot_tls_session(&res->session, ctx->creds, TLS_PRIORITIES,
+	int ret = knot_tls_session(&res->session, ctx->creds, ctx->priority,
 	                           "\x03""dot", false, ctx->server);
 	if (ret != KNOT_EOK) {
 		goto fail;

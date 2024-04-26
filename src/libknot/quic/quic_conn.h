@@ -33,6 +33,7 @@
 
 #define MAX_STREAMS_PER_CONN 10 // this limits the number of un-finished streams per conn (i.e. if response has been recvd with FIN, it doesn't count)
 
+struct gnutls_priority_st;
 struct ngtcp2_cid; // declaration taken from wherever in ngtcp2
 struct knot_creds;
 struct knot_quic_reply;
@@ -120,6 +121,7 @@ typedef struct knot_quic_table {
 	const char *qlog_dir;
 	uint64_t hash_secret[4];
 	struct knot_creds *creds;
+	struct gnutls_priority_st *priority;
 	struct heap *expiry_heap;
 	knot_quic_cid_t *conns[];
 } knot_quic_table_t;
