@@ -66,6 +66,8 @@
 
 #define SESSION_TICKET_POOL_TIMEOUT (24 * 3600)
 
+#define QUIC_LOG "QUIC/TLS, "
+
 /*! \brief Minimal send/receive buffer sizes. */
 enum {
 	UDP_MIN_RCVSIZE = 4096,
@@ -572,27 +574,29 @@ static int check_file(char *path, char *role)
 		err_str = "invalid file";
 	} else if (!S_ISREG(st.st_mode)) {
 		err_str = "not a file";
+	} else if ((st.st_mode & S_IRUSR) == 0) {
+		err_str = "not readable";
 	} else {
 		return KNOT_EOK;
 	}
 
-	log_error("QUIC, %s file '%s' (%s)", role, path, err_str);
+	log_error(QUIC_LOG "%s file '%s' (%s)", role, path, err_str);
 	return KNOT_EINVAL;
 }
 
-static int init_creds(server_t *server, conf_t *conf)
+static int init_creds(conf_t *conf, server_t *server)
 {
 	char *cert_file = conf_tls(conf, C_CERT_FILE);
 	char *key_file = conf_tls(conf, C_KEY_FILE);
 
 	int ret = check_file(cert_file, "certificate");
 	if (ret != KNOT_EOK) {
-		return ret;
+		goto failed;
 	}
 
 	ret = check_file(key_file, "key");
 	if (ret != KNOT_EOK) {
-		return ret;
+		goto failed;
 	}
 
 	if (cert_file == NULL) {
@@ -600,44 +604,45 @@ static int init_creds(server_t *server, conf_t *conf)
 		char *kasp_dir = conf_db(conf, C_KASP_DB);
 		ret = make_dir(kasp_dir, S_IRWXU | S_IRWXG, true);
 		if (ret != KNOT_EOK) {
-			log_error("QUIC/TLS, failed to create directory '%s'", kasp_dir);
+			log_error(QUIC_LOG "failed to create directory '%s'", kasp_dir);
 			free(kasp_dir);
-			return ret;
+			goto failed;
 		}
 		key_file = abs_path(DFLT_QUIC_KEY_FILE, kasp_dir);
 		free(kasp_dir);
-		log_debug("QUIC/TLS, using self-generated key '%s' with "
+		log_debug(QUIC_LOG "using self-generated key '%s' with "
 		          "one-time certificate", key_file);
 	}
 
+	uint8_t prev_pin[128];
+	size_t prev_pin_len = server_cert_pin(server, prev_pin, sizeof(prev_pin));
+
 	if (server->quic_creds == NULL) {
-		server->quic_creds = knot_creds_init(cert_file, key_file);
+		server->quic_creds = knot_creds_init(key_file, cert_file);
+		if (server->quic_creds == NULL) {
+			log_error(QUIC_LOG "failed to initialize server credentials");
+			ret = KNOT_ERROR;
+			goto failed;
+		}
 	} else {
-		ret = knot_creds_reset(server->quic_creds, cert_file, key_file);
+		ret = knot_creds_update(server->quic_creds, key_file, cert_file);
 		if (ret != KNOT_EOK) {
-			// NOTE Just problem with dropped rights - unable to write into storage directory
-			log_warning("QUIC/TLS, keeping old self-signed key",
-			            key_file);
-			ret = KNOT_EOK;
+			goto failed;
 		}
 	}
 
-	free(cert_file);
-	if (server->quic_creds == NULL || ret != KNOT_EOK) {
-		log_error("QUIC/TLS, failed to initialize server credentials with key '%s'",
-		          key_file);
-		free(key_file);
-		return KNOT_ERROR;
-	}
-	free(key_file);
-
-	size_t pin_len;
 	uint8_t pin[128];
-	if ((pin_len = server_cert_pin(server, pin, sizeof(pin))) > 0) {
-		log_info("QUIC/TLS, certificate public key %.*s", (int)pin_len, pin);
+	size_t pin_len = server_cert_pin(server, pin, sizeof(pin));
+	if (pin_len > 0 && (pin_len != prev_pin_len || memcmp(pin, prev_pin, pin_len) != 0)) {
+		log_info(QUIC_LOG "certificate public key %.*s", (int)pin_len, pin);
 	}
 
-	return KNOT_EOK;
+	ret = KNOT_EOK;
+failed:
+	free(key_file);
+	free(cert_file);
+
+	return ret;
 }
 
 /*! \brief Initialize bound sockets according to configuration. */
@@ -789,7 +794,7 @@ static int configure_sockets(conf_t *conf, server_t *s)
 	s->quic_active = conf->cache.xdp_quic > 0 || convent_quic > 0 || quic_rmt_count(conf, C_QUIC) > 0;
 	s->tls_active = convent_tls > 0 || quic_rmt_count(conf, C_TLS) > 0;
 	if (s->quic_active || s->tls_active) {
-		if (init_creds(s, conf) != KNOT_EOK) {
+		if (init_creds(conf, s) != KNOT_EOK) {
 			server_deinit_iface_list(newlist, nifs);
 			return KNOT_ERROR;
 		}
@@ -1525,9 +1530,10 @@ int server_reconfigure(conf_t *conf, server_t *server)
 			log_warning("config, exceeded number of database readers");
 		}
 	} else {
-		if ((ret = init_creds(server, conf)) != KNOT_EOK) {
-			log_error("failed to change TLS credentials");
-			return ret;
+		/* Reconfigure TLS credentials. */
+		if ((ret = init_creds(conf, server)) != KNOT_EOK) {
+			log_error("failed to reconfigure server credentials (%s)",
+			          knot_strerror(ret));
 		}
 	}
 

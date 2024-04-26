@@ -68,7 +68,7 @@ static int self_key(gnutls_x509_privkey_t *privkey, const char *key_file)
 		if (fstat(fd, &stat) != 0 ||
 		    (data.data = gnutls_malloc(stat.st_size)) == NULL ||
 		    read(fd, data.data, stat.st_size) != stat.st_size) {
-			ret = knot_map_errno();
+			ret = GNUTLS_E_KEYFILE_ERROR;
 			goto finish;
 		}
 
@@ -90,7 +90,7 @@ static int self_key(gnutls_x509_privkey_t *privkey, const char *key_file)
 		if (ret != GNUTLS_E_SUCCESS ||
 		    (fd = open(key_file, O_WRONLY | O_CREAT, 0600)) == -1 ||
 		    write(fd, data.data, data.size) != data.size) {
-			ret = knot_map_errno();
+			ret = GNUTLS_E_KEYFILE_ERROR;
 			goto finish;
 		}
 	}
@@ -148,14 +148,14 @@ finish:
 }
 
 _public_
-struct knot_creds *knot_creds_init(const char *cert_file, const char *key_file)
+struct knot_creds *knot_creds_init(const char *key_file, const char *cert_file)
 {
 	knot_creds_t *creds = calloc(1, sizeof(*creds));
 	if (creds == NULL) {
 		return NULL;
 	}
 
-	int ret = knot_creds_reset(creds, cert_file, key_file);
+	int ret = knot_creds_update(creds, key_file, cert_file);
 	if (ret != KNOT_EOK) {
 		goto fail;
 	}
@@ -176,42 +176,6 @@ struct knot_creds *knot_creds_init(const char *cert_file, const char *key_file)
 fail:
 	knot_creds_free(creds);
 	return NULL;
-}
-
-_public_
-int knot_creds_reset(struct knot_creds *creds, const char *cert_file, const char *key_file)
-{
-	/* NOTE To get rid of the old key/certificate pairs, we need an entirely
-	 * new credential storage.
-	 */
-	gnutls_certificate_credentials_t new_creds;
-	if (creds == NULL) {
-		goto fail;
-	}
-
-	int ret = gnutls_certificate_allocate_credentials(&new_creds);
-	if (ret != GNUTLS_E_SUCCESS) {
-		goto fail;
-	}
-
-	if (cert_file != NULL) {
-		ret = gnutls_certificate_set_x509_key_file(new_creds,
-		                                           cert_file, key_file,
-		                                           GNUTLS_X509_FMT_PEM);
-	} else {
-		ret = self_signed_cert(new_creds, key_file);
-	}
-	if (ret != GNUTLS_E_SUCCESS) {
-		goto fail;
-	}
-
-	gnutls_certificate_credentials_t old_creds = creds->tls_cert;
-	creds->tls_cert = new_creds;
-	gnutls_certificate_free_credentials(old_creds);
-	return KNOT_EOK;
-fail:
-	gnutls_certificate_free_credentials(new_creds);
-	return ret;
 }
 
 _public_
@@ -243,16 +207,12 @@ struct knot_creds *knot_creds_init_peer(const struct knot_creds *local_creds,
 	return creds;
 }
 
-_public_
-int knot_creds_cert(struct knot_creds *creds, struct gnutls_x509_crt_int **cert)
+static int creds_cert(gnutls_certificate_credentials_t creds,
+                      struct gnutls_x509_crt_int **cert)
 {
-	if (creds == NULL || cert == NULL) {
-		return KNOT_EINVAL;
-	}
-
 	gnutls_x509_crt_t *certs;
 	unsigned cert_count;
-	int ret = gnutls_certificate_get_x509_crt(creds->tls_cert, 0, &certs, &cert_count);
+	int ret = gnutls_certificate_get_x509_crt(creds, 0, &certs, &cert_count);
 	if (ret == GNUTLS_E_SUCCESS) {
 		if (cert_count == 0) {
 			gnutls_x509_crt_deinit(*certs);
@@ -260,8 +220,111 @@ int knot_creds_cert(struct knot_creds *creds, struct gnutls_x509_crt_int **cert)
 		}
 		*cert = *certs;
 		free(certs);
+		return KNOT_EOK;
 	}
+	return KNOT_ERROR;
+}
+
+static int creds_changed(gnutls_certificate_credentials_t creds,
+                         gnutls_certificate_credentials_t prev,
+                         bool self_cert, bool *changed)
+{
+	if (creds == NULL || prev == NULL) {
+		*changed = true;
+		return KNOT_EOK;
+	}
+
+	gnutls_x509_crt_t cert = NULL, cert_prev = NULL;
+
+	int ret = creds_cert(creds, &cert);
+	if (ret != KNOT_EOK) {
+		goto failed;
+	}
+	ret = creds_cert(prev, &cert_prev);
+	if (ret != KNOT_EOK) {
+		goto failed;
+	}
+
+	if (self_cert) {
+		uint8_t pin[KNOT_TLS_PIN_LEN], pin_prev[KNOT_TLS_PIN_LEN];
+		size_t pin_size = sizeof(pin), pin_prev_size = sizeof(pin_prev);
+
+		ret = gnutls_x509_crt_get_key_id(cert, GNUTLS_KEYID_USE_SHA256,
+		                                 pin, &pin_size);
+		if (ret != KNOT_EOK) {
+			goto failed;
+		}
+		ret = gnutls_x509_crt_get_key_id(cert_prev, GNUTLS_KEYID_USE_SHA256,
+		                                 pin_prev, &pin_prev_size);
+		if (ret != KNOT_EOK) {
+			goto failed;
+		}
+
+		*changed = (pin_size != pin_prev_size) ||
+		           memcmp(pin, pin_prev, pin_size) != 0;
+	} else {
+		*changed = (gnutls_x509_crt_equals(cert, cert_prev) == 0);
+	}
+
+	ret = KNOT_EOK;
+failed:
+	gnutls_x509_crt_deinit(cert);
+	gnutls_x509_crt_deinit(cert_prev);
+
 	return ret;
+}
+
+_public_
+int knot_creds_update(struct knot_creds *creds, const char *key_file, const char *cert_file)
+{
+	if (creds == NULL || key_file == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	gnutls_certificate_credentials_t new_creds;
+	int ret = gnutls_certificate_allocate_credentials(&new_creds);
+	if (ret != GNUTLS_E_SUCCESS) {
+		return KNOT_ENOMEM;
+	}
+
+	if (cert_file != NULL) {
+		ret = gnutls_certificate_set_x509_key_file(new_creds,
+		                                           cert_file, key_file,
+		                                           GNUTLS_X509_FMT_PEM);
+	} else {
+		ret = self_signed_cert(new_creds, key_file);
+	}
+	if (ret != GNUTLS_E_SUCCESS) {
+		gnutls_certificate_free_credentials(new_creds);
+		return KNOT_EFILE;
+	}
+
+	bool changed = false;
+	ret = creds_changed(new_creds, creds->tls_cert, cert_file == NULL, &changed);
+	if (ret != KNOT_EOK) {
+		gnutls_certificate_free_credentials(new_creds);
+		return ret;
+	}
+
+	if (changed) {
+		gnutls_certificate_credentials_t old_creds = creds->tls_cert;
+		creds->tls_cert = new_creds;
+		gnutls_certificate_free_credentials(old_creds);
+	} else {
+		gnutls_certificate_free_credentials(new_creds);
+	}
+
+	return KNOT_EOK;
+}
+
+_public_
+int knot_creds_cert(struct knot_creds *creds, struct gnutls_x509_crt_int **cert)
+{
+	if (creds == NULL || cert == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	return creds_cert(creds->tls_cert, cert);
 }
 
 _public_

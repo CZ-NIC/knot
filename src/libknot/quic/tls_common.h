@@ -36,28 +36,17 @@ struct gnutls_x509_crt_int;
 struct knot_creds;
 
 /*!
- * \brief Init server TLS certificate for DoQ.
+ * \brief Init server TLS key and certificate for DoQ.
  *
- * \param cert_file     X509 certificate PEM file path/name (NULL if auto-generated).
  * \param key_file      Key PEM file path/name.
+ * \param cert_file     X509 certificate PEM file path/name (NULL if auto-generated).
  *
  * \return Initialized creds.
  */
-struct knot_creds *knot_creds_init(const char *cert_file, const char *key_file);
+struct knot_creds *knot_creds_init(const char *key_file, const char *cert_file);
 
 /*!
- * \brief Load new server TLS certificate for DoT/DoQ.
- *
- * \param creds         Server credentials where key/cert pair will be replaced
- * \param cert_file     X509 certificate PEM file path/name (NULL if auto-generated).
- * \param key_file      Key PEM file path/name.
- *
- * \return KNOT_EOK on success, or KNOT_EINVAL on fail.
- */
-int knot_creds_reset(struct knot_creds *creds, const char *cert_file, const char *key_file);
-
-/*!
- * \brief Init peer TLS certificate for DoQ.
+ * \brief Init peer TLS key and certificate for DoQ.
  *
  * \param local_creds   Local credentials if server.
  * \param peer_pin      Optional peer certificate pin to check.
@@ -68,6 +57,17 @@ int knot_creds_reset(struct knot_creds *creds, const char *cert_file, const char
 struct knot_creds *knot_creds_init_peer(const struct knot_creds *local_creds,
                                         const uint8_t *peer_pin,
                                         uint8_t peer_pin_len);
+
+/*!
+ * \brief Load new server TLS key and certificate for DoQ.
+ *
+ * \param creds         Server credentials where key/cert pair will be updated.
+ * \param key_file      Key PEM file path/name.
+ * \param cert_file     X509 certificate PEM file path/name (NULL if auto-generated).
+ *
+ * \return KNOT_E*
+ */
+int knot_creds_update(struct knot_creds *creds, const char *key_file, const char *cert_file);
 
 /*!
  * \brief Gets the certificate from credentials.
