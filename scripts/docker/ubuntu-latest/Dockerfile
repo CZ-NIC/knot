@@ -26,6 +26,7 @@ RUN apt-get -y install \
 	libsystemd-dev \
 	libtool \
 	liburcu-dev \
+	libxdp-dev \
 	pkg-config \
 	protobuf-c-compiler \
 	python3-sphinx \
