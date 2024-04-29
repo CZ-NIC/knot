@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -14,6 +14,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <pthread.h>
 #include <signal.h>
 #include <tap/basic.h>
 
@@ -23,13 +24,19 @@
 #define THREADS 16
 #define CYCLES1 100000
 #define CYCLES2 2000000
+#define CYCLES3 100000
 #define UPPER 0xffffffff00000000
 #define LOWER 0x00000000ffffffff
 
 static volatile knot_atomic_uint64_t counter_add = 0;
 static volatile knot_atomic_uint64_t counter_sub = 0;
 static volatile knot_atomic_uint64_t atomic_var;
-static int errors_set_get = 0;
+static int errors = 0;
+static int uppers = 0;
+static int lowers = 0;
+static int uppers_count = 0;
+static int lowers_count = 0;
+static pthread_mutex_t mx;
 
 static int thread_add(struct dthread *thread)
 {
@@ -51,9 +58,41 @@ static int thread_set(struct dthread *thread)
 		if (read != UPPER && read != LOWER) {
 			// Non-atomic counter, won't be accurate!
 			// However, it's sufficient for fault detection.
-			errors_set_get++;
+			errors++;
 		}
 	}
+
+	return 0;
+}
+
+static int thread_xchg(struct dthread *thread)
+{
+	u_int64_t val = (dt_get_id(thread) % 2) ? UPPER : LOWER;
+
+	pthread_mutex_lock(&mx);
+	if (val == UPPER) {
+		uppers++;
+	} else {
+		lowers++;
+	};
+	pthread_mutex_unlock(&mx);
+
+	for (int i = 0; i < CYCLES3; i++) {
+		val = ATOMIC_XCHG(atomic_var, val);
+		if (val != UPPER && val != LOWER) {
+			// Non-atomic counter, won't be accurate!
+			// However, it's sufficient for fault detection.
+			errors++;
+		}
+	}
+
+	pthread_mutex_lock(&mx);
+	if (val == UPPER) {
+		uppers_count++;
+	} else if (val == LOWER) {
+		lowers_count++;
+	};
+	pthread_mutex_unlock(&mx);
 
 	return 0;
 }
@@ -89,7 +128,31 @@ int main(int argc, char *argv[])
 	dt_join(unit);
 	dt_delete(&unit);
 
-	is_int(0, errors_set_get, "atomicity of ATOMIC_SET / ATOMIC_GET");
+	is_int(0, errors, "atomicity of ATOMIC_SET / ATOMIC_GET");
+
+	// Test for atomicity of ATOMIC_XCHG.
+	atomic_var = UPPER;
+	uppers++;
+	errors = 0;
+
+	pthread_mutex_init(&mx, NULL);
+	unit = dt_create(THREADS, thread_xchg, NULL, NULL);
+	dt_start(unit);
+	dt_join(unit);
+	dt_delete(&unit);
+	pthread_mutex_destroy(&mx);
+
+	if (atomic_var == UPPER) {
+		uppers_count++;
+	} else if (atomic_var == LOWER) {
+		lowers_count++;
+	} else {
+		errors++;
+	}
+
+	is_int(0, errors, "set/get atomicity of ATOMIC_XCHG");
+	is_int(lowers, lowers_count, "atomicity of ATOMIC_XCHG");
+	is_int(uppers, uppers_count, "atomicity of ATOMIC_XCHG");
 
 	return 0;
 }

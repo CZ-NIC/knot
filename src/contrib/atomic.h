@@ -25,10 +25,11 @@
 
  #include <stdatomic.h>
 
- #define ATOMIC_SET(dst, val) atomic_store_explicit(&(dst), (val), memory_order_relaxed)
- #define ATOMIC_GET(src)      atomic_load_explicit(&(src), memory_order_relaxed)
- #define ATOMIC_ADD(dst, val) (void)atomic_fetch_add_explicit(&(dst), (val), memory_order_relaxed)
- #define ATOMIC_SUB(dst, val) (void)atomic_fetch_sub_explicit(&(dst), (val), memory_order_relaxed)
+ #define ATOMIC_SET(dst, val)  atomic_store_explicit(&(dst), (val), memory_order_relaxed)
+ #define ATOMIC_GET(src)       atomic_load_explicit(&(src), memory_order_relaxed)
+ #define ATOMIC_ADD(dst, val)  (void)atomic_fetch_add_explicit(&(dst), (val), memory_order_relaxed)
+ #define ATOMIC_SUB(dst, val)  (void)atomic_fetch_sub_explicit(&(dst), (val), memory_order_relaxed)
+ #define ATOMIC_XCHG(dst, val) atomic_exchange_explicit(&(dst), (val), memory_order_relaxed)
 
  typedef atomic_uint_fast16_t knot_atomic_uint16_t;
  typedef atomic_uint_fast64_t knot_atomic_uint64_t;
@@ -41,10 +42,11 @@
  #include <stdint.h>
  #include <stdbool.h>
 
- #define ATOMIC_SET(dst, val) __atomic_store_n(&(dst), (val), __ATOMIC_RELAXED)
- #define ATOMIC_GET(src)      __atomic_load_n(&(src), __ATOMIC_RELAXED)
- #define ATOMIC_ADD(dst, val) __atomic_add_fetch(&(dst), (val), __ATOMIC_RELAXED)
- #define ATOMIC_SUB(dst, val) __atomic_sub_fetch(&(dst), (val), __ATOMIC_RELAXED)
+ #define ATOMIC_SET(dst, val)  __atomic_store_n(&(dst), (val), __ATOMIC_RELAXED)
+ #define ATOMIC_GET(src)       __atomic_load_n(&(src), __ATOMIC_RELAXED)
+ #define ATOMIC_ADD(dst, val)  __atomic_add_fetch(&(dst), (val), __ATOMIC_RELAXED)
+ #define ATOMIC_SUB(dst, val)  __atomic_sub_fetch(&(dst), (val), __ATOMIC_RELAXED)
+ #define ATOMIC_XCHG(dst, val) __atomic_exchange_n(&(dst), (val), __ATOMIC_RELAXED)
 
  typedef uint16_t knot_atomic_uint16_t;
  typedef uint64_t knot_atomic_uint64_t;
@@ -57,10 +59,11 @@
  #include <stdint.h>
  #include <stdbool.h>
 
- #define ATOMIC_SET(dst, val) ((dst) = (val))
- #define ATOMIC_GET(src)      (src)
- #define ATOMIC_ADD(dst, val) ((dst) += (val))
- #define ATOMIC_SUB(dst, val) ((dst) -= (val))
+ #define ATOMIC_SET(dst, val)  ((dst) = (val))
+ #define ATOMIC_GET(src)       (src)
+ #define ATOMIC_ADD(dst, val)  ((dst) += (val))
+ #define ATOMIC_SUB(dst, val)  ((dst) -= (val))
+ #define ATOMIC_XCHG(dst, val) ({ __typeof__ (dst) _z = (dst); (dst) = (val); _z; })
 
  typedef uint16_t knot_atomic_uint16_t;
  typedef uint64_t knot_atomic_uint64_t;
