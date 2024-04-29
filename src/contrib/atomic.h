@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -33,6 +33,7 @@
  typedef atomic_uint_fast16_t knot_atomic_uint16_t;
  typedef atomic_uint_fast64_t knot_atomic_uint64_t;
  typedef atomic_size_t knot_atomic_size_t;
+ typedef _Atomic (void *) knot_atomic_ptr_t;
  typedef atomic_bool knot_atomic_bool;
 #elif defined(HAVE_GCC_ATOMIC)   /* GCC __atomic */
  #define KNOT_HAVE_ATOMIC
@@ -48,6 +49,7 @@
  typedef uint16_t knot_atomic_uint16_t;
  typedef uint64_t knot_atomic_uint64_t;
  typedef size_t knot_atomic_size_t;
+ typedef void* knot_atomic_ptr_t;
  typedef bool knot_atomic_bool;
 #else                            /* Fallback, non-atomic. */
  #warning "Atomic operations not availabe, using unreliable replacement."
@@ -63,5 +65,6 @@
  typedef uint16_t knot_atomic_uint16_t;
  typedef uint64_t knot_atomic_uint64_t;
  typedef size_t knot_atomic_size_t;
+ typedef void* knot_atomic_ptr_t;
  typedef bool knot_atomic_bool;
 #endif
