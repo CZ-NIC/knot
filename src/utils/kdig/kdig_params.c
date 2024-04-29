@@ -1481,10 +1481,8 @@ static int opt_trace(const char *arg, void *query)
 	query_t *q = query;
 	q->operation = OPERATION_TRACE;
 
-	style_t setting = {0};
-	setting.format = q->style.format;
-
 	q->style.show_query = false;
+	q->style.show_section = false;
 	q->style.show_question = false;
 	q->style.show_header = false;
 	q->style.show_additional = false;

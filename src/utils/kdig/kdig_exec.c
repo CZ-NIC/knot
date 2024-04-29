@@ -1270,31 +1270,167 @@ finish:
 	return ret;
 }
 
-static int process_trace(const query_t *query) {
-	if (query->quic.enable) {
-		ERR2("+quic is not supported in combination with +trace");
-		return KNOT_ERROR;
+static knot_pkt_t *process_trace_single(srv_info_t *remote,
+					query_t *q,
+					int socktype,
+					int iptype,
+					knot_pkt_t *query_packet)
+{
+	int		ret;
+	ssize_t		response_len;
+	net_t		net = {.sockfd = -1};
+	knot_pkt_t	*reply = NULL;
+	struct timespec	t_query, t_end;
+
+	ret = net_init(q->local, remote, iptype, socktype, q->wait, NET_FLAGS_NONE,
+		       (struct sockaddr *)&q->proxy.src, (struct sockaddr *)&q->proxy.dst, &net);
+	if (ret != KNOT_EOK) {
+		ERR("can't configure connection");
+		goto finish;
 	}
 
-	query_t iter_query;
-	memcpy(&iter_query, query, sizeof(query_t));
+	// Loop over all resolved addresses for remote.
+	while (net.sockfd < 0 && net.srv != NULL) {
+		ret = net_connect(&net);
 
-	uint16_t type_num = -1;
-	knot_rrtype_from_string("NS", &type_num);
-	iter_query.type_num = type_num;
-
-	net_t net = { .sockfd = -1 };
-
-	char *suffix = strrchr(query->owner, '.') - 1;
-	while (suffix != NULL && suffix > query->owner) {
-		iter_query.owner = suffix + 1;
-		process_query(&iter_query, &net);
-		suffix = memrchr(query->owner, '.', suffix - query->owner);
+		// on error try next resolved address
+		if (ret != KNOT_EOK) {
+			net.srv = net.srv->ai_next;
+			continue;
+		}
+	}
+	if (net.sockfd < 0) {
+		ERR("failed to estabilish a connection");
+		goto finish;
 	}
 
-	process_query(query, &net);
+	// Send DNS query to the nameserver.
+	ret = net_send(&net, query_packet->wire, query_packet->size);
+	if (ret != KNOT_EOK) {
+		ERR("failed to send DNS query");
+		goto finish;
+	}
 
-	return KNOT_EOK;
+	// stop query/start reply time
+	t_query = time_now();
+
+	// allocate a new empty dns packet which will hold the server's reply
+	reply = knot_pkt_new(NULL, KNOT_WIRE_MAX_PKTSIZE, NULL);
+	if (reply == NULL) {
+		ERR("internal error (%s)", knot_strerror(KNOT_ENOMEM));
+		goto fail;
+	}
+
+	// Loop over incoming messages, unless reply id is correct or timeout.
+	while (true) {
+		// Read raw reply data into the reply packet structure.
+		response_len = net_receive(&net, reply->wire , MAX_PACKET_SIZE);
+		if (response_len < 0) {
+			goto fail;
+		}
+		reply->size = response_len;
+
+		// Check for timeout.
+		t_end = time_now();
+		if (time_diff_ms(&t_query, &t_end) > 1000 * net.wait) {
+			goto fail;
+		}
+
+		// Parse reply to the packet structure.
+		ret = knot_pkt_parse(reply, 0);
+		if (ret != KNOT_EOK) {
+			ERR("malformed reply packet from %s", net.remote_str);
+			goto fail;
+		}
+
+		// Compare reply header id.
+		if (check_reply_id(reply, query_packet)) {
+			goto finish; // success!
+		}
+	}
+
+fail:
+	knot_pkt_free(reply);
+	reply = NULL;
+finish:
+	net_close(&net);
+	net_clean(&net);
+
+	return reply;
+}
+
+static list_t *
+process_trace_layer(const query_t *q, int socktype, int iptype, int flags, list_t *remotes)
+{
+	node_t *i;
+	WALK_LIST(i, *remotes) {
+		;
+	};
+	knot_pkt_t *out_packet;
+
+	out_packet = create_query_packet(q);
+	if (out_packet == NULL) {
+		ERR("can't create query packet");
+	}
+}
+
+static int process_trace(const query_t *query)
+{
+	int ret = KNOT_EOK;
+
+	query_t iter_query = *query;
+
+	// Get connection parameters.
+	int socktype = get_socktype(query->protocol, KNOT_RRTYPE_NS);
+	srv_info_t *remote = HEAD(query->servers);
+	int iptype = get_iptype(query->ip, remote);
+
+	// First ask the resolver for root zone name servers, then continue independently from there.
+	iter_query.type_num = KNOT_RRTYPE_NS;
+	iter_query.owner = ".";
+	knot_pkt_t *query_pkt = create_query_packet(&iter_query);
+	if (query_pkt == NULL) {
+		ERR("can't create query packet");
+	}
+	knot_pkt_t *response = process_trace_single(remote, &iter_query, socktype, iptype, query_pkt);
+	const knot_pktsection_t *ans = knot_pkt_section(response, KNOT_ANSWER);
+
+	// write domain name of a root name server to buf
+	char buf[4096];
+	knot_dump_style_t dumps = {0};
+	const knot_rrset_t *rrset = knot_pkt_rr(ans, 0);
+	knot_rrset_txt_dump_data(rrset, 0, buf, sizeof(buf), &dumps);
+
+	knot_pkt_free(query_pkt);
+	knot_pkt_free(response);
+
+	// get ipv4 addr of that server (still from a resolver)
+	iter_query.type_num = KNOT_RRTYPE_A;
+	iter_query.owner = buf;
+	query_pkt = create_query_packet(&iter_query);
+	response = process_trace_single(remote, &iter_query, socktype, iptype, query_pkt);
+
+	// TODO instead of printing actually use it lmao
+	print_packet(response, NULL, response->size, 0, 0, true, &iter_query.style);
+
+	knot_pkt_free(query_pkt);
+	knot_pkt_free(response);
+
+	// TODO: from each level select one nameserver and query it for the next level
+
+	// TODO: on the last level ask each NS from the above zone and display all the results
+	//	 - make it look nice (merge common responses, highlight inconsistencies)
+
+	// char *suffix = strrchr(query->owner, '.') - 1;
+	// while (suffix != NULL && suffix > query->owner) {
+	// 	iter_query.owner = suffix + 1;
+	// 	process_query(&iter_query, &net);
+	// 	suffix = memrchr(query->owner, '.', suffix - query->owner);
+	// }
+
+	// process_query(query, &net);
+
+	return ret;
 }
 
 int kdig_exec(const kdig_params_t *params)
@@ -1328,7 +1464,6 @@ int kdig_exec(const kdig_params_t *params)
 #endif // USE_DNSTAP
 		case OPERATION_TRACE:
 			ret = process_trace(query);
-			ERR("+trace not implemented yet :(");
 			break;
 		default:
 			ERR("unsupported operation");
