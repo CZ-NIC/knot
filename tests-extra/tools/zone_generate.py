@@ -111,7 +111,7 @@ def choice(items):
     return random.choice(items)
 
 def rnd_hex(l):
-    return '%x' % random.randrange(256**(l/2))
+    return '%x' % random.randrange(int(256**(l/2)))
 
 def rnd_str():
     i = rnd(0, len(WORDS)-1)
@@ -498,7 +498,7 @@ def main(args):
         if ctx.RORIGIN != None: # Reverse zone records
             rr = gen_rr_rev(i + 1)
         elif i < a_pool:
-            if rnd(0,1.0) < 0.5:
+            if rnd(0,1) < 0.5:
                 rr = g_a('A')
             else:
                 rr = g_aaaa('AAAA')
