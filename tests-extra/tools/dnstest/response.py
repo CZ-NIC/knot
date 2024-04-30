@@ -243,12 +243,13 @@ class Response(object):
 
         if options > 0:
             option = list(self.resp.options)[0]
+            val = option.nsid if hasattr(option, 'nsid') else option.data
             compare(option.otype, dns.edns.NSID, "OPTION TYPE")
             if nsid[:2] == "0x":
-                compare(binascii.hexlify(option.data).decode('ascii'),
+                compare(binascii.hexlify(val).decode('ascii'),
                         nsid[2:], "HEX NSID")
             else:
-                compare(option.data.decode('ascii'), nsid, "TXT NSID")
+                compare(val.decode('ascii'), nsid, "TXT NSID")
 
     def diff(self, resp, flags=True, answer=True, authority=True,
              additional=False, rcode=True):
