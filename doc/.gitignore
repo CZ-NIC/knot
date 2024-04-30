@@ -2,18 +2,4 @@
 /api
 /modules
 /modules.rst
-
-# sphinx-build manpages
-/man/knot.conf.5
-/man/kcatalogprint.8
-/man/keymgr.8
-/man/kjournalprint.8
-/man/knotc.8
-/man/knotd.8
-/man/kdig.1
-/man/khost.1
-/man/knsec3hash.1
-/man/knsupdate.1
-/man/kzonecheck.1
-/man/kzonesign.1
-/man/kxdpgun.8
+/man
