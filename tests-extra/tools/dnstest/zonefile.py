@@ -7,7 +7,6 @@ import shutil
 import string
 import zone_generate
 import glob
-import distutils.dir_util
 import dns.name
 
 from subprocess import DEVNULL, PIPE, Popen
@@ -76,11 +75,6 @@ class ZoneFile(object):
                 src_file += "." + str(version)
 
             shutil.copyfile(src_file, self.path)
-
-            # Copy zone keys.
-            keydir = self.storage + "/keys"
-            if os.path.isdir(keydir):
-                distutils.dir_util.copy_tree(keydir, self.key_dir, update=True)
 
         except:
             raise Exception("Can't use zone file '%s'" % src_file)
