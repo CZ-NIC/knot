@@ -26,13 +26,15 @@
 
 #include "libknot/quic/tls_common.h"
 
+#include "contrib/atomic.h"
 #include "contrib/sockaddr.h"
 #include "contrib/string.h"
 #include "libknot/attribute.h"
 #include "libknot/error.h"
 
 typedef struct knot_creds {
-	gnutls_certificate_credentials_t tls_cert;
+	knot_atomic_ptr_t cert_creds; // Current credentials.
+	gnutls_certificate_credentials_t cert_creds_prev; // Previous credentials (for pending connections).
 	gnutls_anti_replay_t tls_anti_replay;
 	gnutls_datum_t tls_ticket_key;
 	bool peer;
@@ -190,13 +192,15 @@ struct knot_creds *knot_creds_init_peer(const struct knot_creds *local_creds,
 
 	if (local_creds != NULL) {
 		creds->peer = true;
-		creds->tls_cert = local_creds->tls_cert;
+		creds->cert_creds =  ATOMIC_GET(local_creds->cert_creds);
 	} else {
-		int ret = gnutls_certificate_allocate_credentials(&creds->tls_cert);
+		gnutls_certificate_credentials_t new_creds;
+		int ret = gnutls_certificate_allocate_credentials(&new_creds);
 		if (ret != GNUTLS_E_SUCCESS) {
 			free(creds);
 			return NULL;
 		}
+		creds->cert_creds = new_creds;
 	}
 
 	if (peer_pin_len > 0 && peer_pin != NULL) {
@@ -300,16 +304,18 @@ int knot_creds_update(struct knot_creds *creds, const char *key_file, const char
 	}
 
 	bool changed = false;
-	ret = creds_changed(new_creds, creds->tls_cert, cert_file == NULL, &changed);
+	ret = creds_changed(new_creds, ATOMIC_GET(creds->cert_creds),
+	                    cert_file == NULL, &changed);
 	if (ret != KNOT_EOK) {
 		gnutls_certificate_free_credentials(new_creds);
 		return ret;
 	}
 
 	if (changed) {
-		gnutls_certificate_credentials_t old_creds = creds->tls_cert;
-		creds->tls_cert = new_creds;
-		gnutls_certificate_free_credentials(old_creds);
+		if (creds->cert_creds_prev != NULL) {
+			gnutls_certificate_free_credentials(creds->cert_creds_prev);
+		}
+		creds->cert_creds_prev = ATOMIC_XCHG(creds->cert_creds, new_creds);
 	} else {
 		gnutls_certificate_free_credentials(new_creds);
 	}
@@ -324,7 +330,7 @@ int knot_creds_cert(struct knot_creds *creds, struct gnutls_x509_crt_int **cert)
 		return KNOT_EINVAL;
 	}
 
-	return creds_cert(creds->tls_cert, cert);
+	return creds_cert(ATOMIC_GET(creds->cert_creds), cert);
 }
 
 _public_
@@ -334,8 +340,11 @@ void knot_creds_free(struct knot_creds *creds)
 		return;
 	}
 
-	if (!creds->peer && creds->tls_cert != NULL) {
-		gnutls_certificate_free_credentials(creds->tls_cert);
+	if (!creds->peer && creds->cert_creds != NULL) {
+		gnutls_certificate_free_credentials(creds->cert_creds);
+		if (creds->cert_creds_prev != NULL) {
+			gnutls_certificate_free_credentials(creds->cert_creds_prev);
+		}
 	}
 	gnutls_anti_replay_deinit(creds->tls_anti_replay);
 	if (creds->tls_ticket_key.data != NULL) {
@@ -382,7 +391,8 @@ int knot_tls_session(struct gnutls_session_int **session,
 		if (server) {
 			gnutls_anti_replay_enable(*session, creds->tls_anti_replay);
 		}
-		ret = gnutls_credentials_set(*session, GNUTLS_CRD_CERTIFICATE, creds->tls_cert);
+		ret = gnutls_credentials_set(*session, GNUTLS_CRD_CERTIFICATE,
+		                             ATOMIC_GET(creds->cert_creds));
 	}
 	if (ret != GNUTLS_E_SUCCESS) {
 		gnutls_deinit(*session);
