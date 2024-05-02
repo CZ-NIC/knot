@@ -146,7 +146,7 @@ class Server(object):
 
     def __init__(self):
         self.proc = None
-        self.valgrind = []
+        self.valgrind = ['rr', 'record', '-p1'] # -p1 to store path to the stdout
         self.start_params = None
         self.ctl_params = None
         self.ctl_params_append = None # The last parameter wins.
@@ -248,9 +248,12 @@ class Server(object):
             pids = list(set(pids))
 
             # Check for successful bind.
-            if len(pids) == 1 and str(self.proc.pid) in pids:
-                return True
-
+            if len(pids) == 1:
+                if self.valgrind[0] == 'rr':
+                    time.sleep(2)
+                    return True
+                if str(self.proc.pid) in pids:
+                    return True
             time.sleep(2)
 
         return False
