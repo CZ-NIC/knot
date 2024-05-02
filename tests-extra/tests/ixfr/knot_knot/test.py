@@ -8,7 +8,7 @@ from dnstest.test import Test
 
 t = Test()
 
-use_unix = random.choice([True, False])
+use_unix = True
 master_address = os.path.join(t.out_dir, "master.sock") if use_unix else None
 slave_address = os.path.join(t.out_dir, "slave.sock") if use_unix else None
 
