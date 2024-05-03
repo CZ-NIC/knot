@@ -46,6 +46,7 @@
 #include <gnutls/gnutls.h>
 #include "libknot/quic/quic.h"
 #endif // ENABLE_QUIC
+#include "contrib/atomic.h"
 #include "contrib/macros.h"
 #include "contrib/mempattern.h"
 #include "contrib/openbsd/strlcat.h"
@@ -70,7 +71,7 @@ enum {
 
 volatile int xdp_trigger = KXDPGUN_WAIT;
 
-volatile unsigned stats_trigger = 0;
+volatile knot_atomic_uint64_t stats_trigger = 0;
 
 unsigned global_cpu_aff_start = 0;
 unsigned global_cpu_aff_step = 1;
@@ -163,7 +164,7 @@ static void sigusr_handler(int signo)
 {
 	assert(signo == SIGUSR1);
 	if (global_stats.collected == 0) {
-		stats_trigger++;
+		ATOMIC_ADD(stats_trigger, 1);
 	}
 }
 
@@ -889,9 +890,9 @@ void *xdp_gun_thread(void *_ctx)
 		if (xdp_trigger == KXDPGUN_STOP && ctx->duration > duration) {
 			ctx->duration = duration;
 		}
-		if (stats_trigger > stats_triggered) {
-			assert(stats_trigger == stats_triggered + 1);
-			stats_triggered++;
+		uint64_t tmp_stats_trigger = ATOMIC_GET(stats_trigger);
+		if (tmp_stats_trigger > stats_triggered) {
+			stats_triggered = tmp_stats_trigger;
 
 			local_stats.duration = duration;
 			size_t collected = collect_stats(&global_stats, &local_stats);
