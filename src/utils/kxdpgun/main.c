@@ -206,12 +206,12 @@ static void print_stats(kxdpgun_stats_t *st, bool tcp, bool quic, bool recv, uin
 {
 	pthread_mutex_lock(&st->mutex);
 
-#define ps(counter)  ((counter) * 1000 / (st->duration / 1000))
+#define ps(counter)  ((typeof(counter))((counter) * 1000 / ((float)st->duration / 1000)))
 #define pct(counter) ((counter) * 100.0 / st->qry_sent)
 
 	const char *name = tcp ? "SYNs:    " : quic ? "initials:" : "queries: ";
-	printf("total %s    %"PRIu64" (%"PRIu64" pps) (%f%%)\n", name,
-	       st->qry_sent, ps(st->qry_sent), 100.0 * st->qry_sent / (st->duration / 1000000.0 * qps));
+	printf("total %s    %"PRIu64" (%"PRIu64" pps) (%f%%)\n", name, st->qry_sent,
+	       ps(st->qry_sent), 100.0 * st->qry_sent / (st->duration / 1000000.0 * qps));
 	if (st->qry_sent > 0 && recv) {
 		if (tcp || quic) {
 		name = tcp ? "established:" : "handshakes: ";
