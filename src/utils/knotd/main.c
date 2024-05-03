@@ -48,6 +48,14 @@
 #include "utils/common/params.h"
 
 #define PROGRAM_NAME "knotd"
+#define MAX_CTL_CONCURRENT 8
+
+typedef struct {
+	knot_ctl_t *ctl;
+	server_t *server;
+	pthread_t thread;
+	int ret;
+} concurrent_ctl_ctx_t;
 
 /* Signal flags. */
 static volatile bool sig_req_stop = false;
@@ -226,6 +234,7 @@ static void check_loaded(server_t *server)
 		return;
 	}
 
+	rcu_read_lock();
 	knot_zonedb_iter_t *it = knot_zonedb_iter_begin(server->zone_db);
 	while (!knot_zonedb_iter_finished(it)) {
 		zone_t *zone = (zone_t *)knot_zonedb_iter_val(it);
@@ -236,15 +245,59 @@ static void check_loaded(server_t *server)
 		knot_zonedb_iter_next(it);
 	}
 	knot_zonedb_iter_free(it);
+	rcu_read_unlock();
 
 	finished = true;
 	dbus_emit_running(true);
+}
+
+static concurrent_ctl_ctx_t *find_free_ctx(concurrent_ctl_ctx_t *concurrent_ctxs,
+                                           size_t n_ctxs)
+{
+	for (size_t i = 0; i < n_ctxs; i++) {
+		if (concurrent_ctxs[i].ctl == NULL) {
+			assert(concurrent_ctxs[i].server == NULL);
+			return &concurrent_ctxs[i];
+		}
+	}
+	return NULL;
+}
+
+static int cleanup_ctxs(concurrent_ctl_ctx_t *concurrent_ctxs, size_t n_ctxs, bool force)
+{
+	int ret = KNOT_EOK;
+	for (size_t i = 0; i < n_ctxs; i++) {
+		concurrent_ctl_ctx_t *cctx = &concurrent_ctxs[i];
+		if (cctx->ctl != NULL && (force || cctx->server == NULL)) {
+			(void)pthread_join(cctx->thread, NULL);
+			assert(cctx->server == NULL);
+			if (cctx->ret == KNOT_CTL_ESTOP) {
+				ret = cctx->ret;
+			}
+			knot_ctl_free(cctx->ctl);
+			memset(cctx, 0, sizeof(*cctx));
+		}
+	}
+	return ret;
+}
+
+static void *ctl_process_thread(void *arg)
+{
+	concurrent_ctl_ctx_t *ctx = arg;
+	rcu_register_thread();
+	setup_signals(); // in fact, this blocks common signals so that they arrive to main thread instead of this one
+	ctx->ret = ctl_process(ctx->ctl, ctx->server);
+	knot_ctl_close(ctx->ctl);
+	ctx->server = NULL;
+	rcu_unregister_thread();
+	return NULL;
 }
 
 /*! \brief Event loop listening for signals and remote commands. */
 static void event_loop(server_t *server, const char *socket, bool daemonize,
                        unsigned long pid)
 {
+	concurrent_ctl_ctx_t concurrent_ctxs[MAX_CTL_CONCURRENT] = { 0 }, *cctx;
 	knot_ctl_t *ctl = knot_ctl_alloc();
 	if (ctl == NULL) {
 		log_fatal("control, failed to initialize (%s)",
@@ -301,15 +354,19 @@ static void event_loop(server_t *server, const char *socket, bool daemonize,
 		/* Interrupts. */
 		if (sig_req_reload && !sig_req_stop) {
 			sig_req_reload = false;
+			pthread_rwlock_wrlock(&server->ctl_lock);
 			server_reload(server, RELOAD_FULL);
+			pthread_rwlock_unlock(&server->ctl_lock);
 		}
 		if (sig_req_zones_reload && !sig_req_stop) {
 			sig_req_zones_reload = false;
 			reload_t mode = server->catalog_upd_signal ? RELOAD_CATALOG : RELOAD_ZONES;
+			pthread_rwlock_wrlock(&server->ctl_lock);
 			server->catalog_upd_signal = false;
 			server_update_zones(conf(), server, mode);
+			pthread_rwlock_unlock(&server->ctl_lock);
 		}
-		if (sig_req_stop) {
+		if (sig_req_stop || cleanup_ctxs(concurrent_ctxs, MAX_CTL_CONCURRENT, false) == KNOT_CTL_ESTOP) {
 			break;
 		}
 
@@ -327,12 +384,20 @@ static void event_loop(server_t *server, const char *socket, bool daemonize,
 			continue;
 		}
 
-		ret = ctl_process(ctl, server);
-		knot_ctl_close(ctl);
-		if (ret == KNOT_CTL_ESTOP) {
-			break;
+		if ((cctx = find_free_ctx(concurrent_ctxs, MAX_CTL_CONCURRENT)) != NULL &&
+		    (cctx->ctl = knot_ctl_clone(ctl)) != NULL) {
+			cctx->server = server;
+			pthread_create(&cctx->thread, NULL, ctl_process_thread, cctx);
+		} else {
+			ret = ctl_process(ctl, server);
+			knot_ctl_close(ctl);
+			if (ret == KNOT_CTL_ESTOP) {
+				break;
+			}
 		}
 	}
+
+	(void)cleanup_ctxs(concurrent_ctxs, MAX_CTL_CONCURRENT, true);
 
 	if (conf()->cache.srv_dbus_event & DBUS_EVENT_RUNNING) {
 		dbus_emit_running(false);

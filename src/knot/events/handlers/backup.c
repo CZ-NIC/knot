@@ -26,7 +26,9 @@ int event_backup(conf_t *conf, zone_t *zone)
 {
 	assert(zone);
 
+	pthread_mutex_lock(&zone->cu_lock);
 	zone_backup_ctx_t *ctx = zone->backup_ctx;
+	pthread_mutex_unlock(&zone->cu_lock);
 	if (ctx == NULL) {
 		return KNOT_EINVAL;
 	}
@@ -66,6 +68,8 @@ int event_backup(conf_t *conf, zone_t *zone)
 
 done:
 	ret_deinit = zone_backup_deinit(ctx);
+	pthread_mutex_lock(&zone->cu_lock);
 	zone->backup_ctx = NULL;
+	pthread_mutex_unlock(&zone->cu_lock);
 	return (ret != KNOT_EOK) ? ret : ret_deinit;
 }

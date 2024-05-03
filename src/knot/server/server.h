@@ -121,6 +121,9 @@ typedef struct server {
 	bool quic_active;
 	bool tls_active;
 
+	/*! \brief Mutex protecting simultaneous access from concurrent CTL threads. */
+	pthread_rwlock_t ctl_lock;
+
 	/*! \brief Pending changes to catalog member zones, update indication. */
 	catalog_update_t catalog_upd;
 	knot_atomic_bool catalog_upd_signal;
