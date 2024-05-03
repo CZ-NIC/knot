@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -106,6 +106,9 @@ void replan_from_timers(conf_t *conf, zone_t *zone)
 	if (zone_is_slave(conf, zone)) {
 		refresh = zone->timers.next_refresh;
 		if (zone->contents == NULL && zone->timers.last_refresh_ok) { // zone disappeared w/o expiry
+			refresh = now;
+		}
+		if (refresh == 0) { // sanitize in case of concurrent purge event
 			refresh = now;
 		}
 		assert(refresh > 0);
