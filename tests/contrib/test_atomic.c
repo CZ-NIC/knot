@@ -83,6 +83,7 @@ static int thread_xchg(struct dthread *thread)
 			// Non-atomic counter, won't be accurate!
 			// However, it's sufficient for fault detection.
 			errors++;
+			return 0;
 		}
 	}
 
