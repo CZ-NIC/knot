@@ -140,9 +140,8 @@ pdf-local install-pdf-local:
 	@echo "Install 'pdflatex' and re-run configure to be able to generate PDF documentation!"
 endif # HAVE_PDFLATEX
 
-.NOTPARALLEL: man
 man: $(man_MANS)
-$(man_MANS): $(MANPAGES_RST)
+$(man_MANS)&: $(MANPAGES_RST)
 	$(AM_V_SPHINX)$(SPHINXBUILD) -b man -d $(SPHINXBUILDDIR)/doctrees $(man_SPHINXOPTS) $(SPHINXBUILDDIR)/man
 	@mkdir -p man
 	@for f in $(SPHINXBUILDDIR)/man/*; do \
