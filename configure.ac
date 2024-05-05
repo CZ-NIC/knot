@@ -115,14 +115,23 @@ AC_ARG_ENABLE([modules],
 AC_ARG_ENABLE([utilities],
     AS_HELP_STRING([--disable-utilities], [Don't build Knot DNS utilities]), [], [enable_utilities=yes])
 AM_CONDITIONAL([HAVE_UTILS], [test "$enable_utilities" = "yes"])
+AM_CONDITIONAL([HAVE_LIBUTILS], test "$enable_utilities" != "no" -o \
+                                     "$enable_daemon" != "no")
 
 # Build Knot DNS documentation
 AC_ARG_ENABLE([documentation],
     AS_HELP_STRING([--disable-documentation], [Don't build Knot DNS documentation]), [], [enable_documentation=yes])
+AS_IF([test "$enable_documentation" = "yes"], [
+  AC_PATH_PROG([SPHINXBUILD], [sphinx-build], [false])
+  AS_IF([test "$SPHINXBUILD" = "false"],
+    [AC_MSG_WARN([missing 'sphinx-build' executable for documentation generation])
+     enable_documentation=no]
+  )
+  AC_PATH_PROG([PDFLATEX], [pdflatex], [false])
+  AM_CONDITIONAL([HAVE_PDFLATEX], test "$PDFLATEX" != "false")
+])
 AM_CONDITIONAL([HAVE_DOCS], [test "$enable_documentation" = "yes"])
 
-AM_CONDITIONAL([HAVE_LIBUTILS], test "$enable_utilities" != "no" -o \
-                                     "$enable_daemon" != "no")
 ######################
 # Generic dependencies
 ######################
@@ -722,19 +731,6 @@ AX_SANITIZER
 AS_IF([test -n "$sanitizer_CFLAGS"], [CFLAGS="$CFLAGS $sanitizer_CFLAGS"])
 AM_CONDITIONAL([FUZZER], [test "$with_fuzzer" != "no"])
 AM_CONDITIONAL([OSS_FUZZ], [test "$with_oss_fuzz" != "no"])
-
-AS_IF([test "$enable_documentation" = "yes"],[
-
-AC_PATH_PROG([SPHINXBUILD], [sphinx-build], [false])
-AS_IF([test "$SPHINXBUILD" = "false"],
-  [AC_MSG_WARN([missing 'sphinx-build' executable for documentation generation])]
-)
-AC_PATH_PROG([PDFLATEX], [pdflatex], [false])
-
-])
-
-AM_CONDITIONAL([HAVE_SPHINXBUILD], test "$SPHINXBUILD" != "false")
-AM_CONDITIONAL([HAVE_PDFLATEX], test "$PDFLATEX" != "false")
 
 # Strip -fdebug-prefix-map= parameters from flags for better reproducibility of binaries.
 filtered_cflags=$(echo -n "$CFLAGS" | \
