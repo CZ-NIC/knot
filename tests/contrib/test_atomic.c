@@ -35,8 +35,8 @@ static volatile knot_atomic_uint64_t counter_sub = 0;
 static volatile knot_atomic_uint64_t atomic_var;
 static volatile knot_atomic_ptr_t atomic_var2;
 static int errors = 0;
-static int uppers = 0;
-static int lowers = 0;
+static int uppers;
+static int lowers;
 static int uppers_count = 0;
 static int lowers_count = 0;
 static pthread_mutex_t mx;
@@ -135,9 +135,12 @@ int main(int argc, char *argv[])
 	is_int(0, errors, "atomicity of ATOMIC_SET / ATOMIC_GET");
 
 	// Test for atomicity of ATOMIC_XCHG.
+	errors = 0;
+	uppers = 0; // Initialize in code so as to calm down Coverity.
+	lowers = 0; // Idem.
+
 	atomic_var2 = UPPER_PTR;
 	uppers++;
-	errors = 0;
 
 	pthread_mutex_init(&mx, NULL);
 	unit = dt_create(THREADS, thread_xchg, NULL, NULL);
