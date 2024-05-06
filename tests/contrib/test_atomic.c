@@ -27,13 +27,16 @@
 #define CYCLES3 100000
 #define UPPER 0xffffffff00000000
 #define LOWER 0x00000000ffffffff
+#define UPPER_PTR ((void *) UPPER)
+#define LOWER_PTR ((void *) LOWER)
 
 static volatile knot_atomic_uint64_t counter_add = 0;
 static volatile knot_atomic_uint64_t counter_sub = 0;
 static volatile knot_atomic_uint64_t atomic_var;
+static volatile knot_atomic_ptr_t atomic_var2;
 static int errors = 0;
-static int uppers = 0;
-static int lowers = 0;
+static int uppers;
+static int lowers;
 static int uppers_count = 0;
 static int lowers_count = 0;
 static pthread_mutex_t mx;
@@ -67,10 +70,10 @@ static int thread_set(struct dthread *thread)
 
 static int thread_xchg(struct dthread *thread)
 {
-	u_int64_t val = (dt_get_id(thread) % 2) ? UPPER : LOWER;
+	void *val = (dt_get_id(thread) % 2) ? UPPER_PTR : LOWER_PTR;
 
 	pthread_mutex_lock(&mx);
-	if (val == UPPER) {
+	if (val == UPPER_PTR) {
 		uppers++;
 	} else {
 		lowers++;
@@ -78,18 +81,19 @@ static int thread_xchg(struct dthread *thread)
 	pthread_mutex_unlock(&mx);
 
 	for (int i = 0; i < CYCLES3; i++) {
-		val = ATOMIC_XCHG(atomic_var, val);
-		if (val != UPPER && val != LOWER) {
+		val = ATOMIC_XCHG(atomic_var2, val);
+		if (val != UPPER_PTR && val != LOWER_PTR) {
 			// Non-atomic counter, won't be accurate!
 			// However, it's sufficient for fault detection.
 			errors++;
+			return 0;
 		}
 	}
 
 	pthread_mutex_lock(&mx);
-	if (val == UPPER) {
+	if (val == UPPER_PTR) {
 		uppers_count++;
-	} else if (val == LOWER) {
+	} else if (val == LOWER_PTR) {
 		lowers_count++;
 	};
 	pthread_mutex_unlock(&mx);
@@ -131,9 +135,12 @@ int main(int argc, char *argv[])
 	is_int(0, errors, "atomicity of ATOMIC_SET / ATOMIC_GET");
 
 	// Test for atomicity of ATOMIC_XCHG.
-	atomic_var = UPPER;
-	uppers++;
 	errors = 0;
+	uppers = 0; // Initialize in code so as to calm down Coverity.
+	lowers = 0; // Idem.
+
+	atomic_var2 = UPPER_PTR;
+	uppers++;
 
 	pthread_mutex_init(&mx, NULL);
 	unit = dt_create(THREADS, thread_xchg, NULL, NULL);
@@ -142,17 +149,17 @@ int main(int argc, char *argv[])
 	dt_delete(&unit);
 	pthread_mutex_destroy(&mx);
 
-	if (atomic_var == UPPER) {
+	if (atomic_var2 == UPPER_PTR) {
 		uppers_count++;
-	} else if (atomic_var == LOWER) {
+	} else if (atomic_var2 == LOWER_PTR) {
 		lowers_count++;
 	} else {
 		errors++;
 	}
 
 	is_int(0, errors, "set/get atomicity of ATOMIC_XCHG");
-	is_int(lowers, lowers_count, "atomicity of ATOMIC_XCHG");
 	is_int(uppers, uppers_count, "atomicity of ATOMIC_XCHG");
+	is_int(lowers, lowers_count, "atomicity of ATOMIC_XCHG");
 
 	return 0;
 }
