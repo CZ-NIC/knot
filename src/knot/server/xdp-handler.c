@@ -86,7 +86,7 @@ void xdp_handle_free(xdp_handle_ctx_t *ctx)
 	// send RST on all existing conns
 	knot_tcp_relay_t sweep_relays[XDP_BATCHLEN] = { 0 };
 	int ret = KNOT_EOK;
-	while (ret == KNOT_EOK && ctx->tcp_table->usage > 0) {
+	while (ret == KNOT_EOK && ctx->tcp_table != NULL && ctx->tcp_table->usage > 0) {
 		knot_xdp_send_prepare(ctx->sock);
 		ret = knot_tcp_sweep(ctx->tcp_table, UINT32_MAX, 1, UINT32_MAX, UINT32_MAX, SIZE_MAX,
 		                     SIZE_MAX, sweep_relays, XDP_BATCHLEN, &ctx->tcp_closed);
