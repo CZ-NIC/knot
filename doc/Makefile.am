@@ -99,7 +99,7 @@ endif # ENABLE_XDP
 endif # HAVE_UTILS
 
 html-local:
-	$(AM_V_SPHINX)$(SPHINXBUILD) -b html -d $(SPHINXBUILDDIR)/doctrees $(ALLSPHINXOPTS) $(SPHINXBUILDDIR)/html
+	$(AM_V_SPHINX)$(SPHINXBUILD) -b html -d $(SPHINXBUILDDIR)/doctrees/html $(ALLSPHINXOPTS) $(SPHINXBUILDDIR)/html
 	@echo "The HTML documentation has been built in $(SPHINXBUILDDIR)/html/"
 
 install-html-local:
@@ -109,7 +109,7 @@ install-html-local:
 	$(INSTALL_DATA) $(SPHINXBUILDDIR)/html/_static/* $(DESTDIR)/$(docdir)/_static/
 
 singlehtml:
-	$(AM_V_SPHINX)$(SPHINXBUILD) -b singlehtml -d $(SPHINXBUILDDIR)/doctrees $(ALLSPHINXOPTS) $(SPHINXBUILDDIR)/singlehtml
+	$(AM_V_SPHINX)$(SPHINXBUILD) -b singlehtml -d $(SPHINXBUILDDIR)/doctrees/singlehtml $(ALLSPHINXOPTS) $(SPHINXBUILDDIR)/singlehtml
 	@echo "The single HTML documentation has been built in $(SPHINXBUILDDIR)/singlehtml/"
 
 install-singlehtml: singlehtml
@@ -118,7 +118,7 @@ install-singlehtml: singlehtml
 	$(INSTALL_DATA) $(SPHINXBUILDDIR)/singlehtml/_static/* $(DESTDIR)/$(docdir)/_static/
 
 epub:
-	$(AM_V_SPHINX)$(SPHINXBUILD) -b epub -A today=$(RELEASE_DATE) -d $(SPHINXBUILDDIR)/doctrees $(ALLSPHINXOPTS) $(SPHINXBUILDDIR)/epub
+	$(AM_V_SPHINX)$(SPHINXBUILD) -b epub -A today=$(RELEASE_DATE) -d $(SPHINXBUILDDIR)/doctrees/epub $(ALLSPHINXOPTS) $(SPHINXBUILDDIR)/epub
 	@echo "The EPUB documentation has been built in $(SPHINXBUILDDIR)/epub/"
 
 install-epub:
@@ -127,7 +127,7 @@ install-epub:
 
 if HAVE_PDFLATEX
 pdf-local:
-	$(AM_V_SPHINX)$(SPHINXBUILD) -b latex -d $(SPHINXBUILDDIR)/doctrees $(ALLSPHINXOPTS) $(SPHINXBUILDDIR)/latex
+	$(AM_V_SPHINX)$(SPHINXBUILD) -b latex -d $(SPHINXBUILDDIR)/doctrees/latex $(ALLSPHINXOPTS) $(SPHINXBUILDDIR)/latex
 	$(MAKE) -C $(SPHINXBUILDDIR)/latex all-pdf
 	@echo "The PDF documentation has been built in $(SPHINXBUILDDIR)/latex/"
 
@@ -142,7 +142,7 @@ endif # HAVE_PDFLATEX
 
 man: $(man_MANS)
 $(man_MANS)&: $(MANPAGES_RST)
-	$(AM_V_SPHINX)$(SPHINXBUILD) -b man -d $(SPHINXBUILDDIR)/doctrees $(man_SPHINXOPTS) $(SPHINXBUILDDIR)/man
+	$(AM_V_SPHINX)$(SPHINXBUILD) -b man -d $(SPHINXBUILDDIR)/doctrees/man $(man_SPHINXOPTS) $(SPHINXBUILDDIR)/man
 	@mkdir -p man
 	@for f in $(SPHINXBUILDDIR)/man/*; do \
 	  sed -e 's,[@]config_dir@,$(config_dir),' \
