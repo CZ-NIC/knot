@@ -128,9 +128,9 @@ AS_IF([test "$enable_documentation" = "yes"], [
      enable_documentation=no]
   )
   AC_PATH_PROG([PDFLATEX], [pdflatex], [false])
-  AM_CONDITIONAL([HAVE_PDFLATEX], test "$PDFLATEX" != "false")
 ])
 AM_CONDITIONAL([HAVE_DOCS], [test "$enable_documentation" = "yes"])
+AM_CONDITIONAL([HAVE_PDFLATEX], test "$PDFLATEX" != "false")
 
 ######################
 # Generic dependencies
