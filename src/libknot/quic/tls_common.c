@@ -98,7 +98,9 @@ static int self_key(gnutls_x509_privkey_t *privkey, const char *key_file)
 	}
 
 finish:
-	close(fd);
+	if (fd > -1) {
+		close(fd);
+	}
 	gnutls_free(data.data);
 	if (ret != GNUTLS_E_SUCCESS) {
 		gnutls_x509_privkey_deinit(*privkey);
