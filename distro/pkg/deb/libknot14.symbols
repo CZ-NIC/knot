@@ -8,6 +8,11 @@ libknot.so.14 libknot14 #MINVER#
  KNOT_DB_LMDB_RDONLY@Base 3.3.0
  KNOT_DB_LMDB_WRITEMAP@Base 3.3.0
  KNOT_DUMP_STYLE_DEFAULT@Base 3.3.0
+ knot_creds_cert@Base 3.4.0
+ knot_creds_free@Base 3.4.0
+ knot_creds_init@Base 3.4.0
+ knot_creds_init_peer@Base 3.4.0
+ knot_creds_update@Base 3.4.0
  knot_ctl_accept@Base 3.3.0
  knot_ctl_alloc@Base 3.3.0
  knot_ctl_bind@Base 3.3.0
@@ -120,15 +125,10 @@ libknot.so.14 libknot14 #MINVER#
  knot_quic_conn_local_port@Base 3.3.0
  knot_quic_conn_new_stream@Base 3.3.0
  knot_quic_conn_next_timeout@Base 3.3.3
- knot_quic_conn_pin@Base 3.3.0
  knot_quic_conn_rtt@Base 3.3.0
  knot_quic_conn_stream_free@Base 3.3.0
- knot_quic_creds_cert@Base 3.3.0
- knot_quic_free_creds@Base 3.3.0
  knot_quic_handle@Base 3.3.0
  knot_quic_hanle_expiry@Base 3.3.3
- knot_quic_init_creds@Base 3.3.0
- knot_quic_init_creds_peer@Base 3.3.0
  knot_quic_send@Base 3.3.0
  knot_quic_session_available@Base 3.3.0
  knot_quic_session_load@Base 3.3.0
@@ -188,6 +188,16 @@ libknot.so.14 libknot14 #MINVER#
  knot_tcp_sweep@Base 3.3.0
  knot_tcp_table_free@Base 3.3.0
  knot_tcp_table_new@Base 3.3.0
+ knot_tls_conn_del@Base 3.4.0
+ knot_tls_conn_new@Base 3.4.0
+ knot_tls_ctx_free@Base 3.4.0
+ knot_tls_ctx_new@Base 3.4.0
+ knot_tls_handshake@Base 3.4.0
+ knot_tls_pin@Base 3.4.0
+ knot_tls_pin_check@Base 3.4.0
+ knot_tls_recv_dns@Base 3.4.0
+ knot_tls_send_dns@Base 3.4.0
+ knot_tls_session@Base 3.4.0
  knot_tsig_add@Base 3.3.0
  knot_tsig_append@Base 3.3.0
  knot_tsig_client_check@Base 3.3.0

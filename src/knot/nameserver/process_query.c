@@ -30,9 +30,7 @@
 #include "knot/nameserver/notify.h"
 #include "knot/server/server.h"
 #include "libknot/libknot.h"
-#ifdef ENABLE_QUIC
-#include "libknot/quic/quic.h"
-#endif // ENABLE_QUIC
+#include "libknot/quic/tls_common.h"
 #include "contrib/base64.h"
 #include "contrib/macros.h"
 #include "contrib/mempattern.h"
@@ -390,8 +388,8 @@ static int answer_edns_put(knot_pkt_t *resp, knotd_qdata_t *qdata)
 		return ret;
 	}
 
-	/* Align the response if QUIC with EDNS. */
-	if (qdata->params->proto == KNOTD_QUERY_PROTO_QUIC) {
+	/* Align the response if QUIC or TLS with EDNS. */
+	if (qdata->params->proto == KNOTD_QUERY_PROTO_QUIC || qdata->params->proto == KNOTD_QUERY_PROTO_TLS) {
 		int pad_len = knot_pkt_default_padding_size(resp, &qdata->opt_rr);
 		if (pad_len > -1) {
 			ret = knot_edns_reserve_option(&qdata->opt_rr, KNOT_EDNS_OPTION_PADDING,
@@ -713,27 +711,32 @@ bool process_query_acl_check(conf_t *conf, acl_action_t action,
 		const yp_name_t *item = (action == ACL_ACTION_NOTIFY) ? C_MASTER : C_NOTIFY;
 		conf_val_t rmts = conf_zone_get(conf, item, zone_name);
 		allowed = rmt_allowed(conf, &rmts, query_source, &tsig,
-		                      qdata->params->quic_conn);
+		                      qdata->params->tls_session);
 		automatic = allowed;
 	}
 	if (!allowed) {
 		conf_val_t acl = conf_zone_get(conf, C_ACL, zone_name);
 		allowed = acl_allowed(conf, &acl, action, query_source, &tsig,
-		                      zone_name, query, qdata->params->quic_conn);
+		                      zone_name, query, qdata->params->tls_session);
 	}
 
 	if (log_enabled_debug()) {
 		int pin_size = 0;
-#ifdef ENABLE_QUIC
-		uint8_t bin_pin[KNOT_QUIC_PIN_LEN], pin[2 * KNOT_QUIC_PIN_LEN];
+		uint8_t bin_pin[KNOT_TLS_PIN_LEN], pin[2 * KNOT_TLS_PIN_LEN];
 		size_t bin_pin_size = sizeof(bin_pin);
-		knot_quic_conn_pin(qdata->params->quic_conn, bin_pin, &bin_pin_size, false);
+		knot_tls_pin(qdata->params->tls_session, bin_pin, &bin_pin_size, false);
 		if (bin_pin_size > 0) {
 			pin_size = knot_base64_encode(bin_pin, bin_pin_size, pin, sizeof(pin));
 		}
-#else
-		uint8_t pin[1];
-#endif // ENABLE_QUIC
+
+		const char *proto_str;
+		switch (qdata->params->proto) {
+		case KNOTD_QUERY_PROTO_UDP:  proto_str = ", UDP"; break;
+		case KNOTD_QUERY_PROTO_TCP:  proto_str = ", TCP"; break;
+		case KNOTD_QUERY_PROTO_QUIC: proto_str = ", QUIC"; break;
+		case KNOTD_QUERY_PROTO_TLS:  proto_str = ", TLS"; break;
+		default:                     proto_str = "";
+		}
 
 		log_zone_debug(zone_name,
 		               "ACL, %s, action %s, remote %s%s%s%s%s%.*s%s",
@@ -742,7 +745,7 @@ bool process_query_acl_check(conf_t *conf, acl_action_t action,
 		               addr_str,
 		               (key_name[0] != '\0') ? ", key " : "",
 		               (key_name[0] != '\0') ? key_name : "",
-		               (qdata->params->proto == KNOTD_QUERY_PROTO_QUIC) ? ", QUIC" : "",
+		               proto_str,
 		               (pin_size > 0) ? " cert-key " : "",
 		               (pin_size > 0) ? pin_size : 0,
 		               (pin_size > 0) ? (const char *)pin : "",

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -18,16 +18,13 @@
 
 #include "contrib/string.h"
 #include "contrib/wire_ctx.h"
-#ifdef ENABLE_QUIC
-#include "libknot/quic/quic.h"
-#endif // ENABLE_QUIC
 
 static bool cert_pin_check(const uint8_t *session_pin, size_t session_pin_size,
                            conf_val_t *pins)
 {
 	if (pins->code == KNOT_ENOENT) { // No certificate pin authentication required.
 		return true;
-	} else if (session_pin_size == 0) { // Not a QUIC connection.
+	} else if (session_pin_size == 0) { // Not a TLS/QUIC connection.
 		return false;
 	}
 
@@ -283,20 +280,15 @@ static bool check_addr_key(conf_t *conf, conf_val_t *addr_val, conf_val_t *key_v
 bool acl_allowed(conf_t *conf, conf_val_t *acl, acl_action_t action,
                  const struct sockaddr_storage *addr, knot_tsig_key_t *tsig,
                  const knot_dname_t *zone_name, knot_pkt_t *query,
-                 struct knot_quic_conn *conn)
+                 struct gnutls_session_int *tls_session)
 {
 	if (acl == NULL || addr == NULL || tsig == NULL) {
 		return false;
 	}
 
-#ifdef ENABLE_QUIC
-	uint8_t session_pin[KNOT_QUIC_PIN_LEN];
+	uint8_t session_pin[KNOT_TLS_PIN_LEN];
 	size_t session_pin_size = sizeof(session_pin);
-	knot_quic_conn_pin(conn, session_pin, &session_pin_size, false);
-#else
-	uint8_t session_pin[1];
-	size_t session_pin_size = 0;
-#endif // ENABLE_QUIC
+	knot_tls_pin(tls_session, session_pin, &session_pin_size, false);
 
 	bool forward = false;
 	if (action == ACL_ACTION_UPDATE) {
@@ -392,20 +384,15 @@ next_acl:
 }
 
 bool rmt_allowed(conf_t *conf, conf_val_t *rmts, const struct sockaddr_storage *addr,
-                 knot_tsig_key_t *tsig, struct knot_quic_conn *conn)
+                 knot_tsig_key_t *tsig, struct gnutls_session_int *tls_session)
 {
 	if (!conf->cache.srv_auto_acl) {
 		return false;
 	}
 
-#ifdef ENABLE_QUIC
-	uint8_t session_pin[KNOT_QUIC_PIN_LEN];
+	uint8_t session_pin[KNOT_TLS_PIN_LEN];
 	size_t session_pin_size = sizeof(session_pin);
-	knot_quic_conn_pin(conn, session_pin, &session_pin_size, false);
-#else
-	uint8_t session_pin[1];
-	size_t session_pin_size = 0;
-#endif // ENABLE_QUIC
+	knot_tls_pin(tls_session, session_pin, &session_pin_size, false);
 
 	conf_mix_iter_t iter;
 	conf_mix_iter_init(conf, rmts, &iter);

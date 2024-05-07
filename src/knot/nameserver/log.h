@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -81,6 +81,8 @@ static inline const char *log_conn_info(knotd_query_proto_t proto, bool pool)
 		return pool ? " TCP/pool" : " TCP";
 	case KNOTD_QUERY_PROTO_QUIC:
 		return pool ? " QUIC/0-RTT" : " QUIC";
+	case KNOTD_QUERY_PROTO_TLS:
+		return " TLS";
 	default:
 		return "";
 	}

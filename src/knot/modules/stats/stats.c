@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -118,9 +118,11 @@ enum {
 	PROTOCOL_UDP4 = 0,
 	PROTOCOL_TCP4,
 	PROTOCOL_QUIC4,
+	PROTOCOL_TLS4,
 	PROTOCOL_UDP6,
 	PROTOCOL_TCP6,
 	PROTOCOL_QUIC6,
+	PROTOCOL_TLS6,
 	PROTOCOL_UDP4_XDP,
 	PROTOCOL_TCP4_XDP,
 	PROTOCOL_QUIC4_XDP,
@@ -136,9 +138,11 @@ static char *protocol_to_str(uint32_t idx, uint32_t count)
 	case PROTOCOL_UDP4:      return strdup("udp4");
 	case PROTOCOL_TCP4:      return strdup("tcp4");
 	case PROTOCOL_QUIC4:     return strdup("quic4");
+	case PROTOCOL_TLS4:      return strdup("tls4");
 	case PROTOCOL_UDP6:      return strdup("udp6");
 	case PROTOCOL_TCP6:      return strdup("tcp6");
 	case PROTOCOL_QUIC6:     return strdup("quic6");
+	case PROTOCOL_TLS6:      return strdup("tls6");
 	case PROTOCOL_UDP4_XDP:  return strdup("udp4-xdp");
 	case PROTOCOL_TCP4_XDP:  return strdup("tcp4-xdp");
 	case PROTOCOL_QUIC4_XDP: return strdup("quic4-xdp");
@@ -521,6 +525,10 @@ static knotd_state_t update_counters(knotd_state_t state, knot_pkt_t *pkt,
 					knotd_mod_stats_incr(mod, tid, CTR_PROTOCOL,
 					                     PROTOCOL_QUIC4, 1);
 				}
+			} else if (qdata->params->proto == KNOTD_QUERY_PROTO_TLS) {
+				assert(!xdp);
+				knotd_mod_stats_incr(mod, tid, CTR_PROTOCOL,
+				                     PROTOCOL_TLS4, 1);
 			} else {
 				if (xdp) {
 					knotd_mod_stats_incr(mod, tid, CTR_PROTOCOL,
@@ -547,6 +555,10 @@ static knotd_state_t update_counters(knotd_state_t state, knot_pkt_t *pkt,
 					knotd_mod_stats_incr(mod, tid, CTR_PROTOCOL,
 					                     PROTOCOL_QUIC6, 1);
 				}
+			} else if (qdata->params->proto == KNOTD_QUERY_PROTO_TLS) {
+				assert(!xdp);
+				knotd_mod_stats_incr(mod, tid, CTR_PROTOCOL,
+				                     PROTOCOL_TLS6, 1);
 			} else {
 				if (xdp) {
 					knotd_mod_stats_incr(mod, tid, CTR_PROTOCOL,

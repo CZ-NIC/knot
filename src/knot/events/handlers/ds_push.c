@@ -38,8 +38,7 @@ struct ds_push_data {
 
 #define DS_PUSH_LOG(priority, zone, remote, flags, fmt, ...) \
 	ns_log(priority, zone, LOG_OPERATION_DS_PUSH, LOG_DIRECTION_OUT, remote, \
-	       ((flags) & KNOT_REQUESTOR_QUIC) ? KNOTD_QUERY_PROTO_QUIC : KNOTD_QUERY_PROTO_TCP, \
-	       ((flags) & KNOT_REQUESTOR_REUSED), fmt, ## __VA_ARGS__)
+	       flags2proto(flags), ((flags) & KNOT_REQUESTOR_REUSED), fmt, ## __VA_ARGS__)
 
 static const knot_rdata_t remove_cds = { 5, { 0, 0, 0, 0, 0 } };
 

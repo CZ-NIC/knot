@@ -533,7 +533,8 @@ int tls_ctx_setup_remote_endpoint(tls_ctx_t *ctx, const gnutls_datum_t *alpn,
 	}
 
 	if (priority != NULL) {
-		ret = gnutls_priority_set_direct(ctx->session, priority, NULL);
+		ret = gnutls_set_default_priority_append(ctx->session, priority,
+		                                         NULL, 0);
 	} else {
 		ret = gnutls_set_default_priority(ctx->session);
 	}

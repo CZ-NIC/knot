@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -28,7 +28,6 @@
 #include "knot/conf/conf.h" // please use this only for tiny stuff like quic-log
 #include "knot/server/handler.h"
 #include "libknot/error.h"
-#include "libknot/quic/quic.h"
 
 #define QUIC_BUF_SIZE 4096
 
@@ -157,7 +156,7 @@ int knot_qreq_connect(struct knot_quic_reply **out,
                       int fd,
                       struct sockaddr_storage *remote,
                       struct sockaddr_storage *local,
-                      const struct knot_quic_creds *local_creds,
+                      const struct knot_creds *local_creds,
                       const uint8_t *peer_pin,
                       uint8_t peer_pin_len,
                       bool *reused_fd,
@@ -180,8 +179,7 @@ int knot_qreq_connect(struct knot_quic_reply **out,
 	r->send_reply = qr_send_reply;
 	r->free_reply = qr_free_reply;
 
-	struct knot_quic_creds *creds = knot_quic_init_creds_peer(local_creds,
-	                                                          peer_pin, peer_pin_len);
+	struct knot_creds *creds = knot_creds_init_peer(local_creds, peer_pin, peer_pin_len);
 	if (creds == NULL) {
 		free(r);
 		return KNOT_ENOMEM;
@@ -191,7 +189,7 @@ int knot_qreq_connect(struct knot_quic_reply **out,
 	knot_quic_table_t *table = knot_quic_table_new(1, QUIC_BUF_SIZE,
 	                                               QUIC_BUF_SIZE, 0, creds);
 	if (table == NULL) {
-		knot_quic_free_creds(creds);
+		knot_creds_free(creds);
 		free(r);
 		return KNOT_ENOMEM;
 	}
@@ -295,7 +293,7 @@ void knot_qreq_close(struct knot_quic_reply *r, bool send_close)
 	knot_quic_table_rem(conn, table);
 	knot_quic_cleanup(&conn, 1);
 	if (table != NULL) {
-		knot_quic_free_creds(table->creds);
+		knot_creds_free(table->creds);
 	}
 	knot_quic_table_free(table);
 	free(r);

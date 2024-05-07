@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -35,6 +35,7 @@ static int fdset_resize(fdset_t *set, const unsigned size)
 	assert(set);
 
 	MEM_RESIZE(set->ctx, size);
+	MEM_RESIZE(set->ctx2, size);
 	MEM_RESIZE(set->timeout, size);
 #if defined(HAVE_EPOLL) || defined(HAVE_KQUEUE)
 	MEM_RESIZE(set->ev, size);
@@ -80,6 +81,7 @@ void fdset_clear(fdset_t *set)
 	}
 
 	free(set->ctx);
+	free(set->ctx2);
 	free(set->timeout);
 #if defined(HAVE_EPOLL) || defined(HAVE_KQUEUE)
 	free(set->ev);
@@ -104,6 +106,7 @@ int fdset_add(fdset_t *set, const int fd, const fdset_event_t events, void *ctx)
 
 	const int idx = set->n++;
 	set->ctx[idx] = ctx;
+	set->ctx2[idx] = NULL;
 	set->timeout[idx] = 0;
 #ifdef HAVE_EPOLL
 	set->ev[idx].data.fd = fd;
@@ -164,6 +167,7 @@ int fdset_remove(fdset_t *set, const unsigned idx)
 	/* Nothing else if it is the last one. Move last -> i if some remain. */
 	if (idx < last) {
 		set->ctx[idx] = set->ctx[last];
+		set->ctx2[idx] = set->ctx2[last];
 		set->timeout[idx] = set->timeout[last];
 #if defined(HAVE_EPOLL) || defined (HAVE_KQUEUE)
 		set->ev[idx] = set->ev[last];
@@ -326,8 +330,7 @@ void fdset_sweep(fdset_t *set, const fdset_sweep_cb_t cb, void *data)
 	while (idx < set->n) {
 		/* Check sweep state, remove if requested. */
 		if (set->timeout[idx] > 0 && set->timeout[idx] <= now.tv_sec) {
-			const int fd = fdset_get_fd(set, idx);
-			if (cb(set, fd, data) == FDSET_SWEEP) {
+			if (cb(set, idx, data) == FDSET_SWEEP) {
 				(void)fdset_remove(set, idx);
 				continue;
 			}

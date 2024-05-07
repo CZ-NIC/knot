@@ -217,6 +217,7 @@ General options related to the server.
      dbus-init-delay: TIME
      listen: ADDR[@INT] | STR ...
      listen-quic: ADDR[@INT] ...
+     listen-tls: ADDR[@INT] ...
 
 .. CAUTION::
    When you change configuration parameters dynamically or via configuration file
@@ -561,11 +562,9 @@ Maximum EDNS0 UDP payload size for IPv6.
 key-file
 --------
 
-Path to a server key PEM file which is used for DNS over QUIC communication.
+Path to a server key PEM file which is used for DNS over QUIC/TLS communication.
 A non-absolute path of a user specified key file is relative to the
 :file:`@config_dir@` directory.
-
-Change of this parameter requires restart of the Knot server to take effect.
 
 *Default:* auto-generated key
 
@@ -574,10 +573,8 @@ Change of this parameter requires restart of the Knot server to take effect.
 cert-file
 ---------
 
-Path to a server certificate PEM file which is used for DNS over QUIC communication.
+Path to a server certificate PEM file which is used for DNS over QUIC/TLS communication.
 A non-absolute path is relative to the :file:`@config_dir@` directory.
-
-Change of this parameter requires restart of the Knot server to take effect.
 
 *Default:* one-time in-memory certificate
 
@@ -702,6 +699,22 @@ One or more IP addresses (and optionally ports) where the server listens
 for incoming queries over QUIC protocol.
 
 Change of this parameter requires restart of the Knot server to take effect.
+
+*Default:* not set
+
+.. _server_listen-tls:
+
+listen-tls
+----------
+
+One or more IP addresses (and optionally ports) where the server listens
+for incoming queries over TLS protocol (DoT).
+
+Change of this parameter requires restart of the Knot server to take effect.
+
+.. NOTE::
+   Incoming :ref:`DDNS<dynamic updates>` over TLS isn't supported.
+   The server always responds with SERVFAIL.
 
 *Default:* not set
 
@@ -1429,6 +1442,7 @@ transfer, target for a notification, etc.).
      address: ADDR[@INT] | STR ...
      via: ADDR[@INT] ...
      quic: BOOL
+     tls: BOOL
      key: key_id
      cert-key: BASE64 ...
      block-notify-after-transfer: BOOL
@@ -1507,6 +1521,16 @@ with this remote.
    does not take effect for QUIC. However, fast QUIC handshakes utilizing obtained
    session tickets are used for reopening connections to recently (up to 1 day)
    queried remotes.
+
+*Default:* ``off``
+
+.. _remote_tls:
+
+tls
+---
+
+If this option is set, the TLS (DoT) protocol will be used for outgoing communication
+with this remote.
 
 *Default:* ``off``
 

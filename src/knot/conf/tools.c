@@ -43,9 +43,7 @@
 #include "knot/updates/acl.h"
 #include "knot/zone/serial.h"
 #include "libknot/errcode.h"
-#ifdef ENABLE_QUIC
-#include "libknot/quic/quic.h"
-#endif // ENABLE_QUIC
+#include "libknot/quic/tls_common.h"
 #include "libknot/yparser/yptrafo.h"
 #include "libknot/xdp.h"
 #include "contrib/files.h"
@@ -338,15 +336,13 @@ int check_xdp_listen(
 int check_cert_pin(
 	knotd_conf_check_args_t *args)
 {
-#ifdef ENABLE_QUIC
-	if (args->data_len != sizeof(uint16_t) + KNOT_QUIC_PIN_LEN) {
+	if (args->data_len != sizeof(uint16_t) + KNOT_TLS_PIN_LEN) {
 		(void)snprintf(check_str, sizeof(check_str),
 		               "invalid certificate pin, expected base64-encoded "
-		               "%u bytes", KNOT_QUIC_PIN_LEN);
+		               "%u bytes", KNOT_TLS_PIN_LEN);
 		args->err_str = check_str;
 		return KNOT_EINVAL;
 	}
-#endif // ENABLE_QUIC
 
 	return KNOT_EOK;
 }
@@ -544,7 +540,6 @@ static void check_mtu(knotd_conf_check_args_t *args, conf_val_t *xdp_listen)
 #endif
 }
 
-#ifdef ENABLE_QUIC
 static bool listen_hit(const struct sockaddr_storage *ss1,
                        const struct sockaddr_storage *ss2)
 {
@@ -555,7 +550,33 @@ static bool listen_hit(const struct sockaddr_storage *ss1,
 		return sockaddr_cmp(ss1, ss2, false) == 0;
 	}
 }
-#endif // ENABLE_QUIC
+
+static bool listen_overlaps(
+	knotd_conf_check_args_t *args,
+	conf_val_t *chk_listen,
+	size_t chk_listen_count)
+{
+	conf_val_t listen_val = conf_get_txn(args->extra->conf, args->extra->txn,
+	                                     C_SRV, C_LISTEN);
+	size_t listen_count = conf_val_count(&listen_val);
+
+	for (size_t i = 0; listen_count > 0 && i < chk_listen_count; i++) {
+		struct sockaddr_storage chk_addr = conf_addr(chk_listen, NULL);
+
+		for (size_t j = 0; j < listen_count; j++) {
+			struct sockaddr_storage listen_addr = conf_addr(&listen_val, NULL);
+			if (listen_hit(&chk_addr, &listen_addr)) {
+				return true;
+			}
+			conf_val_next(&listen_val);
+		}
+
+		conf_val(&listen_val);
+		conf_val_next(chk_listen);
+	}
+
+	return false;
+}
 
 int check_server(
 	knotd_conf_check_args_t *args)
@@ -569,30 +590,26 @@ int check_server(
 		return KNOT_EINVAL;
 	}
 
+	conf_val_t listls_val = conf_get_txn(args->extra->conf, args->extra->txn,
+	                                     C_SRV, C_LISTEN_TLS);
+	size_t listls_count = conf_val_count(&listls_val);
+	if (listls_count > 0) {
+		if (listen_overlaps(args, &listls_val, listls_count)) {
+			args->err_str = "TLS listen address/port overlaps "
+			                "with TCP listen address/port";
+			return KNOT_EINVAL;
+		}
+	}
+
 	conf_val_t liquic_val = conf_get_txn(args->extra->conf, args->extra->txn,
 	                                     C_SRV, C_LISTEN_QUIC);
 	size_t liquic_count = conf_val_count(&liquic_val);
 	if (liquic_count > 0) {
 #ifdef ENABLE_QUIC
-		conf_val_t listen_val = conf_get_txn(args->extra->conf, args->extra->txn,
-		                                     C_SRV, C_LISTEN);
-		size_t listen_count = conf_val_count(&listen_val);
-
-		for (size_t i = 0; listen_count > 0 && i < liquic_count; i++) {
-			struct sockaddr_storage liquic_addr = conf_addr(&liquic_val, NULL);
-
-			for (size_t j = 0; j < listen_count; j++) {
-				struct sockaddr_storage listen_addr = conf_addr(&listen_val, NULL);
-				if (listen_hit(&liquic_addr, &listen_addr)) {
-					args->err_str = "QUIC listen address/port overlaps "
-					                "with UDP listen address/port";
-					return KNOT_EINVAL;
-				}
-				conf_val_next(&listen_val);
-			}
-
-			conf_val(&listen_val);
-			conf_val_next(&liquic_val);
+		if (listen_overlaps(args, &liquic_val, liquic_count)) {
+			args->err_str = "QUIC listen address/port overlaps "
+			                "with UDP listen address/port";
+			return KNOT_EINVAL;
 		}
 #else
 		args->err_str = "QUIC processing not available";
@@ -861,12 +878,18 @@ int check_remote(
 		return KNOT_EINVAL;
 	}
 
+	conf_val_t tls = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_RMT,
+	                                    C_TLS, args->id, args->id_len);
 	conf_val_t quic = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_RMT,
 	                                     C_QUIC, args->id, args->id_len);
 	if (quic.code == KNOT_EOK) {
 #ifdef ENABLE_QUIC
-		(void)0;
+		if (conf_bool(&quic) && conf_bool(&tls)) {
+			args->err_str = "remote can't use both QUIC and TLS";
+			return KNOT_EINVAL;
+		}
 #else
+		(void)tls;
 		args->err_str = "QUIC not available";
 		return KNOT_EINVAL;
 #endif

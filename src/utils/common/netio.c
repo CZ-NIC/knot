@@ -32,6 +32,7 @@
 #include "utils/common/msg.h"
 #include "utils/common/tls.h"
 #include "libknot/libknot.h"
+#include "libknot/quic/tls_common.h"
 #include "contrib/net.h"
 #include "contrib/proxyv2/proxyv2.h"
 #include "contrib/sockaddr.h"
@@ -521,8 +522,8 @@ int net_connect(net_t *net)
 #endif //LIBNGHTTP2
 			{
 				// Establish TLS connection.
-				ret = tls_ctx_setup_remote_endpoint(&net->tls, &dot_alpn, 1, NULL,
-				        net_get_remote(net));
+				ret = tls_ctx_setup_remote_endpoint(&net->tls, &dot_alpn, 1,
+				        KNOT_TLS_PRIORITIES, net_get_remote(net));
 				if (ret != 0) {
 					net_close(net);
 					return ret;
@@ -546,7 +547,7 @@ int net_connect(net_t *net)
 				return ret;
 			}
 			ret = tls_ctx_setup_remote_endpoint(&net->tls,
-			        &doq_alpn, 1, QUIC_PRIORITY, net_get_remote(net));
+			        &doq_alpn, 1, KNOT_TLS_PRIORITIES, net_get_remote(net));
 			if (ret != 0) {
 				net_close(net);
 				return ret;

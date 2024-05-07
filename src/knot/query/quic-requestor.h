@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -17,15 +17,13 @@
 #pragma once
 
 #include "contrib/sockaddr.h"
-
-struct knot_quic_creds;
-struct knot_quic_reply;
+#include "libknot/quic/quic.h"
 
 int knot_qreq_connect(struct knot_quic_reply **out,
                       int fd,
                       struct sockaddr_storage *remote,
                       struct sockaddr_storage *local,
-                      const struct knot_quic_creds *local_creds,
+                      const struct knot_creds *local_creds,
                       const uint8_t *peer_pin,
                       uint8_t peer_pin_len,
                       bool *reused_fd,

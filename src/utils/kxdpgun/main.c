@@ -485,7 +485,7 @@ void *xdp_gun_thread(void *_ctx)
 	knot_tcp_table_t *tcp_table = NULL;
 #ifdef ENABLE_QUIC
 	knot_quic_table_t *quic_table = NULL;
-	struct knot_quic_creds *quic_creds = NULL;
+	struct knot_creds *quic_creds = NULL;
 	list_t quic_sessions;
 	init_list(&quic_sessions);
 #endif // ENABLE_QUIC
@@ -502,7 +502,7 @@ void *xdp_gun_thread(void *_ctx)
 	}
 	if (ctx->quic) {
 #ifdef ENABLE_QUIC
-		quic_creds = knot_quic_init_creds_peer(NULL, NULL, 0);
+		quic_creds = knot_creds_init_peer(NULL, NULL, 0);
 		if (quic_creds == NULL) {
 			ERR2("failed to initialize QUIC context");
 			return NULL;
@@ -930,7 +930,7 @@ void *xdp_gun_thread(void *_ctx)
 	WALK_LIST_DELSAFE(n, nxt, quic_sessions) {
 		knot_quic_session_load(NULL, n);
 	}
-	knot_quic_free_creds(quic_creds);
+	knot_creds_free(quic_creds);
 #endif // ENABLE_QUIC
 
 	char recv_str[40] = "", lost_str[40] = "", err_str[40] = "";

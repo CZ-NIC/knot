@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -33,8 +33,9 @@
 
 #define MAX_STREAMS_PER_CONN 10 // this limits the number of un-finished streams per conn (i.e. if response has been recvd with FIN, it doesn't count)
 
+struct gnutls_priority_st;
 struct ngtcp2_cid; // declaration taken from wherever in ngtcp2
-struct knot_quic_creds;
+struct knot_creds;
 struct knot_quic_reply;
 struct knot_sweep_stats;
 
@@ -119,7 +120,8 @@ typedef struct knot_quic_table {
 	void (*log_cb)(const char *);
 	const char *qlog_dir;
 	uint64_t hash_secret[4];
-	struct knot_quic_creds *creds;
+	struct knot_creds *creds;
+	struct gnutls_priority_st *priority;
 	struct heap *expiry_heap;
 	knot_quic_cid_t *conns[];
 } knot_quic_table_t;
@@ -136,7 +138,7 @@ typedef struct knot_quic_table {
  * \return Allocated table, or NULL.
  */
 knot_quic_table_t *knot_quic_table_new(size_t max_conns, size_t max_ibufs, size_t max_obufs,
-                                       size_t udp_payload, struct knot_quic_creds *creds);
+                                       size_t udp_payload, struct knot_creds *creds);
 
 /*!
  * \brief Free QUIC table including its contents.
