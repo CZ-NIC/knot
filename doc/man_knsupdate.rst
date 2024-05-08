@@ -33,6 +33,9 @@ Options
 **-v**, **--tcp**
   Use a TCP connection.
 
+**-T**, **--tls**
+  Use a TLS connection.
+
 **-q**, **--quic**
   Use a QUIC connection.
 
