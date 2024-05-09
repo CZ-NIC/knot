@@ -191,6 +191,10 @@ conf_val_t conf_zone_get_txn(
 	conf_db_get(conf, txn, C_ZONE, key1_name, dname, dname_size, &val);
 	switch (val.code) {
 	case KNOT_EOK:
+		if (val.blob_len == 1 && (val.item->flags & CONF_REF_EMPTY)) {
+			static const conf_val_t empty = { .code = KNOT_ENOENT };
+			return empty;
+		}
 		return val;
 	default:
 		CONF_LOG_ZONE(LOG_ERR, dname, "failed to read '%s/%s' (%s)",

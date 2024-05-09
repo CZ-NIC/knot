@@ -32,6 +32,7 @@
 #define CONF_IO_FRLD_MOD	YP_FUSR8  /*!< Reload global modules. */
 #define CONF_IO_FRLD_ZONE	YP_FUSR9  /*!< Reload a specific zone. */
 #define CONF_IO_FRLD_ZONES	YP_FUSR10 /*!< Reload all zones. */
+#define CONF_REF_EMPTY		YP_FUSR11 /*!< Allow empty reference value for zone item. */
 #define CONF_IO_FRLD_ALL	(CONF_IO_FRLD_SRV | CONF_IO_FRLD_LOG | \
 				 CONF_IO_FRLD_MOD | CONF_IO_FRLD_ZONES)
 
