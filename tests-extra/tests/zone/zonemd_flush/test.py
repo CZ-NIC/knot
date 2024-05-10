@@ -8,6 +8,8 @@ from enum import Enum
 from dnstest.test import Test
 from dnstest.utils import *
 
+DNSSEC = random.choice([False, True])
+
 t = Test()
 
 class Algo(Enum):
@@ -63,9 +65,10 @@ slave = t.server("knot")
 
 zone = t.zone_rnd(2, dnssec=False, records=10)
 t.link(zone, master, slave, ixfr=random.choice([True, False]))
-for z in zone:
-    master.dnssec(z).enable = True
-    slave.dnssec(z).validate = True
+if DNSSEC:
+    for z in zone:
+        master.dnssec(z).enable = True
+        slave.dnssec(z).validate = True
 
 master.zonefile_sync = 0
 master.zonemd_generate = "none"
