@@ -3,11 +3,19 @@
 '''Flushing the zone after ZONEMD generation.'''
 
 import random
+from enum import Enum
 
 from dnstest.test import Test
 from dnstest.utils import *
 
+DNSSEC = random.choice([False, True])
+
 t = Test()
+
+class Algo(Enum):
+    SHA384 = "1"
+    SHA512 = "2"
+    NONE = "255"
 
 def has_zonemd(server, zone, alg):
     zfn = server.zones[zone.name].zfile.path
@@ -23,7 +31,7 @@ def has_zonemd(server, zone, alg):
 def check_zonemd(server, zone, alg):
     t.sleep(2)
     for z in zone:
-        if not has_zonemd(server, z, alg):
+        if not has_zonemd(server, z, alg.value):
             set_err("NO ZONEMD in %s" % z.name)
 
 def del_zonemd1(server, zone):
@@ -57,26 +65,37 @@ slave = t.server("knot")
 
 zone = t.zone_rnd(2, dnssec=False, records=10)
 t.link(zone, master, slave, ixfr=random.choice([True, False]))
+if DNSSEC:
+    for z in zone:
+        master.dnssec(z).enable = True
+        slave.dnssec(z).validate = True
 
 master.zonefile_sync = 0
-master.zonemd_generate = "zonemd-sha384"
-slave.zonemd_verify = True
+master.zonemd_generate = "none"
+slave.zonemd_verify = False
 
 t.start()
 
 serial = slave.zones_wait(zone)
-check_zonemd(master, zone, "1")
+check_zonemd(master, zone, Algo.NONE)
+
+master.zonemd_generate = "zonemd-sha384"
+master.gen_confile()
+master.reload()
+slave.zonemd_verify = True
+check_serial_incr(slave, zone, serial, 1, "alg change")
+check_zonemd(master, zone, Algo.SHA384)
 
 master.zonemd_generate = "zonemd-sha512"
 master.gen_confile()
 master.reload()
 check_serial_incr(slave, zone, serial, 1, "alg change")
-check_zonemd(master, zone, "2")
+check_zonemd(master, zone, Algo.SHA512)
 
 del_zonemd(master, zone)
 master.ctl("zone-reload")
 check_serial_incr(slave, zone, serial, 2, "ZONEMD removed")
-check_zonemd(master, zone, "2")
+check_zonemd(master, zone, Algo.SHA512)
 
 for z in zone:
     master.random_ddns(z, allow_empty=False)
@@ -97,7 +116,7 @@ for z in zone:
     master.zones[z.name].zfile.update_rnd()
 master.ctl("zone-reload")
 check_serial_incr(slave, zone, serial, 2, "ZF reload")
-check_zonemd(master, zone, "2")
+check_zonemd(master, zone, Algo.SHA512)
 
 slave.zonemd_verify = False
 slave.gen_confile()
@@ -106,12 +125,23 @@ slave.reload()
 master.zonemd_generate = "none"
 master.gen_confile()
 master.reload()
-check_zonemd(master, zone, "2")
+check_zonemd(master, zone, Algo.SHA512)
 
 master.zonemd_generate = "remove"
 master.gen_confile()
 master.reload()
 check_serial_incr(slave, zone, serial, 1, "ZONEMD remove")
-check_zonemd(master, zone, "255")
+check_zonemd(master, zone, Algo.NONE)
+
+# removing when there's nothing left to remove shouldn't do anything
+master.zonemd_generate = "none"
+master.gen_confile()
+master.reload()
+check_zonemd(master, zone, Algo.NONE)
+
+master.zonemd_generate = "remove"
+master.gen_confile()
+master.reload()
+check_zonemd(master, zone, Algo.NONE)
 
 t.end()
