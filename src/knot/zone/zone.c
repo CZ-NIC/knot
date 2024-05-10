@@ -704,7 +704,7 @@ int zone_master_try(conf_t *conf, zone_t *zone, zone_master_cb callback,
 			true, true, preferred_idx == last_idx, pin_tolerance
 		};
 		ret = try_remote(conf, zone, callback, callback_data, err_str,
-		                 preferred_id, &preferred, &fallback, "notifying ");
+		                 preferred_id, &preferred, &fallback, "notifier ");
 		if (ret == KNOT_EOK || !fallback.remote) {
 			return ret; // Success or local error.
 		}
