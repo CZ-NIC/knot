@@ -191,6 +191,9 @@ int knot_dnssec_zone_sign(zone_update_t *update,
 
 	ctx.rrsig_drop_existing = flags & ZONE_SIGN_DROP_SIGNATURES;
 
+	// create placeholder ZONEMD to be signed and later filled in
+	// ...or remove it if zonemd_alg == ZONE_DIGEST_REMOVE
+	// removing non-existent ZONEMD is ok
 	conf_val_t val = conf_zone_get(conf, C_ZONEMD_GENERATE, zone_name);
 	unsigned zonemd_alg = conf_opt(&val);
 	if (zonemd_alg != ZONE_DIGEST_NONE) {
@@ -285,7 +288,9 @@ int knot_dnssec_zone_sign(zone_update_t *update,
 		}
 	}
 
-	if (zonemd_alg != ZONE_DIGEST_NONE) {
+	// fill in ZONEMD if desired
+	// if (zonemd_alg == ZONE_DIGEST_REMOVE), ZONEMD was already removed above, so skip this
+	if (zonemd_alg != ZONE_DIGEST_NONE && zonemd_alg != ZONE_DIGEST_REMOVE) {
 		result = zone_update_add_digest(update, zonemd_alg, false);
 		if (result == KNOT_EOK) {
 			result = knot_zone_sign_apex_rr(update, KNOT_RRTYPE_ZONEMD, &keyset, &ctx);
@@ -335,6 +340,9 @@ int knot_dnssec_sign_update(zone_update_t *update, conf_t *conf)
 
 	update_policy_from_zone(ctx.policy, update->new_cont);
 
+	// create placeholder ZONEMD to be signed and later filled in
+	// ...or remove it & its RRSIGs if zonemd_alg == ZONE_DIGEST_REMOVE
+	// removing non-existent ZONEMD is ok
 	conf_val_t val = conf_zone_get(conf, C_ZONEMD_GENERATE, zone_name);
 	unsigned zonemd_alg = conf_opt(&val);
 	if (zonemd_alg != ZONE_DIGEST_NONE) {
@@ -412,7 +420,9 @@ int knot_dnssec_sign_update(zone_update_t *update, conf_t *conf)
 		goto done;
 	}
 
-	if (zonemd_alg != ZONE_DIGEST_NONE) {
+	// fill in ZONEMD if desired
+	// if (zonemd_alg == ZONE_DIGEST_REMOVE), ZONEMD was already removed above, so skip this
+	if (zonemd_alg != ZONE_DIGEST_NONE && zonemd_alg != ZONE_DIGEST_REMOVE) {
 		result = zone_update_add_digest(update, zonemd_alg, false);
 		if (result == KNOT_EOK) {
 			result = knot_zone_sign_apex_rr(update, KNOT_RRTYPE_ZONEMD, &keyset, &ctx);
