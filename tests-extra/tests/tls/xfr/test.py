@@ -24,7 +24,10 @@ for z in rnd_zones:
 
 if master.valgrind:
     slave.quic_idle_close_timeout = 10 # for DoQ xfrs
-    slave.tcp_remote_io_timeout = 10000
+    master.tcp_io_timeout = 5000
+    slave.tcp_io_timeout = 5000
+    master.tcp_remote_io_timeout = 5000
+    slave.tcp_remote_io_timeout = 5000
 if slave.valgrind:
     master.quic_idle_close_timeout = 10 # for sending DoQ notify
 
