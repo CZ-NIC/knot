@@ -413,6 +413,7 @@ typedef struct {
 	const struct knot_xdp_msg *xdp_msg;    /*!< Possible XDP message context. */
 	struct gnutls_session_int *tls_session;/*!< TLS session (QUIC or DoT). */
 	struct knot_quic_conn *quic_conn;      /*!< QUIC connection context. */
+	struct knot_tls_conn *tls_conn;        /*!< TLS connection context. */
 	int64_t quic_stream;                   /*!< QUIC stream ID inside quic_conn. */
 	uint32_t measured_rtt;                 /*!< Measured RTT in usecs: QUIC or TCP-XDP. */
 } knotd_qdata_params_t;

@@ -79,8 +79,11 @@ static int update_enqueue(zone_t *zone, knotd_qdata_t *qdata)
 		knot_quic_conn_block(req->quic_conn, true);
 		assert(qdata->params->quic_stream >= 0);
 		req->quic_stream = qdata->params->quic_stream;
-	}
+	} else
 #endif // ENABLE_QUIC
+	if (qdata->params->tls_conn != NULL) {
+		req->tls_req_ctx.conn = qdata->params->tls_conn;
+	}
 
 	pthread_mutex_lock(&zone->ddns_lock);
 
@@ -98,8 +101,8 @@ static int update_enqueue(zone_t *zone, knotd_qdata_t *qdata)
 
 int update_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 {
-	/* DDNS over XDP and TLS not supported. */
-	if (qdata->params->xdp_msg != NULL || qdata->params->proto == KNOTD_QUERY_PROTO_TLS) {
+	/* DDNS over XDP not supported. */
+	if (qdata->params->xdp_msg != NULL) {
 		qdata->rcode = KNOT_RCODE_SERVFAIL;
 		return KNOT_STATE_FAIL;
 	}

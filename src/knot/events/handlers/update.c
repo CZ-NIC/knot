@@ -30,6 +30,7 @@
 #include "libknot/libknot.h"
 #include "libknot/quic/quic_conn.h"
 #include "libknot/quic/quic.h"
+#include "libknot/quic/tls.h"
 #include "contrib/net.h"
 #include "contrib/time.h"
 
@@ -379,8 +380,13 @@ static void send_update_response(conf_t *conf, zone_t *zone, knot_request_t *req
 			(void)process_query_sign_response(req->resp, &qdata);
 		}
 
+		if (net_is_stream(req->fd) && req->tls_req_ctx.conn != NULL) {
+			(void)knot_tls_send_dns(req->tls_req_ctx.conn,
+			                        req->resp->wire, req->resp->size);
+		}
 #ifdef ENABLE_QUIC
-		if (req->quic_conn != NULL) {
+		else if (req->quic_conn != NULL) {
+			assert(!net_is_stream(req->fd));
 			uint8_t op_buf[KNOT_WIRE_MAX_PKTSIZE];
 			struct iovec out_payload = { .iov_base = op_buf, .iov_len = sizeof(op_buf) };
 			knot_quic_reply_t rpl = {
