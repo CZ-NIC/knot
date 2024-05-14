@@ -70,7 +70,7 @@ class KnotCtlData(object):
     def __setitem__(self, index: KnotCtlDataIdx, value: str) -> None:
         """Data unit item setter."""
 
-        self.data[index] = ctypes.c_char_p(value.encode()) if value else ctypes.c_char_p()
+        self.data[index] = ctypes.c_char_p(value.encode()) if value != None else ctypes.c_char_p()
 
 
 class KnotCtlError(Exception):
