@@ -64,6 +64,7 @@ knot.dnssec(zone).manual = True
 knot.dnssec(zone).offline_ksk = True
 knot.dnssec(zone).dnskey_ttl = 3600
 knot.dnssec(zone).zone_max_ttl = 3600
+knot.dnssec(zone).keytag_modulo = "0/2"
 # optional
 knot.dnssec(zone).zsk_lifetime = 3600 * 24 * 365
 
@@ -78,6 +79,7 @@ signer.dnssec(zone).enable = True
 signer.dnssec(zone).manual = True
 signer.dnssec(zone).offline_ksk = True
 #signer.dnssec(zone).rrsig_refresh = 3600 * 24 * 40 # unset
+signer.dnssec(zone).keytag_modulo = "1/2"
 # optional
 signer.dnssec(zone).rrsig_lifetime = 3600 * 24 * 160
 
