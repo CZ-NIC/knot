@@ -11,7 +11,7 @@ Example
 -------
 
 The configuration comprises only a :ref:`mod-dnstap_sink` path parameter,
-which can be either a file or a UNIX socket::
+which can be either a file, a UNIX socket, or a TCP address::
 
    mod-dnstap:
      - id: capture_all
@@ -60,9 +60,10 @@ A module identifier.
 sink
 ....
 
-A sink path, which can be either a file or a UNIX socket when prefixed with
-``unix:``. The file may be specified as an absolute path or a path relative
-to the :doc:`knotd<man_knotd>` startup directory.
+A sink path, which can be either a file, a UNIX socket when prefixed with
+``unix:``, or a TCP `address@port` when prefixed with ``tcp:``. The file may
+be specified as an absolute path or a path relative to
+the :doc:`knotd<man_knotd>` startup directory.
 
 *Required*
 

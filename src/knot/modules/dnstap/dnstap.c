@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -185,6 +185,33 @@ finish:
 	return writer;
 }
 
+static struct fstrm_writer* dnstap_tcp_writer(const char *address, const char *port)
+{
+	struct fstrm_tcp_writer_options *opt = NULL;
+	struct fstrm_writer_options *wopt = NULL;
+	struct fstrm_writer *writer = NULL;
+
+	opt =  fstrm_tcp_writer_options_init();
+	if (opt == NULL) {
+		goto finish;
+	}
+
+	fstrm_tcp_writer_options_set_socket_address(opt, address);
+	fstrm_tcp_writer_options_set_socket_port(opt, port);
+
+	wopt = fstrm_writer_options_init();
+	if (wopt == NULL) {
+		goto finish;
+	}
+	fstrm_writer_options_add_content_type(wopt, DNSTAP_CONTENT_TYPE,
+	                                      strlen(DNSTAP_CONTENT_TYPE));
+	writer = fstrm_tcp_writer_init(opt, wopt);
+finish:
+	fstrm_tcp_writer_options_destroy(&opt);
+	fstrm_writer_options_destroy(&wopt);
+	return writer;
+}
+
 /*! \brief Create a basic file writer sink. */
 static struct fstrm_writer* dnstap_file_writer(const char *path)
 {
@@ -213,17 +240,42 @@ finish:
 }
 
 /*! \brief Create a log sink according to the path string. */
-static struct fstrm_writer* dnstap_writer(const char *path)
+static struct fstrm_writer* dnstap_writer(knotd_mod_t *mod, const char *path)
 {
-	const char *prefix = "unix:";
-	const size_t prefix_len = strlen(prefix);
+	const char *unix_prefix = "unix:";
+	const size_t unix_prefix_len = strlen(unix_prefix);
+
+	const char *tcp_prefix = "tcp:";
+	const size_t tcp_prefix_len = strlen(tcp_prefix);
+
+	const size_t path_len = strlen(path);
 
 	/* UNIX socket prefix. */
-	if (strlen(path) > prefix_len && strncmp(path, prefix, prefix_len) == 0) {
-		return dnstap_unix_writer(path + prefix_len);
+	if (path_len > unix_prefix_len &&
+	    strncmp(path, unix_prefix, unix_prefix_len) == 0) {
+		knotd_mod_log(mod, LOG_DEBUG, "using sink UNIX socket '%s'", path);
+		return dnstap_unix_writer(path + unix_prefix_len);
+	/* TCP socket prefix. */
+	} else if (path_len > tcp_prefix_len &&
+	           strncmp(path, tcp_prefix, tcp_prefix_len) == 0) {
+		char addr[INET6_ADDRSTRLEN] = { 0 };
+		const char *delimiter = strchr(path + tcp_prefix_len, '@');
+		if (delimiter == NULL) {
+			return NULL;
+		}
+		size_t addr_len = delimiter - path - tcp_prefix_len;
+		if (addr_len >= sizeof(addr)) {
+			return NULL;
+		}
+		memcpy(addr, path + tcp_prefix_len, addr_len);
+		knotd_mod_log(mod, LOG_DEBUG, "using sink TCP address '%s' port '%s'",
+		              addr, delimiter + 1);
+		return dnstap_tcp_writer(addr, delimiter + 1);
+	/* File path. */
+	} else {
+		knotd_mod_log(mod, LOG_DEBUG, "using sink file '%s'", path);
+		return dnstap_file_writer(path);
 	}
-
-	return dnstap_file_writer(path);
 }
 
 int dnstap_load(knotd_mod_t *mod)
@@ -273,7 +325,7 @@ int dnstap_load(knotd_mod_t *mod)
 	const bool log_responses = conf.single.boolean;
 
 	/* Initialize the writer and the options. */
-	struct fstrm_writer *writer = dnstap_writer(sink);
+	struct fstrm_writer *writer = dnstap_writer(mod, sink);
 	if (writer == NULL) {
 		goto fail;
 	}
@@ -307,13 +359,13 @@ int dnstap_load(knotd_mod_t *mod)
 
 	return KNOT_EOK;
 fail:
-	knotd_mod_log(mod, LOG_ERR, "failed to init sink '%s'", sink);
+	knotd_mod_log(mod, LOG_ERR, "failed to initialize sink '%s'", sink);
 
 	free(ctx->identity);
 	free(ctx->version);
 	free(ctx);
 
-	return KNOT_ENOMEM;
+	return KNOT_EINVAL;
 }
 
 void dnstap_unload(knotd_mod_t *mod)
