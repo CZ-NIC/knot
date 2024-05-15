@@ -91,7 +91,6 @@ COPY --from=builder /tmp/knot-install/config/  /config/
 COPY --from=builder /tmp/knot-install/include/ /include/
 COPY --from=builder /tmp/knot-install/lib/     /lib/
 COPY --from=builder /tmp/knot-install/sbin/    /sbin/
-COPY --from=builder /tmp/knot-install/share/   /share/
 
 # Prepare configurations for optional D-Bus signaling
 COPY --from=builder /knot-src/distro/common/system-local.conf /etc/dbus-1/
