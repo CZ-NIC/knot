@@ -1567,8 +1567,9 @@ An ordered list of :ref:`references<remote_id>` to remote server definitions.
 ===============
 
 Access control list rule definitions. An ACL rule is a description of one
-or more authorized operations (zone transfer request, zone change notification,
-and dynamic DNS update) which are allowed to be processed or denied.
+or more authorized actions (zone transfer request, zone change notification,
+and dynamic DNS update) which are allowed to be processed or denied. Normal
+DNS queries are always allowed.
 
 ::
 
@@ -1651,7 +1652,7 @@ TSIG key if configured must match.
 action
 ------
 
-An ordered list of allowed (or denied) actions.
+An ordered list of allowed, or denied, actions (request types).
 
 Possible values:
 
