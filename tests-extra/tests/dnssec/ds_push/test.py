@@ -144,4 +144,11 @@ resp.check_count(1, rtype="DS")
 if resp.resp.answer[0].ttl != child.dnssec(child_zone).dnskey_ttl:
     set_err("DS TTL")
 
+child.dnssec(child_zone).ds_push = "" # empty list []
+child.gen_confile()
+child.reload()
+child.ctl("zone-key-rollover %s ksk" % child_zone[0].name)
+t.sleep(20)
+check_zone(child, child_zone[0], 3, 2, 1, 1, "empty DS push")
+
 t.end()
