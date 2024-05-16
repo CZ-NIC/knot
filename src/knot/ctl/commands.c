@@ -652,6 +652,12 @@ static int zone_backup_cmd(zone_t *zone, ctl_args_t *args)
 		return KNOT_EPROGRESS;
 	}
 
+	if (ctx->restore_mode && zone->control_update != NULL) {
+		log_zone_warning(zone->name, "restoring backup not possible due to open control transaction");
+		ctx->failed = true;
+		return KNOT_TXN_EEXISTS;
+	}
+
 	ctx->zone_count++;
 
 	int ret;
@@ -850,6 +856,11 @@ static int zone_txn_begin(zone_t *zone, _unused_ ctl_args_t *args)
 {
 	if (zone->control_update != NULL) {
 		return KNOT_TXN_EEXISTS;
+	}
+
+	if (zone->backup_ctx != NULL) {
+		log_zone_warning(zone->name, "zone backup/restore pending, try opening control transaction later");
+		return KNOT_EAGAIN;
 	}
 
 	zone->control_update = malloc(sizeof(zone_update_t));
