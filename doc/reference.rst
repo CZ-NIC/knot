@@ -2604,6 +2604,7 @@ master
 An ordered list of references :ref:`remote<remote_id>` and
 :ref:`remotes<remotes_id>` to zone primary servers
 (formerly known as master servers).
+Empty value is allowed for template value overriding.
 
 *Default:* not set
 
@@ -2630,6 +2631,7 @@ notify
 An ordered list of references :ref:`remote<remote_id>` and
 :ref:`remotes<remotes_id>` to secondary servers to which notify
 message is sent if the zone changes.
+Empty value is allowed for template value overriding.
 
 *Default:* not set
 
@@ -2933,7 +2935,7 @@ ds-push
 -------
 
 Per zone configuration of :ref:`policy_ds-push`. This option overrides possible
-per policy option.
+per policy option. Empty value is allowed for template value overriding.
 
 *Default:* not set
 

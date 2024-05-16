@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -27,6 +27,9 @@ const char *syntax_ok =
 	" # comment\n"
 	"a:\n"
 	"a :\n"
+	"a: \"\"\n"
+	"a: []\n"
+	"a: [ ]\n"
 	"a : #comment\n"
 	"\n"
 	"b: \"b\"\n"
@@ -118,7 +121,7 @@ static void test_syntax_ok(yp_parser_t *yp)
 	is_int(KNOT_EOK, ret, "set input string");
 
 	size_t line = 3;
-	for (int i = 0; i < 3; i++) {
+	for (int i = 0; i < 6; i++) {
 		ret = yp_parse(yp);
 		is_int(KNOT_EOK, ret, "parse %i. key0", i);
 		ok(yp->key_len == 1 && yp->key[0] == 'a' &&
@@ -126,7 +129,7 @@ static void test_syntax_ok(yp_parser_t *yp)
 		   yp->line_count == line + i, "compare %i. key0", i);
 	}
 
-	line += 4;
+	line += 7;
 	for (int i = 0; i < 6; i++) {
 		ret = yp_parse(yp);
 		is_int(KNOT_EOK, ret, "parse %i. key0 with value", i);

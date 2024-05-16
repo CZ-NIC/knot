@@ -21,6 +21,21 @@
 #include "knot/conf/base.h"
 #include "knot/conf/schema.h"
 
+/*! Configuration schema additional flags. */
+#define CONF_IO_FACTIVE		YP_FUSR1  /*!< Active confio transaction indicator. */
+#define CONF_IO_FZONE		YP_FUSR2  /*!< Zone section indicator. */
+#define CONF_IO_FREF		YP_FUSR3  /*!< Possibly referenced id from a zone. */
+#define CONF_IO_FDIFF_ZONES	YP_FUSR4  /*!< All zones config has changed. */
+#define CONF_IO_FCHECK_ZONES	YP_FUSR5  /*!< All zones config needs to check. */
+#define CONF_IO_FRLD_SRV	YP_FUSR6  /*!< Reload server. */
+#define CONF_IO_FRLD_LOG	YP_FUSR7  /*!< Reload logging. */
+#define CONF_IO_FRLD_MOD	YP_FUSR8  /*!< Reload global modules. */
+#define CONF_IO_FRLD_ZONE	YP_FUSR9  /*!< Reload a specific zone. */
+#define CONF_IO_FRLD_ZONES	YP_FUSR10 /*!< Reload all zones. */
+#define CONF_REF_EMPTY		YP_FUSR11 /*!< Allow empty reference value for zone item. */
+#define CONF_IO_FRLD_ALL	(CONF_IO_FRLD_SRV | CONF_IO_FRLD_LOG | \
+				 CONF_IO_FRLD_MOD | CONF_IO_FRLD_ZONES)
+
 /*! Configuration remote getter output. */
 typedef struct {
 	/*! Target socket address. */

@@ -236,6 +236,13 @@ int check_ref(
 
 	bool found1 = false, found2 = false;
 
+	// Check if allowed empty value for specific zone items.
+	if (args->data_len == 1 && (args->item->flags & CONF_REF_EMPTY) &&
+	    args->item->parent->name[0] == C_ZONE[0] &&
+	    memcmp(&args->item->parent->name[1], &C_ZONE[1], C_ZONE[0]) == 0) {
+		return KNOT_EOK;
+	}
+
 	// Try to find the id in the first section.
 	found1 = conf_rawid_exists_txn(args->extra->conf, args->extra->txn,
 	                               ref->name, args->data, args->data_len);

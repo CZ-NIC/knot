@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -92,7 +92,7 @@
 	data_str = (quote_char . data_str_char* <: quote_char);
 	item_data = (data_char+ | data_str) >_item_data_init %_item_data_exit;
 	item_data_plus = item_data . ((sep? . ',' . sep?) . item_data)*;
-	item_data_list = '\[' . sep? . item_data_plus . sep? . '\]';
+	item_data_list = '\[' . sep? . item_data_plus? . sep? . '\]';
 
 	# Key processing.
 	action _key_init {

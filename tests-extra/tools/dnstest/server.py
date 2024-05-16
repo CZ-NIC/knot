@@ -1470,7 +1470,7 @@ class Knot(Server):
                         s.item_str("key", self.tsig.name)
                     servers.add(slave.name)
             for parent in z.dnssec.ksk_sbm_check + [ z.dnssec.ds_push ] if z.dnssec.ds_push else z.dnssec.ksk_sbm_check:
-                if parent.name not in servers:
+                if isinstance(parent, Server) and parent.name not in servers:
                     if not have_remote:
                         s.begin("remote")
                         have_remote = True
@@ -1648,8 +1648,6 @@ class Knot(Server):
             self._str(s, "nsec3-salt-length", z.dnssec.nsec3_salt_len)
             if len(z.dnssec.ksk_sbm_check) > 0 or z.dnssec.ksk_sbm_timeout is not None:
                 s.item("ksk-submission", z.name)
-            if z.dnssec.ds_push:
-                self._str(s, "ds-push", z.dnssec.ds_push.name)
             if z.dnssec.dnskey_sync:
                 s.item("dnskey-sync", z.name)
             self._bool(s, "ksk-shared", z.dnssec.ksk_shared)
@@ -1788,6 +1786,11 @@ class Knot(Server):
                 s.item_str("dnssec-policy", z.dnssec.shared_policy_with or z.name)
 
             self._bool(s, "dnssec-validation", z.dnssec.validate)
+
+            if z.dnssec.ds_push == "":
+                s.item("ds-push", "[ ]")
+            elif z.dnssec.ds_push:
+                self._str(s, "ds-push", z.dnssec.ds_push.name)
 
             if len(z.modules) > 0:
                 modules = ""
