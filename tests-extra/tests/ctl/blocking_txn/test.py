@@ -14,6 +14,19 @@ def background_sign(server, zone_name):
     except:
         pass
 
+def background_backup(server, zone_name):
+    bckdir = "%s/backup" % server.dir
+    server.ctl("zone-backup +backupdir " + bckdir)
+    attempts = 10
+    while attempts > 0:
+        attempts -= 1
+        try:
+            time.sleep(2)
+            server.ctl("zone-restore +backupdir " + bckdir)
+            attempts = 0
+        except:
+            pass
+
 def run_thr(fun, server, zone_name):
     threading.Thread(target=fun, args=[server, zone_name]).start()
 
@@ -36,7 +49,31 @@ t.sleep(1)
 master.ctl("zone-abort " + ZONE)
 
 t.sleep(1)
-master.zones_wait(zones) # check if server is still sane
+serials = master.zones_wait(zones) # check if server is still sane
+master.ctl("zone-status " + ZONE)
+
+# scenario 2: zone restore with open txn
+
+BACKUP_FIRST = random.choice([False, True])
+detail_log("BACKUP_FIRST: " + str(BACKUP_FIRST))
+
+if not BACKUP_FIRST:
+    master.ctl("zone-begin " + ZONE)
+run_thr(background_backup, master, ZONE)
+if BACKUP_FIRST:
+    t.sleep(2.1)
+    master.zones_wait(zones)
+    try:
+        master.ctl("zone-begin " + ZONE)
+    except:
+        t.sleep(1)
+        master.zones_wait(zones)
+        master.ctl("zone-begin " + ZONE)
+master.ctl("zone-set " + ZONE + " dhowedhhjewodw 3600 A 1.2.3.4")
+t.sleep(3)
+master.ctl("zone-commit " + ZONE)
+
+master.zones_wait(zones, serials, equal=True, greater=BACKUP_FIRST)
 master.ctl("zone-status " + ZONE)
 
 t.end()
