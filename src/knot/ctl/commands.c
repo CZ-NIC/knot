@@ -71,6 +71,20 @@ static struct {
 	            sizeof(((send_ctx_t *)0)->rdata)];
 } ctl_globals;
 
+static bool allow_blocking_while_ctl_txn(zone_event_type_t event)
+{
+	// this can be allowed for those events that do NOT create a zone_update_t
+	switch (event) {
+	case ZONE_EVENT_UFREEZE:
+	case ZONE_EVENT_UTHAW:
+	case ZONE_EVENT_NOTIFY:
+	case ZONE_EVENT_FLUSH:
+		return true;
+	default:
+		return false;
+	}
+}
+
 /*!
  * Evaluates a filter pair and checks for conflicting filters.
  *
@@ -111,6 +125,10 @@ static int schedule_trigger(zone_t *zone, ctl_args_t *args, zone_event_type_t ev
 	int ret = KNOT_EOK;
 
 	if (ctl_has_flag(args->data[KNOT_CTL_IDX_FLAGS], CTL_FLAG_BLOCKING)) {
+		if (!allow_blocking_while_ctl_txn(event) &&
+		    zone->control_update != NULL) {
+			return KNOT_TXN_EEXISTS;
+		}
 		ret = zone_events_schedule_blocking(zone, event, user);
 	} else if (user) {
 		zone_events_schedule_user(zone, event);
@@ -634,6 +652,12 @@ static int zone_backup_cmd(zone_t *zone, ctl_args_t *args)
 		return KNOT_EPROGRESS;
 	}
 
+	if (ctx->restore_mode && zone->control_update != NULL) {
+		log_zone_warning(zone->name, "restoring backup not possible due to open control transaction");
+		ctx->failed = true;
+		return KNOT_TXN_EEXISTS;
+	}
+
 	ctx->zone_count++;
 
 	int ret;
@@ -832,6 +856,11 @@ static int zone_txn_begin(zone_t *zone, _unused_ ctl_args_t *args)
 {
 	if (zone->control_update != NULL) {
 		return KNOT_TXN_EEXISTS;
+	}
+
+	if (zone->backup_ctx != NULL) {
+		log_zone_warning(zone->name, "zone backup/restore pending, try opening control transaction later");
+		return KNOT_EAGAIN;
 	}
 
 	zone->control_update = malloc(sizeof(zone_update_t));
