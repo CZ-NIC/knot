@@ -852,8 +852,8 @@ static int zone_txn_begin(zone_t *zone, _unused_ ctl_args_t *args)
 		return KNOT_TXN_EEXISTS;
 	}
 
-	if (zone->backup_ctx != NULL) {
-		log_zone_warning(zone->name, "zone backup/restore pending, try opening control transaction later");
+	if (zone->backup_ctx != NULL && zone->backup_ctx->restore_mode) {
+		log_zone_warning(zone->name, "zone restore pending, try opening control transaction later");
 		return KNOT_EAGAIN;
 	}
 
