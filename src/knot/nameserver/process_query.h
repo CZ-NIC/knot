@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -106,3 +106,14 @@ int process_query_sign_response(knot_pkt_t *pkt, knotd_qdata_t *qdata);
 int process_query_put_rr(knot_pkt_t *pkt, knotd_qdata_t *qdata,
                          const knot_rrset_t *rr, const knot_rrset_t *rrsigs,
                          uint16_t compr_hint, uint32_t flags);
+
+/*!
+ * \brief Processes all global module protocol callbacks at given stage.
+ *
+ * \param params   Query processing parameters.
+ * \param stage    Processing stage (KNOTD_STAGE_PROTO_BEGIN or KNOTD_STAGE_PROTO_END).
+ *
+ * \return Resulting state.
+ */
+knotd_proto_state_t process_query_proto(knotd_qdata_params_t *params,
+                                        const knotd_stage_t stage);

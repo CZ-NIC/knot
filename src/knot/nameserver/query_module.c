@@ -68,30 +68,31 @@ void query_plan_free(struct query_plan *plan)
 	free(plan);
 }
 
-static struct query_step *make_step(query_step_process_f process, void *ctx)
-{
-	struct query_step *step = calloc(1, sizeof(struct query_step));
-	if (step == NULL) {
-		return NULL;
-	}
-
-	step->process = process;
-	step->ctx = ctx;
-
-	return step;
-}
-
 int query_plan_step(struct query_plan *plan, knotd_stage_t stage,
-                    query_step_process_f process, void *ctx)
+                    query_hook_type_t type, void *hook, void *ctx)
 {
-	struct query_step *step = make_step(process, ctx);
+	struct query_step *step = calloc(1, sizeof(*step));
 	if (step == NULL) {
 		return KNOT_ENOMEM;
 	}
 
+	step->type = type;
+	step->general_hook = hook;
+	step->ctx = ctx;
+
 	add_tail(&plan->stage[stage], &step->node);
 
 	return KNOT_EOK;
+}
+
+_public_
+int knotd_mod_proto_hook(knotd_mod_t *mod, knotd_stage_t stage, knotd_mod_proto_hook_f hook)
+{
+	if (stage != KNOTD_STAGE_PROTO_BEGIN && stage != KNOTD_STAGE_PROTO_END) {
+		return KNOT_EINVAL;
+	}
+
+	return query_plan_step(mod->plan, stage, QUERY_HOOK_TYPE_PROTO, hook,  mod);
 }
 
 _public_
@@ -101,17 +102,18 @@ int knotd_mod_hook(knotd_mod_t *mod, knotd_stage_t stage, knotd_mod_hook_f hook)
 		return KNOT_EINVAL;
 	}
 
-	return query_plan_step(mod->plan, stage, hook, mod);
+	return query_plan_step(mod->plan, stage, QUERY_HOOK_TYPE_GENERAL, hook, mod);
 }
 
 _public_
 int knotd_mod_in_hook(knotd_mod_t *mod, knotd_stage_t stage, knotd_mod_in_hook_f hook)
 {
-	if (stage == KNOTD_STAGE_BEGIN || stage == KNOTD_STAGE_END) {
+	if (stage != KNOTD_STAGE_PREANSWER && stage != KNOTD_STAGE_ANSWER &&
+	    stage != KNOTD_STAGE_AUTHORITY && stage != KNOTD_STAGE_ADDITIONAL) {
 		return KNOT_EINVAL;
 	}
 
-	return query_plan_step(mod->plan, stage, hook, mod);
+	return query_plan_step(mod->plan, stage, QUERY_HOOK_TYPE_IN, hook, mod);
 }
 
 knotd_mod_t *query_module_open(conf_t *conf, server_t *server, conf_mod_id_t *mod_id,
