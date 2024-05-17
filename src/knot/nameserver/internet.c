@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -658,7 +658,8 @@ static knot_layer_state_t answer_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 	/* Resolve PREANSWER. */
 	if (plan != NULL) {
 		WALK_LIST(step, plan->stage[KNOTD_STAGE_PREANSWER]) {
-			SOLVE_STEP(step->process, state, step->ctx);
+			assert(step->type == QUERY_HOOK_TYPE_IN);
+			SOLVE_STEP(step->in_hook, state, step->ctx);
 		}
 	}
 
@@ -670,7 +671,8 @@ static knot_layer_state_t answer_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 	}
 	if (plan != NULL) {
 		WALK_LIST(step, plan->stage[KNOTD_STAGE_ANSWER]) {
-			SOLVE_STEP(step->process, state, step->ctx);
+			assert(step->type == QUERY_HOOK_TYPE_IN);
+			SOLVE_STEP(step->in_hook, state, step->ctx);
 		}
 	}
 
@@ -682,7 +684,8 @@ static knot_layer_state_t answer_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 	}
 	if (plan != NULL) {
 		WALK_LIST(step, plan->stage[KNOTD_STAGE_AUTHORITY]) {
-			SOLVE_STEP(step->process, state, step->ctx);
+			assert(step->type == QUERY_HOOK_TYPE_IN);
+			SOLVE_STEP(step->in_hook, state, step->ctx);
 		}
 	}
 
@@ -694,7 +697,8 @@ static knot_layer_state_t answer_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 	}
 	if (plan != NULL) {
 		WALK_LIST(step, plan->stage[KNOTD_STAGE_ADDITIONAL]) {
-			SOLVE_STEP(step->process, state, step->ctx);
+			assert(step->type == QUERY_HOOK_TYPE_IN);
+			SOLVE_STEP(step->in_hook, state, step->ctx);
 		}
 	}
 

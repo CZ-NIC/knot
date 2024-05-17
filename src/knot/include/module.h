@@ -354,7 +354,7 @@ knotd_conf_t knotd_conf_check_item(knotd_conf_check_args_t *args,
                                    const yp_name_t *item_name);
 
 /*!
- * \brief Checks if address is in at least one of given ranges.
+ * Checks if address is in at least one of given ranges.
  *
  * \param[in] range
  * \param[in] addr
@@ -505,6 +505,12 @@ int knotd_qdata_zone_rrset(const knotd_qdata_t *qdata, const knot_dname_t *zone_
                            const knot_dname_t *node_name, uint16_t type,
                            knot_rrset_t *out);
 
+/*! Transport protocol processing states. */
+typedef enum {
+	KNOTD_PROTO_STATE_PASS  = 0, /*!< Process normally. */
+	KNOTD_PROTO_STATE_BLOCK = 1, /*!< Block the packet/connection. */
+} knotd_proto_state_t;
+
 /*! General query processing states. */
 typedef enum {
 	KNOTD_STATE_NOOP  = 0, /*!< No response. */
@@ -513,7 +519,7 @@ typedef enum {
 	KNOTD_STATE_FINAL = 6, /*!< Finished and finalized (QNAME, EDNS, TSIG). */
 } knotd_state_t;
 
-/*! brief Internet query processing states. */
+/*! Internet query processing states. */
 typedef enum {
 	KNOTD_IN_STATE_BEGIN,  /*!< Begin name resolution. */
 	KNOTD_IN_STATE_NODATA, /*!< Positive result with NO data. */
@@ -527,13 +533,27 @@ typedef enum {
 
 /*! Query module processing stages. */
 typedef enum {
-	KNOTD_STAGE_BEGIN = 0,  /*!< Before query processing. */
-	KNOTD_STAGE_PREANSWER,  /*!< Before section processing. */
-	KNOTD_STAGE_ANSWER,     /*!< Answer section processing. */
-	KNOTD_STAGE_AUTHORITY,  /*!< Authority section processing. */
-	KNOTD_STAGE_ADDITIONAL, /*!< Additional section processing. */
-	KNOTD_STAGE_END,        /*!< After query processing. */
+	KNOTD_STAGE_PROTO_BEGIN = 0,  /*!< Start of transport protocol processing. */
+	KNOTD_STAGE_BEGIN,            /*!< Before query processing. */
+	KNOTD_STAGE_PREANSWER,        /*!< Before section processing. */
+	KNOTD_STAGE_ANSWER,           /*!< Answer section processing. */
+	KNOTD_STAGE_AUTHORITY,        /*!< Authority section processing. */
+	KNOTD_STAGE_ADDITIONAL,       /*!< Additional section processing. */
+	KNOTD_STAGE_END,              /*!< After query processing. */
+	KNOTD_STAGE_PROTO_END,        /*!< End of transport protocol processing. */
 } knotd_stage_t;
+
+/*!
+ * Transport protocol processing hook.
+ *
+ * \param[in] state    Current processing state.
+ * \param[in] params   Processing parameters.
+ * \param[in] mod      Module context.
+ *
+ * \return Next processing state.
+ */
+typedef knotd_proto_state_t (*knotd_mod_proto_hook_f)
+	(knotd_proto_state_t state, knotd_qdata_params_t *params, knotd_mod_t *mod);
 
 /*!
  * General processing hook.
@@ -560,6 +580,17 @@ typedef knotd_state_t (*knotd_mod_hook_f)
  */
 typedef knotd_in_state_t (*knotd_mod_in_hook_f)
 	(knotd_in_state_t state, knot_pkt_t *pkt, knotd_qdata_t *qdata, knotd_mod_t *mod);
+
+/*!
+ * Registers transport protocol processing module hook.
+ *
+ * \param[in] mod    Module context.
+ * \param[in] stage  Processing stage (KNOTD_STAGE_PROTO_BEGIN or KNOTD_STAGE_PROTO_END).
+ * \param[in] hook   Module hook.
+ *
+ * \return Error code, KNOT_EOK if success.
+ */
+int knotd_mod_proto_hook(knotd_mod_t *mod, knotd_stage_t stage, knotd_mod_proto_hook_f hook);
 
 /*!
  * Registers general processing module hook.

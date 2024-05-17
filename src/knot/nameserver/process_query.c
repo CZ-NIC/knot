@@ -553,7 +553,8 @@ static knot_layer_state_t process_query_err(knot_layer_t *ctx, knot_pkt_t *pkt)
 #define PROCESS_BEGIN(plan, step, next_state, qdata) \
 	if (plan != NULL) { \
 		WALK_LIST(step, plan->stage[KNOTD_STAGE_BEGIN]) { \
-			next_state = step->process(next_state, pkt, qdata, step->ctx); \
+			assert(step->type == QUERY_HOOK_TYPE_GENERAL); \
+			next_state = step->general_hook(next_state, pkt, qdata, step->ctx); \
 			if (next_state == KNOT_STATE_FAIL) { \
 				goto finish; \
 			} \
@@ -563,7 +564,8 @@ static knot_layer_state_t process_query_err(knot_layer_t *ctx, knot_pkt_t *pkt)
 #define PROCESS_END(plan, step, next_state, qdata) \
 	if (plan != NULL) { \
 		WALK_LIST(step, plan->stage[KNOTD_STAGE_END]) { \
-			next_state = step->process(next_state, pkt, qdata, step->ctx); \
+			assert(step->type == QUERY_HOOK_TYPE_GENERAL); \
+			next_state = step->general_hook(next_state, pkt, qdata, step->ctx); \
 			if (next_state == KNOT_STATE_FAIL) { \
 				next_state = process_query_err(ctx, pkt); \
 			} \
@@ -1003,6 +1005,30 @@ int process_query_put_rr(knot_pkt_t *pkt, knotd_qdata_t *qdata,
 	}
 
 	return ret;
+}
+
+knotd_proto_state_t process_query_proto(knotd_qdata_params_t *params,
+                                        const knotd_stage_t stage)
+{
+	assert(params);
+	assert(stage == KNOTD_STAGE_PROTO_BEGIN || stage == KNOTD_STAGE_PROTO_END);
+
+	knotd_proto_state_t state = KNOTD_PROTO_STATE_PASS;
+
+	rcu_read_lock();
+
+	struct query_plan *plan = conf()->query_plan;
+	if (plan != NULL) {
+		struct query_step *step;
+		WALK_LIST(step, plan->stage[stage]) {
+			assert(step->type == QUERY_HOOK_TYPE_PROTO);
+			state = step->proto_hook(state, params, step->ctx);
+		}
+	}
+
+	rcu_read_unlock();
+
+	return state;
 }
 
 /*! \brief Module implementation. */

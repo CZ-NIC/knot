@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -20,11 +20,10 @@
 
 #include "libknot/libknot.h"
 #include "knot/nameserver/query_module.h"
-#include "libknot/packet/pkt.h"
 
 /* Universal processing stage. */
-unsigned state_visit(unsigned state, knot_pkt_t *pkt, knotd_qdata_t *qdata,
-                     knotd_mod_t *mod)
+knotd_state_t state_visit(knotd_state_t state, knot_pkt_t *pkt, knotd_qdata_t *qdata,
+                          knotd_mod_t *mod)
 {
 	/* Visit current state */
 	bool *state_map = (bool *)mod;
@@ -49,8 +48,8 @@ int main(int argc, char *argv[])
 
 	/* Register all stage visits. */
 	int ret = KNOT_EOK;
-	for (unsigned stage = KNOTD_STAGE_BEGIN; stage < KNOTD_STAGES; ++stage) {
-		ret = query_plan_step(plan, stage, state_visit, state_map);
+	for (unsigned stage = KNOTD_STAGE_PROTO_BEGIN; stage < KNOTD_STAGES; ++stage) {
+		ret = query_plan_step(plan, stage, QUERY_HOOK_TYPE_GENERAL, state_visit, state_map);
 		if (ret != KNOT_EOK) {
 			break;
 		}
@@ -59,10 +58,10 @@ int main(int argc, char *argv[])
 
 	/* Execute the plan. */
 	int state = 0, next_state = 0;
-	for (unsigned stage = KNOTD_STAGE_BEGIN; stage < KNOTD_STAGES; ++stage) {
+	for (unsigned stage = KNOTD_STAGE_PROTO_BEGIN; stage < KNOTD_STAGES; ++stage) {
 		struct query_step *step = NULL;
 		WALK_LIST(step, plan->stage[stage]) {
-			next_state = step->process(state, NULL, NULL, step->ctx);
+			next_state = step->general_hook(state, NULL, NULL, step->ctx);
 			if (next_state != state + 1) {
 				break;
 			}
