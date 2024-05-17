@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -50,7 +50,7 @@ int main(int argc, char *argv[])
 	/* Register all stage visits. */
 	int ret = KNOT_EOK;
 	for (unsigned stage = KNOTD_STAGE_BEGIN; stage < KNOTD_STAGES; ++stage) {
-		ret = query_plan_step(plan, stage, state_visit, state_map);
+		ret = query_plan_step(plan, stage, QUERY_HOOK_TYPE_GENERAL, state_visit, state_map);
 		if (ret != KNOT_EOK) {
 			break;
 		}
@@ -58,11 +58,11 @@ int main(int argc, char *argv[])
 	is_int(KNOT_EOK, ret, "query_plan: planned all steps");
 
 	/* Execute the plan. */
-	int state = 0, next_state = 0;
+	int state = 1, next_state = 0;
 	for (unsigned stage = KNOTD_STAGE_BEGIN; stage < KNOTD_STAGES; ++stage) {
 		struct query_step *step = NULL;
 		WALK_LIST(step, plan->stage[stage]) {
-			next_state = step->process(state, NULL, NULL, step->ctx);
+			next_state = step->general_hook(state, NULL, NULL, step->ctx);
 			if (next_state != state + 1) {
 				break;
 			}
@@ -72,7 +72,7 @@ int main(int argc, char *argv[])
 	ok(state == KNOTD_STAGES, "query_plan: executed all steps");
 
 	/* Verify if all steps executed their callback. */
-	for (state = 0; state < KNOTD_STAGES; ++state) {
+	for (state = 1; state < KNOTD_STAGES; ++state) {
 		if (state_map[state] == false) {
 			break;
 		}
