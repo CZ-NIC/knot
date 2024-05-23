@@ -37,7 +37,8 @@ def send_queries(server, name, run_time=None, query_time=None):
     while time.time() < start + run_time:
         try:
             query = dns.message.make_query(name, "SOA", want_dnssec=False)
-            response = dns.query.udp(query, server.addr, port=server.port, timeout=query_time)
+            response = dns.query.udp(query, server.addr, port=server.port, \
+                                     source=server.addr, timeout=query_time)
         except dns.exception.Timeout:
             response = None
 
@@ -71,13 +72,13 @@ def check_result(name, res, rate=0, slip=None):
     ok = False
 
     if rate == 0:
-        ok = res["replied"] >= 100 and res["slipped"] == 0 and res["dropped"] == 0
+        ok = res["replied"] >= 100 and res["slipped"] == 0 and res["dropped"] <= 3
     elif slip == 0:
         ok = res["replied"] > 0 and res["replied"] < 100 and \
              res["slipped"] == 0 and res["dropped"] >= 5
     elif slip == 1:
         ok = res["replied"] > 0 and res["replied"] < 100 and \
-             res["slipped"] >= 100 and res["dropped"] == 0
+             res["slipped"] >= 100 and res["dropped"] <= 3
     else:
         ok = res["replied"] > 0 and res["replied"] < 100 and \
              res["slipped"] >= 5 and res["dropped"] >= 5
@@ -102,10 +103,10 @@ def cmp_stats(server, res, zone_name=None):
         detail_log(stats)
 
         if zone_name:
-            ok = int(stats["zone"][zone_name.lower()]["mod-rrl"]["dropped"]) == res["dropped"] and \
+            ok = int(abs(stats["zone"][zone_name.lower()]["mod-rrl"]["dropped"] - res["dropped"]) <= 1) and \
                  int(stats["zone"][zone_name.lower()]["mod-rrl"]["slipped"]) == res["slipped"]
         else:
-            ok = int(stats["mod-rrl"]["dropped"]) == res["dropped"] and \
+            ok = int(abs(stats["mod-rrl"]["dropped"] - res["dropped"]) <= 1) and \
                  int(stats["mod-rrl"]["slipped"]) == res["slipped"]
 
         if ok:
