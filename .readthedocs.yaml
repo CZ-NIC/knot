@@ -1,0 +1,15 @@
+# .readthedocs.yaml
+# Read the Docs configuration file
+# See https://docs.readthedocs.io/en/stable/config-file/v2.html for details
+# See also https://docs.readthedocs.io/en/stable/guides/reproducible-builds.html
+
+# Required
+version: 2
+
+# Set the version of Python and other tools you might need
+build:
+  os: ubuntu-22.04
+
+  commands:
+    - mkdir --parents $READTHEDOCS_OUTPUT/html/
+    - cp --recursive .readthedocs_page/* $READTHEDOCS_OUTPUT/html/
