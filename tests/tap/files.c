@@ -62,5 +62,5 @@ char *test_mkdtemp(void)
 
 bool test_rm_rf(const char *path)
 {
-	return remove_path(path, false);
+	return (remove_path(path, false) == KNOT_EOK);
 }

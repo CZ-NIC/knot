@@ -104,10 +104,13 @@ static int remove_in_dir(const char *path, const struct stat *stat, int type, st
 	return (ftw->level > 0) ? remove_file(path, stat, type, ftw) : 0;
 }
 
-bool remove_path(const char *path, bool keep_apex)
+int remove_path(const char *path, bool keep_apex)
 {
-	return (0 == nftw(path, keep_apex ? remove_in_dir : remove_file,
-	                  1, FTW_DEPTH | FTW_PHYS));
+	if (0 != nftw(path, keep_apex ? remove_in_dir : remove_file,
+	              1, FTW_DEPTH | FTW_PHYS)) {
+		return knot_map_errno();
+	}
+	return KNOT_EOK;
 }
 
 int make_dir(const char *path, mode_t mode, bool ignore_existing)
