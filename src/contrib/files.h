@@ -55,9 +55,9 @@ bool same_path(const char *path1, const char *path2);
  * \param[in] path       Absolute path or a relative path suffix; a string.
  * \param[in] keep_apex  If true, don't remove the starting point (apex).
  *
- * \return true on success, false when one or more files failed to be removed.
+ * \return KNOT_E*
  */
-bool remove_path(const char *path, bool keep_apex);
+int remove_path(const char *path, bool keep_apex);
 
 /*!
  * Equivalent to mkdir(2), can succeed if the directory already exists.
