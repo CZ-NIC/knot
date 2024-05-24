@@ -37,6 +37,7 @@ for z in zones:
     slave.zonefile_load = "none"
 
 backup_dir = master.dir + "/backup"
+backup_dir2 = master.dir + "/backup2"  # Backup of a backup.
 slave_bck_dir = slave.dir + "/backup"
 
 zone0_expire = 45   # zone zones[0] expiration time in its SOA
@@ -57,7 +58,8 @@ for z in zones:
         master.ctl("zone-sign " + z.name)
         slave.zone_wait(z, serials_init[z.name])
 
-master.ctl("zone-backup +backupdir %s" % backup_dir)
+master.ctl("zone-backup +backupdir %s" % backup_dir, wait=True)
+master.ctl("zone-backup +backupdir %s" % backup_dir2)
 slave.ctl("zone-backup %s %s +journal +backupdir %s +nozonefile" % \
           (zones[0].name, zones[1].name, slave_bck_dir))
 
@@ -130,6 +132,35 @@ for i in range(start_time + zone0_expire + valgrind_delay - int(t.uptime())):
 # the zone should expire in zone0_expire seconds (SOA) according to restored timers
 
 resp = slave.dig(zones[0].name, "SOA")
+resp.check(rcode="SERVFAIL")
+
+shutil.rmtree(keydir)
+master.start()
+master.zones_wait(zones)
+(dnskey1_5, dnskey2_5) = get_dnskeys(master, zones)
+if dnskey1_5 == dnskey1_4 or dnskey2_5 == dnskey2_4:
+    set_err("TEST ERROR 2")
+master.ctl("-f zone-backup +backupdir %s" % backup_dir, wait=True)
+master.stop()
+shutil.rmtree(keydir)
+master.start()
+master.zones_wait(zones)
+(dnskey1_6, dnskey2_6) = get_dnskeys(master, zones)
+if dnskey1_6 == dnskey1_5 or dnskey2_6 == dnskey2_5:
+    set_err("TEST ERROR 3")
+master.ctl("zone-restore +backupdir %s" % backup_dir, wait=True)
+master.zones_wait(zones)
+(dnskey1_7, dnskey2_7) = get_dnskeys(master, zones)
+if dnskey1_7 != dnskey1_5 or dnskey2_7 != dnskey2_5:
+    set_err("KEYS FROM FORCED BACKUP NOT RESTORED")
+
+master.ctl("-f zone-purge %s" % zones[1].name, wait=True)
+master.ctl("-f zone-backup +backupdir %s" % backup_dir, wait=True)
+master.ctl("zone-restore +backupdir %s" % backup_dir, wait=True)
+t.sleep(3)
+resp = master.dig(zones[0].name, "SOA")
+resp.check(rcode="NOERROR")
+resp = master.dig(zones[1].name, "SOA")
 resp.check(rcode="SERVFAIL")
 
 t.stop()
