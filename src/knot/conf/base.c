@@ -347,7 +347,7 @@ int conf_new(
 		ret = out->api->init(&out->db, NULL, &lmdb_opts);
 
 		// Remove the database to ensure it is temporary.
-		if (!remove_path(lmdb_opts.path)) {
+		if (!remove_path(lmdb_opts.path, false)) {
 			CONF_LOG(LOG_WARNING, "failed to purge temporary directory '%s'",
 			         lmdb_opts.path);
 		}

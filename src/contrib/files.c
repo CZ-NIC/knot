@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -99,9 +99,15 @@ static int remove_file(const char *path, const struct stat *stat, int type, stru
 	}
 }
 
-bool remove_path(const char *path)
+static int remove_in_dir(const char *path, const struct stat *stat, int type, struct FTW *ftw)
 {
-	return (0 == nftw(path, remove_file, 1, FTW_DEPTH | FTW_PHYS));
+	return (ftw->level > 0) ? remove_file(path, stat, type, ftw) : 0;
+}
+
+bool remove_path(const char *path, bool keep_apex)
+{
+	return (0 == nftw(path, keep_apex ? remove_in_dir : remove_file,
+	                  1, FTW_DEPTH | FTW_PHYS));
 }
 
 int make_dir(const char *path, mode_t mode, bool ignore_existing)
