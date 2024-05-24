@@ -98,6 +98,12 @@ except:
     pass
 check_log_err(master, "already exists")
 
+# Attempt to start backup with the "-f" option into already existing backup, expected OK.
+try:
+    master.ctl("-f zone-backup +backupdir %s" % backup_dir, wait=True)
+except:
+    set_err("FORCED BACKUP NOT ALLOWED")
+
 # Attempt to start restore from non-existing backup directory, expected (not exists).
 try:
     master.ctl("zone-restore +backupdir %s" % backup_dir_void, wait=True)
