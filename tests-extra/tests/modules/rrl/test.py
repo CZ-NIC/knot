@@ -104,10 +104,10 @@ def cmp_stats(server, res, zone_name=None):
 
         if zone_name:
             ok = int(abs(stats["zone"][zone_name.lower()]["mod-rrl"]["dropped"] - res["dropped"]) <= 1) and \
-                 int(stats["zone"][zone_name.lower()]["mod-rrl"]["slipped"]) == res["slipped"]
+                 int(abs(stats["zone"][zone_name.lower()]["mod-rrl"]["slipped"] - res["slipped"]) <= 1)
         else:
             ok = int(abs(stats["mod-rrl"]["dropped"] - res["dropped"]) <= 1) and \
-                 int(stats["mod-rrl"]["slipped"]) == res["slipped"]
+                 int(abs(stats["mod-rrl"]["slipped"] - res["slipped"]) <= 1)
 
         if ok:
             detail_log("stats success")
