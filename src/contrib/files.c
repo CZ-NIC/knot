@@ -92,9 +92,13 @@ static int remove_file(const char *path, const struct stat *stat, int type, stru
 {
 	(void)stat;
 	(void)ftw;
-	if (type == FTW_DP) {
+
+	switch (type) {
+	case FTW_D:
+	case FTW_DNR:
+	case FTW_DP:
 		return rmdir(path);
-	} else {
+	default:
 		return unlink(path);
 	}
 }
