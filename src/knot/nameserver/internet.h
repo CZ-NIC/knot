@@ -68,4 +68,6 @@ int internet_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata);
 	if (!process_query_acl_check(conf(), (action), (qdata)) || \
 	    process_query_verify(qdata) != KNOT_EOK) { \
 		return KNOT_STATE_FAIL; \
+	} else { \
+		qdata->params->flags |= KNOTD_QUERY_FLAG_AUTHORIZED; \
 	}

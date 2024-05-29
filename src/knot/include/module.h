@@ -398,7 +398,8 @@ typedef enum {
 
 /*! Query processing specific flags. */
 typedef enum {
-	KNOTD_QUERY_FLAG_COOKIE  = 1 << 0, /*!< Valid DNS Cookie indication. */
+	KNOTD_QUERY_FLAG_COOKIE     = 1 << 0, /*!< Valid DNS Cookie indication. */
+	KNOTD_QUERY_FLAG_AUTHORIZED = 1 << 1, /*!< Successfully authorized operation. */
 } knotd_query_flag_t;
 
 /*! Query processing data context parameters. */
