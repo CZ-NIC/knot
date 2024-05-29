@@ -58,6 +58,7 @@ static const struct error errors[] = {
 	{ KNOT_ERANGE,        "value is out of range" },
 	{ KNOT_EADDRNOTAVAIL, "address is not available" },
 	{ KNOT_ENOTDIR,       "not a directory" },
+	{ KNOT_EPERM,         "operation not permitted" },
 
 	{ KNOT_ERRNO_ERROR,   "unknown system error" },
 
