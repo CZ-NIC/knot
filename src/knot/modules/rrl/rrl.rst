@@ -115,7 +115,7 @@ There is at most `maximum_qps / rate-limit` limited hosts;
 larger networks have higher limits and so require only a fraction of the value.
 The value will be rounded up to the nearest power of two.
 
-The memory occupied by the data structure is `8 * table-size B`.
+The memory occupied by the data structure is `2 * 8 * table-size B`.
 
 *Default:* ``524288``
 

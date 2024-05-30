@@ -27,13 +27,15 @@ typedef struct rrl_table rrl_table_t;
  * \brief Create a RRL table.
  *
  * \param size Fixed table size.
- * \param rate Rate (in pkts/sec).
- * \param instant_limit Instant limit (number).
+ * \param instant_limit Instant limit (milliseconds).
+ * \param time_limit Time (in milliseconds).
+ * \param rate_limit Rate (in pkts/sec).
  * \param log_period If nonzero, maximum logging period (in milliseconds).
  *
  * \return created table or NULL.
  */
-rrl_table_t *rrl_create(size_t size, uint32_t instant_limit, uint32_t rate_limit, uint32_t log_period);
+rrl_table_t *rrl_create(size_t size, uint32_t instant_limit, uint32_t time_limit,
+                        uint32_t rate_limit, uint32_t log_period);
 
 /*!
  * \brief Query the RRL table for accept or deny, when the rate limit is reached.
@@ -46,6 +48,8 @@ rrl_table_t *rrl_create(size_t size, uint32_t instant_limit, uint32_t rate_limit
  * \retval KNOT_ELIMIT when the limit is reached.
  */
 int rrl_query(rrl_table_t *rrl, const struct sockaddr_storage *remote, knotd_mod_t *mod);
+
+void rrl_update(rrl_table_t *rrl, const struct sockaddr_storage *remote, size_t time_us);
 
 /*!
  * \brief Roll a dice whether answer slips or not.

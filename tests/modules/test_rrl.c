@@ -75,7 +75,7 @@ struct kru_generic {
 	// ...
 };
 struct kru_avx2 {
-	char hash_key[48] ALIGNED(32);
+	_Alignas(32) char hash_key[48];
 	// ...
 };
 
@@ -173,6 +173,7 @@ static void *rrl_runnable(void *arg)
 				if (rrl_query(d->rrl, &addr, NULL) == KNOT_EOK) {
 					atomic_fetch_add(&d->stages[si].hosts[hi].passed, 1);
 				}
+				rrl_update(d->rrl, &addr, 1);
 
 			} while ((qi2 = (qi2 + d->prime) % (1 << BATCH_QUERIES_LOG)));
 		}
@@ -200,6 +201,7 @@ void count_test(char *desc, int expected_passing, double margin_fract,
 			cnt = i;
 			break;
 		}
+		rrl_update(rrl, &addr, 1);
 	}
 
 	if (expected_passing < 0) expected_passing = -1;
@@ -218,7 +220,7 @@ void test_rrl(void)
 	fakeclock_init();
 
 	/* create rrl table */
-	rrl = rrl_create(RRL_TABLE_SIZE, RRL_INSTANT_LIMIT, RRL_RATE_LIMIT, 0);
+	rrl = rrl_create(RRL_TABLE_SIZE, RRL_INSTANT_LIMIT, RRL_INSTANT_LIMIT, RRL_RATE_LIMIT, 0);
 	ok(rrl != NULL, "rrl(%s): create", impl_name);
 	assert(rrl);
 
