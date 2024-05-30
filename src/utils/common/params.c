@@ -212,7 +212,7 @@ char *get_fqd_name(const char *name)
 	size_t name_len = strlen(name);
 
 	// If the name is FQDN, make a copy.
-	if (name[name_len - 1] == '.') {
+	if (name_len > 0 && name[name_len - 1] == '.') {
 		fqd_name = strdup(name);
 	// Else make a copy and append a trailing dot.
 	} else {
