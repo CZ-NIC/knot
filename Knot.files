@@ -286,7 +286,6 @@ src/knot/modules/queryacl/queryacl.c
 src/knot/modules/rrl/functions.c
 src/knot/modules/rrl/functions.h
 src/knot/modules/rrl/kru-avx2.c
-src/knot/modules/rrl/kru-decay.inc.c
 src/knot/modules/rrl/kru-generic.c
 src/knot/modules/rrl/kru.h
 src/knot/modules/rrl/kru.inc.c
