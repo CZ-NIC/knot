@@ -1962,7 +1962,7 @@ static int parse_name(const char *value, list_t *queries, const query_t *conf)
 	char	*ascii_name = (char *)value;
 	char	*fqd_name = NULL;
 
-	if (value != NULL) {
+	if (value != NULL && value[0] != '\0') {
 		if (conf->idn) {
 			ascii_name = name_from_idn(value);
 			if (ascii_name == NULL) {
