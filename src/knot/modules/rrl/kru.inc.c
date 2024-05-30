@@ -46,30 +46,10 @@ Size (`loads_bits` = log2 length):
 #include <stdbool.h>
 #include <stddef.h>
 #include <string.h>
+#include <math.h>
 
 #include "./kru.h"
-
-/// Block of loads sharing the same time, so that we're more space-efficient.
-/// It's exactly a single cache line.
-struct load_cl {
-	_Atomic uint32_t time;
-	#define LOADS_LEN 15
-	uint16_t ids[LOADS_LEN];
-	uint16_t loads[LOADS_LEN];
-} ALIGNED_CPU_CACHE;
-static_assert(64 == sizeof(struct load_cl), "bad size of struct load_cl");
-
-inline static uint64_t rand_bits(unsigned int bits) {
-	static _Thread_local uint64_t state = 3723796604792068981ull;
-	const uint64_t prime1 = 11737314301796036329ull;
-	const uint64_t prime2 = 3107264277052274849ull;
-	state = prime1 * state + prime2;
-	//return state & ((1 << bits) - 1);
-	return state >> (64 - bits);
-}
-
-#include "./kru-decay.inc.c"
-
+#include "contrib/macros.h"
 #include "libdnssec/error.h"
 #include "libdnssec/random.h"
 typedef uint64_t hash_t;
@@ -91,11 +71,33 @@ typedef uint64_t hash_t;
 	#include <x86intrin.h>
 #endif
 
+/// Block of loads sharing the same time, so that we're more space-efficient.
+/// It's exactly a single cache line.
+struct load_cl {
+	ALIGNED_CPU_CACHE
+	_Atomic uint32_t time;
+	#define LOADS_LEN 15
+	uint16_t ids[LOADS_LEN];
+	uint16_t loads[LOADS_LEN];
+};
+static_assert(64 == sizeof(struct load_cl), "bad size of struct load_cl");
+
+/// Parametrization for speed of decay.
+struct decay_config {
+	/// Bit shift per tick, fractional
+	double shift_bits;
+
+	/// Ticks to get zero loads
+	uint32_t max_ticks;
+
+	uint32_t mult_cache[32];
+};
+
 struct kru {
 #if USE_AES
 	/// Hashing secret.  Random but shared by all users of the table.
 	/// Let's not make it too large, so that header fits into 64 Bytes.
-	char hash_key[48] ALIGNED(32);
+	_Alignas(32) char hash_key[48];
 #else
 	/// Hashing secret.  Random but shared by all users of the table.
 	SIPHASH_KEY hash_key;
@@ -109,6 +111,70 @@ struct kru {
 	/// These are read-write.  Each struct has exactly one cache line.
 	struct load_cl load_cls[][TABLE_COUNT];
 };
+
+inline static uint64_t rand_bits(unsigned int bits)
+{
+	static _Thread_local uint64_t state = 3723796604792068981ull;
+	const uint64_t prime1 = 11737314301796036329ull;
+	const uint64_t prime2 = 3107264277052274849ull;
+	state = prime1 * state + prime2;
+	//return state & ((1 << bits) - 1);
+	return state >> (64 - bits);
+}
+
+static inline void decay_initialize(struct decay_config *decay, kru_price_t max_decay)
+{
+	decay->shift_bits = log2(KRU_LIMIT - 1) - log2(KRU_LIMIT - 1 - max_decay);
+	decay->max_ticks = 18 / decay->shift_bits;
+
+	decay->mult_cache[0] = 0;  // not used
+	for (size_t ticks = 1; ticks < sizeof(decay->mult_cache) / sizeof(*decay->mult_cache); ticks++) {
+		decay->mult_cache[ticks] = exp2(32 - decay->shift_bits * ticks) + 0.5;
+	}
+}
+
+/// Catch up the time drift with configurably slower decay.
+static inline void update_time(struct load_cl *l, const uint32_t time_now,
+			const struct decay_config *decay)
+{
+	uint32_t ticks;
+	uint32_t time_last = atomic_load_explicit(&l->time, memory_order_relaxed);
+	do {
+		ticks = time_now - time_last;
+		if (__builtin_expect(!ticks, true)) // we optimize for time not advancing
+			return;
+		// We accept some desynchronization of time_now (e.g. from different threads).
+		if (ticks > (uint32_t)-1024)
+			return;
+	} while (!atomic_compare_exchange_weak_explicit(&l->time, &time_last, time_now, memory_order_relaxed, memory_order_relaxed));
+
+	// If we passed here, we have acquired a time difference we are responsibe for.
+
+	// Don't bother with complex computations if lots of ticks have passed. (little to no speed-up)
+	if (ticks > decay->max_ticks) {
+		memset(l->loads, 0, sizeof(l->loads));
+		return;
+	}
+
+	uint32_t mult;
+	if (__builtin_expect(ticks < sizeof(decay->mult_cache) / sizeof(*decay->mult_cache), 1)) {
+		mult = decay->mult_cache[ticks];
+	} else {
+		mult = exp2(32 - decay->shift_bits * ticks) + 0.5;
+	}
+
+	for (int i = 0; i < LOADS_LEN; ++i) {
+		// We perform decay for the acquired time difference; decays from different threads are commutative.
+		_Atomic uint16_t *load_at = (_Atomic uint16_t *)&l->loads[i];
+		uint16_t l1, load_orig = atomic_load_explicit(load_at, memory_order_relaxed);
+		const uint16_t rnd = rand_bits(16);
+		do {
+			uint64_t m = (((uint64_t)load_orig << 16)) * mult;
+			m = (m >> 32) + ((m >> 31) & 1);
+			l1 = (m >> 16) + (rnd < (uint16_t)m);
+		} while (!atomic_compare_exchange_weak_explicit(load_at, &load_orig, l1, memory_order_relaxed, memory_order_relaxed));
+	}
+}
 
 /// Convert capacity_log to loads_bits
 static inline int32_t capacity2loads(int capacity_log)
@@ -166,6 +232,7 @@ struct query_ctx {
 	kru_price_t price;
 	uint16_t price16, limit16;
 	uint16_t id;
+	uint16_t final_load_value;  // set by kru_limited_update if not blocked
 	uint16_t *load;
 };
 
@@ -204,7 +271,6 @@ static inline void kru_limited_prefetch(struct kru *kru, uint32_t time_now, uint
 	ctx->price = price;
 	ctx->id = hash;
 }
-
 
 /// Phase 1/3 of a query -- hash, prefetch, ctx init. Based on a bit prefix of one 16-byte key.
 static inline void kru_limited_prefetch_prefix(struct kru *kru, uint32_t time_now, uint8_t namespace, uint8_t key[static 16], uint8_t prefix, kru_price_t price, struct query_ctx *ctx)
@@ -335,15 +401,17 @@ static inline bool kru_limited_fetch(struct kru *kru, struct query_ctx *ctx)
 	}
 #endif
 
+	ctx->final_load_value = 0;
 	return false;
 
 load_found:;
-	return (*ctx->load >= ctx->limit16);
+	ctx->final_load_value = *ctx->load;
+	return (ctx->final_load_value >= ctx->limit16);
 }
 
 /// Phase 3/3 of a query -- state update, return value overrides previous answer in case of race.
-/// Not needed if blocked by fetch phase.
-static inline bool kru_limited_update(struct kru *kru, struct query_ctx *ctx)
+/// Not needed if blocked by fetch phase. If overflow_update is activated, false is always returned.
+static inline bool kru_limited_update(struct kru *kru, struct query_ctx *ctx, bool overflow_update)
 {
 	_Atomic uint16_t *load_at;
 	if (!ctx->load) {
@@ -408,10 +476,20 @@ static inline bool kru_limited_update(struct kru *kru, struct query_ctx *ctx)
 	const uint16_t price = ctx->price16;
 	const uint16_t limit = ctx->limit16;
 	uint16_t load_orig = atomic_load_explicit(load_at, memory_order_relaxed);
+	uint16_t load_new;
 	do {
-		if (load_orig >= limit)
-			return true;
-	} while (!atomic_compare_exchange_weak_explicit(load_at, &load_orig, load_orig + price, memory_order_relaxed, memory_order_relaxed));
+		if (load_orig >= limit) {
+			if (overflow_update) {
+				load_new = -1;
+			} else {
+				return true;
+			}
+		} else {
+			load_new = load_orig + price;
+		}
+	} while (!atomic_compare_exchange_weak_explicit(load_at, &load_orig, load_new, memory_order_relaxed, memory_order_relaxed));
+
+	ctx->final_load_value = load_new;
 	return false;
 }
 
@@ -429,7 +507,7 @@ static bool kru_limited_multi_or(struct kru *kru, uint32_t time_now, uint8_t **k
 	bool ret = false;
 
 	for (size_t i = 0; i < queries_cnt; i++) {
-		ret |= kru_limited_update(kru, ctx + i);
+		ret |= kru_limited_update(kru, ctx + i, false);
 	}
 
 	return ret;
@@ -450,7 +528,7 @@ static bool kru_limited_multi_or_nobreak(struct kru *kru, uint32_t time_now, uin
 	if (ret) return true;
 
 	for (size_t i = 0; i < queries_cnt; i++) {
-		if (kru_limited_update(kru, ctx + i))
+		if (kru_limited_update(kru, ctx + i, false))
 			ret = true;
 	}
 
@@ -458,7 +536,7 @@ static bool kru_limited_multi_or_nobreak(struct kru *kru, uint32_t time_now, uin
 }
 
 static uint8_t kru_limited_multi_prefix_or(struct kru *kru, uint32_t time_now, uint8_t namespace,
-                                           uint8_t key[static 16], uint8_t *prefixes, kru_price_t *prices, size_t queries_cnt)
+                                           uint8_t key[static 16], uint8_t *prefixes, kru_price_t *prices, size_t queries_cnt, uint16_t *max_load_out)
 {
 	struct query_ctx ctx[queries_cnt];
 
@@ -472,11 +550,52 @@ static uint8_t kru_limited_multi_prefix_or(struct kru *kru, uint32_t time_now, u
 	}
 
 	for (int i = queries_cnt - 1; i >= 0; i--) {
-		if (kru_limited_update(kru, ctx + i))
+		if (kru_limited_update(kru, ctx + i, false))
 			return prefixes[i];
 	}
 
+	if (max_load_out) {
+		*max_load_out = 0;
+		for (size_t i = 0; i < queries_cnt; i++) {
+			*max_load_out = MAX(*max_load_out, ctx[i].final_load_value);
+		}
+	}
+
 	return 0;
+}
+
+static uint16_t kru_load_multi_prefix_max(struct kru *kru, uint32_t time_now, uint8_t namespace,
+                                           uint8_t key[static 16], uint8_t *prefixes, kru_price_t *prices, size_t queries_cnt, uint8_t *prefix_out)
+{
+	struct query_ctx ctx[queries_cnt];
+
+	for (size_t i = 0; i < queries_cnt; i++) {
+		kru_limited_prefetch_prefix(kru, time_now, namespace, key, prefixes[i], (prices ? prices[i] : 0), ctx + i);
+	}
+
+	for (size_t i = 0; i < queries_cnt; i++) {
+		kru_limited_fetch(kru, ctx + i);
+	}
+
+	if (prices) {
+		for (int i = queries_cnt - 1; i >= 0; i--) {
+			kru_limited_update(kru, ctx + i, true);
+		}
+	}
+
+	uint8_t prefix = 0;
+	uint16_t max_load = 0;
+	for (size_t i = 0; i < queries_cnt; i++) {
+		if (max_load < ctx[i].final_load_value) {
+			max_load = ctx[i].final_load_value;
+			prefix = prefixes[i];
+		}
+	}
+	if (prefix_out) {
+		*prefix_out = prefix;
+	}
+
+	return max_load;
 }
 
 /// Update limiting and return true iff it hit the limit instead.
@@ -492,4 +611,5 @@ static bool kru_limited(struct kru *kru, uint32_t time_now, uint8_t key[static 1
 	.limited_multi_or = kru_limited_multi_or, \
 	.limited_multi_or_nobreak = kru_limited_multi_or_nobreak, \
 	.limited_multi_prefix_or = kru_limited_multi_prefix_or, \
+	.load_multi_prefix_max = kru_load_multi_prefix_max, \
 }
