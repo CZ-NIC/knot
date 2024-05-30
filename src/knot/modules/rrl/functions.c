@@ -46,7 +46,7 @@ struct rrl_table {
 	kru_price_t v6_prices[RRL_V6_PREFIXES_CNT];
 	uint32_t log_period;
 	_Atomic uint32_t log_time;
-	uint8_t kru[] ALIGNED(64);
+	_Alignas(64) uint8_t kru[];
 };
 
 static void addr_tostr(char *dst, size_t maxlen, const struct sockaddr_storage *ss)
@@ -132,20 +132,20 @@ int rrl_query(rrl_table_t *rrl, const struct sockaddr_storage *remote, knotd_mod
 	clock_gettime(CLOCK_MONOTONIC_COARSE, &now_ts);
 	uint32_t now = now_ts.tv_sec * 1000 + now_ts.tv_nsec / 1000000;
 
-	uint8_t key[16] ALIGNED(16) = {0, };
 	uint8_t limited_prefix;
+	_Alignas(16) uint8_t key[16] = { 0 };
 	if (remote->ss_family == AF_INET6) {
 		struct sockaddr_in6 *ipv6 = (struct sockaddr_in6 *)remote;
 		memcpy(key, &ipv6->sin6_addr, 16);
 
 		limited_prefix = KRU.limited_multi_prefix_or((struct kru *)rrl->kru, now,
-				1, key, RRL_V6_PREFIXES, rrl->v6_prices, RRL_V6_PREFIXES_CNT);
+				1, key, RRL_V6_PREFIXES, rrl->v6_prices, RRL_V6_PREFIXES_CNT, NULL);
 	} else {
 		struct sockaddr_in *ipv4 = (struct sockaddr_in *)remote;
 		memcpy(key, &ipv4->sin_addr, 4);
 
 		limited_prefix = KRU.limited_multi_prefix_or((struct kru *)rrl->kru, now,
-				0, key, RRL_V4_PREFIXES, rrl->v4_prices, RRL_V4_PREFIXES_CNT);
+				0, key, RRL_V4_PREFIXES, rrl->v4_prices, RRL_V4_PREFIXES_CNT, NULL);
 	}
 
 	uint32_t log_time_orig = atomic_load_explicit(&rrl->log_time, memory_order_relaxed);
