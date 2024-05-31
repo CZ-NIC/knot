@@ -854,7 +854,7 @@ static int zone_xfr_thaw(zone_t *zone, _unused_ ctl_args_t *args)
 
 static int zone_txn_begin(zone_t *zone, _unused_ ctl_args_t *args)
 {
-	if (zone->control_update != NULL) {
+	if (zone->control_update != NULL || conf()->io.txn != NULL) {
 		return KNOT_TXN_EEXISTS;
 	}
 
@@ -1852,6 +1852,27 @@ static int ctl_zone(ctl_args_t *args, ctl_cmd_t cmd)
 	}
 }
 
+static void check_zone_txn(zone_t *zone, const knot_dname_t **exists)
+{
+	if (zone->control_update != NULL) {
+		*exists = zone->name;
+	}
+}
+
+static int check_no_zone_txn(server_t *server, const char *action)
+{
+	const knot_dname_t *zone_txn_exists = NULL;
+	knot_zonedb_foreach(server->zone_db, check_zone_txn, &zone_txn_exists);
+	if (zone_txn_exists != NULL) {
+		knot_dname_txt_storage_t zone_str;
+		knot_dname_to_str(zone_str, zone_txn_exists, sizeof(zone_str));
+		log_warning("%s rejected due to existing transaction for zone %s",
+		            action, zone_str);
+		return KNOT_TXN_EEXISTS;
+	}
+	return KNOT_EOK;
+}
+
 static int server_status(ctl_args_t *args)
 {
 	const char *type = args->data[KNOT_CTL_IDX_TYPE];
@@ -1910,7 +1931,10 @@ static int ctl_server(ctl_args_t *args, ctl_cmd_t cmd)
 		ret = KNOT_CTL_ESTOP;
 		break;
 	case CTL_RELOAD:
-		ret = server_reload(args->server, RELOAD_FULL);
+		ret = check_no_zone_txn(args->server, "server reload");
+		if (ret == KNOT_EOK) {
+			ret = server_reload(args->server, RELOAD_FULL);
+		}
 		if (ret != KNOT_EOK) {
 			send_error(args, knot_strerror(ret));
 		}
@@ -2047,7 +2071,10 @@ static int ctl_conf_txn(ctl_args_t *args, ctl_cmd_t cmd)
 
 	switch (cmd) {
 	case CTL_CONF_BEGIN:
-		ret = conf_io_begin(false);
+		ret = check_no_zone_txn(args->server, "config, transaction");
+		if (ret == KNOT_EOK) {
+			ret = conf_io_begin(false);
+		}
 		break;
 	case CTL_CONF_ABORT:
 		conf_io_abort(false);

@@ -329,9 +329,9 @@ class Response(object):
         if found != expected:
             set_err("CHECK RR COUNT")
             check_log("ERROR: CHECK RR COUNT")
-            detail_log("!Invalid RR count type=%s section=%s" % (
+            detail_log("!Invalid RR count type=%s section=%s %d!=%d" % (
                 rtype if rtype is not None else "",
-                section
+                section, found, expected
             ))
             detail_log(SEP)
 
