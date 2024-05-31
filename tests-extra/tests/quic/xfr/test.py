@@ -63,45 +63,47 @@ tcpdump_proc = subprocess.Popen(["tcpdump", "-i", "lo", "-w", tcpdump_pcap,
                                  "port", str(master.quic_port), "or", "port", str(slave.quic_port)],
                                 stdout=open(tcpdump_fout, mode="a"), stderr=open(tcpdump_ferr, mode="a"))
 
-# Check initial AXFR without cert-key-based authentication
-serials = master.zones_wait(zones)
-slave.zones_wait(zones, serials, equal=True, greater=False)
-if slave.log_search(MSG_TSIG_ERROR):
-    set_err("INCOMPLETE TRANSFER")
-t.xfr_diff(master, slave, zones)
+try:
+    # Check initial AXFR without cert-key-based authentication
+    serials = master.zones_wait(zones)
+    slave.zones_wait(zones, serials, equal=True, greater=False)
+    if slave.log_search(MSG_TSIG_ERROR):
+        set_err("INCOMPLETE TRANSFER")
+    t.xfr_diff(master, slave, zones)
 
-# Check master not authenticated due to bad cert-key
-master.cert_key = "YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXoxMjM0NTY="
-slave.gen_confile()
-slave.reload()
-master.ctl("zone-notify")
-check_error(master, MSG_RMT_NOTAUTH)
-check_error(slave, MSG_DENIED_NOTIFY)
-slave.ctl("zone-retransfer")
-check_error(slave, MSG_RMT_BADCERT)
+    # Check master not authenticated due to bad cert-key
+    master.cert_key = "YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXoxMjM0NTY="
+    slave.gen_confile()
+    slave.reload()
+    master.ctl("zone-notify")
+    check_error(master, MSG_RMT_NOTAUTH)
+    check_error(slave, MSG_DENIED_NOTIFY)
+    slave.ctl("zone-retransfer")
+    check_error(slave, MSG_RMT_BADCERT)
 
-# Check IXFR with cert-key-based authenticated master
-master.fill_cert_key()
-slave.gen_confile()
-slave.reload()
-serials = upd_check_zones(master, slave, rnd_zones, serials)
+    # Check IXFR with cert-key-based authenticated master
+    master.fill_cert_key()
+    slave.gen_confile()
+    slave.reload()
+    serials = upd_check_zones(master, slave, rnd_zones, serials)
 
-# Check slave not authenticated due to bad cert-key
-slave.cert_key = "YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXoxMjM0NTY="
-master.gen_confile()
-master.reload()
-master.ctl("zone-notify")
-check_error(master, MSG_RMT_BADCERT)
-slave.ctl("zone-retransfer")
-check_error(slave, MSG_RMT_NOTAUTH)
-check_error(master, MSG_DENIED_TRANSFER)
+    # Check slave not authenticated due to bad cert-key
+    slave.cert_key = "YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXoxMjM0NTY="
+    master.gen_confile()
+    master.reload()
+    master.ctl("zone-notify")
+    check_error(master, MSG_RMT_BADCERT)
+    slave.ctl("zone-retransfer")
+    check_error(slave, MSG_RMT_NOTAUTH)
+    check_error(master, MSG_DENIED_TRANSFER)
 
-# Check IXFR with cert-key-based authenticated slave
-slave.fill_cert_key()
-master.gen_confile()
-master.reload()
-serials = upd_check_zones(master, slave, rnd_zones, serials)
+    # Check IXFR with cert-key-based authenticated slave
+    slave.fill_cert_key()
+    master.gen_confile()
+    master.reload()
+    serials = upd_check_zones(master, slave, rnd_zones, serials)
 
-tcpdump_proc.terminate()
+finally:
+    tcpdump_proc.terminate()
 
 t.end()
