@@ -108,6 +108,7 @@ static const struct error errors[] = {
 	{ KNOT_EBADCERTKEY,  "unknown certificate key" },
 	{ KNOT_EFACCES,      "file permission denied" },
 	{ KNOT_EBACKUPDATA,  "requested data not in backup" },
+	{ KNOT_ECPUCOMPAT,   "incompatible CPU architecture" },
 
 	{ KNOT_GENERAL_ERROR, "unknown general error" },
 
