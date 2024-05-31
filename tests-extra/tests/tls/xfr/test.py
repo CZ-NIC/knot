@@ -61,7 +61,7 @@ tcpdump_fout = t.out_dir + "/tcpdump.out"
 tcpdump_ferr = t.out_dir + "/tcpdump.err"
 
 tcpdump_proc = subprocess.Popen(["tcpdump", "-i", "lo", "-w", tcpdump_pcap,
-                                 "port", str(master.quic_port), "or", "port", str(slave.quic_port)],
+                                 "port", str(master.tls_port), "or", "port", str(slave.tls_port)],
                                 stdout=open(tcpdump_fout, mode="a"), stderr=open(tcpdump_ferr, mode="a"))
 
 # Check initial AXFR without cert-key-based authentication
