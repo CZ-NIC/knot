@@ -130,12 +130,23 @@ int knot_quic_client(knot_quic_table_t *table, struct sockaddr_in6 *dest,
                      knot_quic_conn_t **out_conn);
 
 /*!
+ * \brief Check if the connection already exists in table.
+ *
+ * \param table         QUIC connection table.
+ * \param reply         Packet info, especially in_payload.
+ *
+ * \return NULL if connection not found, the conn otherwise.
+ */
+knot_quic_conn_t *knot_quic_conn_lookup(knot_quic_table_t *table,
+                                        knot_quic_reply_t *reply);
+
+/*!
  * \brief Handle incoming QUIC packet.
  *
  * \param table           QUIC connectoins table.
  * \param reply           Incoming packet info.
  * \param idle_timeout    Configured idle timeout for connections (in nanoseconds).
- * \param out_conn        Out: QUIC connection that this packet belongs to.
+ * \param out_conn        QUIC connection that this packet belongs to (set NULL for auto).
  *
  * \return KNOT_E* or -QUIC_SEND_*
  */
