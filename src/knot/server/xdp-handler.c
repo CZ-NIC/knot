@@ -20,6 +20,7 @@
 #include <stdlib.h>
 #include <urcu.h>
 
+#include "knot/nameserver/process_query.h"
 #include "knot/server/handler.h"
 #include "knot/server/quic-handler.h"
 #include "knot/server/xdp-handler.h"
@@ -196,6 +197,10 @@ static void handle_udp(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
 			continue;
 		}
 
+		if (process_query_proto(params, KNOTD_STAGE_PROTO_BEGIN) == KNOTD_PROTO_STATE_BLOCK) {
+			continue;
+		}
+
 		// Try to allocate a buffer for a reply.
 		if (knot_xdp_reply_alloc(ctx->sock, msg_recv, msg_send) != KNOT_EOK) {
 			if (log_enabled_debug()) {
@@ -209,6 +214,8 @@ static void handle_udp(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
 		params_xdp_update(params, KNOTD_QUERY_PROTO_UDP, msg_recv, 0, NULL);
 		handle_udp_reply(params, layer, &msg_recv->payload, &msg_send->payload,
 		                 &proxied_remote);
+
+		(void)process_query_proto(params, KNOTD_STAGE_PROTO_END);
 	}
 }
 
@@ -221,6 +228,9 @@ static void handle_tcp(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
 		knot_xdp_msg_t *msg = &ctx->msg_recv[i];
 		knot_tcp_relay_t *rl = &ctx->relays[i];
 
+		if (process_query_proto(params, KNOTD_STAGE_PROTO_BEGIN) == KNOTD_PROTO_STATE_BLOCK) {
+			continue;
+		}
 
 		knot_tcp_lookup_t lkup = { 0 }, lkup_syn = { 0 };
 		(void)knot_tcp_table_lookup(&lkup, ctx->tcp_table, msg);
@@ -260,6 +270,8 @@ static void handle_tcp(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
 
 			handle_finish(layer);
 		}
+
+		(void)process_query_proto(params, KNOTD_STAGE_PROTO_END);
 	}
 }
 
@@ -281,6 +293,10 @@ static void handle_quic(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
 			continue;
 		}
 
+		if (process_query_proto(params, KNOTD_STAGE_PROTO_BEGIN) == KNOTD_PROTO_STATE_BLOCK) {
+			continue;
+		}
+
 		knot_quic_reply_t *reply = &ctx->quic_replies[i];
 		knot_xdp_msg_t *msg_out = &ctx->msg_send_udp[i];
 
@@ -292,12 +308,18 @@ static void handle_quic(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
 		reply->out_ctx = msg_out;
 		reply->ecn = msg_recv->ecn;
 
+		if (process_query_proto(params, KNOTD_STAGE_PROTO_BEGIN) == KNOTD_PROTO_STATE_BLOCK) {
+			continue;
+		}
+
 		ctx->quic_relays[i] = knot_quic_conn_lookup(ctx->quic_table, reply);
 		(void)knot_quic_handle(ctx->quic_table, reply, ctx->quic_idle_close,
 		                       &ctx->quic_relays[i]);
 		knot_quic_conn_t *conn = ctx->quic_relays[i];
 
 		handle_quic_streams(conn, params, layer, &ctx->msg_recv[i]);
+
+		(void)process_query_proto(params, KNOTD_STAGE_PROTO_END);
 	}
 #else
 	(void)(ctx);
