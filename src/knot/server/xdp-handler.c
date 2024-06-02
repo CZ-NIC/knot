@@ -215,15 +215,19 @@ static void handle_udp(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
 static void handle_tcp(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
                        knotd_qdata_params_t *params)
 {
-
 	uint8_t ans_buf[KNOT_WIRE_MAX_PKTSIZE];
 
 	for (uint32_t i = 0; i < ctx->msg_recv_count; i++) {
+		knot_xdp_msg_t *msg = &ctx->msg_recv[i];
 		knot_tcp_relay_t *rl = &ctx->relays[i];
-		knot_tcp_lookup_t lkup = { 0 };
 
-		int ret = knot_tcp_recv(rl, &ctx->msg_recv[i], ctx->tcp_table,
-	                                ctx->syn_table, &lkup, XDP_TCP_IGNORE_NONE);
+
+		knot_tcp_lookup_t lkup = { 0 }, lkup_syn = { 0 };
+		(void)knot_tcp_table_lookup(&lkup, ctx->tcp_table, msg);
+		(void)knot_tcp_table_lookup(&lkup_syn, ctx->syn_table, msg);
+
+		int ret = knot_tcp_recv(rl, msg, ctx->tcp_table,
+		                        ctx->syn_table, &lkup, XDP_TCP_IGNORE_NONE);
 		if (ret != KNOT_EOK) {
 			if (log_enabled_debug()) {
 				log_debug("TCP/XDP, failed to process some packets (%s)",
