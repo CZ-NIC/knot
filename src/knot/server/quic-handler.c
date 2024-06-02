@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -24,6 +24,7 @@
 #include "contrib/macros.h"
 #include "contrib/net.h"
 #include "knot/common/log.h"
+#include "knot/nameserver/process_query.h"
 #include "knot/server/handler.h"
 #include "knot/server/quic-handler.h"
 #include "knot/server/server.h"
@@ -92,6 +93,10 @@ void quic_handler(knotd_qdata_params_t *params, knot_layer_t *layer,
 
 	rpl.out_payload->iov_len = 0; // prevent send attempt if uq_alloc_reply is not called at all
 
+	if (process_query_proto(params, KNOTD_STAGE_PROTO_BEGIN) == KNOTD_PROTO_STATE_BLOCK) {
+		return;
+	}
+
 	knot_quic_conn_t *conn = NULL;
 	(void)knot_quic_handle(table, &rpl, idle_close, &conn);
 
@@ -102,6 +107,8 @@ void quic_handler(knotd_qdata_params_t *params, knot_layer_t *layer,
 
 		knot_quic_cleanup(&conn, 1);
 	}
+
+	(void)process_query_proto(params, KNOTD_STAGE_PROTO_END);
 }
 
 knot_quic_table_t *quic_make_table(struct server *server)

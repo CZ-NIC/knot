@@ -155,22 +155,15 @@ static unsigned tcp_set_ifaces(const iface_t *ifaces, size_t n_ifaces,
 	return fdset_get_length(fds);
 }
 
-static int tcp_handle(tcp_context_t *tcp, int fd, knot_tls_conn_t *tls_conn, const sockaddr_t *remote,
-                      const sockaddr_t *local, struct iovec *rx, struct iovec *tx)
+static int tcp_handle(tcp_context_t *tcp, knotd_qdata_params_t *params,
+                      knot_tls_conn_t *tls_conn, struct iovec *rx, struct iovec *tx)
 {
-	/* Create query processing parameter. */
-	knotd_qdata_params_t params = params_init(tls_conn != NULL ? KNOTD_QUERY_PROTO_TLS :
-	                                                             KNOTD_QUERY_PROTO_TCP,
-	                                          remote, local, fd, tcp->server, tcp->thread_id);
-
 	rx->iov_len = KNOT_WIRE_MAX_PKTSIZE;
 	tx->iov_len = KNOT_WIRE_MAX_PKTSIZE;
 
 	/* Receive data. */
 	int recv;
 	if (tls_conn != NULL) {
-		assert(tcp->tls_ctx != NULL);
-		params.tls_conn = tls_conn;
 		int ret = knot_tls_handshake(tls_conn, true);
 		switch (ret) {
 		case KNOT_EAGAIN: // Unfinished handshake, continue later.
@@ -182,16 +175,16 @@ static int tcp_handle(tcp_context_t *tcp, int fd, knot_tls_conn_t *tls_conn, con
 			return ret;
 		}
 	} else {
-		recv = net_dns_tcp_recv(fd, rx->iov_base, rx->iov_len, tcp->io_timeout);
+		recv = net_dns_tcp_recv(params->socket, rx->iov_base, rx->iov_len, tcp->io_timeout);
 	}
 	if (recv > 0) {
 		rx->iov_len = recv;
 	} else {
-		tcp_log_error(params.remote, "receive", recv);
+		tcp_log_error(params->remote, "receive", recv);
 		return KNOT_EOF;
 	}
 
-	handle_query(&params, &tcp->layer, rx, NULL);
+	handle_query(params, &tcp->layer, rx, NULL);
 
 	/* Resolve until NOOP or finished. */
 	knot_pkt_t *ans = knot_pkt_new(tx->iov_base, tx->iov_len, tcp->layer.mm);
@@ -203,11 +196,11 @@ static int tcp_handle(tcp_context_t *tcp, int fd, knot_tls_conn_t *tls_conn, con
 			if (tls_conn != NULL) {
 				sent = knot_tls_send_dns(tls_conn, ans->wire, ans->size);
 			} else {
-				sent = net_dns_tcp_send(fd, ans->wire, ans->size,
+				sent = net_dns_tcp_send(params->socket, ans->wire, ans->size,
 				                        tcp->io_timeout, NULL);
 			}
 			if (sent != ans->size) {
-				tcp_log_error(params.remote, "send", sent);
+				tcp_log_error(params->remote, "send", sent);
 				handle_finish(&tcp->layer);
 				return KNOT_EOF;
 			}
@@ -261,22 +254,40 @@ static int tcp_event_serve(tcp_context_t *tcp, unsigned i, const iface_t *iface)
 		}
 	}
 
+	knotd_qdata_params_t params = params_init(iface->tls ? KNOTD_QUERY_PROTO_TLS
+	                                                     : KNOTD_QUERY_PROTO_TCP,
+	                                          remote, local, fd, tcp->server,
+	                                          tcp->thread_id);
+
+	// NOTE there is no way to avoid calling accept() on unwanted connections:
+	// - it's not possible to read out the remote IP beforehand
+	// - there is no way to pull it out of the queue
+	// So we just accept() those connection (possibly going ahead with the handshake)
+	// and close it immediately.
+	if (process_query_proto(&params, KNOTD_STAGE_PROTO_BEGIN) == KNOTD_PROTO_STATE_BLOCK) {
+		return KNOT_EDENIED; // results in closing connection
+	}
+
 	/* Establish a TLS session. */
 	knot_tls_conn_t *tls_conn = *fdset_ctx2(&tcp->set, i);
 	assert(iface->tls || tls_conn == NULL);
 	if (iface->tls && tls_conn == NULL) {
+		assert(tcp->tls_ctx != NULL);
 		tls_conn = knot_tls_conn_new(tcp->tls_ctx, fd);
 		if (tls_conn == NULL) {
 			return KNOT_ENOMEM;
 		}
 		*fdset_ctx2(&tcp->set, i) = tls_conn;
 	}
+	params.tls_conn = tls_conn;
 
-	int ret = tcp_handle(tcp, fd, tls_conn, remote, local, &tcp->iov[0], &tcp->iov[1]);
+	int ret = tcp_handle(tcp, &params, tls_conn, &tcp->iov[0], &tcp->iov[1]);
 	if (ret == KNOT_EOK) {
 		/* Update socket activity timer. */
 		(void)fdset_set_watchdog(&tcp->set, i, tcp->idle_timeout);
 	}
+
+	(void)process_query_proto(&params, KNOTD_STAGE_PROTO_END);
 
 	return ret;
 }

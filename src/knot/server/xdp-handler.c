@@ -20,6 +20,7 @@
 #include <stdlib.h>
 #include <urcu.h>
 
+#include "knot/nameserver/process_query.h"
 #include "knot/server/handler.h"
 #include "knot/server/quic-handler.h"
 #include "knot/server/xdp-handler.h"
@@ -196,6 +197,10 @@ static void handle_udp(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
 			continue;
 		}
 
+		if (process_query_proto(params, KNOTD_STAGE_PROTO_BEGIN) == KNOTD_PROTO_STATE_BLOCK) {
+			continue;
+		}
+
 		// Try to allocate a buffer for a reply.
 		if (knot_xdp_reply_alloc(ctx->sock, msg_recv, msg_send) != KNOT_EOK) {
 			if (log_enabled_debug()) {
@@ -209,6 +214,8 @@ static void handle_udp(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
 		params_xdp_update(params, KNOTD_QUERY_PROTO_UDP, msg_recv, 0, NULL);
 		handle_udp_reply(params, layer, &msg_recv->payload, &msg_send->payload,
 		                 &proxied_remote);
+
+		(void)process_query_proto(params, KNOTD_STAGE_PROTO_END);
 	}
 }
 
@@ -219,10 +226,19 @@ static void handle_tcp(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
 	uint8_t ans_buf[KNOT_WIRE_MAX_PKTSIZE];
 
 	for (uint32_t i = 0; i < ctx->msg_recv_count; i++) {
+		knot_xdp_msg_t *msg_recv = &ctx->msg_recv[i];
 		knot_tcp_relay_t *rl = &ctx->relays[i];
 
-		int ret = knot_tcp_recv(rl, &ctx->msg_recv[i], ctx->tcp_table,
-	                                ctx->syn_table, XDP_TCP_IGNORE_NONE);
+		if (!(msg_recv->flags & KNOT_XDP_MSG_TCP)) {
+			continue;
+		}
+
+		if (process_query_proto(params, KNOTD_STAGE_PROTO_BEGIN) == KNOTD_PROTO_STATE_BLOCK) {
+			continue;
+		}
+
+		int ret = knot_tcp_recv(rl, msg_recv, ctx->tcp_table,
+		                        ctx->syn_table, XDP_TCP_IGNORE_NONE);
 		if (ret != KNOT_EOK) {
 			if (log_enabled_debug()) {
 				log_debug("TCP/XDP, failed to process some packets (%s)",
@@ -255,6 +271,8 @@ static void handle_tcp(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
 
 			handle_finish(layer);
 		}
+
+		(void)process_query_proto(params, KNOTD_STAGE_PROTO_END);
 	}
 }
 
@@ -276,6 +294,10 @@ static void handle_quic(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
 			continue;
 		}
 
+		if (process_query_proto(params, KNOTD_STAGE_PROTO_BEGIN) == KNOTD_PROTO_STATE_BLOCK) {
+			continue;
+		}
+
 		knot_quic_reply_t *reply = &ctx->quic_replies[i];
 		knot_xdp_msg_t *msg_out = &ctx->msg_send_udp[i];
 
@@ -292,6 +314,8 @@ static void handle_quic(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
 		knot_quic_conn_t *conn = ctx->quic_relays[i];
 
 		handle_quic_streams(conn, params, layer, &ctx->msg_recv[i]);
+
+		(void)process_query_proto(params, KNOTD_STAGE_PROTO_END);
 	}
 #else
 	(void)(ctx);
