@@ -601,10 +601,26 @@ int knot_quic_client(knot_quic_table_t *table, struct sockaddr_in6 *dest,
 }
 
 _public_
+knot_quic_conn_t *knot_quic_conn_lookup(knot_quic_table_t *table,
+                                        knot_quic_reply_t *reply)
+{
+	ngtcp2_version_cid decoded_cids = { 0 };
+	ngtcp2_cid dcid = { 0 };
+	int ret = ngtcp2_pkt_decode_version_cid(&decoded_cids,
+	                                        reply->in_payload->iov_base,
+	                                        reply->in_payload->iov_len,
+	                                        SERVER_DEFAULT_SCIDLEN);
+	if (ret != NGTCP2_NO_ERROR) {
+		return NULL;
+	}
+	ngtcp2_cid_init(&dcid, decoded_cids.dcid, decoded_cids.dcidlen);
+	return quic_table_lookup(&dcid, table);
+}
+
+_public_
 int knot_quic_handle(knot_quic_table_t *table, knot_quic_reply_t *reply,
                      uint64_t idle_timeout, knot_quic_conn_t **out_conn)
 {
-	*out_conn = NULL;
 	if (table == NULL || reply == NULL || out_conn == NULL) {
 		return KNOT_EINVAL;
 	}
@@ -629,7 +645,7 @@ int knot_quic_handle(knot_quic_table_t *table, knot_quic_reply_t *reply,
 	ngtcp2_cid_init(&dcid, decoded_cids.dcid, decoded_cids.dcidlen);
 	ngtcp2_cid_init(&scid, decoded_cids.scid, decoded_cids.scidlen);
 
-	knot_quic_conn_t *conn = quic_table_lookup(&dcid, table);
+	knot_quic_conn_t *conn = (*out_conn == NULL ? quic_table_lookup(&dcid, table) : *out_conn);
 
 	if (decoded_cids.version == 0 /* short header */ && conn == NULL) {
 		ret = KNOT_EOK; // NOOP

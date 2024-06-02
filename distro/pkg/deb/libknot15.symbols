@@ -123,6 +123,7 @@ libknot.so.15 libknot15 #MINVER#
  knot_quic_conn_block@Base 3.4.0
  knot_quic_conn_get_stream@Base 3.4.0
  knot_quic_conn_local_port@Base 3.4.0
+ knot_quic_conn_lookup@Base 3.4.0
  knot_quic_conn_new_stream@Base 3.4.0
  knot_quic_conn_next_timeout@Base 3.4.0
  knot_quic_conn_rtt@Base 3.4.0

@@ -288,6 +288,7 @@ static void handle_quic(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
 		reply->out_ctx = msg_out;
 		reply->ecn = msg_recv->ecn;
 
+		ctx->quic_relays[i] = knot_quic_conn_lookup(ctx->quic_table, reply);
 		(void)knot_quic_handle(ctx->quic_table, reply, ctx->quic_idle_close,
 		                       &ctx->quic_relays[i]);
 		knot_quic_conn_t *conn = ctx->quic_relays[i];
