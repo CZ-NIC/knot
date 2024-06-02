@@ -73,9 +73,15 @@ typedef struct {
 static void udp_handler(udp_context_t *udp, knotd_qdata_params_t *params,
                         struct iovec *rx, struct iovec *tx)
 {
+	if (process_query_proto(params, KNOTD_STAGE_PROTO_BEGIN) == KNOTD_PROTO_STATE_BLOCK) {
+		return;
+	}
+
 	// Prepare a reply.
 	struct sockaddr_storage proxied_remote;
 	handle_udp_reply(params, &udp->layer, rx, tx, &proxied_remote);
+
+	(void)process_query_proto(params, KNOTD_STAGE_PROTO_END);
 }
 
 typedef struct {
