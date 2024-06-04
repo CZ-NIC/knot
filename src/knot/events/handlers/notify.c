@@ -15,6 +15,7 @@
  */
 
 #include <assert.h>
+#include <urcu.h>
 
 #include "contrib/openbsd/siphash.h"
 #include "knot/common/log.h"
@@ -151,7 +152,13 @@ int event_notify(conf_t *conf, zone_t *zone)
 
 	// NOTIFY content
 	int timeout = conf->cache.srv_tcp_remote_io_timeout;
+	rcu_read_lock();
 	knot_rrset_t soa = node_rrset(zone->contents->apex, KNOT_RRTYPE_SOA);
+	knot_rrset_t *soa_cpy = knot_rrset_copy(&soa, NULL);
+	rcu_read_unlock();
+	if (soa_cpy == NULL) {
+		return KNOT_ENOMEM;
+	}
 
 	// in case of re-try, NOTIFY only failed remotes
 	pthread_mutex_lock(&zone->preferred_lock);
@@ -176,7 +183,7 @@ int event_notify(conf_t *conf, zone_t *zone)
 
 		for (int i = 0; i < addr_count; i++) {
 			conf_remote_t slave = conf_remote(conf, iter.id, i);
-			ret = send_notify(conf, zone, &soa, &slave, timeout, retry);
+			ret = send_notify(conf, zone, soa_cpy, &slave, timeout, retry);
 			if (ret == KNOT_EOK) {
 				break;
 			}
@@ -196,7 +203,7 @@ int event_notify(conf_t *conf, zone_t *zone)
 	if (failed) {
 		notifailed_rmt_dynarray_sort_dedup(&zone->notifailed);
 
-		uint32_t retry_in = knot_soa_retry(soa.rrs.rdata);
+		uint32_t retry_in = knot_soa_retry(soa_cpy->rrs.rdata);
 		conf_val_t val = conf_zone_get(conf, C_RETRY_MIN_INTERVAL, zone->name);
 		retry_in = MAX(retry_in, conf_int(&val));
 		val = conf_zone_get(conf, C_RETRY_MAX_INTERVAL, zone->name);
@@ -205,6 +212,7 @@ int event_notify(conf_t *conf, zone_t *zone)
 		zone_events_schedule_at(zone, ZONE_EVENT_NOTIFY, time(NULL) + retry_in);
 	}
 	pthread_mutex_unlock(&zone->preferred_lock);
+	knot_rrset_free(soa_cpy, NULL);
 
 	return failed ? KNOT_ERROR : KNOT_EOK;
 }
