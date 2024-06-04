@@ -8,7 +8,12 @@ t = Test()
 
 master = t.server("knot")
 slave = t.server("knot")
-zones = t.zone_rnd(1, records=12000, dnssec=False)
+
+RECORDS = 12000
+if master.valgrind:
+    RECORDS = 2000
+
+zones = t.zone_rnd(1, records=RECORDS, dnssec=False)
 
 t.link(zones, master, slave, ixfr=True)
 
