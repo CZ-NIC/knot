@@ -27,8 +27,9 @@
 #include "knot/server/server.h"
 
 #define DS_CHECK_LOG(priority, zone, remote, flags, fmt, ...) \
-	ns_log(priority, zone, LOG_OPERATION_DS_CHECK, LOG_DIRECTION_OUT, remote, \
-	       flags2proto(flags), ((flags) & KNOT_REQUESTOR_REUSED), fmt, ## __VA_ARGS__)
+	ns_log(priority, zone, LOG_OPERATION_DS_CHECK, LOG_DIRECTION_OUT, &(remote)->addr, \
+	       flags2proto(flags), ((flags) & KNOT_REQUESTOR_REUSED), (remote)->key.name, \
+	       fmt, ## __VA_ARGS__)
 
 static bool match_key_ds(knot_kasp_key_t *key, knot_rdata_t *ds)
 {
@@ -71,7 +72,7 @@ struct ds_query_data {
 	conf_t *conf;
 
 	const knot_dname_t *zone_name;
-	const struct sockaddr *remote;
+	const conf_remote_t *remote;
 
 	knot_kasp_key_t *key;
 	knot_kasp_key_t *not_key;
@@ -115,8 +116,8 @@ static int ds_query_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 	uint16_t rcode = knot_pkt_ext_rcode(pkt);
 	if (rcode != KNOT_RCODE_NOERROR) {
 		DS_CHECK_LOG((rcode == KNOT_RCODE_NXDOMAIN ? LOG_NOTICE : LOG_WARNING),
-		       data->zone_name, data->remote, layer->flags,
-		       "failed (%s)", knot_pkt_ext_rcode_name(pkt));
+		             data->zone_name, data->remote, layer->flags,
+		             "failed (%s)", knot_pkt_ext_rcode_name(pkt));
 		return KNOT_STATE_FAIL;
 	}
 
@@ -178,7 +179,7 @@ static int try_ds(conf_t *conf, const knot_dname_t *zone_name, const conf_remote
 
 	struct ds_query_data data = {
 		.zone_name = zone_name,
-		.remote = (struct sockaddr *)&parent->addr,
+		.remote = parent,
 		.key = key,
 		.not_key = not_key,
 		.edns = query_edns_data_init(conf, parent, QUERY_EDNS_OPT_DO),
@@ -213,7 +214,7 @@ static int try_ds(conf_t *conf, const knot_dname_t *zone_name, const conf_remote
 
 	if (ret != KNOT_EOK && !data.result_logged) {
 		DS_CHECK_LOG(LOG_WARNING, zone_name, data.remote, requestor.layer.flags,
-		       "failed (%s)", knot_strerror(ret));
+		             "failed (%s)", knot_strerror(ret));
 	}
 
 	*ds_ttl = data.ttl;

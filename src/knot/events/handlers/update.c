@@ -35,8 +35,8 @@
 
 #define UPDATE_LOG(priority, qdata, fmt...) \
 	ns_log(priority, knot_pkt_qname(qdata->query), LOG_OPERATION_UPDATE, \
-	       LOG_DIRECTION_IN, (struct sockaddr *)knotd_qdata_remote_addr(qdata), \
-	       qdata->params->proto, false, fmt)
+	       LOG_DIRECTION_IN, (qdata)->params->remote, \
+	       (qdata)->params->proto, false, (qdata)->sign.tsig_key.name, fmt)
 
 static void init_qdata_from_request(knotd_qdata_t *qdata,
                                     zone_t *zone,
@@ -142,6 +142,7 @@ static int process_bulk(zone_t *zone, list_t *requests, zone_update_t *up)
 		knot_request_t *req = node->d;
 		// Init qdata structure for logging (unique per-request).
 		knotd_qdata_params_t params = {
+			.proto = flags2proto(req->flags),
 			.remote = &req->remote
 		};
 		knotd_qdata_t qdata;

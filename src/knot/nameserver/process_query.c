@@ -731,10 +731,10 @@ bool process_query_acl_check(conf_t *conf, acl_action_t action,
 
 		const char *proto_str;
 		switch (qdata->params->proto) {
-		case KNOTD_QUERY_PROTO_UDP:  proto_str = ", UDP"; break;
-		case KNOTD_QUERY_PROTO_TCP:  proto_str = ", TCP"; break;
-		case KNOTD_QUERY_PROTO_QUIC: proto_str = ", QUIC"; break;
-		case KNOTD_QUERY_PROTO_TLS:  proto_str = ", TLS"; break;
+		case KNOTD_QUERY_PROTO_UDP:  proto_str = " UDP"; break;
+		case KNOTD_QUERY_PROTO_TCP:  proto_str = " TCP"; break;
+		case KNOTD_QUERY_PROTO_QUIC: proto_str = " QUIC"; break;
+		case KNOTD_QUERY_PROTO_TLS:  proto_str = " TLS"; break;
 		default:                     proto_str = "";
 		}
 
@@ -742,10 +742,9 @@ bool process_query_acl_check(conf_t *conf, acl_action_t action,
 		               "ACL, %s, action %s, remote %s%s%s%s%s%.*s%s",
 		               allowed ? "allowed" : "denied",
 		               (act != NULL) ? act->name : "query",
-		               addr_str,
+		               addr_str, proto_str,
 		               (key_name[0] != '\0') ? ", key " : "",
 		               (key_name[0] != '\0') ? key_name : "",
-		               proto_str,
 		               (pin_size > 0) ? " cert-key " : "",
 		               (pin_size > 0) ? pin_size : 0,
 		               (pin_size > 0) ? (const char *)pin : "",
