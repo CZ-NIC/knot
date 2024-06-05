@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -25,9 +25,9 @@
 #include "libknot/errcode.h"
 
 #define DNSKEY_SYNC_LOG(priority, zone, remote, flags, fmt, ...) \
-	ns_log(priority, zone, LOG_OPERATION_DNSKEY_SYNC, LOG_DIRECTION_OUT, remote, \
+	ns_log(priority, zone, LOG_OPERATION_DNSKEY_SYNC, LOG_DIRECTION_OUT, &(remote)->addr, \
 	       ((flags) & KNOT_REQUESTOR_QUIC) ? KNOTD_QUERY_PROTO_QUIC : KNOTD_QUERY_PROTO_TCP, \
-	       ((flags) & KNOT_REQUESTOR_REUSED), fmt, ## __VA_ARGS__)
+	       ((flags) & KNOT_REQUESTOR_REUSED), (remote)->key.name, fmt, ## __VA_ARGS__)
 
 static const unsigned remote_rrs[] = { KNOT_RRTYPE_DNSKEY, KNOT_RRTYPE_CDNSKEY, KNOT_RRTYPE_CDS };
 #define REMOTE_NTYPES (sizeof(remote_rrs) / sizeof(remote_rrs[0]))
@@ -36,7 +36,7 @@ struct dnskey_sync_data {
 	zone_t *zone;
 	knot_rrset_t *rem_rr[REMOTE_NTYPES];
 	knot_rrset_t *add_rr[REMOTE_NTYPES];
-	const struct sockaddr *remote;
+	const conf_remote_t *remote;
 	query_edns_data_t edns;
 	bool uptodate;
 	bool ddns_sent;
@@ -235,7 +235,7 @@ static int send_dnskey_sync(conf_t *conf, zone_t *zone, bool *uptodate,
 {
 	struct dnskey_sync_data data = {
 		.zone = zone,
-		.remote = (struct sockaddr *)&remote->addr,
+		.remote = remote,
 		.edns = query_edns_data_init(conf, remote, 0)
 	};
 
@@ -264,14 +264,14 @@ static int send_dnskey_sync(conf_t *conf, zone_t *zone, bool *uptodate,
 	}
 
 	if (data.ddns_sent && ret == KNOT_ETIMEOUT) {
-		DNSKEY_SYNC_LOG(LOG_WARNING, zone->name, &remote->addr, requestor.layer.flags,
+		DNSKEY_SYNC_LOG(LOG_WARNING, zone->name, remote, requestor.layer.flags,
 		                "timed out, may be caused by parallel mutual DNSKEY sync, "
 		                "may settle down after check-interval");
 		ret = KNOT_EOK;
 	}
 
 	if (ret != KNOT_EOK) {
-		DNSKEY_SYNC_LOG(LOG_ERR, zone->name, &remote->addr, requestor.layer.flags,
+		DNSKEY_SYNC_LOG(LOG_ERR, zone->name, remote, requestor.layer.flags,
 		                "failed (%s)", knot_strerror(ret));
 	}
 

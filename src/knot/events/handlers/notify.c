@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -41,7 +41,7 @@ static notifailed_rmt_hash notifailed_hash(conf_val_t *rmt_id)
 struct notify_data {
 	const knot_dname_t *zone;
 	const knot_rrset_t *soa;
-	const struct sockaddr *remote;
+	const conf_remote_t *remote;
 	query_edns_data_t edns;
 };
 
@@ -83,9 +83,9 @@ static const knot_layer_api_t NOTIFY_API = {
 };
 
 #define NOTIFY_OUT_LOG(priority, zone, remote, flags, fmt, ...) \
-	ns_log(priority, zone, LOG_OPERATION_NOTIFY, LOG_DIRECTION_OUT, remote, \
+	ns_log(priority, zone, LOG_OPERATION_NOTIFY, LOG_DIRECTION_OUT, &(remote)->addr, \
 	       ((flags) & KNOT_REQUESTOR_QUIC) ? KNOTD_QUERY_PROTO_QUIC : KNOTD_QUERY_PROTO_TCP, \
-	       ((flags) & KNOT_REQUESTOR_REUSED), fmt, ## __VA_ARGS__)
+	       ((flags) & KNOT_REQUESTOR_REUSED), (remote)->key.name, fmt, ## __VA_ARGS__)
 
 static int send_notify(conf_t *conf, zone_t *zone, const knot_rrset_t *soa,
                        const conf_remote_t *slave, int timeout, bool retry)
@@ -93,7 +93,7 @@ static int send_notify(conf_t *conf, zone_t *zone, const knot_rrset_t *soa,
 	struct notify_data data = {
 		.zone = zone->name,
 		.soa = soa,
-		.remote = (struct sockaddr *)&slave->addr,
+		.remote = slave,
 		.edns = query_edns_data_init(conf, slave, 0)
 	};
 
@@ -119,16 +119,16 @@ static int send_notify(conf_t *conf, zone_t *zone, const knot_rrset_t *soa,
 	const char *log_retry = retry ? "retry, " : "";
 
 	if (ret == KNOT_EOK && knot_pkt_ext_rcode(req->resp) == 0) {
-		NOTIFY_OUT_LOG(LOG_INFO, zone->name, &slave->addr,
+		NOTIFY_OUT_LOG(LOG_INFO, zone->name, slave,
 		               requestor.layer.flags,
 		               "%sserial %u", log_retry, knot_soa_serial(soa->rrs.rdata));
 		zone->timers.last_notified_serial = (knot_soa_serial(soa->rrs.rdata) | LAST_NOTIFIED_SERIAL_VALID);
 	} else if (knot_pkt_ext_rcode(req->resp) == 0) {
-		NOTIFY_OUT_LOG(LOG_WARNING, zone->name, &slave->addr,
+		NOTIFY_OUT_LOG(LOG_WARNING, zone->name, slave,
 		               requestor.layer.flags,
 		               "%sfailed (%s)", log_retry, knot_strerror(ret));
 	} else {
-		NOTIFY_OUT_LOG(LOG_WARNING, zone->name, &slave->addr,
+		NOTIFY_OUT_LOG(LOG_WARNING, zone->name, slave,
 		               requestor.layer.flags,
 		               "%sserver responded with error '%s'",
 		               log_retry, knot_pkt_ext_rcode_name(req->resp));

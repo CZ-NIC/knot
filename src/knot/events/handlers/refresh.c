@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -72,15 +72,15 @@
 
 #define REFRESH_LOG(priority, data, msg...) \
 	ns_log(priority, (data)->zone->name, LOG_OPERATION_REFRESH, LOG_DIRECTION_NONE, \
-	       (data)->remote, 0, false, msg)
+	       &(data)->remote->addr, 0, false, (data)->remote->key.name, msg)
 
 #define AXFRIN_LOG(priority, data, msg...) \
 	ns_log(priority, (data)->zone->name, LOG_OPERATION_AXFR, LOG_DIRECTION_IN, \
-	       (data)->remote, PROTO(data), (data)->layer->flags & KNOT_REQUESTOR_REUSED, msg)
+	       &(data)->remote->addr, PROTO(data), (data)->layer->flags & KNOT_REQUESTOR_REUSED, (data)->remote->key.name, msg)
 
 #define IXFRIN_LOG(priority, data, msg...) \
 	ns_log(priority, (data)->zone->name, LOG_OPERATION_IXFR, LOG_DIRECTION_IN, \
-	       (data)->remote, PROTO(data), (data)->layer->flags & KNOT_REQUESTOR_REUSED, msg)
+	       &(data)->remote->addr, PROTO(data), (data)->layer->flags & KNOT_REQUESTOR_REUSED, (data)->remote->key.name, msg)
 
 enum state {
 	REFRESH_STATE_INVALID = 0,
@@ -104,7 +104,7 @@ struct refresh_data {
 
 	zone_t *zone;                     //!< Zone to eventually updated.
 	conf_t *conf;                     //!< Server configuration.
-	const struct sockaddr *remote;    //!< Remote endpoint.
+	const conf_remote_t *remote;      //!< Remote endpoint.
 	const knot_rrset_t *soa;          //!< Local SOA (NULL for AXFR).
 	const size_t max_zone_size;       //!< Maximal zone size.
 	query_edns_data_t edns;           //!< EDNS data to be used in queries.
@@ -1196,10 +1196,10 @@ static int transfer_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 		                 data->xfr_type == XFR_TYPE_IXFR ||
 		                 data->xfr_type == XFR_TYPE_UPTODATE ?
 		                 LOG_OPERATION_IXFR : LOG_OPERATION_AXFR,
-		                 LOG_DIRECTION_IN, data->remote,
+		                 LOG_DIRECTION_IN, &data->remote->addr,
 		                 (layer->flags & KNOT_REQUESTOR_QUIC ?
 		                  KNOTD_QUERY_PROTO_QUIC : KNOTD_QUERY_PROTO_TCP),
-		                 &data->stats);
+		                 data->remote->key.name, &data->stats);
 
 		/*
 		 * TODO: Move finialization into finish
@@ -1340,7 +1340,7 @@ static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master,
 	struct refresh_data data = {
 		.zone = zone,
 		.conf = conf,
-		.remote = (struct sockaddr *)&master->addr,
+		.remote = master,
 		.soa = zone->contents && !trctx->force_axfr ? &soa : NULL,
 		.max_zone_size = max_zone_size(conf, zone->name),
 		.edns = query_edns_data_init(conf, master, QUERY_EDNS_OPT_EXPIRE),

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -25,12 +25,13 @@
 #include "libknot/libknot.h"
 
 #define ZONE_NAME(qdata) knot_pkt_qname((qdata)->query)
-#define REMOTE(qdata) (struct sockaddr *)knotd_qdata_remote_addr(qdata)
+#define REMOTE(qdata) (qdata)->params->remote
 #define PROTO(qdata) (qdata)->params->proto
+#define KEY(qdata) (qdata)->sign.tsig_key.name
 
 #define AXFROUT_LOG(priority, qdata, fmt...) \
 	ns_log(priority, ZONE_NAME(qdata), LOG_OPERATION_AXFR, \
-	       LOG_DIRECTION_OUT, REMOTE(qdata), PROTO(qdata), false, fmt)
+	       LOG_DIRECTION_OUT, REMOTE(qdata), PROTO(qdata), false, KEY(qdata), fmt)
 
 /* AXFR context. @note aliasing the generic xfr_proc */
 struct axfr_proc {
@@ -120,7 +121,7 @@ static void axfr_answer_finished(knotd_qdata_t *qdata, knot_pkt_t *pkt, int stat
 		xfr_stats_add(&xfr->stats, pkt->size);
 		xfr_stats_end(&xfr->stats);
 		xfr_log_finished(ZONE_NAME(qdata), LOG_OPERATION_AXFR, LOG_DIRECTION_OUT,
-		                 REMOTE(qdata), PROTO(qdata), &xfr->stats);
+				 REMOTE(qdata), PROTO(qdata), KEY(qdata), &xfr->stats);
 		break;
 	default:
 		break;

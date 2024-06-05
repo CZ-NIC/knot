@@ -42,7 +42,7 @@ tsig_log_history = dict()
 def check_log_tsig(server, tsig_name, expect_diff, msg):
     last_count = 0 if tsig_name not in tsig_log_history else tsig_log_history[tsig_name]
     count = server.log_search_count("key " + tsig_name + ".")
-    isset(count == last_count + expect_diff, msg)
+    compare(count, last_count + expect_diff, msg)
     tsig_log_history[tsig_name] = count
 
 send_update.counter = 0
@@ -88,8 +88,8 @@ check_log_tsig(master, "key_master", 1, "Used key_master 0")
 send_update(master, slave, zone)
 send_update(master, slave, zone, rcode="NOTZONE")
 
-# Check that master TSIG has been used for 2xDDNS and QUERY+XFR to slave.
-check_log_tsig(master, "key_master", 4, "Used key_master 1")
+# Check that master TSIG has been used for DDNS+NOTIFY+REFRESH(4)+DDNS+DDNS_ERR.
+check_log_tsig(master, "key_master", 8, "Used key_master 1")
 
 ## client key: key_master, slave key: key_master, master key: key_master
 
@@ -117,8 +117,8 @@ check_log_tsig(master, "key_client", 0, "Used key_client 0")
 send_update(master, slave, zone, slave_tsig_test=key_client)
 send_update(master, slave, zone, slave_tsig_test=key_client, rcode="NOTZONE")
 
-# Check that client TSIG has been used for 2xDDNS and QUERY+XFR to client.
-check_log_tsig(master, "key_client", 4, "Used key_client 1")
+# Check that client TSIG has been used for DDNS+AXFR(3)+DDNS+DDNS_ERR+AXFR(3).
+check_log_tsig(master, "key_client", 9, "Used key_client 1")
 
 ## client key: key_client, slave key: key_client, key_master, master key: key_master
 
@@ -130,16 +130,16 @@ master.reload()
 slave.reload()
 
 # Get reference value.
-check_log_tsig(master, "key_master", 6, "Used key_master 2")
+check_log_tsig(master, "key_master", 13, "Used key_master 2")
 
 send_update(master, slave, zone)
 send_update(master, slave, zone, rcode="NOTZONE")
 send_update(master, slave, zone, rcode="NOTAUTH", slave_tsig_test=key_master)
 
-# Check that client TSIG has been used only for 2xXFR additional comparisons.
-check_log_tsig(master, "key_client", 2, "Used key_client 2")
+# Check that client TSIG has been used for AXFR(3)+AXFR(3).
+check_log_tsig(master, "key_client", 6, "Used key_client 2")
 
-# Check that master TSIG has been used for 2xDDNS and QUERY+XFR to slave.
-check_log_tsig(master, "key_master", 4, "Used key_master 3")
+# Check that master TSIG has been used for 4xACL and NOTIFY+2xIXFR+DDNS to slave.
+check_log_tsig(master, "key_master", 8, "Used key_master 3")
 
 t.end()

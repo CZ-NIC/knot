@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -88,16 +88,16 @@ static inline const char *log_conn_info(knotd_query_proto_t proto, bool pool)
 
 /*!
  * \brief Generate log message for server communication.
- *
- * Example output:
- *
- * [example.com] NOTIFY, outgoing, remote 2001:db8::1@53, serial 123
  */
-#define ns_log(priority, zone, op, dir, remote, proto, pool, fmt, ...) \
+#define ns_log(priority, zone, op, dir, remote, proto, pool, key, fmt, ...) \
 	do { \
+		knot_dname_txt_storage_t key_str; \
 		char address[SOCKADDR_STRLEN] = ""; \
-		sockaddr_tostr(address, sizeof(address), (const struct sockaddr_storage *)remote); \
-		log_fmt_zone(priority, LOG_SOURCE_ZONE, zone, NULL, "%s%s, remote %s%s, " fmt, \
+		sockaddr_tostr(address, sizeof(address), remote); \
+		(void)knot_dname_to_str(key_str, key, sizeof(key_str)); \
+		log_fmt_zone(priority, LOG_SOURCE_ZONE, zone, NULL, "%s%s, remote %s%s, %s%s%s" fmt, \
 		             log_operation_name(op), log_direction_name(dir), address, \
-		             log_conn_info(proto, pool), ## __VA_ARGS__); \
+		             log_conn_info(proto, pool), (key != NULL ? "key " : ""), \
+		             (key != NULL ? key_str : ""), (key != NULL ? ", " : ""), \
+		             ## __VA_ARGS__); \
 	} while (0)

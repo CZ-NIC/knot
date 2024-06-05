@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -30,16 +30,16 @@ struct ds_push_data {
 	knot_dname_t *parent_soa;
 	knot_rrset_t del_old_ds;
 	knot_rrset_t new_ds;
-	const struct sockaddr *remote;
+	const conf_remote_t *remote;
 	query_edns_data_t edns;
 };
 
 #define DS_PUSH_RETRY	600
 
 #define DS_PUSH_LOG(priority, zone, remote, flags, fmt, ...) \
-	ns_log(priority, zone, LOG_OPERATION_DS_PUSH, LOG_DIRECTION_OUT, remote, \
+	ns_log(priority, zone, LOG_OPERATION_DS_PUSH, LOG_DIRECTION_OUT, &(remote)->addr, \
 	       ((flags) & KNOT_REQUESTOR_QUIC) ? KNOTD_QUERY_PROTO_QUIC : KNOTD_QUERY_PROTO_TCP, \
-	       ((flags) & KNOT_REQUESTOR_REUSED), fmt, ## __VA_ARGS__)
+	       ((flags) & KNOT_REQUESTOR_REUSED), (remote)->key.name, fmt, ## __VA_ARGS__)
 
 static const knot_rdata_t remove_cds = { 5, { 0, 0, 0, 0, 0 } };
 
@@ -172,7 +172,7 @@ static int send_ds_push(conf_t *conf, zone_t *zone,
 		.zone = zone->name,
 		.parent_query = zone->name,
 		.new_ds = zone_cds,
-		.remote = (struct sockaddr *)&parent->addr,
+		.remote = parent,
 		.edns = query_edns_data_init(conf, parent, 0)
 	};
 
@@ -203,13 +203,13 @@ static int send_ds_push(conf_t *conf, zone_t *zone,
 	ret = knot_requestor_exec(&requestor, req, timeout);
 
 	if (ret == KNOT_EOK && knot_pkt_ext_rcode(req->resp) == 0) {
-		DS_PUSH_LOG(LOG_INFO, zone->name, &parent->addr, requestor.layer.flags,
+		DS_PUSH_LOG(LOG_INFO, zone->name, parent, requestor.layer.flags,
 		            "success");
 	} else if (knot_pkt_ext_rcode(req->resp) == 0) {
-		DS_PUSH_LOG(LOG_WARNING, zone->name, &parent->addr, requestor.layer.flags,
+		DS_PUSH_LOG(LOG_WARNING, zone->name, parent, requestor.layer.flags,
 		            "failed (%s)", knot_strerror(ret));
 	} else {
-		DS_PUSH_LOG(LOG_WARNING, zone->name, &parent->addr, requestor.layer.flags,
+		DS_PUSH_LOG(LOG_WARNING, zone->name, parent, requestor.layer.flags,
 		            "server responded with error '%s'",
 		            knot_pkt_ext_rcode_name(req->resp));
 	}

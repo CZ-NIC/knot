@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -33,8 +33,8 @@
 
 #define UPDATE_LOG(priority, qdata, fmt...) \
 	ns_log(priority, knot_pkt_qname(qdata->query), LOG_OPERATION_UPDATE, \
-	       LOG_DIRECTION_IN, (struct sockaddr *)knotd_qdata_remote_addr(qdata), \
-	       qdata->params->proto, false, fmt)
+	       LOG_DIRECTION_IN, (qdata)->params->remote, \
+	       (qdata)->params->proto, false, (qdata)->sign.tsig_key.name, fmt)
 
 static void init_qdata_from_request(knotd_qdata_t *qdata,
                                     zone_t *zone,
