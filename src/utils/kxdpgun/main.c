@@ -47,27 +47,18 @@
 #include "libknot/quic/quic.h"
 #endif // ENABLE_QUIC
 #include "contrib/atomic.h"
-#include "contrib/macros.h"
-#include "contrib/mempattern.h"
-#include "contrib/openbsd/strlcat.h"
 #include "contrib/openbsd/strlcpy.h"
 #include "contrib/os.h"
 #include "contrib/sockaddr.h"
 #include "contrib/toeplitz.h"
-#include "contrib/ucw/mempool.h"
 #include "utils/common/msg.h"
 #include "utils/common/params.h"
 #include "utils/kxdpgun/ip_route.h"
 #include "utils/kxdpgun/load_queries.h"
+#include "utils/kxdpgun/stats.h"
+#include "utils/kxdpgun/main.h"
 
-#define PROGRAM_NAME "kxdpgun"
-#define SPACE        "  "
-
-enum {
-	KXDPGUN_WAIT,
-	KXDPGUN_START,
-	KXDPGUN_STOP,
-};
+#define JSON_MODE(ctx) ((ctx).jw != NULL)
 
 volatile int xdp_trigger = KXDPGUN_WAIT;
 
@@ -76,71 +67,7 @@ volatile knot_atomic_uint64_t stats_trigger = 0;
 unsigned global_cpu_aff_start = 0;
 unsigned global_cpu_aff_step = 1;
 
-#define REMOTE_PORT_DEFAULT       53
-#define REMOTE_PORT_DOQ_DEFAULT  853
-#define LOCAL_PORT_MIN          2000
-#define LOCAL_PORT_MAX         65535
-#define QUIC_THREAD_PORTS        100
-
-#define RCODE_MAX (0x0F + 1)
-
-typedef struct {
-	size_t collected;
-	uint64_t duration;
-	uint64_t qry_sent;
-	uint64_t synack_recv;
-	uint64_t ans_recv;
-	uint64_t finack_recv;
-	uint64_t rst_recv;
-	uint64_t size_recv;
-	uint64_t wire_recv;
-	uint64_t rcodes_recv[RCODE_MAX];
-	pthread_mutex_t mutex;
-} kxdpgun_stats_t;
-
 static kxdpgun_stats_t global_stats = { 0 };
-
-typedef enum {
-	KXDPGUN_IGNORE_NONE     = 0,
-	KXDPGUN_IGNORE_QUERY    = (1 << 0),
-	KXDPGUN_IGNORE_LASTBYTE = (1 << 1),
-	KXDPGUN_IGNORE_CLOSE    = (1 << 2),
-	KXDPGUN_REUSE_CONN      = (1 << 3),
-} xdp_gun_ignore_t;
-
-typedef struct {
-	union {
-		struct sockaddr_in local_ip4;
-		struct sockaddr_in6 local_ip;
-		struct sockaddr_storage local_ip_ss;
-	};
-	union {
-		struct sockaddr_in target_ip4;
-		struct sockaddr_in6 target_ip;
-		struct sockaddr_storage target_ip_ss;
-	};
-	char		dev[IFNAMSIZ];
-	uint64_t	qps, duration;
-	unsigned	at_once;
-	uint16_t	msgid;
-	uint16_t	edns_size;
-	uint16_t	vlan_tci;
-	uint8_t		local_mac[6], target_mac[6];
-	uint8_t		local_ip_range;
-	bool		ipv6;
-	bool		tcp;
-	bool		quic;
-	bool		quic_full_handshake;
-	const char 	*qlog_dir;
-	const char	*sending_mode;
-	xdp_gun_ignore_t  ignore1;
-	knot_tcp_ignore_t ignore2;
-	uint16_t	target_port;
-	knot_xdp_filter_flag_t flags;
-	unsigned	n_threads, thread_id;
-	knot_eth_rss_conf_t *rss_conf;
-	knot_xdp_config_t xdp_config;
-} xdp_gun_ctx_t;
 
 const static xdp_gun_ctx_t ctx_defaults = {
 	.dev[0] = '\0',
@@ -152,7 +79,23 @@ const static xdp_gun_ctx_t ctx_defaults = {
 	.target_port = 0,
 	.flags = KNOT_XDP_FILTER_UDP | KNOT_XDP_FILTER_PASS,
 	.xdp_config = { .ring_size = 2048 },
+	.stats_fmt = plain_stats,
+	.jw = NULL,
 };
+
+static uint64_t us_timestamp(void)
+{
+	struct timespec ts;
+	clock_gettime(CLOCK_REALTIME, &ts);
+	return ((uint64_t)ts.tv_sec * 1000000) + (ts.tv_nsec / 1000);
+}
+
+static uint64_t ns_timestamp(void)
+{
+	struct timespec ts;
+	clock_gettime(CLOCK_REALTIME, &ts);
+	return ((uint64_t)ts.tv_sec * 1000000000) + ts.tv_nsec;
+}
 
 static void sigterm_handler(int signo)
 {
@@ -166,87 +109,6 @@ static void sigusr_handler(int signo)
 	if (global_stats.collected == 0) {
 		ATOMIC_ADD(stats_trigger, 1);
 	}
-}
-
-static void clear_stats(kxdpgun_stats_t *st)
-{
-	pthread_mutex_lock(&st->mutex);
-	st->duration    = 0;
-	st->qry_sent    = 0;
-	st->synack_recv = 0;
-	st->ans_recv    = 0;
-	st->finack_recv = 0;
-	st->rst_recv    = 0;
-	st->size_recv   = 0;
-	st->wire_recv   = 0;
-	st->collected   = 0;
-	memset(st->rcodes_recv, 0, sizeof(st->rcodes_recv));
-	pthread_mutex_unlock(&st->mutex);
-}
-
-static size_t collect_stats(kxdpgun_stats_t *into, const kxdpgun_stats_t *what)
-{
-	pthread_mutex_lock(&into->mutex);
-	into->duration = MAX(into->duration, what->duration);
-	into->qry_sent    += what->qry_sent;
-	into->synack_recv += what->synack_recv;
-	into->ans_recv    += what->ans_recv;
-	into->finack_recv += what->finack_recv;
-	into->rst_recv    += what->rst_recv;
-	into->size_recv   += what->size_recv;
-	into->wire_recv   += what->wire_recv;
-	for (int i = 0; i < RCODE_MAX; i++) {
-		into->rcodes_recv[i] += what->rcodes_recv[i];
-	}
-	size_t res = ++into->collected;
-	pthread_mutex_unlock(&into->mutex);
-	return res;
-}
-
-static void print_stats(kxdpgun_stats_t *st, bool tcp, bool quic, bool recv, uint64_t qps)
-{
-	pthread_mutex_lock(&st->mutex);
-
-#define ps(counter)  ((typeof(counter))((counter) * 1000 / ((float)st->duration / 1000)))
-#define pct(counter) ((counter) * 100.0 / st->qry_sent)
-
-	const char *name = tcp ? "SYNs:    " : quic ? "initials:" : "queries: ";
-	printf("total %s    %"PRIu64" (%"PRIu64" pps) (%f%%)\n", name, st->qry_sent,
-	       ps(st->qry_sent), 100.0 * st->qry_sent / (st->duration / 1000000.0 * qps));
-	if (st->qry_sent > 0 && recv) {
-		if (tcp || quic) {
-		name = tcp ? "established:" : "handshakes: ";
-		printf("total %s %"PRIu64" (%"PRIu64" pps) (%f%%)\n", name,
-		       st->synack_recv, ps(st->synack_recv), pct(st->synack_recv));
-		}
-		printf("total replies:     %"PRIu64" (%"PRIu64" pps) (%f%%)\n",
-		       st->ans_recv, ps(st->ans_recv), pct(st->ans_recv));
-		if (tcp) {
-		printf("total closed:      %"PRIu64" (%"PRIu64" pps) (%f%%)\n",
-		       st->finack_recv, ps(st->finack_recv), pct(st->finack_recv));
-		}
-		if (st->rst_recv > 0) {
-		printf("total reset:       %"PRIu64" (%"PRIu64" pps) (%f%%)\n",
-		       st->rst_recv, ps(st->rst_recv), pct(st->rst_recv));
-		}
-		printf("average DNS reply size: %"PRIu64" B\n",
-		       st->ans_recv > 0 ? st->size_recv / st->ans_recv : 0);
-		printf("average Ethernet reply rate: %"PRIu64" bps (%.2f Mbps)\n",
-		       ps(st->wire_recv * 8), ps((float)st->wire_recv * 8 / (1000 * 1000)));
-
-		for (int i = 0; i < RCODE_MAX; i++) {
-			if (st->rcodes_recv[i] > 0) {
-				const knot_lookup_t *rcode = knot_lookup_by_id(knot_rcode_names, i);
-				const char *rcname = rcode == NULL ? "unknown" : rcode->name;
-				int space = MAX(9 - strlen(rcname), 0);
-				printf("responded %s: %.*s%"PRIu64"\n",
-				       rcname, space, "         ", st->rcodes_recv[i]);
-			}
-		}
-	}
-	printf("duration: %"PRIu64" s\n", (st->duration / (1000 * 1000)));
-
-	pthread_mutex_unlock(&st->mutex);
 }
 
 inline static void timer_start(struct timespec *timesp)
@@ -417,8 +279,7 @@ static unsigned alloc_pkts(knot_xdp_msg_t *pkts, struct knot_xdp_socket *xsk,
 	return ctx->at_once;
 }
 
-inline static bool check_dns_payload(struct iovec *payl, xdp_gun_ctx_t *ctx,
-                                     kxdpgun_stats_t *st)
+inline static bool check_dns_payload(struct iovec *payl, xdp_gun_ctx_t *ctx, kxdpgun_stats_t *st)
 {
 	if (payl->iov_len < KNOT_WIRE_HEADER_SIZE ||
 	    memcmp(payl->iov_base, &ctx->msgid, sizeof(ctx->msgid)) != 0) {
@@ -476,19 +337,21 @@ static void quic_free_cb(knot_quic_reply_t *rpl)
 void *xdp_gun_thread(void *_ctx)
 {
 	xdp_gun_ctx_t *ctx = _ctx;
-	struct knot_xdp_socket *xsk;
+	struct knot_xdp_socket *xsk = NULL;
 	struct timespec timer;
 	knot_xdp_msg_t pkts[ctx->at_once];
-	uint64_t errors = 0, lost = 0, duration = 0;
-	kxdpgun_stats_t local_stats = { 0 };
+	uint64_t duration = 0;
+	kxdpgun_stats_t local_stats = {0};
 	unsigned stats_triggered = 0;
 	knot_tcp_table_t *tcp_table = NULL;
+
 #ifdef ENABLE_QUIC
 	knot_quic_table_t *quic_table = NULL;
 	struct knot_creds *quic_creds = NULL;
 	list_t quic_sessions;
 	init_list(&quic_sessions);
 #endif // ENABLE_QUIC
+
 	list_t reuse_conns;
 	init_list(&reuse_conns);
 	const uint64_t extra_wait = ctx->quic ? 4000000 : 1000000;
@@ -497,7 +360,7 @@ void *xdp_gun_thread(void *_ctx)
 		tcp_table = knot_tcp_table_new(ctx->qps, NULL);
 		if (tcp_table == NULL) {
 			ERR2("failed to allocate TCP connection table");
-			return NULL;
+			goto cleanup;
 		}
 	}
 	if (ctx->quic) {
@@ -505,12 +368,12 @@ void *xdp_gun_thread(void *_ctx)
 		quic_creds = knot_creds_init_peer(NULL, NULL, 0);
 		if (quic_creds == NULL) {
 			ERR2("failed to initialize QUIC context");
-			return NULL;
+			goto cleanup;
 		}
 		quic_table = knot_quic_table_new(ctx->qps * 100, SIZE_MAX, SIZE_MAX, 1232, quic_creds);
 		if (quic_table == NULL) {
 			ERR2("failed to allocate QUIC connection table");
-			return NULL;
+			goto cleanup;
 		}
 		quic_table->qlog_dir = ctx->qlog_dir;
 #else
@@ -523,7 +386,7 @@ void *xdp_gun_thread(void *_ctx)
 	/*
 	 * This mutex prevents libbpf from logging:
 	 * 'libbpf: can't get link by id (5535): Resource temporarily unavailable'
-	*/
+	 */
 	pthread_mutex_lock(&global_stats.mutex);
 	int ret = knot_xdp_init(&xsk, ctx->dev, ctx->thread_id, ctx->flags,
 	                        LOCAL_PORT_MIN, LOCAL_PORT_MIN, mode, &ctx->xdp_config);
@@ -532,17 +395,11 @@ void *xdp_gun_thread(void *_ctx)
 		ERR2("failed to initialize XDP socket#%u on interface %s (%s)",
 		     ctx->thread_id, ctx->dev, knot_strerror(ret));
 		knot_tcp_table_free(tcp_table);
-		return NULL;
+		goto cleanup;
 	}
 
 	if (ctx->thread_id == 0) {
-		INFO2("using interface %s, XDP threads %u, IPv%c/%s%s%s, %s mode",
-		      ctx->dev, ctx->n_threads, (ctx->ipv6 ? '6' : '4'),
-		      (ctx->tcp ? "TCP" : ctx->quic ? "QUIC" : "UDP"),
-		      (ctx->sending_mode[0] != '\0' ? " mode " : ""),
-		      (ctx->sending_mode[0] != '\0' ? ctx->sending_mode : ""),
-		      (knot_eth_xdp_mode(if_nametoindex(ctx->dev)) == KNOT_XDP_MODE_FULL ?
-		       "native" : "emulated"));
+		(JSON_MODE(*ctx) ? json_stats_hdr : plain_stats_hdr)(ctx);
 	}
 
 	struct pollfd pfd = { knot_xdp_socket_fd(xsk), POLLIN, 0 };
@@ -589,23 +446,23 @@ void *xdp_gun_thread(void *_ctx)
 #endif // ENABLE_QUIC
 
 	timer_start(&timer);
+	local_stats.since = ns_timestamp();
 
 	while (duration < ctx->duration + extra_wait) {
-
 		// sending part
 		if (duration < ctx->duration) {
 			while (1) {
 				knot_xdp_send_prepare(xsk);
 				unsigned alloced = alloc_pkts(pkts, xsk, ctx, tick);
 				if (alloced < ctx->at_once) {
-					lost += ctx->at_once - alloced;
+					local_stats.lost += ctx->at_once - alloced;
 					if (alloced == 0) {
 						break;
 					}
 				}
 
 				if (ctx->tcp) {
-					for (int i = 0; i < alloced; i++) {
+					for (size_t i = 0; i < alloced; i++) {
 						pkts[i].payload.iov_len = 0;
 
 						if (!EMPTY_LIST(reuse_conns)) {
@@ -679,7 +536,7 @@ void *xdp_gun_thread(void *_ctx)
 #endif // ENABLE_QUIC
 					break;
 				} else {
-					for (int i = 0; i < alloced; i++) {
+					for (size_t i = 0; i < alloced; i++) {
 						put_dns_payload(&pkts[i].payload, false,
 						                ctx, &payload_ptr);
 					}
@@ -687,7 +544,7 @@ void *xdp_gun_thread(void *_ctx)
 
 				uint32_t really_sent = 0;
 				if (knot_xdp_send(xsk, pkts, alloced, &really_sent) != KNOT_EOK) {
-					lost += alloced;
+					local_stats.lost += alloced;
 				}
 				local_stats.qry_sent += really_sent;
 				(void)knot_xdp_send_finish(xsk);
@@ -701,7 +558,7 @@ void *xdp_gun_thread(void *_ctx)
 			while (1) {
 				ret = poll(&pfd, 1, 0);
 				if (ret < 0) {
-					errors++;
+					local_stats.errors++;
 					break;
 				}
 				if (!pfd.revents) {
@@ -721,7 +578,7 @@ void *xdp_gun_thread(void *_ctx)
 						knot_tcp_relay_t *rl = &relays[i];
 						ret = knot_tcp_recv(rl, &pkts[i], tcp_table, NULL, ctx->ignore2);
 						if (ret != KNOT_EOK) {
-							errors++;
+							local_stats.errors++;
 							continue;
 						}
 
@@ -737,7 +594,7 @@ void *xdp_gun_thread(void *_ctx)
 							                          (ctx->ignore1 & KXDPGUN_IGNORE_LASTBYTE),
 							                          payl.iov_base, payl.iov_len);
 							if (ret != KNOT_EOK) {
-								errors++;
+								local_stats.errors++;
 							}
 							break;
 						case XDP_TCP_CLOSE:
@@ -766,7 +623,7 @@ void *xdp_gun_thread(void *_ctx)
 
 					ret = knot_tcp_send(xsk, relays, recvd, ctx->at_once);
 					if (ret != KNOT_EOK) {
-						errors++;
+						local_stats.errors++;
 					}
 					(void)knot_xdp_send_finish(xsk);
 
@@ -788,7 +645,7 @@ void *xdp_gun_thread(void *_ctx)
 							knot_quic_cleanup(&conn, 1);
 							continue;
 						} else if (ret != 0) {
-							errors++;
+							local_stats.errors++;
 							knot_quic_cleanup(&conn, 1);
 							break;
 						}
@@ -840,7 +697,9 @@ void *xdp_gun_thread(void *_ctx)
 								knot_quic_cleanup(&conn, 1);
 								continue;
 							} else if ((ctx->ignore1 & KXDPGUN_REUSE_CONN)) {
-								if (conn->streams_count > 1) { // keep the number of outstanding streams below MAX_STREAMS_PER_CONN, while preserving at least one at all times
+								/* keep the number of outstanding streams below MAX_STREAMS_PER_CONN, while
+								 * preserving at least one at all times */
+								if (conn->streams_count > 1) {
 									knot_quic_conn_stream_free(conn, conn->streams_first * 4);
 								}
 								ptrlist_add(&reuse_conns, conn, NULL);
@@ -849,7 +708,7 @@ void *xdp_gun_thread(void *_ctx)
 						ret = knot_quic_send(quic_table, conn, &quic_reply, 4,
 						                     (ctx->ignore1 & KXDPGUN_IGNORE_LASTBYTE) ? KNOT_QUIC_SEND_IGNORE_LASTBYTE : 0);
 						if (ret != KNOT_EOK) {
-							errors++;
+							local_stats.errors++;
 						}
 
 						if (!(ctx->ignore1 & KXDPGUN_IGNORE_CLOSE) && (conn->flags & KNOT_QUIC_CONN_SESSION_TAKEN)  &&
@@ -860,16 +719,15 @@ void *xdp_gun_thread(void *_ctx)
 							knot_quic_table_rem(conn, quic_table);
 							knot_quic_cleanup(&conn, 1);
 							if (ret != KNOT_EOK) {
-								errors++;
+								local_stats.errors++;
 							}
 						}
 					}
 					(void)knot_xdp_send_finish(xsk);
 #endif // ENABLE_QUIC
 				} else {
-					for (int i = 0; i < recvd; i++) {
-						(void)check_dns_payload(&pkts[i].payload, ctx,
-						                        &local_stats);
+					for (size_t i = 0; i < recvd; i++) {
+						(void)check_dns_payload(&pkts[i].payload, ctx, &local_stats);
 					}
 				}
 				local_stats.wire_recv += wire;
@@ -894,13 +752,12 @@ void *xdp_gun_thread(void *_ctx)
 		if (tmp_stats_trigger > stats_triggered) {
 			stats_triggered = tmp_stats_trigger;
 
-			local_stats.duration = duration;
-			size_t collected = collect_stats(&global_stats, &local_stats);
+			local_stats.until = ns_timestamp();
+			size_t collected = collect_stats(&global_stats, (kxdpgun_stats_t *[]){&local_stats, NULL});
+
 			assert(collected <= ctx->n_threads);
 			if (collected == ctx->n_threads) {
-				print_stats(&global_stats, ctx->tcp, ctx->quic,
-				            !(ctx->flags & KNOT_XDP_FILTER_DROP),
-					    ctx->qps * ctx->n_threads);
+				ctx->stats_fmt(&global_stats, ctx, STATS_SUM);
 				clear_stats(&global_stats);
 			}
 		}
@@ -912,7 +769,20 @@ void *xdp_gun_thread(void *_ctx)
 		}
 		tick++;
 	}
+	local_stats.until = ns_timestamp();
 
+	if (JSON_MODE(*ctx)) {
+		json_thrd_summary(ctx, &local_stats);
+	} else {
+		plain_thrd_summary(ctx, &local_stats);
+	}
+
+	// TODO: there used to be local_stats.duration = ctx.duration; Why? So that statistics work
+	// out to ~100%?
+	// local_stats.until = local_stats.since + ctx->duration * 1000;
+	collect_stats(&global_stats, (kxdpgun_stats_t *[]){&local_stats, NULL});
+
+cleanup:
 	knot_xdp_deinit(xsk);
 
 	if (ctx->tcp) {
@@ -932,21 +802,6 @@ void *xdp_gun_thread(void *_ctx)
 	}
 	knot_creds_free(quic_creds);
 #endif // ENABLE_QUIC
-
-	char recv_str[40] = "", lost_str[40] = "", err_str[40] = "";
-	if (!(ctx->flags & KNOT_XDP_FILTER_DROP)) {
-		(void)snprintf(recv_str, sizeof(recv_str), ", received %"PRIu64, local_stats.ans_recv);
-	}
-	if (lost > 0) {
-		(void)snprintf(lost_str, sizeof(lost_str), ", lost %"PRIu64, lost);
-	}
-	if (errors > 0) {
-		(void)snprintf(err_str, sizeof(err_str), ", errors %"PRIu64, errors);
-	}
-	INFO2("thread#%02u: sent %"PRIu64"%s%s%s",
-	      ctx->thread_id, local_stats.qry_sent, recv_str, lost_str, err_str);
-	local_stats.duration = ctx->duration;
-	collect_stats(&global_stats, &local_stats);
 
 	return NULL;
 }
@@ -1120,31 +975,32 @@ static void print_help(void)
 	printf("Usage: %s [options] -i <queries_file> <dest_ip>\n"
 	       "\n"
 	       "Options:\n"
-	       " -t, --duration <sec>     "SPACE"Duration of traffic generation.\n"
-	       "                          "SPACE" (default is %"PRIu64" seconds)\n"
-	       " -T, --tcp[=debug_mode]   "SPACE"Send queries over TCP.\n"
-	       " -U, --quic[=debug_mode]  "SPACE"Send queries over QUIC.\n"
-	       " -Q, --qps <qps>          "SPACE"Number of queries-per-second (approximately) to be sent.\n"
-	       "                          "SPACE" (default is %"PRIu64" qps)\n"
-	       " -b, --batch <size>       "SPACE"Send queries in a batch of defined size.\n"
-	       "                          "SPACE" (default is %d for UDP, %d for TCP)\n"
-	       " -r, --drop               "SPACE"Drop incoming responses (disables response statistics).\n"
-	       " -p, --port <port>        "SPACE"Remote destination port.\n"
-	       "                          "SPACE" (default is %d for UDP/TCP, %u for QUIC)\n"
-	       " -F, --affinity <spec>    "SPACE"CPU affinity in the format [<cpu_start>][s<cpu_step>].\n"
-	       "                          "SPACE" (default is %s)\n"
-	       " -I, --interface <ifname> "SPACE"Override auto-detected interface for outgoing communication.\n"
-	       " -i, --infile <file>      "SPACE"Path to a file with query templates.\n"
-	       " -B, --binary             "SPACE"Specify that input file is in binary format (<length:2><wire:length>).\n"
-	       " -l, --local <ip[/prefix]>"SPACE"Override auto-detected source IP address or subnet.\n"
-	       " -L, --local-mac <MAC>    "SPACE"Override auto-detected local MAC address.\n"
-	       " -R, --remote-mac <MAC>   "SPACE"Override auto-detected remote MAC address.\n"
-	       " -v, --vlan <id>          "SPACE"Add VLAN 802.1Q header with the given id.\n"
-	       " -e, --edns-size <size>   "SPACE"EDNS UDP payload size, range 512-4096 (default 1232)\n"
-	       " -m, --mode <mode>        "SPACE"Set XDP mode (auto, copy, generic).\n"
-	       " -G, --qlog <path>        "SPACE"Output directory for qlog (useful for QUIC only).\n"
-	       " -h, --help               "SPACE"Print the program help.\n"
-	       " -V, --version            "SPACE"Print the program version.\n"
+	       " -t, --duration <sec>       "SPACE"Duration of traffic generation.\n"
+	       "                            "SPACE" (default is %"PRIu64" seconds)\n"
+	       " -T, --tcp[=debug_mode]     "SPACE"Send queries over TCP.\n"
+	       " -U, --quic[=debug_mode]    "SPACE"Send queries over QUIC.\n"
+	       " -Q, --qps <qps>            "SPACE"Number of queries-per-second (approximately) to be sent.\n"
+	       "                            "SPACE" (default is %"PRIu64" qps)\n"
+	       " -b, --batch <size>         "SPACE"Send queries in a batch of defined size.\n"
+	       "                            "SPACE" (default is %d for UDP, %d for TCP)\n"
+	       " -r, --drop                 "SPACE"Drop incoming responses (disables response statistics).\n"
+	       " -p, --port <port>          "SPACE"Remote destination port.\n"
+	       "                            "SPACE" (default is %d for UDP/TCP, %u for QUIC)\n"
+	       " -F, --affinity <spec>      "SPACE"CPU affinity in the format [<cpu_start>][s<cpu_step>].\n"
+	       "                            "SPACE" (default is %s)\n"
+	       " -I, --interface <ifname>   "SPACE"Override auto-detected interface for outgoing communication.\n"
+	       " -i, --infile <file>        "SPACE"Path to a file with query templates.\n"
+	       " -B, --binary               "SPACE"Specify that input file is in binary format (<length:2><wire:length>).\n"
+	       " -l, --local <ip[/prefix]>  "SPACE"Override auto-detected source IP address or subnet.\n"
+	       " -L, --local-mac <MAC>      "SPACE"Override auto-detected local MAC address.\n"
+	       " -R, --remote-mac <MAC>     "SPACE"Override auto-detected remote MAC address.\n"
+	       " -v, --vlan <id>            "SPACE"Add VLAN 802.1Q header with the given id.\n"
+	       " -e, --edns-size <size>     "SPACE"EDNS UDP payload size, range 512-4096 (default 1232)\n"
+	       " -m, --mode <mode>          "SPACE"Set XDP mode (auto, copy, generic).\n"
+	       " -G, --qlog <path>          "SPACE"Output directory for qlog (useful for QUIC only).\n"
+	       " -j, --json                 "SPACE"Output statistics in json.\n"
+	       " -h, --help                 "SPACE"Print the program help.\n"
+	       " -V, --version              "SPACE"Print the program version.\n"
 	       "\n"
 	       "Parameters:\n"
 	       " <dest_ip>                "SPACE"IPv4 or IPv6 address of the remote destination.\n",
@@ -1244,27 +1100,28 @@ static int set_mode(const char *arg, knot_xdp_config_t *config)
 static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 {
 	struct option opts[] = {
-		{ "help",       no_argument,       NULL, 'h' },
-		{ "version",    optional_argument, NULL, 'V' },
-		{ "duration",   required_argument, NULL, 't' },
-		{ "qps",        required_argument, NULL, 'Q' },
-		{ "batch",      required_argument, NULL, 'b' },
-		{ "drop",       no_argument,       NULL, 'r' },
-		{ "port",       required_argument, NULL, 'p' },
-		{ "tcp",        optional_argument, NULL, 'T' },
-		{ "quic",       optional_argument, NULL, 'U' },
-		{ "affinity",   required_argument, NULL, 'F' },
-		{ "interface",  required_argument, NULL, 'I' },
-		{ "infile",     required_argument, NULL, 'i' },
-		{ "binary",     no_argument,       NULL, 'B' },
-		{ "local",      required_argument, NULL, 'l' },
-		{ "local-mac",  required_argument, NULL, 'L' },
-		{ "remote-mac", required_argument, NULL, 'R' },
-		{ "vlan",       required_argument, NULL, 'v' },
-		{ "edns-size",  required_argument, NULL, 'e' },
-		{ "mode",       required_argument, NULL, 'm' },
-		{ "qlog",       required_argument, NULL, 'G' },
-		{ NULL }
+		{ "help",         no_argument,       NULL, 'h' },
+		{ "version",      optional_argument, NULL, 'V' },
+		{ "duration",     required_argument, NULL, 't' },
+		{ "qps",          required_argument, NULL, 'Q' },
+		{ "batch",        required_argument, NULL, 'b' },
+		{ "drop",         no_argument,       NULL, 'r' },
+		{ "port",         required_argument, NULL, 'p' },
+		{ "tcp",          optional_argument, NULL, 'T' },
+		{ "quic",         optional_argument, NULL, 'U' },
+		{ "affinity",     required_argument, NULL, 'F' },
+		{ "interface",    required_argument, NULL, 'I' },
+		{ "infile",       required_argument, NULL, 'i' },
+		{ "binary",       no_argument,       NULL, 'B' },
+		{ "local",        required_argument, NULL, 'l' },
+		{ "local-mac",    required_argument, NULL, 'L' },
+		{ "remote-mac",   required_argument, NULL, 'R' },
+		{ "vlan",         required_argument, NULL, 'v' },
+		{ "edns-size",    required_argument, NULL, 'e' },
+		{ "mode",         required_argument, NULL, 'm' },
+		{ "qlog",         required_argument, NULL, 'G' },
+		{ "json",         no_argument,       NULL, 'j' },
+		{ 0 }
 	};
 
 	int opt = 0, arg;
@@ -1272,7 +1129,7 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 	double argf;
 	char *argcp, *local_ip = NULL;
 	input_t input = { .format = TXT };
-	while ((opt = getopt_long(argc, argv, "hV::t:Q:b:rp:T::U::F:I:i:Bl:L:R:v:e:m:G:", opts, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "hV::t:Q:b:rp:T::U::F:I:i:Bl:L:R:v:e:m:G:j", opts, NULL)) != -1) {
 		switch (opt) {
 		case 'h':
 			print_help();
@@ -1423,6 +1280,13 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 		case 'G':
 			ctx->qlog_dir = optarg;
 			break;
+		case 'j':
+			ctx->stats_fmt = json_stats;
+			if ((ctx->jw = jsonw_new(stdout, JSON_INDENT)) == NULL) {
+				ERR2("out of memory (jsonw_new)");
+				return false;
+			}
+			break;
 		default:
 			print_help();
 			return false;
@@ -1460,25 +1324,29 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 
 int main(int argc, char *argv[])
 {
+	int ecode = EXIT_FAILURE;
+
 	xdp_gun_ctx_t ctx = ctx_defaults, *thread_ctxs = NULL;
 	ctx.msgid = time(NULL) % UINT16_MAX;
+	ctx.runid = us_timestamp();
+	ctx.argv = argv;
 	pthread_t *threads = NULL;
 
 	if (!get_opts(argc, argv, &ctx)) {
-		free_global_payloads();
-		return EXIT_FAILURE;
+		goto err1;
+	}
+
+	if (JSON_MODE(ctx)) {
+		jsonw_list(ctx.jw, NULL); // wrap the json in a list, for syntactic correctness
 	}
 
 	thread_ctxs = calloc(ctx.n_threads, sizeof(*thread_ctxs));
 	threads = calloc(ctx.n_threads, sizeof(*threads));
 	if (thread_ctxs == NULL || threads == NULL) {
-		ERR2("out of memory");
-		free(thread_ctxs);
-		free(threads);
-		free_global_payloads();
-		return EXIT_FAILURE;
+		ERR2("out of memory (calloc)");
+		goto err2;
 	}
-	for (int i = 0; i < ctx.n_threads; i++) {
+	for (size_t i = 0; i < ctx.n_threads; i++) {
 		thread_ctxs[i] = ctx;
 		thread_ctxs[i].thread_id = i;
 	}
@@ -1490,8 +1358,7 @@ int main(int argc, char *argv[])
 		    cur_limit.rlim_max != min_limit.rlim_max) {
 			int ret = setrlimit(RLIMIT_MEMLOCK, &min_limit);
 			if (ret != 0) {
-				WARN2("unable to increase RLIMIT_MEMLOCK: %s",
-				      strerror(errno));
+				WARN2("unable to increase RLIMIT_MEMLOCK: %s", strerror(errno));
 			}
 		}
 	}
@@ -1517,22 +1384,28 @@ int main(int argc, char *argv[])
 		usleep(20000);
 	}
 	usleep(1000000);
-
 	xdp_trigger = KXDPGUN_START;
 	usleep(1000000);
 
 	for (size_t i = 0; i < ctx.n_threads; i++) {
 		pthread_join(threads[i], NULL);
 	}
-	if (global_stats.duration > 0 && global_stats.qry_sent > 0) {
-		print_stats(&global_stats, ctx.tcp, ctx.quic, !(ctx.flags & KNOT_XDP_FILTER_DROP), ctx.qps * ctx.n_threads);
+	if (DURATION_US(global_stats) > 0 && global_stats.qry_sent > 0) {
+		ctx.stats_fmt(&global_stats, &ctx, STATS_SUM);
 	}
 	pthread_mutex_destroy(&global_stats.mutex);
 
+	ecode = EXIT_SUCCESS;
+
+err2:
 	free(ctx.rss_conf);
 	free(thread_ctxs);
 	free(threads);
+err1:
 	free_global_payloads();
-
-	return EXIT_SUCCESS;
+	if (JSON_MODE(ctx)) {
+		jsonw_end(ctx.jw);
+		jsonw_free(&ctx.jw);
+	}
+	return ecode;
 }

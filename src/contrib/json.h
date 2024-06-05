@@ -82,6 +82,11 @@ void jsonw_ulong(jsonw_t *w, const char *key, unsigned long value);
 void jsonw_int(jsonw_t *w, const char *key, int value);
 
 /*!
+ * Write double as JSON.
+ */
+void jsonw_double(jsonw_t *w, const char *key, double value);
+
+/*!
  * Write boolean value as JSON.
  */
 void jsonw_bool(jsonw_t *w, const char *key, bool value);

@@ -217,6 +217,13 @@ void jsonw_int(jsonw_t *w, const char *key, int value)
 	fprintf(w->out, "%d", value);
 }
 
+void jsonw_double(jsonw_t *w, const char *key, double value)
+{
+	assert(w);
+
+	align_key(w, key);
+	fprintf(w->out, "%.4f", value);
+}
 
 void jsonw_bool(jsonw_t *w, const char *key, bool value)
 {
