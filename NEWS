@@ -1,3 +1,38 @@
+Knot DNS 3.3.6 (2024-06-12)
+===========================
+
+Features:
+---------
+ - knotd: configurable control socket backlog size (see 'control.backlog')
+ - knotd: optional configuration of congruency of generated keytags (see 'policy.keytag-modulo')
+ - knotc: support for exporting configuration schema in JSON (see 'conf-export') #912
+ - mod-dnstap: configuration of sink allows TCP address specification
+
+Improvements:
+-------------
+ - knotd: last-signed serial is stored to KASP even if not a secondary zone
+ - knotd: allowed catalog role member in a catalog template configuration
+ - knotd: some references in a zone configuration can be set empty to override a template
+ - knotd: allowed zone backup during a zone transaction
+ - knotd: add remote TSIG key name to outgoing event logs
+ - knotc: zone backup with '+keysonly' silently uses all defaults as 'off'
+ - kxdpgun: host name can be used for target specification
+ - libs: upgraded embedded libngtcp2 to 1.5.0
+ - doc: various fixes and updates
+
+Bugfixes:
+---------
+ - knotd: reset TCP connection not removed from a connection pool
+ - knotd: server wrongly tries to remove removed ZONEMD
+ - knotd: failed to parse empty list from a textual configuration
+ - knotd: blocking zone signing in combination with an open transaction causes a deadlock
+ - knotd: missing RCU lock when sending NOTIFY
+ - kdig: QNAME letter case isn't preserved if IDN is enabled
+ - kdig: failed to parse empty QNAME (do not fill question section)
+ - kxdpgun: floating point exception on SIGUSR1 #927
+ - libknot: incorrect handling of regular QUIC tokens in incoming initials
+ - python: failed to set an empty configuration value
+
 Knot DNS 3.3.5 (2024-03-06)
 ===========================
 
