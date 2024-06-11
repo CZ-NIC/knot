@@ -16,6 +16,7 @@
 
 #include <assert.h>
 #include <stdint.h>
+#include <urcu.h>
 
 #include "contrib/mempattern.h"
 #include "libdnssec/random.h"
@@ -1332,16 +1333,22 @@ static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master,
 
 	try_refresh_ctx_t *trctx = ctx;
 
-	knot_rrset_t soa = { 0 };
+	knot_rrset_t *soa = NULL;
 	if (zone->contents) {
-		soa = node_rrset(zone->contents->apex, KNOT_RRTYPE_SOA);
+		rcu_read_lock();
+		knot_rrset_t tmp = node_rrset(zone->contents->apex, KNOT_RRTYPE_SOA);
+		soa = knot_rrset_copy(&tmp, NULL);
+		rcu_read_unlock();
+		if (soa == NULL) {
+			return KNOT_ENOMEM;
+		}
 	}
 
 	struct refresh_data data = {
 		.zone = zone,
 		.conf = conf,
 		.remote = master,
-		.soa = zone->contents && !trctx->force_axfr ? &soa : NULL,
+		.soa = zone->contents && !trctx->force_axfr ? soa : NULL,
 		.max_zone_size = max_zone_size(conf, zone->name),
 		.edns = query_edns_data_init(conf, master, QUERY_EDNS_OPT_EXPIRE),
 		.expire_timer = EXPIRE_TIMER_INVALID,
@@ -1357,6 +1364,7 @@ static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master,
 	knot_pkt_t *pkt = knot_pkt_new(NULL, KNOT_WIRE_MAX_PKTSIZE, NULL);
 	if (pkt == NULL) {
 		knot_requestor_clear(&requestor);
+		knot_rrset_free(soa, NULL);
 		return KNOT_ENOMEM;
 	}
 
@@ -1365,6 +1373,7 @@ static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master,
 	                                        &data.edns, flags);
 	if (req == NULL) {
 		knot_requestor_clear(&requestor);
+		knot_rrset_free(soa, NULL);
 		return KNOT_ENOMEM;
 	}
 
@@ -1388,6 +1397,7 @@ static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master,
 	}
 	knot_request_free(req, NULL);
 	knot_requestor_clear(&requestor);
+	knot_rrset_free(soa, NULL);
 
 	if (ret == KNOT_EOK) {
 		trctx->send_notify = trctx->send_notify || (data.updated && !master->block_notify_after_xfr);
