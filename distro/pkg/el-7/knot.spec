@@ -26,6 +26,7 @@ Patch1:		01-revert-AC_PROG_CC.patch
 Patch2:		02-fix-compilation-by-using-SHA-1.patch
 Patch3:		03-doc-don-t-try-to-import-sphinx_panels.patch
 Patch4:		04-revert-don-t-share-PKCS-11-private-keys.patch
+Patch5:		05-revert-mod-dnstap-TCP-sink.patch
 
 # Required dependencies
 BuildRequires:	autoconf

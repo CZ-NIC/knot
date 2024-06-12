@@ -1,0 +1,160 @@
+From d236d2b7fcd5fa607f7bfd38044eb6f510fac7ce Mon Sep 17 00:00:00 2001
+From: Daniel Salzman <daniel.salzman@nic.cz>
+Date: Wed, 12 Jun 2024 11:18:31 +0200
+Subject: [PATCH] Revert "mod-dnstap: add sink for TCP connection"
+
+This reverts commit 2ffd7dfa58ddcd1b860f0c9980fd082c3852d3e6.
+---
+ src/knot/modules/dnstap/dnstap.c   | 74 +++++-------------------------
+ src/knot/modules/dnstap/dnstap.rst |  9 ++--
+ 2 files changed, 15 insertions(+), 68 deletions(-)
+
+diff --git a/src/knot/modules/dnstap/dnstap.c b/src/knot/modules/dnstap/dnstap.c
+index 612e48869..c8c82eaa4 100644
+--- a/src/knot/modules/dnstap/dnstap.c
++++ b/src/knot/modules/dnstap/dnstap.c
+@@ -1,4 +1,4 @@
+-/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
++/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+ 
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License as published by
+@@ -185,33 +185,6 @@ finish:
+ 	return writer;
+ }
+ 
+-static struct fstrm_writer* dnstap_tcp_writer(const char *address, const char *port)
+-{
+-	struct fstrm_tcp_writer_options *opt = NULL;
+-	struct fstrm_writer_options *wopt = NULL;
+-	struct fstrm_writer *writer = NULL;
+-
+-	opt =  fstrm_tcp_writer_options_init();
+-	if (opt == NULL) {
+-		goto finish;
+-	}
+-
+-	fstrm_tcp_writer_options_set_socket_address(opt, address);
+-	fstrm_tcp_writer_options_set_socket_port(opt, port);
+-
+-	wopt = fstrm_writer_options_init();
+-	if (wopt == NULL) {
+-		goto finish;
+-	}
+-	fstrm_writer_options_add_content_type(wopt, DNSTAP_CONTENT_TYPE,
+-	                                      strlen(DNSTAP_CONTENT_TYPE));
+-	writer = fstrm_tcp_writer_init(opt, wopt);
+-finish:
+-	fstrm_tcp_writer_options_destroy(&opt);
+-	fstrm_writer_options_destroy(&wopt);
+-	return writer;
+-}
+-
+ /*! \brief Create a basic file writer sink. */
+ static struct fstrm_writer* dnstap_file_writer(const char *path)
+ {
+@@ -240,42 +213,17 @@ finish:
+ }
+ 
+ /*! \brief Create a log sink according to the path string. */
+-static struct fstrm_writer* dnstap_writer(knotd_mod_t *mod, const char *path)
++static struct fstrm_writer* dnstap_writer(const char *path)
+ {
+-	const char *unix_prefix = "unix:";
+-	const size_t unix_prefix_len = strlen(unix_prefix);
+-
+-	const char *tcp_prefix = "tcp:";
+-	const size_t tcp_prefix_len = strlen(tcp_prefix);
+-
+-	const size_t path_len = strlen(path);
++	const char *prefix = "unix:";
++	const size_t prefix_len = strlen(prefix);
+ 
+ 	/* UNIX socket prefix. */
+-	if (path_len > unix_prefix_len &&
+-	    strncmp(path, unix_prefix, unix_prefix_len) == 0) {
+-		knotd_mod_log(mod, LOG_DEBUG, "using sink UNIX socket '%s'", path);
+-		return dnstap_unix_writer(path + unix_prefix_len);
+-	/* TCP socket prefix. */
+-	} else if (path_len > tcp_prefix_len &&
+-	           strncmp(path, tcp_prefix, tcp_prefix_len) == 0) {
+-		char addr[INET6_ADDRSTRLEN] = { 0 };
+-		const char *delimiter = strchr(path + tcp_prefix_len, '@');
+-		if (delimiter == NULL) {
+-			return NULL;
+-		}
+-		size_t addr_len = delimiter - path - tcp_prefix_len;
+-		if (addr_len >= sizeof(addr)) {
+-			return NULL;
+-		}
+-		memcpy(addr, path + tcp_prefix_len, addr_len);
+-		knotd_mod_log(mod, LOG_DEBUG, "using sink TCP address '%s' port '%s'",
+-		              addr, delimiter + 1);
+-		return dnstap_tcp_writer(addr, delimiter + 1);
+-	/* File path. */
+-	} else {
+-		knotd_mod_log(mod, LOG_DEBUG, "using sink file '%s'", path);
+-		return dnstap_file_writer(path);
++	if (strlen(path) > prefix_len && strncmp(path, prefix, prefix_len) == 0) {
++		return dnstap_unix_writer(path + prefix_len);
+ 	}
++
++	return dnstap_file_writer(path);
+ }
+ 
+ int dnstap_load(knotd_mod_t *mod)
+@@ -325,7 +273,7 @@ int dnstap_load(knotd_mod_t *mod)
+ 	const bool log_responses = conf.single.boolean;
+ 
+ 	/* Initialize the writer and the options. */
+-	struct fstrm_writer *writer = dnstap_writer(mod, sink);
++	struct fstrm_writer *writer = dnstap_writer(sink);
+ 	if (writer == NULL) {
+ 		goto fail;
+ 	}
+@@ -359,13 +307,13 @@ int dnstap_load(knotd_mod_t *mod)
+ 
+ 	return KNOT_EOK;
+ fail:
+-	knotd_mod_log(mod, LOG_ERR, "failed to initialize sink '%s'", sink);
++	knotd_mod_log(mod, LOG_ERR, "failed to init sink '%s'", sink);
+ 
+ 	free(ctx->identity);
+ 	free(ctx->version);
+ 	free(ctx);
+ 
+-	return KNOT_EINVAL;
++	return KNOT_ENOMEM;
+ }
+ 
+ void dnstap_unload(knotd_mod_t *mod)
+diff --git a/src/knot/modules/dnstap/dnstap.rst b/src/knot/modules/dnstap/dnstap.rst
+index 05eac09ab..358977da0 100644
+--- a/src/knot/modules/dnstap/dnstap.rst
++++ b/src/knot/modules/dnstap/dnstap.rst
+@@ -11,7 +11,7 @@ Example
+ -------
+ 
+ The configuration comprises only a :ref:`mod-dnstap_sink` path parameter,
+-which can be either a file, a UNIX socket, or a TCP address::
++which can be either a file or a UNIX socket::
+ 
+    mod-dnstap:
+      - id: capture_all
+@@ -60,10 +60,9 @@ A module identifier.
+ sink
+ ....
+ 
+-A sink path, which can be either a file, a UNIX socket when prefixed with
+-``unix:``, or a TCP `address@port` when prefixed with ``tcp:``. The file may
+-be specified as an absolute path or a path relative to
+-the :doc:`knotd<man_knotd>` startup directory.
++A sink path, which can be either a file or a UNIX socket when prefixed with
++``unix:``. The file may be specified as an absolute path or a path relative
++to the :doc:`knotd<man_knotd>` startup directory.
+ 
+ *Required*
+ 
+-- 
+2.34.1
+
