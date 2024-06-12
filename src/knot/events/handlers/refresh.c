@@ -652,8 +652,12 @@ static int ixfr_finalize(struct refresh_data *data)
 	if (dnssec_enable) {
 		ret = knot_dnssec_sign_update(&up, data->conf);
 	} else if (digest_alg != ZONE_DIGEST_NONE) {
-		assert(zone_update_to(&up) != NULL);
-		ret = zone_update_add_digest(&up, digest_alg, false);
+		if (zone_update_to(&up) == NULL) {
+			ret = zone_update_increment_soa(&up, data->conf);
+		}
+		if (ret == KNOT_EOK) {
+			ret = zone_update_add_digest(&up, digest_alg, false);
+		}
 	}
 	if (ret != KNOT_EOK) {
 		zone_update_clear(&up);
