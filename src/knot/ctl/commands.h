@@ -116,6 +116,7 @@ typedef enum {
 	CTL_CONF_GET,
 	CTL_CONF_SET,
 	CTL_CONF_UNSET,
+	CTL_CONF_SNAPSHOT,
 } ctl_cmd_t;
 
 /*! Control command parameters. */

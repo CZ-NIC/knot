@@ -560,6 +560,28 @@ const char *knot_db_lmdb_get_path(knot_db_t *db)
 }
 
 _public_
+int knot_db_lmdb_clone(knot_db_t *db, const char *path)
+{
+	struct lmdb_env *env = db;
+	// NOTE: Must be opened for copy
+	if (env == NULL || env->env == NULL) {
+		return KNOT_EACCES;
+	}
+
+	int ret = make_dir(path, LMDB_DIR_MODE, true);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	ret = mdb_env_copy(env->env, path);
+	if (ret != KNOT_EOK) {
+		return knot_map_errno_code(ret);
+	}
+	return KNOT_EOK;
+
+}
+
+_public_
 const knot_db_api_t *knot_db_lmdb_api(void)
 {
 	static const knot_db_api_t api = {

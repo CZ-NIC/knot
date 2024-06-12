@@ -2271,6 +2271,42 @@ static int ctl_conf_modify(ctl_args_t *args, ctl_cmd_t cmd)
 	return ret;
 }
 
+static int ctl_conf_snapshot(ctl_args_t *args, ctl_cmd_t cmd)
+{
+	assert(conf() != NULL);
+
+	int ret = KNOT_EOK;
+	const char *output_path = args->data[KNOT_CTL_IDX_DATA];
+	if (output_path == NULL || output_path[0] == '\0') {
+		ret = KNOT_EINVAL;
+		log_ctl_error("control, conf-snapshot (missing destination)");
+		send_error(args, knot_strerror(ret));
+		return ret;
+	}
+
+	// Create confdb directory
+	ret = make_dir(output_path, LMDB_DIR_MODE, true);
+	if (ret != KNOT_EOK) {
+		const char *err_str = knot_strerror(ret);
+		log_ctl_error("control, conf-snapshot failed to create destination directory (%s)", err_str);
+		send_error(args, err_str);
+		return ret;
+	}
+
+	// Snapshot configuration database
+	ret = knot_db_lmdb_clone(conf()->db, output_path);
+	if (ret != KNOT_EOK) {
+		const char *err_str = knot_strerror(ret);
+		log_ctl_error("control, unable to store confdb (%s)", err_str);
+		send_error(args, err_str);
+		return ret;
+	}
+
+	log_ctl_info("control, current confdb snapshot were saved at '%s'", output_path);
+
+	return ret;
+}
+
 typedef struct {
 	const char *name;
 	int (*fcn)(ctl_args_t *, ctl_cmd_t);
@@ -2322,6 +2358,7 @@ static const desc_t cmd_table[] = {
 	[CTL_CONF_GET]        = { "conf-get",        ctl_conf_read },
 	[CTL_CONF_SET]        = { "conf-set",        ctl_conf_modify },
 	[CTL_CONF_UNSET]      = { "conf-unset",      ctl_conf_modify },
+	[CTL_CONF_SNAPSHOT]   = { "conf-snapshot",   ctl_conf_snapshot },
 };
 
 #define MAX_CTL_CODE (sizeof(cmd_table) / sizeof(desc_t) - 1)

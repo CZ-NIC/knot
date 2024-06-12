@@ -84,6 +84,7 @@
 #define CMD_CONF_GET		"conf-get"
 #define CMD_CONF_SET		"conf-set"
 #define CMD_CONF_UNSET		"conf-unset"
+#define CMD_CONF_SNAPSHOT	"conf-snapshot"
 
 #define CTL_LOG_STR		"failed to control"
 
@@ -244,6 +245,7 @@ static void format_data(cmd_args_t *args, knot_ctl_type_t data_type,
 	case CTL_RELOAD:
 	case CTL_CONF_BEGIN:
 	case CTL_CONF_ABORT:
+	case CTL_CONF_SNAPSHOT:
 		// Only error message is expected here.
 		if (error != NULL) {
 			printf("error: (%s)", error);
@@ -404,6 +406,7 @@ static void format_block(ctl_cmd_t cmd, bool failed, bool empty)
 	case CTL_CONF_COMMIT:
 	case CTL_CONF_ABORT:
 	case CTL_CONF_SET:
+	case CTL_CONF_SNAPSHOT:
 	case CTL_CONF_UNSET:
 	case CTL_ZONE_RELOAD:
 	case CTL_ZONE_REFRESH:
@@ -1225,6 +1228,27 @@ static int cmd_conf_export(cmd_args_t *args)
 	return ret;
 }
 
+static int cmd_conf_snapshot(cmd_args_t *args)
+{
+	int ret = check_args(args, 1, 1);
+	if (ret != KNOT_EOK) {
+		if (args->argv == 0) {
+			log_error("conf-snapshot (missing argument)");
+		}
+		return ret;
+	}
+
+	knot_ctl_data_t data = {
+		[KNOT_CTL_IDX_CMD] = ctl_cmd_to_str(args->desc->cmd),
+		[KNOT_CTL_IDX_FLAGS] = args->flags,
+		[KNOT_CTL_IDX_DATA] = args->argv[0],
+	};
+	CTL_SEND_DATA
+	CTL_SEND_BLOCK
+
+	return ctl_receive(args);
+}
+
 static int cmd_conf_ctl(cmd_args_t *args)
 {
 	// Check the number of arguments.
@@ -1321,6 +1345,7 @@ const cmd_desc_t cmd_table[] = {
 	{ CMD_CONF_CHECK,      cmd_conf_check,    CTL_NONE,            CMD_FREAD  | CMD_FREQ_MOD },
 	{ CMD_CONF_IMPORT,     cmd_conf_import,   CTL_NONE,            CMD_FWRITE | CMD_FOPT_MOD },
 	{ CMD_CONF_EXPORT,     cmd_conf_export,   CTL_NONE,            CMD_FREAD  | CMD_FOPT_MOD },
+	{ CMD_CONF_SNAPSHOT,   cmd_conf_snapshot, CTL_CONF_SNAPSHOT,   CMD_FOPT_DATA },
 	{ CMD_CONF_LIST,       cmd_conf_ctl,      CTL_CONF_LIST,       CMD_FOPT_ITEM | CMD_FLIST_SCHEMA },
 	{ CMD_CONF_READ,       cmd_conf_ctl,      CTL_CONF_READ,       CMD_FOPT_ITEM },
 	{ CMD_CONF_BEGIN,      cmd_conf_ctl,      CTL_CONF_BEGIN },
