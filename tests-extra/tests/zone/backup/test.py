@@ -158,7 +158,7 @@ if dnskey1_7 != dnskey1_5 or dnskey2_7 != dnskey2_5:
 # Test that even a zonefile not existing in the newer backup gets overwritten.
 master.ctl("-f zone-purge %s" % zones[1].name, wait=True)
 master.ctl("-f zone-backup +backupdir %s" % backup_dir, wait=True)
-master.ctl("-f zone-purge", wait=True)
+master.ctl("-f zone-purge --", wait=True)
 master.ctl("zone-restore +backupdir %s" % backup_dir, wait=True)
 t.sleep(3)
 resp = master.dig(zones[0].name, "SOA")
