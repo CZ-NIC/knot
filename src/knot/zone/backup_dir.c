@@ -240,6 +240,22 @@ int backupdir_init(zone_backup_ctx_t *ctx)
 			return KNOT_ENOTDIR;
 		}
 	} else {
+		if (ctx->forced) {
+			if (stat(ctx->backup_dir, &sb) == 0) {
+				int ret2 = remove_path(ctx->backup_dir, S_ISDIR(sb.st_mode));
+				if (ret2 != KNOT_EOK) {
+					return ret2;
+				}
+			} else if (errno != ENOENT) {
+				return knot_map_errno();
+			} else if (lstat(ctx->backup_dir, &sb) == 0 && S_ISLNK(sb.st_mode)) {
+				// Stale symlink.
+				if (unlink(ctx->backup_dir) != 0) {
+					return knot_map_errno();
+				}
+			} // Omitting lstat() failure check, make_dir() will do it.
+		}
+
 		ret = make_dir(ctx->backup_dir, S_IRWXU | S_IRWXG, true);
 		if (ret != KNOT_EOK) {
 			return ret;

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -52,9 +52,12 @@ bool same_path(const char *path1, const char *path2);
 /*!
  * \brief Delete file or directory (recursive).
  *
- * \return true on success, false when one or more files failed to be removed.
+ * \param[in] path       Absolute path or a relative path suffix; a string.
+ * \param[in] keep_apex  If true, don't remove the starting point (apex).
+ *
+ * \return KNOT_E*
  */
-bool remove_path(const char *path);
+int remove_path(const char *path, bool keep_apex);
 
 /*!
  * Equivalent to mkdir(2), can succeed if the directory already exists.

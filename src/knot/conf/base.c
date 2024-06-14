@@ -347,9 +347,10 @@ int conf_new(
 		ret = out->api->init(&out->db, NULL, &lmdb_opts);
 
 		// Remove the database to ensure it is temporary.
-		if (!remove_path(lmdb_opts.path)) {
-			CONF_LOG(LOG_WARNING, "failed to purge temporary directory '%s'",
-			         lmdb_opts.path);
+		int ret2 = remove_path(lmdb_opts.path, false);
+		if (ret2 != KNOT_EOK) {
+			CONF_LOG(LOG_WARNING, "failed to purge temporary directory '%s' (%s)",
+			         lmdb_opts.path, knot_strerror(ret2));
 		}
 	} else {
 		// Set the specified database.

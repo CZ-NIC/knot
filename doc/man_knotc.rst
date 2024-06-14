@@ -151,8 +151,9 @@ Actions
   explicitly. If zone flushing is disabled, the original zone file is backed
   up instead of writing out zone contents to a file. When backing-up a catalog
   zone, it is recommended to prevent ongoing changes to it by use of
-  **zone-freeze**.
-  See :ref:`Notes<notes>` below about the directory permissions. (#)
+  **zone-freeze**. The force option allows an already existing backupdir to
+  be overwritten. See :ref:`Notes<notes>` below about the directory permissions.
+  (#)
 
 **zone-restore** [*zone*...] **+backupdir** *directory* [*filter*...]
   Trigger a zone data and metadata restore from a specified backup directory.

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2016 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -62,5 +62,5 @@ char *test_mkdtemp(void)
 
 bool test_rm_rf(const char *path)
 {
-	return remove_path(path);
+	return (remove_path(path, false) == KNOT_EOK);
 }
