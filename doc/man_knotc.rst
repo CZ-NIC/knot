@@ -135,17 +135,62 @@ Actions
 
 **zone-backup** [*zone*...] **+backupdir** *directory* [*filter*...]
   Trigger a zone data and metadata backup to a specified directory.
-  Available filters are **+zonefile**, **+journal**, **+timers**, **+kaspdb**,
-  **+keysonly**, **+catalog**, **+quic**, and their negative counterparts
-  **+nozonefile**, **+nojournal**, **+notimers**, **+nokaspdb**, **+nokeysonly**,
-  **+nocatalog**, and **+noquic**. With these filters set, zone contents,
-  zone's journal, zone-related timers, zone-related data in the KASP database
-  together with keys (or keys without the KASP database), zone's catalog,
-  and the server QUIC key and certificate, respectively, are backed up,
-  or omitted from the backup. By default, filters **+zonefile**, **+timers**,
-  **+kaspdb**, **+catalog**, **+quic**, **+nojournal**, and **+nokeysonly**
-  are set for backup. The same defaults are set for restore, with the only
-  difference being **+noquic**. Setting a filter for an item doesn't change the
+  The following filters are available together with their negative
+  counterparts which start with **no** at the begging of the filter
+  name (e.g. **+nozonefile**).
+
+.. list-table::
+   :header-rows: 2
+
+   * -
+     - default
+     - default
+     -
+
+   * - filter
+     - backup
+     - restore
+     - description
+
+   * - **+zonefile**
+     - yes
+     - yes
+     - zone contents
+
+   * - **+journal**
+     -
+     -
+     - zone's journal
+
+   * - **+timers**
+     - yes
+     - yes
+     - zone-related timers
+
+   * - **+kaspdb**
+     - yes
+     - yes
+     - zone-related data in the KASP database together with keys
+
+   * - **+keysonly**
+     -
+     -
+     - keys without the KASP database
+
+   * - **+catalog**
+     - yes
+     - yes
+     - zone's catalog
+
+   * - **+quic**
+     - yes
+     -
+     - server QUIC key and certificate
+
+..
+
+
+  Setting a filter for an item doesn't change the
   default settings for other items. The only exception is **+keysonly**, which
   disables all other filters by default, but they can still be turned on
   explicitly. If zone flushing is disabled, the original zone file is backed
