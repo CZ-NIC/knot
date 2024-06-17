@@ -118,7 +118,7 @@ struct refresh_data {
 
 	int ret;                          //!< Error code.
 	enum state state;                 //!< Event processing state.
-	enum xfr_type xfr_type;           //!< Transer type (mostly IXFR versus AXFR).
+	enum xfr_type xfr_type;           //!< Transfer type (mostly IXFR versus AXFR).
 	bool axfr_style_ixfr;             //!< Master responded with AXFR-style-IXFR.
 	knot_rrset_t *initial_soa_copy;   //!< Copy of the received initial SOA.
 	struct xfr_stats stats;           //!< Transfer statistics.
@@ -1196,13 +1196,33 @@ static int transfer_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 	// Transfer completed
 	if (next == KNOT_STATE_DONE) {
 		// Log transfer even if we still can fail
+		uint32_t serial;
+		switch (data->xfr_type) {
+		case XFR_TYPE_AXFR:
+			serial = zone_contents_serial(data->axfr.zone);
+			break;
+		case XFR_TYPE_IXFR:
+			serial = knot_soa_serial(data->ixfr.final_soa->rrs.rdata);
+			break;
+		case XFR_TYPE_UPTODATE:
+			if (slave_zone_serial(data->zone, data->conf, &serial) == KNOT_EOK) {
+				break;
+			}
+			// FALLTHROUGH
+		default:
+			serial = 0;
+		}
+		char serial_log[32];
+		(void)snprintf(serial_log, sizeof(serial_log),
+		               " remote serial %u,", serial);
 		xfr_log_finished(data->zone->name,
 		                 data->xfr_type == XFR_TYPE_IXFR ||
 		                 data->xfr_type == XFR_TYPE_UPTODATE ?
 		                 LOG_OPERATION_IXFR : LOG_OPERATION_AXFR,
 		                 LOG_DIRECTION_IN, &data->remote->addr,
 		                 flags2proto(layer->flags),
-		                 data->remote->key.name, &data->stats);
+		                 data->remote->key.name,
+		                 serial_log, &data->stats);
 
 		/*
 		 * TODO: Move finialization into finish
