@@ -256,6 +256,14 @@ static void event_wrap(worker_task_t *task)
 		pthread_cond_broadcast(events->run_end);
 	}
 
+	char dbg_log[512] = { 0 }, *dbg_log_end = &dbg_log[0];
+	time_t now = time(NULL);
+	for (int i = 0; i < ZONE_EVENT_COUNT; i++) {
+		time_t t = events->time[i];
+		dbg_log_end += snprintf(dbg_log_end, sizeof(dbg_log) - (dbg_log_end - dbg_log), "%s %c%ld; ", zone_events_get_name(i), t ? '+' : ' ', t ? t - now : 0);
+	}
+	log_zone_info(zone->name, "events: %s", dbg_log);
+
 	reschedule(events, true); // unlocks events->mx
 }
 
