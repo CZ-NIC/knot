@@ -136,6 +136,9 @@ static int make_label_file(zone_backup_ctx_t *ctx)
 	localtime_r(&now, &tm);
 	strftime(finished_time, sizeof(finished_time), LABEL_FILE_TIME_FORMAT, &tm);
 
+	int lmdb_major, lmdb_minor, lmdb_patch;
+	(void)mdb_version(&lmdb_major, &lmdb_minor, &lmdb_patch);
+
 	// Print the label contents.
 	char params_str[PARAMS_MAX_LENGTH];
 	print_params(params_str, ctx->backup_params);
@@ -146,12 +149,14 @@ static int make_label_file(zone_backup_ctx_t *ctx)
 	              "started_time: %s\n"
 	              "finished_time: %s\n"
 	              "knot_version: %s\n"
+	              "lmdb_version: %d.%d.%d\n"
 	              LABEL_FILE_ARCH "%s\n"
 	              LABEL_FILE_PARAMS "%s+" LABEL_FILE_BACKUPDIR "%s\n"
 	              "zone_count: %d\n",
 	              label_file_head,
 	              ctx->backup_format, ident, started_time, finished_time,
-	              PACKAGE_VERSION, label_file_arch,
+	              PACKAGE_VERSION,
+	              lmdb_major, lmdb_minor, lmdb_patch, label_file_arch,
 	              params_str, ctx->backup_dir,
 	              ctx->zone_count);
 
