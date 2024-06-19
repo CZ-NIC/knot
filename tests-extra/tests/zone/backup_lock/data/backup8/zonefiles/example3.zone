@@ -1,0 +1,11 @@
+;; Zone dump (Knot DNS 3.1.dev.1625122029.e48145931)
+example3.           	3600	SOA	dns1.example3. hostmaster.example3. 2010111213 10800 3600 1209600 7200
+example3.           	3600	NS	dns1.example3.
+example3.           	3600	NS	dns2.example3.
+added.example3.     	3600	A	1.2.3.4
+dns1.example3.      	3600	A	192.0.2.1
+dns1.example3.      	3600	AAAA	2001:db8::1
+dns2.example3.      	3600	A	192.0.2.2
+dns2.example3.      	3600	AAAA	2001:db8::2
+;; Written 8 records
+;; Time 2021-07-07 14:39:48 CEST

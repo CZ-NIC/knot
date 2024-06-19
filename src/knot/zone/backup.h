@@ -57,6 +57,11 @@ typedef enum {
                              BACKUP_PARAM_TIMERS | BACKUP_PARAM_KASPDB | \
                              BACKUP_PARAM_CATALOG)
 
+/*! \bref Backup components using LMDB databases. */
+#define BACKUP_PARAM_DB     (BACKUP_PARAM_JOURNAL | BACKUP_PARAM_TIMERS | \
+                             BACKUP_PARAM_KASPDB | BACKUP_PARAM_KEYSONLY | \
+                             BACKUP_PARAM_CATALOG)
+
 typedef struct {
         const char *name;
         knot_backup_params_t param;
@@ -70,6 +75,7 @@ typedef struct zone_backup_ctx {
 	bool forced;                        // if true, the force flag has been set
 	knot_backup_params_t backup_params; // bit-mapped list of backup components
 	knot_backup_params_t in_backup;     // bit-mapped list of components available in backup
+	bool arch_match;                    // match of the system and the backup architectures
 	bool backup_global;                 // perform global backup for all zones
 	ssize_t readers;                    // when decremented to 0, all zones done, free this context
 	pthread_mutex_t readers_mutex;      // mutex covering readers counter

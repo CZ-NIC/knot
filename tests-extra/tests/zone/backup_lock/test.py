@@ -47,7 +47,7 @@ zones2 = t.zone("example1.", file_name="example1.file", storage=".")  \
          + t.zone("example2.", file_name="example2.file", storage=".") \
          + t.zone("example3.", file_name="example3.file", storage=".")
 t.link(zones2, master2)
-for i in range(2, 8):
+for i in range(2, 9):
     dir_from = os.path.join(t.data_dir, "backup%d" % i)
     dir_to = os.path.join(master2.dir, "backup%d" % i)
     shutil.copytree(dir_from, dir_to)
@@ -203,5 +203,19 @@ try:
 except:
     pass
 check_log_err(master2, "malformed data")
+
+# Attempt to restore from a backup made by incompatible CPU architecture (incompatible CPU architecture).
+try:
+    master2.ctl("zone-restore +backupdir %s" % backup8_dir, wait=True)
+    set_err("RESTORE FROM INCOMPATIBLE ARCHITECTURE ALLOWED")
+except:
+    pass
+check_log_err(master2, "incompatible CPU architecture")
+
+# Attempt to restore a zonefile from a backup made by incompatible CPU architecture, expected OK.
+try:
+    master2.ctl("zone-restore +zonefile +notimers +nokaspdb +nojournal +nocatalog +backupdir %s" % backup8_dir, wait=True)
+except:
+    set_err("ZONEFILE RESTORE FROM INCOMPATIBLE CPU FAILED")
 
 t.stop()
