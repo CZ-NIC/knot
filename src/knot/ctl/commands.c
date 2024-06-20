@@ -863,6 +863,11 @@ static int zone_txn_begin(zone_t *zone, _unused_ ctl_args_t *args)
 		return KNOT_EAGAIN;
 	}
 
+	if (zone->events.running && zone->events.type >= 0 && zone->events.blocking[zone->events.type] != NULL) {
+		log_zone_warning(zone->name, "some blocking event running, try opening control transaction later");
+		return KNOT_EAGAIN;
+	}
+
 	zone->control_update = malloc(sizeof(zone_update_t));
 	if (zone->control_update == NULL) {
 		return KNOT_ENOMEM;
