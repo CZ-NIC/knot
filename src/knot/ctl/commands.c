@@ -817,8 +817,8 @@ static int zone_ksk_sbm_confirm(zone_t *zone, _unused_ ctl_args_t *args)
 
 	conf_val_t val = conf_zone_get(conf(), C_DNSSEC_SIGNING, zone->name);
 	if (ret == KNOT_EOK && conf_bool(&val)) {
-		// NOT zone_events_schedule_user(), intentionally!
-		ret = schedule_trigger(zone, args, ZONE_EVENT_DNSSEC, false);
+		// NOT zone_events_schedule_user() or schedule_trigger(), intentionally!
+		zone_events_schedule_now(zone, ZONE_EVENT_DNSSEC);
 	}
 
 	return ret;
