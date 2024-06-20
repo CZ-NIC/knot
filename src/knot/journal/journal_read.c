@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -48,11 +48,24 @@ static void update_ctx_wire(journal_read_t *ctx)
 	wire_ctx_skip(&ctx->wire, JOURNAL_HEADER_SIZE);
 }
 
+static bool go_correct_prefix(journal_read_t *ctx)
+{
+	while (!journal_correct_prefix(&ctx->key_prefix, &ctx->txn.cur_key)) {
+		if (!knot_lmdb_next(&ctx->txn) || !knot_lmdb_is_prefix_of(&ctx->key_prefix, &ctx->txn.cur_key)) {
+			return false;
+		}
+	}
+	return true;
+}
+
 static bool go_next_changeset(journal_read_t *ctx, bool go_zone, const knot_dname_t *zone)
 {
 	free(ctx->key_prefix.mv_data);
 	ctx->key_prefix = journal_changeset_id_to_key(go_zone, ctx->next, zone);
 	if (!knot_lmdb_find_prefix(&ctx->txn, &ctx->key_prefix)) {
+		return false;
+	}
+	if (!go_correct_prefix(ctx)) {
 		return false;
 	}
 	if (!go_zone && ctx->next == journal_next_serial(&ctx->txn.cur_val)) {
@@ -117,7 +130,7 @@ static bool make_data_available(journal_read_t *ctx)
 		if (!knot_lmdb_next(&ctx->txn)) {
 			return false;
 		}
-		if (!knot_lmdb_is_prefix_of(&ctx->key_prefix, &ctx->txn.cur_key)) {
+		if (!go_correct_prefix(ctx)) {
 			return false;
 		}
 		if (ctx->next != journal_next_serial(&ctx->txn.cur_val)) {

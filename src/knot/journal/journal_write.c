@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -92,6 +92,9 @@ static bool delete_one(knot_lmdb_txn_t *txn, bool del_zij, uint32_t del_serial,
 	*freed = 0;
 	MDB_val prefix = journal_changeset_id_to_key(del_zij, del_serial, zone);
 	knot_lmdb_foreach(txn, &prefix) {
+		if (!journal_correct_prefix(&prefix, &txn->cur_key)) {
+			continue;
+		}
 		*freed += txn->cur_val.mv_size;
 		*next_serial = journal_next_serial(&txn->cur_val);
 		knot_lmdb_del_cur(txn);

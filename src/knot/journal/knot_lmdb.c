@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -450,6 +450,12 @@ bool knot_lmdb_next(knot_lmdb_txn_t *txn)
 bool knot_lmdb_is_prefix_of(const MDB_val *prefix, const MDB_val *of)
 {
 	return prefix->mv_size <= of->mv_size &&
+	       memcmp(prefix->mv_data, of->mv_data, prefix->mv_size) == 0;
+}
+
+bool knot_lmdb_is_prefix_of2(const MDB_val *prefix, const MDB_val *of, size_t expected_rest)
+{
+	return prefix->mv_size + expected_rest == of->mv_size &&
 	       memcmp(prefix->mv_data, of->mv_data, prefix->mv_size) == 0;
 }
 

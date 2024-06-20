@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -246,6 +246,17 @@ bool knot_lmdb_next(knot_lmdb_txn_t *txn);
  * \return True iff 'prefix' is a prefix of 'of'.
  */
 bool knot_lmdb_is_prefix_of(const MDB_val *prefix, const MDB_val *of);
+
+/*!
+ * \brief Check if DB key is prefix of another, with given extra number of bytes.
+ *
+ * \param prefix          DB key prefix.
+ * \param of              Another DB key.
+ * \param expected_rest   Extra length of "of".
+ *
+ * \return True iff 'prefix'+expected_rest == 'of'.
+ */
+bool knot_lmdb_is_prefix_of2(const MDB_val *prefix, const MDB_val *of, size_t expected_rest);
 
 /*!
  * \brief Find leftmost key in DB matching given prefix.
