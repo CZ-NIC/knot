@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -60,6 +60,16 @@ MDB_val journal_changeset_id_to_key(bool zone_in_journal, uint32_t serial, const
  * \return DB key. 'mv_data' shall be freed later. 'mv_data' is NULL on failure.
  */
 MDB_val journal_make_chunk_key(const knot_dname_t *apex, uint32_t ch_from, bool zij, uint32_t chunk_id);
+
+/*!
+ * \brief Check that found LMDB key belongs to a changest chunk of given prefix.
+ *
+ * \param prefix       Prefix from journal_changeset_id_to_key().
+ * \param found_key    Found database record key.
+ *
+ * \return All OK (hopefully).
+ */
+bool journal_correct_prefix(MDB_val *prefix, MDB_val *found_key);
 
 /*!
  * \brief Return a key prefix to operate with all zone-related records.
