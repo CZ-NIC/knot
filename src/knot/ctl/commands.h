@@ -164,3 +164,11 @@ int ctl_exec(ctl_cmd_t cmd, ctl_args_t *args);
  * \return True if presented.
  */
 bool ctl_has_flag(const char *flags, const char *flag);
+
+/*!
+ * Determine if this command must be run by no other than main thread.
+ *
+ * \param[in] cmd   Control command.
+ * \param[in] args  Command arguments.
+ */
+bool ctl_cmd_only_mainthread(ctl_cmd_t cmd, ctl_args_t *args);

@@ -20,6 +20,52 @@
 #include "libknot/error.h"
 #include "contrib/string.h"
 
+typedef struct {
+	ctl_cmd_t cmd;
+	ctl_args_t args;
+	bool *strip;
+} exec_send_ctx_t;
+
+static int ctl_exec_and_send(exec_send_ctx_t *ctx)
+{
+	// Execute the command.
+	int cmd_ret = ctl_exec(ctx->cmd, &ctx->args);
+	switch (cmd_ret) {
+	case KNOT_EOK:
+		strip = false;
+	case KNOT_CTL_ESTOP:
+	case KNOT_CTL_EZONE:
+		// KNOT_CTL_EZONE - don't change strip, but don't be reported
+		// as a ctl/communication error either.
+		break;
+	default:
+		log_ctl_debug("control, command '%s' (%s)", cmd_name,
+			      knot_strerror(cmd_ret));
+		break;
+	}
+
+	// Finalize the answer block.
+	int ret = knot_ctl_send(ctx->args.ctl, KNOT_CTL_TYPE_BLOCK, NULL);
+	if (ret != KNOT_EOK) {
+		log_ctl_debug("control, failed to reply (%s)",
+			      knot_strerror(ret));
+	}
+
+	// Stop if required.
+	if (cmd_ret == KNOT_CTL_ESTOP) {
+		// Finalize the answer message.
+		ret = knot_ctl_send(ctx->args.ctl, KNOT_CTL_TYPE_END, NULL);
+		if (ret != KNOT_EOK) {
+			log_ctl_debug("control, failed to reply (%s)",
+				      knot_strerror(ret));
+		}
+
+
+	}
+
+	return cmd_ret;
+}
+
 int ctl_process(knot_ctl_t *ctl, server_t *server)
 {
 	if (ctl == NULL || server == NULL) {
@@ -89,6 +135,8 @@ int ctl_process(knot_ctl_t *ctl, server_t *server)
 			log_ctl_debug("control, empty command");
 			continue;
 		}
+
+
 
 		// Execute the command.
 		int cmd_ret = ctl_exec(cmd, &args);

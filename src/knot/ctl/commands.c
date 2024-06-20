@@ -2331,6 +2331,7 @@ typedef enum {
 	CTL_LOCK_NONE     = 0x00,
 	CTL_LOCK_SRV_R    = 0x01,
 	CTL_LOCK_SRV_W    = 0x02,
+	CTL_ONLY_MAINTHR  = 0x04,
 } ctl_lock_flags;
 
 typedef struct {
@@ -2378,9 +2379,9 @@ static const desc_t cmd_table[] = {
 
 	[CTL_CONF_LIST]       = { "conf-list",       ctl_conf_list,     CTL_LOCK_SRV_R },
 	[CTL_CONF_READ]       = { "conf-read",       ctl_conf_read,     CTL_LOCK_SRV_R },
-	[CTL_CONF_BEGIN]      = { "conf-begin",      ctl_conf_txn,      CTL_LOCK_SRV_W }, // NOTE it's locked only during the conf-begin command, not for the whole duration of the transaction.
-	[CTL_CONF_COMMIT]     = { "conf-commit",     ctl_conf_txn,      CTL_LOCK_SRV_W },
-	[CTL_CONF_ABORT]      = { "conf-abort",      ctl_conf_txn,      CTL_LOCK_SRV_W },
+	[CTL_CONF_BEGIN]      = { "conf-begin",      ctl_conf_txn,      CTL_LOCK_SRV_W | CTL_ONLY_MAINTHR }, // NOTE it's locked only during the conf-begin command, not for the whole duration of the transaction.
+	[CTL_CONF_COMMIT]     = { "conf-commit",     ctl_conf_txn,      CTL_LOCK_SRV_W | CTL_ONLY_MAINTHR },
+	[CTL_CONF_ABORT]      = { "conf-abort",      ctl_conf_txn,      CTL_LOCK_SRV_W | CTL_ONLY_MAINTHR },
 	[CTL_CONF_DIFF]       = { "conf-diff",       ctl_conf_read,     CTL_LOCK_SRV_R },
 	[CTL_CONF_GET]        = { "conf-get",        ctl_conf_read,     CTL_LOCK_SRV_R },
 	[CTL_CONF_SET]        = { "conf-set",        ctl_conf_modify,   CTL_LOCK_SRV_W },
@@ -2460,4 +2461,10 @@ bool ctl_has_flag(const char *flags, const char *flag)
 	}
 
 	return strstr(flags, flag) != NULL;
+}
+
+bool ctl_cmd_only_mainthread(ctl_cmd_t cmd, ctl_args_t *args)
+{
+	(void)args; // FIXME
+	return (bool)(cmd_table[cmd].locks & CTL_ONLY_MAINTHR);
 }
