@@ -50,11 +50,24 @@
 #define PROGRAM_NAME "knotd"
 #define MAX_CTL_CONCURRENT 8
 
+typedef enum {
+	CONCURRENT_EMPTY = 0,
+	CONCURRENT_ASSIGNED,
+	CONCURRENT_RUNNING,
+	CONCURRENT_FINISHED,
+	CONCURRENT_IDLE,
+	CONCURRENT_KILLED,
+} concurrent_ctl_state_t;
+
 typedef struct {
+	concurrent_ctl_state_t state;
+	pthread_mutex_t mutex;
+	pthread_cond_t cond;
 	knot_ctl_t *ctl;
 	server_t *server;
 	pthread_t thread;
 	int ret;
+	bool exclusive;
 } concurrent_ctl_ctx_t;
 
 /* Signal flags. */
@@ -251,34 +264,104 @@ static void check_loaded(server_t *server)
 	dbus_emit_running(true);
 }
 
+static void *ctl_process_thread(void *arg);
+
 static concurrent_ctl_ctx_t *find_free_ctx(concurrent_ctl_ctx_t *concurrent_ctxs,
-                                           size_t n_ctxs)
+                                           size_t n_ctxs, knot_ctl_t *ctl)
 {
-	for (size_t i = 0; i < n_ctxs; i++) {
-		if (concurrent_ctxs[i].ctl == NULL) {
-			assert(concurrent_ctxs[i].server == NULL);
-			return &concurrent_ctxs[i];
+	concurrent_ctl_ctx_t *res = NULL;
+	for (size_t i = 0; i < n_ctxs && res == NULL; i++) {
+		concurrent_ctl_ctx_t *cctx = &concurrent_ctxs[i];
+		pthread_mutex_lock(&cctx->mutex);
+		if (cctx->exclusive) {
+			while (cctx->state != CONCURRENT_IDLE) {
+				pthread_cond_wait(&cctx->cond, &cctx->mutex);
+			}
+			knot_ctl_free(cctx->ctl);
+			cctx->ctl = knot_ctl_clone(ctl);
+			if (cctx->ctl == NULL) {
+				cctx->exclusive = false;
+				continue;
+			}
+			cctx->state = CONCURRENT_ASSIGNED;
+			res = cctx;
+			pthread_cond_broadcast(&cctx->cond);
 		}
+		pthread_mutex_unlock(&cctx->mutex);
 	}
-	return NULL;
+	for (size_t i = 0; i < n_ctxs && res == NULL; i++) {
+		concurrent_ctl_ctx_t *cctx = &concurrent_ctxs[i];
+		pthread_mutex_lock(&cctx->mutex);
+		switch (cctx->state) {
+		case CONCURRENT_EMPTY:
+			pthread_create(&cctx->thread, NULL, ctl_process_thread, cctx);
+			break;
+		case CONCURRENT_IDLE:
+			knot_ctl_free(cctx->ctl);
+			pthread_cond_broadcast(&cctx->cond);
+			break;
+		default:
+			pthread_mutex_unlock(&cctx->mutex);
+			continue;
+		}
+		cctx->ctl = knot_ctl_clone(ctl);
+		if (cctx->ctl != NULL) {
+			cctx->state = CONCURRENT_ASSIGNED;
+			res = cctx;
+		}
+		pthread_mutex_unlock(&cctx->mutex);
+	}
+	return res;
 }
 
-static int cleanup_ctxs(concurrent_ctl_ctx_t *concurrent_ctxs, size_t n_ctxs, bool force)
+static void init_ctxs(concurrent_ctl_ctx_t *concurrent_ctxs, size_t n_ctxs, server_t *server)
+{
+	for (size_t i = 0; i < n_ctxs; i++) {
+		concurrent_ctl_ctx_t *cctx = &concurrent_ctxs[i];
+		pthread_mutex_init(&cctx->mutex, NULL);
+		pthread_cond_init(&cctx->cond, NULL);
+		cctx->server = server;
+	}
+}
+
+static int cleanup_ctxs2(concurrent_ctl_ctx_t *concurrent_ctxs, size_t n_ctxs)
 {
 	int ret = KNOT_EOK;
 	for (size_t i = 0; i < n_ctxs; i++) {
 		concurrent_ctl_ctx_t *cctx = &concurrent_ctxs[i];
-		if (cctx->ctl != NULL && (force || cctx->server == NULL)) {
-			(void)pthread_join(cctx->thread, NULL);
-			assert(cctx->server == NULL);
+		pthread_mutex_lock(&cctx->mutex);
+		if (cctx->state == CONCURRENT_IDLE) {
+			knot_ctl_free(cctx->ctl);
+			cctx->ctl = NULL;
 			if (cctx->ret == KNOT_CTL_ESTOP) {
 				ret = cctx->ret;
 			}
-			knot_ctl_free(cctx->ctl);
-			memset(cctx, 0, sizeof(*cctx));
 		}
+		pthread_mutex_unlock(&cctx->mutex);
 	}
 	return ret;
+}
+
+static void cleanup_ctxs(concurrent_ctl_ctx_t *concurrent_ctxs, size_t n_ctxs)
+{
+	for (size_t i = 0; i < n_ctxs; i++) {
+		concurrent_ctl_ctx_t *cctx = &concurrent_ctxs[i];
+		pthread_mutex_lock(&cctx->mutex);
+		if (cctx->state == CONCURRENT_EMPTY) {
+			pthread_mutex_unlock(&cctx->mutex);
+			continue;
+		}
+
+		cctx->state = CONCURRENT_KILLED;
+		pthread_cond_broadcast(&cctx->cond);
+		pthread_mutex_unlock(&cctx->mutex);
+		(void)pthread_join(cctx->thread, NULL);
+
+		assert(cctx->state == CONCURRENT_FINISHED);
+		knot_ctl_free(cctx->ctl);
+		pthread_mutex_destroy(&concurrent_ctxs[i].mutex);
+		pthread_cond_destroy(&concurrent_ctxs[i].cond);
+	}
 }
 
 static void *ctl_process_thread(void *arg)
@@ -286,9 +369,32 @@ static void *ctl_process_thread(void *arg)
 	concurrent_ctl_ctx_t *ctx = arg;
 	rcu_register_thread();
 	setup_signals(); // in fact, this blocks common signals so that they arrive to main thread instead of this one
-	ctx->ret = ctl_process(ctx->ctl, ctx->server);
+
+	pthread_mutex_lock(&ctx->mutex);
+	while (ctx->state != CONCURRENT_KILLED) {
+		if (ctx->state != CONCURRENT_ASSIGNED) {
+			pthread_cond_wait(&ctx->cond, &ctx->mutex);
+			continue;
+		}
+		ctx->state = CONCURRENT_RUNNING;
+		bool exclusive = ctx->exclusive;
+		pthread_mutex_unlock(&ctx->mutex);
+
+		int ret = ctl_process(ctx->ctl, ctx->server, &exclusive);
+
+		pthread_mutex_lock(&ctx->mutex);
+		ctx->ret = ret;
+		ctx->exclusive = exclusive;
+		if (ctx->state == CONCURRENT_RUNNING) { // not KILLED
+			ctx->state = CONCURRENT_IDLE;
+			pthread_cond_broadcast(&ctx->cond);
+		}
+	}
+
 	knot_ctl_close(ctx->ctl);
-	ctx->server = NULL;
+
+	ctx->state = CONCURRENT_FINISHED;
+	pthread_mutex_unlock(&ctx->mutex);
 	rcu_unregister_thread();
 	return NULL;
 }
@@ -297,7 +403,7 @@ static void *ctl_process_thread(void *arg)
 static void event_loop(server_t *server, const char *socket, bool daemonize,
                        unsigned long pid)
 {
-	concurrent_ctl_ctx_t concurrent_ctxs[MAX_CTL_CONCURRENT] = { 0 }, *cctx;
+	concurrent_ctl_ctx_t concurrent_ctxs[MAX_CTL_CONCURRENT] = { 0 };
 	knot_ctl_t *ctl = knot_ctl_alloc();
 	if (ctl == NULL) {
 		log_fatal("control, failed to initialize (%s)",
@@ -341,6 +447,9 @@ static void event_loop(server_t *server, const char *socket, bool daemonize,
 
 	enable_signals();
 
+	init_ctxs(concurrent_ctxs, MAX_CTL_CONCURRENT, server);
+	bool main_thread_exclusive = false;
+
 	/* Notify systemd about successful start. */
 	systemd_ready_notify();
 	if (daemonize) {
@@ -366,7 +475,7 @@ static void event_loop(server_t *server, const char *socket, bool daemonize,
 			server_update_zones(conf(), server, mode);
 			pthread_rwlock_unlock(&server->ctl_lock);
 		}
-		if (sig_req_stop || cleanup_ctxs(concurrent_ctxs, MAX_CTL_CONCURRENT, false) == KNOT_CTL_ESTOP) {
+		if (sig_req_stop || cleanup_ctxs2(concurrent_ctxs, MAX_CTL_CONCURRENT) == KNOT_CTL_ESTOP) {
 			break;
 		}
 
@@ -384,12 +493,9 @@ static void event_loop(server_t *server, const char *socket, bool daemonize,
 			continue;
 		}
 
-		if ((cctx = find_free_ctx(concurrent_ctxs, MAX_CTL_CONCURRENT)) != NULL &&
-		    (cctx->ctl = knot_ctl_clone(ctl)) != NULL) {
-			cctx->server = server;
-			pthread_create(&cctx->thread, NULL, ctl_process_thread, cctx);
-		} else {
-			ret = ctl_process(ctl, server);
+		if (main_thread_exclusive ||
+		    find_free_ctx(concurrent_ctxs, MAX_CTL_CONCURRENT, ctl) == NULL) {
+			ret = ctl_process(ctl, server, &main_thread_exclusive);
 			knot_ctl_close(ctl);
 			if (ret == KNOT_CTL_ESTOP) {
 				break;
@@ -397,7 +503,7 @@ static void event_loop(server_t *server, const char *socket, bool daemonize,
 		}
 	}
 
-	(void)cleanup_ctxs(concurrent_ctxs, MAX_CTL_CONCURRENT, true);
+	cleanup_ctxs(concurrent_ctxs, MAX_CTL_CONCURRENT);
 
 	if (conf()->cache.srv_dbus_event & DBUS_EVENT_RUNNING) {
 		dbus_emit_running(false);
