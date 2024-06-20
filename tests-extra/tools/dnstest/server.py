@@ -166,6 +166,7 @@ class Server(object):
         self.tls_port = None
         self.cert_key = str()
         self.udp_workers = None
+        self.tcp_workers = None
         self.bg_workers = None
         self.fixed_port = False
         self.ctlport = None
@@ -1373,6 +1374,8 @@ class Knot(Server):
             s.item_str("listen-tls", "%s@%s" % (self.addr, self.tls_port))
         if self.udp_workers:
             s.item_str("udp-workers", self.udp_workers)
+        if self.tcp_workers:
+            s.item_str("tcp-workers", self.tcp_workers)
         if self.bg_workers:
             s.item_str("background-workers", self.bg_workers)
 

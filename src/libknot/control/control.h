@@ -65,6 +65,17 @@ typedef struct knot_ctl knot_ctl_t;
 knot_ctl_t* knot_ctl_alloc(void);
 
 /*!
+ * \brief Allocate a control context based on an existing one.
+ *
+ * \param ctx    Original control context.
+ *
+ * \note The listen_sock is kept at the original, the current sock is taken by the clone and _reset_ in the original!
+ *
+ * \return Control context or NULL.
+ */
+knot_ctl_t* knot_ctl_clone(knot_ctl_t *ctx);
+
+/*!
  * Deallocates a control context.
  *
  * \param[in] ctx  Control context.

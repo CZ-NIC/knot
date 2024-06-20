@@ -444,7 +444,9 @@ static int backup_kaspdb(zone_backup_ctx_t *ctx, conf_t *conf, zone_t *zone,
 
 int zone_backup(conf_t *conf, zone_t *zone)
 {
+	pthread_mutex_lock(&zone->cu_lock);
 	zone_backup_ctx_t *ctx = zone->backup_ctx;
+	pthread_mutex_unlock(&zone->cu_lock);
 	if (ctx == NULL) {
 		return KNOT_EINVAL;
 	}

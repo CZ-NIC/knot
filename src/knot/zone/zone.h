@@ -114,6 +114,7 @@ typedef struct zone
 
 	/*! \brief Control update context. */
 	struct zone_update *control_update;
+	pthread_mutex_t cu_lock;
 
 	/*! \brief Ensue one COW transaction on zone's trees at a time. */
 	knot_sem_t cow_lock;

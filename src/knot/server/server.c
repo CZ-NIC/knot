@@ -843,6 +843,9 @@ int server_init(server_t *server, int bg_workers)
 		return ret;
 	}
 
+	ret = pthread_rwlock_init(&server->ctl_lock, NULL);
+	assert(ret == 0);
+
 	zone_backups_init(&server->backup_ctxs);
 
 	char *catalog_dir = conf_db(conf(), C_CATALOG_DB);
@@ -896,6 +899,9 @@ void server_deinit(server_t *server)
 
 	/* Free remaining events. */
 	evsched_deinit(&server->sched);
+
+	/* Deinit locks. */
+	pthread_rwlock_destroy(&server->ctl_lock);
 
 	/* Free catalog zone context. */
 	catalog_update_clear(&server->catalog_upd);
