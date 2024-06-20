@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import enum
 import inspect
 import os
 import time
@@ -7,6 +8,12 @@ import time
 from dnstest.context import Context
 
 SEP = "------------------------------------"
+
+class Proto(enum.Enum):
+    UDP = 0
+    TCP = 1
+    TLS = 2
+    QUIC = 3
 
 class Skip(Exception):
     """Exception for skipping current case."""

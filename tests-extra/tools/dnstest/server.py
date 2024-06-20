@@ -21,6 +21,7 @@ import dnstest.config
 import dnstest.inquirer
 import dnstest.params as params
 import dnstest.keys
+import dnstest.knsupdate
 from dnstest.libknot import libknot
 import dnstest.module
 import dnstest.response
@@ -226,6 +227,8 @@ class Server(object):
         self.confile = None
 
         self.binding_errors = 0
+
+        self.knsupdate = False
 
     def _check_socket(self, proto, port):
         if self.addr.startswith("/"):
@@ -866,8 +869,10 @@ class Server(object):
 
         key_params = self.tsig_test.key_params if self.tsig_test else dict()
 
-        return dnstest.update.Update(self, dns.update.Update(zone.name,
-                                                             **key_params))
+        if self.knsupdate:
+            return dnstest.update.Update(self, dnstest.knsupdate.Knsupdate(zone.name, self.tsig_test))
+        else:
+            return dnstest.update.Update(self, dns.update.Update(zone.name, **key_params))
 
     def gen_key(self, zone, **args):
         zone = zone_arg_check(zone)
