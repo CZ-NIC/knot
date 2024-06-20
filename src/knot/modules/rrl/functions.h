@@ -47,6 +47,8 @@ rrl_table_t *rrl_create(size_t size, uint32_t instant_limit, uint32_t rate_limit
  */
 int rrl_query(rrl_table_t *rrl, const struct sockaddr_storage *remote, knotd_mod_t *mod);
 
+void rrl_update(rrl_table_t *rrl, const struct sockaddr_storage *remote);
+
 /*!
  * \brief Roll a dice whether answer slips or not.
  *
