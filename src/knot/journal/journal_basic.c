@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -36,6 +36,11 @@ MDB_val journal_make_chunk_key(const knot_dname_t *apex, uint32_t ch_from, bool 
 	}
 }
 
+bool journal_correct_prefix(MDB_val *prefix, MDB_val *found_key)
+{
+	return knot_lmdb_is_prefix_of2(prefix, found_key, sizeof(uint32_t) /* chunk_id */);
+}
+
 MDB_val journal_zone_prefix(const knot_dname_t *zone)
 {
 	return knot_lmdb_make_key("NI", zone, (uint32_t)0);
@@ -69,8 +74,8 @@ uint64_t journal_ch_timestamp(const MDB_val *chunk)
 bool journal_serial_to(knot_lmdb_txn_t *txn, bool zij, uint32_t serial,
                        const knot_dname_t *zone, uint32_t *serial_to)
 {
-	MDB_val key = journal_changeset_id_to_key(zij, serial, zone);
-	bool found = knot_lmdb_find_prefix(txn, &key);
+	MDB_val key = journal_make_chunk_key(zone, serial, zij, 0);
+	bool found = knot_lmdb_find(txn, &key, KNOT_LMDB_EXACT);
 	if (found && serial_to != NULL) {
 		*serial_to = journal_next_serial(&txn->cur_val);
 	}
