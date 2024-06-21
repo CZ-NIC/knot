@@ -839,7 +839,7 @@ of the used certificate:
 .. code-block:: console
 
   ... info: binding to QUIC interface ::1@853
-  ... info: QUIC, certificate public key 0xtdayWpnJh4Py8goi8cei/gXGD4kJQ+HEqcxS++DBw=
+  ... info: QUIC/TLS, certificate public key 0xtdayWpnJh4Py8goi8cei/gXGD4kJQ+HEqcxS++DBw=
 
 .. TIP::
 
@@ -874,10 +874,10 @@ Using :doc:`kdig<man_kdig>` we can verify that the server responds over QUIC:
   ;; version.server.     		CH	TXT
 
   ;; ANSWER SECTION:
-  version.server.     	0	CH	TXT	"Knot DNS 3.3.0"
+  version.server.     	0	CH	TXT	"Knot DNS 3.4.0"
 
   ;; Received 468 B
-  ;; Time 2023-08-15 15:04:36 CEST
+  ;; Time 2024-06-21 08:30:12 CEST
   ;; From ::1@853(QUIC) in 1.1 ms
 
 In this case, :rfc:`opportunistic authentication<9103#section-9.3.1>` was
@@ -1086,6 +1086,62 @@ This mode is recommended if possible.
   Instead of certificate verification with specified authentication domain name,
   Knot DNS uses certificate public key pinning. This approach has much lower
   overhead and in most cases simplifies configuration and certificate management.
+
+.. _DNS_over_TLS:
+
+DNS over TLS
+============
+
+TLS is an encrypted internet transport protocol.
+Knot DNS supports DNS over TLS (DoT) (:rfc:`7858`), including zone transfers (XoT).
+By default, the TCP port `853` is used for DNS over TLS.
+
+There are the same requirements for TLS key and certificate as for :ref:`DNS_over_QUIC`.
+
+In order to listen for incoming requests over TLS, :ref:`interface<server_listen-tls>`
+must be configured.
+
+An example of configuration of listening for DNS over TLS on the loopback interface:
+
+.. code-block:: console
+
+  server:
+    listen-tls: ::1
+
+When the server is started, it logs some interface details and public key pin
+of the used certificate:
+
+.. code-block:: console
+
+  ... info: binding to TLS interface ::1@853
+  ... info: QUIC/TLS, certificate public key 0xtdayWpnJh4Py8goi8cei/gXGD4kJQ+HEqcxS++DBw=
+
+Using :doc:`kdig<man_kdig>` we can verify that the server responds over TLS:
+
+.. code-block:: console
+
+  $ kdig @::1 ch txt version.server +tls
+  ;; TLS session (TLS1.3)-(ECDHE-X25519)-(EdDSA-Ed25519)-(AES-256-GCM)
+  ;; ->>HEADER<<- opcode: QUERY; status: NOERROR; id: 0
+  ;; Flags: qr rd; QUERY: 1; ANSWER: 1; AUTHORITY: 0; ADDITIONAL: 1
+
+  ;; EDNS PSEUDOSECTION:
+  ;; Version: 0; flags: ; UDP size: 1232 B; ext-rcode: NOERROR
+  ;; PADDING: 370 B
+
+  ;; QUESTION SECTION:
+  ;; version.server.     		CH	TXT
+
+  ;; ANSWER SECTION:
+  version.server.     	0	CH	TXT	"Knot DNS 3.4.0"
+
+  ;; Received 468 B
+  ;; Time 2024-06-21 08:31:13 CEST
+  ;; From ::1@853(TLS) in 9.1 ms
+
+Zone transfer configuration and authentication profiles are almost identical
+to :ref:`DNS_over_QUIC`, with the only difference being the enabling of
+:ref:`remote_tls` for the corresponding remotes.
 
 .. _query-modules:
 

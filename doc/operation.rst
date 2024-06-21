@@ -1282,12 +1282,12 @@ if the backup was created for only a subset of zones.
    turns off some verification checks, it shouldn't be used in other cases.
 
 .. NOTE::
-   For QUIC, only the auto-generated key is restored. The ``zone-restore``
-   command doesn't restore a user-defined QUIC key and certificate so as to
+   For QUIC/TLS, only the auto-generated key is restored. The ``zone-restore``
+   command doesn't restore a user-defined QUIC/TLS key and certificate so as to
    avoid possible configuration management conflicts and they must be restored
    from the backup (its subdirectory ``quic``) manually. In all cases,
    restart of the Knot server after the restore is necessary for the restored
-   QUIC key/certificate to take effect.
+   QUIC/TLS key/certificate to take effect.
 
 Limitations
 -----------
