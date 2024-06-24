@@ -1,3 +1,17 @@
+Knot DNS 3.3.7 (2024-06-25)
+===========================
+
+Improvements:
+-------------
+ - libs: upgraded embedded libngtcp2 to 1.6.0
+
+Bugfixes:
+---------
+ - knotd: insufficient metadata check can cause journal corruption
+ - knotd: missing zone timers initialization upon purge
+ - knotd: missing RCU lock in zone flush and refresh
+ - knotd: defective assert in zone refresh
+
 Knot DNS 3.3.6 (2024-06-12)
 ===========================
 
