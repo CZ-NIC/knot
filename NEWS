@@ -1,3 +1,18 @@
+Knot DNS 3.2.13 (2024-06-25)
+============================
+
+Bugfixes:
+---------
+ - knotd: insufficient metadata check can cause journal corruption
+ - knotd: failed to build on macOS #909
+ - knotd: early NSEC3 salt replanning if 'nsec3-salt-lifetime: -1'
+ - knotc: zone check complains about missing zone file #913
+ - kdig: failed to parse empty QNAME (do not fill question section)
+ - python: failed to set an empty configuration value
+ - libzscanner: incorrect alpn processing #923
+ - libknot: insufficient check for malformed TCP header options over XDP
+ - libknot: infinite loop in knot_rrset_to_wire_extra() #916
+
 Knot DNS 3.2.12 (2023-12-19)
 ============================
 
