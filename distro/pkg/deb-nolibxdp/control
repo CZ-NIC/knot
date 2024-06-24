@@ -43,7 +43,7 @@ Architecture: any
 Depends:
  adduser,
  libdnssec9 (= ${binary:Version}),
- libknot14 (= ${binary:Version}),
+ libknot15 (= ${binary:Version}),
  libzscanner4 (= ${binary:Version}),
  ${misc:Depends},
  ${shlibs:Depends},
@@ -59,7 +59,7 @@ Description: Authoritative domain name server
  registry and hence is well suited to run anything from the root
  zone, the top-level domain, to many smaller standard domain names.
 
-Package: libknot14
+Package: libknot15
 Architecture: any
 Depends:
  ${misc:Depends},
@@ -115,7 +115,7 @@ Architecture: any
 Depends:
  libdnssec9 (= ${binary:Version}),
  libgnutls28-dev,
- libknot14 (= ${binary:Version}),
+ libknot15 (= ${binary:Version}),
  libzscanner4 (= ${binary:Version}),
  ${misc:Depends},
 Section: libdevel
@@ -133,7 +133,7 @@ Package: knot-dnsutils
 Architecture: any
 Depends:
  libdnssec9 (= ${binary:Version}),
- libknot14 (= ${binary:Version}),
+ libknot15 (= ${binary:Version}),
  libzscanner4 (= ${binary:Version}),
  ${misc:Depends},
  ${shlibs:Depends},
@@ -160,7 +160,7 @@ Package: knot-dnssecutils
 Architecture: any
 Depends:
  libdnssec9 (= ${binary:Version}),
- libknot14 (= ${binary:Version}),
+ libknot15 (= ${binary:Version}),
  libzscanner4 (= ${binary:Version}),
  ${misc:Depends},
  ${shlibs:Depends},
@@ -182,7 +182,7 @@ Package: knot-host
 Architecture: any
 Depends:
  libdnssec9 (= ${binary:Version}),
- libknot14 (= ${binary:Version}),
+ libknot15 (= ${binary:Version}),
  libzscanner4 (= ${binary:Version}),
  ${misc:Depends},
  ${shlibs:Depends},
