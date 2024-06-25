@@ -24,8 +24,8 @@ class Update(object):
     def prereq_yx(self, owner, *args):
         self.upd.present(owner, *args)
 
-    def prereq_nx(self, owner, rtype=None):
-        self.upd.absent(owner, rtype)
+    def prereq_nx(self, owner, *args):
+        self.upd.absent(owner, *args)
 
     def send(self, rcode="NOERROR", proto=Proto.TCP):
         if type(rcode) is not str and rcode is not None:
