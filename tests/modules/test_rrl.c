@@ -33,9 +33,9 @@ int fakeclock_gettime(clockid_t clockid, struct timespec *tp);
 #undef clock_gettime
 
 #define RRL_TABLE_SIZE     (1 << 20)
-#define RRL_INSTANT_LIMIT  (1 << 8)
-#define RRL_RATE_LIMIT     (1 << 17)
-#define RRL_BASE_PRICE     (KRU_LIMIT / RRL_INSTANT_LIMIT)
+#define RRL_INSTANT_LIMIT  (1 << 7)
+#define RRL_RATE_LIMIT     (1 << 16)
+#define RRL_BASE_PRICE     (KRU_LIMIT * RRL_LIMIT_KOEF / RRL_INSTANT_LIMIT)
 
 #define RRL_THREADS 4
 //#define RRL_SYNC_WITH_REAL_TIME
@@ -58,12 +58,12 @@ static inline kru_price_t get_mult(uint8_t prefixes[], kru_price_t mults[], size
 }
 
 // Instant limits and rate limits per msec.
-#define INST(Vx, prefix)  LIMIT(INSTANT, Vx, prefix)
-#define RATEM(Vx, prefix) (LIMIT(RATE, Vx, prefix) / 1000)
+#define INST(Vx, prefix)  (LIMIT(INSTANT, Vx, prefix) + 1)
+#define RATEM(Vx, prefix) (LIMIT(RATE, Vx, prefix) / 1000 + 1)
 
 // Expected range of limits for parallel test.
 #define RANGE_INST(Vx, prefix)   INST(Vx, prefix) - 1,   INST(Vx, prefix) + RRL_THREADS - 1
-#define RANGE_RATEM(Vx, prefix)  RATEM(Vx, prefix) - 1,  RATEM(Vx, prefix)
+#define RANGE_RATEM(Vx, prefix)  RATEM(Vx, prefix) - 2,  RATEM(Vx, prefix) + RRL_THREADS - 1
 #define RANGE_UNLIM(queries)     queries,                queries
 
 /* Fix seed for randomness in RLL module. Change if improbable collisions arise. (one byte) */
@@ -172,8 +172,8 @@ static void *rrl_runnable(void *arg)
 
 				if (rrl_query(d->rrl, &addr, NULL) == KNOT_EOK) {
 					atomic_fetch_add(&d->stages[si].hosts[hi].passed, 1);
+					rrl_update(d->rrl, &addr, 1);
 				}
-				rrl_update(d->rrl, &addr, 1);
 
 			} while ((qi2 = (qi2 + d->prime) % (1 << BATCH_QUERIES_LOG)));
 		}
@@ -220,7 +220,7 @@ void test_rrl(void)
 	fakeclock_init();
 
 	/* create rrl table */
-	rrl = rrl_create(RRL_TABLE_SIZE, RRL_INSTANT_LIMIT, RRL_INSTANT_LIMIT, RRL_RATE_LIMIT, 0);
+	rrl = rrl_create(RRL_TABLE_SIZE, RRL_INSTANT_LIMIT, RRL_RATE_LIMIT, 1, 0);
 	ok(rrl != NULL, "rrl(%s): create", impl_name);
 	assert(rrl);
 
@@ -278,7 +278,7 @@ void test_rrl(void)
 	count_test("IPv6 instant limit /64 not applied on /63", -1, 0,
 			AF_INET6, "8000:0:0:1::", 0, 0);
 
-	count_test("IPv6 instant limit /56", INST(V6, 56) - INST(V6, 64) - 1, 0,
+	count_test("IPv6 instant limit /56", INST(V6, 56) - INST(V6, 64) - 1, 0.01,
 			AF_INET6, "8000:0:0:00%02x:%02x00::", 0x02, 0xff);
 
 	count_test("IPv6 instant limit /56 not applied on /55", -1, 0,
@@ -290,7 +290,7 @@ void test_rrl(void)
 	count_test("IPv6 instant limit /48 not applied on /47", -1, 0,
 			AF_INET6, "8000:0:1::", 0, 0);
 
-	count_test("IPv6 instant limit /32", INST(V6, 32) - INST(V6, 48) - 1, 0.001,
+	count_test("IPv6 instant limit /32", INST(V6, 32) - INST(V6, 48) - 1, 0,
 			AF_INET6, "8000:0:%02x%02x::", 0x02, 0xff);
 
 	count_test("IPv6 instant limit /32 not applied on /31", -1, 0,

@@ -42,7 +42,7 @@
 #define CLOCK_MONOTONIC_COARSE CLOCK_MONOTONIC
 #endif
 
-#define LIMIT_KOEF 0.8
+#define RRL_LIMIT_KOEF         1/2   // avoid probabilistic rounding wherever possible
 
 struct rrl_table {
 	kru_price_t v4_prices[RRL_V4_PREFIXES_CNT];
@@ -101,8 +101,9 @@ rrl_table_t *rrl_create(size_t size, uint32_t instant_limit_us, uint32_t time_li
 	memset(rrl, 0, rrl_size);
 
 	assert(time_limit_us <= 1000ll * instant_limit_us); // Ensured by config check.
-	const kru_price_t base_price = LIMIT_KOEF * KRU_LIMIT / instant_limit_us;
+	kru_price_t base_price = KRU_LIMIT / instant_limit_us;
 	const kru_price_t max_decay = (uint64_t)base_price * time_limit_us / 1000;
+	base_price = base_price * RRL_LIMIT_KOEF;
 
 	if (!KRU.initialize((struct kru *)rrl->kru, capacity_log, max_decay)) {
 		free(rrl);
@@ -118,7 +119,7 @@ rrl_table_t *rrl_create(size_t size, uint32_t instant_limit_us, uint32_t time_li
 	}
 
 	if (rate_limit > 0) {
-		rrl->min_rate_time = LIMIT_KOEF * KRU_LIMIT / rate_limit;
+		rrl->min_rate_time = RRL_LIMIT_KOEF * KRU_LIMIT / rate_limit;
 	}
 
 	rrl->log_period = log_period;
@@ -140,26 +141,26 @@ int rrl_query(rrl_table_t *rrl, const struct sockaddr_storage *remote, knotd_mod
 	clock_gettime(CLOCK_MONOTONIC_COARSE, &now_ts);
 	uint32_t now = now_ts.tv_sec * 1000 + now_ts.tv_nsec / 1000000;
 
-	uint16_t price;
+	uint16_t load;
 	uint8_t prefix;
 	_Alignas(16) uint8_t key[16] = { 0 };
 	if (remote->ss_family == AF_INET6) {
 		struct sockaddr_in6 *ipv6 = (struct sockaddr_in6 *)remote;
 		memcpy(key, &ipv6->sin6_addr, 16);
 
-		price = KRU.load_multi_prefix_max((struct kru *)rrl->kru, now,
-		                                  1, key, RRL_V6_PREFIXES, NULL,
-		                                  RRL_V6_PREFIXES_CNT, &prefix);
+		load = KRU.load_multi_prefix_max((struct kru *)rrl->kru, now,
+		                                 1, key, RRL_V6_PREFIXES, NULL,
+		                                 RRL_V6_PREFIXES_CNT, &prefix);
 	} else {
 		struct sockaddr_in *ipv4 = (struct sockaddr_in *)remote;
 		memcpy(key, &ipv4->sin_addr, 4);
 
-		price = KRU.load_multi_prefix_max((struct kru *)rrl->kru, now,
-		                                  0, key, RRL_V4_PREFIXES, NULL,
-		                                  RRL_V4_PREFIXES_CNT, &prefix);
+		load = KRU.load_multi_prefix_max((struct kru *)rrl->kru, now,
+		                                 0, key, RRL_V4_PREFIXES, NULL,
+		                                 RRL_V4_PREFIXES_CNT, &prefix);
 	}
 
-	if (price < LIMIT_KOEF * UINT16_MAX) {
+	if (load <= (1 << 16) * RRL_LIMIT_KOEF) {
 		return KNOT_EOK;
 	}
 
@@ -200,9 +201,10 @@ void rrl_update(rrl_table_t *rrl, const struct sockaddr_storage *remote, size_t 
 			prices[i] = time_us * rrl->v6_prices[i];
 		}
 
-		(void)KRU.limited_multi_prefix_or((struct kru *)rrl->kru, now,
-		                                  1, key, RRL_V6_PREFIXES, prices,
-		                                  RRL_V6_PREFIXES_CNT, NULL);
+		(void)KRU.load_multi_prefix_max((struct kru *)rrl->kru, now,
+		                                1, key, RRL_V6_PREFIXES, prices,
+		                                RRL_V6_PREFIXES_CNT, NULL);
+
 	} else {
 		struct sockaddr_in *ipv4 = (struct sockaddr_in *)remote;
 		memcpy(key, &ipv4->sin_addr, 4);
@@ -212,9 +214,9 @@ void rrl_update(rrl_table_t *rrl, const struct sockaddr_storage *remote, size_t 
 			prices[i] = time_us * rrl->v4_prices[i];
 		}
 
-		(void)KRU.limited_multi_prefix_or((struct kru *)rrl->kru, now,
-		                                  0, key, RRL_V4_PREFIXES, prices,
-		                                  RRL_V4_PREFIXES_CNT, NULL);
+		(void)KRU.load_multi_prefix_max((struct kru *)rrl->kru, now,
+		                                0, key, RRL_V4_PREFIXES, prices,
+		                                RRL_V4_PREFIXES_CNT, NULL);
 	}
 }
 
