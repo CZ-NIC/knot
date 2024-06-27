@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -123,10 +123,6 @@ static int connect_nsec_nodes(zone_node_t *a, zone_node_t *b,
 	assert(b);
 	assert(data);
 
-	if (b->rrset_count == 0 || b->flags & NODE_FLAGS_NONAUTH) {
-		return NSEC_NODE_SKIP;
-	}
-
 	int ret = KNOT_EOK;
 
 	/*!
@@ -140,6 +136,10 @@ static int connect_nsec_nodes(zone_node_t *a, zone_node_t *b,
 			return ret;
 		}
 		// Skip the 'b' node
+		return NSEC_NODE_SKIP;
+	}
+
+	if (b->rrset_count == 0 || b->flags & NODE_FLAGS_NONAUTH) {
 		return NSEC_NODE_SKIP;
 	}
 
