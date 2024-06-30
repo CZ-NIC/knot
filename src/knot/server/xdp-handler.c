@@ -197,6 +197,8 @@ static void handle_udp(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
 			continue;
 		}
 
+		params_xdp_update(params, KNOTD_QUERY_PROTO_UDP, msg_recv);
+
 		if (process_query_proto(params, KNOTD_STAGE_PROTO_BEGIN) == KNOTD_PROTO_STATE_BLOCK) {
 			continue;
 		}
@@ -211,7 +213,6 @@ static void handle_udp(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
 		ctx->msg_udp_count++;
 
 		// Prepare a reply.
-		params_xdp_update(params, KNOTD_QUERY_PROTO_UDP, msg_recv, 0, NULL);
 		handle_udp_reply(params, layer, &msg_recv->payload, &msg_send->payload,
 		                 &proxied_remote);
 
@@ -227,6 +228,8 @@ static void handle_tcp(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
 	for (uint32_t i = 0; i < ctx->msg_recv_count; i++) {
 		knot_xdp_msg_t *msg = &ctx->msg_recv[i];
 		knot_tcp_relay_t *rl = &ctx->relays[i];
+
+		params_xdp_update(params, KNOTD_QUERY_PROTO_TCP, ctx->msg_recv);
 
 		if (process_query_proto(params, KNOTD_STAGE_PROTO_BEGIN) == KNOTD_PROTO_STATE_BLOCK) {
 			continue;
@@ -251,8 +254,7 @@ static void handle_tcp(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
 		// Process all complete DNS queries in one TCP stream.
 		for (size_t j = 0; rl->inbf != NULL && j < rl->inbf->n_inbufs; j++) {
 			// Consume the query.
-			params_xdp_update(params, KNOTD_QUERY_PROTO_TCP, ctx->msg_recv,
-			                  rl->conn->establish_rtt, NULL);
+			params_update(params, rl->conn->establish_rtt, NULL, 0);
 			struct iovec *inbufs = rl->inbf->inbufs;
 			handle_query(params, layer, &inbufs[j], NULL);
 
@@ -293,6 +295,8 @@ static void handle_quic(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
 			continue;
 		}
 
+		params_xdp_update(params, KNOTD_QUERY_PROTO_QUIC, msg_recv);
+
 		if (process_query_proto(params, KNOTD_STAGE_PROTO_BEGIN) == KNOTD_PROTO_STATE_BLOCK) {
 			continue;
 		}
@@ -313,7 +317,7 @@ static void handle_quic(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
 		                       &ctx->quic_relays[i]);
 		knot_quic_conn_t *conn = ctx->quic_relays[i];
 
-		handle_quic_streams(conn, params, layer, &ctx->msg_recv[i]);
+		handle_quic_streams(conn, params, layer);
 
 		(void)process_query_proto(params, KNOTD_STAGE_PROTO_END);
 	}

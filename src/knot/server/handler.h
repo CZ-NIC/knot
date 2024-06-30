@@ -73,6 +73,7 @@ inline static knotd_qdata_params_t params_xdp_init(int sock, server_t *server,
 		.socket = sock,
 		.thread_id = thread_id,
 		.server = server,
+		.quic_stream = -1,
 	};
 
 	return params;
@@ -80,21 +81,12 @@ inline static knotd_qdata_params_t params_xdp_init(int sock, server_t *server,
 
 inline static void params_xdp_update(knotd_qdata_params_t *params,
                                      knotd_query_proto_t proto,
-                                     struct knot_xdp_msg *msg,
-                                     uint32_t rtt,
-                                     struct knot_quic_conn *conn)
+                                     struct knot_xdp_msg *msg)
 {
 	params->proto = proto;
 	params->remote = (struct sockaddr_storage *)&msg->ip_from;
 	params->local = (struct sockaddr_storage *)&msg->ip_to;
 	params->xdp_msg = msg;
-#ifdef ENABLE_QUIC
-	params->quic_conn = conn;
-	params->tls_session = conn == NULL ? NULL : conn->tls_session;
-#else
-	assert(conn == NULL);
-#endif
-	params->measured_rtt = rtt;
 }
 #endif // ENABLE_XDP
 
@@ -119,7 +111,7 @@ void handle_udp_reply(knotd_qdata_params_t *params, knot_layer_t *layer,
 
 #ifdef ENABLE_QUIC
 void handle_quic_streams(knot_quic_conn_t *conn, knotd_qdata_params_t *params,
-                         knot_layer_t *layer, void *msg);
+                         knot_layer_t *layer);
 #endif // ENABLE_QUIC
 
 void log_swept(knot_sweep_stats_t *stats, bool tcp);
