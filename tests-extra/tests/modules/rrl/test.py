@@ -125,7 +125,7 @@ def reconfigure(server, zone, limit, slip, whitelist=None):
     """
     server.clear_modules(None)
     server.clear_modules(zone)
-    server.add_module(zone, ModRRL(rate_limit=limit, instant_limit=limit, slip=slip, whitelist=whitelist))
+    server.add_module(zone, ModRRL(rate_limit=limit, slip=slip, whitelist=whitelist))
     server.gen_confile()
     server.reload()
 

@@ -85,8 +85,8 @@ sending many queries once a second or even a larger timespan leads to a more str
 instant-limit
 .............
 
-Maximal allowed number of queries at a single point in time from a single IPv6 address.
-The limits for IPv4 addresses and prefixes use the same multipliers as for `rate-limit`.
+Maximal allowed number of queries at a single point in time from a single IPv6 or IPv4 address.
+The limits for prefixes use the same multipliers as for `rate-limit`.
 
 This limit is reached when many queries come from a new host/network,
 or after a longer time of inactivity.

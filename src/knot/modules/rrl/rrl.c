@@ -14,11 +14,13 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include "contrib/time.h"
 #include "knot/include/module.h"
 #include "knot/modules/rrl/functions.h"
 #include "knot/modules/rrl/kru.h"
 
 #define MOD_RATE_LIMIT		"\x0A""rate-limit"
+#define MOD_TIME_LIMIT		"\x0A""time-limit"
 #define MOD_INSTANT_LIMIT	"\x0D""instant-limit"
 #define MOD_SLIP		"\x04""slip"
 #define MOD_TBL_SIZE		"\x0A""table-size"
@@ -27,8 +29,9 @@
 #define MOD_DRY_RUN		"\x07""dry-run"
 
 const yp_item_t rrl_conf[] = {
-	{ MOD_INSTANT_LIMIT, YP_TINT, YP_VINT = { 1,  (1ll << 32) / 768 - 1, 50 } },
-	{ MOD_RATE_LIMIT,    YP_TINT, YP_VINT = { 1, ((1ll << 32) / 768 - 1) * 1000 } },
+	{ MOD_INSTANT_LIMIT, YP_TINT, YP_VINT = { 1, 1000000, 5000 } },
+	{ MOD_TIME_LIMIT,    YP_TINT, YP_VINT = { 1, 1000000000, 4000 } },
+	{ MOD_RATE_LIMIT,    YP_TINT, YP_VINT = { 1, INT32_MAX, 100 } },
 	{ MOD_SLIP,          YP_TINT, YP_VINT = { 0, 100, 1 } },
 	{ MOD_TBL_SIZE,      YP_TINT, YP_VINT = { 1, INT32_MAX, 524288 } },
 	{ MOD_WHITELIST,     YP_TNET, YP_VNONE, YP_FMULTI },
@@ -39,14 +42,10 @@ const yp_item_t rrl_conf[] = {
 
 int rrl_conf_check(knotd_conf_check_args_t *args)
 {
-	knotd_conf_t rate_limit = knotd_conf_check_item(args, MOD_RATE_LIMIT);
+	knotd_conf_t time_limit = knotd_conf_check_item(args, MOD_TIME_LIMIT);
 	knotd_conf_t instant_limit = knotd_conf_check_item(args, MOD_INSTANT_LIMIT);
-	if (rate_limit.count == 0) {
-		args->err_str = "no rate limit specified";
-		return KNOT_EINVAL;
-	}
-	if (rate_limit.single.integer > 1000ll * instant_limit.single.integer) {
-		args->err_str = "rate limit per millisecond is higher than instant limit";
+	if (time_limit.single.integer > 1000ll * instant_limit.single.integer) {
+		args->err_str = "time limit is higher than 1000 multiple of instant limit";
 		return KNOT_EINVAL;
 	}
 
@@ -54,11 +53,79 @@ int rrl_conf_check(knotd_conf_check_args_t *args)
 }
 
 typedef struct {
-	rrl_table_t *rrl;
+	rrl_table_t *time_table;
+	rrl_table_t *udp_table;
+	struct timespec *start_time;
 	int slip;
 	bool dry_run;
 	knotd_conf_t whitelist;
 } rrl_ctx_t;
+
+static uint32_t time_diff_us(const struct timespec *begin, const struct timespec *end)
+{
+	struct timespec result = time_diff(begin, end);
+
+	return (result.tv_sec * 1000000) + (result.tv_nsec / 1000);
+}
+
+static knotd_proto_state_t protolimit_start(knotd_proto_state_t state,
+                                            knotd_qdata_params_t *params,
+                                            knotd_mod_t *mod)
+{
+	rrl_ctx_t *ctx = knotd_mod_ctx(mod);
+	struct timespec *start = &ctx->start_time[params->thread_id];
+
+	// Check if whitelisted client.
+	if (knotd_conf_addr_range_match(&ctx->whitelist, params->remote)) {
+		start->tv_sec = -1; // Skip the rest of the module callbacks.
+		return state;
+	}
+
+	clock_gettime(CLOCK_THREAD_CPUTIME_ID, &ctx->start_time[params->thread_id]);
+
+	if (params->proto == KNOTD_QUERY_PROTO_UDP) {
+		return state; // UDP classification is later (after mod-cookies processing).
+	}
+
+	// Check if the packet is limited.
+	if (rrl_query(ctx->time_table, params->remote, mod) == KNOT_EOK) {
+		return state; // Not limited.
+	}
+
+	start->tv_sec = -1; // Limited packet, skip the rest of the module callbacks.
+
+	knotd_mod_stats_incr(mod, params->thread_id, 2, 0, 1);
+	return ctx->dry_run ? state : KNOTD_PROTO_STATE_BLOCK;
+}
+
+static knotd_proto_state_t protolimit_end(knotd_proto_state_t state,
+                                          knotd_qdata_params_t *params,
+                                          knotd_mod_t *mod)
+{
+	rrl_ctx_t *ctx = knotd_mod_ctx(mod);
+	struct timespec *start = &ctx->start_time[params->thread_id];
+
+	if (start->tv_sec == -1) {
+		return state; // Skip the callback.
+	}
+
+	struct timespec end_time;
+	clock_gettime(CLOCK_THREAD_CPUTIME_ID, &end_time);
+	uint64_t diff = time_diff_us(&ctx->start_time[params->thread_id], &end_time);
+	if (diff == 0) {
+		return state; // Zero KRU update is NOOP.
+	}
+
+	// Update the corresponding KRU table.
+	if (params->proto == KNOTD_QUERY_PROTO_UDP &&
+	    (params->flags & KNOTD_QUERY_FLAG_COOKIE) == 0) {
+		rrl_update(ctx->udp_table, params->remote, diff);
+	} else {
+		rrl_update(ctx->time_table, params->remote, diff);
+	}
+
+	return state;
+}
 
 static knotd_state_t ratelimit_apply(knotd_state_t state, knot_pkt_t *pkt,
                                      knotd_qdata_t *qdata, knotd_mod_t *mod)
@@ -66,36 +133,67 @@ static knotd_state_t ratelimit_apply(knotd_state_t state, knot_pkt_t *pkt,
 	assert(pkt && qdata && mod);
 
 	rrl_ctx_t *ctx = knotd_mod_ctx(mod);
+	struct timespec *start = &ctx->start_time[qdata->params->thread_id];
+
+	if (start->tv_sec == -1) {
+		return state; // Skip the callback.
+	}
+
+	// Don't limit authorized operations.
+	if (qdata->params->flags & KNOTD_QUERY_FLAG_AUTHORIZED) {
+		start->tv_sec = -1;
+		return state;
+	}
 
 	// Rate limit is applied to pure UDP only.
 	if (qdata->params->proto != KNOTD_QUERY_PROTO_UDP) {
 		return state;
 	}
 
-	// Rate limit is not applied to responses with a valid cookie.
+	// Check for whitelisted client IF PER-ZONE module (no proto callbacks).
+	if (start->tv_nsec == 0 && start->tv_sec == 0) {
+		if (knotd_conf_addr_range_match(&ctx->whitelist, qdata->params->remote)) {
+			return state;
+		}
+	}
+
+	// Check if limited with a valid cookie.
 	if (qdata->params->flags & KNOTD_QUERY_FLAG_COOKIE) {
-		return state;
-	}
+		if (start->tv_nsec == 0 && start->tv_sec == 0) {
+			return state; // Time limiting not supported IF PER-ZONE module.
+		}
+		if (rrl_query(ctx->time_table, qdata->params->remote, mod) == KNOT_EOK) {
+			return state; // Not limited.
+		}
 
-	// Exempt clients.
-	if (knotd_conf_addr_range_match(&ctx->whitelist, knotd_qdata_remote_addr(qdata))) {
-		return state;
-	}
+		start->tv_sec = -1; // Limited query, skip the final proto callback.
 
-	if (rrl_query(ctx->rrl, knotd_qdata_remote_addr(qdata), mod) == KNOT_EOK) {
-		// Rate limiting not applied.
-		return state;
-	}
-
-	if (rrl_slip_roll(ctx->slip)) {
-		// Slip the answer.
-		knotd_mod_stats_incr(mod, qdata->params->thread_id, 0, 0, 1);
-		qdata->err_truncated = true;
-		return ctx->dry_run ? state : KNOTD_STATE_FAIL;
-	} else {
-		// Drop the answer.
-		knotd_mod_stats_incr(mod, qdata->params->thread_id, 1, 0, 1);
+		knotd_mod_stats_incr(mod, qdata->params->thread_id, 2, 0, 1);
 		return ctx->dry_run ? state : KNOTD_STATE_NOOP;
+	} else {
+		if (rrl_query(ctx->udp_table, qdata->params->remote, mod) == KNOT_EOK) {
+			// Update the rate table IF PER-ZONE module.
+			if (start->tv_nsec == 0 && start->tv_sec == 0) {
+				rrl_update(ctx->udp_table, qdata->params->remote, 0);
+			}
+
+			return state; // Not limited.
+		}
+
+		if (!(start->tv_nsec == 0 && start->tv_sec == 0)) {
+			start->tv_sec = -1; // Limited query, skip the final proto callback.
+		}
+
+		if (rrl_slip_roll(ctx->slip)) {
+			// Slip the answer.
+			knotd_mod_stats_incr(mod, qdata->params->thread_id, 0, 0, 1);
+			qdata->err_truncated = true;
+			return ctx->dry_run ? state : KNOTD_STATE_FAIL;
+		} else {
+			// Drop the answer.
+			knotd_mod_stats_incr(mod, qdata->params->thread_id, 1, 0, 1);
+			return ctx->dry_run ? state : KNOTD_STATE_NOOP;
+		}
 	}
 }
 
@@ -103,7 +201,10 @@ static void ctx_free(rrl_ctx_t *ctx)
 {
 	assert(ctx);
 
-	rrl_destroy(ctx->rrl);
+	free(ctx->start_time);
+	rrl_destroy(ctx->time_table);
+	rrl_destroy(ctx->udp_table);
+	knotd_conf_free(&ctx->whitelist);
 	free(ctx);
 }
 
@@ -113,13 +214,20 @@ int rrl_load(knotd_mod_t *mod)
 	if (ctx == NULL) {
 		return KNOT_ENOMEM;
 	}
+	ctx->start_time = calloc(knotd_mod_threads(mod), sizeof(*ctx->start_time));
+	if (ctx->start_time == NULL) {
+		ctx_free(ctx);
+		return KNOT_ENOMEM;
+	}
 
 	uint32_t instant_limit = knotd_conf_mod(mod, MOD_INSTANT_LIMIT).single.integer;
+	uint32_t time_limit = knotd_conf_mod(mod, MOD_TIME_LIMIT).single.integer;
 	uint32_t rate_limit = knotd_conf_mod(mod, MOD_RATE_LIMIT).single.integer;
 	size_t size = knotd_conf_mod(mod, MOD_TBL_SIZE).single.integer;
 	uint32_t log_period = knotd_conf_mod(mod, MOD_LOG_PERIOD).single.integer;
-	ctx->rrl = rrl_create(size, instant_limit, rate_limit, log_period);
-	if (ctx->rrl == NULL) {
+	ctx->time_table = rrl_create(size, instant_limit, time_limit, 0, log_period);
+	ctx->udp_table = rrl_create(size, instant_limit, time_limit, rate_limit, log_period);
+	if (ctx->time_table == NULL || ctx->udp_table == NULL) {
 		ctx_free(ctx);
 		return KNOT_ENOMEM;
 	}
@@ -138,6 +246,11 @@ int rrl_load(knotd_mod_t *mod)
 		ctx_free(ctx);
 		return ret;
 	}
+	ret = knotd_mod_stats_add(mod, "dropped-time", 1, NULL);
+	if (ret != KNOT_EOK) {
+		ctx_free(ctx);
+		return ret;
+	}
 
 	/* The explicit reference of the AVX2 variant ensures the optimized
 	 * code isn't removed by linker if linking statically.
@@ -149,16 +262,17 @@ int rrl_load(knotd_mod_t *mod)
 
 	knotd_mod_ctx_set(mod, ctx);
 
+	// Note that these two callbacks aren't executed IF PER-ZONE module!
+	knotd_mod_proto_hook(mod, KNOTD_STAGE_PROTO_BEGIN, protolimit_start);
+	knotd_mod_proto_hook(mod, KNOTD_STAGE_PROTO_END, protolimit_end);
+
 	return knotd_mod_hook(mod, KNOTD_STAGE_BEGIN, ratelimit_apply);
 }
 
 void rrl_unload(knotd_mod_t *mod)
 {
-	rrl_ctx_t *ctx = knotd_mod_ctx(mod);
-
-	knotd_conf_free(&ctx->whitelist);
-	ctx_free(ctx);
+	ctx_free(knotd_mod_ctx(mod));
 }
 
-KNOTD_MOD_API(rrl, KNOTD_MOD_FLAG_SCOPE_ANY,
+KNOTD_MOD_API(rrl, KNOTD_MOD_FLAG_SCOPE_ANY | KNOTD_MOD_FLAG_OPT_CONF,
               rrl_load, rrl_unload, rrl_conf, rrl_conf_check);
