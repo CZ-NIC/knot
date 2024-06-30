@@ -156,20 +156,20 @@ static unsigned tcp_set_ifaces(const iface_t *ifaces, size_t n_ifaces,
 }
 
 static int tcp_handle(tcp_context_t *tcp, knotd_qdata_params_t *params,
-                      knot_tls_conn_t *tls_conn, struct iovec *rx, struct iovec *tx)
+                      struct iovec *rx, struct iovec *tx)
 {
 	rx->iov_len = KNOT_WIRE_MAX_PKTSIZE;
 	tx->iov_len = KNOT_WIRE_MAX_PKTSIZE;
 
 	/* Receive data. */
 	int recv;
-	if (tls_conn != NULL) {
-		int ret = knot_tls_handshake(tls_conn, true);
+	if (params->tls_conn != NULL) {
+		int ret = knot_tls_handshake(params->tls_conn, true);
 		switch (ret) {
 		case KNOT_EAGAIN: // Unfinished handshake, continue later.
 			return KNOT_EOK;
 		case KNOT_EOK: // Finished handshake, continue with receiving message.
-			recv = knot_tls_recv_dns(tls_conn, rx->iov_base, rx->iov_len);
+			recv = knot_tls_recv_dns(params->tls_conn, rx->iov_base, rx->iov_len);
 			break;
 		default: // E.g. handshake timeout.
 			return ret;
@@ -193,8 +193,8 @@ static int tcp_handle(tcp_context_t *tcp, knotd_qdata_params_t *params,
 		/* Send, if response generation passed and wasn't ignored. */
 		if (ans->size > 0 && send_state(tcp->layer.state)) {
 			int sent;
-			if (tls_conn != NULL) {
-				sent = knot_tls_send_dns(tls_conn, ans->wire, ans->size);
+			if (params->tls_conn != NULL) {
+				sent = knot_tls_send_dns(params->tls_conn, ans->wire, ans->size);
 			} else {
 				sent = net_dns_tcp_send(params->socket, ans->wire, ans->size,
 				                        tcp->io_timeout, NULL);
@@ -269,19 +269,20 @@ static int tcp_event_serve(tcp_context_t *tcp, unsigned i, const iface_t *iface)
 	}
 
 	/* Establish a TLS session. */
-	knot_tls_conn_t *tls_conn = *fdset_ctx2(&tcp->set, i);
-	assert(iface->tls || tls_conn == NULL);
-	if (iface->tls && tls_conn == NULL) {
+	if (iface->tls) {
 		assert(tcp->tls_ctx != NULL);
-		tls_conn = knot_tls_conn_new(tcp->tls_ctx, fd);
+		knot_tls_conn_t *tls_conn = *fdset_ctx2(&tcp->set, i);
 		if (tls_conn == NULL) {
-			return KNOT_ENOMEM;
+			tls_conn = knot_tls_conn_new(tcp->tls_ctx, fd);
+			if (tls_conn == NULL) {
+				return KNOT_ENOMEM;
+			}
+			*fdset_ctx2(&tcp->set, i) = tls_conn;
 		}
-		*fdset_ctx2(&tcp->set, i) = tls_conn;
+		params_update_tls(&params, tls_conn);
 	}
-	params.tls_conn = tls_conn;
 
-	int ret = tcp_handle(tcp, &params, tls_conn, &tcp->iov[0], &tcp->iov[1]);
+	int ret = tcp_handle(tcp, &params, &tcp->iov[0], &tcp->iov[1]);
 	if (ret == KNOT_EOK) {
 		/* Update socket activity timer. */
 		(void)fdset_set_watchdog(&tcp->set, i, tcp->idle_timeout);

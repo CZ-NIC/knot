@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -97,7 +97,7 @@ static void handle_quic_stream(knot_quic_conn_t *conn, int64_t stream_id, struct
 }
 
 void handle_quic_streams(knot_quic_conn_t *conn, knotd_qdata_params_t *params,
-                         knot_layer_t *layer, void *msg)
+                         knot_layer_t *layer)
 {
 	uint8_t ans_buf[KNOT_WIRE_MAX_PKTSIZE];
 
@@ -108,14 +108,7 @@ void handle_quic_streams(knot_quic_conn_t *conn, knotd_qdata_params_t *params,
 		assert(stream->inbufs != NULL);
 		assert(stream->inbufs->n_inbufs > 0);
 		struct iovec *inbufs = stream->inbufs->inbufs;
-		if (msg) {
-#ifdef ENABLE_XDP
-			params_xdp_update(params, KNOTD_QUERY_PROTO_QUIC, msg,
-			                  knot_quic_conn_rtt(conn), conn);
-#endif // ENABLE_XDP
-		} else {
-			params_update(params, knot_quic_conn_rtt(conn), conn, stream_id);
-		}
+		params_update_quic(params, knot_quic_conn_rtt(conn), conn, stream_id);
 		// NOTE: only the first msg in the stream is used, the rest is dropped.
 		handle_quic_stream(conn, stream_id, &inbufs[0], layer, params,
 		                   ans_buf, sizeof(ans_buf));
