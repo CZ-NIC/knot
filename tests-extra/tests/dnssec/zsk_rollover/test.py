@@ -62,7 +62,7 @@ def check_same_rrsig(server, zone, last):
 
 t = Test()
 
-unsigned_master = t.server("knot")
+unsigned_master = t.server("knot", xdp_enable=False) # forwarded DDNS
 master = t.server("knot")
 zone = t.zone("example.com.", storage=".")
 t.link(zone, unsigned_master, master, ddns=True)
