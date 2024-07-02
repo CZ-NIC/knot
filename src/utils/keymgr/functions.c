@@ -317,6 +317,8 @@ int bind_pubkey_parse(const char *filename, dnssec_key_t **key_ptr)
 		int ret;
 		switch (scanner->error.code) {
 		case ZS_FILE_OPEN:
+			ret = KNOT_EFOPEN;
+			break;
 		case ZS_FILE_INVALID:
 			ret = KNOT_EFILE;
 			break;
