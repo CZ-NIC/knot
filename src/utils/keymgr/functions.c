@@ -360,6 +360,13 @@ static char *gen_keyfilename(const char *orig, const char *wantsuff, const char 
 	}
 }
 
+static void print_new_name(const char *old, const char *new)
+{
+	if (strcmp(old, new) != 0) {
+		printf("importing from file: %s\n", new);
+	}
+}
+
 int keymgr_import_bind(kdnssec_ctx_t *ctx, const char *import_file, bool pub_only)
 {
 	if (ctx == NULL || import_file == NULL) {
@@ -374,6 +381,7 @@ int keymgr_import_bind(kdnssec_ctx_t *ctx, const char *import_file, bool pub_onl
 	if (pubname == NULL) {
 		return KNOT_EINVAL;
 	}
+	print_new_name(import_file, pubname);
 
 	int ret = bind_pubkey_parse(pubname, &key);
 	free(pubname);
@@ -388,6 +396,7 @@ int keymgr_import_bind(kdnssec_ctx_t *ctx, const char *import_file, bool pub_onl
 		if (privname == NULL) {
 			goto fail;
 		}
+		print_new_name(import_file, privname);
 
 		ret = bind_privkey_parse(privname, &bpriv);
 		free(privname);
