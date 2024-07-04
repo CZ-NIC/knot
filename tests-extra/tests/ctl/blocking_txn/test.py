@@ -61,10 +61,13 @@ if not BACKUP_FIRST:
     master.ctl("zone-begin " + ZONE)
 run_thr(background_backup, master, ZONE)
 if BACKUP_FIRST:
-    t.sleep(2.1)
-    master.zones_wait(zones)
+    t.sleep(2.05)
     try:
         master.ctl("zone-begin " + ZONE)
+        has_soa = master.ctl("zone-get " + ZONE + " " + ZONE + " SOA", availability=False, read_result=True)
+        if not " SOA " in has_soa:
+            master.ctl("zone-abort " + ZONE, availability=False)
+            raise Exception("restored and not yet loaded")
     except:
         t.sleep(1)
         master.zones_wait(zones)

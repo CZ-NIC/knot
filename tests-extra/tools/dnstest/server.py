@@ -369,7 +369,7 @@ class Server(object):
 
         self.binding_errors = errors
 
-    def ctl(self, cmd, wait=False, availability=True):
+    def ctl(self, cmd, wait=False, availability=True, read_result=False):
         if availability:
             # Check for listening control interface.
             ok = False
@@ -398,6 +398,10 @@ class Server(object):
 
         # Allow the command to complete, Bind needs this.
         self.wait_function(wait)
+
+        if read_result:
+            with open(self.dir + "/call.out", "r") as f:
+                return f.readlines()[-1]
 
     def reload(self):
         self.ctl("reload")
