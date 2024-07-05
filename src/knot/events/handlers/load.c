@@ -221,9 +221,10 @@ int event_load(conf_t *conf, zone_t *zone)
 				ret = zone_update_increment_soa(&up, conf);
 			}
 		} else if (zf_conts == NULL) {
-			// nothing to be re-loaded
-			ret = KNOT_EOK;
-			goto cleanup;
+			// nothing to be re-loaded. We could nicely end here...
+			// BUT in case of conf change, it's proper to re-ZONEMD and re-DNSSEC
+			// ALSO replan_load_updated() relies on that DNSSEC event planning cascades from here
+			ret = zone_update_init(&up, zone, UPDATE_INCREMENTAL);
 		} else if (zf_from == ZONEFILE_LOAD_WHOLE) {
 			// throw old zone contents and load new from ZF
 			ret = zone_update_from_contents(&up, zone, zf_conts,
