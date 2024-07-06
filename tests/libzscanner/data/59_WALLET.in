@@ -1,0 +1,14 @@
+$ORIGIN	.
+$TTL	1
+
+; The WALLET is the same as the TXT, so there are the differences and basics only.
+
+; OK
+@	WALLET	"" "test1" "\255" test2		; Array of text strings
+@	WALLET	\# 1 00				; Hexadecimal rdata
+@	TYPE262	\# 1 00				; TYPE + Hexadecimal rdata
+@	TYPE262	""				; TYPE
+@	wallet	""				; Type in lower-case
+
+; KO
+@	WALLET

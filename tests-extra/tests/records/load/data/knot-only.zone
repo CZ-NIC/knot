@@ -1,0 +1,9 @@
+$ORIGIN knot-only.
+$TTL 3600
+
+@	SOA	dns1 hostmaster 1 100 100 1000 600
+	NS	dns1
+dns1	A	192.0.2.1
+
+wallet WALLET	"BTC" "bc1qf2kdgu2vlctqlnlxk4smkxd68grl5q2we8dzfd"
+wallet WALLET	"ETH" "0x87D487fa59274545743949BE4282EA87F316821E"
