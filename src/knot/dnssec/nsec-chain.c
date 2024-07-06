@@ -127,10 +127,11 @@ static int connect_nsec_nodes(zone_node_t *a, zone_node_t *b,
 
 	/*!
 	 * If the node has no other RRSets than NSEC (and possibly RRSIGs),
+	 * or the node is not authoritative,
 	 * just remove the NSEC and its RRSIG, they are redundant
 	 */
-	if (node_rrtype_exists(b, KNOT_RRTYPE_NSEC)
-	    && knot_nsec_empty_nsec_and_rrsigs_in_node(b)) {
+	if (node_rrtype_exists(b, KNOT_RRTYPE_NSEC) &&
+	    (b->flags & NODE_FLAGS_NONAUTH || knot_nsec_empty_nsec_and_rrsigs_in_node(b))) {
 		ret = knot_nsec_changeset_remove(b, data->update);
 		if (ret != KNOT_EOK) {
 			return ret;
