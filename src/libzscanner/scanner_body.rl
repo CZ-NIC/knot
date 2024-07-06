@@ -1432,6 +1432,7 @@
 	    | "CAA"i        %{ type_num(KNOT_RRTYPE_CAA, &rdata_tail); }
 	    | "SVCB"i       %{ type_num(KNOT_RRTYPE_SVCB, &rdata_tail); }
 	    | "HTTPS"i      %{ type_num(KNOT_RRTYPE_HTTPS, &rdata_tail); }
+	    | "WALLET"i     %{ type_num(KNOT_RRTYPE_WALLET, &rdata_tail); }
 	    | "TYPE"i      . num16 # TYPE0-TYPE65535.
 	    ) $!_type_error;
 	# END
@@ -1498,6 +1499,7 @@
 	    | "CAA"i        %{ window_add_bit(KNOT_RRTYPE_CAA, s); }
 	    | "SVCB"i       %{ window_add_bit(KNOT_RRTYPE_SVCB, s); }
 	    | "HTTPS"i      %{ window_add_bit(KNOT_RRTYPE_HTTPS, s); }
+	    | "WALLET"i     %{ window_add_bit(KNOT_RRTYPE_WALLET, s); }
 	    | "TYPE"i      . type_bitmap # TYPE0-TYPE65535.
 	    );
 
@@ -2099,6 +2101,7 @@
 			fcall r_data_mx;
 		case KNOT_RRTYPE_TXT:
 		case KNOT_RRTYPE_SPF:
+		case KNOT_RRTYPE_WALLET:
 			fcall r_data_txt;
 		case KNOT_RRTYPE_AAAA:
 			fcall r_data_aaaa;
@@ -2212,6 +2215,7 @@
 		case KNOT_RRTYPE_CAA:
 		case KNOT_RRTYPE_SVCB:
 		case KNOT_RRTYPE_HTTPS:
+		case KNOT_RRTYPE_WALLET:
 			fcall nonempty_hex_r_data;
 		// Next types can have empty rdata.
 		case KNOT_RRTYPE_APL:
@@ -2296,6 +2300,7 @@
 		| "CAA"i        %{ s->r_type = KNOT_RRTYPE_CAA; }
 		| "SVCB"i       %{ s->r_type = KNOT_RRTYPE_SVCB; }
 		| "HTTPS"i      %{ s->r_type = KNOT_RRTYPE_HTTPS; }
+		| "WALLET"i     %{ s->r_type = KNOT_RRTYPE_WALLET; }
 		| "TYPE"i      . type_number
 		) $!_r_type_error;
 	# END
