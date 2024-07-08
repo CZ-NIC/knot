@@ -1,4 +1,9 @@
 example.		3600 IN SOA		ns1.example. ns1.example. 1081539377 3600 300 3600000 3600
 example.		3600 IN NS		ns1.example.
+
 deleg			3600 IN NS		example.com.
-nonauth.deleg	3600 IN NSEC	nonautj.deleg TXT RRSIG NSEC
+nonauth.deleg		3600 IN NSEC		nonautj.deleg TXT RRSIG NSEC
+
+deleg2			3600 IN NS		example.com.
+nonauth.deleg2		3600 IN TXT		"text"
+nonauth.deleg2		3600 IN NSEC		nonautj.deleg TXT RRSIG NSEC
