@@ -381,7 +381,7 @@ int knot_tcp_recv(knot_tcp_relay_t *relay, knot_xdp_msg_t *msg,
 		break;
 	case KNOT_XDP_MSG_ACK:
 		if (!seq_ack_match) {
-			if (syn_table != NULL && msg->payload.iov_len == 0 &&
+			if (syn_table != NULL && msg->payload.iov_len == 0 && conn == NULL &&
 			    (pconn = tcp_table_lookup(&msg->ip_from, &msg->ip_to, &conn_hash, syn_table)) != NULL &&
 			    (conn = *pconn) != NULL && check_seq_ack(msg, conn)) {
 				// move conn from syn_table to tcp_table
