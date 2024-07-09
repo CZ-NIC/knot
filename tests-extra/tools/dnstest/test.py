@@ -247,6 +247,9 @@ class Test(object):
             else:
                 server.quic_port = self._gen_port() if self.quic else None
             server.xdp_port = self._gen_port() if server.xdp_port is not None else None
+            if server.xdp_port:
+                server.xdp_cover_sock = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
+                server.xdp_cover_sock.bind((server.addr, server.xdp_port))
 
         for server in self.servers:
             server.gen_confile()

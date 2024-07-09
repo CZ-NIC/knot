@@ -162,6 +162,7 @@ class Server(object):
         self.addr_extra = list()
         self.port = 53 # Needed for keymgr when port not yet generated
         self.xdp_port = None # 0 indicates that XDP is enabled but port not yet assigned
+        self.xdp_cover_sock = None # dummy socket bound to XDP port just to avoid further port collisions
         self.quic_port = None
         self.tls_port = None
         self.cert_key = str()
