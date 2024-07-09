@@ -236,6 +236,20 @@ void test_syn(void)
 	test_conn = conn;
 }
 
+void test_syn_ack_no(void)
+{
+	knot_xdp_msg_t msg;
+	knot_tcp_relay_t rl = { 0 };
+	prepare_msg(&msg, KNOT_XDP_MSG_SYN | KNOT_XDP_MSG_ACK, 1, 2);
+	int ret = knot_tcp_recv(&rl, &msg, 1, test_table, test_syn_table, XDP_TCP_IGNORE_NONE);
+	is_int(KNOT_EOK, ret, "SYN+ACK deny: relay OK");
+	is_int(XDP_TCP_NOOP, rl.auto_answer, "SYN+ACK deny: no auto answer");
+	is_int(XDP_TCP_NOOP, rl.answer, "SYN+ACK deny: no answer");
+	is_int(0, test_table->usage, "SYN+ACK deny: no connection in normal table");
+	is_int(1, test_syn_table->usage, "SYN+ACK deny: one connection in SYN table");
+	knot_tcp_cleanup(test_syn_table, &rl, 1);
+}
+
 void test_establish(void)
 {
 	knot_xdp_msg_t msg;
@@ -260,7 +274,7 @@ void test_syn_ack(void)
 	knot_xdp_msg_t msg;
 	knot_tcp_relay_t rl = { 0 };
 	prepare_msg(&msg, KNOT_XDP_MSG_SYN | KNOT_XDP_MSG_ACK, 1000, 2000);
-	int ret = knot_tcp_recv(&rl, &msg, 1, test_table, test_syn_table, XDP_TCP_IGNORE_NONE);
+	int ret = knot_tcp_recv(&rl, &msg, 1, test_table, NULL, XDP_TCP_IGNORE_NONE);
 	is_int(KNOT_EOK, ret, "SYN+ACK: relay OK");
 	ret = knot_tcp_send(test_sock, &rl, 1, 1);
 	is_int(KNOT_EOK, ret, "SYN+ACK: send OK");
@@ -613,6 +627,7 @@ int main(int argc, char *argv[])
 	init_mock(&test_sock, mock_send);
 
 	test_syn();
+	test_syn_ack_no();
 	test_establish();
 
 	test_syn_ack();
