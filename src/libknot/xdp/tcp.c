@@ -348,7 +348,10 @@ int knot_tcp_recv(knot_tcp_relay_t *relay, knot_xdp_msg_t *msg,
 			bool synack = (msg->flags & KNOT_XDP_MSG_ACK);
 
 			knot_tcp_table_t *add_table = tcp_table;
-			if (syn_table != NULL && !synack) {
+			if (syn_table != NULL) {
+				if (synack) {
+					break; // creating conn based on SYN+ACK is only for kxdpgun, disallow in knotd
+				}
 				add_table = syn_table;
 				if (*tcp_table_lookup(&msg->ip_from, &msg->ip_to, &conn_hash, syn_table) != NULL) {
 					break;
