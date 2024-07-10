@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -148,7 +148,7 @@ typedef enum {
 /*!
  * \brief Service Binding (SVCB) Parameter Registry
  *
- * https://tools.ietf.org/html/draft-ietf-dnsop-svcb-https-05 // FIXME
+ * https://www.iana.org/assignments/dns-svcb/dns-svcb.xhtml
  */
 typedef enum {
 	KNOT_SVCB_PARAM_MANDATORY = 0,
@@ -158,6 +158,8 @@ typedef enum {
 	KNOT_SVCB_PARAM_IPV4HINT  = 4,
 	KNOT_SVCB_PARAM_ECH       = 5,
 	KNOT_SVCB_PARAM_IPV6HINT  = 6,
+	KNOT_SVCB_PARAM_DOHPATH   = 7,
+	KNOT_SVCB_PARAM_OHTTP     = 8,
 } knot_svcb_param_t;
 
 /*! @} */

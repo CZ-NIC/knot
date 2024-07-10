@@ -1540,6 +1540,12 @@ static void wire_svcparam_to_str(rrset_dump_params_t *p)
 		case KNOT_SVCB_PARAM_IPV6HINT:
 			wire_value_list_to_str(p, wire_ipv6_to_str, p->in + val_len);
 			break;
+		case KNOT_SVCB_PARAM_DOHPATH:
+			wire_text_to_str(p, val_len, NULL, true, false);
+			break;
+		case KNOT_SVCB_PARAM_OHTTP:
+			p->ret = -1; // must not have value
+			break;
 		default:
 			wire_text_to_str(p, val_len, NULL, true, false);
 		}
