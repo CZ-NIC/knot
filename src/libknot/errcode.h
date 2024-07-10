@@ -58,6 +58,7 @@ enum knot_error {
 	KNOT_EADDRNOTAVAIL = -EADDRNOTAVAIL,
 	KNOT_ENOTDIR       = -ENOTDIR,
 	KNOT_EPERM         = -EPERM,
+	KNOT_EROFS         = -EROFS,
 
 	KNOT_ERRNO_ERROR   = -500,
 
