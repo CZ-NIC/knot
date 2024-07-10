@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -126,6 +126,8 @@ const knot_lookup_t knot_svcb_param_names[] = {
 	{ KNOT_SVCB_PARAM_IPV4HINT,  "ipv4hint" },
 	{ KNOT_SVCB_PARAM_ECH,       "ech" },
 	{ KNOT_SVCB_PARAM_IPV6HINT,  "ipv6hint" },
+	{ KNOT_SVCB_PARAM_DOHPATH,   "dohpath" },
+	{ KNOT_SVCB_PARAM_OHTTP,     "ohttp" },
 	{ 0, NULL }
 };
 
@@ -139,4 +141,5 @@ const knot_lookup_t knot_edns_opt_names[] = {
 	{ KNOT_EDNS_OPTION_PADDING,       "PADDING" },
 	{ KNOT_EDNS_OPTION_CHAIN,         "CHAIN" },
 	{ KNOT_EDNS_OPTION_EDE,           "EDE" },
+	{ 0, NULL }
 };
