@@ -20,7 +20,10 @@ $TTL	1
 @	SVCB	1	.	ech="Zm9vYg=="
 @	SVCB	1	.	ipv6hint=::1
 @	SVCB	1	.	ipv6hint="::1"
-@	SVCB	1	.	key7
+@	SVCB	1	.	dohpath=/q{?dns}
+@	SVCB	1	.	dohpath="/dns-query{?dns}"
+@	SVCB	1	.	ohttp
+@	SVCB	1	.	key707
 @	SVCB	1	.	key65535
 @	SVCB	1	.	key65535=a
 @	SVCB	1	.	key65535="a"
@@ -90,6 +93,10 @@ example.com.	SVCB	16 foo.example.org. alpn=f\\\092oo\092,bar,h2
 @	SVCB	1	.	ipv6hint=
 @	SVCB	1	.	ipv6hint=::1,,::2
 @	SVCB	1	.	ipv6hint=::W
+@	SVCB	1	.	dohpath
+@	SVCB	1	.	dohpath=
+@	SVCB	1	.	ohttp=
+@	SVCB	1	.	ohttp=x
 
 ; RFC KO examples
 example.com.	SVCB	1 foo.example.com. (
