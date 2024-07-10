@@ -545,7 +545,7 @@ int knot_xdp_recv(knot_xdp_socket_t *socket, knot_xdp_msg_t msgs[],
 
 static uint8_t *msg_uframe_ptr(const knot_xdp_msg_t *msg)
 {
-	return NULL + ((msg->payload.iov_base - NULL) & ~(FRAME_SIZE - 1));
+	return (uint8_t *)((uintptr_t)msg->payload.iov_base & ~(FRAME_SIZE - 1));
 }
 
 _public_
