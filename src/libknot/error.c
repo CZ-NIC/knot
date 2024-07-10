@@ -59,6 +59,7 @@ static const struct error errors[] = {
 	{ KNOT_EADDRNOTAVAIL, "address is not available" },
 	{ KNOT_ENOTDIR,       "not a directory" },
 	{ KNOT_EPERM,         "operation not permitted" },
+	{ KNOT_EROFS,         "read-only file system" },
 
 	{ KNOT_ERRNO_ERROR,   "unknown system error" },
 
