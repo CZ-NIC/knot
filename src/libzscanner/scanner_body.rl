@@ -1840,10 +1840,13 @@
 	svcb_key_ipv4hint  = ("ipv4hint"        %_write16_4);
 	svcb_key_ech       = ("ech"             %_write16_5);
 	svcb_key_ipv6hint  = ("ipv6hint"        %_write16_6);
+	svcb_key_dohpath   = ("dohpath"         %_write16_7);
+	svcb_key_ohttp     = ("ohttp"           %_write16_8);
 
 	mandat_value_ :=
 		(svcb_key_generic | svcb_key_alpn | svcb_key_ndalpn | svcb_key_port |
-		 svcb_key_ipv4hint | svcb_key_ech | svcb_key_ipv6hint
+		 svcb_key_ipv4hint | svcb_key_ech | svcb_key_ipv6hint | svcb_key_dohpath |
+		 svcb_key_ohttp
 		) >_rdata_2B_check $!_mandat_value_error %_ret . ([,\"] | all_wchar);
 	mandat_value = alpha ${ fhold; fcall mandat_value_; };
 
@@ -1857,20 +1860,24 @@
 	svcb_ipv4     = ((ipv4_addr_write . ("," . ipv4_addr_write)*) >_item_length2_init %_item_length2_exit);
 	svcb_ech      = (base64_quartet+                              >_item_length2_init %_item_length2_exit);
 	svcb_ipv6     = ((ipv6_addr_write . ("," . ipv6_addr_write)*) >_item_length2_init %_item_length2_exit);
+	svcb_dohpath  = (text                                         >_item_length2_init %_item_length2_exit);
 
 	svcb_param_generic   = (svcb_key_generic   . svcb_generic);
-	svcb_param_mandatory = (svcb_key_mandatory . "=" . (svcb_mandat | ('\"' . svcb_mandat . '\"')));
-	svcb_param_alpn      = (svcb_key_alpn      . "=" . (svcb_alpn   | ('\"' . svcb_alpn   . '\"')));
+	svcb_param_mandatory = (svcb_key_mandatory . "=" . (svcb_mandat  | ('\"' . svcb_mandat  . '\"')));
+	svcb_param_alpn      = (svcb_key_alpn      . "=" . (svcb_alpn    | ('\"' . svcb_alpn    . '\"')));
 	svcb_param_ndalpn    = (svcb_key_ndalpn    . svcb_empty);
-	svcb_param_port      = (svcb_key_port      . "=" . (svcb_port   | ('\"' . svcb_port   . '\"')));
-	svcb_param_ipv4hint  = (svcb_key_ipv4hint  . "=" . (svcb_ipv4   | ('\"' . svcb_ipv4   . '\"')));
-	svcb_param_ech       = (svcb_key_ech       . "=" . (svcb_ech    | ('\"' . svcb_ech    . '\"')));
-	svcb_param_ipv6hint  = (svcb_key_ipv6hint  . "=" . (svcb_ipv6   | ('\"' . svcb_ipv6   . '\"')));
+	svcb_param_port      = (svcb_key_port      . "=" . (svcb_port    | ('\"' . svcb_port    . '\"')));
+	svcb_param_ipv4hint  = (svcb_key_ipv4hint  . "=" . (svcb_ipv4    | ('\"' . svcb_ipv4    . '\"')));
+	svcb_param_ech       = (svcb_key_ech       . "=" . (svcb_ech     | ('\"' . svcb_ech     . '\"')));
+	svcb_param_ipv6hint  = (svcb_key_ipv6hint  . "=" . (svcb_ipv6    | ('\"' . svcb_ipv6    . '\"')));
+	svcb_param_dohpath   = (svcb_key_dohpath   . "=" . (svcb_dohpath | ('\"' . svcb_dohpath . '\"')));
+	svcb_param_ohttp     = (svcb_key_ohttp     . svcb_empty);
 
 	svcb_param_any =
 		(svcb_param_generic | svcb_param_mandatory | svcb_param_alpn |
 		 svcb_param_ndalpn | svcb_param_port | svcb_param_ipv4hint |
-		 svcb_param_ech | svcb_param_ipv6hint
+		 svcb_param_ech | svcb_param_ipv6hint | svcb_param_dohpath |
+		 svcb_param_ohttp
 		) >_svcb_param_init %_svcb_param_exit;
 	svcb_params_ :=
 		((sep . svcb_param_any)* . sep?) >_svcb_params_init
