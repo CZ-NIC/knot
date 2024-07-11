@@ -92,3 +92,9 @@ example12 SVCB 1 . alpn=foo\\\092,bar
 
 example20 SVCB 1 . alpn=\ 
 example21 SVCB 1 . alpn=a\ b
+
+example30 SVCB 1 . dohpath=/q{?dns}
+example31 SVCB 1 . dohpath="/dns-query{?dns}"
+
+;example40 SVCB 1 . ohttp
+example40 SVCB 1 . key8
