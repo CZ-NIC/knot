@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -26,6 +26,7 @@
 #include "utils/common/signal.h"
 #include "utils/common/util_conf.h"
 #include "utils/keymgr/functions.h"
+#include "utils/keymgr/keystore.h"
 #include "utils/keymgr/offline_ksk.h"
 
 #define PROGRAM_NAME	"keymgr"
@@ -129,7 +130,8 @@ static int key_command(int argc, char *argv[], int opt_ind, knot_lmdb_db_t *kasp
 	argc -= opt_ind;
 	argv += opt_ind;
 
-	knot_dname_t *zone_name = knot_dname_from_str_alloc(argv[0]);
+	const char *id_str = argv[0];
+	knot_dname_t *zone_name = knot_dname_from_str_alloc(id_str);
 	if (zone_name == NULL) {
 		return KNOT_ENOMEM;
 	}
@@ -275,6 +277,9 @@ static int key_command(int argc, char *argv[], int opt_ind, knot_lmdb_db_t *kasp
 	} else if (strcmp(argv[1], "import-skr") == 0) {
 		CHECK_MISSING_ARG("Input file not specified");
 		ret = keymgr_import_skr(&kctx, argv[2]);
+	} else if (strcmp(argv[1], "keystore-test") == 0) {
+		ret = keymgr_keystore_test(id_str, list_params);
+		print_ok_on_succes = false;
 	} else {
 		ERR2("invalid command '%s'", argv[1]);
 		goto main_end;
