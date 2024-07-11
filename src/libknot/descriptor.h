@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -126,6 +126,8 @@ enum knot_rr_type {
 	KNOT_RRTYPE_ANY        = 255, /*!< QTYPE. Any record. */
 	KNOT_RRTYPE_URI        = 256, /*!< Uniform resource identifier. */
 	KNOT_RRTYPE_CAA        = 257, /*!< Certification authority restriction. */
+
+	KNOT_RRTYPE_WALLET     = 262, /*!< Public wallet address. */
 };
 
 /*!

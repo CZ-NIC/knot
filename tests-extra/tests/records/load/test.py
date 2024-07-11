@@ -6,13 +6,17 @@ from dnstest.test import Test
 
 t = Test()
 
+pre_master = t.server("knot") # For records unknown to Bind.
 master = t.server("bind")
 slave = t.server("knot")
 reference = t.server("knot")
 
-zones = t.zone_rnd(2) + t.zone(".") + t.zone("records.") + t.zone("svcb", storage=".") + \
-        t.zone("future", storage=".")
+zones_both = t.zone_rnd(2) + t.zone(".") + t.zone("records.") + t.zone("svcb", storage=".") + \
+             t.zone("future", storage=".")
+zones_knot = t.zone("knot-only", storage=".")
+zones = zones_both + zones_knot
 
+t.link(zones_knot, pre_master, master)
 t.link(zones, master, slave)
 t.link(zones, reference)
 
@@ -20,8 +24,8 @@ t.start()
 
 # Wait for servers.
 master.zones_wait(zones)
-slave.zones_wait(zones)
-reference.zones_wait(zones)
+slave.zones_wait(zones + zones_knot)
+reference.zones_wait(zones + zones_knot)
 
 # Dump zones on slave.
 slave.flush(wait=True)
