@@ -176,6 +176,7 @@ static const struct error errors[] = {
 	{ KNOT_NO_PRIVATE_KEY,        "no private key" },
 	{ KNOT_NO_READY_KEY,          "no key ready for submission" },
 	{ KNOT_DNSSEC_EKEYTAG_LIMIT,  "many keys with equal keytag" },
+	{ KNOT_DNSSEC_EXTRA_NSEC,     "superfluous NSEC(3)" },
 
 	/* Terminator */
 	{ KNOT_ERROR, NULL }

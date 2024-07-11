@@ -58,6 +58,8 @@ static const char *error_messages[SEM_ERR_UNKNOWN + 1] = {
 	"inconsistent NSEC(3) chain",
 	[SEM_ERR_NSEC3_INSECURE_DELEGATION_OPT] =
 	"wrong NSEC3 opt-out",
+	[SEM_ERR_EXTRA_NSEC] =
+	"superfluous NSEC(3)",
 
 	[SEM_ERR_NSEC3PARAM_RDATA_FLAGS] =
 	"invalid flags in NSEC3PARAM",
@@ -504,6 +506,8 @@ static sem_error_t err_dnssec2sem(int ret, uint16_t rrtype, char *info, size_t l
 		return SEM_ERR_NSEC3_INSECURE_DELEGATION_OPT;
 	case KNOT_DNSSEC_EKEYTAG_LIMIT:
 		return SEM_ERR_DNSKEY_KEYTAG_LIMIT;
+	case KNOT_DNSSEC_EXTRA_NSEC:
+		return SEM_ERR_EXTRA_NSEC;
 	default:
 		return SEM_ERR_UNKNOWN;
 	}

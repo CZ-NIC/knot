@@ -74,6 +74,8 @@ typedef enum {
 	SEM_ERR_CDNSKEY_NO_CDS,
 	SEM_ERR_CDNSKEY_INVALID_DELETE,
 
+	SEM_ERR_EXTRA_NSEC,
+
 	// General error!
 	SEM_ERR_UNKNOWN
 } sem_error_t;
