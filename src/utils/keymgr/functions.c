@@ -363,7 +363,7 @@ static char *gen_keyfilename(const char *orig, const char *wantsuff, const char 
 static void print_new_name(const char *old, const char *new)
 {
 	if (strcmp(old, new) != 0) {
-		printf("importing from file: %s\n", new);
+		INFO2("importing from file: %s\n", new);
 	}
 }
 
