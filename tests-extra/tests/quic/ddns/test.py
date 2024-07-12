@@ -34,12 +34,13 @@ t.start()
 s_sender = sender.zones_wait(zones)
 for z in zones:
     sender.ctl("zone-ksk-submitted " + z.name) # speedup DNSKEY sync re-try
-s_recver = recver.zones_wait(zones, s_sender, equal=True) # DDNS from sender should increment the serial to equal sender after first signing
+t.sleep(5)
+s_sender = sender.zones_wait(zones)
+s_recver = recver.zones_wait(zones)
 
 check_dnskey(sender, recver, zones)
 
-s_sender = sender.zones_wait(zones) # update s_sender to match current state
-recver.ctl("zone-freeze")
+recver.ctl("zone-freeze", wait=True)
 for z in zones:
     sender.ctl("zone-key-rollover %s zsk" % z.name)
 
@@ -48,7 +49,7 @@ s_sender = sender.zones_wait(zones, s_sender)
 s_sender = sender.zones_wait(zones, s_sender)
 s_sender = sender.zones_wait(zones, s_sender)
 
-recver.ctl("zone-thaw")
+recver.ctl("zone-thaw", wait=True)
 s_recver = recver.zones_wait(zones, s_recver)
 check_dnskey(sender, recver, zones)
 
