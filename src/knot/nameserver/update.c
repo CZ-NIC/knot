@@ -87,6 +87,7 @@ static int update_enqueue(zone_t *zone, knotd_qdata_t *qdata)
 		req->flags |= KNOT_REQUEST_TLS;
 		req->tls_req_ctx.conn = qdata->params->tls_conn;
 		req->tls_req_ctx.conn->fd_clones_count++;
+		knot_tls_conn_block(req->tls_req_ctx.conn, true);
 	}
 
 	pthread_mutex_lock(&zone->ddns_lock);
