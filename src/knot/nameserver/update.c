@@ -23,6 +23,7 @@
 #include "contrib/sockaddr.h"
 #include "libknot/libknot.h"
 #include "libknot/quic/quic_conn.h"
+#include "libknot/quic/tls.h"
 
 static int update_enqueue(zone_t *zone, knotd_qdata_t *qdata)
 {
@@ -83,7 +84,9 @@ static int update_enqueue(zone_t *zone, knotd_qdata_t *qdata)
 	} else
 #endif // ENABLE_QUIC
 	if (qdata->params->tls_conn != NULL) {
+		req->flags |= KNOT_REQUEST_TLS;
 		req->tls_req_ctx.conn = qdata->params->tls_conn;
+		req->tls_req_ctx.conn->fd_clones_count++;
 	}
 
 	pthread_mutex_lock(&zone->ddns_lock);

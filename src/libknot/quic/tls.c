@@ -92,7 +92,7 @@ fail:
 _public_
 void knot_tls_conn_del(knot_tls_conn_t *conn)
 {
-	if (conn != NULL) {
+	if (conn != NULL && conn->fd_clones_count-- < 1) {
 		gnutls_deinit(conn->session);
 		free(conn);
 	}

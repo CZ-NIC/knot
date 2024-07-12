@@ -43,6 +43,7 @@ typedef struct knot_tls_conn {
 	struct gnutls_session_int *session;
 	struct knot_tls_ctx *ctx;
 	int fd;
+	unsigned fd_clones_count;
 	bool handshake_done;
 } knot_tls_conn_t;
 

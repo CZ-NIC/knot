@@ -48,8 +48,10 @@ int knot_tls_req_ctx_init(knot_tls_req_ctx_t *ctx, int fd,
 
 void knot_tls_req_ctx_deinit(knot_tls_req_ctx_t *ctx)
 {
-	if (ctx != NULL && ctx->ctx != NULL) {
-		knot_creds_free(ctx->ctx->creds);
+	if (ctx != NULL) {
+		if (ctx->ctx != NULL) {
+			knot_creds_free(ctx->ctx->creds);
+		}
 		knot_tls_conn_del(ctx->conn);
 		knot_tls_ctx_free(ctx->ctx);
 		memset(ctx, 0, sizeof(*ctx));
