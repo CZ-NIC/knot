@@ -27,9 +27,12 @@
 #include "libdnssec/sign.h"
 #include "libknot/errcode.h"
 #include "knot/conf/conf.h"
+#include "knot/dnssec/kasp/kasp_zone.h"
 #include "knot/server/dthreads.h"
 #include "utils/common/msg.h"
 #include "../tests/libdnssec/sample_keys.h"
+
+#define DFLT_ID "-"
 
 #define TEST_FORMAT  "%-18s %9s %9s %9s %9s\n"
 #define BENCH_FORMAT "%-18s %9"
@@ -191,57 +194,38 @@ static void test_algorithm(dnssec_keystore_t *store,
 	       res.use      ? "yes" : "no");
 }
 
-static int init_keystore(dnssec_keystore_t **store, const char *keystore_id)
+static int init_keystore(dnssec_keystore_t **store, const char *keystore_id,
+                         unsigned threads)
 {
 	size_t len = strlen(keystore_id) + 1;
+	conf_val_t id = conf_rawid_get(conf(), C_KEYSTORE, C_ID,
+	                               (const uint8_t *)keystore_id, len);
+	if (id.code != KNOT_EOK && strcmp(keystore_id, DFLT_ID) != 0) {
+		ERR2("keystore '%s' not configured", keystore_id);
+		return id.code;
+	}
+	id.blob = (const uint8_t *)keystore_id;
+	id.blob_len = len;
 
-	unsigned backend_id = KEYSTORE_BACKEND_PEM;
-	const char *backend_str = "pem";
+	unsigned backend;
+	bool key_label;
 
-	conf_val_t val = conf_rawid_get(conf(), C_KEYSTORE, C_ID,
-	                                (const uint8_t *)keystore_id, len);
-	if (val.code != KNOT_EOK) {
-		if (strcmp(keystore_id, "default") != 0) {
-			ERR2("keystore '%s' not configured", keystore_id);
-			return KNOT_YP_EINVAL_ID;
-		}
+	int ret = zone_init_keystore(conf(), NULL, &id, store, &backend, &key_label);
+	if (ret != KNOT_EOK) {
+		ERR2("failed to open '%s' keystore (%s)", keystore_id, knot_strerror(ret));
+		return ret;
+	}
+
+	if (strcmp(keystore_id, DFLT_ID) == 0) {
+		printf("Keystore default");
 	} else {
-		val = conf_rawid_get(conf(), C_KEYSTORE, C_BACKEND,
-		                     (const uint8_t *)keystore_id, len);
-		if (conf_opt(&val) == KEYSTORE_BACKEND_PKCS11) {
-			backend_id = KEYSTORE_BACKEND_PKCS11;
-			backend_str = "pkcs11";
-		}
+		printf("Keystore id '%s'", keystore_id);
+	};
+	printf(", type %s", (backend == KEYSTORE_BACKEND_PEM ? "PEM" : "PKCS #11"));
+	if (threads > 0) {
+		printf(", threads %u", threads);
 	}
-
-	int ret = KNOT_EOK;
-	if (backend_id == KEYSTORE_BACKEND_PEM) {
-		ret = dnssec_keystore_init_pkcs8(store);
-	} else {
-		ret = dnssec_keystore_init_pkcs11(store);
-	}
-	if (ret != DNSSEC_EOK) {
-		ERR2("failed to initialize '%s' %s keystore", keystore_id, backend_str);
-		return knot_error_from_libdnssec(ret);
-	}
-
-	const char *config;
-	if (backend_id == KEYSTORE_BACKEND_PEM) {
-		config = "/tmp";
-	} else {
-		val = conf_rawid_get(conf(), C_KEYSTORE, C_CONFIG,
-		                     (const uint8_t *)keystore_id, len);
-		config = conf_str(&val);
-		assert(config); // Ensured by config check.
-	}
-
-	ret = dnssec_keystore_open(*store, config);
-	if (ret != DNSSEC_EOK) {
-		ERR2("failed to open '%s' %s keystore", keystore_id, backend_str);
-		return knot_error_from_libdnssec(ret);
-	}
-
-	INFO2("Using '%s' %s keystore\n", keystore_id, backend_str);
+	printf("\n\n");
 
 	return KNOT_EOK;
 }
@@ -250,7 +234,7 @@ int keymgr_keystore_test(const char *keystore_id, keymgr_list_params_t *params)
 {
 	dnssec_keystore_t *store = NULL;
 
-	int ret = init_keystore(&store, keystore_id);
+	int ret = init_keystore(&store, keystore_id, 0);
 	if (ret != KNOT_EOK) {
 		goto done;
 	}
@@ -346,7 +330,7 @@ int keymgr_keystore_bench(const char *keystore_id, keymgr_list_params_t *params,
 {
 	dnssec_keystore_t *store = NULL;
 
-	int ret = init_keystore(&store, keystore_id);
+	int ret = init_keystore(&store, keystore_id, threads);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
