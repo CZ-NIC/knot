@@ -15,6 +15,7 @@
  */
 
 #include <getopt.h>
+#include <signal.h>
 #include <stdlib.h>
 #include <unistd.h>
 
@@ -280,6 +281,17 @@ static int key_command(int argc, char *argv[], int opt_ind, knot_lmdb_db_t *kasp
 	} else if (strcmp(argv[1], "keystore-test") == 0) {
 		ret = keymgr_keystore_test(id_str, list_params);
 		print_ok_on_succes = false;
+	} else if (strcmp(argv[1], "keystore-bench") == 0) {
+		uint16_t threads = 1;
+		if (argc > 2) {
+			ret = str_to_u16(argv[2], &threads);
+		}
+		if (ret == KNOT_EOK && threads > 0) {
+			ret = keymgr_keystore_bench(id_str, list_params, threads);
+		} else {
+			ret = KNOT_EINVAL;
+		}
+		print_ok_on_succes = false;
 	} else {
 		ERR2("invalid command '%s'", argv[1]);
 		goto main_end;
@@ -323,6 +335,8 @@ int main(int argc, char *argv[])
 
 	signal_ctx.close_db = &kaspdb;
 	signal_init_std();
+	struct sigaction sigact = { .sa_handler = SIG_IGN };
+	sigaction(SIGALRM, &sigact, NULL);
 
 	int ret;
 	bool just_list = false;
