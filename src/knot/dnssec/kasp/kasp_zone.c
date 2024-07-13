@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -314,7 +314,7 @@ void free_key_params(key_params_t *parm)
 	}
 }
 
-int zone_init_keystore(conf_t *conf, conf_val_t *policy_id,
+int zone_init_keystore(conf_t *conf, conf_val_t *policy_id, conf_val_t *keystore_id,
                        dnssec_keystore_t **keystore, unsigned *backend, bool *key_label)
 {
 	char *zone_path = conf_db(conf, C_KASP_DB);
@@ -322,19 +322,25 @@ int zone_init_keystore(conf_t *conf, conf_val_t *policy_id,
 		return KNOT_ENOMEM;
 	}
 
-	conf_id_fix_default(policy_id);
+	conf_val_t keystore_val;
+	if (keystore_id == NULL) {
+		conf_id_fix_default(policy_id);
 
-	conf_val_t keystore_id = conf_id_get(conf, C_POLICY, C_KEYSTORE, policy_id);
-	conf_id_fix_default(&keystore_id);
+		keystore_val = conf_id_get(conf, C_POLICY, C_KEYSTORE, policy_id);
+		conf_id_fix_default(&keystore_val);
+		keystore_id = &keystore_val;
+	} else {
+		conf_id_fix_default(keystore_id);
+	}
 
-	conf_val_t val = conf_id_get(conf, C_KEYSTORE, C_BACKEND, &keystore_id);
+	conf_val_t val = conf_id_get(conf, C_KEYSTORE, C_BACKEND, keystore_id);
 	unsigned _backend = conf_opt(&val);
 
-	val = conf_id_get(conf, C_KEYSTORE, C_CONFIG, &keystore_id);
+	val = conf_id_get(conf, C_KEYSTORE, C_CONFIG, keystore_id);
 	const char *config = conf_str(&val);
 
 	if (key_label != NULL) {
-		val = conf_id_get(conf, C_KEYSTORE, C_KEY_LABEL, &keystore_id);
+		val = conf_id_get(conf, C_KEYSTORE, C_KEY_LABEL, keystore_id);
 		*key_label = conf_bool(&val);
 	}
 

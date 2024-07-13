@@ -363,7 +363,7 @@ static int backup_keystore(conf_t *conf, zone_t *zone, zone_backup_ctx_t *ctx)
 	conf_val_t policy_id = get_zone_policy(conf, zone->name);
 
 	unsigned backend_type = 0;
-	int ret = zone_init_keystore(conf, &policy_id, &from, &backend_type, NULL);
+	int ret = zone_init_keystore(conf, &policy_id, NULL, &from, &backend_type, NULL);
 	if (ret != KNOT_EOK) {
 		LOG_FAIL("keystore init");
 		return ret;
