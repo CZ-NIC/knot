@@ -21,6 +21,7 @@
 
 #include "contrib/strtonum.h"
 #include "knot/dnssec/zone-keys.h"
+#include "libdnssec/crypto.h"
 #include "libknot/libknot.h"
 #include "utils/common/msg.h"
 #include "utils/common/params.h"
@@ -334,6 +335,8 @@ int main(int argc, char *argv[])
 
 	tzset();
 
+	dnssec_crypto_init();
+
 	signal_ctx.close_db = &kaspdb;
 	signal_init_std();
 	struct sigaction sigact = { .sa_handler = SIG_IGN };
@@ -428,8 +431,10 @@ int main(int argc, char *argv[])
 
 success:
 	util_conf_deinit();
+	dnssec_crypto_cleanup();
 	return EXIT_SUCCESS;
 failure:
 	util_conf_deinit();
+	dnssec_crypto_cleanup();
 	return EXIT_FAILURE;
 }
