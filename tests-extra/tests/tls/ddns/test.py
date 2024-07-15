@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-'''Test of DDNS over QUIC.'''
+'''Test of DDNS over TLS using DNSKEY-sync feature.'''
 
 import random
 from dnstest.test import Test
@@ -13,7 +13,7 @@ def check_dnskey(a, b, zones):
         q_a.diff(q_b)
 
 key = Tsig() if random.choice([True, False]) else False
-t = Test(quic=True, tsig=key)
+t = Test(tls=True, tsig=key)
 
 sender = t.server("knot", tsig=key, xdp_enable=False)
 recver = t.server("knot", tsig=key, xdp_enable=False)
@@ -26,8 +26,6 @@ for z in zones:
     sender.dnssec(z).enable = True
     sender.dnssec(z).propagation_delay = 4
     sender.dnssec(z).dnskey_sync = [ recver ]
-
-sender.check_quic()
 
 t.start()
 

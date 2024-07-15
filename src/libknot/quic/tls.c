@@ -92,7 +92,7 @@ fail:
 _public_
 void knot_tls_conn_del(knot_tls_conn_t *conn)
 {
-	if (conn != NULL) {
+	if (conn != NULL && conn->fd_clones_count-- < 1) {
 		gnutls_deinit(conn->session);
 		free(conn);
 	}
@@ -101,7 +101,7 @@ void knot_tls_conn_del(knot_tls_conn_t *conn)
 _public_
 int knot_tls_handshake(knot_tls_conn_t *conn, bool oneshot)
 {
-	if (conn->handshake_done) {
+	if (conn->flags & (KNOT_TLS_CONN_HANDSHAKE_DONE | KNOT_TLS_CONN_BLOCKED)) {
 		return KNOT_EOK;
 	}
 
@@ -120,7 +120,7 @@ int knot_tls_handshake(knot_tls_conn_t *conn, bool oneshot)
 
 	switch (ret) {
 	case GNUTLS_E_SUCCESS:
-		conn->handshake_done = true;
+		conn->flags |= KNOT_TLS_CONN_HANDSHAKE_DONE;
 		return knot_tls_pin_check(conn->session, conn->ctx->creds);
 	case GNUTLS_E_TIMEDOUT:
 		return KNOT_NET_ETIMEOUT;
@@ -175,6 +175,10 @@ ssize_t knot_tls_recv_dns(knot_tls_conn_t *conn, void *data, size_t size)
 {
 	if (conn == NULL || data == NULL) {
 		return KNOT_EINVAL;
+	}
+
+	if (conn->flags & KNOT_TLS_CONN_BLOCKED) {
+		return 0;
 	}
 
 	ssize_t ret = knot_tls_handshake(conn, false);
@@ -245,4 +249,14 @@ ssize_t knot_tls_send_dns(knot_tls_conn_t *conn, void *data, size_t size)
 	}
 
 	return size;
+}
+
+_public_
+void knot_tls_conn_block(knot_tls_conn_t *conn, bool block)
+{
+	if (block) {
+		conn->flags |= KNOT_TLS_CONN_BLOCKED;
+	} else {
+		conn->flags &= ~KNOT_TLS_CONN_BLOCKED;
+	}
 }

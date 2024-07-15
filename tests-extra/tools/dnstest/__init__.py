@@ -3,6 +3,7 @@ __all__ = [
     "context",
     "inquirer",
     "keys",
+    "knsupdate",
     "libknot",
     "module",
     "params",

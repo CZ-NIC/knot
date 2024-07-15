@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -184,6 +184,7 @@ static void print_help(void)
 	       "\n"
 	       "Options:\n"
 	       "  -v, --tcp              Use TCP protocol.\n"
+	       "  -T, --tls              Use TLS protocol.\n"
 	       "  -q, --quic             Use QUIC protocol.\n"
 	       "  -p, --port <num>       Remote port.\n"
 	       "  -r, --retry <num>      Number of retries over UDP.\n"
@@ -227,6 +228,7 @@ int knsupdate_parse(knsupdate_params_t *params, int argc, char *argv[])
 		{ "debug",    no_argument,       NULL, 'd' },
 		{ "help",     no_argument,       NULL, 'h' },
 		{ "tcp",      no_argument,       NULL, 'v' },
+		{ "tls",      no_argument,       NULL, 'T' },
 		{ "quic",     no_argument,       NULL, 'q' },
 		{ "version",  optional_argument, NULL, 'V' },
 		{ "port",     required_argument, NULL, 'p' },
@@ -246,7 +248,7 @@ int knsupdate_parse(knsupdate_params_t *params, int argc, char *argv[])
 	bool default_port = true;
 
 	int opt = 0;
-	while ((opt = getopt_long(argc, argv, "dhvqV::p:r:t:y:k:H:", opts, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "dhvTqV::p:r:t:y:k:H:", opts, NULL)) != -1) {
 		switch (opt) {
 		case 'd':
 			msg_enable_debug(1);
@@ -257,6 +259,16 @@ int knsupdate_parse(knsupdate_params_t *params, int argc, char *argv[])
 			return KNOT_EOK;
 		case 'v':
 			params->protocol = PROTO_TCP;
+			break;
+		case 'T':
+			params->protocol = PROTO_TCP;
+
+			params->tls_params.enable = true;
+
+			if (default_port) {
+				free(params->server->service);
+				params->server->service = strdup(DEFAULT_DNS_TLS_PORT);
+			}
 			break;
 		case 'q':
 			params->protocol = PROTO_UDP;

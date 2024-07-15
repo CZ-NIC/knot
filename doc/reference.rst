@@ -712,10 +712,6 @@ for incoming queries over TLS protocol (DoT).
 
 Change of this parameter requires restart of the Knot server to take effect.
 
-.. NOTE::
-   Incoming :ref:`DDNS<dynamic updates>` over TLS isn't supported.
-   The server always responds with SERVFAIL.
-
 *Default:* not set
 
 .. _xdp section:

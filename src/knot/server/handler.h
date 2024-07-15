@@ -57,7 +57,6 @@ inline static void params_update(knotd_qdata_params_t *params, uint32_t rtt,
 {
 #ifdef ENABLE_QUIC
 	params->quic_conn = conn;
-	params->tls_session = conn == NULL ? NULL : conn->tls_session;
 #else
 	assert(conn == NULL);
 #endif
@@ -90,7 +89,6 @@ inline static void params_xdp_update(knotd_qdata_params_t *params,
 	params->xdp_msg = msg;
 #ifdef ENABLE_QUIC
 	params->quic_conn = conn;
-	params->tls_session = conn == NULL ? NULL : conn->tls_session;
 #else
 	assert(conn == NULL);
 #endif

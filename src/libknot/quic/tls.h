@@ -31,6 +31,12 @@
 
 struct gnutls_priority_st;
 
+typedef enum {
+	KNOT_TLS_CONN_HANDSHAKE_DONE = (1 << 0),
+	KNOT_TLS_CONN_SESSION_TAKEN  = (1 << 1), // unused, to be implemeted later
+	KNOT_TLS_CONN_BLOCKED        = (1 << 2),
+} knot_tls_conn_flag_t;
+
 typedef struct knot_tls_ctx {
 	struct knot_creds *creds;
 	struct gnutls_priority_st *priority;
@@ -43,7 +49,8 @@ typedef struct knot_tls_conn {
 	struct gnutls_session_int *session;
 	struct knot_tls_ctx *ctx;
 	int fd;
-	bool handshake_done;
+	unsigned fd_clones_count;
+	knot_tls_conn_flag_t flags;
 } knot_tls_conn_t;
 
 /*!
@@ -119,5 +126,10 @@ ssize_t knot_tls_recv_dns(knot_tls_conn_t *conn, void *data, size_t size);
  * \return Either exactly 'size' or a negative error code.
  */
 ssize_t knot_tls_send_dns(knot_tls_conn_t *conn, void *data, size_t size);
+
+/*!
+ * \brief Set or unset the conection's BLOCKED flag.
+ */
+void knot_tls_conn_block(knot_tls_conn_t *conn, bool block);
 
 /*! @} */

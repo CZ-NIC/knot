@@ -30,7 +30,9 @@
 #include "knot/nameserver/notify.h"
 #include "knot/server/server.h"
 #include "libknot/libknot.h"
+#include "libknot/quic/quic_conn.h"
 #include "libknot/quic/tls_common.h"
+#include "libknot/quic/tls.h"
 #include "contrib/base64.h"
 #include "contrib/macros.h"
 #include "contrib/mempattern.h"
@@ -704,27 +706,33 @@ bool process_query_acl_check(conf_t *conf, acl_action_t action,
 	bool automatic = false;
 	bool allowed = false;
 
+	struct gnutls_session_int *tls_session;
+	switch (qdata->params->proto) {
+	case KNOTD_QUERY_PROTO_QUIC: tls_session = qdata->params->quic_conn->tls_session; break;
+	case KNOTD_QUERY_PROTO_TLS:  tls_session = qdata->params->tls_conn->session; break;
+	default:                     tls_session = NULL;
+	}
+
 	if (action != ACL_ACTION_UPDATE) {
 		// ACL_ACTION_QUERY is used for SOA/refresh query.
 		assert(action == ACL_ACTION_QUERY || action == ACL_ACTION_NOTIFY ||
 		       action == ACL_ACTION_TRANSFER);
 		const yp_name_t *item = (action == ACL_ACTION_NOTIFY) ? C_MASTER : C_NOTIFY;
 		conf_val_t rmts = conf_zone_get(conf, item, zone_name);
-		allowed = rmt_allowed(conf, &rmts, query_source, &tsig,
-		                      qdata->params->tls_session);
+		allowed = rmt_allowed(conf, &rmts, query_source, &tsig, tls_session);
 		automatic = allowed;
 	}
 	if (!allowed) {
 		conf_val_t acl = conf_zone_get(conf, C_ACL, zone_name);
 		allowed = acl_allowed(conf, &acl, action, query_source, &tsig,
-		                      zone_name, query, qdata->params->tls_session);
+		                      zone_name, query, tls_session);
 	}
 
 	if (log_enabled_debug()) {
 		int pin_size = 0;
 		uint8_t bin_pin[KNOT_TLS_PIN_LEN], pin[2 * KNOT_TLS_PIN_LEN];
 		size_t bin_pin_size = sizeof(bin_pin);
-		knot_tls_pin(qdata->params->tls_session, bin_pin, &bin_pin_size, false);
+		knot_tls_pin(tls_session, bin_pin, &bin_pin_size, false);
 		if (bin_pin_size > 0) {
 			pin_size = knot_base64_encode(bin_pin, bin_pin_size, pin, sizeof(pin));
 		}

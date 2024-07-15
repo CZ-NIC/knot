@@ -288,17 +288,22 @@ void knot_request_free(knot_request_t *request, knot_mm_t *mm)
 		return;
 	}
 
-	if (request->quic_ctx != NULL) {
-		if (use_quic(request)) {
+	if (use_quic(request)) {
 #ifdef ENABLE_QUIC
+		if (request->quic_ctx != NULL) {
 			knot_qreq_close(request->quic_ctx, true);
-#else
-			assert(0);
-#endif // ENABLE_QUIC
-		} else {
-			assert(use_tls(request));
-			knot_tls_req_ctx_deinit(&request->tls_req_ctx);
 		}
+		// NOTE synthetic DDNSoQ request is NOOP here
+#else
+		assert(0);
+#endif // ENABLE_QUIC
+	} else if (use_tls(request) && request->tls_req_ctx.conn != NULL) {
+		knot_tls_req_ctx_deinit(&request->tls_req_ctx);
+	} else {
+		assert(request->quic_ctx == NULL);
+		assert(request->quic_conn == NULL);
+		assert(request->tls_req_ctx.ctx == NULL);
+		assert(request->tls_req_ctx.conn == NULL);
 	}
 
 	if (request->fd >= 0 && use_tcp(request) && !use_tls(request) &&

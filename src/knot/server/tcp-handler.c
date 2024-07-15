@@ -170,7 +170,7 @@ static int tcp_handle(tcp_context_t *tcp, int fd, knot_tls_conn_t *tls_conn, con
 	int recv;
 	if (tls_conn != NULL) {
 		assert(tcp->tls_ctx != NULL);
-		params.tls_session = tls_conn->session;
+		params.tls_conn = tls_conn;
 		int ret = knot_tls_handshake(tls_conn, true);
 		switch (ret) {
 		case KNOT_EAGAIN: // Unfinished handshake, continue later.
