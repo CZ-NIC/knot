@@ -27,7 +27,7 @@
 #include "libknot/libknot.h"
 #include "libknot/yparser/ypschema.h"
 #include "libknot/xdp.h"
-#include "libknot/quic/tls_common.h"
+#include "libknot/quic/tls.h"
 #ifdef ENABLE_QUIC
 #include "libknot/quic/quic.h" // knot_quic_session_*
 #endif // ENABLE_QUIC
@@ -1444,14 +1444,12 @@ static int reconfigure_timer_db(conf_t *conf, server_t *server)
 	return ret;
 }
 
-#ifdef ENABLE_QUIC
 static void free_sess_ticket(intptr_t ptr)
 {
 	if (ptr != CONN_POOL_FD_INVALID) {
-		knot_quic_session_load(NULL, (void *)ptr);
+		knot_tls_session_load(NULL, (void *)ptr);
 	}
 }
-#endif // ENABLE_QUIC
 
 static int reconfigure_remote_pool(conf_t *conf, server_t *server)
 {
@@ -1471,9 +1469,8 @@ static int reconfigure_remote_pool(conf_t *conf, server_t *server)
 		(void)conn_pool_timeout(global_conn_pool, timeout);
 	}
 
-#ifdef ENABLE_QUIC
-	if (global_sessticket_pool == NULL && server->quic_active) {
-		size_t rmt_count = quic_rmt_count(conf, C_QUIC);
+	if (global_sessticket_pool == NULL && (server->quic_active || server->tls_active)) {
+		size_t rmt_count = quic_rmt_count(conf, C_QUIC) + quic_rmt_count(conf, C_TLS);
 		if (rmt_count > 0) {
 			size_t max_tickets = conf_bg_threads(conf) * rmt_count * 2; // Two addresses per remote.
 			conn_pool_t *new_pool =
@@ -1485,7 +1482,6 @@ static int reconfigure_remote_pool(conf_t *conf, server_t *server)
 			global_sessticket_pool = new_pool;
 		}
 	}
-#endif // ENABLE_QUIC
 
 	val = conf_get(conf, C_SRV, C_RMT_RETRY_DELAY);
 	int delay_ms = conf_int(&val);

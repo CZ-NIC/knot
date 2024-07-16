@@ -57,12 +57,12 @@
 
 #define TLS_CALLBACK_ERR     (-1)
 
-typedef struct knot_quic_session {
+typedef struct knot_tls_session {
 	node_t n;
 	gnutls_datum_t tls_session;
 	size_t quic_params_len;
 	uint8_t quic_params[sizeof(ngtcp2_transport_params)];
-} knot_quic_session_t;
+} knot_tls_session_t;
 
 static unsigned addr_len(const struct sockaddr_in6 *ss)
 {
@@ -78,13 +78,13 @@ bool knot_quic_session_available(knot_quic_conn_t *conn)
 }
 
 _public_
-struct knot_quic_session *knot_quic_session_save(knot_quic_conn_t *conn)
+struct knot_tls_session *knot_quic_session_save(knot_quic_conn_t *conn)
 {
 	if (!knot_quic_session_available(conn)) {
 		return NULL;
 	}
 
-	knot_quic_session_t *session = malloc(sizeof(*session));
+	knot_tls_session_t *session = malloc(sizeof(*session));
 	if (session == NULL) {
 		return NULL;
 	}
@@ -109,9 +109,9 @@ struct knot_quic_session *knot_quic_session_save(knot_quic_conn_t *conn)
 }
 
 _public_
-int knot_quic_session_load(knot_quic_conn_t *conn, struct knot_quic_session *session)
+int knot_quic_session_load(knot_quic_conn_t *conn, struct knot_tls_session *session)
 {
-	if (session == NULL) {
+	if (session == NULL || (conn != NULL && session->quic_params_len == 0)) {
 		return KNOT_EINVAL;
 	}
 

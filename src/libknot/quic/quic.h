@@ -36,8 +36,6 @@
 // RFC 9250
 #define KNOT_QUIC_ERR_EXCESSIVE_LOAD	0x4
 
-struct knot_quic_session;
-
 typedef enum {
 	KNOT_QUIC_SEND_IGNORE_LASTBYTE = (1 << 0),
 	KNOT_QUIC_SEND_IGNORE_BLOCKED  = (1 << 1),
@@ -72,7 +70,7 @@ bool knot_quic_session_available(knot_quic_conn_t *conn);
  *
  * \return QUIC session context.
  */
-struct knot_quic_session *knot_quic_session_save(knot_quic_conn_t *conn);
+struct knot_tls_session *knot_quic_session_save(knot_quic_conn_t *conn);
 
 /*!
  * \brief Loads data needed for session resumption.
@@ -82,7 +80,7 @@ struct knot_quic_session *knot_quic_session_save(knot_quic_conn_t *conn);
  *
  * \return KNOT_E*
  */
-int knot_quic_session_load(knot_quic_conn_t *conn, struct knot_quic_session *session);
+int knot_quic_session_load(knot_quic_conn_t *conn, struct knot_tls_session *session);
 
 /*!
  * \brief Returns timeout value for the connection.

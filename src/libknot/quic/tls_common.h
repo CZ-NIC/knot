@@ -38,6 +38,7 @@ struct gnutls_priority_st;
 struct gnutls_session_int;
 struct gnutls_x509_crt_int;
 struct knot_creds;
+struct knot_tls_session;
 
 /*!
  * \brief Init server TLS key and certificate for DoQ.
