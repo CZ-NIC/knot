@@ -114,8 +114,9 @@ static int request_ensure_connected(knot_request_t *request, bool *reused_fd, in
 		assert(!use_quic(request));
 
 		int ret = knot_tls_req_ctx_init(&request->tls_req_ctx, request->fd,
+		                                &request->remote, &request->source,
 		                                request->creds, request->pin,
-		                                request->pin_len, timeout_ms);
+		                                request->pin_len, reused_fd, timeout_ms);
 		if (ret != KNOT_EOK) {
 			close(request->fd);
 			request->fd = -1;
@@ -145,6 +146,7 @@ static int request_send(knot_request_t *request, int timeout_ms, bool *reused_fd
 	/* Send query. */
 	if (use_tls(request)) {
 		ret = knot_tls_send_dns(request->tls_req_ctx.conn, wire, wire_len);
+		knot_tls_req_ctx_maint(&request->tls_req_ctx, request);
 	} else if (use_quic(request)) {
 #ifdef ENABLE_QUIC
 		struct iovec tosend = { wire, wire_len };
@@ -185,6 +187,7 @@ static int request_recv(knot_request_t *request, int timeout_ms)
 	/* Receive it */
 	if (use_tls(request)) {
 		ret = knot_tls_recv_dns(request->tls_req_ctx.conn, resp->wire, resp->max_size);
+		knot_tls_req_ctx_maint(&request->tls_req_ctx, request);
 	} else if (use_quic(request)) {
 #ifdef ENABLE_QUIC
 		struct iovec recvd = { resp->wire, resp->max_size };

@@ -26,9 +26,18 @@
 
 #include "contrib/macros.h"
 #include "contrib/time.h"
+#include "contrib/ucw/lists.h"
 #include "libknot/attribute.h"
 #include "libknot/error.h"
 #include "libknot/quic/tls_common.h"
+
+typedef struct knot_tls_session {
+	node_t n;
+	gnutls_datum_t tls_session;
+	size_t quic_params_len;
+	// NOTE this differs from definition in quic.c, basically TLS requires the
+	// quic_params to be zero and QUIC non-zero.
+} knot_tls_session_t;
 
 _public_
 knot_tls_ctx_t *knot_tls_ctx_new(struct knot_creds *creds, unsigned io_timeout,
@@ -96,6 +105,56 @@ void knot_tls_conn_del(knot_tls_conn_t *conn)
 		gnutls_deinit(conn->session);
 		free(conn);
 	}
+}
+
+_public_
+bool knot_tls_session_available(knot_tls_conn_t *conn)
+{
+	return conn != NULL && !(conn->flags & KNOT_TLS_CONN_SESSION_TAKEN) &&
+	       (gnutls_session_get_flags(conn->session) & GNUTLS_SFLAGS_SESSION_TICKET);
+}
+
+_public_
+struct knot_tls_session *knot_tls_session_save(knot_tls_conn_t *conn)
+{
+	if (!knot_tls_session_available(conn)) {
+		return NULL;
+	}
+
+	knot_tls_session_t *session = calloc(1, sizeof(*session));
+	if (session == NULL) {
+		return NULL;
+	}
+
+	int ret = gnutls_session_get_data2(conn->session, &session->tls_session);
+	if (ret != GNUTLS_E_SUCCESS) {
+		free(session);
+		return NULL;
+	}
+	conn->flags |= KNOT_TLS_CONN_SESSION_TAKEN;
+
+	return session;
+}
+
+_public_
+int knot_tls_session_load(knot_tls_conn_t *conn, struct knot_tls_session *session)
+{
+	if (session == NULL || (conn != NULL && session->quic_params_len > 0)) {
+		return KNOT_EINVAL;
+	}
+
+	int ret = KNOT_EOK;
+	if (conn != NULL) {
+		ret = gnutls_session_set_data(conn->session, session->tls_session.data,
+		                              session->tls_session.size);
+		if (ret != GNUTLS_E_SUCCESS) {
+			ret = KNOT_ERROR;
+		}
+	}
+
+	gnutls_free(session->tls_session.data);
+	free(session);
+	return ret;
 }
 
 _public_
