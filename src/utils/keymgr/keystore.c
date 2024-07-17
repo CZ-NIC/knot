@@ -19,6 +19,7 @@
 #include "utils/keymgr/keystore.h"
 
 #include "contrib/color.h"
+#include "contrib/spinlock.h"
 #include "contrib/time.h"
 #include "libdnssec/error.h"
 #include "libdnssec/key/algorithm.h"
@@ -262,6 +263,7 @@ typedef struct bench_ctx {
 	dnssec_keystore_t *store;
 	const key_parameters_t *params;
 	struct result *results;
+	knot_spin_t lock;
 } bench_ctx_t;
 
 static int bench(dthread_t *dt)
@@ -278,6 +280,7 @@ static int bench(dthread_t *dt)
 
 	char *id = NULL;
 	dnssec_key_t *test_key = NULL;
+	knot_spin_lock(&data->lock);
 	int ret = dnssec_keystore_generate(store, params->algorithm,
 	                                   params->bit_size, NULL, &id);
 	if (ret != DNSSEC_EOK ||
@@ -286,6 +289,7 @@ static int bench(dthread_t *dt)
 	    dnssec_keystore_get_private(store, id, test_key) != DNSSEC_EOK) {
 		goto finish;
 	}
+	knot_spin_unlock(&data->lock);
 
 	uint8_t input_data[64];
 	dnssec_binary_t input = {
@@ -318,6 +322,7 @@ static int bench(dthread_t *dt)
 	}
 
 finish:
+	knot_spin_unlock(&data->lock);
 	dnssec_key_free(test_key);
 	(void)dnssec_keystore_remove(store, id);
 	free(id);
@@ -348,16 +353,19 @@ int keymgr_keystore_bench(const char *keystore_id, keymgr_list_params_t *params,
 			.params = KEYS[i],
 			.results = results
 		};
+		knot_spin_init(&d.lock);
 
 		dt_unit_t *pool = dt_create(threads, bench, NULL, &d);
 		if (pool == NULL ||
 		    dt_start(pool) != KNOT_EOK ||
 		    dt_join(pool) != KNOT_EOK) {
 			dt_delete(&pool);
+			knot_spin_destroy(&d.lock);
 			dnssec_keystore_deinit(store);
 			return KNOT_ERROR;
 		}
 		dt_delete(&pool);
+		knot_spin_destroy(&d.lock);
 
 		double result_f = 0.5; // 0.5 to ensure correct rounding
 		for (struct result *it = d.results; it < d.results + threads; ++it) {
