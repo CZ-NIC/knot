@@ -143,6 +143,16 @@ Commands
   Import a key (specified by full key ID) from another zone as shared. After this, the key is
   owned by both zones equally.
 
+Keystore commands
+.................
+
+**keystore_test**
+  Conduct some tests on the specified keystore. Use a configured keystore id
+  or **-** for the default.
+**keystore_bench** [*num_threads*]
+  Conduct a signing benchmark for each supported algorithm. Use a configured
+  keystore id or **-** for the default.
+
 Commands related to Offline KSK feature
 .......................................
 

@@ -39,6 +39,7 @@ static void print_help(void)
 {
 	printf("Usage:\n"
 	       "  %s [-c | -C | -D <path>] [options] <zone_name> <command>\n"
+	       "  %s [-c | -C | -D <path>] [options] <keystore_id> <command>\n"
 	       "  %s [-c | -C | -D <path>] [-j] -l\n"
 	       "  %s -t <tsig_name> [<algorithm> [<bits>]]\n"
 	       "\n"
@@ -90,6 +91,13 @@ static void print_help(void)
 	       "  set           Set existing key's timing attribute.\n"
 	       "                 (syntax: set <key_spec> <attribute_name>=<value>...)\n"
 	       "\n"
+	       "Keystore commands:\n"
+	       "  keystore_test   Conduct some tests on the specified keystore.\n"
+	       "                   Use a configured keystore id or '-' for the default.\n"
+	       "  keystore_bench  Conduct a signing benchmark for each supported algorithm.\n"
+	       "                   Use a configured keystore id or '-' for the default.\n"
+	       "                   (syntax: keystore_bench [<num_threads>])\n"
+	       "\n"
 	       "Commands related to Offline KSK feature:\n"
 	       "  pregenerate   Pre-generate ZSKs for later rollovers with offline KSK.\n"
 	       "                 (syntax: pregenerate [<from>] <to>)\n"
@@ -118,7 +126,8 @@ static void print_help(void)
 	       "  ksk        Whether the generated/imported key shall be Key Signing Key.\n"
 	       "  created/publish/ready/active/retire/remove  The timestamp of the key\n"
 	       "             lifetime event (e.g. published=+1d active=1499770874)\n",
-	       PROGRAM_NAME, PROGRAM_NAME, PROGRAM_NAME, CONF_DEFAULT_FILE, CONF_DEFAULT_DBDIR);
+	       PROGRAM_NAME, PROGRAM_NAME, PROGRAM_NAME, PROGRAM_NAME, CONF_DEFAULT_FILE,
+	       CONF_DEFAULT_DBDIR);
 }
 
 static int key_command(int argc, char *argv[], int opt_ind, knot_lmdb_db_t *kaspdb,

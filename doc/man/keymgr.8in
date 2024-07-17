@@ -170,6 +170,17 @@ Remove the specified key from zone. If the key was not shared, it is also delete
 Import a key (specified by full key ID) from another zone as shared. After this, the key is
 owned by both zones equally.
 .UNINDENT
+.SS Keystore commands
+.INDENT 0.0
+.TP
+\fBkeystore_test\fP
+Conduct some tests on the specified keystore. Use a configured keystore id
+or \fB\-\fP for the default.
+.TP
+\fBkeystore_bench\fP [\fInum_threads\fP]
+Conduct a signing benchmark for each supported algorithm. Use a configured
+keystore id or \fB\-\fP for the default.
+.UNINDENT
 .SS Commands related to Offline KSK feature
 .INDENT 0.0
 .TP
