@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -22,7 +22,7 @@
 #include "error.h"
 #include "key.h"
 
-#include "sample_keys.h"
+#include "libdnssec/sample_keys.h"
 
 #define check_attr_scalar(key, type, name, def_val, set_val) { \
 	type value = dnssec_key_get_##name(key); \

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -22,7 +22,7 @@
 #include "libdnssec/crypto.h"
 #include "libdnssec/error.h"
 #include "libdnssec/key.h"
-#include "sample_keys.h"
+#include "libdnssec/sample_keys.h"
 
 static void test_key(const char *name, const struct key_parameters *params)
 {

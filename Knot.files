@@ -428,6 +428,7 @@ src/libdnssec/pem.c
 src/libdnssec/pem.h
 src/libdnssec/random.c
 src/libdnssec/random.h
+src/libdnssec/sample_keys.h
 src/libdnssec/shared/bignum.c
 src/libdnssec/shared/bignum.h
 src/libdnssec/shared/binary_wire.h
@@ -669,7 +670,6 @@ tests/knot/test_zone_events.c
 tests/knot/test_zone_serial.c
 tests/knot/test_zone_timers.c
 tests/knot/test_zonedb.c
-tests/libdnssec/sample_keys.h
 tests/libdnssec/test_binary.c
 tests/libdnssec/test_crypto.c
 tests/libdnssec/test_key.c

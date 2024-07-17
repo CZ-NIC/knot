@@ -27,7 +27,6 @@ LDADD += \
 
 EXTRA_DIST = \
 	tap/libtap.sh				\
-	libdnssec/sample_keys.h			\
 	knot/semantic_check_data		\
 	knot/test_semantic_check.in		\
 	libzscanner/data			\

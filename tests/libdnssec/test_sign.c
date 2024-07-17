@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -17,13 +17,13 @@
 #include <string.h>
 #include <tap/basic.h>
 
-#include "sample_keys.h"
-
 #include "binary.h"
 #include "crypto.h"
 #include "error.h"
 #include "key.h"
 #include "sign.h"
+
+#include "libdnssec/sample_keys.h"
 
 static const dnssec_binary_t input_data = {
 	.size = 25,

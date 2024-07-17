@@ -24,13 +24,13 @@
 #include "libdnssec/key/algorithm.h"
 #include "libdnssec/key/privkey.h"
 #include "libdnssec/random.h"
+#include "libdnssec/sample_keys.h"
 #include "libdnssec/sign.h"
 #include "libknot/errcode.h"
 #include "knot/conf/conf.h"
 #include "knot/dnssec/kasp/kasp_zone.h"
 #include "knot/server/dthreads.h"
 #include "utils/common/msg.h"
-#include "../tests/libdnssec/sample_keys.h"
 
 #define DFLT_ID "-"
 
