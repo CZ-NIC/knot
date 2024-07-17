@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -28,9 +28,8 @@
 #include "libdnssec/crypto.h"
 #include "libdnssec/error.h"
 #include "libdnssec/keystore.h"
+#include "libdnssec/sample_keys.h"
 #include "libdnssec/sign.h"
-
-#include "sample_keys.h"
 
 #define ENV_SOFTHSM_DSO  "KNOT_SOFTHSM2_DSO"
 #define ENV_SOFTHSM_UTIL "KNOT_SOFTHSM2_UTIL"

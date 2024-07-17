@@ -8,6 +8,9 @@ if ENABLE_PKCS11
 libdnssec_la_LIBADD  += $(pthread_LIBS)
 endif
 
+EXTRA_DIST +=
+	libdnssec/sample_keys.h
+	
 include_libdnssecdir = $(includedir)/libdnssec
 include_libdnssec_HEADERS = \
 	libdnssec/binary.h			\
