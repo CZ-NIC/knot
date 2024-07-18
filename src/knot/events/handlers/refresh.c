@@ -75,6 +75,10 @@
 	ns_log(priority, (data)->zone->name, LOG_OPERATION_REFRESH, LOG_DIRECTION_NONE, \
 	       &(data)->remote->addr, 0, false, (data)->remote->key.name, msg)
 
+#define REFRESH_LOG_PROTO(priority, data, msg...) \
+	ns_log(priority, (data)->zone->name, LOG_OPERATION_REFRESH, LOG_DIRECTION_NONE, \
+	       &(data)->remote->addr, PROTO(data), (data)->layer->flags & KNOT_REQUESTOR_REUSED, (data)->remote->key.name, msg)
+
 #define AXFRIN_LOG(priority, data, msg...) \
 	ns_log(priority, (data)->zone->name, LOG_OPERATION_AXFR, LOG_DIRECTION_IN, \
 	       &(data)->remote->addr, PROTO(data), (data)->layer->flags & KNOT_REQUESTOR_REUSED, (data)->remote->key.name, msg)
@@ -1080,9 +1084,9 @@ static int soa_query_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 	struct refresh_data *data = layer->data;
 
 	if (knot_pkt_ext_rcode(pkt) != KNOT_RCODE_NOERROR) {
-		REFRESH_LOG(LOG_WARNING, data,
-		            "server responded with error '%s'",
-		            knot_pkt_ext_rcode_name(pkt));
+		REFRESH_LOG_PROTO(LOG_WARNING, data,
+		                  "server responded with error '%s'",
+		                  knot_pkt_ext_rcode_name(pkt));
 		data->ret = KNOT_EDENIED;
 		return KNOT_STATE_FAIL;
 	}
@@ -1090,8 +1094,7 @@ static int soa_query_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 	const knot_pktsection_t *answer = knot_pkt_section(pkt, KNOT_ANSWER);
 	const knot_rrset_t *rr = answer->count == 1 ? knot_pkt_rr(answer, 0) : NULL;
 	if (!rr || rr->type != KNOT_RRTYPE_SOA || rr->rrs.count != 1) {
-		REFRESH_LOG(LOG_WARNING, data,
-		            "malformed message");
+		REFRESH_LOG_PROTO(LOG_WARNING, data, "malformed message");
 		conf_val_t val = conf_zone_get(data->conf, C_SEM_CHECKS, data->zone->name);
 		if (conf_opt(&val) == SEMCHECKS_SOFT) {
 			data->xfr_type = XFR_TYPE_AXFR;
@@ -1116,9 +1119,9 @@ static int soa_query_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 
 	if (!current) {
 		if (wait4pinned_master(data)) {
-			REFRESH_LOG(LOG_INFO, data,
-			            "remote serial %u, zone is outdated, waiting for pinned master",
-			            remote_serial);
+			REFRESH_LOG_PROTO(LOG_INFO, data,
+			                  "remote serial %u, zone is outdated, waiting for pinned master",
+			                  remote_serial);
 			return KNOT_STATE_DONE;
 		}
 		REFRESH_LOG(LOG_INFO, data,
@@ -1130,14 +1133,14 @@ static int soa_query_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 		finalize_timers(data);
 		char expires_in[32] = "";
 		fill_expires_in(expires_in, sizeof(expires_in), data);
-		REFRESH_LOG(LOG_INFO, data,
-		            "remote serial %u, zone is up-to-date%s",
-		            remote_serial, expires_in);
+		REFRESH_LOG_PROTO(LOG_INFO, data,
+		                  "remote serial %u, zone is up-to-date%s",
+		                  remote_serial, expires_in);
 		return KNOT_STATE_DONE;
 	} else {
 		finalize_timers_noexpire(data);
-		REFRESH_LOG(LOG_INFO, data,
-		            "remote serial %u, remote is outdated", remote_serial);
+		REFRESH_LOG_PROTO(LOG_INFO, data,
+		                  "remote serial %u, remote is outdated", remote_serial);
 		return KNOT_STATE_DONE;
 	}
 }
