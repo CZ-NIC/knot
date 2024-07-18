@@ -24,6 +24,7 @@
 #include "knot/conf/tools.h"
 #include "knot/common/log.h"
 #include "knot/updates/acl.h"
+#include "knot/zone/zone-load.h"
 #include "libknot/rrtype/opt.h"
 #include "libdnssec/tsig.h"
 #include "libdnssec/key.h"
@@ -471,6 +472,7 @@ static const yp_item_t desc_policy[] = {
 	{ C_MASTER_PIN_TOL,      YP_TINT,  YP_VINT = { 0, UINT32_MAX, 0, YP_STIME } }, \
 	{ C_PROVIDE_IXFR,        YP_TBOOL, YP_VBOOL = { true } }, \
 	{ C_SEM_CHECKS,          YP_TOPT,  YP_VOPT = { semantic_checks, SEMCHECKS_OFF }, FLAGS }, \
+	{ C_DEFAULT_TTL,         YP_TINT,  YP_VINT = { 1, INT32_MAX, DEFAULT_TTL, YP_STIME }, FLAGS }, \
 	{ C_ZONEFILE_SYNC,       YP_TINT,  YP_VINT = { -1, INT32_MAX, 0, YP_STIME } }, \
 	{ C_ZONEFILE_LOAD,       YP_TOPT,  YP_VOPT = { zonefile_load, ZONEFILE_LOAD_WHOLE } }, \
 	{ C_JOURNAL_CONTENT,     YP_TOPT,  YP_VOPT = { journal_content, JOURNAL_CONTENT_CHANGES }, FLAGS }, \

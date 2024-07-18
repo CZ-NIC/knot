@@ -52,6 +52,7 @@
 #define C_DBUS_EVENT		"\x0A""dbus-event"
 #define C_DBUS_INIT_DELAY	"\x0F""dbus-init-delay"
 #define C_DDNS_MASTER		"\x0B""ddns-master"
+#define C_DEFAULT_TTL		"\x0B""default-ttl"
 #define C_DENY			"\x04""deny"
 #define C_DNSKEY_MGMT		"\x11""dnskey-management"
 #define C_DNSKEY_SYNC		"\x0B""dnskey-sync"

@@ -2253,6 +2253,7 @@ zone:
     master\-pin\-tolerance: TIME
     provide\-ixfr: BOOL
     semantic\-checks: BOOL | soft
+    default\-ttl: TIME
     zonefile\-sync: TIME
     zonefile\-load: none | difference | difference\-no\-serial | whole
     journal\-content: none | changes | all
@@ -2442,6 +2443,23 @@ query (malformed message) and triggers a zone bootstrap instead.
 .UNINDENT
 .sp
 \fIDefault:\fP \fBoff\fP
+.SS default\-ttl
+.sp
+The default TTL value if none is specified in a zone file or zone insertion
+using the dynamic configuration.
+.sp
+\fBWARNING:\fP
+.INDENT 0.0
+.INDENT 3.5
+As changing this value can result in differently parsed zone file(s),
+the corresponding zone SOA serial(s) should be incremented before
+reloading or commiting the configuration. Alternatively, setting
+\fI\%zonefile\-load\fP to \fBdifference\-no\-serial\fP ensures
+the resulting zone(s) update is correct.
+.UNINDENT
+.UNINDENT
+.sp
+\fIDefault:\fP \fB3600\fP
 .SS zonefile\-sync
 .sp
 The time in seconds after which the current zone in memory will be synced with

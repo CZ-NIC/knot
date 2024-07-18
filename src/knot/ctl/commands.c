@@ -1300,11 +1300,12 @@ static int create_rrset(knot_rrset_t **rrset, zone_t *zone, ctl_args_t *args,
 	const size_t buff_len = sizeof(ctl_globals.txt_rr);
 	char *buff = ctl_globals.txt_rr;
 
+	// Choose default TTL if none was specified.
 	uint32_t default_ttl = 0;
-	if (ttl == NULL) {
-		int ret = get_ttl(zone, args, &default_ttl);
-		if (need_ttl && ret != KNOT_EOK) {
-			return ret;
+	if (ttl == NULL && need_ttl) {
+		if (get_ttl(zone, args, &default_ttl) != KNOT_EOK) {
+			conf_val_t val = conf_zone_get(conf(), C_DEFAULT_TTL, zone->name);
+			default_ttl = conf_int(&val);
 		}
 	}
 

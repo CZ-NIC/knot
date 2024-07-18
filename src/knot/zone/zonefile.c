@@ -136,8 +136,8 @@ static void process_data(zs_scanner_t *scanner)
 	knot_rrset_clear(&rr, NULL);
 }
 
-int zonefile_open(zloader_t *loader, const char *source,
-                  const knot_dname_t *origin, semcheck_optional_t semantic_checks, time_t time)
+int zonefile_open(zloader_t *loader, const char *source, const knot_dname_t *origin,
+                  uint32_t dflt_ttl, semcheck_optional_t semantic_checks, time_t time)
 {
 	if (!loader) {
 		return KNOT_EINVAL;
@@ -171,7 +171,7 @@ int zonefile_open(zloader_t *loader, const char *source,
 		return KNOT_ENOMEM;
 	}
 
-	if (zs_init(&loader->scanner, origin_str, KNOT_CLASS_IN, 3600) != 0 ||
+	if (zs_init(&loader->scanner, origin_str, KNOT_CLASS_IN, dflt_ttl) != 0 ||
 	    zs_set_input_file(&loader->scanner, source) != 0 ||
 	    zs_set_processing(&loader->scanner, process_data, process_error, zc) != 0) {
 		zs_deinit(&loader->scanner);
