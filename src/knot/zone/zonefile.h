@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -22,6 +22,7 @@
 #include "knot/zone/zone.h"
 #include "knot/zone/semantic-check.h"
 #include "libzscanner/scanner.h"
+
 /*!
  * \brief Zone creator structure.
  */
@@ -52,14 +53,15 @@ void err_handler_logger(sem_handler_t *handler, const zone_contents_t *zone,
  * \param loader Output zone loader.
  * \param source Source file name.
  * \param origin Zone origin.
+ * \param dflt_ttl Default TTL.
  * \param semantic_checks Perform semantic checks.
  * \param time Time for semantic check.
  *
  * \retval Initialized loader on success.
  * \retval NULL on error.
  */
-int zonefile_open(zloader_t *loader, const char *source,
-                  const knot_dname_t *origin, semcheck_optional_t semantic_checks, time_t time);
+int zonefile_open(zloader_t *loader, const char *source, const knot_dname_t *origin,
+                  uint32_t dflt_ttl, semcheck_optional_t semantic_checks, time_t time);
 
 /*!
  * \brief Loads zone from a zone file.

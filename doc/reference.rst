@@ -2509,6 +2509,7 @@ Definition of zones served by the server.
      master-pin-tolerance: TIME
      provide-ixfr: BOOL
      semantic-checks: BOOL | soft
+     default-ttl: TIME
      zonefile-sync: TIME
      zonefile-load: none | difference | difference-no-serial | whole
      journal-content: none | changes | all
@@ -2711,6 +2712,23 @@ Extra checks:
    query (malformed message) and triggers a zone bootstrap instead.
 
 *Default:* ``off``
+
+.. _zone_default-ttl:
+
+default-ttl
+-----------
+
+The default TTL value if none is specified in a zone file or zone insertion
+using the dynamic configuration.
+
+.. WARNING::
+   As changing this value can result in differently parsed zone file(s),
+   the corresponding zone SOA serial(s) should be incremented before
+   reloading or commiting the configuration. Alternatively, setting
+   :ref:`zonefile-load <zone_zonefile-load>` to ``difference-no-serial`` ensures
+   the resulting zone(s) update is correct.
+
+*Default:* ``3600``
 
 .. _zone_zonefile-sync:
 
