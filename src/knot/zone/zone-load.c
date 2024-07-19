@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -33,9 +33,12 @@ int zone_load_contents(conf_t *conf, const knot_dname_t *zone_name,
 	}
 
 	char *zonefile = conf_zonefile(conf, zone_name);
+	conf_val_t val = conf_zone_get(conf, C_DEFAULT_TTL, zone_name);
+	uint32_t dflt_ttl = conf_int(&val);
 
 	zloader_t zl;
-	int ret = zonefile_open(&zl, zonefile, zone_name, semcheck_mode, time(NULL));
+	int ret = zonefile_open(&zl, zonefile, zone_name, dflt_ttl,
+	                        semcheck_mode, time(NULL));
 	free(zonefile);
 	if (ret != KNOT_EOK) {
 		return ret;

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -19,6 +19,8 @@
 #include "knot/conf/conf.h"
 #include "knot/zone/semantic-check.h"
 #include "knot/zone/zone.h"
+
+#define DEFAULT_TTL 3600
 
 /*!
  * \brief Load zone contents according to the configuration.

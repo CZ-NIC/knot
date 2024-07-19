@@ -23,6 +23,7 @@
 #include "libknot/libknot.h"
 #include "knot/common/log.h"
 #include "knot/zone/semantic-check.h"
+#include "knot/zone/zone-load.h"
 #include "utils/common/msg.h"
 #include "utils/common/params.h"
 #include "utils/kzonecheck/zone_check.h"
@@ -169,7 +170,8 @@ int main(int argc, char *argv[])
 		log_levels_add(LOG_TARGET_STDOUT, LOG_SOURCE_ANY, LOG_UPTO(LOG_DEBUG));
 	}
 
-	int ret = zone_check(filename, zone, zonemd, optional, (time_t)check_time, print);
+	int ret = zone_check(filename, zone, zonemd, DEFAULT_TTL, optional,
+	                     (time_t)check_time, print);
 	log_close();
 	if (ret == KNOT_EOK) {
 		if (verbose && !print) {
