@@ -1,0 +1,27 @@
+;; Zone dump (Knot DNS 3.4.dev0+1720175447.11b935381)
+example.com.        	3600	SOA	dns1.example.com. hostmaster.example.com. 2010111214 21600 3600 604800 86400
+example.com.        	3600	NS	dns1.example.com.
+example.com.        	3600	DNSKEY	256 3 13 4t69Zp7W+FQCRVjSjaLlmYuzHp14ljBcUSEcpfSwtl3w6LVb+vzPdjhbdX2Mmzdg+MZBWwnRMDspGl16gmoXig==
+example.com.        	3600	DNSKEY	257 3 13 kamWKsByy8ilBkCfW1fZ9hn+At61Zjf90Ou6lshQeXS3WkeJO/5vuRNZdjv9C5tyb5CBA2QOvSM1Eg/7Cx4ztA==
+example.com.        	0	CDS	3310 13 2 E9C99BE505F97345832D2433034A79ED22EB062F99666A026818F7D35B710821
+example.com.        	0	CDNSKEY	257 3 13 kamWKsByy8ilBkCfW1fZ9hn+At61Zjf90Ou6lshQeXS3WkeJO/5vuRNZdjv9C5tyb5CBA2QOvSM1Eg/7Cx4ztA==
+deleg.example.com.  	3600	A	127.0.0.1
+deleg.example.com.  	3600	NS	deleg.example.com.
+dns1.example.com.   	3600	A	192.0.2.1
+;; DNSSEC signatures
+example.com.        	3600	RRSIG	NS 13 2 3600 20240725130051 20240711113051 60718 example.com. 5KpS/T4LhDDAm/rtOUZ7R8ScH/mMZpWFcR+054OicV4t4JPGoqwgmogroFRd4k/WOF7cmQ31CEvN52Pga7kf9Q==
+example.com.        	3600	RRSIG	SOA 13 2 3600 20240725125558 20240711112558 60718 example.com. iLCQshkoeAPmc8ZP/0ynzw0zbIyZeTlomFunmsZuu//ZbGwYOC1gwRpHzfLpgeYx3jTD4qgUKoJuIzEnfrowrw==
+example.com.        	3600	RRSIG	NSEC 13 2 3600 20240725130247 20240711113247 60718 example.com. E+LTzopR5J1G+2RWDrUcGwOlzFtgUf4GwQltM1F4Z8AFSK3ZEk6xYbbhX2WlIQYyDodxcwgy08kuaeNHegv00w==
+example.com.        	3600	RRSIG	DNSKEY 13 2 3600 20240725125558 20240711112558 3310 example.com. dhFqMNl6AXJu/6uBWjNFjnf1JP8dbOu/VpRHAf4NwM3RlvUCSRZ6qZVQWA0/BvJ+E4iZyfsRYCDTaXEm7i8ZKA==
+example.com.        	0	RRSIG	CDS 13 2 0 20240725125558 20240711112558 3310 example.com. fWiN+LE02kX+kazNZbxBd6BJ88bq/IiwQ6+RsOEYsuC9yFxCa/9dcMF4Z9GN/qn5JFFfnJodQWR0O5iKFE+MBQ==
+example.com.        	0	RRSIG	CDNSKEY 13 2 0 20240725125558 20240711112558 3310 example.com. tsJ9oklWeJUWOnVW84GIKo/nVJNaqd/PWTVWaRBamSmJwiZusppsBxNTGqsQP+2W2cM1FtiuLiDsMm/zWfrppg==
+deleg.example.com.  	3600	RRSIG	NSEC 13 3 3600 20240725130247 20240711113247 60718 example.com. 5mvvVAdpVBKEtGxxFU3fKXl8pMGbyuqwMolOV2eRicPo851BZSeY3Cn1eCCHMn5E4GBglTW6Ugna5AnPoYKVRA==
+dns1.example.com.   	3600	RRSIG	A 13 3 3600 20240725125558 20240711112558 60718 example.com. O26Wir77dSZhE6vmuN2ktFvB+5DHxti3EeHUt56bByREQBHWVrZfLh6KJnmkzR9r7AnwQbIDrcP/9QYXK8Mjgw==
+dns1.example.com.   	3600	RRSIG	NSEC 13 3 3600 20240725130051 20240711113051 60718 example.com. wdfKi+OK0NDMUgrBZ6HBFNRGfXdFGh/OAaQJYbmkEuU/tPmp2Qhpb6EI0clFwALpa5H0MetTIRCKrpT2KlDLDQ==
+;; DNSSEC NSEC chain
+example.com.        	3600	NSEC	deleg.example.com. NS SOA RRSIG NSEC DNSKEY CDS CDNSKEY
+deleg.example.com.  	3600	NSEC	dns1.example.com. NS RRSIG NSEC
+dns1.example.com.   	3600	NSEC	example.com. A RRSIG NSEC
+
+;; NSEC for a node for which this zone is not authoritative
+nonauth.deleg.example.com.  	3600	NSEC	dns1.example.com. NS RRSIG NSEC
