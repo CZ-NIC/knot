@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -15,17 +15,20 @@
  */
 
 #include <getopt.h>
+#include <signal.h>
 #include <stdlib.h>
 #include <unistd.h>
 
 #include "contrib/strtonum.h"
 #include "knot/dnssec/zone-keys.h"
+#include "libdnssec/crypto.h"
 #include "libknot/libknot.h"
 #include "utils/common/msg.h"
 #include "utils/common/params.h"
 #include "utils/common/signal.h"
 #include "utils/common/util_conf.h"
 #include "utils/keymgr/functions.h"
+#include "utils/keymgr/keystore.h"
 #include "utils/keymgr/offline_ksk.h"
 
 #define PROGRAM_NAME	"keymgr"
@@ -36,6 +39,7 @@ static void print_help(void)
 {
 	printf("Usage:\n"
 	       "  %s [-c | -C | -D <path>] [options] <zone_name> <command>\n"
+	       "  %s [-c | -C | -D <path>] [options] <keystore_id> <command>\n"
 	       "  %s [-c | -C | -D <path>] [-j] -l\n"
 	       "  %s -t <tsig_name> [<algorithm> [<bits>]]\n"
 	       "\n"
@@ -87,6 +91,13 @@ static void print_help(void)
 	       "  set           Set existing key's timing attribute.\n"
 	       "                 (syntax: set <key_spec> <attribute_name>=<value>...)\n"
 	       "\n"
+	       "Keystore commands:\n"
+	       "  keystore_test   Conduct some tests on the specified keystore.\n"
+	       "                   Use a configured keystore id or '-' for the default.\n"
+	       "  keystore_bench  Conduct a signing benchmark for each supported algorithm.\n"
+	       "                   Use a configured keystore id or '-' for the default.\n"
+	       "                   (syntax: keystore_bench [<num_threads>])\n"
+	       "\n"
 	       "Commands related to Offline KSK feature:\n"
 	       "  pregenerate   Pre-generate ZSKs for later rollovers with offline KSK.\n"
 	       "                 (syntax: pregenerate [<from>] <to>)\n"
@@ -115,7 +126,8 @@ static void print_help(void)
 	       "  ksk        Whether the generated/imported key shall be Key Signing Key.\n"
 	       "  created/publish/ready/active/retire/remove  The timestamp of the key\n"
 	       "             lifetime event (e.g. published=+1d active=1499770874)\n",
-	       PROGRAM_NAME, PROGRAM_NAME, PROGRAM_NAME, CONF_DEFAULT_FILE, CONF_DEFAULT_DBDIR);
+	       PROGRAM_NAME, PROGRAM_NAME, PROGRAM_NAME, PROGRAM_NAME, CONF_DEFAULT_FILE,
+	       CONF_DEFAULT_DBDIR);
 }
 
 static int key_command(int argc, char *argv[], int opt_ind, knot_lmdb_db_t *kaspdb,
@@ -129,7 +141,8 @@ static int key_command(int argc, char *argv[], int opt_ind, knot_lmdb_db_t *kasp
 	argc -= opt_ind;
 	argv += opt_ind;
 
-	knot_dname_t *zone_name = knot_dname_from_str_alloc(argv[0]);
+	const char *id_str = argv[0];
+	knot_dname_t *zone_name = knot_dname_from_str_alloc(id_str);
 	if (zone_name == NULL) {
 		return KNOT_ENOMEM;
 	}
@@ -275,6 +288,20 @@ static int key_command(int argc, char *argv[], int opt_ind, knot_lmdb_db_t *kasp
 	} else if (strcmp(argv[1], "import-skr") == 0) {
 		CHECK_MISSING_ARG("Input file not specified");
 		ret = keymgr_import_skr(&kctx, argv[2]);
+	} else if (strcmp(argv[1], "keystore-test") == 0) {
+		ret = keymgr_keystore_test(id_str, list_params);
+		print_ok_on_succes = false;
+	} else if (strcmp(argv[1], "keystore-bench") == 0) {
+		uint16_t threads = 1;
+		if (argc > 2) {
+			ret = str_to_u16(argv[2], &threads);
+		}
+		if (ret == KNOT_EOK && threads > 0) {
+			ret = keymgr_keystore_bench(id_str, list_params, threads);
+		} else {
+			ret = KNOT_EINVAL;
+		}
+		print_ok_on_succes = false;
 	} else {
 		ERR2("invalid command '%s'", argv[1]);
 		goto main_end;
@@ -316,8 +343,12 @@ int main(int argc, char *argv[])
 
 	tzset();
 
+	dnssec_crypto_init();
+
 	signal_ctx.close_db = &kaspdb;
 	signal_init_std();
+	struct sigaction sigact = { .sa_handler = SIG_IGN };
+	sigaction(SIGALRM, &sigact, NULL);
 
 	int ret;
 	bool just_list = false;
@@ -405,8 +436,10 @@ int main(int argc, char *argv[])
 
 success:
 	util_conf_deinit();
+	dnssec_crypto_cleanup();
 	return EXIT_SUCCESS;
 failure:
 	util_conf_deinit();
+	dnssec_crypto_cleanup();
 	return EXIT_FAILURE;
 }

@@ -159,6 +159,8 @@ keymgr_SOURCES = \
 	utils/keymgr/bind_privkey.h		\
 	utils/keymgr/functions.c		\
 	utils/keymgr/functions.h		\
+	utils/keymgr/keystore.c			\
+	utils/keymgr/keystore.h			\
 	utils/keymgr/offline_ksk.c		\
 	utils/keymgr/offline_ksk.h		\
 	utils/keymgr/main.c

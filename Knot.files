@@ -439,6 +439,7 @@ src/libdnssec/pem.c
 src/libdnssec/pem.h
 src/libdnssec/random.c
 src/libdnssec/random.h
+src/libdnssec/sample_keys.h
 src/libdnssec/shared/bignum.c
 src/libdnssec/shared/bignum.h
 src/libdnssec/shared/binary_wire.h
@@ -597,6 +598,8 @@ src/utils/keymgr/bind_privkey.c
 src/utils/keymgr/bind_privkey.h
 src/utils/keymgr/functions.c
 src/utils/keymgr/functions.h
+src/utils/keymgr/keystore.c
+src/utils/keymgr/keystore.h
 src/utils/keymgr/main.c
 src/utils/keymgr/offline_ksk.c
 src/utils/keymgr/offline_ksk.h
@@ -683,7 +686,6 @@ tests/knot/test_zone_events.c
 tests/knot/test_zone_serial.c
 tests/knot/test_zone_timers.c
 tests/knot/test_zonedb.c
-tests/libdnssec/sample_keys.h
 tests/libdnssec/test_binary.c
 tests/libdnssec/test_crypto.c
 tests/libdnssec/test_key.c

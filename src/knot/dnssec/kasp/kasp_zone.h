@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -47,7 +47,7 @@ void kasp_zone_free(knot_kasp_zone_t **zone);
 
 void free_key_params(key_params_t *parm);
 
-int zone_init_keystore(conf_t *conf, conf_val_t *policy_id,
+int zone_init_keystore(conf_t *conf, conf_val_t *policy_id, conf_val_t *keystore_id,
                        dnssec_keystore_t **keystore, unsigned *backend, bool *key_label);
 
 int kasp_zone_keys_from_rr(knot_kasp_zone_t *zone,
