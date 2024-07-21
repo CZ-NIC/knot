@@ -1,3 +1,23 @@
+Knot DNS 3.3.8 (2024-07-22)
+===========================
+
+Features:
+---------
+ - libzscanner,libknot: added support for 'dohpath' and 'ohttp' SVCB parameters
+ - libzscanner,libknot: added support for WALLET rrtype
+ - keymgr: new commands for keystore testing (see 'keystore-test' and 'keystore-bench')
+ - knotd: new configuration option for setting default TTL (see 'zone.default-ttl')
+
+Improvements:
+-------------
+ - libknot: added error codes to better describe some failures
+
+Bugfixes:
+---------
+ - knotd: DNSSEC signing doesn't remove NSEC records for non-authoritative nodes
+ - knotd: DNSSEC signing not scheduled on secondary if nothing to be reloaded
+ - libknot: TCP over XDP doesn't ignore SYN+ACK packets on the server side
+
 Knot DNS 3.3.7 (2024-06-25)
 ===========================
 
