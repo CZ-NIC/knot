@@ -186,6 +186,7 @@ static void test_algorithm(dnssec_keystore_t *store,
 
 	const knot_lookup_t *alg_info = knot_lookup_by_id(knot_dnssec_alg_names,
 	                                                  params->algorithm);
+	assert(alg_info);
 
 	printf(TEST_FORMAT,
 	       alg_info->name,
@@ -378,6 +379,8 @@ int keymgr_keystore_bench(const char *keystore_id, keymgr_list_params_t *params,
 
 		const knot_lookup_t *alg_info = knot_lookup_by_id(
 			knot_dnssec_alg_names, KEYS[i]->algorithm);
+		assert(alg_info);
+
 		const unsigned result = (unsigned)result_f;
 		if (result > 0) {
 			printf(BENCH_FORMAT"u\n", alg_info->name, result);
