@@ -19,6 +19,7 @@
 #include "knot/conf/schema.h"
 #include "knot/query/capture.h" // Forces static module!
 #include "knot/query/requestor.h" // Forces static module!
+#include "libknot/xdp.h"
 
 #define MOD_REMOTE		"\x06""remote"
 #define MOD_ADDRESS		"\x07""address"
@@ -74,8 +75,22 @@ static int fwd(dnsproxy_t *proxy, knot_pkt_t *pkt, knotd_qdata_t *qdata, int add
 		return ret;
 	}
 
+	bool udp = false;
+	if (qdata->params->xdp_msg == NULL) {
+		if (!net_is_stream(qdata->params->socket)) {
+			udp = true;
+		}
+	}
+#if ENABLE_XDP
+	else {
+		if (!(qdata->params->xdp_msg->flags & KNOT_XDP_MSG_TCP)) {
+			udp = true;
+		}
+	}
+#endif
+
 	knot_request_flag_t flags = KNOT_REQUEST_NONE;
-	if (!net_is_stream(qdata->params->socket)) {
+	if (udp) {
 		flags = KNOT_REQUEST_UDP;
 	} else if (proxy->tfo) {
 		flags = KNOT_REQUEST_TFO;
