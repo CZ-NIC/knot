@@ -589,10 +589,10 @@ def do_normal_tests(master, zone, dnssec=False):
     # add empty generic record
     check_log("Add empty generic record")
     up = master.update(zone)
-    up.add("empty.ddns.", 300, "TYPE999", "\# 0")
+    up.add("empty.ddns.", 300, "TYPE999", "\\# 0")
     up.send("NOERROR")
     resp = master.dig("empty.ddns.", "TYPE999")
-    resp.check_record(rtype="TYPE999", rdata="\# 0")
+    resp.check_record(rtype="TYPE999", rdata="\\# 0")
     verify(master, zone, dnssec)
 
     # add NAPTR record (NAPTR has special processing)
