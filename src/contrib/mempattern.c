@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -114,9 +114,15 @@ void mm_ctx_init(knot_mm_t *mm)
 	mm->free = free;
 }
 
+// UBSAN type punning workaround
+static void *mp_alloc_wrap(void *ctx, size_t size)
+{
+	return mp_alloc(ctx, size);
+}
+
 void mm_ctx_mempool(knot_mm_t *mm, size_t chunk_size)
 {
 	mm->ctx = mp_new(chunk_size);
-	mm->alloc = (knot_mm_alloc_t)mp_alloc;
+	mm->alloc = mp_alloc_wrap;
 	mm->free = mm_nofree;
 }
