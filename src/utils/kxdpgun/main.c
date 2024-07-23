@@ -475,7 +475,7 @@ static void quic_free_cb(knot_quic_reply_t *rpl)
 void *xdp_gun_thread(void *_ctx)
 {
 	xdp_gun_ctx_t *ctx = _ctx;
-	struct knot_xdp_socket *xsk;
+	struct knot_xdp_socket *xsk = NULL;
 	struct timespec timer;
 	knot_xdp_msg_t pkts[ctx->at_once];
 	uint64_t errors = 0, lost = 0, duration = 0;
@@ -496,7 +496,7 @@ void *xdp_gun_thread(void *_ctx)
 		tcp_table = knot_tcp_table_new(ctx->qps, NULL);
 		if (tcp_table == NULL) {
 			ERR2("failed to allocate TCP connection table");
-			return NULL;
+			goto cleanup;
 		}
 	}
 	if (ctx->quic) {
@@ -504,12 +504,12 @@ void *xdp_gun_thread(void *_ctx)
 		quic_creds = knot_quic_init_creds_peer(NULL, NULL, 0);
 		if (quic_creds == NULL) {
 			ERR2("failed to initialize QUIC context");
-			return NULL;
+			goto cleanup;
 		}
 		quic_table = knot_quic_table_new(ctx->qps * 100, SIZE_MAX, SIZE_MAX, 1232, quic_creds);
 		if (quic_table == NULL) {
 			ERR2("failed to allocate QUIC connection table");
-			return NULL;
+			goto cleanup;
 		}
 		quic_table->qlog_dir = ctx->qlog_dir;
 #else
@@ -530,8 +530,7 @@ void *xdp_gun_thread(void *_ctx)
 	if (ret != KNOT_EOK) {
 		ERR2("failed to initialize XDP socket#%u on interface %s (%s)",
 		     ctx->thread_id, ctx->dev, knot_strerror(ret));
-		knot_tcp_table_free(tcp_table);
-		return NULL;
+		goto cleanup;
 	}
 
 	if (ctx->thread_id == 0) {
@@ -911,6 +910,22 @@ void *xdp_gun_thread(void *_ctx)
 		tick++;
 	}
 
+	char recv_str[40] = "", lost_str[40] = "", err_str[40] = "";
+	if (!(ctx->flags & KNOT_XDP_FILTER_DROP)) {
+		(void)snprintf(recv_str, sizeof(recv_str), ", received %"PRIu64, local_stats.ans_recv);
+	}
+	if (lost > 0) {
+		(void)snprintf(lost_str, sizeof(lost_str), ", lost %"PRIu64, lost);
+	}
+	if (errors > 0) {
+		(void)snprintf(err_str, sizeof(err_str), ", errors %"PRIu64, errors);
+	}
+	INFO2("thread#%02u: sent %"PRIu64"%s%s%s",
+	      ctx->thread_id, local_stats.qry_sent, recv_str, lost_str, err_str);
+	local_stats.duration = ctx->duration;
+	collect_stats(&global_stats, &local_stats);
+
+cleanup:
 	knot_xdp_deinit(xsk);
 
 	if (ctx->tcp) {
@@ -930,21 +945,6 @@ void *xdp_gun_thread(void *_ctx)
 	}
 	knot_quic_free_creds(quic_creds);
 #endif // ENABLE_QUIC
-
-	char recv_str[40] = "", lost_str[40] = "", err_str[40] = "";
-	if (!(ctx->flags & KNOT_XDP_FILTER_DROP)) {
-		(void)snprintf(recv_str, sizeof(recv_str), ", received %"PRIu64, local_stats.ans_recv);
-	}
-	if (lost > 0) {
-		(void)snprintf(lost_str, sizeof(lost_str), ", lost %"PRIu64, lost);
-	}
-	if (errors > 0) {
-		(void)snprintf(err_str, sizeof(err_str), ", errors %"PRIu64, errors);
-	}
-	INFO2("thread#%02u: sent %"PRIu64"%s%s%s",
-	      ctx->thread_id, local_stats.qry_sent, recv_str, lost_str, err_str);
-	local_stats.duration = ctx->duration;
-	collect_stats(&global_stats, &local_stats);
 
 	return NULL;
 }

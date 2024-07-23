@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -289,13 +289,13 @@ int kxsk_iface_new(const char *if_name, unsigned if_queue, knot_xdp_load_bpf_t l
 		ret = get_bpf_maps(ret, iface);
 	}
 	if (ret < 0) {
-		free(iface);
+		kxsk_iface_free(iface);
 		return ret;
 	}
 
 	knot_xdp_mode_t mode = knot_eth_xdp_mode(iface->if_index);
 	if (mode == KNOT_XDP_MODE_NONE) {
-		free(iface);
+		kxsk_iface_free(iface);
 		return KNOT_ENOTSUP;
 	}
 
