@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -106,6 +106,12 @@ static zone_node_t *get_nsec3_node(const zone_contents_t *zone,
 	return zone_tree_get(zone->nsec3_nodes, name);
 }
 
+// UBSAN type punning workaround
+static zone_node_t *node_new_for_contents_wrap(const uint8_t *owner, void *contents)
+{
+	return node_new_for_contents(owner, contents);
+}
+
 static int insert_rr(zone_contents_t *z, const knot_rrset_t *rr, zone_node_t **n)
 {
 	if (knot_rrset_empty(rr)) {
@@ -114,7 +120,7 @@ static int insert_rr(zone_contents_t *z, const knot_rrset_t *rr, zone_node_t **n
 
 	if (*n == NULL) {
 		int ret = zone_tree_add_node(zone_contents_tree_for_rr(z, rr), z->apex, rr->owner,
-		                             (zone_tree_new_node_cb_t)node_new_for_contents, z, n);
+		                             node_new_for_contents_wrap, z, n);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
