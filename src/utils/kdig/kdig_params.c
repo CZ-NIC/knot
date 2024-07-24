@@ -1690,7 +1690,7 @@ query_t *query_create(const char *owner, const query_t *conf)
 		query->style.style.now = knot_time();
 		query->idn = true;
 		query->nsid = false;
-		query->edns = -1;
+		query->edns = 0;
 		query->cc.len = 0;
 		query->sc.len = 0;
 		query->badcookie = BADCOOKIE_RETRY_MAX;

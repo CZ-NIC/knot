@@ -299,7 +299,7 @@ Options
   Set EDNS(0) client subnet SUBN=addr/prefix.
 
 **+**\ [\ **no**\ ]\ **edns**\[\ =\ *N*\]
-  Use EDNS version (default is 0).
+  Use EDNS version (default is 0). EDNS(0) is enabled by default.
 
 **+**\ [\ **no**\ ]\ **timeout**\ =\ *T*
   Set the wait-for-reply interval in seconds (default is 5 seconds). This timeout
