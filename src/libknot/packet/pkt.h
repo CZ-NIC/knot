@@ -1,4 +1,4 @@
-/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -286,7 +286,7 @@ static inline const knot_rrset_t *knot_pkt_rr(const knot_pktsection_t *section,
                                               uint16_t i)
 {
 	assert(section);
-	return (void *)((uintptr_t)section->pkt->rr + section->pos + i);
+	return section->pkt->rr + section->pos + i;
 }
 
 /*! \brief Get RRSet offset in the packet wire. */
