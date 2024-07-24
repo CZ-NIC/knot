@@ -282,7 +282,7 @@ Options
   Request the nameserver identifier (NSID).
 
 **+**\ [\ **no**\ ]\ **bufsize**\ =\ *B*
-  Set EDNS buffer size in bytes (default is 4096 bytes).
+  Set EDNS buffer size in bytes (default is 1232 bytes).
 
 **+**\ [\ **no**\ ]\ **padding**\[\ =\ *B*\]
   Use EDNS(0) padding option to pad queries, optionally to a specific
@@ -299,7 +299,7 @@ Options
   Set EDNS(0) client subnet SUBN=addr/prefix.
 
 **+**\ [\ **no**\ ]\ **edns**\[\ =\ *N*\]
-  Use EDNS version (default is 0).
+  Use EDNS version (default is 0). EDNS(0) is enabled by default.
 
 **+**\ [\ **no**\ ]\ **timeout**\ =\ *T*
   Set the wait-for-reply interval in seconds (default is 5 seconds). This timeout
