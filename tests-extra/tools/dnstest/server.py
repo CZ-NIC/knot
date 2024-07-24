@@ -26,8 +26,7 @@ from dnstest.libknot import libknot
 import dnstest.module
 import dnstest.response
 import dnstest.update
-import distutils.dir_util
-from shutil import copyfile
+from shutil import copyfile, copytree, copy2
 
 def zone_arg_check(zone):
     # Convert one item list to single object.
@@ -892,7 +891,7 @@ class Server(object):
     def use_keys(self, zone):
         zone = zone_arg_check(zone)
         # copy all keys, even for other zones
-        distutils.dir_util.copy_tree(zone.key_dir, self.keydir, update=True)
+        copytree(zone.key_dir, self.keydir, copy_function=copy2)
 
     def dnssec(self, zone):
         zone = zone_arg_check(zone)
