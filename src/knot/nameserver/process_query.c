@@ -147,7 +147,7 @@ static int process_query_in(knot_layer_t *ctx, knot_pkt_t *pkt)
 /*!
  * \brief Create a response for a given query in the INTERNET class.
  */
-static int query_internet(knot_pkt_t *pkt, knot_layer_t *ctx)
+static knot_layer_state_t query_internet(knot_pkt_t *pkt, knot_layer_t *ctx)
 {
 	knotd_qdata_t *data = QUERY_DATA(ctx);
 
@@ -167,7 +167,7 @@ static int query_internet(knot_pkt_t *pkt, knot_layer_t *ctx)
 /*!
  * \brief Create a response for a given query in the CHAOS class.
  */
-static int query_chaos(knot_pkt_t *pkt, knot_layer_t *ctx)
+static knot_layer_state_t query_chaos(knot_pkt_t *pkt, knot_layer_t *ctx)
 {
 	knotd_qdata_t *data = QUERY_DATA(ctx);
 
@@ -507,7 +507,7 @@ static void set_rcode_to_packet(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 	knot_wire_set_rcode(pkt->wire, KNOT_EDNS_RCODE_LO(qdata->rcode));
 }
 
-static int process_query_err(knot_layer_t *ctx, knot_pkt_t *pkt)
+static knot_layer_state_t process_query_err(knot_layer_t *ctx, knot_pkt_t *pkt)
 {
 	assert(ctx && pkt);
 

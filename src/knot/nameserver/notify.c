@@ -29,7 +29,7 @@
 	       LOG_DIRECTION_IN, (qdata)->params->remote, (qdata)->params->proto, \
 	       false, (qdata)->sign.tsig_key.name, fmt)
 
-static int notify_check_query(knotd_qdata_t *qdata)
+static knot_layer_state_t notify_check_query(knotd_qdata_t *qdata)
 {
 	NS_NEED_ZONE(qdata, KNOT_RCODE_NOTAUTH);
 	NS_NEED_AUTH(qdata, ACL_ACTION_NOTIFY);
@@ -39,14 +39,14 @@ static int notify_check_query(knotd_qdata_t *qdata)
 	return KNOT_STATE_DONE;
 }
 
-int notify_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
+knot_layer_state_t notify_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 {
 	if (pkt == NULL || qdata == NULL) {
 		return KNOT_STATE_FAIL;
 	}
 
 	/* Validate notification query. */
-	int state = notify_check_query(qdata);
+	knot_layer_state_t state = notify_check_query(qdata);
 	if (state == KNOT_STATE_FAIL) {
 		switch (qdata->rcode) {
 		case KNOT_RCODE_NOTAUTH: /* Not authorized, already logged. */

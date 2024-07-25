@@ -104,7 +104,7 @@ static int update_enqueue(zone_t *zone, knotd_qdata_t *qdata)
 	return KNOT_EOK;
 }
 
-int update_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
+knot_layer_state_t update_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 {
 	/* DDNS over XDP not supported. */
 	if (qdata->params->xdp_msg != NULL) {

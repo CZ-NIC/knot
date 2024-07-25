@@ -130,7 +130,7 @@ static int ixfr_load_chsets(journal_read_t **journal_read, zone_t *zone,
 	return journal_read_begin(zone_journal(zone), false, serial_from, journal_read);
 }
 
-static int ixfr_query_check(knotd_qdata_t *qdata)
+static knot_layer_state_t ixfr_query_check(knotd_qdata_t *qdata)
 {
 	NS_NEED_ZONE(qdata, KNOT_RCODE_NOTAUTH);
 	NS_NEED_AUTH(qdata, ACL_ACTION_TRANSFER);
@@ -245,13 +245,13 @@ static int ixfr_answer_init(knotd_qdata_t *qdata, uint32_t *serial_from)
 	return KNOT_EOK;
 }
 
-static int ixfr_answer_soa(knot_pkt_t *pkt, knotd_qdata_t *qdata)
+static knot_layer_state_t ixfr_answer_soa(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 {
 	assert(pkt);
 	assert(qdata);
 
 	/* Check query. */
-	int state = ixfr_query_check(qdata);
+	knot_layer_state_t state = ixfr_query_check(qdata);
 	if (state == KNOT_STATE_FAIL) {
 		return state; /* Malformed query. */
 	}
@@ -277,7 +277,7 @@ static int ixfr_answer_soa(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 	return KNOT_STATE_DONE;
 }
 
-int ixfr_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
+knot_layer_state_t ixfr_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 {
 	if (pkt == NULL || qdata == NULL) {
 		return KNOT_STATE_FAIL;

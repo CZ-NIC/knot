@@ -641,7 +641,7 @@ static int solve_additional_dnssec(int state, knot_pkt_t *pkt, knotd_qdata_t *qd
 		return KNOT_STATE_FAIL; \
 	}
 
-static int answer_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
+static knot_layer_state_t answer_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 {
 	int state = KNOTD_IN_STATE_BEGIN;
 	struct query_plan *plan = qdata->extra->zone->query_plan;
@@ -698,7 +698,7 @@ static int answer_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 	return KNOT_STATE_DONE;
 }
 
-int internet_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
+knot_layer_state_t internet_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 {
 	if (pkt == NULL || qdata == NULL) {
 		return KNOT_STATE_FAIL;

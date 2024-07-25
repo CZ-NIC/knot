@@ -1,4 +1,4 @@
-/*  Copyright (C) 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -21,7 +21,5 @@
 
 /*!
  * \brief Process an AXFR query message.
- *
- * \return KNOT_STATE_* processing states
  */
-int axfr_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata);
+knot_layer_state_t axfr_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata);
