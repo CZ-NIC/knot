@@ -1005,6 +1005,9 @@ class Bind(Server):
         zone_name = (" " + zone.name) if zone else ""
         self.ctl("sync%s" % zone_name, wait=wait)
 
+    def bind_version(self):
+        return tuple(map(int, run([self.daemon_bin, '-v'], stdout=PIPE, stderr=PIPE, text=True).stdout.replace('BIND ', '').split('-')[0].split('.')))
+
     def check_option(self, option):
         proc = Popen([params.bind_checkconf_bin, "/dev/fd/0"],
                      stdout=PIPE, stderr=PIPE, stdin=PIPE,
@@ -1107,6 +1110,8 @@ class Bind(Server):
             self._int(s, "zone-propagation-delay", z.dnssec.propagation_delay)
             self._int(s, "signatures-validity", z.dnssec.rrsig_lifetime)
             self._int(s, "signatures-refresh", z.dnssec.rrsig_refresh)
+            if self.bind_version() >= (9, 18, 28):
+                s.item("signatures-jitter", "0")
             s.item("publish-safety", "1")
             s.item("retire-safety", "1")
             s.item("parent-ds-ttl", "5")
