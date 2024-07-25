@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -392,7 +392,7 @@ static void test_conf_db_unset(conf_t *conf, knot_db_txn_t *txn)
 
 	// Unset multivalued item with id - all data at one step (non-null data!).
 	check_unset(conf, txn, C_ZONE, C_MASTER, (uint8_t *)"id", 2, KNOT_EOK,
-	          NULL + 1, 0, NULL, 0);
+	            (void *)8, 0, NULL, 0);
 
 	// Unset group id.
 	check_unset(conf, txn, C_ZONE, NULL, (uint8_t *)"id", 2, KNOT_EOK,
