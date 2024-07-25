@@ -1002,16 +1002,16 @@ void print_data_xfr(const knot_pkt_t *packet,
 	}
 
 	const knot_pktsection_t *answers = knot_pkt_section(packet, KNOT_ANSWER);
-
+	const knot_rrset_t *rrset = answers->count ? knot_pkt_rr(answers, 0) : NULL;
 	switch (style->format) {
 	case FORMAT_DIG:
-		print_section_dig(knot_pkt_rr(answers, 0), answers->count, style);
+		print_section_dig(rrset, answers->count, style);
 		break;
 	case FORMAT_HOST:
-		print_section_host(knot_pkt_rr(answers, 0), answers->count, style);
+		print_section_host(rrset, answers->count, style);
 		break;
 	case FORMAT_FULL:
-		print_section_full(knot_pkt_rr(answers, 0), answers->count, style, true);
+		print_section_full(rrset, answers->count, style, true);
 
 		// Print TSIG record.
 		if (style->show_tsig && knot_pkt_has_tsig(packet)) {

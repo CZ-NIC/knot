@@ -285,8 +285,8 @@ static inline const knot_pktsection_t *knot_pkt_section(const knot_pkt_t *pkt,
 static inline const knot_rrset_t *knot_pkt_rr(const knot_pktsection_t *section,
                                               uint16_t i)
 {
-	assert(section);
-	return (void *)((uintptr_t)section->pkt->rr + section->pos + i);
+	assert(section && section->pkt && section->pkt->rr);
+	return section->pkt->rr + section->pos + i;
 }
 
 /*! \brief Get RRSet offset in the packet wire. */
