@@ -65,7 +65,7 @@ RRTYPES = [ \
     [ 'APL',      'g_apl',      0.05,  42 ], \
     [ 'SSHFP',    'g_sshfp',    0.10,  44 ], \
     [ 'IPSECKEY', 'g_ipseckey', 0.05,  45 ], \
-    [ 'DNSKEY',   'g_key',      0.01,  48 ], \
+#    [ 'DNSKEY',   'g_key',      0.01,  48 ], \
     [ 'DHCID',    'g_dhcid',    0.01,  49 ], \
     [ 'SPF',      'g_spf',      0.15,  99 ], \
     [ 'CUSTOM',   'g_customrr', 0.03,   0 ]  \
