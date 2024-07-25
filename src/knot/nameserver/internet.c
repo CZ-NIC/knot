@@ -286,7 +286,7 @@ static int put_additional(knot_pkt_t *pkt, const knot_rrset_t *rr,
 	return ret;
 }
 
-static int follow_cname(knot_pkt_t *pkt, uint16_t rrtype, knotd_qdata_t *qdata)
+static knotd_in_state_t follow_cname(knot_pkt_t *pkt, uint16_t rrtype, knotd_qdata_t *qdata)
 {
 	/* CNAME chain processing limit. */
 	if (++qdata->extra->cname_chain > CNAME_CHAIN_MAX) {
@@ -369,7 +369,7 @@ static int follow_cname(knot_pkt_t *pkt, uint16_t rrtype, knotd_qdata_t *qdata)
 	return KNOTD_IN_STATE_FOLLOW;
 }
 
-static int name_found(knot_pkt_t *pkt, knotd_qdata_t *qdata)
+static knotd_in_state_t name_found(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 {
 	uint16_t qtype = knot_pkt_qtype(pkt);
 
@@ -406,7 +406,7 @@ static int name_found(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 	}
 }
 
-static int name_not_found(knot_pkt_t *pkt, knotd_qdata_t *qdata)
+static knotd_in_state_t name_not_found(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 {
 	/* Name is covered by wildcard. */
 	if (qdata->extra->encloser->flags & NODE_FLAGS_WILDCARD_CHILD) {
@@ -419,7 +419,7 @@ static int name_not_found(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 		assert(qdata->extra->node != NULL);
 
 		/* Follow expanded wildcard. */
-		int next_state = name_found(pkt, qdata);
+		knotd_in_state_t next_state = name_found(pkt, qdata);
 
 		/* Put to wildcard node list. */
 		if (wildcard_has_visited(qdata, wildcard_node)) {
@@ -456,7 +456,8 @@ static int name_not_found(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 	return KNOTD_IN_STATE_MISS;
 }
 
-static int solve_name(int state, knot_pkt_t *pkt, knotd_qdata_t *qdata)
+static knotd_in_state_t solve_name(knotd_in_state_t state, knot_pkt_t *pkt,
+                                   knotd_qdata_t *qdata)
 {
 	int ret = zone_contents_find_dname(qdata->extra->contents, qdata->name,
 	                                   &qdata->extra->node, &qdata->extra->encloser,
@@ -475,7 +476,8 @@ static int solve_name(int state, knot_pkt_t *pkt, knotd_qdata_t *qdata)
 	}
 }
 
-static int solve_answer(int state, knot_pkt_t *pkt, knotd_qdata_t *qdata, void *ctx)
+static knotd_in_state_t solve_answer(knotd_in_state_t state, knot_pkt_t *pkt,
+                                     knotd_qdata_t *qdata, void *ctx)
 {
 	int old_state = state;
 
@@ -506,7 +508,8 @@ static int solve_answer(int state, knot_pkt_t *pkt, knotd_qdata_t *qdata, void *
 	return state;
 }
 
-static int solve_answer_dnssec(int state, knot_pkt_t *pkt, knotd_qdata_t *qdata, void *ctx)
+static knotd_in_state_t solve_answer_dnssec(knotd_in_state_t state, knot_pkt_t *pkt,
+                                            knotd_qdata_t *qdata, void *ctx)
 {
 	/* RFC4035, section 3.1 RRSIGs for RRs in ANSWER are mandatory. */
 	int ret = nsec_append_rrsigs(pkt, qdata, false);
@@ -517,7 +520,8 @@ static int solve_answer_dnssec(int state, knot_pkt_t *pkt, knotd_qdata_t *qdata,
 	}
 }
 
-static int solve_authority(int state, knot_pkt_t *pkt, knotd_qdata_t *qdata, void *ctx)
+static knotd_in_state_t solve_authority(knotd_in_state_t state, knot_pkt_t *pkt,
+                                        knotd_qdata_t *qdata, void *ctx)
 {
 	int ret = KNOT_ERROR;
 	const zone_contents_t *zone_contents = qdata->extra->contents;
@@ -554,7 +558,8 @@ static int solve_authority(int state, knot_pkt_t *pkt, knotd_qdata_t *qdata, voi
 	}
 }
 
-static int solve_authority_dnssec(int state, knot_pkt_t *pkt, knotd_qdata_t *qdata, void *ctx)
+static knotd_in_state_t solve_authority_dnssec(knotd_in_state_t state, knot_pkt_t *pkt,
+                                               knotd_qdata_t *qdata, void *ctx)
 {
 	int ret = KNOT_ERROR;
 
@@ -591,8 +596,8 @@ static int solve_authority_dnssec(int state, knot_pkt_t *pkt, knotd_qdata_t *qda
 	}
 }
 
-static int solve_additional(int state, knot_pkt_t *pkt, knotd_qdata_t *qdata,
-                            void *ctx)
+static knotd_in_state_t solve_additional(knotd_in_state_t state, knot_pkt_t *pkt,
+                                         knotd_qdata_t *qdata, void *ctx)
 {
 	int ret = KNOT_EOK, rrset_count = pkt->rrset_count;
 
@@ -621,7 +626,8 @@ static int solve_additional(int state, knot_pkt_t *pkt, knotd_qdata_t *qdata,
 	}
 }
 
-static int solve_additional_dnssec(int state, knot_pkt_t *pkt, knotd_qdata_t *qdata, void *ctx)
+static knotd_in_state_t solve_additional_dnssec(knotd_in_state_t state, knot_pkt_t *pkt,
+                                                knotd_qdata_t *qdata, void *ctx)
 {
 	/* RFC4035, section 3.1 RRSIGs for RRs in ADDITIONAL are optional. */
 	int ret = nsec_append_rrsigs(pkt, qdata, true);
@@ -643,7 +649,7 @@ static int solve_additional_dnssec(int state, knot_pkt_t *pkt, knotd_qdata_t *qd
 
 static knot_layer_state_t answer_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 {
-	int state = KNOTD_IN_STATE_BEGIN;
+	knotd_in_state_t state = KNOTD_IN_STATE_BEGIN;
 	struct query_plan *plan = qdata->extra->zone->query_plan;
 	struct query_step *step;
 
