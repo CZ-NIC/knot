@@ -587,6 +587,12 @@ catalog_only:
 	}
 }
 
+// UBSAN type punning workaround
+static void zone_contents_deep_free_wrap(void *contents)
+{
+	zone_contents_deep_free((zone_contents_t *)contents);
+}
+
 void zonedb_reload(conf_t *conf, server_t *server, reload_t mode)
 {
 	if (conf == NULL || server == NULL) {
@@ -625,7 +631,7 @@ void zonedb_reload(conf_t *conf, server_t *server, reload_t mode)
 	/* Wait for readers to finish reading old zone database. */
 	synchronize_rcu();
 
-	ptrlist_free_custom(&contents_tofree, NULL, (ptrlist_free_cb)zone_contents_deep_free);
+	ptrlist_free_custom(&contents_tofree, NULL, zone_contents_deep_free_wrap);
 
 	/* Remove old zone DB. */
 	remove_old_zonedb(conf, db_old, server, mode);

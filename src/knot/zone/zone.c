@@ -273,6 +273,12 @@ void zone_reset(conf_t *conf, zone_t *zone)
 	} \
 }
 
+// UBSAN type punning workaround
+static bool dname_cmp_sweep_wrap(const uint8_t *zone, void *data)
+{
+	return knot_dname_cmp((const knot_dname_t *)zone, (const knot_dname_t *)data) != 0;
+}
+
 int selective_zone_purge(conf_t *conf, zone_t *zone, purge_flag_t params)
 {
 	if (conf == NULL || zone == NULL) {
@@ -291,7 +297,7 @@ int selective_zone_purge(conf_t *conf, zone_t *zone, purge_flag_t params)
 		zone_timers_sanitize(conf, zone);
 		zone->zonefile.bootstrap_cnt = 0;
 		ret = zone_timers_sweep(&zone->server->timerdb,
-		                        (sweep_cb)knot_dname_cmp, zone->name);
+		                        dname_cmp_sweep_wrap, zone->name);
 		RETURN_IF_FAILED("timers", KNOT_ENOENT);
 	}
 
