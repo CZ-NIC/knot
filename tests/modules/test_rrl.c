@@ -32,11 +32,6 @@ int fakeclock_gettime(clockid_t clockid, struct timespec *tp);
 #include "knot/modules/rrl/functions.c"
 #undef clock_gettime
 
-#define RRL_TABLE_SIZE     (1 << 20)
-#define RRL_INSTANT_LIMIT  (1 << 8)
-#define RRL_RATE_LIMIT     (1 << 17)
-#define RRL_BASE_PRICE     (KRU_LIMIT / RRL_INSTANT_LIMIT)
-
 #define RRL_THREADS 4
 //#define RRL_SYNC_WITH_REAL_TIME
 
@@ -57,14 +52,17 @@ static inline kru_price_t get_mult(uint8_t prefixes[], kru_price_t mults[], size
 	return 0;
 }
 
+// Macro correction depending on the table mode.
+int DIFF = 0;
+
 // Instant limits and rate limits per msec.
-#define INST(Vx, prefix)  LIMIT(INSTANT, Vx, prefix)
-#define RATEM(Vx, prefix) (LIMIT(RATE, Vx, prefix) / 1000)
+#define INST(Vx, prefix)  (LIMIT(INSTANT, Vx, prefix) + DIFF)
+#define RATEM(Vx, prefix) (LIMIT(RATE, Vx, prefix) / 1000 + DIFF)
 
 // Expected range of limits for parallel test.
-#define RANGE_INST(Vx, prefix)   INST(Vx, prefix) - 1,   INST(Vx, prefix) + RRL_THREADS - 1
-#define RANGE_RATEM(Vx, prefix)  RATEM(Vx, prefix) - 1,  RATEM(Vx, prefix)
-#define RANGE_UNLIM(queries)     queries,                queries
+#define RANGE_INST(Vx, prefix)   INST(Vx, prefix) - 1,         INST(Vx, prefix) + RRL_THREADS - 1
+#define RANGE_RATEM(Vx, prefix)  RATEM(Vx, prefix) - 1 - DIFF, RATEM(Vx, prefix) + RRL_THREADS - DIFF
+#define RANGE_UNLIM(queries)     queries,                      queries
 
 /* Fix seed for randomness in RLL module. Change if improbable collisions arise. (one byte) */
 #define RRL_SEED_GENERIC  1
@@ -172,6 +170,9 @@ static void *rrl_runnable(void *arg)
 
 				if (rrl_query(d->rrl, &addr, NULL) == KNOT_EOK) {
 					atomic_fetch_add(&d->stages[si].hosts[hi].passed, 1);
+					if (!d->rrl->rw_mode) {
+						rrl_update(d->rrl, &addr, 1);
+					}
 				}
 
 			} while ((qi2 = (qi2 + d->prime) % (1 << BATCH_QUERIES_LOG)));
@@ -200,6 +201,9 @@ void count_test(char *desc, int expected_passing, double margin_fract,
 			cnt = i;
 			break;
 		}
+		if (!rrl->rw_mode) {
+			rrl_update(rrl, &addr, 1);
+		}
 	}
 
 	if (expected_passing < 0) expected_passing = -1;
@@ -213,12 +217,20 @@ void count_test(char *desc, int expected_passing, double margin_fract,
 	}
 }
 
-void test_rrl(void)
+void test_rrl(bool rw_mode)
 {
+	size_t RRL_TABLE_SIZE = (1 << 20);
+	uint32_t RRL_INSTANT_LIMIT = (1 << 7);
+	uint32_t RRL_RATE_LIMIT = (1 << 16);
+	if (rw_mode) {
+		RRL_INSTANT_LIMIT = (1 << 8);
+		RRL_RATE_LIMIT = (1 << 17);
+	}
+
 	fakeclock_init();
 
 	/* create rrl table */
-	rrl = rrl_create(RRL_TABLE_SIZE, RRL_INSTANT_LIMIT, RRL_RATE_LIMIT, 0);
+	rrl = rrl_create(RRL_TABLE_SIZE, RRL_INSTANT_LIMIT, RRL_RATE_LIMIT, rw_mode, 0);
 	ok(rrl != NULL, "rrl(%s): create", impl_name);
 	assert(rrl);
 
@@ -276,7 +288,7 @@ void test_rrl(void)
 	count_test("IPv6 instant limit /64 not applied on /63", -1, 0,
 			AF_INET6, "8000:0:0:1::", 0, 0);
 
-	count_test("IPv6 instant limit /56", INST(V6, 56) - INST(V6, 64) - 1, 0,
+	count_test("IPv6 instant limit /56", INST(V6, 56) - INST(V6, 64) - 1, rw_mode ? 0 : 0.01,
 			AF_INET6, "8000:0:0:00%02x:%02x00::", 0x02, 0xff);
 
 	count_test("IPv6 instant limit /56 not applied on /55", -1, 0,
@@ -288,7 +300,7 @@ void test_rrl(void)
 	count_test("IPv6 instant limit /48 not applied on /47", -1, 0,
 			AF_INET6, "8000:0:1::", 0, 0);
 
-	count_test("IPv6 instant limit /32", INST(V6, 32) - INST(V6, 48) - 1, 0.001,
+	count_test("IPv6 instant limit /32", INST(V6, 32) - INST(V6, 48) - 1, rw_mode ? 0.001 : 0,
 			AF_INET6, "8000:0:%02x%02x::", 0x02, 0xff);
 
 	count_test("IPv6 instant limit /32 not applied on /31", -1, 0,
@@ -370,6 +382,25 @@ void test_rrl(void)
 	rrl_destroy(rrl);
 }
 
+void test_rrl_mode(bool test_avx2, bool rw_mode)
+{
+	if (!rw_mode) {
+		DIFF = 1;
+	}
+
+	KRU = KRU_GENERIC;
+	impl_name = "KRU_GENERIC";
+	test_rrl(rw_mode);
+
+	if (test_avx2) {
+		KRU = KRU_AVX2;
+		impl_name = "KRU_AVX2";
+		test_rrl(rw_mode);
+	} else {
+		diag("AVX2 NOT available");
+	}
+}
+
 int main(int argc, char *argv[])
 {
 	plan_lazy();
@@ -379,15 +410,8 @@ int main(int argc, char *argv[])
 	assert(KRU_GENERIC.initialize != KRU_AVX2.initialize);
 	bool test_avx2 = (KRU.initialize == KRU_AVX2.initialize);
 
-	KRU = KRU_GENERIC;
-	impl_name = "KRU_GENERIC";
-	test_rrl();
-
-	if (test_avx2) {
-		KRU = KRU_AVX2;
-		impl_name = "KRU_AVX2";
-		test_rrl();
-	}
+	test_rrl_mode(test_avx2, true);
+	test_rrl_mode(test_avx2, false);
 
 	dnssec_crypto_cleanup();
 	return 0;

@@ -118,7 +118,7 @@ int rrl_load(knotd_mod_t *mod)
 	uint32_t rate_limit = knotd_conf_mod(mod, MOD_RATE_LIMIT).single.integer;
 	size_t size = knotd_conf_mod(mod, MOD_TBL_SIZE).single.integer;
 	uint32_t log_period = knotd_conf_mod(mod, MOD_LOG_PERIOD).single.integer;
-	ctx->rrl = rrl_create(size, instant_limit, rate_limit, log_period);
+	ctx->rrl = rrl_create(size, instant_limit, rate_limit, true, log_period);
 	if (ctx->rrl == NULL) {
 		ctx_free(ctx);
 		return KNOT_ENOMEM;

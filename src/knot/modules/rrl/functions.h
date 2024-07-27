@@ -27,16 +27,20 @@ typedef struct rrl_table rrl_table_t;
  * \brief Create a RRL table.
  *
  * \param size Fixed table size.
- * \param rate Rate (in pkts/sec).
- * \param instant_limit Instant limit (number).
+ * \param instant_limit Instant limit.
+ * \param rate_limit Rate limit.
+ * \param rw_mode If disabled, RW operation is divided into R and W operations.
  * \param log_period If nonzero, maximum logging period (in milliseconds).
  *
  * \return created table or NULL.
  */
-rrl_table_t *rrl_create(size_t size, uint32_t instant_limit, uint32_t rate_limit, uint32_t log_period);
+rrl_table_t *rrl_create(size_t size, uint32_t instant_limit, uint32_t rate_limit,
+                        bool rw_mode, uint32_t log_period);
 
 /*!
  * \brief Query the RRL table for accept or deny, when the rate limit is reached.
+ *
+ * \note This function is common to both RW and non-RW modes!
  *
  * \param rrl RRL table.
  * \param remote Source address.
@@ -46,6 +50,17 @@ rrl_table_t *rrl_create(size_t size, uint32_t instant_limit, uint32_t rate_limit
  * \retval KNOT_ELIMIT when the limit is reached.
  */
 int rrl_query(rrl_table_t *rrl, const struct sockaddr_storage *remote, knotd_mod_t *mod);
+
+/*!
+ * \brief Update the RRL table.
+ *
+ * \note This function is only for the non-RW mode!
+ *
+ * \param rrl RRL table.
+ * \param remote Source address.
+ * \param value Value with which the table is updated.
+ */
+void rrl_update(rrl_table_t *rrl, const struct sockaddr_storage *remote, size_t value);
 
 /*!
  * \brief Roll a dice whether answer slips or not.
