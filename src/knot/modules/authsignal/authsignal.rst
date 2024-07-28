@@ -4,12 +4,12 @@
 =====================================================================
 
 This module is able to synthesize records for automatic DNSSEC bootstrapping
-(draft-ietf-dnsop-dnssec-bootstrapping).
+(:rfc:`9615`).
 
 Records are synthesized only if the query can't be satisfied from the zone.
 
-Synthesized records also need to be signed. Typically, this would be done
-using the :ref:`onlinesign<mod-onlinesign>` module.
+Synthesized records also need to be signed. Typically, this can be done
+using the :ref:`onlinesign<mod-onlinesign>` module, as shown below.
 
 Example
 -------
