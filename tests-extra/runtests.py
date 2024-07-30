@@ -309,6 +309,12 @@ def main(args):
     log.info("KNOT TESTING SUITE %s" % today)
     log.info("Working directory %s" % outs_dir)
 
+    try:
+        import dnstest.libknot
+    except Exception as e:
+        log.error(str(e))
+        sys.exit(1)
+
     ref_time = datetime.datetime.now().replace(microsecond=0)
 
     if params.jobs > 1: # Multi-thread run

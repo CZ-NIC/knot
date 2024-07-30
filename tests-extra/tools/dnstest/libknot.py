@@ -12,5 +12,5 @@ try:
     import libknot.control
     import libknot.probe
     libknot.Knot(params.libknot_lib)
-except:
-    raise Skip("libknot not available or set KNOT_TEST_LIBKNOT to another libknot without ASAN")
+except Exception as e:
+    raise Skip("libknot error (%s)" % str(e))
