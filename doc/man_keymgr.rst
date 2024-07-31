@@ -8,6 +8,8 @@ Synopsis
 
 :program:`keymgr` [*config_option*] [*options*] *zone_name* *command*
 
+:program:`keymgr` [*config_option*] [*options*] *keystore_id* *command*
+
 :program:`keymgr` [*config_option*] [-j] **-l**
 
 :program:`keymgr` **-t** *parameter*...
@@ -146,12 +148,17 @@ Commands
 Keystore commands
 .................
 
-**keystore_test**
-  Conduct some tests on the specified keystore. Use a configured keystore id
-  or **-** for the default.
-**keystore_bench** [*num_threads*]
-  Conduct a signing benchmark for each supported algorithm. Use a configured
-  keystore id or **-** for the default.
+**keystore-test**
+  Conduct some tests on the specified keystore. For each algorithm, key generation,
+  import, removal, and use (signing and verification) are tested.
+  Use a configured *keystore_id* or **-** for the default.
+
+**keystore-bench** [*num_threads*]
+  Conduct a signing benchmark on the specified keystore.
+  Random blocks of data are signed by the selected number of threads
+  (default is 1) in a loop, and the average number of signing operations per
+  second for each algorithm is returned.
+  Use a configured *keystore_id* or **-** for the default.
 
 Commands related to Offline KSK feature
 .......................................

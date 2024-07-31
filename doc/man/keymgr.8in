@@ -34,6 +34,8 @@ keymgr \- Knot DNS key management utility
 .sp
 \fBkeymgr\fP [\fIconfig_option\fP] [\fIoptions\fP] \fIzone_name\fP \fIcommand\fP
 .sp
+\fBkeymgr\fP [\fIconfig_option\fP] [\fIoptions\fP] \fIkeystore_id\fP \fIcommand\fP
+.sp
 \fBkeymgr\fP [\fIconfig_option\fP] [\-j] \fB\-l\fP
 .sp
 \fBkeymgr\fP \fB\-t\fP \fIparameter\fP\&...
@@ -173,13 +175,17 @@ owned by both zones equally.
 .SS Keystore commands
 .INDENT 0.0
 .TP
-\fBkeystore_test\fP
-Conduct some tests on the specified keystore. Use a configured keystore id
-or \fB\-\fP for the default.
+\fBkeystore\-test\fP
+Conduct some tests on the specified keystore. For each algorithm, key generation,
+import, removal, and use (signing and verification) are tested.
+Use a configured \fIkeystore_id\fP or \fB\-\fP for the default.
 .TP
-\fBkeystore_bench\fP [\fInum_threads\fP]
-Conduct a signing benchmark for each supported algorithm. Use a configured
-keystore id or \fB\-\fP for the default.
+\fBkeystore\-bench\fP [\fInum_threads\fP]
+Conduct a signing benchmark on the specified keystore.
+Random blocks of data are signed by the selected number of threads
+(default is 1) in a loop, and the average number of signing operations per
+second for each algorithm is returned.
+Use a configured \fIkeystore_id\fP or \fB\-\fP for the default.
 .UNINDENT
 .SS Commands related to Offline KSK feature
 .INDENT 0.0
