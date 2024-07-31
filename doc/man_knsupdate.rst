@@ -30,13 +30,13 @@ Parameters
 Options
 .......
 
-**-v**, **--tcp**
-  Use a TCP connection.
+**-T**, **--tcp**
+  Use a TCP connection. (**-v** can be used for compatibility with nsupdate).
 
-**-T**, **--tls**
+**-S**, **--tls**
   Use a TLS connection.
 
-**-q**, **--quic**
+**-Q**, **--quic**
   Use a QUIC connection.
 
 **-p**, **--port** *number*
@@ -70,29 +70,29 @@ Options
   Print the program version. The option **-VV** makes the program
   print the compile time configuration summary.
 
-QUIC options
-............
+QUIC/TLS options
+................
 
 **-H**, **--hostname** *string*
   Enable remote server hostname validation.
 
-**--pin** *base64*
+**-P**, **--pin** *base64*
   Use Out-of-Band key-pinned privacy profile
   (RFC 7858#section-4.2). The PIN must be a Base64 encoded SHA-256 hash of the
   X.509 SubjectPublicKeyInfo. Can be specified multiple times.
 
-**--ca** *path*
+**-A**, **--ca** [*path*]
   Enable certificate validation. Certification authority certificates
   are loaded from the specified PEM file (default is system certificate storage
   if no argument is provided). Can be specified multiple times.
 
-**--certfile** *path*
+**-E**, **--certfile** *path*
   Path to a client certificate file.
 
-**--keyfile** *path*
+**-K**, **--keyfile** *path*
   Path to a client key file.
 
-**--sni** *string*
+**-s**, **--sni** *string*
   Use specified Server Name Indication.
 
 Commands
