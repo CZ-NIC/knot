@@ -57,11 +57,11 @@ class Knsupdate:
         cmdline = [params.knsupdate_bin]
 
         if proto is Proto.TCP:
-            cmdline += ["-v"]
-        elif proto is Proto.TLS:
             cmdline += ["-T"]
+        elif proto is Proto.TLS:
+            cmdline += ["-S"]
         elif proto is Proto.QUIC:
-            cmdline += ["-q"]
+            cmdline += ["-Q"]
 
         if self.tsig:
             cmdline += ["-y", f"{self.tsig.alg}:{self.tsig.name}:{self.tsig.key}"]
