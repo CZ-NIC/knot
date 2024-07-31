@@ -9,6 +9,8 @@ import random
 import threading
 import time
 
+RND_LABEL_ORD = 0
+
 def send_update(up):
     try:
         up.try_send()
@@ -20,7 +22,9 @@ def send_up_bg(up):
     time.sleep(0.2)
 
 def rnd_label(): # including trailing dot
-    return str(zone_generate.main(["-n", "1"])).rstrip()
+    global RND_LABEL_ORD
+    RND_LABEL_ORD += 1
+    return ("%04d_" % RND_LABEL_ORD) + str(zone_generate.main(["-n", "1"])).rstrip()[-32:]
 
 def check_faulty_update(faulty_up, server, zone, expect_fail, expect_faulty):
     test_rr = rnd_label() + "." + zone.name
