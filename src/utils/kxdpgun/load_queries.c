@@ -186,7 +186,7 @@ bool load_queries(const input_t *input, uint16_t edns_size, uint16_t msgid, size
 	}
 	struct pkt_payload *g_payloads_top = NULL;
 
-	void *bufs;
+	void *bufs = NULL;
 	switch (input->format) {
 	case TXT:
 		bufs = malloc(sizeof(txt_bufs_t)); // avoiding too much stuff on stack
