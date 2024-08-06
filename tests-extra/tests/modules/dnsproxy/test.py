@@ -13,8 +13,15 @@ ModDnsproxy.check()
 # Initialize server configuration
 zone_common1 = t.zone("test", storage=".", file_name="test.local_zone")
 zone_common2 = t.zone("test", storage=".", file_name="test.remote_zone")
-zone_local = t.zone_rnd(1)
-zone_remote = t.zone_rnd(1)
+while True:
+    zone_local = t.zone_rnd(1)
+    if zone_local[0].name != zone_common1[0].name:
+        break;
+while True:
+    zone_remote = t.zone_rnd(1)
+    if zone_remote[0].name != zone_common2[0].name and \
+       zone_remote[0].name != zone_local[0].name:
+        break;
 
 local = t.server("knot")
 t.link(zone_common1, local)
