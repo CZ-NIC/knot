@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from re import search
+from re import search, findall
 from subprocess import Popen, PIPE
 
 from dnstest.context import Context
@@ -74,19 +74,21 @@ class Knsupdate:
         cmd = Popen(cmdline, stdin=PIPE, stdout=PIPE, stderr=PIPE, universal_newlines=True)
         (stdout, stderr) = cmd.communicate(header + self.output + "show\nsend\nanswer\nexit\n")
 
-        with open(Context().out_dir + "/keymgr.out", "a") as outf:
+        with open(Context().out_dir + "/knsupdate.out", "a") as outf:
             outf.write(' '.join(cmdline))
             outf.write("\n" + stdout + "\n")
-        with open(Context().out_dir + "/keymgr.err", "a") as errf:
+        with open(Context().out_dir + "/knsupdate.err", "a") as errf:
             errf.write(stderr)
 
         # Parse RCODE
-        if stderr and stderr != '':
-            rcv_match = search(r"'([A-Z]+)'", stderr)
-            if not rcv_match:
-                raise Failed("Failed to parse RCODE")
-            rcv_ercode = rcv_match.group(1)
-        else:
-            rcv_ercode = 'NOERROR'
+        rcodes = findall(r"status: ([A-Z]+)", stdout)
+        if len(rcodes) != 2:
+            raise Failed("Failed to parse RCODE")
+
+        rcv_ercode = rcodes[1]
+
+        if rcv_ercode != "SERVFAIL" and "reply verification" in stderr:
+            raise Failed("TSIG issues in DDNS")
+
         self.output = ""
         return rcv_ercode
