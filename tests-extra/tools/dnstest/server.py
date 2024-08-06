@@ -900,14 +900,14 @@ class Server(object):
         else:
             self.zones[zone.name].zfile.upd_file(storage=storage, version=version)
 
-    def random_ddns(self, zone, allow_empty=True, tries=20):
+    def random_ddns(self, zone, allow_empty=True, allow_ns=True, tries=20):
         zone = zone_arg_check(zone)
 
         for i in range(tries):
             up = self.update(zone)
 
             while True:
-                changes = self.zones[zone.name].zfile.gen_rnd_ddns(up)
+                changes = self.zones[zone.name].zfile.gen_rnd_ddns(up, allow_ns)
                 if allow_empty or changes > 0:
                     break
 
