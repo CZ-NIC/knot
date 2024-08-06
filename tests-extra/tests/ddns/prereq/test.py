@@ -9,10 +9,11 @@ import random
 KNSUPDATE = random.choice([True, False])
 PROTOS = [Proto.TCP, Proto.TLS] + ([Proto.QUIC] if KNSUPDATE else [])
 PROTO = random.choice(PROTOS)
+XDP = True if PROTO == Proto.TCP else False # QUIC has the same port as QUIC+XDP, which does not work with DDNS
 detail_log("Using knsupdate %s %s\n" % (str(KNSUPDATE), str(PROTO)))
 
 t = Test(tls=True, quic=True, knsupdate=KNSUPDATE)
-srv = t.server("knot")
+srv = t.server("knot", xdp_enable=XDP)
 zone = t.zone("ddns.", storage=".")
 
 t.link(zone, srv, ddns=True)
