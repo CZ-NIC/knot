@@ -32,16 +32,10 @@ slave.zones_wait(zones)
 serials_prev = serials_init
 for i in range(4):
     for z in zones:
-        master.random_ddns(z, allow_empty=False)
+        master.random_ddns(z, allow_empty=False, allow_ns=False)
 
     serials = master.zones_wait(zones, serials_prev)
     master.flush() # needed for the next master.random_ddns()
-
-    t.sleep(2)
-    for z in zones:
-        if slave.log_search("[%s] DNSSEC, validation failed (no valid signature for a record)" % z.name.lower()):
-            detail_log("!Ignoring zone '%s' with invalid signature" % z.name.lower())
-            zones.remove(z)
 
     slave.zones_wait(zones, serials_prev)
     serials_prev = serials

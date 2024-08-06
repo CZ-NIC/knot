@@ -275,8 +275,12 @@ class ZoneFile(object):
         with open(self.path, "a") as file:
             file.write("%s IN TXT %s\n" % (owner, rdata))
 
-    def gen_rnd_ddns(self, ddns):
+    def gen_rnd_ddns(self, ddns, allow_ns=True):
         '''Walk zonefile, randomly mark some records to be removed by ddns and some added'''
+
+        skip_types = ["SOA", "RRSIG", "DNSKEY", "DS", "CDS", "CDNSKEY", "NSEC", "NSEC3", "NSEC3PARAM"]
+        if not allow_ns:
+            skip_types += ["NS"]
 
         changes = 0
         with open(self.path, 'r') as file:
@@ -294,7 +298,7 @@ class ZoneFile(object):
                         del line[1]
                     rtype = line[1]
                     rdata = ' '.join(line[2:])
-                    if rtype not in ["SOA", "RRSIG", "DNSKEY", "DS", "CDS", "CDNSKEY", "NSEC", "NSEC3", "NSEC3PARAM"]:
+                    if rtype not in skip_types:
                         try:
                             if random.randint(1, 20) in [4, 5]:
                                 ddns.delete(dname, rtype)
