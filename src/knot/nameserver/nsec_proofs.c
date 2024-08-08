@@ -20,6 +20,7 @@
 #include "knot/nameserver/nsec_proofs.h"
 #include "knot/nameserver/internet.h"
 #include "knot/dnssec/zone-nsec.h"
+#include "knot/common/log.h"
 
 /*!
  * \brief Check if node is empty non-terminal.
@@ -117,6 +118,8 @@ static const zone_node_t *nsec3_encloser(const zone_node_t *closest)
 static const knot_dname_t *get_next_closer(const knot_dname_t *closest_encloser,
                                            const knot_dname_t *name)
 {
+	const knot_dname_t *orig = name;
+
 	// make name only one label longer than closest_encloser
 	size_t ce_labels = knot_dname_labels(closest_encloser, NULL);
 	size_t qname_labels = knot_dname_labels(name, NULL);
@@ -125,7 +128,16 @@ static const knot_dname_t *get_next_closer(const knot_dname_t *closest_encloser,
 	}
 
 	// the common labels should match
-	assert(knot_dname_is_equal(knot_wire_next_label(name, NULL), closest_encloser));
+	const knot_dname_t *next = knot_wire_next_label(name, NULL);
+	if (!knot_dname_is_equal(next, closest_encloser)) {
+		knot_dname_txt_storage_t orig_str;
+		knot_dname_txt_storage_t next_str;
+		knot_dname_txt_storage_t ce_str;
+		knot_dname_to_str(orig_str, orig, sizeof(orig_str));
+		knot_dname_to_str(next_str, next, sizeof(next_str));
+		knot_dname_to_str(ce_str, closest_encloser, sizeof(ce_str));
+		log_notice("DBG, orig <%s>, next <%s>, closest <%s>", orig_str, next_str, ce_str);
+	}
 
 	return name;
 }
