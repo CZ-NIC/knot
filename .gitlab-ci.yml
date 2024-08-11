@@ -19,7 +19,7 @@ stages:
   before_script:
     - docker info
   script:
-    - docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN $CI_REGISTRY
+    - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
     - docker build --no-cache -t "$IMAGE_TAG" "scripts/docker/$IMAGE_NAME-$IMAGE_VER"
     - docker push "$IMAGE_TAG"
   tags:
