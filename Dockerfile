@@ -35,7 +35,7 @@ COPY . /knot-src
 WORKDIR /knot-src
 ARG FASTPARSER=disable
 RUN autoreconf -if && \
-    CFLAGS="-g -O2 -DNDEBUG -D_FORTIFY_SOURCE=2 -fstack-protector-strong" \
+    CFLAGS="-g -O2 -DNDEBUG -D_FORTIFY_SOURCE=3 -fstack-protector-strong" \
     ./configure --prefix=/ \
                 --with-rundir=/rundir \
                 --with-storage=/storage \
