@@ -15,6 +15,7 @@
  */
 
 #include <assert.h>
+#include <stdlib.h>
 
 #include "libknot/libknot.h"
 #include "knot/nameserver/nsec_proofs.h"
@@ -137,6 +138,7 @@ static const knot_dname_t *get_next_closer(const knot_dname_t *closest_encloser,
 		knot_dname_to_str(next_str, next, sizeof(next_str));
 		knot_dname_to_str(ce_str, closest_encloser, sizeof(ce_str));
 		log_notice("DBG, orig <%s>, next <%s>, closest <%s>", orig_str, next_str, ce_str);
+		abort();
 	}
 
 	return name;
