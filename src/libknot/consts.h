@@ -134,6 +134,7 @@ typedef enum {
 	KNOT_EDNS_EDE_NSEC3_ITERS      = 27,
 	KNOT_EDNS_EDE_NONCONF_POLICY   = 28,
 	KNOT_EDNS_EDE_SYNTHESIZED      = 29,
+	KNOT_EDNS_EDE_INV_QTYPE        = 30,
 } knot_edns_ede_t;
 
 /*!
