@@ -45,7 +45,6 @@
 #include "libknot/quic/quic.h"
 #endif // ENABLE_QUIC
 #include "contrib/atomic.h"
-#include "contrib/macros.h"
 #include "contrib/openbsd/strlcpy.h"
 #include "contrib/os.h"
 #include "contrib/sockaddr.h"
@@ -54,15 +53,8 @@
 #include "utils/common/params.h"
 #include "utils/kxdpgun/ip_route.h"
 #include "utils/kxdpgun/load_queries.h"
-
-#define PROGRAM_NAME "kxdpgun"
-#define SPACE        "  "
-
-enum {
-	KXDPGUN_WAIT,
-	KXDPGUN_START,
-	KXDPGUN_STOP,
-};
+#include "utils/kxdpgun/main.h"
+#include "utils/kxdpgun/stats.h"
 
 volatile int xdp_trigger = KXDPGUN_WAIT;
 
@@ -71,73 +63,7 @@ volatile knot_atomic_uint64_t stats_trigger = 0;
 unsigned global_cpu_aff_start = 0;
 unsigned global_cpu_aff_step = 1;
 
-#define REMOTE_PORT_DEFAULT        53
-#define REMOTE_PORT_DOQ_DEFAULT   853
-#define LOCAL_PORT_MIN           2000
-#define LOCAL_PORT_MAX          65535
-#define QUIC_THREAD_PORTS         100
-
-#define RCODE_MAX (0x0F + 1)
-
-typedef struct {
-	size_t collected;
-	uint64_t duration;
-	uint64_t qry_sent;
-	uint64_t synack_recv;
-	uint64_t ans_recv;
-	uint64_t finack_recv;
-	uint64_t rst_recv;
-	uint64_t size_recv;
-	uint64_t wire_recv;
-	uint64_t errors;
-	uint64_t lost;
-	uint64_t rcodes_recv[RCODE_MAX];
-	pthread_mutex_t mutex;
-} kxdpgun_stats_t;
-
 static kxdpgun_stats_t global_stats = { 0 };
-
-typedef enum {
-	KXDPGUN_IGNORE_NONE     = 0,
-	KXDPGUN_IGNORE_QUERY    = (1 << 0),
-	KXDPGUN_IGNORE_LASTBYTE = (1 << 1),
-	KXDPGUN_IGNORE_CLOSE    = (1 << 2),
-	KXDPGUN_REUSE_CONN      = (1 << 3),
-} xdp_gun_ignore_t;
-
-typedef struct {
-	union {
-		struct sockaddr_in local_ip4;
-		struct sockaddr_in6 local_ip;
-		struct sockaddr_storage local_ip_ss;
-	};
-	union {
-		struct sockaddr_in target_ip4;
-		struct sockaddr_in6 target_ip;
-		struct sockaddr_storage target_ip_ss;
-	};
-	char                   dev[IFNAMSIZ];
-	uint64_t               qps, duration;
-	unsigned               at_once;
-	uint16_t               msgid;
-	uint16_t               edns_size;
-	uint16_t               vlan_tci;
-	uint8_t                local_mac[6], target_mac[6];
-	uint8_t                local_ip_range;
-	bool                   ipv6;
-	bool                   tcp;
-	bool                   quic;
-	bool                   quic_full_handshake;
-	const char             *qlog_dir;
-	const char             *sending_mode;
-	xdp_gun_ignore_t       ignore1;
-	knot_tcp_ignore_t      ignore2;
-	uint16_t               target_port;
-	knot_xdp_filter_flag_t flags;
-	unsigned               n_threads, thread_id;
-	knot_eth_rss_conf_t    *rss_conf;
-	knot_xdp_config_t      xdp_config;
-} xdp_gun_ctx_t;
 
 const static xdp_gun_ctx_t ctx_defaults = {
 	.dev[0] = '\0',
@@ -163,91 +89,6 @@ static void sigusr_handler(int signo)
 	if (global_stats.collected == 0) {
 		ATOMIC_ADD(stats_trigger, 1);
 	}
-}
-
-static void clear_stats(kxdpgun_stats_t *st)
-{
-	pthread_mutex_lock(&st->mutex);
-	st->duration    = 0;
-	st->qry_sent    = 0;
-	st->synack_recv = 0;
-	st->ans_recv    = 0;
-	st->finack_recv = 0;
-	st->rst_recv    = 0;
-	st->size_recv   = 0;
-	st->wire_recv   = 0;
-	st->collected   = 0;
-	st->lost        = 0;
-	st->errors      = 0;
-	memset(st->rcodes_recv, 0, sizeof(st->rcodes_recv));
-	pthread_mutex_unlock(&st->mutex);
-}
-
-static size_t collect_stats(kxdpgun_stats_t *into, const kxdpgun_stats_t *what)
-{
-	pthread_mutex_lock(&into->mutex);
-	into->duration     = MAX(into->duration, what->duration);
-	into->qry_sent    += what->qry_sent;
-	into->synack_recv += what->synack_recv;
-	into->ans_recv    += what->ans_recv;
-	into->finack_recv += what->finack_recv;
-	into->rst_recv    += what->rst_recv;
-	into->size_recv   += what->size_recv;
-	into->wire_recv   += what->wire_recv;
-	into->lost        += what->lost;
-	into->errors      += what->errors;
-	for (int i = 0; i < RCODE_MAX; i++) {
-		into->rcodes_recv[i] += what->rcodes_recv[i];
-	}
-	size_t res = ++into->collected;
-	pthread_mutex_unlock(&into->mutex);
-	return res;
-}
-
-static void print_stats(kxdpgun_stats_t *st, bool tcp, bool quic, bool recv, uint64_t qps)
-{
-	pthread_mutex_lock(&st->mutex);
-
-#define ps(counter)  ((typeof(counter))((counter) * 1000 / ((float)st->duration / 1000)))
-#define pct(counter) ((counter) * 100.0 / st->qry_sent)
-
-	const char *name = tcp ? "SYNs:    " : quic ? "initials:" : "queries: ";
-	printf("total %s    %"PRIu64" (%"PRIu64" pps) (%f%%)\n", name, st->qry_sent,
-	       ps(st->qry_sent), 100.0 * st->qry_sent / (st->duration / 1000000.0 * qps));
-	if (st->qry_sent > 0 && recv) {
-		if (tcp || quic) {
-		name = tcp ? "established:" : "handshakes: ";
-		printf("total %s %"PRIu64" (%"PRIu64" pps) (%f%%)\n", name,
-		       st->synack_recv, ps(st->synack_recv), pct(st->synack_recv));
-		}
-		printf("total replies:     %"PRIu64" (%"PRIu64" pps) (%f%%)\n",
-		       st->ans_recv, ps(st->ans_recv), pct(st->ans_recv));
-		if (tcp) {
-		printf("total closed:      %"PRIu64" (%"PRIu64" pps) (%f%%)\n",
-		       st->finack_recv, ps(st->finack_recv), pct(st->finack_recv));
-		}
-		if (st->rst_recv > 0) {
-		printf("total reset:       %"PRIu64" (%"PRIu64" pps) (%f%%)\n",
-		       st->rst_recv, ps(st->rst_recv), pct(st->rst_recv));
-		}
-		printf("average DNS reply size: %"PRIu64" B\n",
-		       st->ans_recv > 0 ? st->size_recv / st->ans_recv : 0);
-		printf("average Ethernet reply rate: %"PRIu64" bps (%.2f Mbps)\n",
-		       ps(st->wire_recv * 8), ps((float)st->wire_recv * 8 / (1000 * 1000)));
-
-		for (int i = 0; i < RCODE_MAX; i++) {
-			if (st->rcodes_recv[i] > 0) {
-				const knot_lookup_t *rcode = knot_lookup_by_id(knot_rcode_names, i);
-				const char *rcname = rcode == NULL ? "unknown" : rcode->name;
-				int space = MAX(9 - strlen(rcname), 0);
-				printf("responded %s: %.*s%"PRIu64"\n",
-				       rcname, space, "         ", st->rcodes_recv[i]);
-			}
-		}
-	}
-	printf("duration: %"PRIu64" s\n", (st->duration / (1000 * 1000)));
-
-	pthread_mutex_unlock(&st->mutex);
 }
 
 inline static void timer_start(struct timespec *timesp)
@@ -477,30 +318,6 @@ static void quic_free_cb(knot_quic_reply_t *rpl)
 	knot_xdp_send_free(rpl->sock, rpl->out_ctx, 1);
 }
 #endif // ENABLE_QUIC
-
-static void print_thrd_summary(const xdp_gun_ctx_t *ctx, const kxdpgun_stats_t *st) {
-	char recv_str[40] = "", lost_str[40] = "", err_str[40] = "";
-	if (!(ctx->flags & KNOT_XDP_FILTER_DROP)) {
-		(void)snprintf(recv_str, sizeof(recv_str), ", received %"PRIu64, st->ans_recv);
-	}
-	if (st->lost > 0) {
-		(void)snprintf(lost_str, sizeof(lost_str), ", lost %"PRIu64, st->lost);
-	}
-	if (st->errors > 0) {
-		(void)snprintf(err_str, sizeof(err_str), ", errors %"PRIu64, st->errors);
-	}
-	INFO2("thread#%02u: sent %"PRIu64"%s%s%s",
-	      ctx->thread_id, st->qry_sent, recv_str, lost_str, err_str);
-}
-
-static void print_stats_header(const xdp_gun_ctx_t *ctx) {
-	INFO2("using interface %s, XDP threads %u, IPv%c/%s%s%s, %s mode", ctx->dev, ctx->n_threads,
-	      (ctx->ipv6 ? '6' : '4'),
-	      (ctx->tcp ? "TCP" : ctx->quic ? "QUIC" : "UDP"),
-	      (ctx->sending_mode[0] != '\0' ? " mode " : ""),
-	      (ctx->sending_mode[0] != '\0' ? ctx->sending_mode : ""),
-	      (knot_eth_xdp_mode(if_nametoindex(ctx->dev)) == KNOT_XDP_MODE_FULL ? "native" : "emulated"));
-}
 
 void *xdp_gun_thread(void *_ctx)
 {
@@ -923,7 +740,7 @@ void *xdp_gun_thread(void *_ctx)
 			size_t collected = collect_stats(&global_stats, &local_stats);
 			assert(collected <= ctx->n_threads);
 			if (collected == ctx->n_threads) {
-				print_stats(&global_stats, ctx->tcp, ctx->quic, !(ctx->flags & KNOT_XDP_FILTER_DROP), ctx->qps * ctx->n_threads);
+				print_stats(&global_stats, ctx);
 				clear_stats(&global_stats);
 			}
 		}
@@ -1537,7 +1354,7 @@ int main(int argc, char *argv[])
 		pthread_join(threads[i], NULL);
 	}
 	if (global_stats.duration > 0 && global_stats.qry_sent > 0) {
-		print_stats(&global_stats, ctx.tcp, ctx.quic, !(ctx.flags & KNOT_XDP_FILTER_DROP), ctx.qps * ctx.n_threads);
+		print_stats(&global_stats, &ctx);
 	}
 	pthread_mutex_destroy(&global_stats.mutex);
 
