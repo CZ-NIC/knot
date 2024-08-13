@@ -116,6 +116,9 @@ Options
   This option is ignored if not in the QUIC mode. The recommended usage is
   with **--quic=R** or with low QPS. Otherwise, too many files are generated.
 
+**-j**, **--json**
+  Print statistics formatted as json.
+
 **-h**, **--help**
   Print the program help.
 

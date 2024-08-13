@@ -27,10 +27,13 @@
 #include "utils/kxdpgun/main.h"
 #include "utils/kxdpgun/stats.h"
 
+pthread_mutex_t stdout_mtx = PTHREAD_MUTEX_INITIALIZER;
+
 void clear_stats(kxdpgun_stats_t *st)
 {
 	pthread_mutex_lock(&st->mutex);
-	st->duration    = 0;
+	st->since       = 0;
+	st->until       = 0;
 	st->qry_sent    = 0;
 	st->synack_recv = 0;
 	st->ans_recv    = 0;
@@ -48,7 +51,8 @@ void clear_stats(kxdpgun_stats_t *st)
 size_t collect_stats(kxdpgun_stats_t *into, const kxdpgun_stats_t *what)
 {
 	pthread_mutex_lock(&into->mutex);
-	into->duration     = MAX(into->duration, what->duration);
+	into->since        = MAX(into->since, what->since);
+	into->until        = MAX(into->until, what->until);
 	into->qry_sent    += what->qry_sent;
 	into->synack_recv += what->synack_recv;
 	into->ans_recv    += what->ans_recv;
@@ -66,7 +70,7 @@ size_t collect_stats(kxdpgun_stats_t *into, const kxdpgun_stats_t *what)
 	return res;
 }
 
-void print_stats_header(const xdp_gun_ctx_t *ctx)
+void plain_stats_header(const xdp_gun_ctx_t *ctx)
 {
 	INFO2("using interface %s, XDP threads %u, IPv%c/%s%s%s, %s mode", ctx->dev, ctx->n_threads,
 	      (ctx->ipv6 ? '6' : '4'),
@@ -76,7 +80,60 @@ void print_stats_header(const xdp_gun_ctx_t *ctx)
 	      (knot_eth_xdp_mode(if_nametoindex(ctx->dev)) == KNOT_XDP_MODE_FULL ? "native" : "emulated"));
 }
 
-void print_thrd_summary(const xdp_gun_ctx_t *ctx, const kxdpgun_stats_t *st)
+/* see:
+ * - https://github.com/DNS-OARC/dns-metrics/blob/main/dns-metrics.schema.json
+ * - https://github.com/DNS-OARC/dns-metrics/issues/16#issuecomment-2139462920
+ */
+void json_stats_header(const xdp_gun_ctx_t *ctx)
+{
+	jsonw_t *w = ctx->jw;
+
+	jsonw_object(w, NULL);
+	{
+		jsonw_ulong(w, "runid", ctx->runid);
+		jsonw_str(w, "type", "header");
+		jsonw_int(w, "schema_version", STATS_SCHEMA_VERSION);
+		jsonw_str(w, "generator", PROGRAM_NAME);
+		jsonw_str(w, "generator_version", PACKAGE_VERSION);
+
+		jsonw_list(w, "generator_params");
+		{
+			for (char **it = ctx->argv; *it != NULL; ++it) {
+				jsonw_str(w, NULL, *it);
+			}
+		}
+		jsonw_end(w);
+
+		jsonw_ulong(w, "time_units_per_sec", 1000000000);
+		if (ctx->stats_period > 0) {
+			jsonw_double(w, "stats_interval", ctx->stats_period / 1000.0);
+		}
+		// TODO: timeout
+
+		// mirror the info given by the plaintext printout
+		jsonw_object(w, "additional_info");
+		{
+			jsonw_str(w, "interface", ctx->dev);
+			jsonw_int(w, "xdp_threads", ctx->n_threads);
+			jsonw_int(w, "ip_version", ctx->ipv6 ? 6 : 4);
+			jsonw_str(w, "transport_layer_proto", ctx->tcp ? "TCP" : (ctx->quic ? "QUIC" : "UDP"));
+			jsonw_object(w, "mode_info");
+			{
+				if (ctx->sending_mode[0] != '\0') {
+					jsonw_str(w, "debug", ctx->sending_mode);
+				}
+				jsonw_str(w, "mode", knot_eth_xdp_mode(if_nametoindex(ctx->dev)) == KNOT_XDP_MODE_FULL
+							? "native"
+							: "emulated");
+			}
+			jsonw_end(w);
+		}
+		jsonw_end(w);
+	}
+	jsonw_end(w);
+}
+
+void plain_thrd_summary(const xdp_gun_ctx_t *ctx, const kxdpgun_stats_t *st)
 {
 	char recv_str[40] = "", lost_str[40] = "", err_str[40] = "";
 	if (!(ctx->flags & KNOT_XDP_FILTER_DROP)) {
@@ -92,18 +149,41 @@ void print_thrd_summary(const xdp_gun_ctx_t *ctx, const kxdpgun_stats_t *st)
 	      ctx->thread_id, st->qry_sent, recv_str, lost_str, err_str);
 }
 
-void print_stats(kxdpgun_stats_t *st, const xdp_gun_ctx_t *ctx)
+void json_thrd_summary(const xdp_gun_ctx_t *ctx, const kxdpgun_stats_t *st)
+{
+	pthread_mutex_lock(&stdout_mtx);
+
+	jsonw_t *w = ctx->jw;
+
+	jsonw_object(ctx->jw, NULL);
+	{
+		jsonw_str(w, "type", "thread_summary");
+		jsonw_ulong(w, "runid", ctx->runid);
+		jsonw_ulong(w, "subid", ctx->thread_id);
+		jsonw_ulong(w, "qry_sent", st->qry_sent);
+		jsonw_ulong(w, "ans_recv", st->ans_recv);
+		jsonw_ulong(w, "lost", st->lost);
+		jsonw_ulong(w, "errors", st->errors);
+	}
+	jsonw_end(ctx->jw);
+	pthread_mutex_unlock(&stdout_mtx);
+}
+
+void plain_stats(const xdp_gun_ctx_t *ctx, kxdpgun_stats_t *st, stats_type_t stt)
 {
 	pthread_mutex_lock(&st->mutex);
 
 	bool recv = !(ctx->flags & KNOT_XDP_FILTER_DROP);
+	uint64_t duration = DURATION_US(*st);
+	double rel_start_us = (st->since / 1000.0) - ctx->stats_start_us ;
+	double rel_end_us = rel_start_us + duration;
 
-#define ps(counter)  ((typeof(counter))((counter) * 1000 / ((float)st->duration / 1000)))
+#define ps(counter)  ((typeof(counter))((counter) * 1000 / ((float)duration / 1000)))
 #define pct(counter) ((counter) * 100.0 / st->qry_sent)
 
 	const char *name = ctx->tcp ? "SYNs:    " : ctx->quic ? "initials:" : "queries: ";
 	printf("total %s    %"PRIu64" (%"PRIu64" pps) (%f%%)\n", name, st->qry_sent,
-	       ps(st->qry_sent), 100.0 * st->qry_sent / (st->duration / 1000000.0 * ctx->qps * ctx->n_threads));
+	       ps(st->qry_sent), 100.0 * st->qry_sent / (duration / 1000000.0 * ctx->qps * ctx->n_threads));
 	if (st->qry_sent > 0 && recv) {
 		if (ctx->tcp || ctx->quic) {
 		name = ctx->tcp ? "established:" : "handshakes: ";
@@ -135,7 +215,65 @@ void print_stats(kxdpgun_stats_t *st, const xdp_gun_ctx_t *ctx)
 			}
 		}
 	}
-	printf("duration: %"PRIu64" s\n", (st->duration / (1000 * 1000)));
+	if (stt == STATS_SUM) {
+		printf("duration: %.4f s\n", duration / 1000000.0);
+	} else {
+		printf("since: %.4fs   until: %.4fs\n", rel_start_us / 1000000, rel_end_us / 1000000);
+	}
+
+	pthread_mutex_unlock(&st->mutex);
+}
+
+/* see https://github.com/DNS-OARC/dns-metrics/blob/main/dns-metrics.schema.json
+ * and https://github.com/DNS-OARC/dns-metrics/issues/16#issuecomment-2139462920 */
+void json_stats(const xdp_gun_ctx_t *ctx, kxdpgun_stats_t *st, stats_type_t stt)
+{
+	assert(stt == STATS_PERIODIC || stt == STATS_SUM);
+
+	jsonw_t *w = ctx->jw;
+
+	pthread_mutex_lock(&st->mutex);
+
+	jsonw_object(w, NULL);
+	{
+		jsonw_ulong(w, "runid", ctx->runid);
+		jsonw_str(w, "type", (stt == STATS_PERIODIC) ? "stats_periodic" : "stats_sum");
+		jsonw_ulong(w, "since", st->since);
+		jsonw_ulong(w, "until", st->until);
+		jsonw_ulong(w, "queries", st->qry_sent);
+		jsonw_ulong(w, "responses", st->ans_recv);
+
+		jsonw_object(w, "response_rcodes");
+		{
+			for (size_t i = 0; i < RCODE_MAX; ++i) {
+				if (st->rcodes_recv[i] > 0) {
+					const knot_lookup_t *rc = knot_lookup_by_id(knot_rcode_names, i);
+					jsonw_ulong(w, (rc == NULL) ? "unknown" : rc->name, st->rcodes_recv[i]);
+				}
+			}
+		}
+		jsonw_end(w);
+
+		jsonw_object(w, "conn_info");
+		{
+			jsonw_str(w, "type", ctx->tcp ? "tcp" : (ctx->quic ? "quic_conn" : "udp"));
+
+			// TODO:
+			// packets_sent
+			// packets_recieved
+
+			jsonw_ulong(w, "socket_errors", st->errors);
+			if (ctx->tcp || ctx->quic) {
+				jsonw_ulong(w, "handshakes", st->synack_recv);
+				// TODO: handshakes_failed
+				if (ctx->quic) {
+					// TODO: conn_resumption
+				}
+			}
+		}
+		jsonw_end(w);
+	}
+	jsonw_end(w);
 
 	pthread_mutex_unlock(&st->mutex);
 }

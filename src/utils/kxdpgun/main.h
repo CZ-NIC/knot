@@ -20,6 +20,7 @@
 #include <netinet/in.h>
 #include <stdbool.h>
 
+#include "contrib/json.h"
 #include "libknot/xdp/eth.h"
 #include "libknot/xdp/tcp.h"
 
@@ -59,6 +60,9 @@ typedef struct xdp_gun_ctx {
 	};
 	char                   dev[IFNAMSIZ];
 	uint64_t               qps, duration;
+	uint64_t               runid;
+	uint64_t               stats_start_us;
+	uint32_t               stats_period; // 0 means no periodic stats
 	unsigned               at_once;
 	uint16_t               msgid;
 	uint16_t               edns_size;
@@ -77,5 +81,7 @@ typedef struct xdp_gun_ctx {
 	knot_xdp_filter_flag_t flags;
 	unsigned               n_threads, thread_id;
 	knot_eth_rss_conf_t    *rss_conf;
+	jsonw_t                *jw;
+	char                   **argv;
 	knot_xdp_config_t      xdp_config;
 } xdp_gun_ctx_t;

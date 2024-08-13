@@ -75,7 +75,22 @@ const static xdp_gun_ctx_t ctx_defaults = {
 	.target_port = 0,
 	.flags = KNOT_XDP_FILTER_UDP | KNOT_XDP_FILTER_PASS,
 	.xdp_config = { .ring_size = 2048 },
+	.jw = NULL,
 };
+
+static uint64_t us_timestamp(void)
+{
+	struct timespec ts;
+	clock_gettime(CLOCK_REALTIME, &ts);
+	return ((uint64_t)ts.tv_sec * 1000000) + (ts.tv_nsec / 1000);
+}
+
+static uint64_t ns_timestamp(void)
+{
+	struct timespec ts;
+	clock_gettime(CLOCK_REALTIME, &ts);
+	return ((uint64_t)ts.tv_sec * 1000000000) + ts.tv_nsec;
+}
 
 static void sigterm_handler(int signo)
 {
@@ -89,20 +104,6 @@ static void sigusr_handler(int signo)
 	if (global_stats.collected == 0) {
 		ATOMIC_ADD(stats_trigger, 1);
 	}
-}
-
-inline static void timer_start(struct timespec *timesp)
-{
-	clock_gettime(CLOCK_MONOTONIC, timesp);
-}
-
-inline static uint64_t timer_end(struct timespec *timesp)
-{
-	struct timespec end;
-	clock_gettime(CLOCK_MONOTONIC, &end);
-	uint64_t res = (end.tv_sec - timesp->tv_sec) * (uint64_t)1000000;
-	res += ((int64_t)end.tv_nsec - timesp->tv_nsec) / 1000;
-	return res;
 }
 
 static unsigned addr_bits(bool ipv6)
@@ -323,10 +324,9 @@ void *xdp_gun_thread(void *_ctx)
 {
 	xdp_gun_ctx_t *ctx = _ctx;
 	struct knot_xdp_socket *xsk = NULL;
-	struct timespec timer;
 	knot_xdp_msg_t pkts[ctx->at_once];
 	uint64_t duration = 0;
-	kxdpgun_stats_t local_stats = { 0 };
+	kxdpgun_stats_t local_stats = { 0 }; // cumulative stats of past periods excluding the current
 	unsigned stats_triggered = 0;
 	knot_tcp_table_t *tcp_table = NULL;
 #ifdef ENABLE_QUIC
@@ -382,7 +382,7 @@ void *xdp_gun_thread(void *_ctx)
 	}
 
 	if (ctx->thread_id == 0) {
-		print_stats_header(ctx);
+		STATS_HDR(ctx);
 	}
 
 	struct pollfd pfd = { knot_xdp_socket_fd(xsk), POLLIN, 0 };
@@ -428,7 +428,8 @@ void *xdp_gun_thread(void *_ctx)
 	size_t local_ports_it = 0;
 #endif // ENABLE_QUIC
 
-	timer_start(&timer);
+	local_stats.since = ns_timestamp();
+	ctx->stats_start_us = local_stats.since / 1000;
 
 	while (duration < ctx->duration + extra_wait) {
 		// sending part
@@ -728,7 +729,8 @@ void *xdp_gun_thread(void *_ctx)
 
 		// speed and signal part
 		uint64_t dura_exp = (local_stats.qry_sent * 1000000) / ctx->qps;
-		duration = timer_end(&timer);
+		uint64_t now_ns = ns_timestamp();
+		duration = (now_ns - local_stats.since) / 1000;
 		if (xdp_trigger == KXDPGUN_STOP && ctx->duration > duration) {
 			ctx->duration = duration;
 		}
@@ -736,11 +738,12 @@ void *xdp_gun_thread(void *_ctx)
 		if (tmp_stats_trigger > stats_triggered) {
 			stats_triggered = tmp_stats_trigger;
 
-			local_stats.duration = duration;
+			local_stats.until = now_ns;
 			size_t collected = collect_stats(&global_stats, &local_stats);
+
 			assert(collected <= ctx->n_threads);
 			if (collected == ctx->n_threads) {
-				print_stats(&global_stats, ctx);
+				STATS_FMT(ctx, &global_stats, STATS_SUM);
 				clear_stats(&global_stats);
 			}
 		}
@@ -752,10 +755,10 @@ void *xdp_gun_thread(void *_ctx)
 		}
 		tick++;
 	}
+	local_stats.until = ns_timestamp() - extra_wait * 1000;
 
-	print_thrd_summary(ctx, &local_stats);
+	STATS_THRD(ctx, &local_stats);
 
-	local_stats.duration = ctx->duration;
 	collect_stats(&global_stats, &local_stats);
 
 cleanup:
@@ -974,6 +977,7 @@ static void print_help(void)
 	       " -e, --edns-size <size>   "SPACE"EDNS UDP payload size, range 512-4096 (default 1232)\n"
 	       " -m, --mode <mode>        "SPACE"Set XDP mode (auto, copy, generic).\n"
 	       " -G, --qlog <path>        "SPACE"Output directory for qlog (useful for QUIC only).\n"
+	       " -j, --json               "SPACE"Output statistics in json.\n"
 	       " -h, --help               "SPACE"Print the program help.\n"
 	       " -V, --version            "SPACE"Print the program version.\n"
 	       "\n"
@@ -1074,7 +1078,7 @@ static int set_mode(const char *arg, knot_xdp_config_t *config)
 
 static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 {
-	const char *opts_str = "hV::t:Q:b:rp:T::U::F:I:i:Bl:L:R:v:e:m:G:";
+	const char *opts_str = "hV::t:Q:b:rp:T::U::F:I:i:Bl:L:R:v:e:m:G:j";
 	struct option opts[] = {
 		{ "help",       no_argument,       NULL, 'h' },
 		{ "version",    optional_argument, NULL, 'V' },
@@ -1096,6 +1100,7 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 		{ "edns-size",  required_argument, NULL, 'e' },
 		{ "mode",       required_argument, NULL, 'm' },
 		{ "qlog",       required_argument, NULL, 'G' },
+		{ "json",       no_argument,       NULL, 'j' },
 		{ 0 }
 	};
 
@@ -1255,6 +1260,12 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 		case 'G':
 			ctx->qlog_dir = optarg;
 			break;
+		case 'j':
+			if ((ctx->jw = jsonw_new(stdout, JSON_INDENT)) == NULL) {
+				ERR2("failed to use JSON");
+				return false;
+			}
+			break;
 		default:
 			print_help();
 			return false;
@@ -1296,10 +1307,16 @@ int main(int argc, char *argv[])
 
 	xdp_gun_ctx_t ctx = ctx_defaults, *thread_ctxs = NULL;
 	ctx.msgid = time(NULL) % UINT16_MAX;
+	ctx.runid = us_timestamp();
+	ctx.argv = argv;
 	pthread_t *threads = NULL;
 
 	if (!get_opts(argc, argv, &ctx)) {
 		goto err;
+	}
+
+	if (JSON_MODE(ctx)) {
+		jsonw_list(ctx.jw, NULL); // wrap the json in a list, for syntactic correctness
 	}
 
 	thread_ctxs = calloc(ctx.n_threads, sizeof(*thread_ctxs));
@@ -1346,15 +1363,14 @@ int main(int argc, char *argv[])
 		usleep(20000);
 	}
 	usleep(1000000);
-
 	xdp_trigger = KXDPGUN_START;
 	usleep(1000000);
 
 	for (size_t i = 0; i < ctx.n_threads; i++) {
 		pthread_join(threads[i], NULL);
 	}
-	if (global_stats.duration > 0 && global_stats.qry_sent > 0) {
-		print_stats(&global_stats, &ctx);
+	if (DURATION_US(global_stats) > 0 && global_stats.qry_sent > 0) {
+		STATS_FMT(&ctx, &global_stats, STATS_SUM);
 	}
 	pthread_mutex_destroy(&global_stats.mutex);
 
@@ -1365,5 +1381,9 @@ err:
 	free(thread_ctxs);
 	free(threads);
 	free_global_payloads();
+	if (JSON_MODE(ctx)) {
+		jsonw_end(ctx.jw);
+		jsonw_free(&ctx.jw);
+	}
 	return ecode;
 }

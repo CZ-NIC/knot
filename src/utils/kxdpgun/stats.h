@@ -25,9 +25,23 @@
 
 #define RCODE_MAX (0x0F + 1)
 
+#define JSON_INDENT		"  "
+#define STATS_SCHEMA_VERSION	20240530
+
+#define DURATION_US(st) (((st).until - (st).since) / 1000)
+#define DURATION_NS(st) ((st).until - (st).since)
+
+#define JSON_MODE(ctx) ((ctx).jw != NULL)
+
+#define STATS_HDR(ctx) ((JSON_MODE(*(ctx)) ? json_stats_header : plain_stats_header)((ctx)))
+#define STATS_THRD(ctx, stats) \
+	((JSON_MODE(*ctx) ? json_thrd_summary : plain_thrd_summary)((ctx), (stats)))
+#define STATS_FMT(ctx, stats, stats_type) \
+	((JSON_MODE(*(ctx)) ? json_stats : plain_stats)((ctx), (stats), (stats_type)))
+
 typedef struct {
 	size_t		collected;
-	uint64_t	duration;
+	uint64_t	since, until; // nanosecs UNIX
 	uint64_t	qry_sent;
 	uint64_t	synack_recv;
 	uint64_t	ans_recv;
@@ -41,11 +55,21 @@ typedef struct {
 	pthread_mutex_t	mutex;
 } kxdpgun_stats_t;
 
+typedef enum {
+	STATS_PERIODIC,
+	STATS_SUM,
+} stats_type_t;
+
 void clear_stats(kxdpgun_stats_t *st);
 size_t collect_stats(kxdpgun_stats_t *into, const kxdpgun_stats_t *what);
 
-void print_stats_header(const xdp_gun_ctx_t *ctx);
+void plain_stats_header(const xdp_gun_ctx_t *ctx);
+void json_stats_header(const xdp_gun_ctx_t *ctx);
 
-void print_thrd_summary(const xdp_gun_ctx_t *ctx, const kxdpgun_stats_t *st);
+void plain_thrd_summary(const xdp_gun_ctx_t *ctx, const kxdpgun_stats_t *st);
+void json_thrd_summary(const xdp_gun_ctx_t *ctx, const kxdpgun_stats_t *st);
 
-void print_stats(kxdpgun_stats_t *st, const xdp_gun_ctx_t *ctx);
+void plain_stats(const xdp_gun_ctx_t *ctx, kxdpgun_stats_t *st, stats_type_t stt);
+void json_stats(const xdp_gun_ctx_t *ctx, kxdpgun_stats_t *st, stats_type_t stt);
+
+extern pthread_mutex_t stdout_mtx;
