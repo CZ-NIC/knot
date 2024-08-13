@@ -51,8 +51,16 @@ void clear_stats(kxdpgun_stats_t *st)
 size_t collect_stats(kxdpgun_stats_t *into, const kxdpgun_stats_t *what)
 {
 	pthread_mutex_lock(&into->mutex);
-	into->since        = MAX(into->since, what->since);
-	into->until        = MAX(into->until, what->until);
+	into->since = what->since;
+	collect_periodic_stats(into, what);
+	size_t res = ++into->collected;
+	pthread_mutex_unlock(&into->mutex);
+	return res;
+}
+
+void collect_periodic_stats(kxdpgun_stats_t *into, const kxdpgun_stats_t *what)
+{
+	into->until        = what->until;
 	into->qry_sent    += what->qry_sent;
 	into->synack_recv += what->synack_recv;
 	into->ans_recv    += what->ans_recv;
@@ -65,9 +73,6 @@ size_t collect_stats(kxdpgun_stats_t *into, const kxdpgun_stats_t *what)
 	for (int i = 0; i < RCODE_MAX; i++) {
 		into->rcodes_recv[i] += what->rcodes_recv[i];
 	}
-	size_t res = ++into->collected;
-	pthread_mutex_unlock(&into->mutex);
-	return res;
 }
 
 void plain_stats_header(const xdp_gun_ctx_t *ctx)
@@ -78,6 +83,7 @@ void plain_stats_header(const xdp_gun_ctx_t *ctx)
 	      (ctx->sending_mode[0] != '\0' ? " mode " : ""),
 	      (ctx->sending_mode[0] != '\0' ? ctx->sending_mode : ""),
 	      (knot_eth_xdp_mode(if_nametoindex(ctx->dev)) == KNOT_XDP_MODE_FULL ? "native" : "emulated"));
+	puts(STATS_SECTION_SEP);
 }
 
 /* see:
@@ -135,6 +141,8 @@ void json_stats_header(const xdp_gun_ctx_t *ctx)
 
 void plain_thrd_summary(const xdp_gun_ctx_t *ctx, const kxdpgun_stats_t *st)
 {
+	pthread_mutex_lock(&stdout_mtx);
+
 	char recv_str[40] = "", lost_str[40] = "", err_str[40] = "";
 	if (!(ctx->flags & KNOT_XDP_FILTER_DROP)) {
 		(void)snprintf(recv_str, sizeof(recv_str), ", received %"PRIu64, st->ans_recv);
@@ -147,6 +155,8 @@ void plain_thrd_summary(const xdp_gun_ctx_t *ctx, const kxdpgun_stats_t *st)
 	}
 	INFO2("thread#%02u: sent %"PRIu64"%s%s%s",
 	      ctx->thread_id, st->qry_sent, recv_str, lost_str, err_str);
+
+	pthread_mutex_unlock(&stdout_mtx);
 }
 
 void json_thrd_summary(const xdp_gun_ctx_t *ctx, const kxdpgun_stats_t *st)
@@ -166,12 +176,15 @@ void json_thrd_summary(const xdp_gun_ctx_t *ctx, const kxdpgun_stats_t *st)
 		jsonw_ulong(w, "errors", st->errors);
 	}
 	jsonw_end(ctx->jw);
+
 	pthread_mutex_unlock(&stdout_mtx);
 }
 
 void plain_stats(const xdp_gun_ctx_t *ctx, kxdpgun_stats_t *st, stats_type_t stt)
 {
 	pthread_mutex_lock(&st->mutex);
+
+	printf("%s metrics:\n", (stt == STATS_SUM) ? "cumulative" : "periodic");
 
 	bool recv = !(ctx->flags & KNOT_XDP_FILTER_DROP);
 	uint64_t duration = DURATION_US(*st);

@@ -25,6 +25,8 @@
 
 #define RCODE_MAX (0x0F + 1)
 
+#define STATS_SECTION_SEP "--------------------------------------------------------------"
+
 #define JSON_INDENT		"  "
 #define STATS_SCHEMA_VERSION	20240530
 
@@ -62,6 +64,7 @@ typedef enum {
 
 void clear_stats(kxdpgun_stats_t *st);
 size_t collect_stats(kxdpgun_stats_t *into, const kxdpgun_stats_t *what);
+void collect_periodic_stats(kxdpgun_stats_t *into, const kxdpgun_stats_t *what);
 
 void plain_stats_header(const xdp_gun_ctx_t *ctx);
 void json_stats_header(const xdp_gun_ctx_t *ctx);
