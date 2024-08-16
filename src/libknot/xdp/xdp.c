@@ -175,9 +175,14 @@ static int configure_xsk_socket(struct kxsk_umem *umem,
 	xsk_info->iface = iface;
 	xsk_info->umem = umem;
 
-	uint16_t bind_flags = XDP_USE_NEED_WAKEUP;
-	if (config != NULL && config->force_copy) {
-		bind_flags |= XDP_COPY;
+	uint16_t bind_flags = 0;
+	if (config != NULL) {
+		if (config->force_copy) {
+			bind_flags |= XDP_COPY;
+		}
+		if (config->needs_wakeup) {
+			bind_flags |= XDP_USE_NEED_WAKEUP;
+		}
 	}
 
 	const struct xsk_socket_config sock_conf = {

@@ -56,6 +56,7 @@ struct knot_xdp_config {
 	uint16_t ring_size;  /*!< Size of RX and TX rings (must be power of 2). */
 	bool force_generic;  /*!< Use generic XDP mode (avoid driver/hardware implementation). */
 	bool force_copy;     /*!< Force copying packet data between kernel and user-space (avoid zero-copy). */
+	bool needs_wakeup;   /*!< Use XDP_USE_NEED_WAKEUP indication. */
 	unsigned busy_poll_timeout; /*!< Preferred busy poll budget (0 means disabled). */
 	unsigned busy_poll_budget;  /*!< Preferred busy poll timeout (in microseconds) . */
 };
