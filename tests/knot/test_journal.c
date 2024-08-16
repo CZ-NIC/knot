@@ -557,7 +557,7 @@ static knot_dname_t *tm_owner(const char *prefix, const knot_dname_t *apex)
 
 static knot_dname_t *tm_owner_int(int x, const knot_dname_t *apex)
 {
-	char buf[12] = { 0 };
+	char buf[13] = { 0 };
 	(void)snprintf(buf, sizeof(buf), "i%d", x);
 	return tm_owner(buf, apex);
 }
