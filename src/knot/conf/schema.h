@@ -101,6 +101,7 @@
 #define C_MASTER		"\x06""master"
 #define C_MASTER_PIN_TOL	"\x14""master-pin-tolerance"
 #define C_MODULE		"\x06""module"
+#define C_NEEDS_WAKEUP		"\x0C""needs-wakeup"
 #define C_NO_EDNS		"\x07""no-edns"
 #define C_NOTIFY		"\x06""notify"
 #define C_NSEC3			"\x05""nsec3"

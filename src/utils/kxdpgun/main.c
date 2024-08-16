@@ -151,7 +151,7 @@ const static xdp_gun_ctx_t ctx_defaults = {
 	.sending_mode = "",
 	.target_port = 0,
 	.flags = KNOT_XDP_FILTER_UDP | KNOT_XDP_FILTER_PASS,
-	.xdp_config = { .ring_size = 2048 },
+	.xdp_config = { .ring_size = 2048, .needs_wakeup = true },
 };
 
 static void sigterm_handler(int signo)
@@ -1141,7 +1141,7 @@ static void print_help(void)
 	       " -R, --remote-mac <MAC>   "SPACE"Override auto-detected remote MAC address.\n"
 	       " -v, --vlan <id>          "SPACE"Add VLAN 802.1Q header with the given id.\n"
 	       " -e, --edns-size <size>   "SPACE"EDNS UDP payload size, range 512-4096 (default 1232)\n"
-	       " -m, --mode <mode>        "SPACE"Set XDP mode (auto, copy, generic).\n"
+	       " -m, --mode <mode>        "SPACE"Set XDP mode (auto, nowakeup, copy, generic).\n"
 	       " -G, --qlog <path>        "SPACE"Output directory for qlog (useful for QUIC only).\n"
 	       " -h, --help               "SPACE"Print the program help.\n"
 	       " -V, --version            "SPACE"Print the program version.\n"
@@ -1223,18 +1223,28 @@ static int set_mode(const char *arg, knot_xdp_config_t *config)
 	if (strcmp(arg, "auto") == 0) {
 		config->force_copy = false;
 		config->force_generic = false;
+		config->needs_wakeup = true;
+		return KNOT_EOK;
+	}
+
+	if (strcmp(arg, "nowakeup") == 0) {
+		config->force_copy = false;
+		config->force_generic = false;
+		config->needs_wakeup = false;
 		return KNOT_EOK;
 	}
 
 	if (strcmp(arg, "copy") == 0) {
 		config->force_copy = true;
 		config->force_generic = false;
+		config->needs_wakeup = false;
 		return KNOT_EOK;
 	}
 
 	if (strcmp(arg, "generic") == 0) {
 		config->force_copy = false;
 		config->force_generic = true;
+		config->needs_wakeup = false;
 		return KNOT_EOK;
 	}
 

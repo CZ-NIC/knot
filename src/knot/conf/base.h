@@ -172,6 +172,7 @@ typedef struct {
 		bool xdp_udp;
 		bool xdp_tcp;
 		bool xdp_route_check;
+		bool xdp_needs_wakeup;
 		bool srv_tcp_reuseport;
 		bool srv_tcp_fastopen;
 		bool srv_socket_affinity;

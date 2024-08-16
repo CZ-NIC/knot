@@ -763,6 +763,7 @@ static int configure_sockets(conf_t *conf, server_t *s)
 		.ring_size = conf->cache.xdp_ring_size,
 		.busy_poll_budget = conf->cache.xdp_busypoll_budget,
 		.busy_poll_timeout = conf->cache.xdp_busypoll_timeout,
+		.needs_wakeup = conf->cache.xdp_needs_wakeup,
 	};
 	unsigned thread_id = s->handlers[IO_UDP].handler.unit->size +
 	                     s->handlers[IO_TCP].handler.unit->size;
@@ -1192,6 +1193,7 @@ static void warn_server_reconfigure(conf_t *conf, server_t *server)
 	static bool warn_xdp_tcp = true;
 	static bool warn_xdp_quic = true;
 	static bool warn_route_check = true;
+	static bool warn_needs_wakeup = true;
 	static bool warn_ring_size = true;
 	static bool warn_busypoll_budget = true;
 	static bool warn_busypoll_timeout = true;
@@ -1251,6 +1253,11 @@ static void warn_server_reconfigure(conf_t *conf, server_t *server)
 	if (warn_route_check && conf->cache.xdp_route_check != conf_get_bool(conf, C_XDP, C_ROUTE_CHECK)) {
 		log_warning(msg, &C_ROUTE_CHECK[1]);
 		warn_route_check = false;
+	}
+
+	if (warn_needs_wakeup && conf->cache.xdp_needs_wakeup != conf_get_bool(conf, C_XDP, C_NEEDS_WAKEUP)) {
+		log_warning(msg, &C_NEEDS_WAKEUP[1]);
+		warn_needs_wakeup = false;
 	}
 
 	if (warn_ring_size && conf->cache.xdp_ring_size != conf_get_int(conf, C_XDP, C_RING_SIZE)) {
