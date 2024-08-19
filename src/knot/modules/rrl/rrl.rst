@@ -4,37 +4,52 @@
 ================================
 
 Response rate limiting (RRL) is a method to combat DNS reflection amplification
-attacks. These attacks rely on the fact that source address of a UDP query
+attacks. These attacks rely on the fact that the source address of a UDP query
 can be forged, and without a worldwide deployment of `BCP38
 <https://tools.ietf.org/html/bcp38>`_, such a forgery cannot be prevented.
 An attacker can use a DNS server (or multiple servers) as an amplification
-source and can flood a victim with a large number of unsolicited DNS responses.
-The RRL lowers the amplification factor of these attacks by sending some of
-the responses as truncated or by dropping them altogether.
+source to flood a victim with a large number of unsolicited DNS responses.
+RRL lowers the amplification factor of these attacks by sending some
+responses as truncated or by dropping them altogether.
+
+This module can also help protect the server from excessive utilization by
+limiting incoming packets (including handshakes) based on consumed time.
+If a packet is time rate limited, it's dropped. This function works with
+all supported non-UDP transport protocols and cannot be configured per zone.
 
 .. NOTE::
-   The module introduces two statistics counters. The number of slipped and
-   dropped responses.
+   This module introduces three statistics counters:
+
+   - ``slipped`` – The number of slipped UDP responses.
+   - ``dropped`` – The number of dropped UDP responses due to the rate limit.
+   - ``dropped-time`` – The number of dropped non-UDP packets due to the time rate limit.
 
 .. NOTE::
    If the :ref:`Cookies<mod-cookies>` module is active, RRL is not applied
-   for responses with a valid DNS cookie.
+   to UDP responses with a valid DNS cookie.
 
 Example
 -------
 
-You can enable RRL by setting the module globally or per zone.
+You can enable RRL by setting the module globally
+
+::
+
+    template:
+      - id: default
+        global-module: mod-rrl  # Default module configuration
+
+or per zone
 
 ::
 
     mod-rrl:
-      - id: default
-        rate-limit: 200   # Allow 200 resp/s for each flow
-        slip: 2           # Approximately every other response slips
+      - id: custom
+        rate-limit: 200
 
-    template:
-      - id: default
-        global-module: mod-rrl/default   # Enable RRL globally
+    zone:
+      - domain: example.com
+        module: mod-rrl/custom  # Custom module configuration
 
 Module reference
 ----------------
@@ -45,8 +60,10 @@ Module reference
    - id: STR
      rate-limit: INT
      instant-limit: INT
-     table-size: INT
      slip: INT
+     time-rate-limit: INT
+     time-instant-limit: INT
+     table-size: INT
      whitelist: ADDR[/INT] | ADDR-ADDR | STR ...
      log-period: INT
      dry-run: BOOL
@@ -63,61 +80,42 @@ A module identifier.
 rate-limit
 ..........
 
-Maximal allowed number of queries per second from a single IPv6 or IPv4 address.
+Maximal allowed number of UDP queries per second from a single IPv6 or IPv4 address.
 
 Rate limiting is performed for the whole address and several chosen prefixes.
-The limits of prefixes are constant multiples of `rate-limit`.
+The limits of prefixes are constant multiples of :ref:`mod-rrl_rate-limit`.
 
 The specific prefixes and multipliers, which might be adjusted in the future, are
 for IPv6 /128: 1, /64: 2, /56: 3, /48: 4, /32: 64;
 for IPv4 /32: 1, /24: 32, /20: 256, /18: 768.
 
-With each host/network, a counter of unrestricted responses is associated
-and it is lowered by a constant fraction of its value each millisecond;
-a response is restricted if a counter would exceed its capacity otherwise.
+With each host/network, a counter of unrestricted responses is associated;
+if the counter would exceed its capacity, it is not incremented and the response is restricted.
+Counters use exponential decay for lowering their values,
+i.e. they are lowered by a constant fraction of their value each millisecond.
 The specified rate limit is reached, when the number of queries is the same every millisecond;
 sending many queries once a second or even a larger timespan leads to a more strict limiting.
 
-*Required*
+*Default:* ``20``
 
 .. _mod-rrl_instant-limit:
 
 instant-limit
 .............
 
-Maximal allowed number of queries at a single point in time from a single IPv6 address.
-The limits for IPv4 addresses and prefixes use the same multipliers as for `rate-limit`.
+Maximal allowed number of queries at a single point in time from a single IPv6 or IPv4 address.
+The limits for prefixes use the same multipliers as for :ref:`mod-rrl_rate-limit`.
 
 This limit is reached when many queries come from a new host/network,
 or after a longer time of inactivity.
 
-The `instant-limit` sets the actual capacity of each counter of responses,
-and together with the `rate-limit` they set the fraction by which the counter
+The :ref:`mod-rrl_instant-limit` sets the actual capacity of each counter of responses,
+and together with the :ref:`mod-rrl_rate-limit` they set the fraction by which the counter
 is periodically lowered.
-The `instant-limit` may be at least `rate-limit / 1000`, at which point the
+The :ref:`mod-rrl_instant-limit` may be at least :ref:`mod-rrl_rate-limit` **/ 1000**, at which point the
 counters are zeroed each millisecond.
 
 *Default:* ``50``
-
-.. _mod-rrl_table-size:
-
-table-size
-..........
-
-Maximal number of stored hosts/networks with their counters.
-The data structure tries to store only the most frequent sources and the
-table size is internally a little bigger,
-so it is safe to set it according to the expected maximal number of limited sources.
-
-Use `1.4 * maximum_qps / rate-limit`,
-where `maximum_qps` is the number of queries which can be handled by the server per second.
-There is at most `maximum_qps / rate-limit` limited hosts;
-larger networks have higher limits and so require only a fraction of the value.
-The value will be rounded up to the nearest power of two.
-
-The memory occupied by the data structure is `8 * table-size B`.
-
-*Default:* ``524288``
 
 .. _mod-rrl_slip:
 
@@ -155,6 +153,49 @@ noting, that some responses can't be truncated (e.g. SERVFAIL).
 
 *Default:* ``1``
 
+.. _mod-rrl_time-rate-limit:
+
+time-rate-limit
+...............
+
+This limit works similarly to :ref:`mod-rrl_rate-limit` but considers the time
+consumed (in microseconds) by the remote over non-UDP transport protocols.
+
+*Default:* ``4000`` (microseconds)
+
+.. _mod-rrl_time-instant-limit:
+
+time-instant-limit
+..................
+
+This limit works similarly to :ref:`mod-rrl_instant-limit` but considers the time
+consumed (in microseconds) by the remote over non-UDP transport protocols.
+
+*Default:* ``5000`` (microseconds)
+
+.. _mod-rrl_table-size:
+
+table-size
+..........
+
+Maximal number of stored hosts/networks with their counters.
+The data structure tries to store only the most frequent sources,
+so it is safe to set it according to the expected maximal number of limited ones.
+
+Use `1.4 * maximum_qps / rate-limit`,
+where `maximum_qps` is the number of queries which can be handled by the server per second.
+There is at most `maximum_qps / rate-limit` limited hosts;
+larger networks have higher limits and so require only a fraction of the value (handled by the `1.4` multiplier).
+The value will be rounded up to the nearest power of two.
+
+The same table size is used for both counting-based and time-based limiting;
+the maximum number of time-limited hosts is expected to be lower, so it's not typically needed to be considered.
+There is at most `1 000 000 * #cpus / time-rate-limit` of them.
+
+The memory occupied by one table structure is `8 * table-size B`.
+
+*Default:* ``524288``
+
 .. _mod-rrl_whitelist:
 
 whitelist
@@ -178,6 +219,9 @@ If a response is limited, the address and the prefix on which it was blocked is 
 and logging is disabled for the `log-period` milliseconds.
 As long as limiting is needed, one source is logged each period
 and sources with more blocked queries have greater probability to be chosen.
+
+The approach is used by counting-based and time-based limiting separately,
+so you can expect one message per `log-period` from each of them.
 
 *Default:* ``0`` (disabled)
 
