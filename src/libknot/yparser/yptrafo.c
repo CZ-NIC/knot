@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -31,25 +31,31 @@
 #include "contrib/wire_ctx.h"
 
 enum {
-	UNIT_BYTE = 'B',
-	UNIT_KILO = 'K',
-	UNIT_MEGA = 'M',
-	UNIT_GIGA = 'G',
-	UNIT_SEC  = 's',
-	UNIT_MIN  = 'm',
-	UNIT_HOUR = 'h',
-	UNIT_DAY  = 'd'
+	UNIT_BYTE  = 'B',
+	UNIT_KILO  = 'K',
+	UNIT_MEGA  = 'M',
+	UNIT_GIGA  = 'G',
+	UNIT_SEC   = 's',
+	UNIT_MIN   = 'm',
+	UNIT_HOUR  = 'h',
+	UNIT_DAY   = 'd',
+	UNIT_WEEK  = 'w',
+	UNIT_MONTH = 'M',
+	UNIT_YEAR  = 'y',
 };
 
 enum {
-	MULTI_BYTE = 1,
-	MULTI_KILO = 1024,
-	MULTI_MEGA = 1024 * 1024,
-	MULTI_GIGA = 1024 * 1024 * 1024,
-	MULTI_SEC  = 1,
-	MULTI_MIN  = 60,
-	MULTI_HOUR = 3600,
-	MULTI_DAY  = 24 * 3600
+	MULTI_BYTE  = 1,
+	MULTI_KILO  = 1024,
+	MULTI_MEGA  = 1024 * 1024,
+	MULTI_GIGA  = 1024 * 1024 * 1024,
+	MULTI_SEC   = 1,
+	MULTI_MIN   = 60,
+	MULTI_HOUR  = 3600,
+	MULTI_DAY   = 24 * 3600,
+	MULTI_WEEK  = MULTI_DAY * 7,
+	MULTI_MONTH = MULTI_DAY * 30,
+	MULTI_YEAR  = MULTI_DAY * 365,
 };
 
 static wire_ctx_t copy_in(
@@ -186,6 +192,15 @@ static int remove_unit(
 		case UNIT_DAY:
 			multiplier = MULTI_DAY;
 			break;
+		case UNIT_WEEK:
+			multiplier = MULTI_WEEK;
+			break;
+		case UNIT_MONTH:
+			multiplier = MULTI_MONTH;
+			break;
+		case UNIT_YEAR:
+			multiplier = MULTI_YEAR;
+			break;
 		default:
 			return KNOT_EINVAL;
 		}
@@ -295,9 +310,18 @@ static void add_unit(
 		} else if (*number < MULTI_DAY) {
 			multiplier = MULTI_HOUR;
 			new_unit = UNIT_HOUR;
-		} else {
+		} else if (*number < MULTI_WEEK) {
 			multiplier = MULTI_DAY;
 			new_unit = UNIT_DAY;
+		} else if (*number < MULTI_MONTH) {
+			multiplier = MULTI_WEEK;
+			new_unit = UNIT_WEEK;
+		} else if (*number < MULTI_YEAR) {
+			multiplier = MULTI_MONTH;
+			new_unit = UNIT_MONTH;
+		} else {
+			multiplier = MULTI_YEAR;
+			new_unit = UNIT_YEAR;
 		}
 	}
 

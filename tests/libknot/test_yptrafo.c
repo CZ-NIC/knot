@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -326,7 +326,10 @@ int main(int argc, char *argv[])
 	int_test("11s", 11LL * 1, YP_STIME, min, max);
 	int_test("11m", 11LL * 60, YP_STIME, min, max);
 	int_test("11h", 11LL * 3600, YP_STIME, min, max);
-	int_test("11d", 11LL * 24 * 3600, YP_STIME, min, max);
+	int_test("6d",  6LL * 24 * 3600, YP_STIME, min, max);
+	int_test("4w",  4LL * 7 * 24 * 3600, YP_STIME, min, max);
+	int_test("11M", 11LL * 30 * 24 * 3600, YP_STIME, min, max);
+	int_test("2y",  2LL * 365 * 24 * 3600, YP_STIME, min, max);
 	int_test("1025B", 1025LL, YP_SSIZE, min, max);
 	int_test("61s", 61LL, YP_STIME, min, max);
 	int_bad_test("20000000001", KNOT_ERANGE, YP_SNONE, min, max);
