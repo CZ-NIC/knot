@@ -89,9 +89,10 @@ The specific prefixes and multipliers, which might be adjusted in the future, ar
 for IPv6 /128: 1, /64: 2, /56: 3, /48: 4, /32: 64;
 for IPv4 /32: 1, /24: 32, /20: 256, /18: 768.
 
-With each host/network, a counter of unrestricted responses is associated
-and it is lowered by a constant fraction of its value each millisecond;
-a response is restricted if a counter would exceed its capacity otherwise.
+With each host/network, a counter of unrestricted responses is associated;
+if the counter would exceed its capacity, it is not incremented and the response is restricted.
+Counters use exponential decay for lowering their values,
+i.e. they are lowered by a constant fraction of their value each millisecond.
 The specified rate limit is reached, when the number of queries is the same every millisecond;
 sending many queries once a second or even a larger timespan leads to a more strict limiting.
 
@@ -178,15 +179,18 @@ table-size
 ..........
 
 Maximal number of stored hosts/networks with their counters.
-The data structure tries to store only the most frequent sources and the
-table size is internally a little bigger,
-so it is safe to set it according to the expected maximal number of limited sources.
+The data structure tries to store only the most frequent sources,
+so it is safe to set it according to the expected maximal number of limited ones.
 
 Use `1.4 * maximum_qps / rate-limit`,
 where `maximum_qps` is the number of queries which can be handled by the server per second.
 There is at most `maximum_qps / rate-limit` limited hosts;
-larger networks have higher limits and so require only a fraction of the value.
+larger networks have higher limits and so require only a fraction of the value (handled by the `1.4` multiplier).
 The value will be rounded up to the nearest power of two.
+
+The same table size is used for both counting-based and time-based limiting;
+the maximum number of time-limited hosts is expected to be lower, so it's not typically needed to be considered.
+There is at most `1 000 000 * #cpus / time-rate-limit` of them.
 
 The memory occupied by one table structure is `8 * table-size B`.
 
@@ -215,6 +219,9 @@ If a response is limited, the address and the prefix on which it was blocked is 
 and logging is disabled for the `log-period` milliseconds.
 As long as limiting is needed, one source is logged each period
 and sources with more blocked queries have greater probability to be chosen.
+
+The approach is used by counting-based and time-based limiting separately,
+so you can expect one message per `log-period` from each of them.
 
 *Default:* ``0`` (disabled)
 
