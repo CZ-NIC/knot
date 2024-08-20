@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include "contrib/atomic.h"
 #include "contrib/semaphore.h"
 #include "knot/catalog/catalog_update.h"
 #include "knot/conf/conf.h"
@@ -123,7 +124,7 @@ typedef struct zone
 	struct server *server;
 
 	/*! \brief Zone backup context (NULL unless backup pending). */
-	struct zone_backup_ctx *backup_ctx;
+	knot_atomic_ptr_t backup_ctx;
 
 	/*! \brief Catalog-generate feature. */
 	knot_dname_t *catalog_gen;
