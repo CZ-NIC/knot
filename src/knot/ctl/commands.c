@@ -686,9 +686,7 @@ static int zone_backup_cmd(zone_t *zone, ctl_args_t *args)
 	}
 
 	if (ret != KNOT_EOK || finish) {
-		pthread_mutex_lock(&zone->cu_lock);
 		zone->backup_ctx = NULL;
-		pthread_mutex_unlock(&zone->cu_lock);
 		return ret;
 	}
 
@@ -863,7 +861,8 @@ static int zone_txn_begin_l(zone_t *zone, _unused_ ctl_args_t *args)
 		return KNOT_TXN_EEXISTS;
 	}
 
-	if (zone->backup_ctx != NULL && zone->backup_ctx->restore_mode) {
+	struct zone_backup_ctx *backup_ctx = zone->backup_ctx;
+	if (backup_ctx != NULL && backup_ctx->restore_mode) {
 		log_zone_warning(zone->name, "zone restore pending, try opening control transaction later");
 		return KNOT_EAGAIN;
 	}
