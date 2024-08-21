@@ -429,7 +429,9 @@ static roll_action_t next_action(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flag
 		    (key->is_zsk && !(flags & KEY_ROLL_ALLOW_ZSK_ROLL))) {
 			continue;
 		}
-		clear_future_timers(key, ctx);
+		if (!(flags & KEY_ROLL_PRESERVE_FUTURE)) {
+			clear_future_timers(key, ctx);
+		}
 		if (key->is_ksk) {
 			switch (get_key_state(key, ctx->now)) {
 			case DNSSEC_KEY_STATE_PRE_ACTIVE:

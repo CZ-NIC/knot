@@ -39,7 +39,8 @@ typedef enum {
 	KEY_ROLL_ALLOW_NSEC3RESALT = (1 << 4),
 	KEY_ROLL_ALLOW_ALL         = KEY_ROLL_ALLOW_KSK_ROLL |
 	                             KEY_ROLL_ALLOW_ZSK_ROLL |
-	                             KEY_ROLL_ALLOW_NSEC3RESALT
+	                             KEY_ROLL_ALLOW_NSEC3RESALT,
+	KEY_ROLL_PRESERVE_FUTURE   = (1 << 5),
 } zone_sign_roll_flags_t;
 
 typedef struct {
