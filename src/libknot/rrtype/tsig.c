@@ -245,7 +245,11 @@ int knot_tsig_rdata_set_other_data(knot_rrset_t *tsig, uint16_t len,
 _public_
 const knot_dname_t *knot_tsig_rdata_alg_name(const knot_rrset_t *tsig)
 {
-	return knot_rdataset_at(&tsig->rrs, 0)->data;
+	const knot_rdata_t *rr_data = knot_rdataset_at(&tsig->rrs, 0);
+	if (!rr_data) {
+		return NULL;
+	}
+	return rr_data->data;
 }
 
 _public_
