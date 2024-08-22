@@ -324,11 +324,11 @@ static int write_owner(const knot_rrset_t *rrset, uint8_t **dst, size_t *dst_ava
 	return KNOT_EOK;
 }
 
-static int write_fixed_header(const knot_rrset_t *rrset, uint16_t rrset_index,
+static int write_fixed_header(const knot_rrset_t *rrset, const knot_rdata_t *rdata,
                               uint8_t **dst, size_t *dst_avail, uint16_t flags)
 {
 	assert(rrset);
-	assert(rrset_index < rrset->rrs.count);
+	assert(rdata);
 	assert(dst && *dst);
 	assert(dst_avail);
 
@@ -339,10 +339,8 @@ static int write_fixed_header(const knot_rrset_t *rrset, uint16_t rrset_index,
 	wire_ctx_write_u16(&write, rrset->rclass);
 
 	if ((flags & KNOT_PF_ORIGTTL) && rrset->type == KNOT_RRTYPE_RRSIG) {
-		const knot_rdata_t *rdata = knot_rdataset_at(&rrset->rrs, rrset_index);
 		wire_ctx_write_u32(&write, knot_rrsig_original_ttl(rdata));
 	} else if ((flags & KNOT_PF_SOAMINTTL) && rrset->type == KNOT_RRTYPE_SOA) {
-		const knot_rdata_t *rdata = knot_rdataset_at(&rrset->rrs, rrset_index);
 		wire_ctx_write_u32(&write, MIN(knot_soa_minimum(rdata), rrset->ttl));
 	} else {
 		wire_ctx_write_u32(&write, rrset->ttl);
@@ -433,14 +431,14 @@ static int rdata_traverse_write(const uint8_t **src, size_t *src_avail,
 }
 
 static int write_rdata(const knot_rrset_t *rrset, uint16_t rrset_index,
-                       uint8_t **dst, size_t *dst_avail, knot_compr_t *compr)
+                       const knot_rdata_t *rdata, uint8_t **dst, size_t *dst_avail,
+                       knot_compr_t *compr)
 {
 	assert(rrset);
 	assert(rrset_index < rrset->rrs.count);
+	assert(rdata);
 	assert(dst && *dst);
 	assert(dst_avail);
-
-	const knot_rdata_t *rdata = knot_rdataset_at(&rrset->rrs, rrset_index);
 
 	// Reserve space for RDLENGTH.
 	if (sizeof(uint16_t) > *dst_avail) {
@@ -478,7 +476,8 @@ static int write_rdata(const knot_rrset_t *rrset, uint16_t rrset_index,
 	return KNOT_EOK;
 }
 
-static int write_rr(const knot_rrset_t *rrset, uint16_t rrset_index, uint8_t **dst,
+static int write_rr(const knot_rrset_t *rrset, uint16_t rrset_index,
+                    const knot_rdata_t *rdata, uint8_t **dst,
                     size_t *dst_avail, knot_compr_t *compr, uint16_t flags)
 {
 	int ret = write_owner(rrset, dst, dst_avail, compr);
@@ -486,12 +485,12 @@ static int write_rr(const knot_rrset_t *rrset, uint16_t rrset_index, uint8_t **d
 		return ret;
 	}
 
-	ret = write_fixed_header(rrset, rrset_index, dst, dst_avail, flags);
+	ret = write_fixed_header(rrset, rdata, dst, dst_avail, flags);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
 
-	return write_rdata(rrset, rrset_index, dst, dst_avail, compr);
+	return write_rdata(rrset, rrset_index, rdata, dst, dst_avail, compr);
 }
 
 _public_
@@ -518,9 +517,11 @@ int knot_rrset_to_wire_extra(const knot_rrset_t *rrset, uint8_t *wire,
 	}
 
 	uint16_t count = rrset->rrs.count;
+	knot_rdata_t *rdata = rotate > 1 ? knot_rdataset_at(&rrset->rrs, rotate - 1) : rrset->rrs.rdata;
 	for (int i = rotate; i < count + rotate; i++) {
 		uint16_t pos = (i < count) ? i : (i - count);
-		int ret = write_rr(rrset, pos, &write, &capacity, compr, flags);
+		rdata = pos ? knot_rdataset_next(rdata) : rrset->rrs.rdata;
+		int ret = write_rr(rrset, pos, rdata, &write, &capacity, compr, flags);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
