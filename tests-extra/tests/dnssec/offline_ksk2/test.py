@@ -95,6 +95,12 @@ KSR = knot.keydir + "/ksr"
 SKR = knot.keydir + "/skr"
 SKR_BROKEN = SKR + "_broken"
 Keymgr.run_check(knot.confile, ZONE, "pregenerate", "+20", "+" + str(FUTURE))
+t.sleep(1)
+Keymgr.run_check(knot.confile, ZONE, "pregenerate", "+20", "+" + str(FUTURE))
+_, out, _ = Keymgr.run_check(knot.confile, ZONE, "list")
+if out.count("created") != 2:
+    detail_log(out)
+    set_err("Pregenerated ZSKs: %d" % out.count("created"))
 _, out, _ = Keymgr.run_check(knot.confile, ZONE, "generate-ksr", "+0", "+" + str(FUTURE))
 writef(KSR, out)
 _, out, _ = Keymgr.run_check(signer.confile, ZONE, "sign-ksr", KSR)
