@@ -26,3 +26,5 @@ xx.example.	3600 IN AAAA	2001:db8::f00:baaa
 x.w.example.	3600 IN MX	1 xx.example.
 *.to-apex.example. 3600 IN CNAME example. ; Wildcard expansion leading to apex
 *.to-nxdomain.example. 3600 IN CNAME nxdomain.example. ; Wildcard expansion leading to nonexistent name
+non-apex		3600	IN	DNSKEY	256 3 5 AwEAAbs0AlA6xWQn/lECfGt3S6TaeEmgJfEVVEMh06iNMNWMRHOfbqLF h3N52Ob7trmzlrzGlGLPnAZJvMB8lsFGC5CtaLUBD+4xCh5tl5QifZ+y o+MJvPGlVQI2cs7aMWV9CyFrRmuRcJaSZU2uBz9KFJ955UCq/WIy5KqS 7qaKLzzN
+non-apex		3600	IN	DNSKEY	257 3 5 BQEAAAABt3LenoCVTV0okqKYPDnnVJqvwCD9MKJNXg8fcOCdLQYncyoe hpwM5RK2UkZDcDxWkMo7yMa35ej+Mhpaji9si4xXD+Syl4Q06LFiFkdN /5GlVlrIdE3GW7zC7Z4sS14Vz8FbYfcRmhsh19Ob718jGZneGfw2UPbv kyxUR8wD7mguZn02fQ6tjj/Ktp4uSW9tpz3bjGMo2rX+iZk4xgbPaesA OlR/AaHdatGZsWC9CPon8mnLZeu6czm8CBDgBmnf3PE8c5+uyWj1Pw4p p0VQmnX5UrnuGpErg7qXhJm7wY2CRVRMcLX3zmjVWXW1uT9JFh2G+/pZ zxnASfKKltZpuw== ; added non-apex DNSKEYs

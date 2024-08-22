@@ -1286,10 +1286,13 @@ class Knot(Server):
             assert(0)
         bind_keydir = self.zones[zone_name].zfile.key_dir_bind
         assert(zone_name.endswith("."))
-        for pkey_path in glob.glob("%s/K*.private" % glob.escape(bind_keydir)):
+        for pkey_path in glob.glob("%s/K*.key" % glob.escape(bind_keydir)):
             pkey = os.path.basename(pkey_path)
-            m = re.match(r'K(?P<name>[^+]+)\+(?P<algo>\d+)\+(?P<tag>\d+)\.private', pkey)
+            m = re.match(r'K(?P<name>[^+]+)\+(?P<algo>\d+)\+(?P<tag>\d+)\.key', pkey)
             if m and m.group("name") == zone_name.lower():
+                print(pkey)
+                with open(pkey_path, 'r') as f:
+                    print(f.read())
                 dnstest.keys.Keymgr.run_check(self.confile, zone_name, "import-bind", pkey_path)
 
     def _on_str_hex(self, conf, name, value):

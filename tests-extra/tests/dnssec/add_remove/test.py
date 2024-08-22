@@ -40,7 +40,7 @@ def do_steps(master, slave, zone):
 t = Test()
 
 # Create NSEC and NSEC3 servers
-nsec_master = t.server("knot")
+nsec_master = t.server("bind")
 nsec3_master = t.server("knot")
 nsec_slave = t.server("bind")
 nsec3_slave = t.server("bind")
