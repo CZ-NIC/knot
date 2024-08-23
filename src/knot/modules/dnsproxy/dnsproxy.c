@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -62,6 +62,14 @@ typedef struct {
 
 static int fwd(dnsproxy_t *proxy, knot_pkt_t *pkt, knotd_qdata_t *qdata, int addr_pos)
 {
+	/* Copy the query as the requestor modifies and frees it. */
+	knot_pkt_t *query = knot_pkt_new(NULL, KNOT_WIRE_MAX_PKTSIZE, NULL);
+	int ret = knot_pkt_copy(query, qdata->query);
+	if (ret != KNOT_EOK) {
+		knot_pkt_free(query);
+		return ret;
+	}
+
 	/* Capture layer context. */
 	const knot_layer_api_t *capture = query_capture_api();
 	struct capture_param capture_param = {
@@ -70,8 +78,9 @@ static int fwd(dnsproxy_t *proxy, knot_pkt_t *pkt, knotd_qdata_t *qdata, int add
 
 	/* Create a forwarding request. */
 	knot_requestor_t re;
-	int ret = knot_requestor_init(&re, capture, &capture_param, qdata->mm);
+	ret = knot_requestor_init(&re, capture, &capture_param, qdata->mm);
 	if (ret != KNOT_EOK) {
+		knot_pkt_free(query);
 		return ret;
 	}
 
@@ -96,20 +105,29 @@ static int fwd(dnsproxy_t *proxy, knot_pkt_t *pkt, knotd_qdata_t *qdata, int add
 		flags = KNOT_REQUEST_TFO;
 	}
 
+	if (query->tsig_rr != NULL) {
+		knot_tsig_append(query->wire, &query->size, query->max_size, query->tsig_rr);
+	}
+
 	const struct sockaddr_storage *dst = &proxy->remote.multi[addr_pos].addr;
 	const struct sockaddr_storage *src = NULL;
 	if (addr_pos < proxy->via.count) { // Simplified via address selection!
 		src = &proxy->via.multi[addr_pos].addr;
 	}
-	knot_request_t *req = knot_request_make_generic(re.mm, dst, src, qdata->query,
+	knot_request_t *req = knot_request_make_generic(re.mm, dst, src, query,
 	                                                NULL, NULL, NULL, NULL, 0, flags);
 	if (req == NULL) {
 		knot_requestor_clear(&re);
+		knot_pkt_free(query);
 		return KNOT_ENOMEM;
 	}
 
 	/* Forward request. */
 	ret = knot_requestor_exec(&re, req, proxy->timeout);
+
+	if (pkt->tsig_rr != NULL) {
+		knot_tsig_append(pkt->wire, &pkt->size, pkt->max_size, pkt->tsig_rr);
+	}
 
 	knot_request_free(req, re.mm);
 	knot_requestor_clear(&re);
@@ -138,12 +156,6 @@ static knotd_state_t dnsproxy_fwd(knotd_state_t state, knot_pkt_t *pkt,
 		}
 	}
 
-	/* Forward also original TSIG. */
-	if (qdata->query->tsig_rr != NULL && !proxy->fallback) {
-		knot_tsig_append(qdata->query->wire, &qdata->query->size,
-		                 qdata->query->max_size, qdata->query->tsig_rr);
-	}
-
 	int ret = KNOT_EOK;
 
 	/* Try to forward the packet. */
@@ -160,11 +172,6 @@ static knotd_state_t dnsproxy_fwd(knotd_state_t state, knot_pkt_t *pkt,
 		return state; /* Forwarding failed, ignore. */
 	} else {
 		qdata->rcode = knot_pkt_ext_rcode(pkt);
-	}
-
-	/* Respond also with TSIG. */
-	if (pkt->tsig_rr != NULL && !proxy->fallback) {
-		knot_tsig_append(pkt->wire, &pkt->size, pkt->max_size, pkt->tsig_rr);
 	}
 
 	return (proxy->fallback ? KNOTD_STATE_DONE : KNOTD_STATE_FINAL);
