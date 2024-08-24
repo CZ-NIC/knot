@@ -20,9 +20,10 @@ the following symbols:
 - ``STR`` – Textual string
 - ``HEXSTR`` – Hexadecimal string (with ``0x`` prefix)
 - ``BOOL`` – Boolean value (``on``/``off`` or ``true``/``false``)
-- ``TIME`` – Number of seconds, an integer with possible time multiplier suffix
-  (``s`` ~ 1, ``m`` ~ 60, ``h`` ~ 3600 or ``d`` ~ 24 * 3600)
-- ``SIZE`` – Number of bytes, an integer with possible size multiplier suffix
+- ``TIME`` – Number of seconds, an integer with a possible time multiplier suffix
+  (``s`` ~ 1, ``m`` ~ 60, ``h`` ~ 3600, ``d`` ~ 24 * 3600, ``w`` ~ 7 * 24 * 3600,
+  ``M`` ~ 30 * 24 * 3600, ``y`` ~ 365 * 24 * 3600)
+- ``SIZE`` – Number of bytes, an integer with a possible size multiplier suffix
   (``B`` ~ 1, ``K`` ~ 1024, ``M`` ~ 1024^2 or ``G`` ~ 1024^3)
 - ``BASE64`` – Base64 encoded string
 - ``ADDR`` – IPv4 or IPv6 address
