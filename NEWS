@@ -1,3 +1,21 @@
+Knot DNS 3.3.9 (2024-08-26)
+===========================
+
+Improvements:
+-------------
+ - libknot: added EDE code 30
+ - libknot: improved performance of knot_rrset_to_wire_extra()
+ - libs: upgraded embedded libngtcp2 to 1.7.0
+ - doc: various fixes and updates
+
+Bugfixes:
+---------
+ - keymgr: pregenerate clears future timestamps of old keys and creates new keys
+ - mod-dnsproxy: defective TSIG processing
+ - mod-dnsproxy: TCP not detected in the XDP mode
+ - kxdpgun: unsuccessful interface initialization leaks memory
+ - packaging: libknot not installed with python3-libknot
+
 Knot DNS 3.3.8 (2024-07-22)
 ===========================
 
