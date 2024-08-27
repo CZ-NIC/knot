@@ -349,6 +349,8 @@ static void cleanup_ctxs(concurrent_ctl_ctx_t *concurrent_ctxs, size_t n_ctxs)
 		pthread_mutex_lock(&cctx->mutex);
 		if (cctx->state == CONCURRENT_EMPTY) {
 			pthread_mutex_unlock(&cctx->mutex);
+			pthread_mutex_destroy(&cctx->mutex);
+			pthread_cond_destroy(&cctx->cond);
 			continue;
 		}
 
@@ -359,8 +361,8 @@ static void cleanup_ctxs(concurrent_ctl_ctx_t *concurrent_ctxs, size_t n_ctxs)
 
 		assert(cctx->state == CONCURRENT_FINISHED);
 		knot_ctl_free(cctx->ctl);
-		pthread_mutex_destroy(&concurrent_ctxs[i].mutex);
-		pthread_cond_destroy(&concurrent_ctxs[i].cond);
+		pthread_mutex_destroy(&cctx->mutex);
+		pthread_cond_destroy(&cctx->cond);
 	}
 }
 
@@ -403,7 +405,6 @@ static void *ctl_process_thread(void *arg)
 static void event_loop(server_t *server, const char *socket, bool daemonize,
                        unsigned long pid)
 {
-	concurrent_ctl_ctx_t concurrent_ctxs[MAX_CTL_CONCURRENT] = { 0 };
 	knot_ctl_t *ctl = knot_ctl_alloc();
 	if (ctl == NULL) {
 		log_fatal("control, failed to initialize (%s)",
@@ -447,6 +448,7 @@ static void event_loop(server_t *server, const char *socket, bool daemonize,
 
 	enable_signals();
 
+	concurrent_ctl_ctx_t concurrent_ctxs[MAX_CTL_CONCURRENT] = { 0 };
 	init_ctxs(concurrent_ctxs, MAX_CTL_CONCURRENT, server);
 	bool main_thread_exclusive = false;
 
