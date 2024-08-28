@@ -144,7 +144,7 @@ static void test_time_parse(void)
 	ret = knot_time_parse("+-#U", "-1h", &res);
 	test_time_parse_expect(ret, res, knot_time() - 3600, "hour");
 
-	ret = knot_time_parse("+-#u'nths'|+-#u'nutes'", "+1minutes", &res);
+	ret = knot_time_parse("+-#u\'nths\'|+-#u\'nutes\'", "+1minutes", &res);
 	test_time_parse_expect(ret, res, knot_time() + 60, "minute");
 }
 
