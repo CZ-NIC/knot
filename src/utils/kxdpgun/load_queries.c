@@ -135,10 +135,10 @@ static int read_txt(struct pkt_payload **g_payloads_top_p, FILE *f, txt_bufs_t *
 	// add pkt to list global_payloads
 	if (g_payloads_top == NULL) {
 		global_payloads = pkt;
-		g_payloads_top = pkt;
+		*g_payloads_top_p = pkt;
 	} else {
 		g_payloads_top->next = pkt;
-		g_payloads_top = pkt;
+		*g_payloads_top_p = pkt;
 	}
 	return pkt_len;
 }
@@ -168,10 +168,10 @@ static int read_bin(struct pkt_payload **g_payloads_top_p, FILE *f, bin_bufs_t *
 	// add pkt to list global_payloads
 	if (g_payloads_top == NULL) {
 		global_payloads = pkt;
-		g_payloads_top = pkt;
+		*g_payloads_top_p = pkt;
 	} else {
 		g_payloads_top->next = pkt;
-		g_payloads_top = pkt;
+		*g_payloads_top_p = pkt;
 	}
 	return size;
 }
@@ -184,7 +184,6 @@ bool load_queries(const input_t *input, uint16_t edns_size, uint16_t msgid, size
 		ERR2(ERR_PREFIX "file '%s' (%s)", input->path, strerror(errno));
 		return false;
 	}
-	struct pkt_payload *g_payloads_top = NULL;
 
 	void *bufs = NULL;
 	switch (input->format) {
@@ -203,6 +202,7 @@ bool load_queries(const input_t *input, uint16_t edns_size, uint16_t msgid, size
 		goto fail;
 	}
 
+	struct pkt_payload *g_payloads_top = NULL;
 	while (read < maxcount) {
 		int ret = 0;
 		switch (input->format) {
