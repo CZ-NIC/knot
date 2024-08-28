@@ -103,7 +103,11 @@ kxdpgun_SOURCES = \
 	utils/kxdpgun/ip_route.h		\
 	utils/kxdpgun/load_queries.c		\
 	utils/kxdpgun/load_queries.h		\
-	utils/kxdpgun/main.c
+	utils/kxdpgun/main.c			\
+	utils/kxdpgun/main.h			\
+	utils/kxdpgun/stats.c			\
+	utils/kxdpgun/stats.h
+
 
 kxdpgun_CPPFLAGS  = $(libknotus_la_CPPFLAGS) $(libmnl_CFLAGS)
 kxdpgun_LDADD     = libknot.la $(libcontrib_LIBS) $(libmnl_LIBS) $(pthread_LIBS)

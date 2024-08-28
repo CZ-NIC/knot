@@ -627,6 +627,9 @@ src/utils/kxdpgun/ip_route.h
 src/utils/kxdpgun/load_queries.c
 src/utils/kxdpgun/load_queries.h
 src/utils/kxdpgun/main.c
+src/utils/kxdpgun/main.h
+src/utils/kxdpgun/stats.c
+src/utils/kxdpgun/stats.h
 src/utils/kzonecheck/main.c
 src/utils/kzonecheck/zone_check.c
 src/utils/kzonecheck/zone_check.h

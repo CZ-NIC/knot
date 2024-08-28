@@ -116,6 +116,14 @@ Options
   This option is ignored if not in the QUIC mode. The recommended usage is
   with **--quic=R** or with low QPS. Otherwise, too many files are generated.
 
+**-j**, **--json**
+  Print statistics formatted as json.
+
+**-S**, **--stats-period** *period*
+  Report statistics automatically every *period* milliseconds.
+
+  These reports contain only metrics collected in the given period.
+
 **-h**, **--help**
   Print the program help.
 
@@ -171,7 +179,8 @@ Signals
 .......
 
 Sending USR1 signal to a running process triggers current statistics dump
-to the standard output.
+to the standard output. In combination with **-S** may cause erratic printout
+timing.
 
 Notes
 -----
@@ -183,6 +192,12 @@ CAP_NET_RAW, CAP_NET_ADMIN, CAP_SYS_ADMIN, CAP_IPC_LOCK, and CAP_SYS_RESOURCE
 (Linux < 5.11).
 
 The utility allocates source UDP/TCP ports from the range 2000-65535.
+
+Due to the multi-threaded program structure there are slight discrepancies in
+the timespan during which metrics are collected for any given thread. The
+statistics printouts ignore this and are thus ever-so-slightly inaccurate. The
+error margin decreases proportionally to the volume of data & timespan over
+which they are collected.
 
 Exit values
 -----------
