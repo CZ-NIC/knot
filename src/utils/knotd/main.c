@@ -402,7 +402,8 @@ static void *ctl_process_thread(void *arg)
 {
 	concurrent_ctl_ctx_t *ctx = arg;
 	rcu_register_thread();
-	setup_signals(); // in fact, this blocks common signals so that they arrive to main thread instead of this one
+	setup_signals(); // in fact, this blocks common signals so that they
+	                 // arrive to main thread instead of this one
 
 	pthread_mutex_lock(&ctx->mutex);
 	while (ctx->state != CONCURRENT_KILLED) {
