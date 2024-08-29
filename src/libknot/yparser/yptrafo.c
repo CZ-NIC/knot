@@ -17,6 +17,7 @@
 #include <arpa/inet.h>
 #include <inttypes.h>
 #include <limits.h>
+#include <net/if.h>
 #include <stdlib.h>
 #include <stdio.h>
 
@@ -29,6 +30,20 @@
 #include "contrib/musl/inet_ntop.h"
 #include "contrib/sockaddr.h"
 #include "contrib/wire_ctx.h"
+
+static const uint8_t *find_ifname_end(const uint8_t *src)
+{
+	for (;; ++src) {
+		switch (*src) {
+		case '@':
+		case '-':
+		case '/':
+		case '\0':
+			return src;
+		}
+	}
+	return NULL;
+}
 
 enum {
 	UNIT_BYTE  = 'B',
@@ -57,6 +72,40 @@ enum {
 	MULTI_MONTH = MULTI_DAY * 30,
 	MULTI_YEAR  = MULTI_DAY * 365,
 };
+
+enum {
+	ADDR_UNIX = 0,
+	ADDR_IP = 4, //Mask for all IP's and IPv4 value
+	ADDR_IP6 = ADDR_IP | 2,
+	ADDR_LINKLOCAL = 16,
+	ADDR_IP6_LINKLOCAL = ADDR_IP6 | ADDR_LINKLOCAL
+};
+
+static inline bool is_unix_addr(uint8_t type)
+{
+	return type == ADDR_UNIX;
+}
+
+static inline bool is_ip_addr(uint8_t type)
+{
+	return (type & ADDR_IP);
+}
+
+
+static inline bool is_ip4_addr(uint8_t type)
+{
+	return type == ADDR_IP;
+}
+
+static inline bool is_ip6_addr(uint8_t type)
+{
+	return (type & ADDR_IP6) == ADDR_IP6;
+}
+
+static inline bool is_ip6_linklocal_addr(uint8_t type)
+{
+	return type == ADDR_IP6_LINKLOCAL;
+}
 
 static wire_ctx_t copy_in(
 	wire_ctx_t *in,
@@ -372,11 +421,11 @@ static uint8_t sock_type_guess(
 
 	// Guess socket type.
 	if (semicolons >= 1) {
-		return 6;
+		return ADDR_IP6_LINKLOCAL;
 	} else if (semicolons == 0 && dots == 3 && digits >= 3) {
-		return 4;
+		return ADDR_IP;
 	} else {
-		return 0;
+		return ADDR_UNIX;
 	}
 }
 
@@ -394,8 +443,16 @@ int yp_addr_noport_to_bin(
 
 	// Copy address to the buffer to limit inet_pton overread.
 	char buf[INET6_ADDRSTRLEN];
-	if (type == 4 || type == 6) {
-		wire_ctx_t buf_ctx = copy_in(in, YP_LEN, buf, sizeof(buf));
+	char *scope = NULL;
+	if (is_ip6_linklocal_addr(type)) {
+		scope = strchr((char *)in->position, '%');
+	}
+	size_t len = YP_LEN;
+	if (scope != NULL) {
+		len = scope - (char *)in->position;
+	}
+	if (is_ip_addr(type)) {
+		wire_ctx_t buf_ctx = copy_in(in, len, buf, sizeof(buf));
 		if (buf_ctx.error != KNOT_EOK) {
 			return buf_ctx.error;
 		}
@@ -405,13 +462,19 @@ int yp_addr_noport_to_bin(
 	wire_ctx_write_u8(out, type);
 
 	// Write address as such.
-	if (type == 4 && inet_pton(AF_INET, buf, &addr4) == 1) {
+	if (is_ip4_addr(type) && inet_pton(AF_INET, buf, &addr4) == 1) {
 		wire_ctx_write(out, (uint8_t *)&(addr4.s_addr),
 		               sizeof(addr4.s_addr));
-	} else if (type == 6 && inet_pton(AF_INET6, buf, &addr6) == 1) {
+	} else if (is_ip6_addr(type) && inet_pton(AF_INET6, buf, &addr6) == 1) {
 		wire_ctx_write(out, (uint8_t *)&(addr6.s6_addr),
 	                       sizeof(addr6.s6_addr));
-	} else if (type == 0 && allow_unix) {
+		if (scope != NULL) {
+			wire_ctx_skip(in, sizeof(uint8_t));
+			yp_str_to_bin(in, out, find_ifname_end(in->position));
+		} else if (is_ip6_linklocal_addr(type)) {
+			wire_ctx_write_u8(out, 0);
+		}
+	} else if (is_unix_addr(type) && allow_unix) {
 		int ret = yp_str_to_bin(in, out, stop);
 		if (ret != KNOT_EOK) {
 			return ret;
@@ -434,14 +497,15 @@ int yp_addr_noport_to_txt(
 
 	int ret;
 
-	switch (wire_ctx_read_u8(in)) {
-	case 0:
+	uint8_t type = wire_ctx_read_u8(in);
+	switch (type) {
+	case ADDR_UNIX:
 		ret = yp_str_to_txt(in, out);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
 		break;
-	case 4:
+	case ADDR_IP:
 		wire_ctx_read(in, &(addr4.s_addr), sizeof(addr4.s_addr));
 		if (knot_inet_ntop(AF_INET, &addr4, (char *)out->position,
 		    wire_ctx_available(out)) == NULL) {
@@ -449,13 +513,20 @@ int yp_addr_noport_to_txt(
 		}
 		wire_ctx_skip(out, strlen((char *)out->position));
 		break;
-	case 6:
+	case ADDR_IP6:
+	case ADDR_IP6_LINKLOCAL:
 		wire_ctx_read(in, &(addr6.s6_addr), sizeof(addr6.s6_addr));
 		if (knot_inet_ntop(AF_INET6, &addr6, (char *)out->position,
 		    wire_ctx_available(out)) == NULL) {
 			return KNOT_EINVAL;
 		}
 		wire_ctx_skip(out, strlen((char *)out->position));
+
+		if (is_ip6_linklocal_addr(type) && *in->position != '\0') {
+			wire_ctx_write_u8(out, '%');
+			wire_ctx_copy(out, in, strlen((const char *)in->position));
+		}
+		wire_ctx_skip(in, sizeof(uint8_t));
 		break;
 	default:
 		return KNOT_EINVAL;
@@ -487,7 +558,7 @@ int yp_addr_to_bin(
 	}
 
 	if (pos != NULL) {
-		if (*type == 0) {
+		if (is_unix_addr(*type)) {
 			// Rewrite string terminator.
 			wire_ctx_skip(out, -1);
 			// Append the rest (separator and port) as a string.
@@ -502,7 +573,7 @@ int yp_addr_to_bin(
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
-	} else if (*type == 4 || *type == 6) {
+	} else if (is_ip_addr(*type)) {
 		wire_ctx_write_u64(out, (uint64_t)-1);
 	}
 
@@ -525,7 +596,7 @@ int yp_addr_to_txt(
 	}
 
 	// Write port.
-	if (*type == 4 || *type == 6) {
+	if (is_ip_addr(*type)) {
 		int64_t port = wire_ctx_read_u64(in);
 
 		if (port >= 0) {
@@ -1076,16 +1147,25 @@ struct sockaddr_storage yp_addr_noport(
 
 	// Set address.
 	switch (type) {
-	case 0:
+	case ADDR_UNIX:
 		sockaddr_set(&ss, AF_UNIX, (char *)data, 0);
 		break;
-	case 4:
+	case ADDR_IP:
 		sockaddr_set_raw(&ss, AF_INET, data,
 		                 sizeof(((struct in_addr *)NULL)->s_addr));
 		break;
-	case 6:
+	case ADDR_IP6:
+	case ADDR_IP6_LINKLOCAL:
 		sockaddr_set_raw(&ss, AF_INET6, data,
 		                 sizeof(((struct in6_addr *)NULL)->s6_addr));
+		if (is_ip6_linklocal_addr(type) &&
+		    data[sizeof(((struct in6_addr *)NULL)->s6_addr)] != '\0') {
+			struct sockaddr_in6 *s = (struct sockaddr_in6 *)&ss;
+			s->sin6_scope_id = if_nametoindex((const char *)data + sizeof(((struct in6_addr *)NULL)->s6_addr));
+			if (s->sin6_scope_id == 0 && errno) {
+				ss.ss_family = AF_UNSPEC;
+			} 
+		}
 		break;
 	}
 
@@ -1097,25 +1177,37 @@ struct sockaddr_storage yp_addr(
 	const uint8_t *data,
 	bool *no_port)
 {
+	uint8_t type = *data;
 	struct sockaddr_storage ss = yp_addr_noport(data);
 
-	size_t addr_len;
+	size_t addr_len, link_size;
 
 	// Get binary address length.
-	switch (ss.ss_family) {
-	case AF_INET:
+	switch (type) {
+	case ADDR_IP:
 		addr_len = sizeof(((struct in_addr *)NULL)->s_addr);
+		link_size = 0;
 		break;
-	case AF_INET6:
+	case ADDR_IP6:
 		addr_len = sizeof(((struct in6_addr *)NULL)->s6_addr);
+		link_size = 0;
+		break;
+	case ADDR_IP6_LINKLOCAL:
+		addr_len = sizeof(((struct in6_addr *)NULL)->s6_addr);
+		link_size = 1;
 		break;
 	default:
 		addr_len = 0;
+		link_size = 0;
 		*no_port = true;
 	}
 
 	if (addr_len > 0) {
-		int64_t port = knot_wire_read_u64(data + sizeof(uint8_t) + addr_len);
+		if (is_ip6_linklocal_addr(type)) {
+			const uint8_t *link = data + sizeof(uint8_t) + addr_len;
+			link_size = (find_ifname_end(link) - link) + 1;
+		}
+		int64_t port = knot_wire_read_u64(data + sizeof(uint8_t) + addr_len + link_size);
 		if (port >= 0) {
 			sockaddr_port_set(&ss, port);
 			*no_port = false;
