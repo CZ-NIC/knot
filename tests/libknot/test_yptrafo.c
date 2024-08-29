@@ -366,10 +366,16 @@ int main(int argc, char *argv[])
 	addr_test("::1@12345", false);
 	addr_test("/tmp/test.sock", true);
 	addr_test("eth1@53", true);
+	addr_test("::1%lo", true);
+	addr_test("::1%2", true);
+	addr_test("::1%lo@12345", false);
+	addr_test("::1%4@12345", false);
 	addr_bad_test("192.168.123.x", KNOT_EINVAL);
 	addr_bad_test("192.168.123.1@", KNOT_EINVAL);
 	addr_bad_test("192.168.123.1@1x", KNOT_EINVAL);
 	addr_bad_test("192.168.123.1@65536", KNOT_ERANGE);
+	addr_bad_test("::1%", KNOT_EINVAL);
+	addr_bad_test("::1%@53", KNOT_EINVAL);
 
 	/* Address range tests. */
 	addr_range_test("/tmp/unix.sock");
@@ -380,7 +386,9 @@ int main(int argc, char *argv[])
 	addr_range_test("::1");
 	addr_range_test("::1/0");
 	addr_range_test("::1/32");
+	addr_range_test("::1%lo/32");
 	addr_range_test("1::-5::");
+	addr_range_test("1::%lo-5::%lo");
 	addr_range_bad_test("unix", KNOT_EINVAL);
 	addr_range_bad_test("1.1.1", KNOT_EINVAL);
 	addr_range_bad_test("1.1.1.1/", KNOT_EINVAL);
