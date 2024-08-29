@@ -50,12 +50,12 @@
 #define PROGRAM_NAME "knotd"
 
 typedef enum {
-	CONCURRENT_EMPTY = 0,
-	CONCURRENT_ASSIGNED,
-	CONCURRENT_RUNNING,
-	CONCURRENT_FINISHED,
-	CONCURRENT_IDLE,
-	CONCURRENT_KILLED,
+	CONCURRENT_EMPTY = 0,   // fresh cctx without a thread.
+	CONCURRENT_ASSIGNED,    // cctx assigned to process a command.
+	CONCURRENT_RUNNING,     // ctl command is being processed in the thread.
+	CONCURRENT_IDLE,        // command has been processed, waiting for a new one.
+	CONCURRENT_KILLED,      // cctx cleanup has started.
+	CONCURRENT_FINISHED,    // after having been killed, the thread is being joined.
 } concurrent_ctl_state_t;
 
 typedef struct {
