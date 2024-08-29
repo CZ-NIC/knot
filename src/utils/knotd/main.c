@@ -286,6 +286,17 @@ static void check_loaded(server_t *server)
 
 static void *ctl_process_thread(void *arg);
 
+/*!
+ * Try to find an empty ctl processing context and if successful,
+ * prepare to lauch the incomming command processing in it.
+ *
+ * \param[in]  concurrent_ctxs  Configured concurrent control contexts.
+ * \param[in]  n_ctxs           Number of configured concurrent control contexts.
+ * \param[in]  ctl              Control context.
+ *
+ * \return     Assigned concurrent control context, or NULL.
+ */
+
 static concurrent_ctl_ctx_t *find_free_ctx(concurrent_ctl_ctx_t *concurrent_ctxs,
                                            size_t n_ctxs, knot_ctl_t *ctl)
 {
