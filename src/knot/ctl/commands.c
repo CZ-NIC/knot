@@ -2425,10 +2425,18 @@ static int ctl_lock(server_t *server, ctl_lock_flag_t flags, uint64_t timeout_ms
 
 	if ((flags & CTL_LOCK_SRV_W)) {
 		assert(!(flags & CTL_LOCK_SRV_R));
+#if !defined(__APPLE__)
 		ret = pthread_rwlock_timedwrlock(&server->ctl_lock, &ts);
+#else
+		ret = pthread_rwlock_wrlock(&server->ctl_lock);
+#endif
 	}
 	if ((flags & CTL_LOCK_SRV_R)) {
+#if !defined(__APPLE__)
 		ret = pthread_rwlock_timedrdlock(&server->ctl_lock, &ts);
+#else
+		ret = pthread_rwlock_rdlock(&server->ctl_lock);
+#endif
 	}
 	return (ret != 0 ? KNOT_EBUSY : KNOT_EOK);
 }
