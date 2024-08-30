@@ -146,6 +146,8 @@ src/contrib/string.h
 src/contrib/strtonum.h
 src/contrib/time.c
 src/contrib/time.h
+src/contrib/threads.c
+src/contrib/threads.h
 src/contrib/toeplitz.h
 src/contrib/tolower.h
 src/contrib/trim.h
