@@ -66,6 +66,7 @@ typedef struct {
 	knot_ctl_t *ctl;
 	server_t *server;
 	pthread_t thread;
+	sigset_t sigmask;
 	int ret;
 	bool exclusive;
 } concurrent_ctl_ctx_t;
@@ -184,13 +185,14 @@ static void setup_signals(void)
 	sigdelset(&all, SIGBUS);
 	sigdelset(&all, SIGFPE);
 	sigdelset(&all, SIGSEGV);
-	pthread_sigmask(SIG_SETMASK, &all, NULL);
 
 	/* Setup handlers. */
 	struct sigaction action = { .sa_handler = handle_signal };
 	for (const struct signal *s = SIGNALS; s->signum > 0; s++) {
 		sigaction(s->signum, &action, NULL);
 	}
+
+	pthread_sigmask(SIG_SETMASK, &all, NULL);
 }
 
 /*! \brief Unblock server control signals. */
@@ -206,6 +208,24 @@ static void enable_signals(void)
 	}
 
 	pthread_sigmask(SIG_UNBLOCK, &mask, NULL);
+}
+
+/*! \brief Create a control thread with correct signals setting. */
+static void create_thread_sigmask(pthread_t *thr, void *(*fcn)(void*), void *ctx,
+                                  sigset_t *out_mask)
+{
+	/* Block all blockable signals. */
+	sigset_t mask;
+	sigfillset(&mask);
+	sigdelset(&mask, SIGBUS);
+	sigdelset(&mask, SIGFPE);
+	sigdelset(&mask, SIGILL);
+	sigdelset(&mask, SIGSEGV);
+	pthread_sigmask(SIG_SETMASK, &mask, out_mask);
+
+	pthread_create(thr, NULL, fcn, ctx);
+
+	pthread_sigmask(SIG_SETMASK, out_mask, NULL);
 }
 
 /*! \brief Drop POSIX 1003.1e capabilities. */
@@ -306,7 +326,7 @@ static concurrent_ctl_ctx_t *find_free_ctx(concurrent_ctl_ctx_t *concurrent_ctxs
 		pthread_mutex_lock(&cctx->mutex);
 		switch (cctx->state) {
 		case CONCURRENT_EMPTY:
-			pthread_create(&cctx->thread, NULL, ctl_process_thread, cctx);
+			create_thread_sigmask(&cctx->thread, ctl_process_thread, cctx, &cctx->sigmask);
 			break;
 		case CONCURRENT_IDLE:
 			knot_ctl_free(cctx->ctl);
