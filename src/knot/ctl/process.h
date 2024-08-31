@@ -19,13 +19,16 @@
 #include "libknot/libknot.h"
 #include "knot/server/server.h"
 
+#define MAX_CTL_CONCURRENT 8 // number of CTL threads EXCLUDING the main thread which can also process CTL
+
 /*!
  * Processes incoming control commands.
  *
  * \param[in]  ctl        Control context.
  * \param[in]  server     Server instance.
+ * \param[in]  thread_no  Idx of thread which performs the CTL.
  * \param[out] exclusive  All following CTLs shall (not) be processed exclusively by this thread.
  *
  * \return Error code, KNOT_EOK if successful.
  */
-int ctl_process(knot_ctl_t *ctl, server_t *server, bool *exclusive);
+int ctl_process(knot_ctl_t *ctl, server_t *server, int thread_no, bool *exclusive);

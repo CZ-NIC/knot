@@ -20,7 +20,7 @@
 #include "libknot/error.h"
 #include "contrib/string.h"
 
-int ctl_process(knot_ctl_t *ctl, server_t *server, bool *exclusive)
+int ctl_process(knot_ctl_t *ctl, server_t *server, int thread_no, bool *exclusive)
 {
 	if (ctl == NULL || server == NULL) {
 		return KNOT_EINVAL;
@@ -29,7 +29,8 @@ int ctl_process(knot_ctl_t *ctl, server_t *server, bool *exclusive)
 	ctl_args_t args = {
 		.ctl = ctl,
 		.type = KNOT_CTL_TYPE_END,
-		.server = server
+		.server = server,
+		.thread_no = thread_no,
 	};
 
 	// Strip redundant/unprocessed data units in the current block.

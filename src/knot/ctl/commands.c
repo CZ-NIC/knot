@@ -24,6 +24,7 @@
 #include "knot/common/stats.h"
 #include "knot/conf/confio.h"
 #include "knot/ctl/commands.h"
+#include "knot/ctl/process.h"
 #include "knot/dnssec/key-events.h"
 #include "knot/events/events.h"
 #include "knot/events/handlers.h"
@@ -70,7 +71,7 @@ static struct {
 	            sizeof(((send_ctx_t *)0)->ttl) +
 	            sizeof(((send_ctx_t *)0)->type) +
 	            sizeof(((send_ctx_t *)0)->rdata)];
-} ctl_globals;
+} ctl_globals[MAX_CTL_CONCURRENT + 1];
 
 static bool allow_blocking_while_ctl_txn(zone_event_type_t event)
 {
@@ -1123,7 +1124,7 @@ static int get_owner(uint8_t *out, size_t out_len, knot_dname_t *origin,
 
 static int zone_read(zone_t *zone, ctl_args_t *args)
 {
-	send_ctx_t *ctx = &ctl_globals.send_ctx;
+	send_ctx_t *ctx = &ctl_globals[args->thread_no].send_ctx;
 	int ret = init_send_ctx(ctx, zone->name, args);
 	if (ret != KNOT_EOK) {
 		return ret;
@@ -1165,7 +1166,7 @@ static int zone_flag_txn_get(zone_t *zone, ctl_args_t *args, const char *flag)
 		return KNOT_TXN_ENOTEXISTS;
 	}
 
-	send_ctx_t *ctx = &ctl_globals.send_ctx;
+	send_ctx_t *ctx = &ctl_globals[args->thread_no].send_ctx;
 	int ret = init_send_ctx(ctx, zone->name, args);
 	if (ret != KNOT_EOK) {
 		return ret;
@@ -1282,7 +1283,7 @@ static int zone_txn_diff_l(zone_t *zone, ctl_args_t *args)
 		return zone_flag_txn_get(zone, args, CTL_FLAG_DIFF_ADD);
 	}
 
-	send_ctx_t *ctx = &ctl_globals.send_ctx;
+	send_ctx_t *ctx = &ctl_globals[args->thread_no].send_ctx;
 	int ret = init_send_ctx(ctx, zone->name, args);
 	if (ret != KNOT_EOK) {
 		return ret;
@@ -1342,8 +1343,8 @@ static int create_rrset(knot_rrset_t **rrset, zone_t *zone, ctl_args_t *args,
 	const char *ttl   = need_ttl ? args->data[KNOT_CTL_IDX_TTL] : NULL;
 
 	// Prepare a buffer for a reconstructed record.
-	const size_t buff_len = sizeof(ctl_globals.txt_rr);
-	char *buff = ctl_globals.txt_rr;
+	const size_t buff_len = sizeof(ctl_globals[args->thread_no].txt_rr);
+	char *buff = ctl_globals[args->thread_no].txt_rr;
 
 	// Choose default TTL if none was specified.
 	uint32_t default_ttl = 0;
@@ -1366,7 +1367,7 @@ static int create_rrset(knot_rrset_t **rrset, zone_t *zone, ctl_args_t *args,
 	size_t rdata_len = ret;
 
 	// Parse the record.
-	zs_scanner_t *scanner = &ctl_globals.scanner;
+	zs_scanner_t *scanner = &ctl_globals[args->thread_no].scanner;
 	if (zs_init(scanner, origin, KNOT_CLASS_IN, default_ttl) != 0 ||
 	    zs_set_input_string(scanner, buff, rdata_len) != 0 ||
 	    zs_parse_record(scanner) != 0 ||
