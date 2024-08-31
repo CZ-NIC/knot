@@ -48,7 +48,6 @@
 #include "utils/common/params.h"
 
 #define PROGRAM_NAME "knotd"
-#define MAX_CTL_CONCURRENT 8
 
 typedef enum {
 	CONCURRENT_EMPTY = 0,   // fresh cctx without a thread.
@@ -68,6 +67,7 @@ typedef struct {
 	pthread_t thread;
 	sigset_t sigmask;
 	int ret;
+	int thread_idx;
 	bool exclusive;
 } concurrent_ctl_ctx_t;
 
@@ -353,6 +353,7 @@ static void init_ctxs(concurrent_ctl_ctx_t *concurrent_ctxs, size_t n_ctxs, serv
 		pthread_mutex_init(&cctx->mutex, NULL);
 		pthread_cond_init(&cctx->cond, NULL);
 		cctx->server = server;
+		cctx->thread_idx = i + 1;
 	}
 }
 
@@ -416,7 +417,7 @@ static void *ctl_process_thread(void *arg)
 		pthread_mutex_unlock(&ctx->mutex);
 
 		// Not IDLE, ctx can be read without locking.
-		int ret = ctl_process(ctx->ctl, ctx->server, &exclusive);
+		int ret = ctl_process(ctx->ctl, ctx->server, ctx->thread_idx, &exclusive);
 
 		pthread_mutex_lock(&ctx->mutex);
 		ctx->ret = ret;
@@ -482,8 +483,8 @@ static void event_loop(server_t *server, const char *socket, bool daemonize,
 
 	enable_signals();
 
-	concurrent_ctl_ctx_t concurrent_ctxs[MAX_CTL_CONCURRENT] = { 0 };
-	init_ctxs(concurrent_ctxs, MAX_CTL_CONCURRENT, server);
+	concurrent_ctl_ctx_t concurrent_ctxs[CTL_MAX_CONCURRENT] = { 0 };
+	init_ctxs(concurrent_ctxs, CTL_MAX_CONCURRENT, server);
 	bool main_thread_exclusive = false;
 
 	/* Notify systemd about successful start. */
@@ -511,7 +512,7 @@ static void event_loop(server_t *server, const char *socket, bool daemonize,
 			server_update_zones(conf(), server, mode);
 			pthread_rwlock_unlock(&server->ctl_lock);
 		}
-		if (sig_req_stop || cleanup_ctxs(concurrent_ctxs, MAX_CTL_CONCURRENT) == KNOT_CTL_ESTOP) {
+		if (sig_req_stop || cleanup_ctxs(concurrent_ctxs, CTL_MAX_CONCURRENT) == KNOT_CTL_ESTOP) {
 			break;
 		}
 
@@ -530,8 +531,8 @@ static void event_loop(server_t *server, const char *socket, bool daemonize,
 		}
 
 		if (main_thread_exclusive ||
-		    find_free_ctx(concurrent_ctxs, MAX_CTL_CONCURRENT, ctl) == NULL) {
-			ret = ctl_process(ctl, server, &main_thread_exclusive);
+		    find_free_ctx(concurrent_ctxs, CTL_MAX_CONCURRENT, ctl) == NULL) {
+			ret = ctl_process(ctl, server, 0, &main_thread_exclusive);
 			knot_ctl_close(ctl);
 			if (ret == KNOT_CTL_ESTOP) {
 				break;
@@ -539,7 +540,7 @@ static void event_loop(server_t *server, const char *socket, bool daemonize,
 		}
 	}
 
-	finalize_ctxs(concurrent_ctxs, MAX_CTL_CONCURRENT);
+	finalize_ctxs(concurrent_ctxs, CTL_MAX_CONCURRENT);
 
 	if (conf()->cache.srv_dbus_event & DBUS_EVENT_RUNNING) {
 		dbus_emit_running(false);
