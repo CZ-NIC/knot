@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include "contrib/atomic.h"
 #include "contrib/semaphore.h"
 #include "knot/catalog/catalog_update.h"
 #include "knot/conf/conf.h"
@@ -114,6 +115,7 @@ typedef struct zone
 
 	/*! \brief Control update context. */
 	struct zone_update *control_update;
+	pthread_mutex_t cu_lock;
 
 	/*! \brief Ensue one COW transaction on zone's trees at a time. */
 	knot_sem_t cow_lock;
@@ -122,7 +124,7 @@ typedef struct zone
 	struct server *server;
 
 	/*! \brief Zone backup context (NULL unless backup pending). */
-	struct zone_backup_ctx *backup_ctx;
+	knot_atomic_ptr_t backup_ctx;
 
 	/*! \brief Catalog-generate feature. */
 	knot_dname_t *catalog_gen;

@@ -125,6 +125,7 @@ typedef struct {
 	knot_ctl_data_t data;
 	server_t *server;
 	bool suppress;	// Suppress error reporting in the "all zones" ctl commands.
+	unsigned thread_idx;
 } ctl_args_t;
 
 /*!

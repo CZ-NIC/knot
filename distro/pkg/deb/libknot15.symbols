@@ -16,6 +16,7 @@ libknot.so.15 libknot15 #MINVER#
  knot_ctl_accept@Base 3.4.0
  knot_ctl_alloc@Base 3.4.0
  knot_ctl_bind@Base 3.4.0
+ knot_ctl_clone@Base 3.4.0
  knot_ctl_close@Base 3.4.0
  knot_ctl_connect@Base 3.4.0
  knot_ctl_free@Base 3.4.0

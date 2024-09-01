@@ -17,12 +17,14 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/time.h>
+#include <time.h>
 #include <urcu.h>
 
 #include "knot/common/log.h"
 #include "knot/common/stats.h"
 #include "knot/conf/confio.h"
 #include "knot/ctl/commands.h"
+#include "knot/ctl/process.h"
 #include "knot/dnssec/key-events.h"
 #include "knot/events/events.h"
 #include "knot/events/handlers.h"
@@ -69,7 +71,7 @@ static struct {
 	            sizeof(((send_ctx_t *)0)->ttl) +
 	            sizeof(((send_ctx_t *)0)->type) +
 	            sizeof(((send_ctx_t *)0)->rdata)];
-} ctl_globals;
+} ctl_globals[CTL_MAX_CONCURRENT + 1];
 
 static bool allow_blocking_while_ctl_txn(zone_event_type_t event)
 {
@@ -646,47 +648,49 @@ static int zone_backup_cmd(zone_t *zone, ctl_args_t *args)
 		return KNOT_EOK;
 	}
 
+	int ret = KNOT_EOK;
+	pthread_mutex_lock(&zone->cu_lock);
 	if (zone->backup_ctx != NULL) {
 		log_zone_warning(zone->name, "backup or restore already in progress, skipping zone");
 		ctx->failed = true;
-		return KNOT_EPROGRESS;
+		ret = KNOT_EPROGRESS;
 	}
 
-	if (ctx->restore_mode && zone->control_update != NULL) {
+	if (ctx->restore_mode && zone->control_update != NULL && ret == KNOT_EOK) {
 		log_zone_warning(zone->name, "restoring backup not possible due to open control transaction");
 		ctx->failed = true;
-		return KNOT_TXN_EEXISTS;
+		ret = KNOT_TXN_EEXISTS;
 	}
+
+	if (ret == KNOT_EOK) {
+		zone->backup_ctx = ctx;
+	}
+	pthread_mutex_unlock(&zone->cu_lock);
 
 	ctx->zone_count++;
 
-	int ret;
-	if (!ctx->backup_global) {
+	if (!ctx->backup_global && ret == KNOT_EOK) {
 		ret = global_backup(ctx, zone_catalog(zone), zone->name);
-		if (ret != KNOT_EOK) {
-			return ret;
-		}
 	}
 
-	if (ctx->backup_params & BACKUP_PARAM_KEYSONLY) {
+	bool finish = false;
+	if ((ctx->backup_params & BACKUP_PARAM_KEYSONLY) && ret == KNOT_EOK) {
 		ret = zone_backup_keysonly(ctx, conf(), zone);
-		if (ret != KNOT_EOK) {
-			return ret;
-		}
 
-		if (ctx->restore_mode) {
+		if (ctx->restore_mode && ret == KNOT_EOK) {
 			ret = zone_keys_load(zone, args);
-			if (ret != KNOT_EOK) {
-				return ret;
-			}
 		}
 
 		if (!(ctx->backup_params & BACKUP_PARAM_EVENT)) {
-			return ret;
+			finish = true;
 		}
 	}
 
-	zone->backup_ctx = ctx;
+	if (ret != KNOT_EOK || finish) {
+		zone->backup_ctx = NULL;
+		return ret;
+	}
+
 	pthread_mutex_lock(&ctx->readers_mutex);
 	ctx->readers++;
 	pthread_mutex_unlock(&ctx->readers_mutex);
@@ -817,8 +821,8 @@ static int zone_ksk_sbm_confirm(zone_t *zone, _unused_ ctl_args_t *args)
 
 	conf_val_t val = conf_zone_get(conf(), C_DNSSEC_SIGNING, zone->name);
 	if (ret == KNOT_EOK && conf_bool(&val)) {
-		// NOT zone_events_schedule_user(), intentionally!
-		ret = schedule_trigger(zone, args, ZONE_EVENT_DNSSEC, false);
+		// NOT zone_events_schedule_user() or schedule_trigger(), intentionally!
+		zone_events_schedule_now(zone, ZONE_EVENT_DNSSEC);
 	}
 
 	return ret;
@@ -852,14 +856,20 @@ static int zone_xfr_thaw(zone_t *zone, _unused_ ctl_args_t *args)
 	return KNOT_EOK;
 }
 
-static int zone_txn_begin(zone_t *zone, _unused_ ctl_args_t *args)
+static int zone_txn_begin_l(zone_t *zone, _unused_ ctl_args_t *args)
 {
 	if (zone->control_update != NULL || conf()->io.txn != NULL) {
 		return KNOT_TXN_EEXISTS;
 	}
 
-	if (zone->backup_ctx != NULL && zone->backup_ctx->restore_mode) {
+	struct zone_backup_ctx *backup_ctx = zone->backup_ctx;
+	if (backup_ctx != NULL && backup_ctx->restore_mode) {
 		log_zone_warning(zone->name, "zone restore pending, try opening control transaction later");
+		return KNOT_EAGAIN;
+	}
+
+	if (zone->events.running && zone->events.type >= 0 && zone->events.blocking[zone->events.type] != NULL) {
+		log_zone_warning(zone->name, "some blocking event running, try opening control transaction later");
 		return KNOT_EAGAIN;
 	}
 
@@ -878,7 +888,15 @@ static int zone_txn_begin(zone_t *zone, _unused_ ctl_args_t *args)
 	return ret;
 }
 
-static int zone_txn_commit(zone_t *zone, _unused_ ctl_args_t *args)
+static int zone_txn_begin(zone_t *zone, ctl_args_t *args)
+{
+	pthread_mutex_lock(&zone->cu_lock);
+	int ret = zone_txn_begin_l(zone, args);
+	pthread_mutex_unlock(&zone->cu_lock);
+	return ret;
+}
+
+static int zone_txn_commit_l(zone_t *zone, _unused_ ctl_args_t *args)
 {
 	if (zone->control_update == NULL) {
 		args->suppress = true;
@@ -940,15 +958,26 @@ static int zone_txn_commit(zone_t *zone, _unused_ ctl_args_t *args)
 	return KNOT_EOK;
 }
 
+static int zone_txn_commit(zone_t *zone, ctl_args_t *args)
+{
+	pthread_mutex_lock(&zone->cu_lock);
+	int ret = zone_txn_commit_l(zone, args);
+	pthread_mutex_unlock(&zone->cu_lock);
+	return ret;
+}
+
 static int zone_txn_abort(zone_t *zone, _unused_ ctl_args_t *args)
 {
+	pthread_mutex_lock(&zone->cu_lock);
 	if (zone->control_update == NULL) {
 		args->suppress = true;
+		pthread_mutex_unlock(&zone->cu_lock);
 		return KNOT_TXN_ENOTEXISTS;
 	}
 
 	zone_control_clear(zone);
 
+	pthread_mutex_unlock(&zone->cu_lock);
 	return KNOT_EOK;
 }
 
@@ -1095,7 +1124,7 @@ static int get_owner(uint8_t *out, size_t out_len, knot_dname_t *origin,
 
 static int zone_read(zone_t *zone, ctl_args_t *args)
 {
-	send_ctx_t *ctx = &ctl_globals.send_ctx;
+	send_ctx_t *ctx = &ctl_globals[args->thread_idx].send_ctx;
 	int ret = init_send_ctx(ctx, zone->name, args);
 	if (ret != KNOT_EOK) {
 		return ret;
@@ -1137,7 +1166,7 @@ static int zone_flag_txn_get(zone_t *zone, ctl_args_t *args, const char *flag)
 		return KNOT_TXN_ENOTEXISTS;
 	}
 
-	send_ctx_t *ctx = &ctl_globals.send_ctx;
+	send_ctx_t *ctx = &ctl_globals[args->thread_idx].send_ctx;
 	int ret = init_send_ctx(ctx, zone->name, args);
 	if (ret != KNOT_EOK) {
 		return ret;
@@ -1176,7 +1205,10 @@ static int zone_flag_txn_get(zone_t *zone, ctl_args_t *args, const char *flag)
 
 static int zone_txn_get(zone_t *zone, ctl_args_t *args)
 {
-	return zone_flag_txn_get(zone, args, NULL);
+	pthread_mutex_lock(&zone->cu_lock);
+	int ret = zone_flag_txn_get(zone, args, NULL);
+	pthread_mutex_unlock(&zone->cu_lock);
+	return ret;
 }
 
 static int send_changeset_part(changeset_t *ch, send_ctx_t *ctx, bool from)
@@ -1239,7 +1271,7 @@ static int send_changeset(changeset_t *ch, send_ctx_t *ctx)
 	return send_changeset_part(ch, ctx, false);
 }
 
-static int zone_txn_diff(zone_t *zone, ctl_args_t *args)
+static int zone_txn_diff_l(zone_t *zone, ctl_args_t *args)
 {
 	if (zone->control_update == NULL) {
 		args->suppress = true;
@@ -1251,13 +1283,21 @@ static int zone_txn_diff(zone_t *zone, ctl_args_t *args)
 		return zone_flag_txn_get(zone, args, CTL_FLAG_DIFF_ADD);
 	}
 
-	send_ctx_t *ctx = &ctl_globals.send_ctx;
+	send_ctx_t *ctx = &ctl_globals[args->thread_idx].send_ctx;
 	int ret = init_send_ctx(ctx, zone->name, args);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
 
 	return send_changeset(&zone->control_update->change, ctx);
+}
+
+static int zone_txn_diff(zone_t *zone, ctl_args_t *args)
+{
+	pthread_mutex_lock(&zone->cu_lock);
+	int ret = zone_txn_diff_l(zone, args);
+	pthread_mutex_unlock(&zone->cu_lock);
+	return ret;
 }
 
 static int get_ttl(zone_t *zone, ctl_args_t *args, uint32_t *ttl)
@@ -1303,8 +1343,8 @@ static int create_rrset(knot_rrset_t **rrset, zone_t *zone, ctl_args_t *args,
 	const char *ttl   = need_ttl ? args->data[KNOT_CTL_IDX_TTL] : NULL;
 
 	// Prepare a buffer for a reconstructed record.
-	const size_t buff_len = sizeof(ctl_globals.txt_rr);
-	char *buff = ctl_globals.txt_rr;
+	const size_t buff_len = sizeof(ctl_globals[args->thread_idx].txt_rr);
+	char *buff = ctl_globals[args->thread_idx].txt_rr;
 
 	// Choose default TTL if none was specified.
 	uint32_t default_ttl = 0;
@@ -1327,7 +1367,7 @@ static int create_rrset(knot_rrset_t **rrset, zone_t *zone, ctl_args_t *args,
 	size_t rdata_len = ret;
 
 	// Parse the record.
-	zs_scanner_t *scanner = &ctl_globals.scanner;
+	zs_scanner_t *scanner = &ctl_globals[args->thread_idx].scanner;
 	if (zs_init(scanner, origin, KNOT_CLASS_IN, default_ttl) != 0 ||
 	    zs_set_input_string(scanner, buff, rdata_len) != 0 ||
 	    zs_parse_record(scanner) != 0 ||
@@ -1353,7 +1393,7 @@ parser_failed:
 	return ret;
 }
 
-static int zone_txn_set(zone_t *zone, ctl_args_t *args)
+static int zone_txn_set_l(zone_t *zone, ctl_args_t *args)
 {
 	if (zone->control_update == NULL) {
 		args->suppress = true;
@@ -1377,7 +1417,15 @@ static int zone_txn_set(zone_t *zone, ctl_args_t *args)
 	return ret;
 }
 
-static int zone_txn_unset(zone_t *zone, ctl_args_t *args)
+static int zone_txn_set(zone_t *zone, ctl_args_t *args)
+{
+	pthread_mutex_lock(&zone->cu_lock);
+	int ret = zone_txn_set_l(zone, args);
+	pthread_mutex_unlock(&zone->cu_lock);
+	return ret;
+}
+
+static int zone_txn_unset_l(zone_t *zone, ctl_args_t *args)
 {
 	if (zone->control_update == NULL) {
 		args->suppress = true;
@@ -1425,6 +1473,14 @@ static int zone_txn_unset(zone_t *zone, ctl_args_t *args)
 			return zone_update_remove_node(zone->control_update, owner);
 		}
 	}
+}
+
+static int zone_txn_unset(zone_t *zone, ctl_args_t *args)
+{
+	pthread_mutex_lock(&zone->cu_lock);
+	int ret = zone_txn_unset_l(zone, args);
+	pthread_mutex_unlock(&zone->cu_lock);
+	return ret;
 }
 
 static bool zone_exists(const knot_dname_t *zone, void *data)
@@ -2272,57 +2328,64 @@ static int ctl_conf_modify(ctl_args_t *args, ctl_cmd_t cmd)
 	return ret;
 }
 
+typedef enum {
+	CTL_LOCK_NONE   = 0x00,
+	CTL_LOCK_SRV_R  = 0x01, // Can run in parallel with other R commands.
+	CTL_LOCK_SRV_W  = 0x02, // Cannot run in parallel with other commands.
+} ctl_lock_flag_t;
+
 typedef struct {
 	const char *name;
 	int (*fcn)(ctl_args_t *, ctl_cmd_t);
+	ctl_lock_flag_t locks;
 } desc_t;
 
 static const desc_t cmd_table[] = {
 	[CTL_NONE]            = { "" },
 
-	[CTL_STATUS]          = { "status",          ctl_server },
-	[CTL_STOP]            = { "stop",            ctl_server },
-	[CTL_RELOAD]          = { "reload",          ctl_server },
-	[CTL_STATS]           = { "stats",           ctl_stats },
+	[CTL_STATUS]          = { "status",             ctl_server,       CTL_LOCK_SRV_R },
+	[CTL_STOP]            = { "stop",               ctl_server,       CTL_LOCK_SRV_R },
+	[CTL_RELOAD]          = { "reload",             ctl_server,       CTL_LOCK_SRV_W },
+	[CTL_STATS]           = { "stats",              ctl_stats,        CTL_LOCK_SRV_R },
 
-	[CTL_ZONE_STATUS]     = { "zone-status",        ctl_zone },
-	[CTL_ZONE_RELOAD]     = { "zone-reload",        ctl_zone },
-	[CTL_ZONE_REFRESH]    = { "zone-refresh",       ctl_zone },
-	[CTL_ZONE_RETRANSFER] = { "zone-retransfer",    ctl_zone },
-	[CTL_ZONE_NOTIFY]     = { "zone-notify",        ctl_zone },
-	[CTL_ZONE_FLUSH]      = { "zone-flush",         ctl_zone },
-	[CTL_ZONE_BACKUP]     = { "zone-backup",        ctl_zone },
-	[CTL_ZONE_RESTORE]    = { "zone-restore",       ctl_zone },
-	[CTL_ZONE_SIGN]       = { "zone-sign",          ctl_zone },
-	[CTL_ZONE_VALIDATE]   = { "zone-validate",      ctl_zone },
-	[CTL_ZONE_KEYS_LOAD]  = { "zone-keys-load",     ctl_zone },
-	[CTL_ZONE_KEY_ROLL]   = { "zone-key-rollover",  ctl_zone },
-	[CTL_ZONE_KSK_SBM]    = { "zone-ksk-submitted", ctl_zone },
-	[CTL_ZONE_FREEZE]     = { "zone-freeze",        ctl_zone },
-	[CTL_ZONE_THAW]       = { "zone-thaw",          ctl_zone },
-	[CTL_ZONE_XFR_FREEZE] = { "zone-xfr-freeze",    ctl_zone },
-	[CTL_ZONE_XFR_THAW]   = { "zone-xfr-thaw",      ctl_zone },
+	[CTL_ZONE_STATUS]     = { "zone-status",        ctl_zone,         CTL_LOCK_SRV_R },
+	[CTL_ZONE_RELOAD]     = { "zone-reload",        ctl_zone,         CTL_LOCK_SRV_R },
+	[CTL_ZONE_REFRESH]    = { "zone-refresh",       ctl_zone,         CTL_LOCK_SRV_R },
+	[CTL_ZONE_RETRANSFER] = { "zone-retransfer",    ctl_zone,         CTL_LOCK_SRV_R },
+	[CTL_ZONE_NOTIFY]     = { "zone-notify",        ctl_zone,         CTL_LOCK_SRV_R },
+	[CTL_ZONE_FLUSH]      = { "zone-flush",         ctl_zone,         CTL_LOCK_SRV_R },
+	[CTL_ZONE_BACKUP]     = { "zone-backup",        ctl_zone,         CTL_LOCK_SRV_W }, // Backup and restore must be exclusive as the global backup ctx is accessed.
+	[CTL_ZONE_RESTORE]    = { "zone-restore",       ctl_zone,         CTL_LOCK_SRV_W },
+	[CTL_ZONE_SIGN]       = { "zone-sign",          ctl_zone,         CTL_LOCK_SRV_R },
+	[CTL_ZONE_VALIDATE]   = { "zone-validate",      ctl_zone,         CTL_LOCK_SRV_R },
+	[CTL_ZONE_KEYS_LOAD]  = { "zone-keys-load",     ctl_zone,         CTL_LOCK_SRV_R },
+	[CTL_ZONE_KEY_ROLL]   = { "zone-key-rollover",  ctl_zone,         CTL_LOCK_SRV_R },
+	[CTL_ZONE_KSK_SBM]    = { "zone-ksk-submitted", ctl_zone,         CTL_LOCK_SRV_R },
+	[CTL_ZONE_FREEZE]     = { "zone-freeze",        ctl_zone,         CTL_LOCK_SRV_R },
+	[CTL_ZONE_THAW]       = { "zone-thaw",          ctl_zone,         CTL_LOCK_SRV_R },
+	[CTL_ZONE_XFR_FREEZE] = { "zone-xfr-freeze",    ctl_zone,         CTL_LOCK_SRV_R },
+	[CTL_ZONE_XFR_THAW]   = { "zone-xfr-thaw",      ctl_zone,         CTL_LOCK_SRV_R },
 
-	[CTL_ZONE_READ]       = { "zone-read",       ctl_zone },
-	[CTL_ZONE_BEGIN]      = { "zone-begin",      ctl_zone },
-	[CTL_ZONE_COMMIT]     = { "zone-commit",     ctl_zone },
-	[CTL_ZONE_ABORT]      = { "zone-abort",      ctl_zone },
-	[CTL_ZONE_DIFF]       = { "zone-diff",       ctl_zone },
-	[CTL_ZONE_GET]        = { "zone-get",        ctl_zone },
-	[CTL_ZONE_SET]        = { "zone-set",        ctl_zone },
-	[CTL_ZONE_UNSET]      = { "zone-unset",      ctl_zone },
-	[CTL_ZONE_PURGE]      = { "zone-purge",      ctl_zone },
-	[CTL_ZONE_STATS]      = { "zone-stats",	     ctl_zone },
+	[CTL_ZONE_READ]       = { "zone-read",          ctl_zone,         CTL_LOCK_SRV_R },
+	[CTL_ZONE_BEGIN]      = { "zone-begin",         ctl_zone,         CTL_LOCK_SRV_R },
+	[CTL_ZONE_COMMIT]     = { "zone-commit",        ctl_zone,         CTL_LOCK_SRV_R },
+	[CTL_ZONE_ABORT]      = { "zone-abort",         ctl_zone,         CTL_LOCK_SRV_R },
+	[CTL_ZONE_DIFF]       = { "zone-diff",          ctl_zone,         CTL_LOCK_SRV_R },
+	[CTL_ZONE_GET]        = { "zone-get",           ctl_zone,         CTL_LOCK_SRV_R },
+	[CTL_ZONE_SET]        = { "zone-set",           ctl_zone,         CTL_LOCK_SRV_R },
+	[CTL_ZONE_UNSET]      = { "zone-unset",         ctl_zone,         CTL_LOCK_SRV_R },
+	[CTL_ZONE_PURGE]      = { "zone-purge",         ctl_zone,         CTL_LOCK_SRV_W },
+	[CTL_ZONE_STATS]      = { "zone-stats",	        ctl_zone,         CTL_LOCK_SRV_R },
 
-	[CTL_CONF_LIST]       = { "conf-list",       ctl_conf_list },
-	[CTL_CONF_READ]       = { "conf-read",       ctl_conf_read },
-	[CTL_CONF_BEGIN]      = { "conf-begin",      ctl_conf_txn },
-	[CTL_CONF_COMMIT]     = { "conf-commit",     ctl_conf_txn },
-	[CTL_CONF_ABORT]      = { "conf-abort",      ctl_conf_txn },
-	[CTL_CONF_DIFF]       = { "conf-diff",       ctl_conf_read },
-	[CTL_CONF_GET]        = { "conf-get",        ctl_conf_read },
-	[CTL_CONF_SET]        = { "conf-set",        ctl_conf_modify },
-	[CTL_CONF_UNSET]      = { "conf-unset",      ctl_conf_modify },
+	[CTL_CONF_LIST]       = { "conf-list",          ctl_conf_list,    CTL_LOCK_SRV_R }, // Can either read live conf or conf txn. The latter would deserve CTL_LOCK_SRV_W, but when conf txn exists, all cmds are done by single thread anyway.
+	[CTL_CONF_READ]       = { "conf-read",          ctl_conf_read,    CTL_LOCK_SRV_R },
+	[CTL_CONF_BEGIN]      = { "conf-begin",         ctl_conf_txn,     CTL_LOCK_SRV_W }, // It's locked only during conf-begin, not for the whole duration of the transaction.
+	[CTL_CONF_COMMIT]     = { "conf-commit",        ctl_conf_txn,     CTL_LOCK_SRV_W },
+	[CTL_CONF_ABORT]      = { "conf-abort",         ctl_conf_txn,     CTL_LOCK_SRV_W },
+	[CTL_CONF_DIFF]       = { "conf-diff",          ctl_conf_read,    CTL_LOCK_SRV_W },
+	[CTL_CONF_GET]        = { "conf-get",           ctl_conf_read,    CTL_LOCK_SRV_W },
+	[CTL_CONF_SET]        = { "conf-set",           ctl_conf_modify,  CTL_LOCK_SRV_W },
+	[CTL_CONF_UNSET]      = { "conf-unset",         ctl_conf_modify,  CTL_LOCK_SRV_W },
 };
 
 #define MAX_CTL_CODE (sizeof(cmd_table) / sizeof(desc_t) - 1)
@@ -2351,13 +2414,52 @@ ctl_cmd_t ctl_str_to_cmd(const char *cmd_str)
 	return CTL_NONE;
 }
 
+static int ctl_lock(server_t *server, ctl_lock_flag_t flags, uint64_t timeout_ms)
+{
+	struct timespec ts;
+	int ret = clock_gettime(CLOCK_REALTIME, &ts);
+	if (ret != 0) {
+		return KNOT_ERROR;
+	}
+	ts.tv_sec += timeout_ms / 1000;
+	ts.tv_nsec += (timeout_ms % 1000) * 1000000LU;
+
+	if ((flags & CTL_LOCK_SRV_W)) {
+		assert(!(flags & CTL_LOCK_SRV_R));
+#if !defined(__APPLE__)
+		ret = pthread_rwlock_timedwrlock(&server->ctl_lock, &ts);
+#else
+		ret = pthread_rwlock_wrlock(&server->ctl_lock);
+#endif
+	}
+	if ((flags & CTL_LOCK_SRV_R)) {
+#if !defined(__APPLE__)
+		ret = pthread_rwlock_timedrdlock(&server->ctl_lock, &ts);
+#else
+		ret = pthread_rwlock_rdlock(&server->ctl_lock);
+#endif
+	}
+	return (ret != 0 ? KNOT_EBUSY : KNOT_EOK);
+}
+
+static void ctl_unlock(server_t *server)
+{
+	pthread_rwlock_unlock(&server->ctl_lock);
+}
+
 int ctl_exec(ctl_cmd_t cmd, ctl_args_t *args)
 {
 	if (args == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	return cmd_table[cmd].fcn(args, cmd);
+	int ret = ctl_lock(args->server, cmd_table[cmd].locks, conf()->cache.ctl_timeout);
+	if (ret == KNOT_EOK) {
+		ret = cmd_table[cmd].fcn(args, cmd);
+		ctl_unlock(args->server);
+	}
+
+	return ret;
 }
 
 bool ctl_has_flag(const char *flags, const char *flag)

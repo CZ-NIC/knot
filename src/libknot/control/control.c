@@ -163,6 +163,18 @@ knot_ctl_t* knot_ctl_alloc(void)
 }
 
 _public_
+knot_ctl_t* knot_ctl_clone(knot_ctl_t *ctx)
+{
+	knot_ctl_t *res = knot_ctl_alloc();
+	if (res != NULL) {
+		res->timeout = ctx->timeout;
+		res->sock = ctx->sock;
+		ctx->sock = -1;
+	}
+	return res;
+}
+
+_public_
 void knot_ctl_free(knot_ctl_t *ctx)
 {
 	if (ctx == NULL) {

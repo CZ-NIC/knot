@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -20,7 +20,7 @@
 #include "libknot/error.h"
 #include "contrib/string.h"
 
-int ctl_process(knot_ctl_t *ctl, server_t *server)
+int ctl_process(knot_ctl_t *ctl, server_t *server, int thread_idx, bool *exclusive)
 {
 	if (ctl == NULL || server == NULL) {
 		return KNOT_EINVAL;
@@ -29,7 +29,8 @@ int ctl_process(knot_ctl_t *ctl, server_t *server)
 	ctl_args_t args = {
 		.ctl = ctl,
 		.type = KNOT_CTL_TYPE_END,
-		.server = server
+		.server = server,
+		.thread_idx = thread_idx,
 	};
 
 	// Strip redundant/unprocessed data units in the current block.
@@ -90,11 +91,21 @@ int ctl_process(knot_ctl_t *ctl, server_t *server)
 			continue;
 		}
 
+		if ((cmd == CTL_CONF_COMMIT || cmd == CTL_CONF_ABORT) && !*exclusive) {
+			log_ctl_warning("control, invalid reception of '%s'", cmd_name);
+			continue;
+		}
+
 		// Execute the command.
 		int cmd_ret = ctl_exec(cmd, &args);
 		switch (cmd_ret) {
 		case KNOT_EOK:
 			strip = false;
+			if (cmd == CTL_CONF_BEGIN) {
+				*exclusive = true;
+			} else if (cmd == CTL_CONF_COMMIT || cmd == CTL_CONF_ABORT) {
+				*exclusive = false;
+			}
 		case KNOT_CTL_ESTOP:
 		case KNOT_CTL_EZONE:
 			// KNOT_CTL_EZONE - don't change strip, but don't be reported
