@@ -34,10 +34,7 @@ The build process relies on these standard tools:
 * autoconf >= 2.65
 * python-sphinx (optional, for documentation building)
 
-GCC >= 4.1 is mandatory for atomic built-ins, but the latest
-available version is recommended. Another requirement is ``_GNU_SOURCE``
-and C99 support, otherwise it adapts to the available compiler features.
-LLVM clang compiler since version 2.9 can be used as well.
+A GCC or LLVM Clang compiler with C11 support.
 
 Getting the source code
 -----------------------

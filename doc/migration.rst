@@ -249,19 +249,19 @@ Configuration changes
 
 - Ignored obsolete options (with a notice log):
 
-  - ``server.max-journal-depth``
-  - ``server.max-journal-usage``
-  - ``server.max-refresh-interval``
-  - ``server.min-refresh-interval``
   - ``server.max-ipv4-udp-payload``
   - ``server.max-ipv6-udp-payload``
   - ``server.max-udp-payload``
   - ``server.max-tcp-clients``
   - ``server.tcp-reply-timeout``
+  - ``zone.max-journal-depth``
+  - ``zone.max-journal-usage``
+  - ``zone.max-refresh-interval``
+  - ``zone.min-refresh-interval``
+  - ``zone.max-zone-size``
   - ``template.journal-db``
   - ``template.kasp-db``
   - ``template.timer-db``
-  - ``template.max-zone-size``
   - ``template.max-journal-db-size``
   - ``template.max-timer-db-size``
   - ``template.max-kasp-db-size``
@@ -392,6 +392,86 @@ Query module API change
 -----------------------
 
 The function ``knotd_qdata_local_addr()`` only takes one parameter.
+
+.. _Upgrade 3.3.x to 3.4.x:
+
+Upgrade 3.3.x to 3.4.x
+======================
+
+There are the following changes between Knot DNS versions 3.4.x and 3.3.x.
+
+DNSSEC
+------
+
+- DNSSEC validation fails if the remaining RRSIG validity is shorter than
+  the corresponding :ref:`policy_rrsig-refresh` value.
+- SKR verification fails if the end of a DNSKEY RRSIG validity period doesn't
+  cover the next DNSKEY snapshot.
+- If DNSSEC signing is enabled, the outbound request's EDNS expire value is
+  lowered to the earliest RRSIG expiration if it is higher.
+
+Semantic checks
+---------------
+
+- Just one SOA record is required.
+- Unified DNAME and CNAME semantic checks (see :ref:`Handling CNAME and DNAME-related updates`).
+
+Configuration changes
+---------------------
+
+- The server no longer allows concurrent control zone and configuration transactions.
+- The server no longer allows opening a zone transaction when a blocking command is running.
+- Removed already ignored obsolete options:
+
+  - ``server.max-ipv4-udp-payload``
+  - ``server.max-ipv6-udp-payload``
+  - ``server.max-udp-payload``
+  - ``server.max-tcp-clients``
+  - ``server.tcp-handshake-timeout``
+  - ``server.tcp-reply-timeout``
+  - ``server.listen-xdp``
+  - ``xdp.quic-log``
+  - ``zone.max-journal-depth``
+  - ``zone.max-journal-usage``
+  - ``zone.max-refresh-interval``
+  - ``zone.min-refresh-interval``
+  - ``zone.max-zone-size``
+  - ``zone.disable-any``
+  - ``template.journal-db``
+  - ``template.kasp-db``
+  - ``template.timer-db``
+  - ``template.max-journal-db-size``
+  - ``template.max-timer-db-size``
+  - ``template.max-kasp-db-size``
+  - ``template.journal-db-mode``
+
+Utilities
+---------
+
+- Changed defaults:
+
+  - :doc:`kdig<man_kdig>`: enabled ``+edns`` and ``+bufsize=1232``
+
+- Removed legacy parameters:
+
+  - :doc:`keymgr<man_keymgr>`: ``--brief``
+  - :doc:`kjournalprint<man_kjournalprint>`: ``--no-color``
+  - :doc:`kjournalprint<man_kjournalprint>`: database specification without ``--dir``
+  - :doc:`kjournalprint<man_kcatalogprint>`: database specification without ``--dir``
+
+Documentation
+-------------
+
+- Info pages are no longer supported.
+
+Building notes
+--------------
+
+- A GCC or LLVM Clang compiler with C11 support is required.
+- Minimum required *GnuTLS* version is 3.6.10.
+- *Libidn* version 1 is no longer supported.
+- *Liburcu* must be available via pkg-config.
+- Linux distributions CentOS 7, Debian 10, and Ubuntu 18.04 are no longer supported.
 
 .. _Knot DNS for BIND users:
 
