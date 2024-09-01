@@ -60,7 +60,7 @@ typedef enum {
 
 typedef struct {
 	concurrent_ctl_state_t state;
-	pthread_mutex_t mutex;
+	pthread_mutex_t mutex;  // Protects .state.
 	pthread_cond_t cond;
 	knot_ctl_t *ctl;
 	server_t *server;
