@@ -312,6 +312,7 @@ static concurrent_ctl_ctx_t *find_free_ctx(concurrent_ctl_ctx_t *concurrent_ctxs
 			cctx->ctl = knot_ctl_clone(ctl);
 			if (cctx->ctl == NULL) {
 				cctx->exclusive = false;
+				pthread_mutex_unlock(&cctx->mutex);
 				continue;
 			}
 			cctx->state = CONCURRENT_ASSIGNED;
