@@ -313,7 +313,7 @@ static concurrent_ctl_ctx_t *find_free_ctx(concurrent_ctl_ctx_t *concurrent_ctxs
 			if (cctx->ctl == NULL) {
 				cctx->exclusive = false;
 				pthread_mutex_unlock(&cctx->mutex);
-				continue;
+				break;
 			}
 			cctx->state = CONCURRENT_ASSIGNED;
 			res = cctx;
