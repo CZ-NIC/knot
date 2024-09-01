@@ -415,6 +415,7 @@ static void *ctl_process_thread(void *arg)
 		bool exclusive = ctx->exclusive;
 		pthread_mutex_unlock(&ctx->mutex);
 
+		// Not IDLE, ctx can be read without locking.
 		int ret = ctl_process(ctx->ctl, ctx->server, ctx->thread_idx, &exclusive);
 
 		pthread_mutex_lock(&ctx->mutex);
