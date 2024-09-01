@@ -1,3 +1,75 @@
+Knot DNS 3.4.0 (2024-09-02)
+===========================
+
+Features:
+---------
+ - knotd: full DNS over TLS (DoT, RFC 7858) implementation (see 'DNS over TLS')
+ - knotd: bidirectional XFR over TLS (XoT) support with opportunistic, strict,
+          and mutual authentication profiles
+ - knotd: support for DDNS over QUIC and TLS
+ - knotd: DNSSEC validation requires the remaining RRSIG validity is longer than 'rrsig-refresh'
+ - knotd: new event for automatic DNSSEC revalidation
+ - knotd: if enabled DNSSEC signing, EDNS expire is adjusted to the earliest RRSIG expiration
+ - knotd: added support for libdbus as an alternative to systemd dbus
+          (see '--enable-dbus=libdbus' configure parameter)
+ - knotd: new XDP-related configuration options
+          (see 'xdp.ring-size', 'xdp.busypoll-budget', and 'xdp.busypoll-timeout')
+ - knotc: new command for explicit triggering DNSSEC validation (see 'zone-validate' command)
+ - keymgr: SKR verification requires end of DNSKEY RRSIG validity covers next DNSKEY snapshot
+ - kdig: +nocrypto applies also to CERT, DS, SSHFP, DHCID, TLSA, ZONEMD, and TSIG
+ - knsupdate: added support for DDNS over QUIC and TLS (see '-Q' and '-S' parameters)
+ - kxdpgun: support for reading a binary input file (see '-B' parameter)
+ - kxdpgun: support for output in JSON (see '-j' parameter)
+ - kxdpgun: support for periodical output (see '-S' parameter)
+ - mod-rrl: module offers limiting of non-UDP protocols based on consumed time
+            (see 'mod-rrl.time-rate-limit' and 'mod-rrl.time-instant-limit')
+ - utils: -VV option for listing compile time configuration summary
+
+Improvements:
+-------------
+ - knotd: up to eight DDNS queries can be queued per zone when frozen
+ - knotd: the number of created/validated RRSIGs is logged
+ - knotd: overhaul of atomic operations usage
+ - knotd: unified DNAME semantic errors with the CNAME ones
+          (see 'Handling CNAME and DNAME-related updates')
+ - knotd: better DDNS pre-check to prevent dropping a bulk of updates
+ - knotd: extended SOA presence semantic checks
+ - knotd: disallowed concurrent control zone and config transactions to avoid deadlock
+ - knotd: disallowed opening zone transaction when blocking command is running to avoid deadlock
+ - knotd: new XDP statistic counters
+ - knotd: remote zone serial is logged upon received incoming transfer
+ - knotd: zone backup stores and zone restore checks the CPU architecture compatibility
+ - knotd: time configuration options support 'w', 'M', and 'y' units
+ - knotd: some control commands can be processed asynchronously
+ - knotc: zone backup overwrites already existing backupdir in the force mode
+ - kdig: EDNS is enabled by default
+ - kdig: the default EDNS payload size was lowered to 1232
+ - mod-rrl: completely reimplemented UDP rate limiting using an efficient
+            query-counting mechanism on several address prefix lengths
+ - mod-rrl: module no longer requires explicit configuration
+ - libknot: various XDP improvements and new configuration parameters
+ - docker: increased -D_FORTIFY_SOURCE to 3
+
+Bugfixes:
+---------
+ - knotd: deadlock during zone-ksk-submitted processing of a frozen zone
+ - kxdpgun: race condition in SIGUSR1 signal processing
+ - doc: parallel build is unreliable #928
+
+Compatibility:
+--------------
+ - configure: increase minimal GnuTLS version to 3.6.10
+ - configure: removed deprecated libidn 1 support
+ - configure: removed liburcu search fallback
+ - configure: required GCC or LLVM Clang compiler with C11 support
+ - knotd: removed already ignored obsolete configuration options
+ - keymgr: removed legacy parameter '--brief'
+ - kjournalprint: removed legacy parameter '--no-color'
+ - kjournalprint: removed legacy database specification without '--dir'
+ - kcatalogprint: removed legacy database specification without '--dir'
+ - packaging: CentOS 7, Debian 10, and Ubuntu 18.04 no longer supported
+ - doc: removed info pages
+
 Knot DNS 3.3.9 (2024-08-26)
 ===========================
 
