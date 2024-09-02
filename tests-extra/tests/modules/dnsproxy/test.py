@@ -12,17 +12,20 @@ t = Test(tsig=TSIG)
 
 ModDnsproxy.check()
 
+def is_subzone(subzone, zone):
+    """Tests if the first zone is a subzone of the second one or equal, case insensitive."""
+    return subzone.name.lower().endswith(zone.name.lower())
+
 # Initialize server configuration
 zone_common1 = t.zone("test", storage=".", file_name="test.local_zone")
 zone_common2 = t.zone("test", storage=".", file_name="test.remote_zone")
 while True:
     zone_local = t.zone_rnd(1)
-    if zone_local[0].name != zone_common1[0].name:
+    if not is_subzone(zone_local[0], zone_common1[0]):
         break;
 while True:
     zone_remote = t.zone_rnd(1)
-    if zone_remote[0].name != zone_common2[0].name and \
-       zone_remote[0].name != zone_local[0].name:
+    if not is_subzone(zone_remote[0], zone_common2[0]):
         break;
 
 local = t.server("knot", tsig=TSIG)
@@ -36,10 +39,6 @@ t.link(zone_remote, remote)
 if local.valgrind:
     local.semantic_check = False
     remote.semantic_check = False
-
-def is_subzone(subzone, zone):
-    """Tests if the first zone is a subzone of the second one or equal, case insensitive."""
-    return subzone.name.lower().endswith(zone.name.lower())
 
 def fallback_checks(server, zone_local, zone_remote, nxdomain):
     # Local preferred OK, try with local TSIG.
