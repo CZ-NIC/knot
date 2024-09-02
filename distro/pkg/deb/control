@@ -7,7 +7,6 @@ Uploaders:
  Daniel Salzman <daniel.salzman@nic.cz>,
 Build-Depends-Indep:
  python3-setuptools,
- python3-sphinx,
  python3-sphinx-panels,
 Build-Depends:
  autoconf,
@@ -34,6 +33,7 @@ Build-Depends:
  pkg-config,
  protobuf-c-compiler,
  python3-all,
+ python3-sphinx,
 Standards-Version: 4.5.0
 Homepage: https://www.knot-dns.cz/
 Vcs-Browser: https://gitlab.nic.cz/knot/knot-dns
