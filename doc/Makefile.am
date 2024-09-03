@@ -35,6 +35,7 @@ EXTRA_DIST = \
 	logo.svg		\
 	\
 	ext/ignore_panels.py	\
+	theme_epub		\
 	theme_html
 
 SPHINX_V = $(SPHINX_V_@AM_V@)
