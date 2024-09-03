@@ -121,15 +121,18 @@ AM_CONDITIONAL([HAVE_LIBUTILS], test "$enable_utilities" != "no" -o \
 # Build Knot DNS documentation
 AC_ARG_ENABLE([documentation],
     AS_HELP_STRING([--disable-documentation], [Don't build Knot DNS documentation]), [], [enable_documentation=yes])
-AS_IF([test "$enable_documentation" = "yes"], [
+AS_IF([test "$enable_documentation" != "no"], [
   AC_PATH_PROG([SPHINXBUILD], [sphinx-build], [false])
-  AS_IF([test "$SPHINXBUILD" = "false"],
-    [AC_MSG_WARN([missing 'sphinx-build' executable for documentation generation])
-     enable_documentation=no]
-  )
-  AC_PATH_PROG([PDFLATEX], [pdflatex], [false])
+  AS_IF([test "$SPHINXBUILD" != "false"], [
+    enable_documentation="man html epub"
+    AC_PATH_PROG([PDFLATEX], [pdflatex], [false])
+    AS_IF([test "$PDFLATEX" != "false"], [
+      enable_documentation="$enable_documentation pdf"
+    ])
+  ])
 ])
-AM_CONDITIONAL([HAVE_DOCS], [test "$enable_documentation" = "yes"])
+AM_CONDITIONAL([HAVE_DOCS], [test "$enable_documentation" != "no"])
+AM_CONDITIONAL([HAVE_SPHINX], [test "$SPHINXBUILD" != "false"])
 AM_CONDITIONAL([HAVE_PDFLATEX], test "$PDFLATEX" != "false")
 
 ######################
