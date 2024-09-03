@@ -69,7 +69,7 @@ Options
 
 **-B**, **--binary**
   Specify that input file is in binary format. This format is similar to the
-  TCP DNS message format. The file contains records formated as 2-octet length
+  TCP DNS message format. The file contains records formatted as 2-octet length
   (network order) followed by a message in DNS wire format.
 
 **-I**, **--interface** *interface*
