@@ -99,6 +99,7 @@ man_MANS += man/kxdpgun.8
 endif # ENABLE_XDP
 endif # HAVE_UTILS
 
+if HAVE_SPHINX
 html-local:
 	$(AM_V_SPHINX)$(SPHINXBUILD) -b html -d $(SPHINXBUILDDIR)/doctrees/html $(ALLSPHINXOPTS) $(SPHINXBUILDDIR)/html
 	@echo "The HTML documentation has been built in $(SPHINXBUILDDIR)/html/"
@@ -155,6 +156,12 @@ $(man_MANS)&: $(MANPAGES_RST)
 else
 html-local singlehtml pdf-local epub man install-html-local install-singlehtml install-pdf-local install-epub:
 	@echo "Install 'sphinx-build' and re-run configure to be able to generate documentation!"
+
+$(man_MANS)&:
+	@if [ ! -f "$@" ]; then \
+	  echo "Install 'sphinx-build' or disable documentation and re-run configure to generate man pages!"; \
+	fi
+endif # HAVE_SPHINX
 
 endif # HAVE_DOCS
 
