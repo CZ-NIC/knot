@@ -2725,7 +2725,7 @@ using the dynamic configuration.
 .. WARNING::
    As changing this value can result in differently parsed zone file(s),
    the corresponding zone SOA serial(s) should be incremented before
-   reloading or commiting the configuration. Alternatively, setting
+   reloading or committing the configuration. Alternatively, setting
    :ref:`zonefile-load <zone_zonefile-load>` to ``difference-no-serial`` ensures
    the resulting zone(s) update is correct.
 
