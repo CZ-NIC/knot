@@ -1669,9 +1669,7 @@ Possible values:
 deny
 ----
 
-If enabled, instead of allowing, deny the specified :ref:`action<acl_action>`,
-:ref:`address<acl_address>`, :ref:`key<acl_key>`, or combination if these
-items. If no action is specified, deny all actions.
+If enabled, instead of allowing, deny the matching combination of the specified items.
 
 *Default:* ``off``
 
