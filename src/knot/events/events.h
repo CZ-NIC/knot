@@ -53,7 +53,7 @@ typedef struct zone_events {
 	pthread_mutex_t reschedule_lock;//!< Prevent concurrent reschedule() making mess.
 
 	zone_event_type_t type;		//!< Type of running event.
-	bool running;			//!< Some zone event is being run.
+	time_t running;			//!< Some zone event is being run (since this time).
 	pthread_cond_t *run_end;	//!< Notify this one after finishing a job.
 
 	bool frozen;			//!< Terminated, don't schedule new events.

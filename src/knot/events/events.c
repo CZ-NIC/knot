@@ -215,7 +215,7 @@ static void event_wrap(worker_task_t *task)
 	zone_event_type_t type = get_next_event(events);
 	pthread_cond_t *blocking = events->blocking[type];
 	if (!valid_event(type)) {
-		events->running = false;
+		events->running = 0;
 		pthread_mutex_unlock(&events->mx);
 		return;
 	}
@@ -244,7 +244,7 @@ static void event_wrap(worker_task_t *task)
 
 	pthread_mutex_lock(&events->reschedule_lock);
 	pthread_mutex_lock(&events->mx);
-	events->running = false;
+	events->running = 0;
 	events->type = ZONE_EVENT_INVALID;
 
 	if (blocking != NULL) {
@@ -272,7 +272,7 @@ static void event_dispatch(event_t *event)
 
 	pthread_mutex_lock(&events->mx);
 	if (!events->running && !events->frozen) {
-		events->running = true;
+		events->running = time(NULL);
 		worker_pool_assign(events->pool, &events->task);
 	}
 	pthread_mutex_unlock(&events->mx);
@@ -437,7 +437,7 @@ void zone_events_enqueue(zone_t *zone, zone_event_type_t type)
 	/* Bypass scheduler if no event is running. */
 	if (!events->running && !events->frozen &&
 	    (!events->ufrozen || !ufreeze_applies(type))) {
-		events->running = true;
+		events->running = time(NULL);
 		events->type = type;
 		event_set_time(events, type, ZONE_EVENT_IMMEDIATE);
 		worker_pool_assign(events->pool, &events->task);
