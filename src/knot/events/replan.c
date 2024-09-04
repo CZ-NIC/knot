@@ -87,9 +87,11 @@ static void replan_dnssec(conf_t *conf, zone_t *zone)
 	assert(zone);
 
 	conf_val_t val = conf_zone_get(conf, C_DNSSEC_SIGNING, zone->name);
+	printf("RD %d\n", conf_bool(&val));
 	if (conf_bool(&val)) {
 		zone_events_schedule_now(zone, ZONE_EVENT_DNSSEC);
 	}
+	events_log(&zone->events, zone->name, "RD");
 }
 
 /*!
@@ -158,6 +160,7 @@ void replan_from_timers(conf_t *conf, zone_t *zone)
 		if (ds_push == 0) {
 			ds_push = TIME_IGNORE;
 		}
+		printf("RFT nds %ld dc %ld\n", zone->timers.next_ds_check, ds_check);
 	}
 
 	zone_events_schedule_at(zone,
@@ -168,6 +171,7 @@ void replan_from_timers(conf_t *conf, zone_t *zone)
 	                        ZONE_EVENT_DNSSEC, resalt,
 	                        ZONE_EVENT_DS_CHECK, ds_check,
 	                        ZONE_EVENT_DS_PUSH, ds_push);
+	events_log(&zone->events, zone->name, "RFT");
 }
 
 void replan_load_new(zone_t *zone, bool gen_catalog)
@@ -192,6 +196,7 @@ void replan_load_current(conf_t *conf, zone_t *zone, zone_t *old_zone)
 {
 	replan_from_zone(zone, old_zone);
 
+	printf("RLC zce %d ze %d\n", zone->contents != NULL, zone_expired(zone));
 	if (zone->contents != NULL || zone_expired(zone)) {
 		replan_from_timers(conf, zone);
 		replan_dnssec(conf, zone);

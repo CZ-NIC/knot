@@ -183,6 +183,8 @@ bool ufreeze_applies(zone_event_type_t type);
  */
 void zone_events_start(struct zone *zone);
 
+void events_log(zone_events_t *events, const knot_dname_t *zname, const char *from);
+
 /*!
  * \brief Return time of the occurrence of the given event.
  *

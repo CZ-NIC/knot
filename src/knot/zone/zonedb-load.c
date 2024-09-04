@@ -92,6 +92,7 @@ static void replan_events(conf_t *conf, zone_t *zone, zone_t *old_zone)
 	}
 
 	zone->events.ufrozen = old_zone->events.ufrozen;
+	printf("zfu %d cu %d ze %d\n", zone_file_updated(conf, old_zone, zone->name), conf_updated, zone_expired(zone));
 	if ((zone_file_updated(conf, old_zone, zone->name) || conf_updated) && !zone_expired(zone)) {
 		replan_load_updated(zone, old_zone);
 	} else {
@@ -415,6 +416,7 @@ static knot_zonedb_t *create_zonedb(conf_t *conf, server_t *server, reload_t mod
 	}
 
 	/* Mark changed zones during dynamic configuration. */
+	printf("mode %d x %d trie %zu\n", mode, RELOAD_COMMIT, conf->io.zones ? trie_weight(conf->io.zones) : 0);
 	if (mode == RELOAD_COMMIT) {
 		mark_changed_zones(db_old, conf->io.zones);
 	}
