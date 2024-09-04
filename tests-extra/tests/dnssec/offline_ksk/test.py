@@ -103,6 +103,7 @@ def wait_for_dnskey_count(t, server, dnskey_count, timeout):
 
 def zone_update(master, slave, zone, upd_master):
     server = master if upd_master else slave
+    server.ctl("-f zone-flush", wait=True) # re-flush zone file so that it's suitable for generating radnom DDNS
     server.random_ddns(zone[0], allow_empty=True)
 
 def writef(filename, contents):
