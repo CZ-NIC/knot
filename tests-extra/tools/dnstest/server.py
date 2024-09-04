@@ -229,8 +229,6 @@ class Server(object):
 
         self.binding_errors = 0
 
-        self.knsupdate = False
-
     def _check_socket(self, proto, port):
         if self.addr.startswith("/"):
             param = ""
@@ -865,12 +863,12 @@ class Server(object):
         resp = self.dig("0-x-not-existing-x-0." + zone.name, "ANY", dnssec=True)
         resp.check_nsec(nsec3=nsec3, nonsec=nonsec)
 
-    def update(self, zone):
+    def update(self, zone, allow_knsupdate=True):
         zone = zone_arg_check(zone)
 
         key_params = self.tsig_test.key_params if self.tsig_test else dict()
 
-        if self.knsupdate:
+        if allow_knsupdate and random.choice([False, True]):
             return dnstest.update.Update(self, dnstest.knsupdate.Knsupdate(zone.name, self.tsig_test))
         else:
             return dnstest.update.Update(self, dns.update.Update(zone.name, **key_params))

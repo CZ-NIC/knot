@@ -38,8 +38,7 @@ class Test(object):
     rel_time = time.time()
     start_time = 0
 
-    def __init__(self, address=None, tsig=None, stress=True, quic=False, tls=False, \
-                 knsupdate=False):
+    def __init__(self, address=None, tsig=None, stress=True, quic=False, tls=False):
         if not os.path.exists(Context().out_dir):
             raise Exception("Output directory doesn't exist")
 
@@ -48,7 +47,6 @@ class Test(object):
         self.zones_dir = self.out_dir + "/zones/"
         self.quic = quic
         self.tls = tls
-        self.knsupdate = knsupdate
 
         if address == 4 or address == 6:
             self.addr = Test.LOCAL_ADDR_COMMON[address]
@@ -218,8 +216,6 @@ class Test(object):
             suppressions_file = "%s/%s.supp" % (params.common_data_dir, server)
             if os.path.isfile(suppressions_file):
                 srv.valgrind.append("--suppressions=%s" % suppressions_file)
-
-        srv.knsupdate = self.knsupdate
 
         self.servers.add(srv)
         return srv

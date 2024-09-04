@@ -31,7 +31,7 @@ def flood(server, zone):
     rr = None
     updates = []
     for i in range(FLOOD_COUNT):
-        update = server.update(zone)
+        update = server.update(zone, allow_knsupdate=False)
         for j in range(UPDATE_SIZE):
             rr = [randstr() + "." + zone[0].name, 3600, "TXT", randstr()]
             update.add(*rr)
