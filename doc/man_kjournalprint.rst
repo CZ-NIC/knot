@@ -48,6 +48,10 @@ Options
 **-s**, **--serial** *soa*
   Start at a specific SOA serial.
 
+**-M**, **--merge**
+  Print the changesets merged into one changeset. If zone-in-journal is present,
+  the stored contents with all the changesets applied will be printed.
+
 **-H**, **--check**
   Enable additional journal semantic checks during printing.
 
