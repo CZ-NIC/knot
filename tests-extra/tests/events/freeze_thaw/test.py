@@ -32,11 +32,13 @@ slave.zone_wait(zone)
 
 slave.ctl("zone-freeze")
 t.sleep(1)
+slave.ctl("zone-status")
 
 master.update_zonefile(zone, version=1)
 master.reload()
 master.zone_wait(zone, serial=2, equal=True)
 t.sleep(1)
+slave.ctl("zone-status")
 
 # check that slave freezed transfer after obtained notify
 resp = slave.dig("added.example.", "A")
@@ -48,6 +50,7 @@ slave.ctl("zone-refresh")
 slave.zone_wait(zone, serial=2, equal=True)
 resp = slave.dig("added.example.", "A")
 resp.check(rcode="NOERROR", rdata="1.2.3.4")
+slave.ctl("zone-status")
 
 # check that update is refused after 8 queued
 for i in range(10):
@@ -58,11 +61,13 @@ for i in range(10):
     else:
         up.send("REFUSED")
     t.sleep(0.2)
+    slave.ctl("zone-status")
 
 master.update_zonefile(zone, version=2)
 master.reload()
 master.zone_wait(zone, serial=3, equal=True)
 t.sleep(1)
+slave.ctl("zone-status")
 
 slave.ctl("zone-thaw")
 
@@ -76,6 +81,7 @@ up = slave.update(zone)
 up.add("freezedddns10", 3600, "A", "1.2.3.6")
 up.send("NOERROR")
 sleep_alt(2, master.valgrind, 4)
+slave.ctl("zone-status")
 
 for i in range(11):
     resp = slave.dig("freezedddns" + str(i) + ".example.", "A")

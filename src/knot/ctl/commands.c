@@ -432,19 +432,31 @@ static int zone_status(zone_t *zone, ctl_args_t *args)
 
 			data[KNOT_CTL_IDX_TYPE] = zone_events_get_name(i);
 			time_t ev_time = zone_events_get_time(zone, i);
-			if (zone->events.running && zone->events.type == i) {
-				ret = snprintf(buff, sizeof(buff), "running");
+			time_t running = zone->events.running;
+
+			knot_time_print_t format = TIME_PRINT_HUMAN_MIXED;
+			if (ctl_has_flag(args->data[KNOT_CTL_IDX_FLAGS],
+					 CTL_FLAG_STATUS_UNIXTIME)) {
+				format = TIME_PRINT_UNIX;
+			}
+
+			if (running && zone->events.type == i) {
+				char val_str[16];
+				ret = knot_time_print(format, running, val_str, sizeof(val_str));
+				if (ret == 0) {
+					ret = snprintf(buff, sizeof(buff), "running(%s)", val_str);
+				}
 			} else if (ev_time <= 0) {
 				ret = snprintf(buff, sizeof(buff), STATUS_EMPTY);
 			} else if (ev_time <= time(NULL)) {
 				bool frozen = ufrozen && ufreeze_applies(i);
-				ret = snprintf(buff, sizeof(buff), frozen ? "frozen" : "pending");
-			} else {
-				knot_time_print_t format = TIME_PRINT_HUMAN_MIXED;
-				if (ctl_has_flag(args->data[KNOT_CTL_IDX_FLAGS],
-				                 CTL_FLAG_STATUS_UNIXTIME)) {
-					format = TIME_PRINT_UNIX;
+				char val_str[16];
+				ret = knot_time_print(format, ev_time, val_str, sizeof(val_str));
+				if (ret == 0) {
+					ret = snprintf(buff, sizeof(buff), "%s(%s)",
+					               frozen ? "frozen" : "pending", val_str);
 				}
+			} else {
 				ret = knot_time_print(format, ev_time, buff, sizeof(buff));
 			}
 			if (ret < 0 || ret >= sizeof(buff)) {
