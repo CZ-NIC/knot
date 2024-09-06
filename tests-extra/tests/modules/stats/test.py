@@ -95,7 +95,7 @@ check_item(knot, "mod-stats", "request-protocol", 2, "tcp%s" % proto + xdp_str)
 check_item(knot, "mod-stats", "request-protocol", 2, "tcp%s" % proto + xdp_str, zone=zones[0])
 
 # Successful update.
-up = knot.update(zones[1])
+up = knot.update(zones[1], allow_knsupdate=False)
 up.add(zones[1].name, "3600", "AAAA", "::1")
 up.send("NOERROR")
 ddns_query_size = up.query_size()

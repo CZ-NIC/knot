@@ -2,6 +2,7 @@
 
 import dns.query
 import dns.update
+import random
 import ssl
 
 from dnstest.utils import *
@@ -27,13 +28,21 @@ class Update(object):
     def prereq_nx(self, owner, *args):
         self.upd.absent(owner, *args)
 
-    def send(self, rcode="NOERROR", proto=Proto.TCP):
+    def send(self, rcode="NOERROR", proto=None):
         if type(rcode) is not str and rcode is not None:
             rc = dns.rcode.to_text(rcode)
         else:
             rc = rcode
 
-        check_log("UPDATE")
+        if proto is None and self.server.tls_port and self.server.quic_port and not self.server.xdp_port:
+            if type(self.upd) is Knsupdate:
+                proto = random.choice([ Proto.TCP, Proto.TLS, Proto.QUIC ])
+            else:
+                proto = random.choice([ Proto.TCP, Proto.TLS ])
+        elif proto is None:
+            proto = Proto.TCP
+
+        check_log("UPDATE over %s using %s" % (proto, "knsupdate" if type(self.upd) is Knsupdate else "dnspython"))
         detail_log(str(self.upd))
         detail_log(SEP)
 
@@ -75,7 +84,7 @@ class Update(object):
         detail_log(SEP)
 
         if type(self.upd) is Knsupdate:
-            rc = self.upd.send()
+            rc = self.upd.send(self.server.addr, self.server.port, Proto.TCP)
         else:
             resp = dns.query.tcp(self.upd, self.server.addr, port=self.server.port)
             rc = dns.rcode.to_text(resp.rcode())
