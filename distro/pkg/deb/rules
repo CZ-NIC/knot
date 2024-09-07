@@ -9,22 +9,11 @@ export KNOT_SOFTHSM2_DSO = /usr/lib/softhsm/libsofthsm2.so
 
 include /usr/share/dpkg/default.mk
 
+# Disable fastparser if requested
 ifeq (maint,$(filter $(DEB_BUILD_OPTIONS),maint))
   FASTPARSER := --disable-fastparser
 else
   FASTPARSER := --enable-fastparser
-endif
-
-ifeq ($(DEB_HOST_ARCH),$(filter $(DEB_HOST_ARCH),hurd-i386))
-  RECVMMSG:=--enable-recvmmsg=no
-else
-  RECVMMSG:=--enable-recvmmsg=yes
-endif
-
-ifeq ($(DEB_HOST_ARCH),$(filter $(DEB_HOST_ARCH),amd64 i386))
-  RUN_TEST :=
-else
-  RUN_TEST := -timeout --kill-after=5s 5m
 endif
 
 LIBKNOT_SYMBOLS := $(wildcard $(CURDIR)/debian/libknot*.symbols)
@@ -41,6 +30,7 @@ export PYBUILD_SYSTEM = distutils
 	  --with python3
 
 override_dh_auto_configure:
+	@echo 'architecture:' $(DEB_HOST_ARCH)
 	dh_auto_configure -- \
 	  --sysconfdir=/etc \
 	  --localstatedir=/var/lib \
@@ -52,12 +42,12 @@ override_dh_auto_configure:
 	  --enable-dnstap \
 	  --with-module-dnstap=shared \
 	  --with-module-geoip=shared \
-	  $(RECVMMSG) \
-	  $(FASTPARSER) \
+	  --enable-recvmmsg=yes \
 	  --disable-silent-rules \
 	  --enable-xdp=yes \
 	  --enable-quic=yes \
-	  --disable-static
+	  --disable-static \
+	  $(FASTPARSER)
 
 override_dh_auto_configure-indep:
 	pybuild --dir python/libknot --configure
@@ -89,7 +79,7 @@ override_dh_auto_install-indep:
 override_dh_auto_test-indep:
 override_dh_auto_test-arch:
 ifeq (,$(filter nocheck,$(DEB_BUILD_OPTIONS)))
-	$(RUN_TEST) dh_auto_test
+	dh_auto_test
 endif
 
 override_dh_missing:
