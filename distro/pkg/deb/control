@@ -25,7 +25,6 @@ Build-Depends:
  libmnl-dev,
  libnghttp2-dev,
  libprotobuf-c-dev,
- libsofthsm2 <!nocheck>,
  libsystemd-dev [linux-any] | libsystemd-daemon-dev [linux-any],
  libsystemd-dev [linux-any] | libsystemd-journal-dev [linux-any],
  libtool,
@@ -34,6 +33,7 @@ Build-Depends:
  pkg-config,
  protobuf-c-compiler,
  python3-all,
+ softhsm2 <!nocheck>,
 Standards-Version: 4.5.0
 Homepage: https://www.knot-dns.cz/
 Vcs-Browser: https://gitlab.nic.cz/knot/knot-dns
