@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -457,14 +457,17 @@ changeset_t *changeset_clone(const changeset_t *ch)
 
 	int ret = KNOT_EOK;
 	changeset_iter_t itt;
+	knot_rrset_t rr;
 
-	changeset_iter_rem(&itt, ch);
-	knot_rrset_t rr = changeset_iter_next(&itt);
-	while (!knot_rrset_empty(&rr) && ret == KNOT_EOK) {
-		ret = changeset_add_removal(res, &rr, 0);
+	if (ch->remove != NULL) {
+		changeset_iter_rem(&itt, ch);
 		rr = changeset_iter_next(&itt);
+		while (!knot_rrset_empty(&rr) && ret == KNOT_EOK) {
+			ret = changeset_add_removal(res, &rr, 0);
+			rr = changeset_iter_next(&itt);
+		}
+		changeset_iter_clear(&itt);
 	}
-	changeset_iter_clear(&itt);
 
 	changeset_iter_add(&itt, ch);
 	rr = changeset_iter_next(&itt);
@@ -492,16 +495,20 @@ void changeset_free(changeset_t *ch)
 
 int changeset_iter_add(changeset_iter_t *itt, const changeset_t *ch)
 {
+	assert(ch->add);
 	return changeset_iter_init(itt, 2, ch->add->nodes, ch->add->nsec3_nodes);
 }
 
 int changeset_iter_rem(changeset_iter_t *itt, const changeset_t *ch)
 {
+	assert(ch->remove);
 	return changeset_iter_init(itt, 2, ch->remove->nodes, ch->remove->nsec3_nodes);
 }
 
 int changeset_iter_all(changeset_iter_t *itt, const changeset_t *ch)
 {
+	assert(ch->add);
+	assert(ch->remove);
 	return changeset_iter_init(itt, 4, ch->add->nodes, ch->add->nsec3_nodes,
 	                           ch->remove->nodes, ch->remove->nsec3_nodes);
 }

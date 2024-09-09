@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -57,6 +57,7 @@ static void print_help(void)
 	       "                      of zones in the DB.\n"
 	       " -l, --limit <num>    Read only <num> newest changes.\n"
 	       " -s, --serial <soa>   Start with a specific SOA serial.\n"
+	       " -M, --merge          Print the changesets merged into one changeset.\n"
 	       " -H, --check          Additional journal semantic checks.\n"
 	       " -d, --debug          Debug mode output.\n"
 	       " -x, --mono           Get output without coloring.\n"
@@ -76,6 +77,9 @@ typedef struct {
 	uint32_t serial;
 	bool from_serial;
 	size_t changes;
+	bool merge;
+	changeset_t *merged;
+	uint64_t merged_ts;
 } print_params_t;
 
 static void print_changeset(const changeset_t *chs, uint64_t timestamp, print_params_t *params)
@@ -175,11 +179,39 @@ static int count_changeset_cb(_unused_ bool special, const changeset_t *ch, _unu
 	return KNOT_EOK;
 }
 
+static int merge_changeset_cb(bool special, const changeset_t *ch, uint64_t timestamp, void *ctx)
+{
+	print_params_t *params = ctx;
+
+	if (special && ch->soa_from != NULL) {
+		return KNOT_EOK; // ignore merged changeset
+	}
+
+	if (params->merged == NULL) {
+		params->merged = changeset_clone(ch);
+		if (params->merged == NULL) {
+			return KNOT_ENOMEM;
+		}
+	} else {
+		if (!knot_rrset_equal(params->merged->soa_to, ch->soa_from, false)) {
+			return KNOT_ESEMCHECK;
+		}
+		int ret = changeset_merge(params->merged, ch, 0);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+	}
+	params->merged_ts = timestamp;
+	return KNOT_EOK;
+}
+
 static int print_changeset_cb(bool special, const changeset_t *ch, uint64_t timestamp, void *ctx)
 {
 	print_params_t *params = ctx;
 	if (ch != NULL && params->counter++ >= params->limit) {
-		if (params->debug) {
+		if (params->merge) {
+			return merge_changeset_cb(special, ch, timestamp, ctx);
+		} else if (params->debug) {
 			print_changeset_debugmode(ch, timestamp);
 			params->changes++;
 		} else {
@@ -243,6 +275,11 @@ int print_journal(char *path, knot_dname_t *name, print_params_t *params)
 		} else {
 			ret = journal_walk(j, print_changeset_cb, params);
 		}
+		if (params->merge && ret == KNOT_EOK && params->merged != NULL) {
+			params->merge = false;
+			params->limit++;
+			ret = print_changeset_cb(false, params->merged, params->merged_ts, params);
+		}
 	}
 
 	if (params->debug && ret == KNOT_EOK) {
@@ -251,6 +288,8 @@ int print_journal(char *path, knot_dname_t *name, print_params_t *params)
 		printf("Occupied all zones together: %"PRIu64" KiB\n", occupied_all / 1024);
 	}
 
+	changeset_free(params->merged);
+	params->merged = NULL;
 	knot_lmdb_deinit(&journal_db);
 	return ret;
 }
@@ -333,6 +372,7 @@ int main(int argc, char *argv[])
 		.from_serial = false,
 	};
 
+	const char *opts_str = "c:C:D:l:s:MzHdxXhV::";
 	struct option opts[] = {
 		{ "config",    required_argument, NULL, 'c' },
 		{ "confdb",    required_argument, NULL, 'C' },
@@ -353,7 +393,7 @@ int main(int argc, char *argv[])
 	signal_init_std();
 
 	int opt = 0;
-	while ((opt = getopt_long(argc, argv, "c:C:D:l:s:zHdxXhV::", opts, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, opts_str, opts, NULL)) != -1) {
 		switch (opt) {
 		case 'c':
 			if (util_conf_init_file(optarg) != KNOT_EOK) {
@@ -382,6 +422,9 @@ int main(int argc, char *argv[])
 				goto failure;
 			}
 			params.from_serial = true;
+			break;
+		case 'M':
+			params.merge = true;
 			break;
 		case 'z':
 			justlist = true;
