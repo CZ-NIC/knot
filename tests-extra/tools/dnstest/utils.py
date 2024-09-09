@@ -3,6 +3,7 @@
 import enum
 import inspect
 import os
+import re
 import time
 
 from dnstest.context import Context
@@ -48,6 +49,13 @@ def test_info():
         return parts[-2] + "/" + parts[-1]
     else:
         return "dnstest"
+
+def ssearch(s, pattern):
+    found = re.search(pattern, s)
+    if found is None:
+        return None
+    else:
+        return found.groups()[0]
 
 def fsearch(fname, pattern):
     with open(fname) as f:

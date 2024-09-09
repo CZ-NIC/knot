@@ -167,6 +167,7 @@ class Server(object):
         self.quic_port = None
         self.tls_port = None
         self.cert_key = str()
+        self.cert_key_file = None # quadruple (key_file, cert_file, hostname, pin)
         self.udp_workers = None
         self.tcp_workers = None
         self.bg_workers = None
@@ -574,6 +575,39 @@ class Server(object):
         except CalledProcessError as e:
             raise Failed("Can't get certificate key, server='%s', ret='%i'" %
                          (self.name, e.returncode))
+
+    def use_default_cert_key(self, key_name="key.pem", cert_name="cert.pem"):
+        for f in [key_name, cert_name]:
+            shutil.copy(os.path.join(params.common_data_dir, "cert", f), self.dir)
+        keyfile = os.path.join(self.dir, key_name)
+        certfile = os.path.join(self.dir, cert_name)
+
+        try:
+            out = check_output(["certtool", "--infile=" + keyfile, "-k"]).rstrip().decode('ascii')
+            pin = ssearch(out, r'pin-sha256:([^\n]*)')
+            out = check_output(["certtool", "--infile=" + certfile, "-i"]).rstrip().decode('ascii')
+            hostname = ssearch(out, r'DNSname: ([^\n]*)')
+            self.cert_key_file = (keyfile, certfile, hostname, pin)
+            return pin
+        except CalledProcessError as e:
+            raise Failed("Can't use default certificate and key")
+
+    def download_cert_file(self, dest_dir):
+        try:
+            check_call(["gnutls-cli", "--help"], stdout=DEVNULL, stderr=DEVNULL)
+        except:
+            raise Skip("gnutls-cli not available")
+
+        certfile = os.path.join(dest_dir, "%s_tls_%d.crt" % (self.name, int(time.time())))
+        cmd = Popen(["gnutls-cli", self.addr, "-p", str(self.tls_port or self.quic_port),
+                     "--no-ca-verification", "-V", "--save-cert=" + certfile],
+                     stdin=DEVNULL, stdout=PIPE, stderr=DEVNULL)
+        (out, _) = cmd.communicate()
+        gcli_s = out.decode("utf-8")
+        hostname1 = ssearch(gcli_s, r'DNSname: ([^\n]*)')
+        hostname2 = ssearch(gcli_s, r'Subject:.*CN=([^,\n]*)')
+        hostname3 = socket.gethostname()
+        return ("", certfile, hostname1 or hostname2 or hostname3, ssearch(gcli_s, r'pin-sha256:([^\n]*)'))
 
     def dig(self, rname, rtype, rclass="IN", udp=None, serial=None, timeout=None,
             tries=3, flags="", bufsize=None, edns=None, nsid=False, dnssec=False,
@@ -1040,6 +1074,13 @@ class Bind(Server):
 
     def get_config(self):
         s = dnstest.config.BindConf()
+
+        if self.tls_port and self.cert_key_file:
+            s.begin("tls self")
+            s.item_str("key-file", self.cert_key_file[0])
+            s.item_str("cert-file", self.cert_key_file[1])
+            s.end()
+
         s.begin("options")
         self._str(s, "server-id", self.ident)
         self._str(s, "version", self.version)
@@ -1050,10 +1091,16 @@ class Bind(Server):
         s.item_str("pid-file", os.path.join(self.dir, self.pidfile))
         if ipaddress.ip_address(self.addr).version == 4:
             s.item("listen-on port", "%i { %s; }" % (self.port, self.addr))
+            if self.tls_port:
+                s.item("listen-on port", "%i tls %s { %s; }" % \
+                       (self.tls_port, "self" if self.cert_key_file else "ephemeral", self.addr))
             s.item("listen-on-v6", "{ }")
         else:
-            s.item("listen-on", "{ }")
             s.item("listen-on-v6 port", "%i { %s; }" % (self.port, self.addr))
+            if self.tls_port:
+                s.item("listen-on-v6 port", "%i tls %s { %s; }" % \
+                       (self.tls_port, "self" if self.cert_key_file else "ephemeral", self.addr))
+            s.item("listen-on", "{ }")
         s.item("auth-nxdomain", "no")
         s.item("recursion", "no")
         s.item("masterfile-format", "text")
@@ -1081,6 +1128,18 @@ class Bind(Server):
         s.item("inet %s port %i allow { %s; } keys { %s; }"
                % (self.addr, self.ctlport, Context().test.addr, self.ctlkey.name))
         s.end()
+
+        masters_and_slaves = set()
+        for zone in sorted(self.zones):
+            z = self.zones[zone]
+            masters_and_slaves.update(z.masters)
+            masters_and_slaves.update(z.slaves)
+        for rmt in masters_and_slaves:
+            if rmt.tls_port and rmt.cert_key_file:
+                s.begin("tls %s" % rmt.name)
+                s.item_str("ca-file", rmt.cert_key_file[1])
+                s.item_str("remote-hostname", rmt.cert_key_file[2])
+                s.end()
 
         if self.tsig:
             keys = set() # Duplicy check.
@@ -1136,15 +1195,18 @@ class Bind(Server):
                 masters_notify = ""
                 for master in z.masters:
                     if self.tsig:
-                        masters += "%s port %i key %s; " \
-                                   % (master.addr, master.port, self.tsig.name)
+                        masters += "%s port %i key %s" \
+                                   % (master.addr, master.tls_port or master.port, self.tsig.name)
                         if not master.disable_notify:
                             masters_notify += "key %s; " % master.tsig.name
                     else:
-                        masters += "%s port %i; " \
-                                   % (master.addr, master.port)
+                        masters += "%s port %i" \
+                                   % (master.addr, master.tls_port or master.port)
                         if not master.disable_notify:
                             masters_notify += "%s; " % master.addr
+                    if master.tls_port:
+                        masters += " tls %s" % (master.name if master.cert_key_file else "ephemeral")
+                    masters += "; "
                 s.item("masters", "{ %s}" % masters)
                 if masters_notify:
                     s.item("allow-notify", "{ %s}" % masters_notify)
@@ -1162,10 +1224,14 @@ class Bind(Server):
                     if self.disable_notify:
                         continue
                     if self.tsig:
-                        slaves += "%s port %i key %s; " \
+                        slaves += "%s port %s key %s" \
                                   % (slave.addr, slave.port, self.tsig.name)
                     else:
-                        slaves += "%s port %i; " % (slave.addr, slave.port)
+                        slaves += "%s port %s" % (slave.addr, slave.port)
+                    #if slave.tls_port:
+                    #    slaves += " tls %s" % (slave.name if slave.cert_key_file else "ephemeral")
+                    # TODO Bind9 fails to send NOTIFYoverTLS, until fixed https://gitlab.isc.org/isc-projects/bind9/-/issues/4821
+                    slaves += "; "
                 if slaves:
                     s.item("also-notify", "{ %s}" % slaves)
 
@@ -1411,6 +1477,9 @@ class Knot(Server):
         self._str(s, "remote-pool-limit", str(random.randint(0,6)))
         self._str(s, "remote-retry-delay", str(random.choice([0, 1, 5])))
         self._bool(s, "automatic-acl", self.auto_acl)
+        if self.cert_key_file:
+            s.item_str("key-file", self.cert_key_file[0])
+            s.item_str("cert-file", self.cert_key_file[1])
         s.end()
 
         if self.xdp_port is not None and self.xdp_port > 0:
@@ -1458,6 +1527,8 @@ class Knot(Server):
                         s.item_str("tls" if master.tls_port else "quic", "on")
                         if master.cert_key:
                             s.item_str("cert-key", master.cert_key)
+                        elif master.cert_key_file:
+                            s.item_str("cert-key", master.cert_key_file[3])
                     else:
                         if master.addr.startswith("/"):
                             s.item_str("address", "%s" % master.addr)
@@ -1481,6 +1552,8 @@ class Knot(Server):
                         s.item_str("tls" if slave.tls_port else "quic", "on")
                         if slave.cert_key:
                             s.item_str("cert-key", slave.cert_key)
+                        elif slave.cert_key_file:
+                            s.item_str("cert-key", slave.cert_key_file[3])
                     else:
                         if slave.addr.startswith("/"):
                             s.item_str("address", "%s" % slave.addr)
@@ -1515,6 +1588,8 @@ class Knot(Server):
                         s.item_str("tls" if remote.tls_port else "quic", "on")
                         if remote.cert_key:
                             s.item_str("cert-key", remote.cert_key)
+                        elif remote.cert_key_file:
+                            s.item_str("cert-key", remote.cert_key_file[3])
                     else:
                         if remote.addr.startswith("/"):
                             s.item_str("address", "%s" % remote.addr)
@@ -1548,7 +1623,7 @@ class Knot(Server):
                         s.item_str("address", master.addr)
                     if master.tsig:
                         s.item_str("key", master.tsig.name)
-                    if master.cert_key:
+                    if master.cert_key and not isinstance(master, Bind): # TODO until fixed https://gitlab.isc.org/isc-projects/bind9/-/issues/4821
                         s.item_str("cert-key", master.cert_key)
                     s.item("action", "notify")
                     servers.add(master.name)
