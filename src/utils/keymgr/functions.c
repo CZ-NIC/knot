@@ -879,8 +879,7 @@ static const timer_ctx_t timers[] = {
 	{ NULL }
 };
 
-static void print_key_brief(const knot_kasp_key_t *key, bool missing,
-                            keymgr_list_params_t *params)
+static void print_key_brief(const knot_kasp_key_t *key, keymgr_list_params_t *params)
 {
 	const bool c = params->color;
 
@@ -931,8 +930,7 @@ static void print_key_brief(const knot_kasp_key_t *key, bool missing,
 	printf("\n");
 }
 
-static void print_key_full(const knot_kasp_key_t *key, bool missing,
-                           knot_time_print_t format)
+static void print_key_full(const knot_kasp_key_t *key, knot_time_print_t format)
 {
 	printf("%s ksk=%s zsk=%s tag=%05d algorithm=%-2d size=%-4u public-only=%s", key->id,
 	       (key->is_ksk ? "yes" : "no "), (key->is_zsk ? "yes" : "no "),
@@ -945,12 +943,10 @@ static void print_key_full(const knot_kasp_key_t *key, bool missing,
 		(void)knot_time_print(format, *val, buf, sizeof(buf));
 		printf(" %s=%s", t->name, buf);
 	}
-	printf(" missing=%s", missing ? "yes" : "no");
 	printf("\n");
 }
 
-static void print_key_json(const knot_kasp_key_t *key, bool missing,
-                           knot_time_print_t format,
+static void print_key_json(const knot_kasp_key_t *key, knot_time_print_t format,
                            jsonw_t *w, const char *zone_name)
 {
 	jsonw_str(w,   "zone", zone_name);
@@ -987,39 +983,20 @@ static int key_sort(const void *a, const void *b)
 	return knot_time_cmp(key_a->val, key_b->val);
 }
 
-static bool key_missing(kdnssec_ctx_t *ctx, const knot_kasp_key_t *key,
-                        dnssec_key_t *test_key)
-{
-	int ret = dnssec_keystore_get_private(ctx->keystore, key->id,
-//	return dnssec_keystore_get_private(ctx->keystore, key->id,
-	                                   test_key) != DNSSEC_EOK;
-printf(">>>> key_missing(): dnssec_keystore_get_private() returned (%s)\n", dnssec_strerror(ret));
-
-return ret;
-}
-
 int keymgr_list_keys(kdnssec_ctx_t *ctx, keymgr_list_params_t *params)
 {
 	if (ctx->zone->num_keys == 0) {
 		return KNOT_EOK;
 	}
 
-	dnssec_key_t *test_key = NULL;
-	int ret = dnssec_key_new(&test_key);
-	if (ret != DNSSEC_EOK) {
-		return knot_error_from_libdnssec(ret);
-	}
-
 	if (params->extended) {
 		for (size_t i = 0; i < ctx->zone->num_keys; i++) {
 			knot_kasp_key_t *key = &ctx->zone->keys[i];
-			bool missing = key_missing(ctx, key, test_key);
-			print_key_full(key, missing, params->format);
+			print_key_full(key, params->format);
 		}
 	} else if (params->json) {
 		jsonw_t *w = jsonw_new(stdout, "  ");
 		if (w == NULL) {
-			dnssec_key_free(test_key);
 			return KNOT_ENOMEM;
 		}
 
@@ -1030,8 +1007,7 @@ int keymgr_list_keys(kdnssec_ctx_t *ctx, keymgr_list_params_t *params)
 		for (size_t i = 0; i < ctx->zone->num_keys; i++) {
 			knot_kasp_key_t *key = &ctx->zone->keys[i];
 			jsonw_object(w, NULL);
-			bool missing = key_missing(ctx, key, test_key);
-			print_key_json(key, missing, params->format, w, name);
+			print_key_json(key, params->format, w, name);
 			jsonw_end(w); // object
 		}
 		jsonw_end(w); // list
@@ -1049,11 +1025,9 @@ int keymgr_list_keys(kdnssec_ctx_t *ctx, keymgr_list_params_t *params)
 		}
 		qsort(&items, ctx->zone->num_keys, sizeof(items[0]), key_sort);
 		for (size_t i = 0; i < ctx->zone->num_keys; i++) {
-			bool missing = key_missing(ctx, items[i].key, test_key);
-			print_key_brief(items[i].key, missing, params);
+			print_key_brief(items[i].key, params);
 		}
 	}
-	dnssec_key_free(test_key);
 	return KNOT_EOK;
 }
 
