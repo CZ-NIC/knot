@@ -89,6 +89,30 @@ knot_tls_conn_t *knot_tls_conn_new(knot_tls_ctx_t *ctx, int sock_fd);
 void knot_tls_conn_del(knot_tls_conn_t *conn);
 
 /*!
+ * \brief Check if session ticket can be taken out of this connection.
+ */
+bool knot_tls_session_available(knot_tls_conn_t *conn);
+
+/*!
+ * \brief Gets data needed for session resumption.
+ *
+ * \param conn   TLS connection.
+ *
+ * \return TLS session context.
+ */
+struct knot_tls_session *knot_tls_session_save(knot_tls_conn_t *conn);
+
+/*!
+ * \brief Loads data needed for session resumption.
+ *
+ * \param conn     TLS connection.
+ * \param session  TLS session context.
+ *
+ * \return KNOT_E*
+ */
+int knot_tls_session_load(knot_tls_conn_t *conn, struct knot_tls_session *session);
+
+/*!
  * \brief Perform the TLS handshake (via gnutls_handshake()).
  *
  * \note This is also done by the recv/send functions.

@@ -809,7 +809,7 @@ cleanup:
 
 #ifdef ENABLE_QUIC
 	knot_quic_table_free(quic_table);
-	struct knot_quic_session *n, *nxt;
+	struct knot_tls_session *n, *nxt;
 	WALK_LIST_DELSAFE(n, nxt, quic_sessions) {
 		knot_quic_session_load(NULL, n);
 	}

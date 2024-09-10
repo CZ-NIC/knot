@@ -17,8 +17,11 @@
 #pragma once
 
 #include <stdint.h>
+#include <sys/socket.h>
 
 #include "libknot/quic/tls_common.h"
+
+struct knot_request;
 
 /*!
  * \brief TLS requestor context envelope, containing TLS general context and TLS connection.
@@ -41,9 +44,19 @@ typedef struct knot_tls_req_ctx {
  * \return KNOT_E*
  */
 int knot_tls_req_ctx_init(knot_tls_req_ctx_t *ctx, int fd,
+                          const struct sockaddr_storage *remote,
+                          const struct sockaddr_storage *local,
                           const struct knot_creds *local_creds,
                           const uint8_t *peer_pin, uint8_t peer_pin_len,
-                          int io_timeout_ms);
+                          bool *reused_fd, int io_timeout_ms);
+
+/*!
+ * \brief Maintain the TLS requestor context (update session ticket).
+ *
+ * \param ctx     Context structure to be initialized.
+ * \param r       Context of the request.
+ */
+void knot_tls_req_ctx_maint(knot_tls_req_ctx_t *ctx, struct knot_request *r);
 
 /*!
  * \brief De-initialize TLS requestor context.

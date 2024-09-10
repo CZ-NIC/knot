@@ -200,6 +200,9 @@ libknot.so.15 libknot15 #MINVER#
  knot_tls_recv_dns@Base 3.4.0
  knot_tls_send_dns@Base 3.4.0
  knot_tls_session@Base 3.4.0
+ knot_tls_session_available@Base 3.4.1
+ knot_tls_session_load@Base 3.4.1
+ knot_tls_session_save@Base 3.4.1
  knot_tsig_add@Base 3.4.0
  knot_tsig_append@Base 3.4.0
  knot_tsig_client_check@Base 3.4.0

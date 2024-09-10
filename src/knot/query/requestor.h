@@ -55,7 +55,7 @@ typedef struct {
 } knot_requestor_t;
 
 /*! \brief Request data (socket, payload, response, TSIG and endpoints). */
-typedef struct {
+typedef struct knot_request {
 	int fd;
 	union {
 		struct {
