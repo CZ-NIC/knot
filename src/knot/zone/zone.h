@@ -63,9 +63,10 @@ typedef enum {
 	PURGE_ZONE_TIMERS   = 1 << 23, /*!< Purge the zone timers. */
 	PURGE_ZONE_ZONEFILE = 1 << 24, /*!< Purge the zone file. */
 	PURGE_ZONE_JOURNAL  = 1 << 25, /*!< Purge the zone journal. */
-	PURGE_ZONE_KASPDB   = 1 << 26, /*!< Purge KASP DB. */
-	PURGE_ZONE_CATALOG  = 1 << 27, /*!< Purge the catalog. */
-	PURGE_ZONE_EXPIRE   = 1 << 28, /*!< Expire the zone, free contents. */
+	PURGE_ZONE_KEYS     = 1 << 26, /*!< Purge keys and related metadata. */
+	PURGE_ZONE_KASPDB   = 1 << 27, /*!< Purge KASP DB. */
+	PURGE_ZONE_CATALOG  = 1 << 28, /*!< Purge the catalog. */
+	PURGE_ZONE_EXPIRE   = 1 << 29, /*!< Expire the zone, free contents. */
 } purge_flag_t;
 
 /*!< All data. */
