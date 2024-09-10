@@ -973,7 +973,7 @@ static void print_key_json(const knot_kasp_key_t *key, knot_time_print_t format,
 
 typedef struct {
 	knot_time_t val;
-	const knot_kasp_key_t *key;
+	knot_kasp_key_t *key;
 } key_sort_item_t;
 
 static int key_sort(const void *a, const void *b)
@@ -1025,7 +1025,10 @@ int keymgr_list_keys(kdnssec_ctx_t *ctx, keymgr_list_params_t *params)
 		}
 		qsort(&items, ctx->zone->num_keys, sizeof(items[0]), key_sort);
 		for (size_t i = 0; i < ctx->zone->num_keys; i++) {
-			print_key_brief(items[i].key, params);
+			knot_kasp_key_t *k = items[i].key;
+			print_key_brief(k, params);
+			int ret = dnssec_keystore_get_private(ctx->keystore, k->id, k->key);
+			printf("%s <%s>\n", k->id, knot_strerror(ret));
 		}
 	}
 	return KNOT_EOK;
