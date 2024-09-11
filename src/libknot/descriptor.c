@@ -134,6 +134,7 @@ static const knot_rdata_descriptor_t rdata_descriptors[] = {
 	                               KNOT_RDATA_WF_END }, "LP" },
 	[KNOT_RRTYPE_EUI48]      = { { 6, KNOT_RDATA_WF_END }, "EUI48" },
 	[KNOT_RRTYPE_EUI64]      = { { 8, KNOT_RDATA_WF_END }, "EUI64" },
+	[KNOT_RRTYPE_NXNAME]     = { { KNOT_RDATA_WF_END }, "NXNAME" },
 	[KNOT_RRTYPE_TKEY]       = { { KNOT_RDATA_WF_FIXED_DNAME,
 	                               KNOT_RDATA_WF_REMAINDER,
 	                               KNOT_RDATA_WF_END }, "TKEY" },
@@ -328,12 +329,13 @@ int knot_rrclass_from_string(const char *name, uint16_t *num)
 _public_
 int knot_rrtype_is_metatype(const uint16_t type)
 {
-	return type == KNOT_RRTYPE_SIG  ||
-	       type == KNOT_RRTYPE_OPT  ||
-	       type == KNOT_RRTYPE_TKEY ||
-	       type == KNOT_RRTYPE_TSIG ||
-	       type == KNOT_RRTYPE_IXFR ||
-	       type == KNOT_RRTYPE_AXFR ||
+	return type == KNOT_RRTYPE_SIG    ||
+	       type == KNOT_RRTYPE_OPT    ||
+	       type == KNOT_RRTYPE_NXNAME ||
+	       type == KNOT_RRTYPE_TKEY   ||
+	       type == KNOT_RRTYPE_TSIG   ||
+	       type == KNOT_RRTYPE_IXFR   ||
+	       type == KNOT_RRTYPE_AXFR   ||
 	       type == KNOT_RRTYPE_ANY;
 }
 
