@@ -582,7 +582,7 @@ static int init_backup(ctl_args_t *args, bool restore_mode)
 	knot_backup_params_t dflts = restore_mode ? BACKUP_PARAM_DFLT_R : BACKUP_PARAM_DFLT_B;
 
 	// Filter '+keysonly' silently changes all defaults to '+no...'.
-	dflts = MATCH_AND_FILTER(args, BACKUP_PARAM_KEYSONLY) ? BACKUP_PARAM_EMPTY : dflts;
+	dflts = MATCH_AND_FILTER(args, CTL_FILTER_BACKUP_KEYSONLY) ? BACKUP_PARAM_EMPTY : dflts;
 
 	for (const backup_filter_list_t *item = backup_filters; item->name != NULL; item++) {
 		if (!eval_backup_filters(args, &filters, item, dflts)) {
