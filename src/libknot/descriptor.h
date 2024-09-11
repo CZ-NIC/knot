@@ -118,6 +118,7 @@ enum knot_rr_type {
 	KNOT_RRTYPE_EUI48      = 108, /*!< 48-bit extended unique identifier. */
 	KNOT_RRTYPE_EUI64      = 109, /*!< 64-bit extended unique identifier. */
 
+	KNOT_RRTYPE_NXNAME     = 128, /*!< METATYPE. NXDOMAIN indicator for Compact Denial of Existence */
 	KNOT_RRTYPE_TKEY       = 249, /*!< METATYPE. Transaction key. */
 	KNOT_RRTYPE_TSIG       = 250, /*!< METATYPE. Transaction signature. */
 	KNOT_RRTYPE_IXFR       = 251, /*!< QTYPE. Incremental zone transfer. */
