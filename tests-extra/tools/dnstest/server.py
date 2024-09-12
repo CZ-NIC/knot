@@ -868,10 +868,7 @@ class Server(object):
 
         key_params = self.tsig_test.key_params if self.tsig_test else dict()
 
-        if allow_knsupdate and random.choice([False, True]):
-            return dnstest.update.Update(self, dnstest.knsupdate.Knsupdate(zone.name, self.tsig_test))
-        else:
-            return dnstest.update.Update(self, dns.update.Update(zone.name, **key_params))
+        return dnstest.update.Update(self, dnstest.knsupdate.Knsupdate(zone.name, self.tsig_test))
 
     def gen_key(self, zone, **args):
         zone = zone_arg_check(zone)

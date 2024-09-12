@@ -34,13 +34,7 @@ class Update(object):
         else:
             rc = rcode
 
-        if proto is None and self.server.tls_port and self.server.quic_port and not self.server.xdp_port:
-            if type(self.upd) is Knsupdate:
-                proto = random.choice([ Proto.TCP, Proto.TLS, Proto.QUIC ])
-            else:
-                proto = random.choice([ Proto.TCP, Proto.TLS ])
-        elif proto is None:
-            proto = Proto.TCP
+        proto = Proto.QUIC
 
         check_log("UPDATE over %s using %s" % (proto, "knsupdate" if type(self.upd) is Knsupdate else "dnspython"))
         detail_log(str(self.upd))
