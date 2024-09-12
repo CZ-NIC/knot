@@ -213,7 +213,7 @@ Arguments are separated by space, each of them is in format 'name=value'.
 
 **zsk**
   If set to **yes**, the key will be used for signing zone (except DNSKEY rrset). This flag can
-  be set concurrently with the **ksk** flag.
+  be set concurrently with the **ksk** flag (for a CSK key).
 
 **sep**
   Overrides the standard setting of the Secure Entry Point flag.
@@ -298,11 +298,15 @@ Examples
 
     $ keymgr example.com. import-bind ~/bind/Kharbinge4d5.+007+63089.key
 
-4. Configure key timing::
+4. Import a CSK DNSSEC key from a PEM file::
+
+    $ keymgr example.com. import-pem 085d3890e8c22d854586678d9263933f2d02d795.pem ksk=yes zsk=yes
+
+5. Configure key timing::
 
     $ keymgr example.com. set 4208 active=+2mi retire=+4mi remove=+5mi
 
-5. Share a KSK from another zone::
+6. Share a KSK from another zone::
 
     $ keymgr example.com. share e687cf927029e9db7184d2ece6d663f5d1e5b0e9 another-zone.com.
 
