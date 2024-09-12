@@ -46,6 +46,7 @@ t.start()
 
 serials = knot.zones_wait(zones)
 check_serials(serials, MODULO_A, "INIT")
+source.ctl("zone-flush", wait=True)
 
 if "ddns" in SCENARIO:
     for z in zones:
