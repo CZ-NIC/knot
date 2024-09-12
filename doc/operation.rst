@@ -649,7 +649,14 @@ continues along the lines of :rfc:`6781#section-4.1.2`::
 At this point the new KSK has to be submitted to the parent zone. Knot detects the updated parent's DS
 record automatically (and waits for additional period of the DS's TTL before retiring the old key)
 if :ref:`parent DS check<Submission section>` is configured, otherwise the
-operator must confirm it manually (using ``knotc zone-ksk-submitted``)::
+operator must confirm it manually (using ``knotc zone-ksk-submitted``)
+
+.. NOTE::
+  A DS record for the new KSK can be generated using:
+
+   ``$ keymgr example.com ds 3375``
+
+::
 
   2024-02-14T15:20:12+0100 info: [example.com.] DS check, outgoing, remote 127.0.0.1@5300 TCP, KSK submission check: negative
   2024-02-14T15:20:14+0100 info: [example.com.] DS check, outgoing, remote 127.0.0.1@5300 TCP/pool, KSK submission check: negative
