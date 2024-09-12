@@ -652,6 +652,7 @@ int zone_reload_modules(conf_t *conf, server_t *server, const knot_dname_t *zone
 	if (newzone == NULL) {
 		return KNOT_ENOMEM;
 	}
+	knot_sem_wait(&newzone->cow_lock);
 	conf_activate_modules(conf, server, newzone->name, &newzone->query_modules,
 	                      &newzone->query_plan);
 
@@ -663,6 +664,7 @@ int zone_reload_modules(conf_t *conf, server_t *server, const knot_dname_t *zone
 	assert(newzone->contents == oldzone->contents);
 	oldzone->contents = NULL; // contents have been re-used by newzone
 
+	knot_sem_post(&newzone->cow_lock);
 	knot_sem_post(&oldzone->cow_lock);
 	zone_free(&oldzone);
 
