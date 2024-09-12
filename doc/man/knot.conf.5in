@@ -1535,9 +1535,7 @@ this action is only useful in combination with \fI\%TSIG key\fP\&.
 \fIDefault:\fP \fBquery\fP
 .SS deny
 .sp
-If enabled, instead of allowing, deny the specified \fI\%action\fP,
-\fI\%address\fP, \fI\%key\fP, or combination if these
-items. If no action is specified, deny all actions.
+If enabled, instead of allowing, deny the matching combination of the specified items.
 .sp
 \fIDefault:\fP \fBoff\fP
 .SS update\-type

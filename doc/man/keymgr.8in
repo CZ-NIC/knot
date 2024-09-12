@@ -240,7 +240,7 @@ have the Secure Entry Point flag set to 1.
 .TP
 \fBzsk\fP
 If set to \fByes\fP, the key will be used for signing zone (except DNSKEY rrset). This flag can
-be set concurrently with the \fBksk\fP flag.
+be set concurrently with the \fBksk\fP flag (for a CSK key).
 .TP
 \fBsep\fP
 Overrides the standard setting of the Secure Entry Point flag.
@@ -349,6 +349,18 @@ $ keymgr example.com. import\-bind ~/bind/Kharbinge4d5.+007+63089.key
 .UNINDENT
 .UNINDENT
 .IP 4. 3
+Import a CSK DNSSEC key from a PEM file:
+.INDENT 3.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+$ keymgr example.com. import\-pem 085d3890e8c22d854586678d9263933f2d02d795.pem ksk=yes zsk=yes
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.IP 5. 3
 Configure key timing:
 .INDENT 3.0
 .INDENT 3.5
@@ -360,7 +372,7 @@ $ keymgr example.com. set 4208 active=+2mi retire=+4mi remove=+5mi
 .fi
 .UNINDENT
 .UNINDENT
-.IP 5. 3
+.IP 6. 3
 Share a KSK from another zone:
 .INDENT 3.0
 .INDENT 3.5
