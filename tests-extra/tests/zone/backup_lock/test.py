@@ -37,10 +37,14 @@ t = Test()
 master = t.server("knot")
 backup_dir = os.path.join(master.dir, "backup")
 backup_dir_void = os.path.join(master.dir, "backup_void")
+backup_dir_keysonly = os.path.join(master.dir, "backup_keysonly")
 
 zones = t.zone_rnd(40, records=80)
 
 t.link(zones, master)
+
+for i in range(0, 3):
+    master.dnssec(zones[i]).enable = True
 
 master2 = t.server("knot")
 zones2 = t.zone("example1.", file_name="example1.file", storage=".")  \
@@ -147,6 +151,49 @@ try:
     master.ctl("-f zone-restore +backupdir %s" % backup_dir, wait=True)
 except:
     set_err("FORCED RESTORE NOT ALLOWED")
+
+# Tests with +keysonly filter ##############################################
+
+# Do a keysonly restore from a default ("+kaspdb") backup, expected OK.
+try:
+    master.ctl("zone-restore +keysonly +backupdir %s" % backup_dir, wait=True)
+except:
+    set_err("KEYSONLY RESTORE FROM KASPDB NOT ALLOWED")
+
+# Do a new standard backup (for '+keysonly' testing), expected OK.
+try:
+    master.ctl("zone-backup +backupdir %s" % backup_dir_keysonly, wait=True)
+except:
+    set_err("NEW BACKUP NOT ALLOWED")
+
+# Do a forced keysonly backup into already existing backup, expected OK.
+try:
+    master.ctl("-f zone-backup +keysonly +backupdir %s" % backup_dir_keysonly, wait=True)
+except:
+    set_err("FORCED KEYSONLY BACKUP NOT ALLOWED")
+
+# Do a keysonly restore from a keysonly backup, expected OK.
+try:
+    master.ctl("zone-restore +keysonly +backupdir %s" % backup_dir_keysonly, wait=True)
+except:
+    set_err("KEYSONLY RESTORE NOT ALLOWED")
+
+# Attempt to start restore of various additional data from a keysonly backup, expected (requested data not in backup).
+test_filters = ["", \
+                "  +zonefile +nojournal +notimers +nokaspdb +nocatalog +noquic", \
+                "+nozonefile   +journal +notimers +nokaspdb +nocatalog +noquic", \
+                "+nozonefile +nojournal   +timers +nokaspdb +nocatalog +noquic", \
+                "+nozonefile +nojournal +notimers   +kaspdb +nocatalog +noquic", \
+                "+nozonefile +nojournal +notimers +nokaspdb   +catalog +noquic", \
+                "+nozonefile +nojournal +notimers +nokaspdb +nocatalog   +quic"]
+
+for filters in test_filters:
+    try:
+        master.ctl("zone-restore %s +backupdir %s" % (filters, backup_dir_keysonly), wait=True)
+        set_err("DATA RESTORE FROM KEYSONLY BACKUP ALLOWED")
+    except:
+        pass
+    check_log_err(master, "requested data not in backup")
 
 # Tests with preconfigured backups, server master2. #############################
 
