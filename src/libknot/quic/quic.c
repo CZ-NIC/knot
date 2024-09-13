@@ -611,7 +611,6 @@ int knot_quic_handle(knot_quic_table_t *table, knot_quic_reply_t *reply,
 
 	ngtcp2_version_cid decoded_cids = { 0 };
 	ngtcp2_cid scid = { 0 }, dcid = { 0 }, odcid = { 0 };
-	uint64_t now = get_timestamp();
 	if (reply->in_payload->iov_len < 1) {
 		reply->handle_ret = KNOT_EOK;
 		return KNOT_EOK;
@@ -639,6 +638,8 @@ int knot_quic_handle(knot_quic_table_t *table, knot_quic_reply_t *reply,
 	if (conn != NULL && (conn->flags & KNOT_QUIC_CONN_BLOCKED)) {
 		return KNOT_EOK;
 	}
+
+	uint64_t now = get_timestamp(); // the timestamps needs to be collected AFTER the check for blocked conn
 
 	ngtcp2_path path;
 	path.remote.addr = (struct sockaddr *)reply->ip_rem;
