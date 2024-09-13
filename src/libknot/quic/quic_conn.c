@@ -575,8 +575,8 @@ void knot_quic_conn_block(knot_quic_conn_t *conn, bool block)
 		conn->next_expiry = UINT64_MAX;
 		conn_heap_reschedule(conn, conn->quic_table);
 	} else {
-		conn->flags &= ~KNOT_QUIC_CONN_BLOCKED;
 		quic_conn_mark_used(conn, conn->quic_table);
+		conn->flags &= ~KNOT_QUIC_CONN_BLOCKED; // unblocking needs to be the last thing to do since other thread may accept next packet
 	}
 }
 
