@@ -22,6 +22,7 @@
 #include "knot/query/requestor.h"
 #include "knot/server/server.h"
 #include "knot/zone/zone.h"
+#include "libdnssec/keytag.h"
 #include "libknot/errcode.h"
 
 #define DNSKEY_SYNC_LOG(priority, zone, remote, flags, fmt, ...) \
@@ -41,6 +42,48 @@ struct dnskey_sync_data {
 	bool uptodate;
 	bool ddns_sent;
 };
+
+static void log_upd(struct dnskey_sync_data *data)
+{
+	char buf[512], type_buf[16] = { 0 };
+	wire_ctx_t w = wire_ctx_init((uint8_t *)buf, sizeof(buf));
+	for (int i = 0; i < REMOTE_NTYPES; i++) {
+		knot_rrtype_to_string(remote_rrs[i], type_buf, sizeof(type_buf));
+		wire_ctx_printf(&w, ", %ss +%hu/-%hu", type_buf, data->add_rr[i]->rrs.count,
+		                                                 data->rem_rr[i]->rrs.count);
+		if (remote_rrs[i] == KNOT_RRTYPE_DNSKEY) {
+			bool bracket = false, rem_part = false;
+			knot_rdata_t *dnskey = data->add_rr[i]->rrs.rdata;
+			for (int j = 0; !rem_part || j < data->rem_rr[i]->rrs.count; j++) {
+				if (!rem_part && j >= data->add_rr[i]->rrs.count) {
+					dnskey = data->rem_rr[i]->rrs.rdata;
+					rem_part = true;
+					j = -1;
+					continue;
+				}
+				uint16_t keytag;
+				const dnssec_binary_t bin = {
+					.size = dnskey->len, .data = dnskey->data
+				};
+				if (dnssec_keytag(&bin, &keytag) != 0) {
+					continue;
+				}
+				wire_ctx_printf(&w, " %s%c%d", bracket ? "" : "(",
+				                rem_part ? '-' : '+', keytag);
+				bracket = true;
+
+				dnskey = knot_rdataset_next(dnskey);
+			}
+			if (bracket) {
+				wire_ctx_printf(&w, ")");
+			}
+		}
+	}
+	if (w.error == KNOT_EOK) {
+		// intentionally not DNSKEY_SYNC_LOG to save space on log line
+		log_zone_info(data->zone->name, "DNSKEY sync%s", buf);
+	}
+}
 
 static int next_query(struct dnskey_sync_data *data, int *idx)
 {
@@ -99,6 +142,7 @@ static int dnskey_sync_produce(knot_layer_t *layer, knot_pkt_t *pkt)
 
 	if (next == KNOT_RRTYPE_ANY && ret == KNOT_EOK) {
 		data->ddns_sent = true;
+		log_upd(data);
 	}
 
 	return KNOT_STATE_CONSUME;
