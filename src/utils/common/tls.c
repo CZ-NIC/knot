@@ -315,6 +315,22 @@ static int check_certificates(gnutls_session_t session, const list_t *pins)
 		DBG(" #%i, %s", i + 1, cert_name.data);
 		gnutls_free(cert_name.data);
 
+		ret = gnutls_x509_crt_print(cert, GNUTLS_CRT_PRINT_UNSIGNED_FULL, &cert_name);
+		if (ret != GNUTLS_E_SUCCESS) {
+			gnutls_x509_crt_deinit(cert);
+			return ret;
+		}
+		char *altname = strstr((char *)cert_name.data, "Subject Alternative Name");
+		if (altname) {
+			char *newline = strstr(altname, "\n");
+			while (!strncmp("\n\t\t\t", newline, 4)) {
+				newline = strstr(newline + 1, "\n");
+			}
+			newline[0] = '\0';
+			DBG("     %s", altname);
+		}
+		gnutls_free(cert_name.data);
+
 		uint8_t cert_pin[CERT_PIN_LEN] = { 0 };
 		size_t cert_pin_size = sizeof(cert_pin);
 		ret = gnutls_x509_crt_get_key_id(cert, GNUTLS_KEYID_USE_SHA256,
