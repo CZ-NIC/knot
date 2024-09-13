@@ -2361,7 +2361,7 @@ void complete_queries(list_t *queries, const query_t *conf)
 
 static void print_help(void)
 {
-	printf("Usage: %s [-4] [-6] [-d] [-b address] [-c class] [-p port]\n"
+	printf("Usage: %s [-4] [-6] [-d[d]] [-b address] [-c class] [-p port]\n"
 	       "            [-q name] [-t type] [-x address] [-k keyfile]\n"
 	       "            [-y [algo:]keyname:key] [-E tapfile] [-G tapfile]\n"
 	       "            name [type] [class] [@server]\n"
@@ -2491,7 +2491,7 @@ static int parse_opt1(const char *opt, const char *value, kdig_params_t *params,
 		*index += add;
 		break;
 	case 'd':
-		msg_enable_debug(1);
+		msg_enable_debug(len);
 		break;
 	case 'h':
 		if (len > 1) {
