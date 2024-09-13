@@ -20,17 +20,17 @@
 
 #include "utils/common/msg.h"
 
-static volatile int MSG_DBG_STATE = 0; /* True if debugging is enabled. */
+static volatile int MSG_DBG_STATE = 0; /* Positive if debugging is enabled. */
 
-int msg_enable_debug(int val)
+int msg_enable_debug(int level)
 {
-	return MSG_DBG_STATE = val;
+	return MSG_DBG_STATE = level;
 }
 
-int msg_debug(const char *fmt, ...)
+int msg_debug(int level, const char *fmt, ...)
 {
 	int n = 0;
-	if (MSG_DBG_STATE) {
+	if (MSG_DBG_STATE >= level) {
 		va_list ap;
 		va_start(ap, fmt);
 		n = vprintf(fmt, ap);

@@ -26,13 +26,14 @@
 #define ERR(msg, ...)	do { fprintf(stderr, ERROR_   msg "\n", ##__VA_ARGS__); fflush(stderr); } while (0)
 #define INFO(msg, ...)	do { fprintf(stdout, INFO_    msg "\n", ##__VA_ARGS__); fflush(stdout); } while (0)
 #define WARN(msg, ...)	do { fprintf(stderr, WARNING_ msg "\n", ##__VA_ARGS__); fflush(stderr); } while (0)
-#define DBG(msg, ...)	do { msg_debug(DEBUG_         msg "\n", ##__VA_ARGS__); fflush(stdout); } while (0)
+#define DBG(msg, ...)	do { msg_debug(1, DEBUG_      msg "\n", ##__VA_ARGS__); fflush(stdout); } while (0)
+#define DBG2(msg, ...)	do { msg_debug(2, DEBUG_      msg "\n", ##__VA_ARGS__); fflush(stdout); } while (0)
 
 /*! \brief Enable/disable debugging. */
-int msg_enable_debug(int val);
+int msg_enable_debug(int level);
 
 /*! \brief Print debug message. */
-int msg_debug(const char *fmt, ...);
+int msg_debug(int level, const char *fmt, ...);
 
 /*! \brief Debug message for null input. */
 #define DBG_NULL	DBG("%s: null parameter", __func__)
