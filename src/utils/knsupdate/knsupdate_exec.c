@@ -310,6 +310,7 @@ static int parse_partial_rr(zs_scanner_t *s, const char *lp, unsigned flags)
 	if (zs_set_input_string(s, rr, strlen(rr)) != 0 ||
 	    zs_parse_all(s) != 0) {
 		ERR("invalid rdata (%s)", zs_strerror(s->error.code));
+		free(rr);
 		return KNOT_EPARSEFAIL;
 	}
 	free(rr);
