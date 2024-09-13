@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -17,9 +17,11 @@
 #pragma once
 
 #include <assert.h>
+#include <stdarg.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <string.h>
 #include <sys/types.h>
 
@@ -305,6 +307,21 @@ static inline void wire_ctx_write_u64(wire_ctx_t *ctx, uint64_t value)
 {
 	uint64_t beval = htobe64(value);
 	wire_ctx_write(ctx, &beval, sizeof(beval));
+}
+
+static inline int wire_ctx_printf(wire_ctx_t *ctx, const char *format, ...)
+{
+	size_t max = wire_ctx_available(ctx);
+	va_list args;
+	va_start(args, format);
+	int written = vsnprintf((char *)ctx->position, max, format, args);
+	va_end(args);
+	if (written > max || written < 0) {
+		ctx->error = KNOT_ESPACE;
+		return KNOT_ESPACE;
+	}
+	ctx->position += written;
+	return written;
 }
 
 static inline void wire_ctx_clear(wire_ctx_t *ctx, size_t size)
