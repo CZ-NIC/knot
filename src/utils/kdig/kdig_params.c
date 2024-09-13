@@ -2491,7 +2491,7 @@ static int parse_opt1(const char *opt, const char *value, kdig_params_t *params,
 		*index += add;
 		break;
 	case 'd':
-		msg_enable_debug(1);
+		msg_enable_debug(len);
 		break;
 	case 'h':
 		if (len > 1) {

@@ -91,6 +91,9 @@ Options
 **-d**
   Enable debug messages.
 
+**-dd**
+  Enable more verbose debug messages (print Subject Alternative Name).
+
 **-h**, **--help**
   Print the program help.
 
