@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -20,9 +20,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <netdb.h>
+#include <net/if.h>
 
 #include "libknot/errcode.h"
 #include "contrib/sockaddr.h"
+#include "contrib/openbsd/strlcat.h"
 #include "contrib/openbsd/strlcpy.h"
 #include "contrib/macros.h"
 #include "contrib/musl/inet_ntop.h"
@@ -202,6 +204,14 @@ int sockaddr_tostr(char *buf, size_t maxlen, const struct sockaddr_storage *ss)
 	if (ss->ss_family == AF_INET6) {
 		const struct sockaddr_in6 *s = (const struct sockaddr_in6 *)ss;
 		out = knot_inet_ntop(ss->ss_family, &s->sin6_addr, buf, maxlen);
+		if (out != NULL && s->sin6_scope_id > 0) {
+			char if_str[IF_NAMESIZE];
+			if (if_indextoname(s->sin6_scope_id, if_str) == NULL) {
+				(void)snprintf(if_str, sizeof(if_str), "%u", s->sin6_scope_id);
+			}
+			strlcat(buf, "%", maxlen);
+			strlcat(buf, if_str, maxlen);
+		}
 	} else if (ss->ss_family == AF_INET) {
 		const struct sockaddr_in *s = (const struct sockaddr_in *)ss;
 		out = knot_inet_ntop(ss->ss_family, &s->sin_addr, buf, maxlen);

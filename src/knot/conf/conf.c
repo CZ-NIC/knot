@@ -811,11 +811,20 @@ struct sockaddr_storage conf_addr_range(
 	if (val->code == KNOT_EOK) {
 		conf_val(val);
 		assert(val->data);
+		uint8_t type = *val->data;
 		out = yp_addr_noport(val->data);
 		// addr_type, addr, format, formatted_data (port| addr| empty).
-		const uint8_t *format = val->data + sizeof(uint8_t) +
-		                        ((out.ss_family == AF_INET) ?
-		                        IPV4_PREFIXLEN / 8 : IPV6_PREFIXLEN / 8);
+		const uint8_t *format = val->data + sizeof(uint8_t);
+		if (type == 4) {
+			format += IPV4_PREFIXLEN / 8;
+		} else if (type == 6) {
+			format += IPV6_PREFIXLEN / 8;
+		} else if (type == 7) {
+			format += IPV6_PREFIXLEN / 8;
+			format += strlen((const char *)format) + 1;
+		} else {
+			format += strlen((const char *)format) + 1;
+		}
 		// See addr_range_to_bin.
 		switch (*format) {
 		case 1:
