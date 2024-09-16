@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -801,7 +801,7 @@ static void json_print_edns(jsonw_t *w, const knot_pkt_t *pkt)
 	uint16_t flags = pkt->opt_rr->ttl & 0xffff, mask = (1 << 15);
 	jsonw_int(w, "Version", version);
 	jsonw_list(w, "FLAGS");
-	for (int i = 0; i < 16; i++) {
+	for (uint i = 0; i < 16; i++) {
 		if ((flags & mask)) {
 			if ((mask & KNOT_EDNS_DO_MASK)) {
 				jsonw_str(w, NULL, "DO");
