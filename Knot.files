@@ -144,6 +144,8 @@ src/contrib/spinlock.h
 src/contrib/string.c
 src/contrib/string.h
 src/contrib/strtonum.h
+src/contrib/threads.c
+src/contrib/threads.h
 src/contrib/time.c
 src/contrib/time.h
 src/contrib/toeplitz.h

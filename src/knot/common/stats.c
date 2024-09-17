@@ -21,6 +21,7 @@
 #include <urcu.h>
 
 #include "contrib/files.h"
+#include "contrib/threads.h"
 #include "knot/common/stats.h"
 #include "knot/common/log.h"
 #include "knot/nameserver/query_module.h"
@@ -440,7 +441,7 @@ void stats_reconfigure(conf_t *conf, server_t *server)
 			return;
 		}
 
-		int ret = pthread_create(&stats.dumper, NULL, dumper, NULL);
+		int ret = thread_create_nosignal(&stats.dumper, dumper, NULL);
 		if (ret != 0) {
 			log_error("stats, failed to launch periodic dumping (%s)",
 			          knot_strerror(knot_map_errno_code(ret)));
