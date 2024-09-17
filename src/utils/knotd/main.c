@@ -33,6 +33,7 @@
 #include "libdnssec/crypto.h"
 #include "libknot/libknot.h"
 #include "contrib/strtonum.h"
+#include "contrib/threads.h"
 #include "contrib/time.h"
 #include "knot/ctl/process.h"
 #include "knot/conf/conf.h"
@@ -65,7 +66,6 @@ typedef struct {
 	knot_ctl_t *ctl;
 	server_t *server;
 	pthread_t thread;
-	sigset_t sigmask;
 	int ret;
 	int thread_idx;
 	bool exclusive;
@@ -210,24 +210,6 @@ static void enable_signals(void)
 	pthread_sigmask(SIG_UNBLOCK, &mask, NULL);
 }
 
-/*! \brief Create a control thread with correct signals setting. */
-static void create_thread_sigmask(pthread_t *thr, void *(*fcn)(void*), void *ctx,
-                                  sigset_t *out_mask)
-{
-	/* Block all blockable signals. */
-	sigset_t mask;
-	sigfillset(&mask);
-	sigdelset(&mask, SIGBUS);
-	sigdelset(&mask, SIGFPE);
-	sigdelset(&mask, SIGILL);
-	sigdelset(&mask, SIGSEGV);
-	pthread_sigmask(SIG_SETMASK, &mask, out_mask);
-
-	pthread_create(thr, NULL, fcn, ctx);
-
-	pthread_sigmask(SIG_SETMASK, out_mask, NULL);
-}
-
 /*! \brief Drop POSIX 1003.1e capabilities. */
 static void drop_capabilities(void)
 {
@@ -326,7 +308,7 @@ static concurrent_ctl_ctx_t *find_free_ctx(concurrent_ctl_ctx_t *concurrent_ctxs
 		pthread_mutex_lock(&cctx->mutex);
 		switch (cctx->state) {
 		case CONCURRENT_EMPTY:
-			create_thread_sigmask(&cctx->thread, ctl_process_thread, cctx, &cctx->sigmask);
+			(void)thread_create_nosignal(&cctx->thread, ctl_process_thread, cctx);
 			break;
 		case CONCURRENT_IDLE:
 			knot_ctl_free(cctx->ctl);

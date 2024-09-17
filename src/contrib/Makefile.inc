@@ -59,6 +59,8 @@ libcontrib_la_SOURCES = \
 	contrib/string.c			\
 	contrib/string.h			\
 	contrib/strtonum.h			\
+	contrib/threads.c			\
+	contrib/threads.h			\
 	contrib/time.c				\
 	contrib/time.h				\
 	contrib/toeplitz.h			\

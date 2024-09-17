@@ -21,6 +21,7 @@
 #include "knot/include/module.h"
 #include "libknot/libknot.h"
 #include "contrib/atomic.h"
+#include "contrib/threads.h"
 #include "contrib/string.h"
 #include "libdnssec/random.h"
 
@@ -269,7 +270,7 @@ int cookies_load(knotd_mod_t *mod)
 		ctx->secret_lifetime = conf.single.integer;
 
 		// Start the secret rollover thread.
-		if (pthread_create(&ctx->update_secret, NULL, update_secret, (void *)mod)) {
+		if (thread_create_nosignal(&ctx->update_secret, update_secret, (void *)mod)) {
 			knotd_mod_log(mod, LOG_ERR, "failed to create the secret rollover thread");
 			free(ctx);
 			return KNOT_ERROR;
