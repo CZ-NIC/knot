@@ -1241,7 +1241,7 @@ the backup work is done and a simple result status is printed out.
 
 If a backup fails, the backup directory containing incomplete backup is retained.
 For repeated backup attempts to the same directory, it must be removed or renamed
-manually first.
+manually first, or the force option may be used in a repeated backup.
 
 .. NOTE::
    When backing up or restoring a catalog zone, it's necessary to make sure that
