@@ -24,6 +24,7 @@
 #include "contrib/conn_pool.h"
 
 #include "contrib/sockaddr.h"
+#include "contrib/threads.h"
 
 conn_pool_t *global_conn_pool = NULL;
 conn_pool_t *global_sessticket_pool = NULL;
@@ -111,7 +112,7 @@ conn_pool_t *conn_pool_init(size_t capacity, knot_timediff_t timeout,
 			free(pool);
 			return NULL;
 		}
-		if (pthread_create(&pool->closing_thread, NULL, closing_thread, pool) != 0) {
+		if (thread_create_nosignal(&pool->closing_thread, closing_thread, pool) != 0) {
 			pthread_mutex_destroy(&pool->mutex);
 			free(pool);
 			return NULL;
