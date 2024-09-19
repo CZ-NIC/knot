@@ -256,23 +256,23 @@ static int zone_status(zone_t *zone, ctl_args_t *args)
 		return KNOT_EINVAL;
 	}
 
-	char flags[16] = "";
+	char filters[16] = "";
 	knot_ctl_data_t data = {
 		[KNOT_CTL_IDX_ZONE] = name,
-		[KNOT_CTL_IDX_FLAGS] = flags
+		[KNOT_CTL_IDX_FILTER] = filters,
 	};
 
 	const bool slave = zone_is_slave(conf(), zone);
 	if (slave) {
-		strlcat(flags, CTL_FLAG_STATUS_SLAVE, sizeof(flags));
+		strlcat(filters, CTL_FILTER_STATUS_SLAVE_R, sizeof(filters));
 	}
 	const bool empty = (zone->contents == NULL);
 	if (empty) {
-		strlcat(flags, CTL_FLAG_STATUS_EMPTY, sizeof(flags));
+		strlcat(filters, CTL_FILTER_STATUS_EMPTY_R, sizeof(filters));
 	}
 	const bool member = (zone->flags & ZONE_IS_CAT_MEMBER);
 	if (member) {
-		strlcat(flags, CTL_FLAG_STATUS_MEMBER, sizeof(flags));
+		strlcat(filters, CTL_FILTER_STATUS_MEMBER_R, sizeof(filters));
 	}
 
 	int ret;
@@ -436,7 +436,7 @@ static int zone_status(zone_t *zone, ctl_args_t *args)
 
 			knot_time_print_t format = TIME_PRINT_HUMAN_MIXED;
 			if (ctl_has_flag(args->data[KNOT_CTL_IDX_FLAGS],
-					 CTL_FLAG_STATUS_UNIXTIME)) {
+					 CTL_FILTER_STATUS_UNIXTIME)) {
 				format = TIME_PRINT_UNIX;
 			}
 
@@ -1225,7 +1225,7 @@ static int zone_txn_get(zone_t *zone, ctl_args_t *args)
 
 static int send_changeset_part(changeset_t *ch, send_ctx_t *ctx, bool from)
 {
-	ctx->data[KNOT_CTL_IDX_FLAGS] = from ? CTL_FLAG_DIFF_REM : CTL_FLAG_DIFF_ADD;
+	ctx->data[KNOT_CTL_IDX_FILTER] = from ? CTL_FILTER_DIFF_REM_R : CTL_FILTER_DIFF_ADD_R;
 
 	// Send SOA only if explicitly changed.
 	if (ch->soa_to != NULL) {
@@ -1292,7 +1292,7 @@ static int zone_txn_diff_l(zone_t *zone, ctl_args_t *args)
 
 	// FULL update has no changeset to print, do a 'get' instead.
 	if (zone->control_update->flags & UPDATE_FULL) {
-		return zone_flag_txn_get(zone, args, CTL_FLAG_DIFF_ADD);
+		return zone_flag_txn_get(zone, args, CTL_FILTER_DIFF_ADD_R);
 	}
 
 	send_ctx_t *ctx = &ctl_globals[args->thread_idx].send_ctx;
@@ -2100,8 +2100,8 @@ static int send_block(conf_io_t *io)
 
 	// Get the item prefix.
 	switch (io->type) {
-	case NEW: data[KNOT_CTL_IDX_FLAGS] = CTL_FLAG_DIFF_ADD; break;
-	case OLD: data[KNOT_CTL_IDX_FLAGS] = CTL_FLAG_DIFF_REM; break;
+	case NEW: data[KNOT_CTL_IDX_FILTER] = CTL_FILTER_DIFF_ADD_R; break;
+	case OLD: data[KNOT_CTL_IDX_FILTER] = CTL_FILTER_DIFF_REM_R; break;
 	default: break;
 	}
 
@@ -2213,14 +2213,14 @@ static int ctl_conf_list(ctl_args_t *args, ctl_cmd_t cmd)
 	int ret = KNOT_EOK;
 
 	while (true) {
-		const char *key0  = args->data[KNOT_CTL_IDX_SECTION];
-		const char *key1  = args->data[KNOT_CTL_IDX_ITEM];
-		const char *id    = args->data[KNOT_CTL_IDX_ID];
-		const char *flags = args->data[KNOT_CTL_IDX_FLAGS];
+		const char *key0    = args->data[KNOT_CTL_IDX_SECTION];
+		const char *key1    = args->data[KNOT_CTL_IDX_ITEM];
+		const char *id      = args->data[KNOT_CTL_IDX_ID];
+		const char *filters = args->data[KNOT_CTL_IDX_FILTER];
 
-		bool schema = ctl_has_flag(flags, CTL_FLAG_LIST_SCHEMA);
-		bool current = !ctl_has_flag(flags, CTL_FLAG_LIST_TXN);
-		bool zones = ctl_has_flag(flags, CTL_FLAG_LIST_ZONES);
+		bool schema = ctl_has_flag(filters, CTL_FILTER_LIST_SCHEMA);
+		bool current = !ctl_has_flag(filters, CTL_FILTER_LIST_TXN);
+		bool zones = ctl_has_flag(filters, CTL_FILTER_LIST_ZONES);
 
 		if (zones) {
 			ret = list_zones(args->server->zone_db, args->ctl);

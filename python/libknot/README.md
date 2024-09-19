@@ -82,7 +82,7 @@ finally:
 
 ```python3
     # List configured zones (including catalog member ones)
-    ctl.send_block(cmd="conf-list", flags="z")
+    ctl.send_block(cmd="conf-list", filters="z")
     resp = ctl.receive_block()
     for zone in resp['zone']:
         print(zone)
@@ -90,7 +90,7 @@ finally:
 
 ```python3
     # Print expirations as unixtime for all secondary zones
-    ctl.send_block(cmd="zone-status", flags="u")
+    ctl.send_block(cmd="zone-status", filters="u")
     resp = ctl.receive_block()
     for zone in resp:
         if resp[zone]["role"] == "master":
