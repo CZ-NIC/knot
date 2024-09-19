@@ -22,17 +22,17 @@
 #define CTL_FLAG_FORCE			"F"
 #define CTL_FLAG_BLOCKING		"B"
 
-#define CTL_FLAG_DIFF_ADD		"+"
-#define CTL_FLAG_DIFF_REM		"-"
+#define CTL_FILTER_DIFF_ADD_R		"+"
+#define CTL_FILTER_DIFF_REM_R		"-"
 
-#define CTL_FLAG_LIST_SCHEMA		"s"
-#define CTL_FLAG_LIST_TXN		"t"
-#define CTL_FLAG_LIST_ZONES		"z"
+#define CTL_FILTER_LIST_SCHEMA		"s"
+#define CTL_FILTER_LIST_TXN		"t"
+#define CTL_FILTER_LIST_ZONES		"z"
 
-#define CTL_FLAG_STATUS_EMPTY		"e"
-#define CTL_FLAG_STATUS_SLAVE		"s"
-#define CTL_FLAG_STATUS_MEMBER		"m"
-#define CTL_FLAG_STATUS_UNIXTIME	"u"
+#define CTL_FILTER_STATUS_EMPTY_R	"e"
+#define CTL_FILTER_STATUS_SLAVE_R	"s"
+#define CTL_FILTER_STATUS_MEMBER_R	"m"
+#define CTL_FILTER_STATUS_UNIXTIME	"u"
 
 #define CTL_FILTER_FLUSH_OUTDIR		'd'
 

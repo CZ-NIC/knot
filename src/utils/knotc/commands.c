@@ -206,16 +206,16 @@ static int get_conf_key(const char *key, knot_ctl_data_t *data)
 static void format_data(cmd_args_t *args, knot_ctl_type_t data_type,
                         knot_ctl_data_t *data, bool *empty)
 {
-	const char *error = (*data)[KNOT_CTL_IDX_ERROR];
-	const char *flags = (*data)[KNOT_CTL_IDX_FLAGS];
-	const char *key0  = (*data)[KNOT_CTL_IDX_SECTION];
-	const char *key1  = (*data)[KNOT_CTL_IDX_ITEM];
-	const char *id    = (*data)[KNOT_CTL_IDX_ID];
-	const char *zone  = (*data)[KNOT_CTL_IDX_ZONE];
-	const char *owner = (*data)[KNOT_CTL_IDX_OWNER];
-	const char *ttl   = (*data)[KNOT_CTL_IDX_TTL];
-	const char *type  = (*data)[KNOT_CTL_IDX_TYPE];
-	const char *value = (*data)[KNOT_CTL_IDX_DATA];
+	const char *error   = (*data)[KNOT_CTL_IDX_ERROR];
+	const char *filters = (*data)[KNOT_CTL_IDX_FILTER];
+	const char *key0    = (*data)[KNOT_CTL_IDX_SECTION];
+	const char *key1    = (*data)[KNOT_CTL_IDX_ITEM];
+	const char *id      = (*data)[KNOT_CTL_IDX_ID];
+	const char *zone    = (*data)[KNOT_CTL_IDX_ZONE];
+	const char *owner   = (*data)[KNOT_CTL_IDX_OWNER];
+	const char *ttl     = (*data)[KNOT_CTL_IDX_TTL];
+	const char *type    = (*data)[KNOT_CTL_IDX_TYPE];
+	const char *value   = (*data)[KNOT_CTL_IDX_DATA];
 
 	bool col = false;
 	char status_col[32] = "";
@@ -223,10 +223,10 @@ static void format_data(cmd_args_t *args, knot_ctl_type_t data_type,
 	static bool first_status_item = true;
 
 	const char *sign = NULL;
-	if (ctl_has_flag(flags, CTL_FLAG_DIFF_ADD)) {
-		sign = CTL_FLAG_DIFF_ADD;
-	} else if (ctl_has_flag(flags, CTL_FLAG_DIFF_REM)) {
-		sign = CTL_FLAG_DIFF_REM;
+	if (ctl_has_flag(filters, CTL_FILTER_DIFF_ADD_R)) {
+		sign = CTL_FILTER_DIFF_ADD_R;
+	} else if (ctl_has_flag(filters, CTL_FILTER_DIFF_REM_R)) {
+		sign = CTL_FILTER_DIFF_REM_R;
 	}
 
 	switch (args->desc->cmd) {
@@ -253,15 +253,15 @@ static void format_data(cmd_args_t *args, knot_ctl_type_t data_type,
 		if (error == NULL) {
 			col =  args->extended ? args->color_force : args->color;
 		}
-		if (!ctl_has_flag(flags, CTL_FLAG_STATUS_EMPTY)) {
+		if (!ctl_has_flag(filters, CTL_FILTER_STATUS_EMPTY_R)) {
 			strlcat(status_col, COL_BOLD(col), sizeof(status_col));
 		}
-		if (ctl_has_flag(flags, CTL_FLAG_STATUS_SLAVE)) {
+		if (ctl_has_flag(filters, CTL_FILTER_STATUS_SLAVE_R)) {
 			strlcat(status_col, COL_RED(col), sizeof(status_col));
 		} else {
 			strlcat(status_col, COL_GRN(col), sizeof(status_col));
 		}
-		if (ctl_has_flag(flags, CTL_FLAG_STATUS_MEMBER)) {
+		if (ctl_has_flag(filters, CTL_FILTER_STATUS_MEMBER_R)) {
 			strlcat(status_col, COL_UNDR(col), sizeof(status_col));
 		}
 		// FALLTHROUGH
@@ -1233,15 +1233,15 @@ static int cmd_conf_ctl(cmd_args_t *args)
 		return ret;
 	}
 
-	char flags[16] = "";
-	strlcat(flags, args->flags, sizeof(flags));
+	char filters[16] = "";
+	strlcat(filters, args->flags, sizeof(filters));
 	if (args->desc->flags & CMD_FLIST_SCHEMA) {
-		strlcat(flags, CTL_FLAG_LIST_SCHEMA, sizeof(flags));
+		strlcat(filters, CTL_FILTER_LIST_SCHEMA, sizeof(filters));
 	}
 
 	knot_ctl_data_t data = {
 		[KNOT_CTL_IDX_CMD] = ctl_cmd_to_str(args->desc->cmd),
-		[KNOT_CTL_IDX_FLAGS] = flags,
+		[KNOT_CTL_IDX_FILTER] = filters,
 	};
 
 	// Send the command without parameters.
