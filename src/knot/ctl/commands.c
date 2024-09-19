@@ -47,10 +47,10 @@
 #include "libzscanner/scanner.h"
 
 #define MATCH_OR_FILTER(args, code) ((args)->data[KNOT_CTL_IDX_FILTER] == NULL || \
-                                     strchr((args)->data[KNOT_CTL_IDX_FILTER], (code)) != NULL)
+                                     strchr((args)->data[KNOT_CTL_IDX_FILTER], (code)[0]) != NULL)
 
 #define MATCH_AND_FILTER(args, code) ((args)->data[KNOT_CTL_IDX_FILTER] != NULL && \
-                                      strchr((args)->data[KNOT_CTL_IDX_FILTER], (code)) != NULL)
+                                      strchr((args)->data[KNOT_CTL_IDX_FILTER], (code)[0]) != NULL)
 
 typedef struct {
 	ctl_args_t *args;
@@ -99,7 +99,7 @@ static bool allow_blocking_while_ctl_txn(zone_event_type_t event)
  * \return false if there is a filter conflict, true otherwise.
  */
 static bool eval_opposite_filters(ctl_args_t *args, bool *param, bool dflt,
-                                  int filter, int neg_filter)
+                                  char *filter, char *neg_filter)
 {
 	bool set = MATCH_AND_FILTER(args, filter);
 	bool unset = MATCH_AND_FILTER(args, neg_filter);

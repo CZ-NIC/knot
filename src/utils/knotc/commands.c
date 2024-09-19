@@ -695,7 +695,7 @@ static int cmd_zone_ctl(cmd_args_t *args)
 
 typedef struct {
 	const char *name;
-	char id;
+	char *id;
 	bool with_data; // Only ONE filter of each filter_desc_t may have data!
 } filter_desc_t;
 
@@ -796,7 +796,7 @@ static int cmd_zone_filter_ctl(cmd_args_t *args)
 			if (data[KNOT_CTL_IDX_FILTER] == NULL) {
 				data[KNOT_CTL_IDX_FILTER] = filter_buff;
 			}
-			char filter_id[2] = { get_filter(args->desc->cmd, args->argv[i])->id, 0 };
+			char filter_id[2] = { get_filter(args->desc->cmd, args->argv[i])->id[0], 0 };
 			if (filter_id[0] == '\0') {
 				log_error("unknown filter: %s", args->argv[i]);
 				return KNOT_EINVAL;
