@@ -337,13 +337,15 @@ static int zone_status(zone_t *zone, ctl_args_t *args)
 	if (MATCH_OR_FILTER(args, CTL_FILTER_STATUS_FREEZE)) {
 		data[KNOT_CTL_IDX_TYPE] = "freeze";
 		if (ufrozen) {
-			if (zone_events_get_time(zone, ZONE_EVENT_UTHAW) < time(NULL)) {
+			time_t t = zone_events_get_time(zone, ZONE_EVENT_UTHAW);
+			if (t == 0 || t > time(NULL)) {
 				data[KNOT_CTL_IDX_DATA] = "yes";
 			} else {
 				data[KNOT_CTL_IDX_DATA] = "thawing";
 			}
 		} else {
-			if (zone_events_get_time(zone, ZONE_EVENT_UFREEZE) < time(NULL)) {
+			time_t t = zone_events_get_time(zone, ZONE_EVENT_UFREEZE);
+			if (t == 0 || t > time(NULL)) {
 				data[KNOT_CTL_IDX_DATA] = STATUS_EMPTY;
 			} else {
 				data[KNOT_CTL_IDX_DATA] = "freezing";
