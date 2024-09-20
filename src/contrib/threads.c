@@ -22,9 +22,9 @@ int thread_create_nosignal(pthread_t *thr, void *(*cb)(void*), void *ctx)
 {
 	sigset_t tmp, orig;
 	sigfillset(&tmp);
+	sigdelset(&tmp, SIGILL);
 	sigdelset(&tmp, SIGBUS);
 	sigdelset(&tmp, SIGFPE);
-	sigdelset(&tmp, SIGILL);
 	sigdelset(&tmp, SIGSEGV);
 	pthread_sigmask(SIG_SETMASK, &tmp, &orig);
 
