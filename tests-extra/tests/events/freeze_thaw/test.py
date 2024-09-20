@@ -3,6 +3,7 @@
 '''Test of freeze-thaw feature'''
 
 from dnstest.test import Test
+from dnstest.utils import *
 import threading
 
 t = Test(tsig=False)
@@ -11,7 +12,12 @@ master = t.server("knot", xdp_enable=False) # DDNS over XDP not supported
 slave = t.server("knot")
 
 zone = t.zone("example.", storage=".")
-t.link(zone, master, slave)
+big_zone = t.zone_rnd(1, records=(200 if slave.valgrind else 6000), dnssec=False)
+t.link(zone + big_zone, master, slave)
+
+slave.dnssec(big_zone).enable = True
+slave.dnssec(big_zone).nsec3 = True
+slave.dnssec(big_zone).nsec3_iters = 2000
 
 def sleep_alt(time1, option=False, time2=None):
     if not option:
@@ -30,12 +36,12 @@ t.start()
 master.zone_wait(zone)
 slave.zone_wait(zone)
 
-slave.ctl("zone-freeze")
+slave.ctl("zone-freeze " + zone[0].name)
 t.sleep(1)
 slave.ctl("zone-status")
 
 master.update_zonefile(zone, version=1)
-master.reload()
+master.ctl("zone-reload " + zone[0].name)
 master.zone_wait(zone, serial=2, equal=True)
 t.sleep(1)
 slave.ctl("zone-status")
@@ -54,7 +60,7 @@ slave.ctl("zone-status")
 
 # check that update is refused after 8 queued
 for i in range(10):
-    up = slave.update(zone)
+    up = slave.update(zone, allow_knsupdate=False)
     up.add("freezedddns" + str(i), 3600, "A", "1.2.3.6")
     if i < 8:
         send_up_bg(up, "NOERROR")
@@ -64,7 +70,7 @@ for i in range(10):
     slave.ctl("zone-status")
 
 master.update_zonefile(zone, version=2)
-master.reload()
+master.ctl("zone-reload " + zone[0].name)
 master.zone_wait(zone, serial=3, equal=True)
 t.sleep(1)
 slave.ctl("zone-status")
@@ -89,5 +95,24 @@ for i in range(11):
         resp.check(rcode="NXDOMAIN", nordata="1.2.3.6")
     else:
         resp.check(rcode="NOERROR", rdata="1.2.3.6")
+
+# queued freezing and thawing
+if not slave.valgrind: # otherwise unreliable, ctl thread sometimes stuck for 10+ secs, TODO debug
+    serial = slave.zone_wait(big_zone)
+    slave.ctl("zone-sign " + big_zone[0].name, wait=False)
+    t.sleep(0.2)
+    slave.ctl("zone-freeze")
+    t.sleep(0.9)
+    if not "freezing" in slave.ctl("zone-status " + big_zone[0].name, read_result=True):
+        set_err("missing 'freezing' log")
+    serial = slave.zone_wait(big_zone, serial)
+    slave.ctl("zone-sign " + big_zone[0].name, wait=False)
+    t.sleep(0.2)
+    slave.ctl("zone-thaw")
+    t.sleep(0.9)
+    slave.ctl("zone-status")
+    if not "thawing" in slave.ctl("zone-status " + big_zone[0].name, read_result=True):
+        set_err("missing 'thawing' log")
+    serial = slave.zone_wait(big_zone, serial)
 
 t.stop()
