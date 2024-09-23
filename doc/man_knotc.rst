@@ -205,8 +205,10 @@ Actions
 **zone-read** *zone* [*owner* [*type*]]
   Get zone data that are currently being presented.
 
-**zone-begin** *zone*...
-  Begin a zone transaction.
+**zone-begin** *zone*... [**+benevolent**]
+  Begin a zone transaction. If **+benevolent** is used, the zone transaction will
+  be committed even when it contains removals of non-existing or additions of
+  existing records.
 
 **zone-commit** *zone*...
   Commit the zone transaction. All changes are applied to the zone.

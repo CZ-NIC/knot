@@ -66,6 +66,8 @@
 #define CTL_FILTER_BACKUP_QUIC		"q"
 #define CTL_FILTER_BACKUP_NOQUIC	"Q"
 
+#define CTL_FILTER_BEGIN_BENEVOLENT	"b"
+
 #define STATUS_EMPTY			"-"
 
 /*! Control commands. */
