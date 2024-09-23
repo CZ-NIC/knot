@@ -37,7 +37,7 @@ class KnotCtlDataIdx(enum.IntEnum):
     TTL = 8
     TYPE = 9
     DATA = 10
-    FILTER = 11
+    FILTERS = 11
 
 
 class KnotCtlData(object):
@@ -207,7 +207,7 @@ class KnotCtl(object):
         query[KnotCtlDataIdx.TYPE] = rtype
         query[KnotCtlDataIdx.DATA] = data
         query[KnotCtlDataIdx.FLAGS] = flags
-        query[KnotCtlDataIdx.FILTER] = filters
+        query[KnotCtlDataIdx.FILTERS] = filters
 
         self.send(KnotCtlType.DATA, query)
         self.send(KnotCtlType.BLOCK)

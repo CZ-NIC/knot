@@ -46,11 +46,11 @@
 #include "contrib/ucw/lists.h"
 #include "libzscanner/scanner.h"
 
-#define MATCH_OR_FILTER(args, code) ((args)->data[KNOT_CTL_IDX_FILTER] == NULL || \
-                                     strchr((args)->data[KNOT_CTL_IDX_FILTER], (code)[0]) != NULL)
+#define MATCH_OR_FILTER(args, code) ((args)->data[KNOT_CTL_IDX_FILTERS] == NULL || \
+                                     strchr((args)->data[KNOT_CTL_IDX_FILTERS], (code)[0]) != NULL)
 
-#define MATCH_AND_FILTER(args, code) ((args)->data[KNOT_CTL_IDX_FILTER] != NULL && \
-                                      strchr((args)->data[KNOT_CTL_IDX_FILTER], (code)[0]) != NULL)
+#define MATCH_AND_FILTER(args, code) ((args)->data[KNOT_CTL_IDX_FILTERS] != NULL && \
+                                      strchr((args)->data[KNOT_CTL_IDX_FILTERS], (code)[0]) != NULL)
 
 typedef struct {
 	ctl_args_t *args;
@@ -259,7 +259,7 @@ static int zone_status(zone_t *zone, ctl_args_t *args)
 	char filters[16] = "";
 	knot_ctl_data_t data = {
 		[KNOT_CTL_IDX_ZONE] = name,
-		[KNOT_CTL_IDX_FILTER] = filters,
+		[KNOT_CTL_IDX_FILTERS] = filters,
 	};
 
 	const bool slave = zone_is_slave(conf(), zone);
@@ -1225,7 +1225,7 @@ static int zone_txn_get(zone_t *zone, ctl_args_t *args)
 
 static int send_changeset_part(changeset_t *ch, send_ctx_t *ctx, bool from)
 {
-	ctx->data[KNOT_CTL_IDX_FILTER] = from ? CTL_FILTER_DIFF_REM_R : CTL_FILTER_DIFF_ADD_R;
+	ctx->data[KNOT_CTL_IDX_FILTERS] = from ? CTL_FILTER_DIFF_REM_R : CTL_FILTER_DIFF_ADD_R;
 
 	// Send SOA only if explicitly changed.
 	if (ch->soa_to != NULL) {
@@ -1637,8 +1637,8 @@ static void log_if_orphans_error(knot_dname_t *zone_name, int err, char *db_type
 
 static int orphans_purge(ctl_args_t *args)
 {
-	assert(args->data[KNOT_CTL_IDX_FILTER] != NULL);
-	bool only_orphan = (strlen(args->data[KNOT_CTL_IDX_FILTER]) == 1);
+	assert(args->data[KNOT_CTL_IDX_FILTERS] != NULL);
+	bool only_orphan = (strlen(args->data[KNOT_CTL_IDX_FILTERS]) == 1);
 	int ret;
 	bool failed = false;
 
@@ -2100,8 +2100,8 @@ static int send_block(conf_io_t *io)
 
 	// Get the item prefix.
 	switch (io->type) {
-	case NEW: data[KNOT_CTL_IDX_FILTER] = CTL_FILTER_DIFF_ADD_R; break;
-	case OLD: data[KNOT_CTL_IDX_FILTER] = CTL_FILTER_DIFF_REM_R; break;
+	case NEW: data[KNOT_CTL_IDX_FILTERS] = CTL_FILTER_DIFF_ADD_R; break;
+	case OLD: data[KNOT_CTL_IDX_FILTERS] = CTL_FILTER_DIFF_REM_R; break;
 	default: break;
 	}
 
@@ -2216,7 +2216,7 @@ static int ctl_conf_list(ctl_args_t *args, ctl_cmd_t cmd)
 		const char *key0    = args->data[KNOT_CTL_IDX_SECTION];
 		const char *key1    = args->data[KNOT_CTL_IDX_ITEM];
 		const char *id      = args->data[KNOT_CTL_IDX_ID];
-		const char *filters = args->data[KNOT_CTL_IDX_FILTER];
+		const char *filters = args->data[KNOT_CTL_IDX_FILTERS];
 
 		bool schema = ctl_has_flag(filters, CTL_FILTER_LIST_SCHEMA);
 		bool current = !ctl_has_flag(filters, CTL_FILTER_LIST_TXN);
