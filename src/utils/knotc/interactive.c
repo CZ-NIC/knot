@@ -140,7 +140,7 @@ static bool rmt_lookup(EditLine *el, const char *str, size_t str_len,
 		[KNOT_CTL_IDX_SECTION] = section,
 		[KNOT_CTL_IDX_ITEM] = item,
 		[KNOT_CTL_IDX_ID] = id,
-		[KNOT_CTL_IDX_FILTER] = filters,
+		[KNOT_CTL_IDX_FILTERS] = filters,
 	};
 
 	lookup_t lookup;

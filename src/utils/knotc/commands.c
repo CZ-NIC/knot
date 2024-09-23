@@ -207,7 +207,7 @@ static void format_data(cmd_args_t *args, knot_ctl_type_t data_type,
                         knot_ctl_data_t *data, bool *empty)
 {
 	const char *error   = (*data)[KNOT_CTL_IDX_ERROR];
-	const char *filters = (*data)[KNOT_CTL_IDX_FILTER];
+	const char *filters = (*data)[KNOT_CTL_IDX_FILTERS];
 	const char *key0    = (*data)[KNOT_CTL_IDX_SECTION];
 	const char *key1    = (*data)[KNOT_CTL_IDX_ITEM];
 	const char *id      = (*data)[KNOT_CTL_IDX_ID];
@@ -793,8 +793,8 @@ static int cmd_zone_filter_ctl(cmd_args_t *args)
 	// First, process the filters.
 	for (int i = 0; i < args->argc; i++) {
 		if (args->argv[i][0] == '+') {
-			if (data[KNOT_CTL_IDX_FILTER] == NULL) {
-				data[KNOT_CTL_IDX_FILTER] = filter_buff;
+			if (data[KNOT_CTL_IDX_FILTERS] == NULL) {
+				data[KNOT_CTL_IDX_FILTERS] = filter_buff;
 			}
 			char filter_id[2] = { get_filter(args->desc->cmd, args->argv[i])->id[0], 0 };
 			if (filter_id[0] == '\0') {
@@ -1241,7 +1241,7 @@ static int cmd_conf_ctl(cmd_args_t *args)
 
 	knot_ctl_data_t data = {
 		[KNOT_CTL_IDX_CMD] = ctl_cmd_to_str(args->desc->cmd),
-		[KNOT_CTL_IDX_FILTER] = filters,
+		[KNOT_CTL_IDX_FILTERS] = filters,
 	};
 
 	// Send the command without parameters.
