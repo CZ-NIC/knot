@@ -891,7 +891,8 @@ static int zone_txn_begin_l(zone_t *zone, _unused_ ctl_args_t *args)
 	}
 
 	zone_update_flags_t type = (zone->contents == NULL) ? UPDATE_FULL : UPDATE_INCREMENTAL;
-	int ret = zone_update_init(zone->control_update, zone, type | UPDATE_STRICT);
+	zone_update_flags_t strict = (MATCH_AND_FILTER(args, CTL_FILTER_BEGIN_BENEVOLENT)) ? 0 : UPDATE_STRICT;
+	int ret = zone_update_init(zone->control_update, zone, type | strict);
 	if (ret != KNOT_EOK) {
 		free(zone->control_update);
 		zone->control_update = NULL;

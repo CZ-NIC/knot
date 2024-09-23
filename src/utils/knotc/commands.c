@@ -699,6 +699,11 @@ typedef struct {
 	bool with_data; // Only ONE filter of each filter_desc_t may have data!
 } filter_desc_t;
 
+const filter_desc_t zone_begin_filters[] = {
+	{ "+benevolent", CTL_FILTER_BEGIN_BENEVOLENT },
+	{ NULL },
+};
+
 const filter_desc_t zone_flush_filters[] = {
 	{ "+outdir", CTL_FILTER_FLUSH_OUTDIR, true },
 	{ NULL },
@@ -752,6 +757,9 @@ static const filter_desc_t *get_filter(ctl_cmd_t cmd, const char *filter_name)
 {
 	const filter_desc_t *fd = NULL;
 	switch (cmd) {
+	case CTL_ZONE_BEGIN:
+		fd = zone_begin_filters;
+		break;
 	case CTL_ZONE_FLUSH:
 		fd = zone_flush_filters;
 		break;
@@ -1307,7 +1315,7 @@ const cmd_desc_t cmd_table[] = {
 	{ CMD_ZONE_XFR_THAW,   cmd_zone_ctl,          CTL_ZONE_XFR_THAW,   CMD_FOPT_ZONE },
 
 	{ CMD_ZONE_READ,       cmd_zone_node_ctl,   CTL_ZONE_READ,       CMD_FREQ_ZONE },
-	{ CMD_ZONE_BEGIN,      cmd_zone_ctl,        CTL_ZONE_BEGIN,      CMD_FREQ_ZONE | CMD_FOPT_ZONE },
+	{ CMD_ZONE_BEGIN,      cmd_zone_filter_ctl, CTL_ZONE_BEGIN,      CMD_FREQ_ZONE | CMD_FOPT_ZONE },
 	{ CMD_ZONE_COMMIT,     cmd_zone_ctl,        CTL_ZONE_COMMIT,     CMD_FREQ_ZONE | CMD_FOPT_ZONE },
 	{ CMD_ZONE_ABORT,      cmd_zone_ctl,        CTL_ZONE_ABORT,      CMD_FREQ_ZONE | CMD_FOPT_ZONE },
 	{ CMD_ZONE_DIFF,       cmd_zone_node_ctl,   CTL_ZONE_DIFF,       CMD_FREQ_ZONE },
@@ -1361,7 +1369,7 @@ static const cmd_help_t cmd_help_table[] = {
 	{ CMD_ZONE_XFR_THAW,   "[<zone>...]",                                "Dismiss outgoing XFR freeze. (#)" },
 	{ "",                  "",                                           "" },
 	{ CMD_ZONE_READ,       "<zone> [<owner> [<type>]]",                  "Get zone data that are currently being presented." },
-	{ CMD_ZONE_BEGIN,      "<zone>...",                                  "Begin a zone transaction." },
+	{ CMD_ZONE_BEGIN,      "<zone>... [+benevolent]",                    "Begin a zone transaction." },
 	{ CMD_ZONE_COMMIT,     "<zone>...",                                  "Commit the zone transaction." },
 	{ CMD_ZONE_ABORT,      "<zone>...",                                  "Abort the zone transaction." },
 	{ CMD_ZONE_DIFF,       "<zone>",                                     "Get zone changes within the transaction." },
