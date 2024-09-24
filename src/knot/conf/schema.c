@@ -124,6 +124,14 @@ static const knot_lookup_t acl_update_owner_match[] = {
 	{ 0, NULL }
 };
 
+static const knot_lookup_t acl_protocol[] = {
+	{ ACL_PROTOCOL_UDP,  "udp" },
+	{ ACL_PROTOCOL_TCP,  "tcp" },
+	{ ACL_PROTOCOL_TLS,  "tls" },
+	{ ACL_PROTOCOL_QUIC, "quic" },
+	{ 0, NULL }
+};
+
 static const knot_lookup_t serial_policies[] = {
 	{ SERIAL_POLICY_INCREMENT,  "increment" },
 	{ SERIAL_POLICY_UNIXTIME,   "unixtime" },
@@ -364,6 +372,7 @@ static const yp_item_t desc_acl[] = {
 	{ C_KEY,                YP_TREF,   YP_VREF = { C_KEY }, YP_FMULTI, { check_ref } },
 	{ C_RMT,                YP_TREF,   YP_VREF = { C_RMT, C_RMTS }, YP_FMULTI, { check_ref } },
 	{ C_ACTION,             YP_TOPT,   YP_VOPT = { acl_actions, ACL_ACTION_QUERY }, YP_FMULTI },
+	{ C_PROTOCOL,           YP_TOPT,   YP_VOPT = { acl_protocol, ACL_PROTOCOL_NONE }, YP_FMULTI },
 	{ C_DENY,               YP_TBOOL,  YP_VNONE },
 	{ C_UPDATE_TYPE,        YP_TDATA,  YP_VDATA = { 0, NULL, rrtype_to_bin, rrtype_to_txt },
 	                                   YP_FMULTI, },

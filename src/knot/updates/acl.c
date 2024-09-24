@@ -206,6 +206,51 @@ static bool update_match(conf_t *conf, conf_val_t *acl, knot_dname_t *key_name,
 	return true;
 }
 
+static bool check_proto_rmt(conf_t *conf, knotd_query_proto_t proto, conf_val_t *rmt_id)
+{
+	conf_val_t quic_val = conf_id_get(conf, C_RMT, C_QUIC, rmt_id);
+	if (conf_bool(&quic_val)) {
+		return proto == KNOTD_QUERY_PROTO_QUIC;
+	}
+
+	conf_val_t tls_val = conf_id_get(conf, C_RMT, C_TLS, rmt_id);
+	if (conf_bool(&tls_val)) {
+		return proto == KNOTD_QUERY_PROTO_TLS;
+	}
+
+	return proto == KNOTD_QUERY_PROTO_TCP || proto == KNOTD_QUERY_PROTO_UDP;
+}
+
+static bool check_proto(knotd_query_proto_t proto, conf_val_t proto_val)
+{
+	unsigned mask = 0;
+	switch (proto) {
+	case KNOTD_QUERY_PROTO_UDP:
+		mask = ACL_PROTOCOL_UDP;
+		break;
+	case KNOTD_QUERY_PROTO_TCP:
+		mask = ACL_PROTOCOL_TCP;
+		break;
+	case KNOTD_QUERY_PROTO_TLS:
+		mask = ACL_PROTOCOL_TLS;
+		break;
+	case KNOTD_QUERY_PROTO_QUIC:
+		mask = ACL_PROTOCOL_QUIC;
+		break;
+	default:
+		assert(0);
+		break;
+	}
+
+	while (proto_val.code == KNOT_EOK) {
+		if (conf_opt(&proto_val) & mask) {
+			return true;
+		}
+		conf_val_next(&proto_val);
+	}
+	return false;
+}
+
 static bool check_addr_key(conf_t *conf, conf_val_t *addr_val, conf_val_t *key_val,
                            bool remote, const struct sockaddr_storage *addr,
                            const knot_tsig_key_t *tsig, conf_val_t *pin_val,
@@ -280,7 +325,8 @@ static bool check_addr_key(conf_t *conf, conf_val_t *addr_val, conf_val_t *key_v
 bool acl_allowed(conf_t *conf, conf_val_t *acl, acl_action_t action,
                  const struct sockaddr_storage *addr, knot_tsig_key_t *tsig,
                  const knot_dname_t *zone_name, knot_pkt_t *query,
-                 struct gnutls_session_int *tls_session)
+                 struct gnutls_session_int *tls_session,
+                 knotd_query_proto_t proto)
 {
 	if (acl == NULL || addr == NULL || tsig == NULL) {
 		return false;
@@ -317,7 +363,8 @@ bool acl_allowed(conf_t *conf, conf_val_t *acl, acl_action_t action,
 			pin_val = conf_id_get(conf, C_RMT, C_CERT_KEY, iter.id);
 			if (check_addr_key(conf, &addr_val, &key_val, remote, addr,
 			                   tsig, &pin_val, session_pin, session_pin_size,
-			                   deny, forward)) {
+			                   deny, forward)
+			    && check_proto_rmt(conf, proto, iter.id)) {
 				break;
 			}
 			conf_mix_iter_next(&iter);
@@ -333,6 +380,12 @@ bool acl_allowed(conf_t *conf, conf_val_t *acl, acl_action_t action,
 			if (!check_addr_key(conf, &addr_val, &key_val, remote, addr,
 			                    tsig, &pin_val, session_pin, session_pin_size,
 			                    deny, forward)) {
+				goto next_acl;
+			}
+
+			/* Check protocol match */
+			conf_val_t proto_val = conf_id_get(conf, C_ACL, C_PROTOCOL, acl);
+			if (proto_val.code == KNOT_EOK && !check_proto(proto, proto_val)) {
 				goto next_acl;
 			}
 		}
@@ -384,7 +437,8 @@ next_acl:
 }
 
 bool rmt_allowed(conf_t *conf, conf_val_t *rmts, const struct sockaddr_storage *addr,
-                 knot_tsig_key_t *tsig, struct gnutls_session_int *tls_session)
+                 knot_tsig_key_t *tsig, struct gnutls_session_int *tls_session,
+                 knotd_query_proto_t proto)
 {
 	if (!conf->cache.srv_auto_acl) {
 		return false;
@@ -399,6 +453,10 @@ bool rmt_allowed(conf_t *conf, conf_val_t *rmts, const struct sockaddr_storage *
 	while (iter.id->code == KNOT_EOK) {
 		conf_val_t val = conf_id_get(conf, C_RMT, C_AUTO_ACL, iter.id);
 		if (!conf_bool(&val)) {
+			goto next_remote;
+		}
+
+		if (!check_proto_rmt(conf, proto, iter.id)) {
 			goto next_remote;
 		}
 

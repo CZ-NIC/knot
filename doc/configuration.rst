@@ -96,9 +96,10 @@ what requests are authorized. An :ref:`automatic ACL <server_automatic-acl>`
 feature can be used to simplify ACL management.
 
 Every ACL rule can allow or deny one or more request types (:ref:`actions <acl_action>`)
-based on the source IP address, network subnet, or address range and/or if the
-request is secured by a given TSIG key. See :doc:`keymgr -t<man_keymgr>` on how
-to generate a TSIG key.
+based on the source IP address, network subnet, address range, protocol,
+remote certificate key PIN and/or
+if the request is secured by a given TSIG key. See :doc:`keymgr -t<man_keymgr>`
+on how to generate a TSIG key.
 
 If there are multiple ACL rules assigned to a zone, they are applied in the
 specified order of the :ref:`zone_acl` configuration. The first rule that matches
