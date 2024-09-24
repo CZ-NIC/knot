@@ -29,7 +29,7 @@ static void int_test(const char *txt, int64_t num, yp_style_t s,
 	int ret;
 	uint8_t b[64];
 	size_t b_len = sizeof(b);
-	char t[64];
+	char t[64] = { 0 };
 	size_t t_len = sizeof(t);
 	yp_item_t i = { NULL, YP_TINT, YP_VINT = { min, max, YP_NIL, s } };
 
@@ -62,7 +62,7 @@ static void bool_test(const char *txt, bool val)
 	int ret;
 	uint8_t b[64];
 	size_t b_len = sizeof(b);
-	char t[64];
+	char t[64] = { 0 };
 	size_t t_len = sizeof(t);
 	yp_item_t i = { NULL, YP_TBOOL, YP_VNONE };
 
@@ -94,7 +94,7 @@ static void opt_test(const char *txt, unsigned val, const knot_lookup_t *opts)
 	int ret;
 	uint8_t b[64];
 	size_t b_len = sizeof(b);
-	char t[64];
+	char t[64] = { 0 };
 	size_t t_len = sizeof(t);
 	yp_item_t i = { NULL, YP_TOPT, YP_VOPT = { opts } };
 
@@ -127,7 +127,7 @@ static void str_test(const char *txt, const char *val)
 	int ret;
 	uint8_t b[64];
 	size_t b_len = sizeof(b);
-	char t[64];
+	char t[64] = { 0 };
 	size_t t_len = sizeof(t);
 	yp_item_t i = { NULL, YP_TSTR, YP_VNONE };
 
@@ -148,7 +148,7 @@ static void addr_test(const char *txt, bool port)
 	int ret;
 	uint8_t b[64];
 	size_t b_len = sizeof(b);
-	char t[64];
+	char t[64] = { 0 };
 	size_t t_len = sizeof(t);
 	yp_item_t i = { NULL, YP_TADDR, YP_VNONE };
 
@@ -182,7 +182,7 @@ static void addr_range_test(const char *txt)
 	int ret;
 	uint8_t b[64];
 	size_t b_len = sizeof(b);
-	char t[64];
+	char t[64] = { 0 };
 	size_t t_len = sizeof(t);
 	yp_item_t i = { NULL, YP_TNET, YP_VNONE };
 
@@ -213,7 +213,7 @@ static void dname_test(const char *txt, const char *val)
 	int ret;
 	uint8_t b[64];
 	size_t b_len = sizeof(b);
-	char t[64];
+	char t[64] = { 0 };
 	size_t t_len = sizeof(t);
 	yp_item_t i = { NULL, YP_TDNAME, YP_VNONE };
 
@@ -233,7 +233,7 @@ static void hex_test(const char *txt, const char *val, const char *txt_out)
 	int ret;
 	uint8_t b[64];
 	size_t b_len = sizeof(b);
-	char t[64];
+	char t[64] = { 0 };
 	size_t t_len = sizeof(t);
 	yp_item_t i = { NULL, YP_THEX, YP_VNONE };
 
@@ -269,7 +269,7 @@ static void base64_test(const char *txt, const char *val)
 	int ret;
 	uint8_t b[64];
 	size_t b_len = sizeof(b);
-	char t[64];
+	char t[64] = { 0 };
 	size_t t_len = sizeof(t);
 	yp_item_t i = { NULL, YP_TB64, YP_VNONE };
 
@@ -289,7 +289,7 @@ static void ref_test(const char *txt, bool val)
 	int ret;
 	uint8_t b[64];
 	size_t b_len = sizeof(b);
-	char t[64];
+	char t[64] = { 0 };
 	size_t t_len = sizeof(t);
 	yp_item_t id = { NULL, YP_TBOOL, YP_VNONE };
 	yp_item_t ref = { NULL, YP_TGRP, YP_VNONE };

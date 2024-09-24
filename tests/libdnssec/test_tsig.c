@@ -116,6 +116,7 @@ static void test_tsig_hmac(const hmac_t *params)
 
 	size_t size = dnssec_tsig_size(ctx);
 	uint8_t hmac[size];
+	memset(&hmac, 0, size);
 	dnssec_tsig_write(ctx, hmac);
 	dnssec_tsig_free(ctx);
 

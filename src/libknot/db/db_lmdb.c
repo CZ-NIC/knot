@@ -303,7 +303,7 @@ static int count(knot_db_txn_t *txn)
 {
 	struct lmdb_env *env = txn->db;
 
-	MDB_stat stat;
+	MDB_stat stat = { 0 };
 	int ret = mdb_stat(txn->txn, env->dbi, &stat);
 	if (ret != MDB_SUCCESS) {
 		return lmdb_error_to_knot(ret);
@@ -423,7 +423,7 @@ static int iter_val(knot_db_iter_t *iter, knot_db_val_t *val)
 {
 	MDB_cursor *cursor = iter;
 
-	MDB_val mdb_key, mdb_val;
+	MDB_val mdb_key = { 0 }, mdb_val = { 0 };
 	int ret = mdb_cursor_get(cursor, &mdb_key, &mdb_val, MDB_GET_CURRENT);
 	if (ret != MDB_SUCCESS) {
 		return lmdb_error_to_knot(ret);

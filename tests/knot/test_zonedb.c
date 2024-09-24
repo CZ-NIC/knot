@@ -40,7 +40,7 @@ int main(int argc, char *argv[])
 	plan_lazy();
 
 	/* Create database. */
-	knot_dname_txt_storage_t buf;
+	knot_dname_txt_storage_t buf = {0};
 	const char *prefix = "zzz.";
 	size_t nr_passed = 0;
 	knot_dname_t *dname = NULL;

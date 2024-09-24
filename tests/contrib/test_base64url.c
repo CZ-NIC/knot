@@ -31,7 +31,8 @@ int main(int argc, char *argv[])
 	plan(50);
 
 	int32_t  ret;
-	uint8_t  in[BUF_LEN], ref[BUF_LEN], out[BUF_LEN], out2[BUF_LEN], *out3;
+	uint8_t  in[BUF_LEN] = { 0 };
+	uint8_t  ref[BUF_LEN], out[BUF_LEN], out2[BUF_LEN], *out3;
 	uint32_t in_len, ref_len;
 
 	// 0. test invalid input
