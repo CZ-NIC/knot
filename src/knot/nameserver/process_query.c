@@ -721,13 +721,15 @@ bool process_query_acl_check(conf_t *conf, acl_action_t action,
 		       action == ACL_ACTION_TRANSFER);
 		const yp_name_t *item = (action == ACL_ACTION_NOTIFY) ? C_MASTER : C_NOTIFY;
 		conf_val_t rmts = conf_zone_get(conf, item, zone_name);
-		allowed = rmt_allowed(conf, &rmts, query_source, &tsig, tls_session);
+		allowed = rmt_allowed(conf, &rmts, query_source, &tsig, tls_session,
+		                      qdata->params->proto);
 		automatic = allowed;
 	}
 	if (!allowed) {
 		conf_val_t acl = conf_zone_get(conf, C_ACL, zone_name);
 		allowed = acl_allowed(conf, &acl, action, query_source, &tsig,
-		                      zone_name, query, tls_session);
+		                      zone_name, query, tls_session,
+		                      qdata->params->proto);
 	}
 
 	if (log_enabled_debug()) {

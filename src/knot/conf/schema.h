@@ -114,6 +114,7 @@
 #define C_PARENT_DELAY		"\x0C""parent-delay"
 #define C_PIDFILE		"\x07""pidfile"
 #define C_POLICY		"\x06""policy"
+#define C_PROTOCOL		"\x08""protocol"
 #define C_PROPAG_DELAY		"\x11""propagation-delay"
 #define C_PROVIDE_IXFR		"\x0C""provide-ixfr"
 #define C_PROXY_ALLOWLIST	"\x0F""proxy-allowlist"

@@ -47,6 +47,15 @@ typedef enum {
 	ACL_UPDATE_MATCH_PATTERN = 3,
 } acl_update_owner_match_t;
 
+/*! \bref ACL protocol options. */
+typedef enum {
+	ACL_PROTOCOL_NONE = 0,
+	ACL_PROTOCOL_UDP  = (1 << 0),
+	ACL_PROTOCOL_TCP  = (1 << 1),
+	ACL_PROTOCOL_TLS  = (1 << 2),
+	ACL_PROTOCOL_QUIC = (1 << 3),
+} acl_protocol_t;
+
 /*!
  * \brief Checks if the address and/or tsig key matches given ACL list.
  *
@@ -60,13 +69,15 @@ typedef enum {
  * \param zone_name    Zone name.
  * \param query        Update query.
  * \param tls_session  Possible TLS session.
+ * \param proto        Transport protocol.
  *
  * \retval True if authenticated.
  */
 bool acl_allowed(conf_t *conf, conf_val_t *acl, acl_action_t action,
                  const struct sockaddr_storage *addr, knot_tsig_key_t *tsig,
                  const knot_dname_t *zone_name, knot_pkt_t *query,
-                 struct gnutls_session_int *tls_session);
+                 struct gnutls_session_int *tls_session,
+                 knotd_query_proto_t proto);
 
 /*!
  * \brief Checks if the address and/or tsig key matches a remote from the list.
@@ -81,8 +92,10 @@ bool acl_allowed(conf_t *conf, conf_val_t *acl, acl_action_t action,
  * \param addr         IP address.
  * \param tsig         TSIG parameters.
  * \param tls_session  Possible TLS session.
+ * \param proto        Transport protocol.
  *
  * \retval True if authenticated.
  */
 bool rmt_allowed(conf_t *conf, conf_val_t *rmts, const struct sockaddr_storage *addr,
-                 knot_tsig_key_t *tsig, struct gnutls_session_int *tls_session);
+                 knot_tsig_key_t *tsig, struct gnutls_session_int *tls_session,
+                 knotd_query_proto_t proto);
