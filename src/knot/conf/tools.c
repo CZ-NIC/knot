@@ -847,11 +847,13 @@ int check_acl(
 	                                     C_ADDR, args->id, args->id_len);
 	conf_val_t key = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_ACL,
 	                                    C_KEY, args->id, args->id_len);
+	conf_val_t proto = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_ACL,
+	                                      C_PROTOCOL, args->id, args->id_len);
 	conf_val_t remote = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_ACL,
 	                                       C_RMT, args->id, args->id_len);
 	if (remote.code != KNOT_ENOENT &&
-	    (addr.code != KNOT_ENOENT || key.code != KNOT_ENOENT)) {
-		args->err_str = "specified ACL/remote together with address or key";
+	    (addr.code != KNOT_ENOENT || key.code != KNOT_ENOENT || proto.code != KNOT_ENOENT)) {
+		args->err_str = "specified ACL/remote together with address, key, or protocol";
 		return KNOT_EINVAL;
 	}
 
