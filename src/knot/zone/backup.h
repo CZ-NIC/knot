@@ -63,10 +63,10 @@ typedef enum {
                              BACKUP_PARAM_CATALOG)
 
 typedef struct {
-        const char *name;
-        knot_backup_params_t param;
-        char filter;
-        char neg_filter;
+	const char *name;
+	knot_backup_params_t param;
+	char *filter;
+	char *neg_filter;
 } backup_filter_list_t;
 
 typedef struct zone_backup_ctx {

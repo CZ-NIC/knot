@@ -206,16 +206,16 @@ static int get_conf_key(const char *key, knot_ctl_data_t *data)
 static void format_data(cmd_args_t *args, knot_ctl_type_t data_type,
                         knot_ctl_data_t *data, bool *empty)
 {
-	const char *error = (*data)[KNOT_CTL_IDX_ERROR];
-	const char *flags = (*data)[KNOT_CTL_IDX_FLAGS];
-	const char *key0  = (*data)[KNOT_CTL_IDX_SECTION];
-	const char *key1  = (*data)[KNOT_CTL_IDX_ITEM];
-	const char *id    = (*data)[KNOT_CTL_IDX_ID];
-	const char *zone  = (*data)[KNOT_CTL_IDX_ZONE];
-	const char *owner = (*data)[KNOT_CTL_IDX_OWNER];
-	const char *ttl   = (*data)[KNOT_CTL_IDX_TTL];
-	const char *type  = (*data)[KNOT_CTL_IDX_TYPE];
-	const char *value = (*data)[KNOT_CTL_IDX_DATA];
+	const char *error   = (*data)[KNOT_CTL_IDX_ERROR];
+	const char *filters = (*data)[KNOT_CTL_IDX_FILTERS];
+	const char *key0    = (*data)[KNOT_CTL_IDX_SECTION];
+	const char *key1    = (*data)[KNOT_CTL_IDX_ITEM];
+	const char *id      = (*data)[KNOT_CTL_IDX_ID];
+	const char *zone    = (*data)[KNOT_CTL_IDX_ZONE];
+	const char *owner   = (*data)[KNOT_CTL_IDX_OWNER];
+	const char *ttl     = (*data)[KNOT_CTL_IDX_TTL];
+	const char *type    = (*data)[KNOT_CTL_IDX_TYPE];
+	const char *value   = (*data)[KNOT_CTL_IDX_DATA];
 
 	bool col = false;
 	char status_col[32] = "";
@@ -223,10 +223,10 @@ static void format_data(cmd_args_t *args, knot_ctl_type_t data_type,
 	static bool first_status_item = true;
 
 	const char *sign = NULL;
-	if (ctl_has_flag(flags, CTL_FLAG_DIFF_ADD)) {
-		sign = CTL_FLAG_DIFF_ADD;
-	} else if (ctl_has_flag(flags, CTL_FLAG_DIFF_REM)) {
-		sign = CTL_FLAG_DIFF_REM;
+	if (ctl_has_flag(filters, CTL_FILTER_DIFF_ADD_R)) {
+		sign = CTL_FILTER_DIFF_ADD_R;
+	} else if (ctl_has_flag(filters, CTL_FILTER_DIFF_REM_R)) {
+		sign = CTL_FILTER_DIFF_REM_R;
 	}
 
 	switch (args->desc->cmd) {
@@ -253,15 +253,15 @@ static void format_data(cmd_args_t *args, knot_ctl_type_t data_type,
 		if (error == NULL) {
 			col =  args->extended ? args->color_force : args->color;
 		}
-		if (!ctl_has_flag(flags, CTL_FLAG_STATUS_EMPTY)) {
+		if (!ctl_has_flag(filters, CTL_FILTER_STATUS_EMPTY_R)) {
 			strlcat(status_col, COL_BOLD(col), sizeof(status_col));
 		}
-		if (ctl_has_flag(flags, CTL_FLAG_STATUS_SLAVE)) {
+		if (ctl_has_flag(filters, CTL_FILTER_STATUS_SLAVE_R)) {
 			strlcat(status_col, COL_RED(col), sizeof(status_col));
 		} else {
 			strlcat(status_col, COL_GRN(col), sizeof(status_col));
 		}
-		if (ctl_has_flag(flags, CTL_FLAG_STATUS_MEMBER)) {
+		if (ctl_has_flag(filters, CTL_FILTER_STATUS_MEMBER_R)) {
 			strlcat(status_col, COL_UNDR(col), sizeof(status_col));
 		}
 		// FALLTHROUGH
@@ -695,9 +695,14 @@ static int cmd_zone_ctl(cmd_args_t *args)
 
 typedef struct {
 	const char *name;
-	char id;
+	char *id;
 	bool with_data; // Only ONE filter of each filter_desc_t may have data!
 } filter_desc_t;
+
+const filter_desc_t zone_begin_filters[] = {
+	{ "+benevolent", CTL_FILTER_BEGIN_BENEVOLENT },
+	{ NULL },
+};
 
 const filter_desc_t zone_flush_filters[] = {
 	{ "+outdir", CTL_FILTER_FLUSH_OUTDIR, true },
@@ -752,6 +757,9 @@ static const filter_desc_t *get_filter(ctl_cmd_t cmd, const char *filter_name)
 {
 	const filter_desc_t *fd = NULL;
 	switch (cmd) {
+	case CTL_ZONE_BEGIN:
+		fd = zone_begin_filters;
+		break;
 	case CTL_ZONE_FLUSH:
 		fd = zone_flush_filters;
 		break;
@@ -793,10 +801,10 @@ static int cmd_zone_filter_ctl(cmd_args_t *args)
 	// First, process the filters.
 	for (int i = 0; i < args->argc; i++) {
 		if (args->argv[i][0] == '+') {
-			if (data[KNOT_CTL_IDX_FILTER] == NULL) {
-				data[KNOT_CTL_IDX_FILTER] = filter_buff;
+			if (data[KNOT_CTL_IDX_FILTERS] == NULL) {
+				data[KNOT_CTL_IDX_FILTERS] = filter_buff;
 			}
-			char filter_id[2] = { get_filter(args->desc->cmd, args->argv[i])->id, 0 };
+			char filter_id[2] = { get_filter(args->desc->cmd, args->argv[i])->id[0], 0 };
 			if (filter_id[0] == '\0') {
 				log_error("unknown filter: %s", args->argv[i]);
 				return KNOT_EINVAL;
@@ -1233,15 +1241,15 @@ static int cmd_conf_ctl(cmd_args_t *args)
 		return ret;
 	}
 
-	char flags[16] = "";
-	strlcat(flags, args->flags, sizeof(flags));
+	char filters[16] = "";
+	strlcat(filters, args->flags, sizeof(filters));
 	if (args->desc->flags & CMD_FLIST_SCHEMA) {
-		strlcat(flags, CTL_FLAG_LIST_SCHEMA, sizeof(flags));
+		strlcat(filters, CTL_FILTER_LIST_SCHEMA, sizeof(filters));
 	}
 
 	knot_ctl_data_t data = {
 		[KNOT_CTL_IDX_CMD] = ctl_cmd_to_str(args->desc->cmd),
-		[KNOT_CTL_IDX_FLAGS] = flags,
+		[KNOT_CTL_IDX_FILTERS] = filters,
 	};
 
 	// Send the command without parameters.
@@ -1307,7 +1315,7 @@ const cmd_desc_t cmd_table[] = {
 	{ CMD_ZONE_XFR_THAW,   cmd_zone_ctl,          CTL_ZONE_XFR_THAW,   CMD_FOPT_ZONE },
 
 	{ CMD_ZONE_READ,       cmd_zone_node_ctl,   CTL_ZONE_READ,       CMD_FREQ_ZONE },
-	{ CMD_ZONE_BEGIN,      cmd_zone_ctl,        CTL_ZONE_BEGIN,      CMD_FREQ_ZONE | CMD_FOPT_ZONE },
+	{ CMD_ZONE_BEGIN,      cmd_zone_filter_ctl, CTL_ZONE_BEGIN,      CMD_FREQ_ZONE | CMD_FOPT_ZONE },
 	{ CMD_ZONE_COMMIT,     cmd_zone_ctl,        CTL_ZONE_COMMIT,     CMD_FREQ_ZONE | CMD_FOPT_ZONE },
 	{ CMD_ZONE_ABORT,      cmd_zone_ctl,        CTL_ZONE_ABORT,      CMD_FREQ_ZONE | CMD_FOPT_ZONE },
 	{ CMD_ZONE_DIFF,       cmd_zone_node_ctl,   CTL_ZONE_DIFF,       CMD_FREQ_ZONE },
@@ -1361,7 +1369,7 @@ static const cmd_help_t cmd_help_table[] = {
 	{ CMD_ZONE_XFR_THAW,   "[<zone>...]",                                "Dismiss outgoing XFR freeze. (#)" },
 	{ "",                  "",                                           "" },
 	{ CMD_ZONE_READ,       "<zone> [<owner> [<type>]]",                  "Get zone data that are currently being presented." },
-	{ CMD_ZONE_BEGIN,      "<zone>...",                                  "Begin a zone transaction." },
+	{ CMD_ZONE_BEGIN,      "<zone>... [+benevolent]",                    "Begin a zone transaction." },
 	{ CMD_ZONE_COMMIT,     "<zone>...",                                  "Commit the zone transaction." },
 	{ CMD_ZONE_ABORT,      "<zone>...",                                  "Abort the zone transaction." },
 	{ CMD_ZONE_DIFF,       "<zone>",                                     "Get zone changes within the transaction." },

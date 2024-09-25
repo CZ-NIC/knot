@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -126,7 +126,7 @@ static void list_separators(EditLine *el, const char *separators)
 
 static bool rmt_lookup(EditLine *el, const char *str, size_t str_len,
                        const char *section, const char *item, const char *id,
-                       dup_check_ctx_t *check_ctx, bool add_space, const char *flags,
+                       dup_check_ctx_t *check_ctx, bool add_space, const char *filters,
                        knot_ctl_idx_t idx)
 {
 	const cmd_desc_t *desc = cmd_table;
@@ -140,7 +140,7 @@ static bool rmt_lookup(EditLine *el, const char *str, size_t str_len,
 		[KNOT_CTL_IDX_SECTION] = section,
 		[KNOT_CTL_IDX_ITEM] = item,
 		[KNOT_CTL_IDX_ID] = id,
-		[KNOT_CTL_IDX_FLAGS] = flags
+		[KNOT_CTL_IDX_FILTERS] = filters,
 	};
 
 	lookup_t lookup;
@@ -196,37 +196,37 @@ static bool id_lookup(EditLine *el, const char *str, size_t str_len,
                       const char *section, const cmd_desc_t *cmd_desc,
                       dup_check_ctx_t *ctx, bool add_space, bool zones)
 {
-	char flags[4] = "";
+	char filters[4] = "";
 	if (zones) {
-		strlcat(flags, CTL_FLAG_LIST_ZONES, sizeof(flags));
+		strlcat(filters, CTL_FILTER_LIST_ZONES, sizeof(filters));
 	} else if (cmd_desc->flags & CMD_FREQ_TXN) {
-		strlcat(flags, CTL_FLAG_LIST_TXN, sizeof(flags));
+		strlcat(filters, CTL_FILTER_LIST_TXN, sizeof(filters));
 	}
 
 	return rmt_lookup(el, str, str_len, section, NULL, NULL, ctx, add_space,
-	                  flags, KNOT_CTL_IDX_ID);
+	                  filters, KNOT_CTL_IDX_ID);
 }
 
 static void val_lookup(EditLine *el, const char *str, size_t str_len,
                        const char *section, const char *item, const char *id,
                        dup_check_ctx_t *ctx, bool list_schema)
 {
-	char flags[4] = CTL_FLAG_LIST_TXN;
+	char filters[4] = CTL_FILTER_LIST_TXN;
 	if (list_schema) {
-		strlcat(flags, CTL_FLAG_LIST_SCHEMA, sizeof(flags));
+		strlcat(filters, CTL_FILTER_LIST_SCHEMA, sizeof(filters));
 	}
 
 	(void)rmt_lookup(el, str, str_len, section, item, id, ctx, true,
-	                 flags, KNOT_CTL_IDX_DATA);
+	                 filters, KNOT_CTL_IDX_DATA);
 }
 
 static bool list_lookup(EditLine *el, const char *str, const char *section)
 {
-	const char *flags = CTL_FLAG_LIST_SCHEMA;
+	const char *filters = CTL_FILTER_LIST_SCHEMA;
 	knot_ctl_idx_t idx = (section == NULL) ? KNOT_CTL_IDX_SECTION : KNOT_CTL_IDX_ITEM;
 
 	return rmt_lookup(el, str, strlen(str), section, NULL, NULL, NULL,
-	                  section != NULL, flags, idx);
+	                  section != NULL, filters, idx);
 }
 
 static void item_lookup(EditLine *el, const char *str, const cmd_desc_t *cmd_desc)
