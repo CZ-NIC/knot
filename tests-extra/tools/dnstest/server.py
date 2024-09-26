@@ -585,6 +585,7 @@ class Server(object):
                 raise Failed("One zone required")
             rname = rname[0].name
 
+        opcode = dns.opcode.QUERY
         rtype_str = rtype.upper()
 
         # Set port type.
@@ -595,6 +596,10 @@ class Server(object):
             # Use TCP if not specified.
             udp = udp if udp != None else False
             rtype_str += "=%i" % int(serial)
+        if rtype.upper() == "NOTIFY":
+            rtype = "SOA"
+            rtype_str = "SOA"
+            opcode = dns.opcode.NOTIFY
         else:
             # Use TCP or UDP at random if not specified.
             udp = udp if udp != None else random.choice([True, False])
@@ -613,6 +618,7 @@ class Server(object):
 
         # Prepare query (useless for XFR).
         query = dns.message.make_query(rname, rtype, rclass)
+        query.set_opcode(opcode)
 
         # Remove implicit RD flag.
         query.flags &= ~dns.flags.RD
