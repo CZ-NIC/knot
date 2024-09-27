@@ -1,0 +1,6 @@
+$ORIGIN example.
+$TTL 1200
+
+@ SOA ns admin 20110102 180 180 45 600
+ns AAAA ::0
+added A 1.2.3.4
