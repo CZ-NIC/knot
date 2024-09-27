@@ -9,9 +9,38 @@ from dnstest.libknot import libknot
 from dnstest.test import Test
 from dnstest.utils import *
 
-def set_acl(server, actions, addrs=list(), deny=False, cert_key=None, protos=list()):
+RMT = random.choice([False, True])
+detail_log("ACL remote %s" % (str(RMT)))
 
-    ACL_ID = "acl_test"
+RMT_ID = "rmt_test"
+ACL_ID = "acl_test"
+
+def set_remote(addrs=list(), protos=list(), cert_key=None):
+
+    try:
+        ctl.send_block(cmd="conf-unset", section="remote", identifier=RMT_ID)
+        resp = ctl.receive_block()
+    except:
+        pass
+
+    ctl.send_block(cmd="conf-set", section="remote", identifier=RMT_ID)
+    resp = ctl.receive_block()
+
+    for addr in addrs:
+        ctl.send_block(cmd="conf-set", section="remote", identifier=RMT_ID, item="address", data=addr)
+        resp = ctl.receive_block()
+    for proto in protos:
+        if proto == "quic":
+            ctl.send_block(cmd="conf-set", section="remote", identifier=RMT_ID, item="quic", data="on")
+            resp = ctl.receive_block()
+        if proto == "tls":
+            ctl.send_block(cmd="conf-set", section="remote", identifier=RMT_ID, item="tls", data="on")
+            resp = ctl.receive_block()
+    if cert_key:
+        ctl.send_block(cmd="conf-set", section="remote", identifier=RMT_ID, item="cert-key", data=cert_key)
+        resp = ctl.receive_block()
+
+def set_acl(server, actions, deny=False, addrs=list(), protos=list(), cert_key=None):
 
     ctl.connect(os.path.join(server.dir, "knot.sock"))
     ctl.send_block(cmd="conf-begin")
@@ -26,27 +55,36 @@ def set_acl(server, actions, addrs=list(), deny=False, cert_key=None, protos=lis
     for action in actions:
         ctl.send_block(cmd="conf-set", section="acl", identifier=ACL_ID, item="action", data=action)
         resp = ctl.receive_block()
-    for addr in addrs:
-        ctl.send_block(cmd="conf-set", section="acl", identifier=ACL_ID, item="address", data=addr)
-        resp = ctl.receive_block()
     if deny:
         ctl.send_block(cmd="conf-set", section="acl", identifier=ACL_ID, item="deny", data="on")
         resp = ctl.receive_block()
-    for proto in protos:
-        ctl.send_block(cmd="conf-set", section="acl", identifier=ACL_ID, item="protocol", data=proto)
+
+    if RMT:
+        if not addrs:
+            addrs = [server.addr]
+        set_remote(addrs, protos, cert_key)
+        ctl.send_block(cmd="conf-set", section="acl", identifier=ACL_ID, item="remote", data=RMT_ID)
         resp = ctl.receive_block()
-    if cert_key:
-        ctl.send_block(cmd="conf-set", section="acl", identifier=ACL_ID, item="cert-key", data=cert_key)
-        resp = ctl.receive_block()
+    else:
+        for addr in addrs:
+            ctl.send_block(cmd="conf-set", section="acl", identifier=ACL_ID, item="address", data=addr)
+            resp = ctl.receive_block()
+        for proto in protos:
+            ctl.send_block(cmd="conf-set", section="acl", identifier=ACL_ID, item="protocol", data=proto)
+            resp = ctl.receive_block()
+        if cert_key:
+            ctl.send_block(cmd="conf-set", section="acl", identifier=ACL_ID, item="cert-key", data=cert_key)
+            resp = ctl.receive_block()
 
     ctl.send_block(cmd="conf-commit")
     resp = ctl.receive_block()
 
-    '''
-    ctl.send_block(cmd="conf-read")
+    ctl.send_block(cmd="conf-read", section="acl")
     resp = ctl.receive_block()
     print(resp)
-    '''
+    ctl.send_block(cmd="conf-read", section="remote")
+    resp = ctl.receive_block()
+    print(resp)
 
     ctl.send(libknot.control.KnotCtlType.END)
     ctl.close()
@@ -95,18 +133,16 @@ def test_normal(server, zone):
     resp.check(rcode="NOTAUTH")
 
     # Authorize only some protocols.
-    set_acl(server, ["update"], protos=["tls", "udp"])
-    send_upd(server, zone, "NOERROR", Proto.UDP)
+    set_acl(server, ["update"], addrs=[t.addr], protos=["tls", "udp"])
     send_upd(server, zone, "NOTAUTH", Proto.TCP)
     send_upd(server, zone, "NOERROR", Proto.TLS)
+    if not RMT: # Remote doesn't distinguish between UDP and TCP.
+        send_upd(server, zone, "NOERROR", Proto.UDP)
 
-    # Authorize specific address and protocol.
-    set_acl(server, ["notify"], addrs=[t.addr], protos=["tcp"])
-    resp = server.dig(ZONE, "NOTIFY", udp=False)
-    resp.check(rcode="NOERROR")
-    set_acl(server, ["notify"], addrs=[t.addr], protos=["udp"])
-    resp = server.dig(ZONE, "NOTIFY", udp=False)
-    resp.check(rcode="NOTAUTH")
+    # Authorize different address and protocol.
+    set_acl(server, ["update"], addrs=["192.0.2.1"], protos=["tls", "udp"])
+    send_upd(server, zone, "NOTAUTH", Proto.TLS)
+    send_upd(server, zone, "NOTAUTH", Proto.TCP)
 
 t = Test(quic=True, tls=True, tsig=False)
 
