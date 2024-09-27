@@ -151,13 +151,13 @@ static int make_label_file(zone_backup_ctx_t *ctx)
 	              "knot_version: %s\n"
 	              "lmdb_version: %d.%d.%d\n"
 	              LABEL_FILE_ARCH "%s\n"
-	              LABEL_FILE_PARAMS "%s+" LABEL_FILE_BACKUPDIR "%s\n"
+	              LABEL_FILE_PARAMS "%s%s+" LABEL_FILE_BACKUPDIR "%s\n"
 	              "zone_count: %d\n",
 	              label_file_head,
 	              ctx->backup_format, ident, started_time, finished_time,
 	              PACKAGE_VERSION,
 	              lmdb_major, lmdb_minor, lmdb_patch, label_file_arch,
-	              params_str, ctx->backup_dir,
+	              ctx->forced ? "-f " : "", params_str, ctx->backup_dir,
 	              ctx->zone_count);
 
 	ret = (ret < 0) ? knot_map_errno() : KNOT_EOK;
