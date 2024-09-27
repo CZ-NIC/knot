@@ -1640,8 +1640,8 @@ An ordered list of :ref:`references<remote_id>` to remote server definitions.
 
 Access control list rule definitions. An ACL rule is a description of one
 or more authorized actions (zone transfer request, zone change notification,
-and dynamic DNS update) which are allowed to be processed or denied. Normal
-DNS queries are always allowed.
+and dynamic DNS update) which are allowed to be processed or denied. Queries
+which don't require authorization are always allowed.
 
 ::
 
@@ -1652,6 +1652,7 @@ DNS queries are always allowed.
      cert-key: BASE64 ...
      remote: remote_id | remotes_id ...
      action: query | notify | transfer | update ...
+     protocol: udp | tcp | tls | quic ...
      deny: BOOL
      update-type: STR ...
      update-owner: key | zone | name
@@ -1714,8 +1715,8 @@ match one of the remotes. Specifically, one of the remote's addresses and remote
 TSIG key if configured must match.
 
 .. NOTE::
-   This option cannot be specified along with the :ref:`acl_address` or
-   :ref:`acl_key` option at one ACL item.
+   This option cannot be specified along with the :ref:`acl_address`,
+   :ref:`acl_key`, or :ref:`acl_protocol` option at one ACL item.
 
 *Default:* not set
 
@@ -1735,6 +1736,22 @@ Possible values:
 - ``update`` – Allow zone updates (DDNS).
 
 *Default:* ``query``
+
+.. _acl_protocol:
+
+protocol
+--------
+
+List of allowed protocols.
+
+Possible values:
+
+- ``udp`` – UDP protocol.
+- ``tcp`` – TCP protocol.
+- ``tls`` – TLS protocol.
+- ``quic`` – QUIC protocol.
+
+*Default:* not set (any)
 
 .. _acl_deny:
 
