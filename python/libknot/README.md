@@ -6,16 +6,16 @@ A Python interface for managing the Knot DNS daemon.
 
 * [Introduction](#introduction)
 * [Control module](#control-module)
-  + [Usage](#using-the-control-module)
-  + [Example](#control-module-example)
+  + [Control usage](#control-usage)
+  + [Control examples](#control-examples)
 * [Probe module](#probe-module)
-  + [Usage](#using-the-probe-module)
-  + [Example](#probe-module-example)
+  + [Probe usage](#probe-usage)
+  + [Probe examples](#probe-examples)
 * [Dname module](#dname-module)
-  + [Usage](#using-the-dname-module)
-  + [Example](#dname-module-example)
+  + [Dname usage](#dname-usage)
+  + [Dname examples](#dname-examples)
 
-## Introduction
+## Introduction<a id="introduction"></a>
 
 If the shared `libknot.so` library isn't available in the library search path, it's
 necessary to load the library first, e.g.:
@@ -25,7 +25,7 @@ import libknot
 libknot.Knot("/usr/lib/libknot.so")
 ```
 
-## Control module
+## Control module<a id="control-module"></a>
 
 Using this module it's possible to create scripts for efficient tasks that
 would require complex shell scripts with multiple calls of `knotc`. For
@@ -34,7 +34,7 @@ i.e. communication via a Unix socket.
 
 The module API is stored in `libknot.control`.
 
-### Using the Control module
+### Control usage<a id="control-usage"></a>
 
 The module usage consists of several steps:
 
@@ -44,7 +44,7 @@ The module usage consists of several steps:
   afterwards.
 * Closing the connection and deinitialization.
 
-### Control module example
+### Control examples<a id="control-examples"></a>
 
 ```python3
 import json
@@ -103,21 +103,21 @@ finally:
             print("Zone %s expires at %s" % (zone, resp[zone]["expiration"]))
 ```
 
-## Probe module
+## Probe module<a id="probe module"></a>
 
 Using this module it's possible to receive traffic data from a running daemon with
 active probe module.
 
 The module API is stored in `libknot.probe`.
 
-### Using the Probe module
+### Probe usage<a id="probe-usage"></a>
 
 The module usage consists of several steps:
 
 * Initialization of one or more probe channels
 * Periodical receiving of data units from the channels and data processing
 
-### Probe module example
+### Probe examples<a id="probe-examples"></a>
 
 ```python3
 import libknot.probe
@@ -135,16 +135,18 @@ while (True):
             print(item)
 ```
 
-## Dname module
+## Dname module<a id="dname-module"></a>
 
 This module provides a few dname-related operations.
 
-### Using the Dname module
+The module API is stored in `libknot.dname`.
+
+### Dname usage<a id="dname-usage"></a>
 
 The dname object is initialized from a string with textual dname.
 Then the dname can be reformatted to wire format or back to textual format.
 
-### Dname module example
+### Dname examples<a id="dname-examples"></a>
 
 ```python3
 import libknot.dname
