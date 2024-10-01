@@ -576,6 +576,22 @@ class Server(object):
             raise Failed("Can't get certificate key, server='%s', ret='%i'" %
                          (self.name, e.returncode))
 
+    def use_default_cert_key(self):
+        certfile = self.dir + "/cert.pem"
+        keyfile = self.dir + "/key.pem"
+        for f in [certfile, keyfile]:
+            shutil.copyfile(params.common_data_dir + "/cert/" + os.path.split(f)[-1], f)
+
+        try:
+            out = check_output(["certtool", "--infile=%s" % keyfile, "-k"],
+                               stderr=open(self.dir + "/certtool.err", mode="a"))
+            val = out.rstrip().decode('ascii')
+            pin = ssearch(val, r'pin-sha256:([^\n]*)')
+            self.cert_key_file = (keyfile, certfile, "tcpserver", pin)
+            return pin
+        except CalledProcessError as e:
+            raise Failed("Can't use default certificate and key")
+
     def download_cert_file(self, dest_dir):
         try:
             check_call(["gnutls-cli", "--help"], stdout=DEVNULL, stderr=DEVNULL)
@@ -583,7 +599,9 @@ class Server(object):
             raise Skip("gnutls-cli not available")
 
         CERTF = dest_dir + "/%s_tls_%d.crt" % (self.name, int(time.time()))
-        gcli_p = Popen(["gnutls-cli", self.addr, "-p", str(self.tls_port or self.quic_port), "--no-ca-verification", "-V", "--save-cert=" + CERTF], stdin=DEVNULL, stdout=PIPE, stderr=PIPE)
+        gcli_p = Popen(["gnutls-cli", self.addr, "-p", str(self.tls_port or self.quic_port),
+                        "--no-ca-verification", "-V", "--save-cert=" + CERTF],
+                       stdin=DEVNULL, stdout=PIPE, stderr=PIPE)
         (gcli_out, _) = gcli_p.communicate()
         gcli_s = gcli_out.decode("utf-8")
         hostname1 = ssearch(gcli_s, r'DNSname: ([^\n]*)')

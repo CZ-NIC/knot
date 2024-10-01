@@ -4,10 +4,16 @@
 
 from dnstest.test import Test
 from dnstest.utils import *
-import os
 import random
 import shutil
 import subprocess
+
+def upd_check_zones(master, slave, zones, prev_serials):
+    for z in zones:
+        master.random_ddns(z, allow_empty=False)
+    serials = slave.zones_wait(zones, prev_serials)
+    t.xfr_diff(master, slave, zones, prev_serials)
+    return serials
 
 t = Test(tls=True, tsig=True) # TSIG needed to skip weaker ACL rules
 
@@ -17,19 +23,7 @@ zones = t.zone("example.")
 
 t.link(zones, master, slave, ddns=True)
 
-def upd_check_zones(master, slave, zones, prev_serials):
-    for z in zones:
-        master.random_ddns(z, allow_empty=False)
-    serials = slave.zones_wait(zones, prev_serials)
-    t.xfr_diff(master, slave, zones, prev_serials)
-    return serials
-
-
-certfile = master.dir + "/dot2.crt"
-keyfile = os.path.splitext(certfile)[0] + ".key"
-for f in [certfile, keyfile]:
-    shutil.copyfile(t.data_dir + "/" + os.path.split(f)[-1], f)
-master.cert_key_file = (keyfile, certfile, "tcpserver", "s3L4U7E41DnN2tHFT8bu9DQe6eo2ySehlltyzdLbWjg=")
+master_pin = master.use_default_cert_key()
 
 t.start()
 
@@ -48,7 +42,7 @@ try:
 
     # step 2: rely only on certificate pin
     master.cert_key_file = None
-    master.cert_key = "s3L4U7E41DnN2tHFT8bu9DQe6eo2ySehlltyzdLbWjg="
+    master.cert_key = master_pin
     slave.gen_confile()
     slave.reload()
     t.sleep(3)

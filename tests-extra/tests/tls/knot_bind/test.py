@@ -8,6 +8,13 @@ import random
 import shutil
 import subprocess
 
+def upd_check_zones(master, slave, zones, prev_serials):
+    for z in zones:
+        master.random_ddns(z, allow_empty=False)
+    serials = slave.zones_wait(zones, prev_serials)
+    t.xfr_diff(master, slave, zones, prev_serials)
+    return serials
+
 t = Test(tls=True, tsig=True) # TSIG needed to skip weaker ACL rules
 
 master = t.server("knot")
@@ -16,19 +23,8 @@ zones = t.zone("example.")
 
 t.link(zones, master, slave)
 
-def upd_check_zones(master, slave, zones, prev_serials):
-    for z in zones:
-        master.random_ddns(z, allow_empty=False)
-    serials = slave.zones_wait(zones, prev_serials)
-    t.xfr_diff(master, slave, zones, prev_serials)
-    return serials
-
-for s in [ master, slave ]:
-    certfile = s.dir + "/dot2.crt"
-    keyfile = os.path.splitext(certfile)[0] + ".key"
-    for f in [certfile, keyfile]:
-        shutil.copyfile(t.data_dir + "/" + os.path.split(f)[-1], f)
-    s.cert_key_file = (keyfile, certfile, "tcpserver", "s3L4U7E41DnN2tHFT8bu9DQe6eo2ySehlltyzdLbWjg=")
+master.use_default_cert_key()
+slave.use_default_cert_key()
 
 t.generate_conf()
 master.start()
