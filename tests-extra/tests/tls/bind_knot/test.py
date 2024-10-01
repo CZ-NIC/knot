@@ -4,6 +4,7 @@
 
 from dnstest.test import Test
 from dnstest.utils import *
+import dnstest.params as params
 import os
 import random
 import shutil
@@ -24,11 +25,10 @@ def upd_check_zones(master, slave, zones, prev_serials):
     t.xfr_diff(master, slave, zones, prev_serials)
     return serials
 
-
-certfile = master.dir + "/dot2.crt"
+certfile = params.common_data_dir + "/cert/dot.crt"
 keyfile = os.path.splitext(certfile)[0] + ".key"
 for f in [certfile, keyfile]:
-    shutil.copyfile(t.data_dir + "/" + os.path.split(f)[-1], f)
+    shutil.copyfile(params.common_data_dir + "/cert/" + os.path.split(f)[-1], f)
 master.cert_key_file = (keyfile, certfile, "tcpserver", "s3L4U7E41DnN2tHFT8bu9DQe6eo2ySehlltyzdLbWjg=")
 
 t.start()
