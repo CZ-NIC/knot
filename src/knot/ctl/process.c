@@ -18,6 +18,7 @@
 #include "knot/ctl/commands.h"
 #include "knot/ctl/process.h"
 #include "libknot/error.h"
+#include "contrib/openbsd/strlcat.h"
 #include "contrib/string.h"
 
 int ctl_process(knot_ctl_t *ctl, server_t *server, int thread_idx, bool *exclusive)
@@ -72,22 +73,35 @@ int ctl_process(knot_ctl_t *ctl, server_t *server, int thread_idx, bool *exclusi
 
 		const char *cmd_name = args.data[KNOT_CTL_IDX_CMD];
 		const char *zone_name = args.data[KNOT_CTL_IDX_ZONE];
+		const char *flags = args.data[KNOT_CTL_IDX_FLAGS];
+		const char *filters = args.data[KNOT_CTL_IDX_FILTERS];
+
+		char buff[32];
+		char extra[64] = { 0 };
+		if (log_enabled_debug() && flags != NULL && strlen(flags) > 0) {
+			(void)snprintf(buff, sizeof(buff), ", flags '%s'", flags);
+			strlcat(extra, buff, sizeof(extra));
+		}
+		if (log_enabled_debug() && filters != NULL && strlen(filters) > 0) {
+			(void)snprintf(buff, sizeof(buff), ", filters '%s'", filters);
+			strlcat(extra, buff, sizeof(extra));
+		}
 
 		ctl_cmd_t cmd = ctl_str_to_cmd(cmd_name);
 		if (cmd == CTL_CONF_LIST) {
-			log_ctl_debug("control, received command '%s'", cmd_name);
+			log_ctl_debug("control, received command '%s'%s", cmd_name, extra);
 		} else if (cmd != CTL_NONE) {
 			if (zone_name != NULL) {
 				log_ctl_zone_str_info(zone_name,
-				             "control, received command '%s'", cmd_name);
+				             "control, received command '%s'%s", cmd_name, extra);
 			} else {
-				log_ctl_info("control, received command '%s'", cmd_name);
+				log_ctl_info("control, received command '%s'%s", cmd_name, extra);
 			}
 		} else if (cmd_name != NULL){
-			log_ctl_debug("control, invalid command '%s'", cmd_name);
+			log_ctl_debug("control, invalid command '%s'%s", cmd_name, extra);
 			continue;
 		} else {
-			log_ctl_debug("control, empty command");
+			log_ctl_debug("control, empty command%s", extra);
 			continue;
 		}
 
