@@ -102,7 +102,7 @@ if not slave.valgrind: # otherwise unreliable, ctl thread sometimes stuck for 10
     slave.ctl("zone-sign " + big_zone[0].name, wait=False)
     t.sleep(0.2)
     slave.ctl("zone-freeze", wait=False)
-    t.sleep(0.9)
+    t.sleep(0.2)
     if not "| freeze: freezing" in slave.ctl("zone-status " + big_zone[0].name, read_result=True):
         set_err("missing 'freezing' log")
     serial = slave.zone_wait(big_zone, serial)
@@ -111,7 +111,7 @@ if not slave.valgrind: # otherwise unreliable, ctl thread sometimes stuck for 10
     slave.ctl("zone-sign " + big_zone[0].name, wait=False)
     t.sleep(0.2)
     slave.ctl("zone-thaw", wait=False)
-    t.sleep(0.9)
+    t.sleep(0.2)
     if not "| freeze: thawing" in slave.ctl("zone-status " + big_zone[0].name, read_result=True):
         set_err("missing 'thawing' log")
     serial = slave.zone_wait(big_zone, serial)
