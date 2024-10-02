@@ -653,43 +653,6 @@ static int cmd_zone_key_roll_ctl(cmd_args_t *args)
 	return ctl_receive(args);
 }
 
-static int cmd_zone_ctl(cmd_args_t *args)
-{
-	knot_ctl_data_t data = {
-		[KNOT_CTL_IDX_CMD] = ctl_cmd_to_str(args->desc->cmd),
-		[KNOT_CTL_IDX_FLAGS] = args->flags,
-	};
-
-	// Check the number of arguments.
-	int ret = check_args(args, (args->desc->flags & CMD_FREQ_ZONE) ? 1 : 0, -1);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
-	if (args->desc->cmd == CTL_ZONE_PURGE && !args->force) {
-		log_error("force option required!");
-		return KNOT_EDENIED;
-	}
-
-	// Ignore all zones argument.
-	if (args->argc == 1 && strcmp(args->argv[0], "--") == 0) {
-		args->argc = 0;
-	}
-
-	if (args->argc == 0) {
-		CTL_SEND_DATA
-	}
-	for (int i = 0; i < args->argc; i++) {
-		data[KNOT_CTL_IDX_ZONE] = args->argv[i];
-
-		CTL_SEND_DATA
-	}
-
-	CTL_SEND_BLOCK
-
-	return ctl_receive(args);
-}
-
 #define FILTER_IMPORT_NOPURGE	 "+nopurge"
 #define FILTER_EXPORT_SCHEMA	 "+schema"
 
@@ -784,7 +747,7 @@ static const filter_desc_t *get_filter(ctl_cmd_t cmd, const char *filter_name)
 	return &null_filter;
 }
 
-static int cmd_zone_filter_ctl(cmd_args_t *args)
+static int cmd_zone_ctl(cmd_args_t *args)
 {
 	knot_ctl_data_t data = {
 		[KNOT_CTL_IDX_CMD] = ctl_cmd_to_str(args->desc->cmd),
@@ -1296,14 +1259,14 @@ const cmd_desc_t cmd_table[] = {
 	{ CMD_STATS,           cmd_stats_ctl,     CTL_STATS },
 
 	{ CMD_ZONE_CHECK,      cmd_zone_check,        CTL_NONE,            CMD_FOPT_ZONE | CMD_FREAD },
-	{ CMD_ZONE_STATUS,     cmd_zone_filter_ctl,   CTL_ZONE_STATUS,     CMD_FOPT_ZONE },
+	{ CMD_ZONE_STATUS,     cmd_zone_ctl,          CTL_ZONE_STATUS,     CMD_FOPT_ZONE },
 	{ CMD_ZONE_RELOAD,     cmd_zone_ctl,          CTL_ZONE_RELOAD,     CMD_FOPT_ZONE },
 	{ CMD_ZONE_REFRESH,    cmd_zone_ctl,          CTL_ZONE_REFRESH,    CMD_FOPT_ZONE },
 	{ CMD_ZONE_RETRANSFER, cmd_zone_ctl,          CTL_ZONE_RETRANSFER, CMD_FOPT_ZONE },
 	{ CMD_ZONE_NOTIFY,     cmd_zone_ctl,          CTL_ZONE_NOTIFY,     CMD_FOPT_ZONE },
-	{ CMD_ZONE_FLUSH,      cmd_zone_filter_ctl,   CTL_ZONE_FLUSH,      CMD_FOPT_ZONE },
-	{ CMD_ZONE_BACKUP,     cmd_zone_filter_ctl,   CTL_ZONE_BACKUP,     CMD_FOPT_ZONE },
-	{ CMD_ZONE_RESTORE,    cmd_zone_filter_ctl,   CTL_ZONE_RESTORE,    CMD_FOPT_ZONE },
+	{ CMD_ZONE_FLUSH,      cmd_zone_ctl,          CTL_ZONE_FLUSH,      CMD_FOPT_ZONE },
+	{ CMD_ZONE_BACKUP,     cmd_zone_ctl,          CTL_ZONE_BACKUP,     CMD_FOPT_ZONE },
+	{ CMD_ZONE_RESTORE,    cmd_zone_ctl,          CTL_ZONE_RESTORE,    CMD_FOPT_ZONE },
 	{ CMD_ZONE_SIGN,       cmd_zone_ctl,          CTL_ZONE_SIGN,       CMD_FOPT_ZONE },
 	{ CMD_ZONE_VALIDATE,   cmd_zone_ctl,          CTL_ZONE_VALIDATE,   CMD_FOPT_ZONE },
 	{ CMD_ZONE_KEYS_LOAD,  cmd_zone_ctl,          CTL_ZONE_KEYS_LOAD,  CMD_FOPT_ZONE },
@@ -1315,14 +1278,14 @@ const cmd_desc_t cmd_table[] = {
 	{ CMD_ZONE_XFR_THAW,   cmd_zone_ctl,          CTL_ZONE_XFR_THAW,   CMD_FOPT_ZONE },
 
 	{ CMD_ZONE_READ,       cmd_zone_node_ctl,   CTL_ZONE_READ,       CMD_FREQ_ZONE },
-	{ CMD_ZONE_BEGIN,      cmd_zone_filter_ctl, CTL_ZONE_BEGIN,      CMD_FREQ_ZONE | CMD_FOPT_ZONE },
+	{ CMD_ZONE_BEGIN,      cmd_zone_ctl,        CTL_ZONE_BEGIN,      CMD_FREQ_ZONE | CMD_FOPT_ZONE },
 	{ CMD_ZONE_COMMIT,     cmd_zone_ctl,        CTL_ZONE_COMMIT,     CMD_FREQ_ZONE | CMD_FOPT_ZONE },
 	{ CMD_ZONE_ABORT,      cmd_zone_ctl,        CTL_ZONE_ABORT,      CMD_FREQ_ZONE | CMD_FOPT_ZONE },
 	{ CMD_ZONE_DIFF,       cmd_zone_node_ctl,   CTL_ZONE_DIFF,       CMD_FREQ_ZONE },
 	{ CMD_ZONE_GET,        cmd_zone_node_ctl,   CTL_ZONE_GET,        CMD_FREQ_ZONE },
 	{ CMD_ZONE_SET,        cmd_zone_node_ctl,   CTL_ZONE_SET,        CMD_FREQ_ZONE },
 	{ CMD_ZONE_UNSET,      cmd_zone_node_ctl,   CTL_ZONE_UNSET,      CMD_FREQ_ZONE },
-	{ CMD_ZONE_PURGE,      cmd_zone_filter_ctl, CTL_ZONE_PURGE,      CMD_FREQ_ZONE | CMD_FOPT_ZONE },
+	{ CMD_ZONE_PURGE,      cmd_zone_ctl,        CTL_ZONE_PURGE,      CMD_FREQ_ZONE | CMD_FOPT_ZONE },
 	{ CMD_ZONE_STATS,      cmd_stats_ctl,       CTL_ZONE_STATS,      CMD_FREQ_ZONE },
 
 	{ CMD_CONF_INIT,       cmd_conf_init,     CTL_NONE,            CMD_FWRITE },
