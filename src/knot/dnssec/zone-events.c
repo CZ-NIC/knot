@@ -271,6 +271,12 @@ int knot_dnssec_zone_sign(zone_update_t *update,
 	if (zone_update_no_change(update)) {
 		log_zone_info(zone_name, "DNSSEC, zone is up-to-date");
 		update->zone->zonefile.resigned = false;
+		if (update->zone->contents != NULL) {
+			/* In this case zone_update_commit() might roll-back the update,
+			 * throwing off the correct update->new_cont->dnssec_expire.
+			 * Therefore it's necessary to also set it in the live contents. */
+			ATOMIC_SET(update->zone->contents->dnssec_expire, ctx.stats->expire);
+		}
 		goto done;
 	} else {
 		update->zone->zonefile.resigned = true;
