@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include "contrib/time.h"
+#include "contrib/atomic.h"
 #include "libdnssec/nsec.h"
 #include "libknot/rrtype/nsec3param.h"
 #include "knot/zone/node.h"
@@ -36,10 +36,10 @@ typedef struct zone_contents {
 	trie_t *adds_tree; // "additionals tree" for reverse lookup of nodes affected by additionals
 
 	dnssec_nsec3_params_t nsec3_params;
+	knot_atomic_uint64_t dnssec_expire;
 	size_t size;
 	uint32_t max_ttl;
 	bool dnssec;
-	knot_time_t dnssec_expire;
 } zone_contents_t;
 
 /*!
