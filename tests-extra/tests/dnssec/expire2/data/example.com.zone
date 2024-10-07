@@ -1,0 +1,6 @@
+$ORIGIN example.com.
+$TTL 2
+
+@	SOA	dns1.example.net. hostmaster 1 2 2 30 1
+	NS	dns1
+dns1	A	192.0.2.1
