@@ -101,6 +101,7 @@ RUN mkdir -p /run/dbus
 EXPOSE 53/UDP
 EXPOSE 53/TCP
 EXPOSE 853/UDP
+EXPOSE 853/TCP
 
 # Prepare shared directories
 VOLUME /config
