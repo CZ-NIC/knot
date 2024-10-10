@@ -8,6 +8,7 @@ A Python interface for managing the Knot DNS daemon.
 * [Control module](#control-module)
   + [Control usage](#control-usage)
   + [Control examples](#control-examples)
+  + [Control API](#control-api)
 * [Probe module](#probe-module)
   + [Probe usage](#probe-usage)
   + [Probe examples](#probe-examples)
@@ -102,6 +103,54 @@ finally:
         else:
             print("Zone %s expires at %s" % (zone, resp[zone]["expiration"]))
 ```
+
+### Control API<a id="control-api"></a>
+
+[commands](https://www.knot-dns.cz/docs/latest/html/man_knotc.html#actions)
+
+ status             [<detail>]                             Check if the server is running.
+ stop                                                      Stop the server if running.
+ reload                                                    Reload the server configuration and modified zones.
+ stats              [<module>[.<counter>]]                 Show global statistics counter(s).
+
+ zone-status        [<zone>...] [<filter>...]              Show the zone status.
+ zone-reload        [<zone>...]                            Reload a zone from a disk. (#)
+ zone-refresh       [<zone>...]                            Force slave zone refresh. (#)
+ zone-notify        [<zone>...]                            Send a NOTIFY message to all configured remotes. (#)
+ zone-retransfer    [<zone>...]                            Force slave zone retransfer (no serial check). (#)
+ zone-flush         [<zone>...] [<filter>...]              Flush zone journal into the zone file. (#)
+ zone-backup        [<zone>...] [<filter>...] +backupdir <dir> Backup zone data and metadata. (#)
+ zone-restore       [<zone>...] [<filter>...] +backupdir <dir> Restore zone data and metadata. (#)
+ zone-sign          [<zone>...]                            Re-sign the automatically signed zone. (#)
+ zone-validate      [<zone>...]                            Trigger a DNSSEC validation of the zone. (#)
+ zone-keys-load     [<zone>...]                            Re-load keys from KASP database, sign the zone. (#)
+ zone-key-rollover   <zone> ksk|zsk                        Trigger immediate key rollover. (#)
+ zone-ksk-submitted  <zone>...                             When KSK submission, confirm parent's DS presence. (#)
+ zone-freeze        [<zone>...]                            Temporarily postpone automatic zone-changing events. (#)
+ zone-thaw          [<zone>...]                            Dismiss zone freeze. (#)
+ zone-xfr-freeze    [<zone>...]                            Temporarily disable outgoing AXFR/IXFR. (#)
+ zone-xfr-thaw      [<zone>...]                            Dismiss outgoing XFR freeze. (#)
+
+ zone-read          <zone> [<owner> [<type>]]              Get zone data that are currently being presented.
+ zone-begin         <zone>...                              Begin a zone transaction.
+ zone-commit        <zone>...                              Commit the zone transaction.
+ zone-abort         <zone>...                              Abort the zone transaction.
+ zone-diff          <zone>                                 Get zone changes within the transaction.
+ zone-get           <zone> [<owner> [<type>]]              Get zone data within the transaction.
+ zone-set           <zone>  <owner> [<ttl>] <type> <rdata> Add zone record within the transaction.
+ zone-unset         <zone>  <owner> [<type> [<rdata>]]     Remove zone data within the transaction.
+ zone-purge         <zone>... [<filter>...]                Purge zone data, zone file, journal, timers, and KASP data. (#)
+ zone-stats         <zone> [<module>[.<counter>]]          Show zone statistics counter(s).
+
+ conf-list          [<item>...]                            List the confdb sections or section items.
+ conf-read          [<item>...]                            Get the item from the active confdb.
+ conf-begin         [+benevolent]                          Begin a writing confdb transaction.
+ conf-commit                                               Commit the confdb transaction.
+ conf-abort                                                Rollback the confdb transaction.
+ conf-diff          [<item>...]                            Get the item difference within the transaction.
+ conf-get           [<item>...]                            Get the item data within the transaction.
+ conf-set            <item>  [<data>...]                   Set the item data within the transaction.
+ conf-unset         [<item>] [<data>...]                   Unset the item data within the transaction.
 
 ## Probe module<a id="probe module"></a>
 
