@@ -78,11 +78,11 @@ int ctl_process(knot_ctl_t *ctl, server_t *server, int thread_idx, bool *exclusi
 
 		char buff[32];
 		char extra[64] = { 0 };
-		if (flags != NULL && strlen(flags) > 0) {
+		if (log_enabled_debug() && flags != NULL && strlen(flags) > 0) {
 			(void)snprintf(buff, sizeof(buff), ", flags '%s'", flags);
 			strlcat(extra, buff, sizeof(extra));
 		}
-		if (filters != NULL && strlen(filters) > 0) {
+		if (log_enabled_debug() && filters != NULL && strlen(filters) > 0) {
 			(void)snprintf(buff, sizeof(buff), ", filters '%s'", filters);
 			strlcat(extra, buff, sizeof(extra));
 		}
