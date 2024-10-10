@@ -24,11 +24,15 @@ t.start()
 serials = slave.zones_wait(zones)
 serials = master.zones_wait(zones, serials) # wait for first re-sign
 master.ctl("zone-freeze")
+slave.ctl("zone-freeze")
 t.sleep(master.dnssec(z).rrsig_lifetime + 1)
 for z in zones:
     resp = slave.dig(z.name, "SOA", dnssec=True)
     resp.check(rcode="SERVFAIL")
     resp.check_count(0, rtype="RRSIG")
+    if not slave.log_search("expired"):
+         set_err("ZONE NOT EXPIRED")
+slave.ctl("zone-thaw")
 master.ctl("zone-thaw")
 slave.zones_wait(zones, serials)
 
