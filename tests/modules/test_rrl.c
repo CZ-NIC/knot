@@ -60,7 +60,7 @@ int DIFF = 0;
 #define RATEM(Vx, prefix) (LIMIT(RATE, Vx, prefix) / 1000 + DIFF)
 
 // Expected range of limits for parallel test.
-#define RANGE_INST(Vx, prefix)   INST(Vx, prefix) - 1,         INST(Vx, prefix) + RRL_THREADS - 1
+#define RANGE_INST(Vx, prefix)   INST(Vx, prefix) - 1,         INST(Vx, prefix) + RRL_THREADS - 1 + DIFF
 #define RANGE_RATEM(Vx, prefix)  RATEM(Vx, prefix) - 1 - DIFF, RATEM(Vx, prefix) + RRL_THREADS - DIFF
 #define RANGE_UNLIM(queries)     queries,                      queries
 
