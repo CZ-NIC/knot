@@ -1531,8 +1531,9 @@ int server_reconfigure(conf_t *conf, server_t *server)
 			log_warning("config, exceeded number of database readers");
 		}
 	} else {
-		/* Reconfigure TLS credentials. */
-		if ((ret = init_creds(conf, server)) != KNOT_EOK) {
+		/* Reconfigure QUIC/TLS credentials. */
+		if ((server->quic_active || server->tls_active) &&
+		    (ret = init_creds(conf, server)) != KNOT_EOK) {
 			log_error("failed to reconfigure server credentials (%s)",
 			          knot_strerror(ret));
 		}
