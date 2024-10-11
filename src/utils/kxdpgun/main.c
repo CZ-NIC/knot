@@ -371,6 +371,7 @@ void *xdp_gun_thread(void *_ctx)
 			goto cleanup;
 		}
 		quic_table->qlog_dir = ctx->qlog_dir;
+		quic_table->flags |= KNOT_QUIC_TABLE_CLIENT_ONLY;
 #else
 		assert(0);
 #endif // ENABLE_QUIC
