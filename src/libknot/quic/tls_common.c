@@ -55,7 +55,7 @@ static void tls_session_ticket_key_free(gnutls_datum_t *ticket)
 	gnutls_free(ticket->data);
 }
 
-static int self_key(gnutls_x509_privkey_t *privkey, const char *key_file)
+static int self_key(gnutls_x509_privkey_t *privkey, const char *key_file, int uid, int gid)
 {
 	gnutls_datum_t data = { 0 };
 
@@ -91,6 +91,7 @@ static int self_key(gnutls_x509_privkey_t *privkey, const char *key_file)
 		                                        GNUTLS_PKCS_PLAIN, &data);
 		if (ret != GNUTLS_E_SUCCESS ||
 		    (fd = open(key_file, O_WRONLY | O_CREAT, 0600)) == -1 ||
+		    fchown(fd, uid, gid) < 0 ||
 		    write(fd, data.data, data.size) != data.size) {
 			ret = GNUTLS_E_KEYFILE_ERROR;
 			goto finish;
@@ -110,7 +111,7 @@ finish:
 }
 
 static int self_signed_cert(gnutls_certificate_credentials_t tls_cert,
-                            const char *key_file)
+                            const char *key_file, int uid, int gid)
 {
 	gnutls_x509_privkey_t privkey = NULL;
 	gnutls_x509_crt_t cert = NULL;
@@ -129,7 +130,7 @@ static int self_signed_cert(gnutls_certificate_credentials_t tls_cert,
 #define CHK(cmd) if ((ret = (cmd)) != GNUTLS_E_SUCCESS) { goto finish; }
 #define NOW_DAYS(days) (time(NULL) + 24 * 3600 * (days))
 
-	CHK(self_key(&privkey, key_file));
+	CHK(self_key(&privkey, key_file, uid, gid));
 
 	CHK(gnutls_x509_crt_init(&cert));
 	CHK(gnutls_x509_crt_set_version(cert, 3));
@@ -152,14 +153,15 @@ finish:
 }
 
 _public_
-struct knot_creds *knot_creds_init(const char *key_file, const char *cert_file)
+struct knot_creds *knot_creds_init(const char *key_file, const char *cert_file,
+                                   int uid, int gid)
 {
 	knot_creds_t *creds = calloc(1, sizeof(*creds));
 	if (creds == NULL) {
 		return NULL;
 	}
 
-	int ret = knot_creds_update(creds, key_file, cert_file);
+	int ret = knot_creds_update(creds, key_file, cert_file, uid, gid);
 	if (ret != KNOT_EOK) {
 		goto fail;
 	}
@@ -281,7 +283,8 @@ failed:
 }
 
 _public_
-int knot_creds_update(struct knot_creds *creds, const char *key_file, const char *cert_file)
+int knot_creds_update(struct knot_creds *creds, const char *key_file, const char *cert_file,
+                      int uid, int gid)
 {
 	if (creds == NULL || key_file == NULL) {
 		return KNOT_EINVAL;
@@ -298,7 +301,7 @@ int knot_creds_update(struct knot_creds *creds, const char *key_file, const char
 		                                           cert_file, key_file,
 		                                           GNUTLS_X509_FMT_PEM);
 	} else {
-		ret = self_signed_cert(new_creds, key_file);
+		ret = self_signed_cert(new_creds, key_file, uid, gid);
 	}
 	if (ret != GNUTLS_E_SUCCESS) {
 		gnutls_certificate_free_credentials(new_creds);

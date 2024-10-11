@@ -45,10 +45,13 @@ struct knot_tls_session;
  *
  * \param key_file      Key PEM file path/name.
  * \param cert_file     X509 certificate PEM file path/name (NULL if auto-generated).
+ * \param uid           Generated key file owner id.
+ * \param gid           Generated key file group id.
  *
  * \return Initialized creds.
  */
-struct knot_creds *knot_creds_init(const char *key_file, const char *cert_file);
+struct knot_creds *knot_creds_init(const char *key_file, const char *cert_file,
+                                   int uid, int gid);
 
 /*!
  * \brief Init peer TLS key and certificate for DoQ.
@@ -69,10 +72,13 @@ struct knot_creds *knot_creds_init_peer(const struct knot_creds *local_creds,
  * \param creds         Server credentials where key/cert pair will be updated.
  * \param key_file      Key PEM file path/name.
  * \param cert_file     X509 certificate PEM file path/name (NULL if auto-generated).
+ * \param uid           Generated key file owner id.
+ * \param gid           Generated key file group id.
  *
  * \return KNOT_E*
  */
-int knot_creds_update(struct knot_creds *creds, const char *key_file, const char *cert_file);
+int knot_creds_update(struct knot_creds *creds, const char *key_file, const char *cert_file,
+                      int uid, int gid);
 
 /*!
  * \brief Gets the certificate from credentials.
