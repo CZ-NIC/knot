@@ -617,15 +617,22 @@ static int init_creds(conf_t *conf, server_t *server)
 	uint8_t prev_pin[128];
 	size_t prev_pin_len = server_cert_pin(server, prev_pin, sizeof(prev_pin));
 
+	int uid, gid;
+	if (conf_user(conf, &uid, &gid) != KNOT_EOK) {
+		log_error(QUIC_LOG "failed to get uid and gid");
+		ret = KNOT_ERROR;
+		goto failed;
+	}
+
 	if (server->quic_creds == NULL) {
-		server->quic_creds = knot_creds_init(key_file, cert_file);
+		server->quic_creds = knot_creds_init(key_file, cert_file, uid, gid);
 		if (server->quic_creds == NULL) {
 			log_error(QUIC_LOG "failed to initialize server credentials");
 			ret = KNOT_ERROR;
 			goto failed;
 		}
 	} else {
-		ret = knot_creds_update(server->quic_creds, key_file, cert_file);
+		ret = knot_creds_update(server->quic_creds, key_file, cert_file, uid, gid);
 		if (ret != KNOT_EOK) {
 			goto failed;
 		}
