@@ -265,7 +265,7 @@ Key used for signing.
 Key still used for signing, but another key is active (only for KSK or algorithm rollover).
 .TP
 \fBretire\fP
-Key still published, but no longer used for signing.
+Key still published (only if ZSK), but no longer used for signing.
 .TP
 \fBpost_active\fP
 Key no longer published, but still used for signing (only for algorithm rollover).
