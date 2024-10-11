@@ -194,6 +194,7 @@ int knot_qreq_connect(struct knot_quic_reply **out,
 		return KNOT_ENOMEM;
 	}
 
+	table->flags |= KNOT_QUIC_TABLE_CLIENT_ONLY;
 	if (log_enabled_quic_debug()) {
 		table->log_cb = quic_log_cb;
 	}
