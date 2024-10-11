@@ -106,51 +106,84 @@ finally:
 
 ### Control API<a id="control-api"></a>
 
+Filters:
+ F
+ B
+
+ cmd
+ section
+ item
+ identifier
+ zone
+ owner
+ ttl
+ rtype
+ data
+  flags
+  filters
+
 [commands](https://www.knot-dns.cz/docs/latest/html/man_knotc.html#actions)
 
- status             [<detail>]                             Check if the server is running.
- stop                                                      Stop the server if running.
- reload                                                    Reload the server configuration and modified zones.
- stats              [<module>[.<counter>]]                 Show global statistics counter(s).
+| command | section | item | identifier | rtype | data | filters |
+|:-------:|:-------:|:----:|:----------:|:-----:|:----:|:-------:|
+| status  |         |      |            |       |      |         |
+| stop    |         |      |            |       |      |         |
+| reload  |         |      |            |       |      |         |
+| stats   |         |      |            |       |      |         |
 
- zone-status        [<zone>...] [<filter>...]              Show the zone status.
- zone-reload        [<zone>...]                            Reload a zone from a disk. (#)
- zone-refresh       [<zone>...]                            Force slave zone refresh. (#)
- zone-notify        [<zone>...]                            Send a NOTIFY message to all configured remotes. (#)
- zone-retransfer    [<zone>...]                            Force slave zone retransfer (no serial check). (#)
- zone-flush         [<zone>...] [<filter>...]              Flush zone journal into the zone file. (#)
- zone-backup        [<zone>...] [<filter>...] +backupdir <dir> Backup zone data and metadata. (#)
- zone-restore       [<zone>...] [<filter>...] +backupdir <dir> Restore zone data and metadata. (#)
- zone-sign          [<zone>...]                            Re-sign the automatically signed zone. (#)
- zone-validate      [<zone>...]                            Trigger a DNSSEC validation of the zone. (#)
- zone-keys-load     [<zone>...]                            Re-load keys from KASP database, sign the zone. (#)
- zone-key-rollover   <zone> ksk|zsk                        Trigger immediate key rollover. (#)
- zone-ksk-submitted  <zone>...                             When KSK submission, confirm parent's DS presence. (#)
- zone-freeze        [<zone>...]                            Temporarily postpone automatic zone-changing events. (#)
- zone-thaw          [<zone>...]                            Dismiss zone freeze. (#)
- zone-xfr-freeze    [<zone>...]                            Temporarily disable outgoing AXFR/IXFR. (#)
- zone-xfr-thaw      [<zone>...]                            Dismiss outgoing XFR freeze. (#)
+ status             [<detail>]
+ stop
+ reload
+ stats              [<module>[.<counter>]]
 
- zone-read          <zone> [<owner> [<type>]]              Get zone data that are currently being presented.
- zone-begin         <zone>...                              Begin a zone transaction.
- zone-commit        <zone>...                              Commit the zone transaction.
- zone-abort         <zone>...                              Abort the zone transaction.
- zone-diff          <zone>                                 Get zone changes within the transaction.
- zone-get           <zone> [<owner> [<type>]]              Get zone data within the transaction.
- zone-set           <zone>  <owner> [<ttl>] <type> <rdata> Add zone record within the transaction.
- zone-unset         <zone>  <owner> [<type> [<rdata>]]     Remove zone data within the transaction.
- zone-purge         <zone>... [<filter>...]                Purge zone data, zone file, journal, timers, and KASP data. (#)
- zone-stats         <zone> [<module>[.<counter>]]          Show zone statistics counter(s).
+ zone-status        [<zone>...] [<filter>...]
+type:
+`version`
+`workers`
+`configure`
+`cert-key`
 
- conf-list          [<item>...]                            List the confdb sections or section items.
- conf-read          [<item>...]                            Get the item from the active confdb.
- conf-begin         [+benevolent]                          Begin a writing confdb transaction.
- conf-commit                                               Commit the confdb transaction.
- conf-abort                                                Rollback the confdb transaction.
- conf-diff          [<item>...]                            Get the item difference within the transaction.
- conf-get           [<item>...]                            Get the item data within the transaction.
- conf-set            <item>  [<data>...]                   Set the item data within the transaction.
- conf-unset         [<item>] [<data>...]                   Unset the item data within the transaction.
+
+ zone-reload        [<zone>...]
+ zone-refresh       [<zone>...]
+ zone-notify        [<zone>...]
+ zone-retransfer    [<zone>...]
+ zone-flush         [<zone>...] [<filter>...]
+data: out-dir
+flag: `F` 
+
+ zone-backup        [<zone>...] [<filter>...] +backupdir <dir>
+ zone-restore       [<zone>...] [<filter>...] +backupdir <dir>
+ zone-sign          [<zone>...]
+ zone-validate      [<zone>...]
+ zone-keys-load     [<zone>...]
+ zone-key-rollover   <zone> ksk|zsk
+ zone-ksk-submitted  <zone>...
+ zone-freeze        [<zone>...]
+ zone-thaw          [<zone>...]
+ zone-xfr-freeze    [<zone>...]
+ zone-xfr-thaw      [<zone>...]
+
+ zone-read          <zone> [<owner> [<type>]]
+ zone-begin         <zone>...
+ zone-commit        <zone>...
+ zone-abort         <zone>...
+ zone-diff          <zone>
+ zone-get           <zone> [<owner> [<type>]]
+ zone-set           <zone>  <owner> [<ttl>] <type> <rdata>
+ zone-unset         <zone>  <owner> [<type> [<rdata>]]
+ zone-purge         <zone>... [<filter>...]
+ zone-stats         <zone> [<module>[.<counter>]]
+
+ conf-list          [<item>...]
+ conf-read          [<item>...]
+ conf-begin         [+benevolent]
+ conf-commit
+ conf-abort
+ conf-diff          [<item>...]
+ conf-get           [<item>...]
+ conf-set            <item>  [<data>...]
+ conf-unset         [<item>] [<data>...]
 
 ## Probe module<a id="probe module"></a>
 
