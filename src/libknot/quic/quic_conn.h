@@ -106,8 +106,12 @@ typedef struct knot_quic_cid {
 	struct knot_quic_cid *next;
 } knot_quic_cid_t;
 
+typedef enum {
+	KNOT_QUIC_TABLE_CLIENT_ONLY = (1 << 0),
+} knot_quic_table_flag_t;
+
 typedef struct knot_quic_table {
-	uint32_t flags; // unused yet
+	knot_quic_table_flag_t flags;
 	size_t size;
 	size_t usage;
 	size_t pointers;

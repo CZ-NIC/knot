@@ -631,6 +631,10 @@ int knot_quic_handle(knot_quic_table_t *table, knot_quic_reply_t *reply,
 		goto finish;
 	}
 
+	if (conn == NULL && (table->flags & KNOT_QUIC_TABLE_CLIENT_ONLY)) {
+		return KNOT_EOK;
+	}
+
 	if (conn != NULL && (conn->flags & KNOT_QUIC_CONN_BLOCKED)) {
 		return KNOT_EOK;
 	}
