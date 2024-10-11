@@ -237,7 +237,7 @@ The following arguments are timestamps of key lifetime (see :ref:`DNSSEC Key sta
   Key still used for signing, but another key is active (only for KSK or algorithm rollover).
 
 **retire**
-  Key still published, but no longer used for signing.
+  Key still published (only if ZSK), but no longer used for signing.
 
 **post_active**
   Key no longer published, but still used for signing (only for algorithm rollover).
