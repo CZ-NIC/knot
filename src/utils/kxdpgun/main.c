@@ -813,8 +813,6 @@ void *xdp_gun_thread(void *_ctx)
 							}
 						}
 						if (!(conn->flags & KNOT_QUIC_CONN_HANDSHAKE_DONE) && conn->streams_count == -1) {
-							knot_quic_table_rem(conn, quic_table);
-							knot_quic_cleanup(&conn, 1);
 							continue;
 						}
 						assert(conn->streams_count > 0);
