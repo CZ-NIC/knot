@@ -82,7 +82,7 @@ Examples
 
 Last (most recent) 5 changes without colors::
 
-  $ kjournalprint -nl 5 /var/lib/knot/journal example.com.
+  $ kjournalprint -xl 5 /var/lib/knot/journal example.com.
 
 See Also
 --------
