@@ -902,7 +902,13 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 
 	int ret = KNOT_EOK;
 
+	conf_val_t val = conf_zone_get(conf, C_DNSSEC_SIGNING, update->zone->name);
+	bool dnssec = conf_bool(&val);
+
 	if ((update->flags & UPDATE_INCREMENTAL) && zone_update_no_change(update)) {
+		if (dnssec && (update->flags & UPDATE_SIGNED_FULL)) {
+			zone_set_flag(update->zone, ZONE_LAST_SIGN_OK);
+		}
 		zone_update_clear(update);
 		return KNOT_EOK;
 	}
@@ -915,9 +921,6 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
-
-	conf_val_t val = conf_zone_get(conf, C_DNSSEC_SIGNING, update->zone->name);
-	bool dnssec = conf_bool(&val);
 
 	conf_val_t thr = conf_zone_get(conf, C_ADJUST_THR, update->zone->name);
 	if ((update->flags & (UPDATE_HYBRID | UPDATE_FULL))) {
@@ -970,6 +973,10 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 			log_zone_warning(update->zone->name,
 			                 "unable to save lastsigned serial, "
 			                 "future transfers might be broken");
+		}
+
+		if ((update->flags & UPDATE_SIGNED_FULL)) {
+			zone_set_flag(update->zone, ZONE_LAST_SIGN_OK);
 		}
 	}
 
