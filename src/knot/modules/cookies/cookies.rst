@@ -63,7 +63,7 @@ Module reference
       - id: STR
         secret-lifetime: TIME
         badcookie-slip: INT
-        secret: STR | HEXSTR
+        secret: STR | HEXSTR ...
 
 .. _mod-cookies_id:
 
@@ -106,5 +106,8 @@ secret
 Use this option to set the Server Secret manually. If this option is used, the
 Server Secret remains the same until changed manually and the :ref:`mod-cookies_secret-lifetime` option is ignored.
 The size of the Server Secret currently MUST BE 16 bytes, or 32 hexadecimal characters.
+
+It's possible to specify a second Server Secret, which is used for the fallback when
+the cookie verification with the first Server Secret fails (secret rollover).
 
 *Default:* not set
