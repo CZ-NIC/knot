@@ -34,17 +34,26 @@
 const yp_item_t cookies_conf[] = {
 	{ MOD_SECRET_LIFETIME, YP_TINT, YP_VINT = { 1, 36*24*3600, 26*3600, YP_STIME } },
 	{ MOD_BADCOOKIE_SLIP,  YP_TINT, YP_VINT = { 1, INT32_MAX, 1 } },
-	{ MOD_SECRET,          YP_THEX, YP_VNONE },
+	{ MOD_SECRET,          YP_THEX, YP_VNONE, YP_FMULTI },
 	{ NULL }
 };
 
 int cookies_conf_check(knotd_conf_check_args_t *args)
 {
 	knotd_conf_t conf = knotd_conf_check_item(args, MOD_SECRET);
-	if (conf.count == 1 && conf.single.data_len != KNOT_EDNS_COOKIE_SECRET_SIZE) {
-		args->err_str = "the length of the cookie secret "
-		                "MUST BE 16 bytes (32 HEX characters)";
+	if (conf.count > 2) {
+		args->err_str = "up to two cookie secrets are allowed at"
+		                "the time";
 		return KNOT_EINVAL;
+	}
+	for (knotd_conf_val_t *it = conf.multi;
+	     it < conf.multi + conf.count;
+	     ++it) {
+		if (it->data_len != KNOT_EDNS_COOKIE_SECRET_SIZE) {
+			args->err_str = "the length of the cookie secret "
+		                "MUST BE 16 bytes (32 HEX characters)";
+			return KNOT_EINVAL;
+		}
 	}
 	return KNOT_EOK;
 }
@@ -53,11 +62,12 @@ typedef struct {
 	struct {
 		knot_atomic_uint64_t variable;
 		uint64_t constant;
-	} secret;
+	} secret[2];
 	pthread_t update_secret;
 	uint32_t secret_lifetime;
 	uint32_t badcookie_slip;
 	knot_atomic_uint16_t badcookie_ctr; // Counter for BADCOOKIE answers.
+	uint8_t secret_cnt;
 } cookies_ctx_t;
 
 static void update_ctr(cookies_ctx_t *ctx)
@@ -82,7 +92,7 @@ static int generate_secret(cookies_ctx_t *ctx)
 		return ret;
 	}
 
-	ATOMIC_SET(ctx->secret.variable, new_secret);
+	ATOMIC_SET(ctx->secret[0].variable, new_secret);
 
 	return KNOT_EOK;
 }
@@ -171,13 +181,19 @@ static knotd_state_t cookies_process(knotd_state_t state, knot_pkt_t *pkt,
 		.lifetime_after = 300,
 		.client_addr = knotd_qdata_remote_addr(qdata)
 	};
-	uint64_t current_secret = ATOMIC_GET(ctx->secret.variable);
-	memcpy(params.secret, &current_secret, sizeof(current_secret));
-	memcpy(params.secret + sizeof(current_secret), &ctx->secret.constant,
-	       sizeof(ctx->secret.constant));
 
-	// Compare server cookie.
-	ret = knot_edns_cookie_server_check(&sc, &cc, &params);
+	for (int i = 0; i < ctx->secret_cnt; ++i) {
+		uint64_t current_secret = ATOMIC_GET(ctx->secret[i].variable);
+		memcpy(params.secret, &current_secret, sizeof(current_secret));
+		memcpy(params.secret + sizeof(current_secret), &ctx->secret[i].constant,
+		       sizeof(ctx->secret[i].constant));
+
+		// Compare server cookie.
+		ret = knot_edns_cookie_server_check(&sc, &cc, &params);
+		if (ret == KNOT_EOK) {
+			break;
+		}
+	}
 	if (ret != KNOT_EOK) {
 		// Established connection (TCP or QUIC) is taken into account,
 		// so a normal response is provided.
@@ -255,16 +271,19 @@ int cookies_load(knotd_mod_t *mod)
 
 	// Initialize the server secret.
 	conf = knotd_conf_mod(mod, MOD_SECRET);
-	if (conf.count == 1) {
-		assert(conf.single.data_len == KNOT_EDNS_COOKIE_SECRET_SIZE);
-		memcpy(&ctx->secret, conf.single.data, conf.single.data_len);
+	ctx->secret_cnt = conf.count;
+	for (int i = 0; i < conf.count; ++i) {
+		assert(conf.multi[i].data_len == KNOT_EDNS_COOKIE_SECRET_SIZE);
+		memcpy(&ctx->secret[i], conf.multi[i].data, conf.multi[i].data_len);
 		assert(ctx->secret_lifetime == 0);
-	} else {
-		ret = dnssec_random_buffer((uint8_t *)&ctx->secret, sizeof(ctx->secret));
+	}
+	if (conf.count == 0) {
+		ret = dnssec_random_buffer((uint8_t *)&ctx->secret[0], sizeof(ctx->secret[0]));
 		if (ret != KNOT_EOK) {
 			free(ctx);
 			return ret;
 		}
+		ctx->secret_cnt = 1;
 
 		conf = knotd_conf_mod(mod, MOD_SECRET_LIFETIME);
 		ctx->secret_lifetime = conf.single.integer;

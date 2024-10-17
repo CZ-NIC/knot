@@ -19,13 +19,13 @@ cookieOpcode = 10
 rcodeNoerror = 0
 rcodeBadcookie = 23
 
-def reconfigure(server, zone, secret_lifetime, badcookie_slip):
+def reconfigure(server, zone, badcookie_slip, secret_lifetime = None, secret = None):
     """
     Reconfigure server module.
     """
     server.clear_modules(None)
     server.add_module(None, ModCookies(secret_lifetime=secret_lifetime,
-                      badcookie_slip=badcookie_slip))
+                      badcookie_slip=badcookie_slip, secret=secret))
     server.gen_confile()
     server.reload()
     server.zone_wait(zone)
@@ -54,7 +54,7 @@ t.link(zone, knot)
 
 t.start()
 
-reconfigure(knot, zone, 5, 1)
+reconfigure(knot, zone, 1, secret_lifetime=5)
 
 # Try a query without EDNS
 query = dns.message.make_query("dns1.example.com", "A", use_edns=False)
@@ -72,7 +72,7 @@ response = check_rcode(knot, query, rcodeNoerror, "ONLY CLIENT COOKIE [TCP]", tc
 # Try a query with the received cookie over TCP
 cookieOpt = response.options[0]
 query = dns.message.make_query("dns1.example.com", "A", use_edns=True, options=[cookieOpt])
-check_rcode(knot, query, rcodeNoerror, "CORRECT COOKIE", tcp=True)
+check_rcode(knot, query, rcodeNoerror, "CORRECT COOKIE [TCP]", tcp=True)
 
 # Try a query without a server cookie
 cookieOpt = dns.edns.option_from_wire(cookieOpcode, clientCookie, 0, clientCookieLen)
@@ -93,7 +93,7 @@ cookieOpt = response.options[0]
 query = dns.message.make_query("dns1.example.com", "A", use_edns=True, options=[cookieOpt])
 response = check_rcode(knot, query, rcodeNoerror, "CORRECT COOKIE 2")
 
-reconfigure(knot, zone, 1000000, 4)
+reconfigure(knot, zone, 4, secret_lifetime=1000000)
 
 cookieOpt = dns.edns.option_from_wire(cookieOpcode, clientCookie, 0, clientCookieLen)
 query = dns.message.make_query("dns1.example.com", "A", use_edns=True, options=[cookieOpt]);
@@ -108,5 +108,61 @@ for i in range(3):
 # The 4th attempt should succeed
 query = dns.message.make_query("dns1.example.com", "A", use_edns=True, options=[cookieOpt]);
 check_rcode(knot, query, rcodeBadcookie, "BADCOOKIE")
+
+reconfigure(knot, zone, 1, secret=[b'\xde\xad\xbe\xef\xde\xad\xbe\xef\xde\xad\xbe\xef\xde\xad\xbe\xef'])
+
+# Try a query without a cookie option
+query = dns.message.make_query("dns1.example.com", "A", use_edns=True)
+check_rcode(knot, query, rcodeNoerror, "NO COOKIE OPT 2")
+
+# Try a query without a server cookie over TCP
+cookieOpt = dns.edns.option_from_wire(cookieOpcode, clientCookie, 0, clientCookieLen)
+query = dns.message.make_query("dns1.example.com", "A", use_edns=True, options=[cookieOpt])
+response = check_rcode(knot, query, rcodeNoerror, "ONLY CLIENT COOKIE [TCP] 2", tcp=True)
+
+# Try a query with the received cookie over TCP
+cookieOpt = response.options[0]
+query = dns.message.make_query("dns1.example.com", "A", use_edns=True, options=[cookieOpt])
+check_rcode(knot, query, rcodeNoerror, "CORRECT COOKIE 3", tcp=True)
+
+# Try a query without a server cookie
+cookieOpt = dns.edns.option_from_wire(cookieOpcode, clientCookie, 0, clientCookieLen)
+query = dns.message.make_query("dns1.example.com", "A", use_edns=True, options=[cookieOpt])
+response = check_rcode(knot, query, rcodeBadcookie, "ONLY CLIENT COOKIE 3")
+
+# Try a query with the received cookie
+cookieOpt = response.options[0]
+query = dns.message.make_query("dns1.example.com", "A", use_edns=True, options=[cookieOpt])
+check_rcode(knot, query, rcodeNoerror, "CORRECT COOKIE 4")
+
+reconfigure(knot, zone, 1, secret=[b'\x8b\xad\xf0\x0d\x8b\xad\xf0\x0d\x8b\xad\xf0\x0d\x8b\xad\xf0\x0d', b'\xde\xad\xbe\xef\xde\xad\xbe\xef\xde\xad\xbe\xef\xde\xad\xbe\xef'])
+
+# Try the same cookie after the secret rollover
+response = check_rcode(knot, query, rcodeNoerror, "ROLLOVER 2")
+
+# Try a query with the new received cookie
+cookieOpt = response.options[0]
+query = dns.message.make_query("dns1.example.com", "A", use_edns=True, options=[cookieOpt])
+response = check_rcode(knot, query, rcodeNoerror, "CORRECT COOKIE 5")
+
+# Try a query without a server cookie over TCP
+cookieOpt = dns.edns.option_from_wire(cookieOpcode, clientCookie, 0, clientCookieLen)
+query = dns.message.make_query("dns1.example.com", "A", use_edns=True, options=[cookieOpt])
+response = check_rcode(knot, query, rcodeNoerror, "ONLY CLIENT COOKIE [TCP] 3", tcp=True)
+
+# Try a query with the received cookie over TCP
+cookieOpt = response.options[0]
+query = dns.message.make_query("dns1.example.com", "A", use_edns=True, options=[cookieOpt])
+check_rcode(knot, query, rcodeNoerror, "CORRECT COOKIE [TCP] 2", tcp=True)
+
+# Try a query without a server cookie
+cookieOpt = dns.edns.option_from_wire(cookieOpcode, clientCookie, 0, clientCookieLen)
+query = dns.message.make_query("dns1.example.com", "A", use_edns=True, options=[cookieOpt])
+response = check_rcode(knot, query, rcodeBadcookie, "ONLY CLIENT COOKIE 4")
+
+# Try a query with the received cookie
+cookieOpt = response.options[0]
+query = dns.message.make_query("dns1.example.com", "A", use_edns=True, options=[cookieOpt])
+check_rcode(knot, query, rcodeNoerror, "CORRECT COOKIE 6")
 
 t.end()

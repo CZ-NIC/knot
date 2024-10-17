@@ -46,13 +46,15 @@ Module configuration may be supplied if necessary.
         global-module: mod-cookies/default # Enable DNS Cookies globally
 
 The value of the Server Secret may also be managed manually using the :ref:`mod-cookies_secret` option. In this case
-the server does not automatically regenerate the Server Secret.
+the server does not automatically regenerate the Server Secret. Up to 2 secrets can be entered, the first of which
+is used to generate new and check cookies. The second is only used to check cookies when the first fails. Useful if you
+want to change the secret but don't want to invalidate old, unexpired cookies.
 
 ::
 
     mod-cookies:
         - id: default
-          secret: 0xdeadbeefdeadbeefdeadbeefdeadbeef
+          secret: [ 0xdeadbeefdeadbeefdeadbeefdeadbeef, 0x8badf00d8badf00d8badf00d8badf00d ]
 
 Module reference
 ----------------

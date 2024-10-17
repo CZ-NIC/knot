@@ -285,10 +285,14 @@ class ModCookies(KnotModule):
 
     mod_name = "cookies"
 
-    def __init__(self, secret_lifetime=None, badcookie_slip=None):
+    def __init__(self,
+                 secret_lifetime : int | None = None,
+                 badcookie_slip : int | None = None,
+                 secret : list[bytearray] | None = None):
         super().__init__()
         self.secret_lifetime = secret_lifetime
         self.badcookie_slip = badcookie_slip
+        self.secret = ['0x'+s.hex() for s in secret] if secret else None
 
     def get_conf(self, conf=None):
         if not conf:
@@ -300,6 +304,8 @@ class ModCookies(KnotModule):
             conf.item_str("badcookie-slip", self.badcookie_slip)
         if self.secret_lifetime:
             conf.item_str("secret-lifetime", self.secret_lifetime)
+        if self.secret:
+            conf.item_list("secret", self.secret)
         conf.end()
 
         return conf
