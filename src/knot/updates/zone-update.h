@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -59,6 +59,7 @@ typedef enum {
 	UPDATE_EXTRA_CHSET    = 1 << 6, /*!< Extra changeset in use, to store diff btwn zonefile and final contents. */
 	UPDATE_CHANGED_NSEC   = 1 << 7, /*!< This incremental update affects NSEC or NSEC3 nodes in zone. */
 	UPDATE_NO_CHSET       = 1 << 8, /*!< Avoid using changeset and serialize to journal from diff of bi-nodes. */
+	UPDATE_SIGNED_FULL    = 1 << 9, /*!< Full (non-incremental) zone sign took place during this update. */
 } zone_update_flags_t;
 
 /*!
