@@ -64,6 +64,7 @@ volatile knot_atomic_bool stats_switch = STATS_SUM;
 unsigned global_cpu_aff_start = 0;
 unsigned global_cpu_aff_step = 1;
 
+static pthread_mutex_t stats_lock = PTHREAD_MUTEX_INITIALIZER;
 static kxdpgun_stats_t global_stats = { 0 };
 
 const static xdp_gun_ctx_t ctx_defaults = {
@@ -383,10 +384,10 @@ void *xdp_gun_thread(void *_ctx)
 	 * This mutex prevents libbpf from logging:
 	 * 'libbpf: can't get link by id (5535): Resource temporarily unavailable'
 	 */
-	pthread_mutex_lock(&global_stats.mutex);
+	pthread_mutex_lock(&stats_lock);
 	int ret = knot_xdp_init(&xsk, ctx->dev, ctx->thread_id, ctx->flags,
 	                        LOCAL_PORT_MIN, LOCAL_PORT_MIN, mode, &ctx->xdp_config);
-	pthread_mutex_unlock(&global_stats.mutex);
+	pthread_mutex_unlock(&stats_lock);
 	if (ret != KNOT_EOK) {
 		ERR2("failed to initialize XDP socket#%u on interface %s (%s)",
 		     ctx->thread_id, ctx->dev, knot_strerror(ret));
@@ -767,8 +768,8 @@ void *xdp_gun_thread(void *_ctx)
 				cumulative_stats.since = local_stats.since;
 			}
 
+			pthread_mutex_lock(&stats_lock);
 			size_t collected = collect_stats(&global_stats, &cumulative_stats);
-
 			assert(collected <= ctx->n_threads);
 			if (collected == ctx->n_threads) {
 				STATS_FMT(ctx, &global_stats, tmp_stats_switch);
@@ -778,6 +779,7 @@ void *xdp_gun_thread(void *_ctx)
 				clear_stats(&global_stats);
 				ATOMIC_SET(stats_switch, STATS_SUM);
 			}
+			pthread_mutex_unlock(&stats_lock);
 		}
 		if (dura_exp > duration_us) {
 			usleep(dura_exp - duration_us);
@@ -792,7 +794,9 @@ void *xdp_gun_thread(void *_ctx)
 
 	STATS_THRD(ctx, &local_stats);
 
+	pthread_mutex_lock(&stats_lock);
 	collect_stats(&global_stats, &local_stats);
+	pthread_mutex_unlock(&stats_lock);
 
 cleanup:
 	knot_xdp_deinit(xsk);
@@ -1387,8 +1391,6 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	pthread_mutex_init(&global_stats.mutex, NULL);
-
 	struct sigaction stop_action = { .sa_handler = sigterm_handler };
 	struct sigaction stats_action = { .sa_handler = sigusr_handler };
 	sigaction(SIGINT,  &stop_action, NULL);
@@ -1420,7 +1422,7 @@ int main(int argc, char *argv[])
 		}
 		STATS_FMT(&ctx, &global_stats, STATS_SUM);
 	}
-	pthread_mutex_destroy(&global_stats.mutex);
+	pthread_mutex_destroy(&stats_lock);
 
 	ecode = EXIT_SUCCESS;
 

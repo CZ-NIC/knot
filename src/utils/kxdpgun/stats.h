@@ -54,7 +54,6 @@ typedef struct {
 	uint64_t	errors;
 	uint64_t	lost;
 	uint64_t	rcodes_recv[RCODE_MAX];
-	pthread_mutex_t	mutex;
 } kxdpgun_stats_t;
 
 typedef enum {

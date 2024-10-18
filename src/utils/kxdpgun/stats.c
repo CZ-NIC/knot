@@ -31,30 +31,14 @@ pthread_mutex_t stdout_mtx = PTHREAD_MUTEX_INITIALIZER;
 
 void clear_stats(kxdpgun_stats_t *st)
 {
-	pthread_mutex_lock(&st->mutex);
-	st->since       = 0;
-	st->until       = 0;
-	st->qry_sent    = 0;
-	st->synack_recv = 0;
-	st->ans_recv    = 0;
-	st->finack_recv = 0;
-	st->rst_recv    = 0;
-	st->size_recv   = 0;
-	st->wire_recv   = 0;
-	st->collected   = 0;
-	st->lost        = 0;
-	st->errors      = 0;
-	memset(st->rcodes_recv, 0, sizeof(st->rcodes_recv));
-	pthread_mutex_unlock(&st->mutex);
+	*st = (kxdpgun_stats_t){ 0 };
 }
 
 size_t collect_stats(kxdpgun_stats_t *into, const kxdpgun_stats_t *what)
 {
-	pthread_mutex_lock(&into->mutex);
 	into->since = what->since;
 	collect_periodic_stats(into, what);
 	size_t res = ++into->collected;
-	pthread_mutex_unlock(&into->mutex);
 	return res;
 }
 
@@ -199,8 +183,6 @@ static void format_with_separators(uint64_t num, char output[static 64])
 
 void plain_stats(const xdp_gun_ctx_t *ctx, kxdpgun_stats_t *st, stats_type_t stt)
 {
-	pthread_mutex_lock(&st->mutex);
-
 	printf("%s metrics:\n", (stt == STATS_SUM) ? "cumulative" : "periodic");
 
 	bool recv = !(ctx->flags & KNOT_XDP_FILTER_DROP);
@@ -256,8 +238,6 @@ void plain_stats(const xdp_gun_ctx_t *ctx, kxdpgun_stats_t *st, stats_type_t stt
 	} else {
 		printf("since: %.4fs   until: %.4fs\n", rel_start_us / 1000000, rel_end_us / 1000000);
 	}
-
-	pthread_mutex_unlock(&st->mutex);
 }
 
 /* see https://github.com/DNS-OARC/dns-metrics/blob/main/dns-metrics.schema.json
@@ -267,8 +247,6 @@ void json_stats(const xdp_gun_ctx_t *ctx, kxdpgun_stats_t *st, stats_type_t stt)
 	assert(stt == STATS_PERIODIC || stt == STATS_SUM);
 
 	jsonw_t *w = ctx->jw;
-
-	pthread_mutex_lock(&st->mutex);
 
 	jsonw_object(w, NULL);
 	{
@@ -310,6 +288,4 @@ void json_stats(const xdp_gun_ctx_t *ctx, kxdpgun_stats_t *st, stats_type_t stt)
 		jsonw_end(w);
 	}
 	jsonw_end(w);
-
-	pthread_mutex_unlock(&st->mutex);
 }
