@@ -62,7 +62,7 @@ typedef struct xdp_gun_ctx {
 	uint64_t               qps, duration;
 	uint64_t               runid;
 	uint64_t               stats_start_us;
-	uint32_t               stats_period; // 0 means no periodic stats
+	uint64_t               stats_period_ns; // 0 means no periodic stats
 	unsigned               at_once;
 	uint16_t               msgid;
 	uint16_t               edns_size;

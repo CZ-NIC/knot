@@ -77,7 +77,7 @@ const static xdp_gun_ctx_t ctx_defaults = {
 	.flags = KNOT_XDP_FILTER_UDP | KNOT_XDP_FILTER_PASS,
 	.xdp_config = { .ring_size = 2048 },
 	.jw = NULL,
-	.stats_period = 0,
+	.stats_period_ns = 0,
 };
 
 static void sigterm_handler(int signo)
@@ -742,8 +742,8 @@ void *xdp_gun_thread(void *_ctx)
 		uint64_t duration_ns = timer_end_ns(&timer);
 		duration_us = duration_ns / 1000;
 		uint64_t dura_exp = ((local_stats.qry_sent + periodic_stats.qry_sent) * 1000000) / ctx->qps;
-		if (ctx->thread_id == 0 && ctx->stats_period != 0 && global_stats.collected == 0
-		    && (duration_ns - (periodic_stats.since - local_stats.since)) >= ctx->stats_period) {
+		if (ctx->thread_id == 0 && ctx->stats_period_ns != 0 && global_stats.collected == 0
+		    && (duration_ns - (periodic_stats.since - local_stats.since)) >= ctx->stats_period_ns) {
 			ATOMIC_SET(stats_switch, STATS_PERIODIC);
 			ATOMIC_ADD(stats_trigger, 1);
 		}
@@ -1299,7 +1299,7 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 			assert(optarg);
 			arg = atoi(optarg);
 			if (arg > 0) {
-				ctx->stats_period = arg * 1000000; // convert to ns
+				ctx->stats_period_ns = arg * 1000000ull; // convert to ns
 			} else {
 				ERR2("period must be a positive integer\n");
 				return false;
