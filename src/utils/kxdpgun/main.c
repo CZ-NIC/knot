@@ -1142,7 +1142,8 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 		{ 0 }
 	};
 
-	int opt = 0, arg;
+	int opt = 0;
+	int64_t arg;
 	bool default_at_once = true;
 	double argf;
 	char *argcp, *local_ip = NULL;

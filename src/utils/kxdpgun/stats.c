@@ -96,7 +96,7 @@ void json_stats_header(const xdp_gun_ctx_t *ctx)
 
 		jsonw_ulong(w, "time_units_per_sec", 1000000000);
 		if (ctx->stats_period > 0) {
-			jsonw_double(w, "stats_interval", ctx->stats_period / 1000.0);
+			jsonw_double(w, "stats_interval", ctx->stats_period / 1000000000.0);
 		}
 		// TODO: timeout
 
