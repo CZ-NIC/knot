@@ -44,16 +44,19 @@ size_t collect_stats(kxdpgun_stats_t *into, const kxdpgun_stats_t *what)
 
 void collect_periodic_stats(kxdpgun_stats_t *into, const kxdpgun_stats_t *what)
 {
-	into->until        = what->until;
-	into->qry_sent    += what->qry_sent;
-	into->synack_recv += what->synack_recv;
-	into->ans_recv    += what->ans_recv;
-	into->finack_recv += what->finack_recv;
-	into->rst_recv    += what->rst_recv;
-	into->size_recv   += what->size_recv;
-	into->wire_recv   += what->wire_recv;
-	into->lost        += what->lost;
-	into->errors      += what->errors;
+	into->until         = what->until;
+	into->qry_sent     += what->qry_sent;
+	into->synack_recv  += what->synack_recv;
+	into->ans_recv     += what->ans_recv;
+	into->finack_recv  += what->finack_recv;
+	into->rst_recv     += what->rst_recv;
+	into->resume_init  += what->resume_init;
+	into->resume_estbl += what->resume_estbl;
+	into->resume_fbck  += what->resume_fbck;
+	into->size_recv    += what->size_recv;
+	into->wire_recv    += what->wire_recv;
+	into->lost         += what->lost;
+	into->errors       += what->errors;
 	for (int i = 0; i < RCODE_MAX; i++) {
 		into->rcodes_recv[i] += what->rcodes_recv[i];
 	}
@@ -234,31 +237,34 @@ void json_stats(const xdp_gun_ctx_t *ctx, kxdpgun_stats_t *st, stats_type_t stt)
 		jsonw_ulong(w, "queries", st->qry_sent);
 		jsonw_ulong(w, "responses", st->ans_recv);
 
-		jsonw_object(w, "response_rcodes");
-		{
+		if (st->ans_recv > 0) {
+			jsonw_object(w, "response_rcodes");
 			for (size_t i = 0; i < RCODE_MAX; ++i) {
 				if (st->rcodes_recv[i] > 0) {
 					const knot_lookup_t *rc = knot_lookup_by_id(knot_rcode_names, i);
 					jsonw_ulong(w, (rc == NULL) ? "unknown" : rc->name, st->rcodes_recv[i]);
 				}
 			}
+			jsonw_end(w);
 		}
-		jsonw_end(w);
 
 		jsonw_object(w, "conn_info");
 		{
 			jsonw_str(w, "type", ctx->tcp ? "tcp" : (ctx->quic ? "quic_conn" : "udp"));
-
-			// TODO:
-			// packets_sent
-			// packets_recieved
+			jsonw_ulong(w, "packets_sent", st->qry_sent);
+			jsonw_ulong(w, "packets_recieved", st->ans_recv);
 
 			jsonw_ulong(w, "socket_errors", st->errors);
 			if (ctx->tcp || ctx->quic) {
 				jsonw_ulong(w, "handshakes", st->synack_recv);
-				// TODO: handshakes_failed
-				if (ctx->quic) {
-					// TODO: conn_resumption
+				if (ctx->quic && st->resume_init) {
+					jsonw_object(w, "conn_resumption");
+					{
+						jsonw_ulong(w, "initialized", st->resume_init);
+						jsonw_ulong(w, "established", st->resume_estbl);
+						jsonw_ulong(w, "fallbacks", st->resume_fbck);
+					}
+					jsonw_end(w);
 				}
 			}
 		}

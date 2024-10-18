@@ -476,7 +476,7 @@ void *xdp_gun_thread(void *_ctx)
 							}
 							if (ret == KNOT_EOK) {
 								pkts[i].flags &= ~KNOT_XDP_MSG_SYN; // skip sending respective packet
-								periodic_stats.qry_sent++;
+								++periodic_stats.qry_sent;
 							}
 							free(rl);
 						}
@@ -512,10 +512,12 @@ void *xdp_gun_thread(void *_ctx)
 								0
 							};
 							put_dns_payload(&tmp, false, ctx, &payload_ptr);
+							bool resumed = false;
 							if (newconn->streams_count < 2) {
 								if (EMPTY_LIST(quic_sessions)) {
 									newconn->streams_count = -1;
 								} else {
+									resumed = true;
 									void *session = HEAD(quic_sessions);
 									rem_node(session);
 									(void)knot_quic_session_load(newconn, session);
@@ -523,6 +525,14 @@ void *xdp_gun_thread(void *_ctx)
 							}
 							ret = knot_quic_send(quic_table, newconn, &quic_send_reply, 1,
 							                     (ctx->ignore1 & KXDPGUN_IGNORE_LASTBYTE) ? KNOT_QUIC_SEND_IGNORE_LASTBYTE : 0);
+							if (resumed) {
+								++periodic_stats.resume_init;
+								if (ret == KNOT_EOK) {
+									++periodic_stats.resume_estbl;
+								} else {
+									++periodic_stats.resume_fbck;
+								}
+							}
 						}
 						if (ret == KNOT_EOK) {
 							periodic_stats.qry_sent++;

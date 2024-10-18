@@ -49,6 +49,9 @@ typedef struct {
 	uint64_t	ans_recv;
 	uint64_t	finack_recv;
 	uint64_t	rst_recv;
+	uint64_t	resume_init;
+	uint64_t	resume_estbl;
+	uint64_t	resume_fbck;
 	uint64_t	size_recv;
 	uint64_t	wire_recv;
 	uint64_t	errors;
