@@ -98,7 +98,6 @@ void json_stats_header(const xdp_gun_ctx_t *ctx)
 		if (ctx->stats_period_ns > 0) {
 			jsonw_double(w, "stats_interval", ctx->stats_period_ns / 1000000000.0);
 		}
-		// TODO: timeout
 
 		// mirror the info given by the plaintext printout
 		jsonw_object(w, "additional_info");
@@ -257,31 +256,30 @@ void json_stats(const xdp_gun_ctx_t *ctx, kxdpgun_stats_t *st, stats_type_t stt)
 		jsonw_ulong(w, "queries", st->qry_sent);
 		jsonw_ulong(w, "responses", st->ans_recv);
 
-		jsonw_object(w, "response_rcodes");
-		{
-			for (size_t i = 0; i < RCODE_MAX; ++i) {
-				if (st->rcodes_recv[i] > 0) {
-					const knot_lookup_t *rc = knot_lookup_by_id(knot_rcode_names, i);
-					jsonw_ulong(w, (rc == NULL) ? "unknown" : rc->name, st->rcodes_recv[i]);
+		if (st->ans_recv > 0) {
+			jsonw_object(w, "response_rcodes");
+			{
+				for (size_t i = 0; i < RCODE_MAX; ++i) {
+					if (st->rcodes_recv[i] > 0) {
+						const knot_lookup_t *rc = knot_lookup_by_id(knot_rcode_names, i);
+						jsonw_ulong(w, (rc == NULL) ? "unknown" : rc->name, st->rcodes_recv[i]);
+					}
 				}
 			}
+			jsonw_end(w);
 		}
-		jsonw_end(w);
 
 		jsonw_object(w, "conn_info");
 		{
 			jsonw_str(w, "type", ctx->tcp ? "tcp" : (ctx->quic ? "quic_conn" : "udp"));
-
-			// TODO:
-			// packets_sent
-			// packets_recieved
-
+			jsonw_ulong(w, "packets_sent", st->qry_sent);
+			jsonw_ulong(w, "packets_recieved", st->ans_recv);
 			jsonw_ulong(w, "socket_errors", st->errors);
 			if (ctx->tcp || ctx->quic) {
 				jsonw_ulong(w, "handshakes", st->synack_recv);
 				// TODO: handshakes_failed
 				if (ctx->quic) {
-					// TODO: conn_resumption
+					// TODO: conn resumption stats
 				}
 			}
 		}
