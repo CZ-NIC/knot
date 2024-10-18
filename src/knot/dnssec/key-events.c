@@ -722,8 +722,10 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flags,
 	uint16_t ready_keytag = 0;
 	const char *ready_keyid = NULL;
 	bool allowed_general_roll = ((flags & KEY_ROLL_ALLOW_KSK_ROLL) && (flags & KEY_ROLL_ALLOW_ZSK_ROLL));
+	bool allowed_zsk_only = (!(flags & KEY_ROLL_ALLOW_KSK_ROLL) && (flags & KEY_ROLL_ALLOW_ZSK_ROLL));
 	// generate initial keys if missing
-	if (!key_present(ctx, true, false) && !key_present(ctx, true, true)) {
+	if ((!key_present(ctx, true, false) && !key_present(ctx, true, true)) ||
+	    (allowed_zsk_only && !key_present(ctx, false, true) && !key_present(ctx, true, true))) {
 		if ((flags & KEY_ROLL_ALLOW_KSK_ROLL)) {
 			if (ctx->policy->ksk_shared) {
 				ret = share_or_generate_key(ctx, GEN_KSK_FLAGS, ctx->now, false);
