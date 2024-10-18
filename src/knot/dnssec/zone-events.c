@@ -159,6 +159,8 @@ int knot_dnssec_zone_sign(zone_update_t *update,
 	kdnssec_ctx_t ctx = { 0 };
 	zone_keyset_t keyset = { 0 };
 
+	zone_unset_flag(update->zone, ZONE_LAST_SIGN_OK);
+
 	int result = kdnssec_ctx_init(conf, &ctx, zone_name, zone_kaspdb(update->zone), NULL);
 	if (result != KNOT_EOK) {
 		log_zone_error(zone_name, "DNSSEC, failed to initialize signing context (%s)",
@@ -316,6 +318,7 @@ done:
 		reschedule->next_sign = schedule_next(&ctx, &keyset, ctx.offline_next_time, ctx.stats->expire);
 		reschedule->plan_dnskey_sync = ctx.policy->has_dnskey_sync;
 		update->new_cont->dnssec_expire = ctx.stats->expire;
+		update->flags |= UPDATE_SIGNED_FULL;
 	} else {
 		reschedule->next_sign = knot_dnssec_failover_delay(&ctx);
 		reschedule->next_rollover = 0;
@@ -442,6 +445,9 @@ int knot_dnssec_sign_update(zone_update_t *update, conf_t *conf)
 
 	log_zone_info(zone_name, "DNSSEC, incrementally signed, serial %u, new RRSIGs %zu",
 	              zone_contents_serial(update->new_cont), ctx.stats->rrsig_count);
+	if (!zone_get_flag(update->zone, ZONE_LAST_SIGN_OK, false)) {
+		log_zone_warning(zone_name, "DNSSEC, previous signing had failed");
+	}
 
 done:
 	if (result == KNOT_EOK) {
