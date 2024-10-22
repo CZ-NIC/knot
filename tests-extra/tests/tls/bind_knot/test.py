@@ -23,7 +23,7 @@ zones = t.zone("example.")
 
 t.link(zones, master, slave, ddns=True)
 
-master_pin = master.use_default_cert_key()
+slave_pin = slave.use_default_cert_key()
 
 t.start()
 
@@ -36,29 +36,28 @@ tcpdump_proc = subprocess.Popen(["tcpdump", "-i", "lo", "-w", tcpdump_pcap,
                                 stdout=open(tcpdump_fout, mode="a"), stderr=open(tcpdump_ferr, mode="a"))
 
 try:
+    # XFR over TLS no authentication.
     serials = master.zones_wait(zones)
     slave.zones_wait(zones, serials, equal=True, greater=False)
     t.xfr_diff(master, slave, zones)
 
-    # step 2: rely only on certificate pin
+    t.pause()
+    # Authenticate master via pin.
+    quad = master.download_cert_file(master.keydir)
     master.cert_key_file = None
-    master.cert_key = master_pin
+    master.cert_key = quad[3]
     slave.gen_confile()
     slave.reload()
     t.sleep(3)
     serials = upd_check_zones(master, slave, zones, serials)
 
-    # step 3: master ephemeral, slave by download_cert_file()
-    master.gen_confile()
+    t.pause()
+    # Authenticate slave via cert/hostname.
+    slave.cert_key_file = slave.download_cert_file(master.keydir)
     master.reload()
     t.sleep(3)
-    master.cert_key = None
-    master.cert_key_file = master.download_cert_file(master.keydir)
-    slave.gen_confile()
-    slave.reload()
-    t.sleep(3)
     serials = upd_check_zones(master, slave, zones, serials)
-
+    t.pause()
 finally:
     tcpdump_proc.terminate()
 
