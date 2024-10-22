@@ -16,6 +16,7 @@
 
 #include <pthread.h>
 #include <signal.h>
+#include <stdint.h>
 #include <tap/basic.h>
 
 #include "contrib/atomic.h"
@@ -34,6 +35,7 @@ static volatile knot_atomic_uint64_t counter_add = 0;
 static volatile knot_atomic_uint64_t counter_sub = 0;
 static volatile knot_atomic_uint64_t atomic_var;
 static volatile knot_atomic_ptr_t atomic_var2;
+static uint64_t var_rw = 0;
 static int errors = 0;
 static int uppers;
 static int lowers;
@@ -46,6 +48,30 @@ static int thread_add(struct dthread *thread)
 	for (int i = 0; i < CYCLES1; i++) {
 		ATOMIC_ADD(counter_add, 7);
 		ATOMIC_SUB(counter_sub, 7);
+	}
+
+	return 0;
+}
+
+static int thread_r(struct dthread *thread)
+{
+	for (int i = 0; i < CYCLES1; i++) {
+		uint64_t var_rw_loc = ATOMIC_GET(var_rw);
+		if (var_rw_loc != 0 && var_rw_loc != ~0) {
+			errors++;
+		}
+	}
+
+	return 0;
+}
+
+static int thread_w(struct dthread *thread)
+{
+	for (int i = 0; i < CYCLES1; i++) {
+		uint64_t var_rw_loc = var_rw;
+		if (var_rw_loc != 0 && var_rw_loc != ~0) {
+			errors++;
+		}
 	}
 
 	return 0;
@@ -160,6 +186,49 @@ int main(int argc, char *argv[])
 	is_int(0, errors, "set/get atomicity of ATOMIC_XCHG");
 	is_int(uppers, uppers_count, "atomicity of ATOMIC_XCHG");
 	is_int(lowers, lowers_count, "atomicity of ATOMIC_XCHG");
+
+	// Test platform atomic READ
+	errors = 0;
+	unit = dt_create(THREADS, thread_r, NULL, NULL);
+	dt_start(unit);
+	for (int i = CYCLES1; i; --i) {
+		var_rw = (i % 2) ? ~0 : 0;
+	}
+	dt_join(unit);
+	dt_delete(&unit);
+	if (errors) {
+		diag("atomic: Need to use ATOMIC_SET");
+	} else {
+		diag("atomic: No need to use ATOMIC_SET");
+	}
+
+	// Test platform atomic WRITE
+	unit = dt_create(THREADS, thread_w, NULL, NULL);
+	dt_start(unit);
+	for (int i = CYCLES1; i; --i) {
+		ATOMIC_SET(var_rw, (i % 2) ? ~0 : 0);
+	}
+	dt_join(unit);
+	dt_delete(&unit);
+	if (errors) {
+		diag("atomic: Need to use ATOMIC_GET");
+	} else {
+		diag("atomic: No need to use ATOMIC_GET");
+	}
+
+	// Test platform atomic READ/WRITE
+	unit = dt_create(THREADS, thread_w, NULL, NULL);
+	dt_start(unit);
+	for (int i = CYCLES1; i; --i) {
+		var_rw = (i % 2) ? ~0 : 0;
+	}
+	dt_join(unit);
+	dt_delete(&unit);
+	if (errors) {
+		diag("atomic: Need to use ATOMIC_GET/SET");
+	} else {
+		diag("atomic: No need to use ATOMIC_GET/SET");
+	}
 
 	return 0;
 }
