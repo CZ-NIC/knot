@@ -51,7 +51,7 @@ class KnotCollector(object):
         elif time == "not scheduled" or time == "-":
             return None
         else:
-            match = re.match("([+-])((\d+)D)?((\d+)h)?((\d+)m)?((\d+)s)?", time)
+            match = re.match(r"([+-])((\d+)D)?((\d+)h)?((\d+)m)?((\d+)s)?", time)
             seconds = -1 if match.group(1) == '-' else 1
             if match.group(3):
                 seconds = seconds + 86400 * int(match.group(3))
