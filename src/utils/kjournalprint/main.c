@@ -194,6 +194,9 @@ static int merge_changeset_cb(bool special, const changeset_t *ch, uint64_t time
 		}
 	} else {
 		if (!knot_rrset_equal(params->merged->soa_to, ch->soa_from, false)) {
+			if (params->changes == 1 && params->merged->soa_from == NULL) {
+				return KNOT_EOK; // processed z-i-j, now skipping over to followup changesets
+			}
 			return KNOT_ESEMCHECK;
 		}
 		int ret = changeset_merge(params->merged, ch, 0);
@@ -202,6 +205,7 @@ static int merge_changeset_cb(bool special, const changeset_t *ch, uint64_t time
 		}
 	}
 	params->merged_ts = timestamp;
+	params->changes++;
 	return KNOT_EOK;
 }
 
