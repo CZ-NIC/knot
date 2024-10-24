@@ -439,6 +439,12 @@ finish:
 	free(tcp.iov[0].iov_base);
 	free(tcp.iov[1].iov_base);
 	mp_delete(mm.ctx);
+
+	while (tcp.set.n) {
+		free_tls_ctx(&tcp.set, tcp.set.n - 1);
+		fdset_remove(&tcp.set, tcp.set.n - 1);
+	}
+
 	fdset_clear(&tcp.set);
 
 	return ret;
