@@ -24,6 +24,10 @@
 #include "knot/common/log.h"
 #include "libknot/libknot.h"
 
+static char dbg_buffer[KNOT_DNAME_MAXLEN] = { 0 };
+static char dbg_hex_buffer[3 * sizeof(dbg_buffer)] = { 0 };
+
+
 /*! \brief Temporary debug helper - signal handler. */
 static void dbg_signal_handler(int signum)
 {
@@ -31,16 +35,26 @@ static void dbg_signal_handler(int signum)
 
 	extern dbg_data_t dbg_data;
 	if (dbg_data.valid) {
-		knot_dname_txt_storage_t name_str;
-		(void)knot_dname_to_str(name_str, knot_pkt_qname(dbg_data.qdata->query),
-		                        sizeof(name_str));
+		char *dname_str = knot_dname_to_str(dbg_buffer, dbg_data.dname,
+		                                    sizeof(dbg_buffer));
 
-		char rrtype_str[32];
-		int len = knot_rrtype_to_string(knot_pkt_qtype(dbg_data.qdata->query),
-		                                rrtype_str, sizeof(rrtype_str));
+		char *src, *dst;
+		int remain = sizeof(dbg_hex_buffer);
+		for (src = (char *)dbg_data.dname, dst = dbg_hex_buffer; *src != '\0'; src++) {
+			int n = snprintf(dst, remain, " %02x", *src);
 
-		log_fatal("corrupted glue: name=%s, type=%s",
-		          name_str, (len > 0) ? rrtype_str : "<error>");
+			if (n < remain) {
+				dst += n;
+				remain -= n;
+			} else {    // It didn't fit.
+				snprintf(dst + remain - 1, remain, "+");
+				break;
+			}
+
+		}
+
+		log_fatal("culprit dname: name=%s, hex=%s",
+		          dname_str, dbg_hex_buffer);
 	}
 
 	abort();

@@ -16,11 +16,11 @@
 
 #pragma once
 
-#include "knot/nameserver/internet.h"
+#include "libknot/dname.h"
 
 typedef struct dbg_data_struct {
 	bool valid;
-	knotd_qdata_t *qdata;
+	const knot_dname_t *dname;
 } dbg_data_t;
 
 /*! \brief Temporary debug helper - signal handler setup. */

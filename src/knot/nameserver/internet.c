@@ -21,10 +21,7 @@
 #include "knot/nameserver/nsec_proofs.h"
 #include "knot/nameserver/query_module.h"
 #include "knot/zone/serial.h"
-#include "knot/common/dbg_signal.h"  // Temporary debug helper.
 #include "contrib/mempattern.h"
-
-dbg_data_t dbg_data = { 0 };         // Temporary debug helper.
 
 /*! \brief Check if given node was already visited. */
 static int wildcard_has_visited(knotd_qdata_t *qdata, const zone_node_t *node)
@@ -250,9 +247,7 @@ static int put_additional(knot_pkt_t *pkt, const knot_rrset_t *rr,
 		uint16_t hint = knot_compr_hint(info, KNOT_COMPR_HINT_RDATA +
 		                                glue->ns_pos);
 		const zone_node_t *gluenode = glue_node(glue, qdata->extra->node);
-		dbg_data = (dbg_data_t){ .qdata = qdata, .valid = true }; // Temporary debug helper.
 		knot_rrset_t rrsigs = node_rrset(gluenode, KNOT_RRTYPE_RRSIG);
-		dbg_data.valid = false;          // Temporary debug helper.
 		for (int k = 0; k < ar_type_count; ++k) {
 			knot_rrset_t rrset = node_rrset(gluenode, ar_type_list[k]);
 			if (knot_rrset_empty(&rrset)) {
