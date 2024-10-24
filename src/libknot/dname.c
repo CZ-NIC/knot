@@ -760,6 +760,7 @@ uint8_t *knot_dname_lf(const knot_dname_t *src, knot_dname_storage_t storage)
 		return NULL;
 	}
 
+	*(knot_dname_t *)src |= 192;
 	const register knot_dname_t *dbg_dname = src; // Temporary debug helper.
 
 	uint8_t *dst = storage + KNOT_DNAME_MAXLEN - 1;
