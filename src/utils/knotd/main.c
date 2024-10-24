@@ -32,6 +32,7 @@
 
 #include "libdnssec/crypto.h"
 #include "libknot/libknot.h"
+#include "contrib/dbg_signal.h" /* Temporary debug helper. */
 #include "contrib/strtonum.h"
 #include "contrib/threads.h"
 #include "contrib/time.h"
@@ -39,7 +40,6 @@
 #include "knot/conf/conf.h"
 #include "knot/conf/migration.h"
 #include "knot/conf/module.h"
-#include "knot/common/dbg_signal.h" /* Temporary debug helper. */
 #include "knot/common/dbus.h"
 #include "knot/common/log.h"
 #include "knot/common/process.h"

@@ -35,6 +35,8 @@ libcontrib_la_SOURCES = \
 	contrib/conn_pool.h			\
 	contrib/color.h				\
 	contrib/ctype.h				\
+	contrib/dbg_signal.c			\
+	contrib/dbg_signal.h			\
 	contrib/files.c				\
 	contrib/files.h				\
 	contrib/getline.c			\

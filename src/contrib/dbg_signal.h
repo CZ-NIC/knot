@@ -19,9 +19,11 @@
 #include "libknot/dname.h"
 
 typedef struct dbg_data_struct {
-	bool valid;
 	const knot_dname_t *dname;
 } dbg_data_t;
 
 /*! \brief Temporary debug helper - signal handler setup. */
 void dbg_signal_setup(void);
+
+/*! \brief Temporary debug helper - record the monitored data. */
+void dbg_record(const knot_dname_t *dbg_dname);

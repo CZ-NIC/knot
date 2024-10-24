@@ -27,7 +27,7 @@
 #include "contrib/ctype.h"
 #include "contrib/mempattern.h"
 #include "contrib/tolower.h"
-#include "knot/common/dbg_signal.h"  // Temporary debug helper.
+#include "contrib/dbg_signal.h"  // Temporary debug helper.
 
 dbg_data_t dbg_data = { 0 };         // Temporary debug helper.
 
@@ -781,7 +781,7 @@ uint8_t *knot_dname_lf(const knot_dname_t *src, knot_dname_storage_t storage)
 	*dst = storage + KNOT_DNAME_MAXLEN - 1 - dst;
 	assert(dst >= storage);
 
-	dbg_data = (dbg_data_t){ .dname = dbg_dname, .valid = true }; // Temporary debug helper.
+	dbg_record(dbg_dname); // Temporary debug helper.
 
 	return dst;
 }

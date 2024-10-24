@@ -10,6 +10,8 @@ src/contrib/color.h
 src/contrib/conn_pool.c
 src/contrib/conn_pool.h
 src/contrib/ctype.h
+src/contrib/dbg_signal.c
+src/contrib/dbg_signal.h
 src/contrib/dnstap/convert.c
 src/contrib/dnstap/convert.h
 src/contrib/dnstap/dnstap.c
@@ -561,8 +563,6 @@ src/libzscanner/functions.h
 src/libzscanner/scanner.h
 src/libzscanner/scanner.rl
 src/libzscanner/scanner_body.rl
-src/knot/common/dbg_signal.c
-src/knot/common/dbg_signal.h
 src/utils/common/exec.c
 src/utils/common/exec.h
 src/utils/common/hex.c

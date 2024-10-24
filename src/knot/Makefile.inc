@@ -127,8 +127,6 @@ libknotd_la_SOURCES = \
 	knot/query/requestor.h			\
 	knot/query/tls-requestor.c		\
 	knot/query/tls-requestor.h		\
-	knot/common/dbg_signal.c		\
-	knot/common/dbg_signal.h		\
 	knot/common/dbus.c			\
 	knot/common/dbus.h			\
 	knot/common/evsched.c			\
