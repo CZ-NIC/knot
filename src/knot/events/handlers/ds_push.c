@@ -52,7 +52,9 @@ static int ds_push_begin(knot_layer_t *layer, void *params)
 
 static int parent_soa_produce(struct ds_push_data *data, knot_pkt_t *pkt)
 {
-	assert(data->parent_query[0] != '\0');
+	if (data->parent_query[0] == '\0') {
+		return KNOT_STATE_FAIL;
+	}
 	data->parent_query = knot_dname_next_label(data->parent_query);
 
 	int ret = knot_pkt_put_question(pkt, data->parent_query, KNOT_CLASS_IN, KNOT_RRTYPE_SOA);

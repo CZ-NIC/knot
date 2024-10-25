@@ -272,7 +272,8 @@ static bool adding_to_cname(const knot_dname_t *owner,
 	if (node == NULL) {
 		// Node did not exist before update, juch check DNAMEs above.
 
-		while ((owner = knot_dname_next_label(owner)) != NULL &&
+		while (owner[0] != '\0' &&
+		       (owner = knot_dname_next_label(owner)) != NULL &&
 		       (node = zone_update_get_node(update, owner)) == NULL);
 
 		for ( ; node != NULL; node = node->parent) {
