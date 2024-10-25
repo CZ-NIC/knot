@@ -14,6 +14,10 @@ zone = t.zone("flags.")
 
 t.link(zone, knot, bind)
 
+knot_root = t.server("knot")
+root = t.zone(".")
+t.link(root, knot_root)
+
 def query_test(knot, bind, dnssec):
 
     ''' Negative answers. '''
@@ -31,6 +35,11 @@ def query_test(knot, bind, dnssec):
     # Check that SOA TTL is limited by minimum-ttl field.
     resp = knot.dig("nxdomain.flags", "A", udp=True, dnssec=dnssec)
     resp.check_auth_soa_ttl(dnssec=False)
+
+    # Query for the root DS if the root zone is not available
+    resp = knot.dig(".", "DS", udp=True, dnssec=dnssec)
+    resp.check(rcode="REFUSED", flags="QR", noflags="AA TC AD RA")
+    resp.cmp(bind)
 
     ''' Positive answers. '''
 
@@ -355,6 +364,12 @@ def query_test(knot, bind, dnssec):
     resp.check(rcode="NOERROR")
     resp.cmp(bind)
 
+def query_root(knot):
+    # NODATA response to the root DS query if the root zone is available
+    resp = knot.dig(".", "DS", udp=True)
+    resp.check(rcode="NOERROR", flags="QR AA", noflags="TC AD RA")
+    resp.check_count(0, "DS")
+
 t.start()
 
 serial = bind.zone_wait(zone)
@@ -384,5 +399,7 @@ knot.reload()
 
 serial = bind.zone_wait(zone, serial)
 query_test(knot, bind, True)
+
+query_root(knot_root)
 
 t.end()
