@@ -84,4 +84,5 @@ typedef struct xdp_gun_ctx {
 	jsonw_t                *jw;
 	char                   **argv;
 	knot_xdp_config_t      xdp_config;
+	uint8_t                latency_mode;
 } xdp_gun_ctx_t;

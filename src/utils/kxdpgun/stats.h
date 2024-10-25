@@ -41,6 +41,9 @@
 #define STATS_FMT(ctx, stats, stats_type) \
 	((JSON_MODE(*(ctx)) ? json_stats : plain_stats)((ctx), (stats), (stats_type)))
 
+#define LATENCY_BUCKET_SIZE (512)
+#define LATENCY_BUCKET_COUNT ((UINT16_MAX + 1) / LATENCY_BUCKET_SIZE)
+
 typedef struct {
 	size_t		collected;
 	uint64_t	since, until; // nanosecs UNIX
@@ -54,6 +57,7 @@ typedef struct {
 	uint64_t	errors;
 	uint64_t	lost;
 	uint64_t	rcodes_recv[RCODE_MAX];
+	uint64_t	latency_histogram[LATENCY_BUCKET_COUNT];
 	pthread_mutex_t	mutex;
 } kxdpgun_stats_t;
 
@@ -61,6 +65,20 @@ typedef enum {
 	STATS_PERIODIC,
 	STATS_SUM,
 } stats_type_t;
+
+static const struct {
+	const char* units;
+	uint32_t divider;
+	uint16_t multiplier;
+} latency_units[] = {
+	{"s",  1000000, 1},
+	{"ms", 100000,  100},
+	{"ms", 10000,   10},
+	{"ms", 1000,    1},
+	{"us", 100,     100},
+	{"us", 10,      10},
+	{"us", 1,       1},
+};
 
 void clear_stats(kxdpgun_stats_t *st);
 size_t collect_stats(kxdpgun_stats_t *into, const kxdpgun_stats_t *what);

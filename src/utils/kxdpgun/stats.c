@@ -27,6 +27,8 @@
 #include "utils/kxdpgun/main.h"
 #include "utils/kxdpgun/stats.h"
 
+#define IDX_TO_SCALAR(idx) ((((idx) * LATENCY_BUCKET_SIZE) + (LATENCY_BUCKET_SIZE / 2.f)) / 1000.f)
+
 pthread_mutex_t stdout_mtx = PTHREAD_MUTEX_INITIALIZER;
 
 void clear_stats(kxdpgun_stats_t *st)
@@ -45,6 +47,7 @@ void clear_stats(kxdpgun_stats_t *st)
 	st->lost        = 0;
 	st->errors      = 0;
 	memset(st->rcodes_recv, 0, sizeof(st->rcodes_recv));
+	memset(st->latency_histogram, 0, sizeof(st->latency_histogram));
 	pthread_mutex_unlock(&st->mutex);
 }
 
@@ -72,6 +75,9 @@ void collect_periodic_stats(kxdpgun_stats_t *into, const kxdpgun_stats_t *what)
 	into->errors      += what->errors;
 	for (int i = 0; i < RCODE_MAX; i++) {
 		into->rcodes_recv[i] += what->rcodes_recv[i];
+	}
+	for (int i = 0; i < LATENCY_BUCKET_COUNT; i++) {
+		into->latency_histogram[i] += what->latency_histogram[i];
 	}
 }
 
@@ -180,6 +186,44 @@ void json_thrd_summary(const xdp_gun_ctx_t *ctx, const kxdpgun_stats_t *st)
 	pthread_mutex_unlock(&stdout_mtx);
 }
 
+static void count_latency(const uint64_t *histogram, const uint64_t count,
+                          float *min, float *average, float *max, float *lq,
+			  float *median, float *uq)
+{
+	uint64_t counter = 0;
+	size_t quartil_idx = 0;
+	double avarage_counter = 0.;
+	const float quartil_count = count / 4.f;
+	float *quartil_results[] = {lq, median, uq};
+	bool min_flag = false;
+
+	*min = 0.f;
+	*average = 0.f;
+	*max = 0.f;
+	*lq = 0.f;
+	*median = 0.f;
+	*uq = 0.f;
+
+	for (int i = 0; i < LATENCY_BUCKET_COUNT; ++i) {
+		// min, average and max
+		if (histogram[i] > 0) {
+			if (min_flag == false) {
+				*min = IDX_TO_SCALAR(i);
+				min_flag = true;
+			}
+			*max = IDX_TO_SCALAR(i);
+			avarage_counter += (histogram[i] * IDX_TO_SCALAR(i)) / count;
+		}
+		// lower quartil, median and upper quartil
+		counter += histogram[i];
+		while (quartil_idx < 3 && counter > ((quartil_idx + 1) * quartil_count)) {
+			*quartil_results[quartil_idx] = IDX_TO_SCALAR(i);
+			quartil_idx++;
+		}
+	}
+	*average = avarage_counter;
+}
+
 void plain_stats(const xdp_gun_ctx_t *ctx, kxdpgun_stats_t *st, stats_type_t stt)
 {
 	pthread_mutex_lock(&st->mutex);
@@ -226,6 +270,21 @@ void plain_stats(const xdp_gun_ctx_t *ctx, kxdpgun_stats_t *st, stats_type_t stt
 				printf("responded %s: %.*s%"PRIu64"\n",
 				       rcname, space, "         ", st->rcodes_recv[i]);
 			}
+		}
+
+		if (ctx->latency_mode > 0) {
+			float min, average, max, lq, median, uq;
+			count_latency(st->latency_histogram, st->ans_recv, &min,
+			              &average, &max, &lq, &median, &uq);
+			const uint16_t multiplier = latency_units[ctx->latency_mode - 1].multiplier;
+			const char *units = latency_units[ctx->latency_mode - 1].units;
+			printf("latency [min, average, max, lower-quartile, median, upper-quartile]: %.2f %s, %.2f %s, %.2f %s, %.2f %s, %.2f %s, %.2f %s\n",
+			       min * multiplier,     units,
+			       average * multiplier, units,
+			       max * multiplier,     units,
+			       lq * multiplier,      units,
+			       median * multiplier,  units,
+			       uq * multiplier,      units);
 		}
 	}
 	if (stt == STATS_SUM) {

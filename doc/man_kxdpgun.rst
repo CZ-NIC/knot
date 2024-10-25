@@ -124,6 +124,16 @@ Options
 
   These reports contain only metrics collected in the given period.
 
+**-a**, **--latency\[\ **=**\ *latency_mode*\]
+  Prints the statistics of the estimated response delay (the deviation is
+  +-0.25 units of measurement). The *latency_mode* is a number from 1 to 7
+  (inclusive), where 1 is the delay in seconds, 2 in hundreds of milliseconds,
+  3 in tens of milliseconds and so on up to 7 - microseconds.
+
+  Protocols other than UDP are not supported.
+
+  The default is 4, the latency in milliseconds.
+
 **-h**, **--help**
   Print the program help.
 

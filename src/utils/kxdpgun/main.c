@@ -78,6 +78,7 @@ const static xdp_gun_ctx_t ctx_defaults = {
 	.xdp_config = { .ring_size = 2048 },
 	.jw = NULL,
 	.stats_period_ns = 0,
+	.latency_mode = 0,
 };
 
 static void sigterm_handler(int signo)
@@ -255,7 +256,10 @@ static unsigned alloc_pkts(knot_xdp_msg_t *pkts, struct knot_xdp_socket *xsk,
 inline static bool check_dns_payload(struct iovec *payl, xdp_gun_ctx_t *ctx,
                                      kxdpgun_stats_t *st)
 {
-	if (payl->iov_len < KNOT_WIRE_HEADER_SIZE ||
+	if (payl->iov_len < KNOT_WIRE_HEADER_SIZE) {
+		return false;
+	}
+	if (ctx->latency_mode == 0 &&
 	    memcmp(payl->iov_base, &ctx->msgid, sizeof(ctx->msgid)) != 0) {
 		return false;
 	}
@@ -532,9 +536,18 @@ void *xdp_gun_thread(void *_ctx)
 #endif // ENABLE_QUIC
 					break;
 				} else {
-					for (uint32_t i = 0; i < alloced; i++) {
-						put_dns_payload(&pkts[i].payload, false,
-						                ctx, &payload_ptr);
+					if (ctx->latency_mode > 0) {
+						const uint32_t divider = latency_units[ctx->latency_mode - 1].divider;
+						uint16_t ts = (timestamp_ns() / divider) % UINT16_MAX;
+						ts = htons(ts);
+						for (uint32_t i = 0; i < alloced; i++) {
+							put_dns_payload(&pkts[i].payload, false, ctx, &payload_ptr);
+							memcpy(pkts[i].payload.iov_base, &ts, sizeof(ts));
+						}
+					} else {
+						for (uint32_t i = 0; i < alloced; i++) {
+							put_dns_payload(&pkts[i].payload, false, ctx, &payload_ptr);
+						}
 					}
 				}
 
@@ -722,8 +735,23 @@ void *xdp_gun_thread(void *_ctx)
 					(void)knot_xdp_send_finish(xsk);
 #endif // ENABLE_QUIC
 				} else {
-					for (uint32_t i = 0; i < recvd; i++) {
-						check_dns_payload(&pkts[i].payload, ctx, &periodic_stats);
+					if (ctx->latency_mode > 0) {
+						const uint32_t divider = latency_units[ctx->latency_mode - 1].divider;
+						uint16_t end_ts = (timestamp_ns() / divider) % UINT16_MAX;
+						for (uint32_t i = 0; i < recvd; i++) {
+							if (!check_dns_payload(&pkts[i].payload, ctx, &periodic_stats)) {
+								continue;
+							}
+							uint16_t start_ts = 0;
+							memcpy(&start_ts, pkts[i].payload.iov_base, sizeof(start_ts));
+							start_ts = ntohs(start_ts);
+							uint16_t diff_ts = (end_ts - start_ts);
+							periodic_stats.latency_histogram[diff_ts / LATENCY_BUCKET_SIZE]++;
+						}
+					} else {
+						for (uint32_t i = 0; i < recvd; i++) {
+							check_dns_payload(&pkts[i].payload, ctx, &periodic_stats);
+						}
 					}
 				}
 				periodic_stats.wire_recv += wire;
@@ -1012,6 +1040,7 @@ static void print_help(void)
 	       " -G, --qlog <path>          "SPACE"Output directory for qlog (useful for QUIC only).\n"
 	       " -j, --json                 "SPACE"Output statistics in json.\n"
 	       " -S, --stats-period <period>"SPACE"Enable periodic statistics printout in milliseconds.\n"
+	       " -a, --latency[=units]      "SPACE"Prints the statistics of the estimated response delay (default 4 - milliseconds).\n"
 	       " -h, --help                 "SPACE"Print the program help.\n"
 	       " -V, --version              "SPACE"Print the program version.\n"
 	       "\n"
@@ -1136,6 +1165,7 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 		{ "qlog",         required_argument, NULL, 'G' },
 		{ "json",         no_argument,       NULL, 'j' },
 		{ "stats-period", required_argument, NULL, 'S' },
+		{ "latency",      optional_argument, NULL, 'a' },
 		{ 0 }
 	};
 
@@ -1311,6 +1341,18 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 				return false;
 			}
 			break;
+		case 'a':
+			if (optarg == NULL) {
+				ctx->latency_mode = 4;
+				break;
+			}
+			int latency_mode = atoi(optarg);
+			if (latency_mode <= 0 || latency_mode > 7) {
+				ERR2("latency mode is out of range");
+				return false;
+			}
+			ctx->latency_mode = latency_mode;
+			break;
 		default:
 			print_help();
 			return false;
@@ -1342,6 +1384,12 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 		ctx->qps = ctx->n_threads;
 	}
 	ctx->qps /= ctx->n_threads;
+
+	if (ctx->latency_mode > 0 && ctx->quic == true) {
+		WARN2("Latency estimation available only for UDP");
+		print_help();
+		return false;
+	}
 
 	return true;
 }
