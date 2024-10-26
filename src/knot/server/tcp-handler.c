@@ -86,8 +86,11 @@ static void update_tcp_conf(tcp_context_t *tcp)
 
 static void free_tls_ctx(fdset_t *set, int idx)
 {
-	void *tls_conn = *fdset_ctx2(set, idx);
-	knot_tls_conn_del(tls_conn);
+	void **tls_conn = fdset_ctx2(set, idx);
+	if (*tls_conn != NULL) {
+		knot_tls_conn_del(*tls_conn);
+		*tls_conn = NULL;
+	}
 }
 
 /*! \brief Sweep TCP connection. */
@@ -439,6 +442,10 @@ finish:
 	free(tcp.iov[0].iov_base);
 	free(tcp.iov[1].iov_base);
 	mp_delete(mm.ctx);
+
+	for (int i = 0; i < tcp.set.n; i++) {
+		free_tls_ctx(&tcp.set, i);
+	}
 	fdset_clear(&tcp.set);
 
 	return ret;
