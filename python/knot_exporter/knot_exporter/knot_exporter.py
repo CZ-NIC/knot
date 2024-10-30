@@ -46,7 +46,7 @@ class KnotCollector(object):
         self.collect_zone_serial = collect_zone_serial
 
     def convert_state_time(time):
-        if time == "pending" or time == "running" or time == "frozen":
+        if time.startswith(("pending", "running", "frozen")):
             return 0
         elif time == "not scheduled" or time == "-":
             return None
