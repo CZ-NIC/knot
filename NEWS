@@ -1,11 +1,32 @@
+Knot DNS 3.4.2 (2024-10-31)
+===========================
+
+Improvements:
+-------------
+ - knotd: new warning log upon every incremental update if previous zone signing failed
+ - mod-cookies: support for two secret values specification
+ - keymgr: key pregenerate works even when a KSK exists
+ - libs: upgraded embedded libngtcp2 to 1.8.1
+
+Bugfixes:
+---------
+ - knotd: server can crash when processing just a terminal label as QNAME
+ - knotd: failed to compile if no atomic operations available
+ - kjournalprint: failed to merge zone-in-journal if followed by a non-first changeset
+ - knot-exporter: faulty escape sequence in time value parsing
+ - knot-exporter: failed to parse zone-status output
+ - kxdpgun: periodic statistics doesn't work correctly for longer time periods
+
 Knot DNS 3.4.1 (2024-10-14)
 ===========================
 
 Features:
 ---------
+ - knotd: 
  - knotd: ACL configuration allows protocol specification (see 'acl.protocol')
  - knotc: support for benevolent zone updates (see zone-begin with '+benevolent')
  - knotd: implemented TLS session resumption
+ - knotd: pending TLS connections leak memory when the server shuts down
  - kjournalprint: added print merged changesets mode (see '-M')
  - libknot: added NXNAME meta type (Thanks to Jan Včelák)
 
