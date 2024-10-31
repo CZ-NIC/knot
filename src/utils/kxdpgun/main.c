@@ -259,9 +259,11 @@ inline static bool check_dns_payload(struct iovec *payl, xdp_gun_ctx_t *ctx,
 	if (payl->iov_len < KNOT_WIRE_HEADER_SIZE) {
 		return false;
 	}
-	if (ctx->latency_mode == 0 &&
-	    memcmp(payl->iov_base, &ctx->msgid, sizeof(ctx->msgid)) != 0) {
+	if ((ctx->latency_mode == 0 ||
+	    (ctx->tcp == true || ctx->quic == true))) {
+	    if (memcmp(payl->iov_base, &ctx->msgid, sizeof(ctx->msgid)) != 0) {
 		return false;
+	    }
 	}
 	st->rcodes_recv[((uint8_t *)payl->iov_base)[3] & 0x0F]++;
 	st->size_recv += payl->iov_len;
@@ -615,18 +617,38 @@ void *xdp_gun_thread(void *_ctx)
 						default:
 							break;
 						}
+
+						uint64_t end_ts;
+						if (ctx->latency_mode > 0) {
+							const uint32_t divider = latency_units[ctx->latency_mode - 1].divider;
+							end_ts = timestamp_ns() / divider;
+						}
 						for (size_t j = 0; rl->inbf != NULL && j < rl->inbf->n_inbufs; j++) {
-							if (check_dns_payload(&rl->inbf->inbufs[j], ctx, &periodic_stats)) {
-								if (!(ctx->ignore1 & KXDPGUN_IGNORE_CLOSE)) {
-									rl->answer = XDP_TCP_CLOSE;
-								} else if ((ctx->ignore1 & KXDPGUN_REUSE_CONN)) {
-									knot_tcp_relay_t *rl_copy = malloc(sizeof(*rl));
-									memcpy(rl_copy, rl, sizeof(*rl));
-									ptrlist_add(&reuse_conns, rl_copy, NULL);
-									rl_copy->answer = XDP_TCP_NOOP;
-									rl_copy->auto_answer = 0;
+							if (!check_dns_payload(&rl->inbf->inbufs[j], ctx, &periodic_stats)) {
+								continue;
+							}
+
+							if (!(ctx->ignore1 & KXDPGUN_IGNORE_CLOSE)) {
+								rl->answer = XDP_TCP_CLOSE;
+							} else if ((ctx->ignore1 & KXDPGUN_REUSE_CONN)) {
+								knot_tcp_relay_t *rl_copy = malloc(sizeof(*rl));
+								memcpy(rl_copy, rl, sizeof(*rl));
+								ptrlist_add(&reuse_conns, rl_copy, NULL);
+								rl_copy->answer = XDP_TCP_NOOP;
+								rl_copy->auto_answer = 0;
+							}
+
+							if (ctx->latency_mode > 0) {
+								const uint32_t divider = latency_units[ctx->latency_mode - 1].divider;
+								uint64_t start_ts = rl->conn->established_ts / divider;
+								uint64_t diff_ts = end_ts - start_ts;
+								if (diff_ts <= UINT16_MAX) {
+									periodic_stats.latency_histogram[diff_ts / LATENCY_BUCKET_SIZE]++;
+								} else {
+									printf("latency: out of range\n");
 								}
 							}
+
 						}
 					}
 

@@ -38,6 +38,13 @@ static uint32_t get_timestamp(void)
 	return res & 0xffffffff; // overflow does not matter since we are working with differences
 }
 
+static uint64_t timestamp_ns(void)
+{
+	struct timespec ts;
+	clock_gettime(CLOCK_REALTIME, &ts);
+	return ((uint64_t)ts.tv_sec * 1000000000) + ts.tv_nsec;
+}
+
 static size_t sockaddr_data_len(const struct sockaddr_in6 *rem, const struct sockaddr_in6 *loc)
 {
 	assert(rem->sin6_family == loc->sin6_family);
@@ -227,6 +234,7 @@ static void conn_init_from_msg(knot_tcp_conn_t *conn, knot_xdp_msg_t *msg)
 	conn->last_active = get_timestamp();
 	conn->state = XDP_TCP_NORMAL;
 	conn->establish_rtt = 0;
+	conn->established_ts = timestamp_ns();
 
 	memset(&conn->inbuf, 0, sizeof(conn->inbuf));
 	memset(&conn->outbufs, 0, sizeof(conn->outbufs));

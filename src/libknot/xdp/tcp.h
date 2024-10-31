@@ -70,6 +70,7 @@ typedef struct knot_tcp_conn {
 	struct sockaddr_in6 ip_loc;
 	uint8_t last_eth_rem[ETH_ALEN];
 	uint8_t last_eth_loc[ETH_ALEN];
+	uint64_t established_ts;
 	uint16_t mss;
 	uint8_t window_scale;
 	uint32_t seqno;
