@@ -39,6 +39,9 @@ BuildRequires:	pkgconfig(libmnl)
 BuildRequires:	pkgconfig(libnghttp2)
 BuildRequires:	pkgconfig(libsystemd)
 BuildRequires:	pkgconfig(systemd)
+%if 0%{?fedora} || 0%{?rhel}
+BuildRequires:	softhsm
+%endif
 # dnstap dependencies
 BuildRequires:	pkgconfig(libfstrm)
 BuildRequires:	pkgconfig(libprotobuf-c)
