@@ -76,6 +76,7 @@ master.dnssec(zone).dnskey_ttl = 3
 master.dnssec(zone).zsk_lifetime = 16
 master.dnssec(zone).propagation_delay = 3
 master.dnssec(zone).nsec3 = True
+master.dnssec(zone).nsec3_salt_len = 8
 master.dnssec(zone).nsec3_salt_lifetime = -1
 
 t.start()
