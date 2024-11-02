@@ -994,7 +994,7 @@ static int key_sort(const void *a, const void *b)
 
 static bool key_missing(kdnssec_ctx_t *ctx, const knot_kasp_key_t *key)
 {
-	return DNSSEC_EOK !=
+	return !key->is_pub_only && DNSSEC_EOK !=
 	       dnssec_keystore_get_private(ctx->keystore, key->id, key->key);
 }
 
