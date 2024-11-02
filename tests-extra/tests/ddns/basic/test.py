@@ -710,6 +710,7 @@ master_nsec3 = t.server("knot")
 t.link(zone, master_nsec3, ddns=True)
 master_nsec3.dnssec(zone).enable = True
 master_nsec3.dnssec(zone).nsec3 = True
+master_nsec3.dnssec(zone).nsec3_salt_len = 8
 master_nsec3.dnssec(zone).nsec3_opt_out = (random.random() < 0.5)
 
 t.start()

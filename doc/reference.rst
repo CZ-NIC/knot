@@ -2286,7 +2286,7 @@ nsec3-salt-length
 A length of a salt field in octets, which is appended to the original owner
 name before hashing.
 
-*Default:* ``8``
+*Default:* ``0``
 
 .. _policy_nsec3-salt-lifetime:
 
