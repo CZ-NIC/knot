@@ -728,6 +728,8 @@ int check_policy(
 	                                      C_NSEC3, args->id, args->id_len);
 	conf_val_t nsec3_iters = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_POLICY,
 	                                            C_NSEC3_ITER, args->id, args->id_len);
+	conf_val_t nsec3_salt_len = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_POLICY,
+	                                               C_NSEC3_SALT_LEN, args->id, args->id_len);
 
 	unsigned algorithm = conf_opt(&alg);
 
@@ -797,6 +799,11 @@ int check_policy(
 		if (iters > 0) {
 			CONF_LOG(LOG_NOTICE, "policy[%s].nsec3-iterations=%u is too high, "
 			                     "the recommended value is 0", args->id, iters);
+		}
+		uint16_t salt_len = conf_int(&nsec3_salt_len);
+		if (nsec3_salt_len.code != KNOT_EOK) {
+			CONF_LOG(LOG_NOTICE, "policy '%s' depends on default nsec3-salt-length=%i, "
+			                     "since version 3.5 the default becomes 0", args->id, salt_len);
 		}
 	}
 
