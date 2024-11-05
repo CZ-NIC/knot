@@ -386,9 +386,9 @@ pkg:ubuntu-18.04:
   <<: *pkg_test_deb
   image: $CI_REGISTRY/packaging/apkg/test/ubuntu-18.04
 
-pkg:fedora-39:
+pkg:fedora-41:
   <<: *pkg_test
-  image: $CI_REGISTRY/packaging/apkg/test/fedora-39
+  image: $CI_REGISTRY/packaging/apkg/test/fedora-41
 
 pkg:fedora-40:
   <<: *pkg_test
