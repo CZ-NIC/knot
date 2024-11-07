@@ -22,11 +22,9 @@ Knot DNS 3.4.1 (2024-10-14)
 
 Features:
 ---------
- - knotd: 
  - knotd: ACL configuration allows protocol specification (see 'acl.protocol')
  - knotc: support for benevolent zone updates (see zone-begin with '+benevolent')
  - knotd: implemented TLS session resumption
- - knotd: pending TLS connections leak memory when the server shuts down
  - kjournalprint: added print merged changesets mode (see '-M')
  - libknot: added NXNAME meta type (Thanks to Jan Včelák)
 
