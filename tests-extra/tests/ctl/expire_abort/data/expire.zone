@@ -1,0 +1,5 @@
+$ORIGIN expire.
+
+@	SOA	dns1 hostmaster 2010111201 2 1 4 7200
+	NS	dns1
+dns1	A	192.0.2.1
