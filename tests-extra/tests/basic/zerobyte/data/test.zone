@@ -1,0 +1,9 @@
+$ORIGIN test.
+
+@	SOA	dns hostmaster 2010111201 10800 3600 1209600 7200
+	NS	dns
+dns	A	192.0.2.1
+
+psy	TXT	text
+cho.psy	NS	example.com.
+exis\000ing A	1.2.3.4
