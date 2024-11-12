@@ -1,4 +1,4 @@
-/*  Copyright (C) 2018 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -615,6 +615,11 @@ int knot_pkt_parse_question(knot_pkt_t *pkt)
 
 	/* Copy QNAME and canonicalize to lowercase. */
 	knot_dname_copy_lower(pkt->lower_qname, pkt->wire + KNOT_WIRE_HEADER_SIZE);
+
+	size_t str_len = strnlen((char *)(pkt->wire + KNOT_WIRE_HEADER_SIZE), pkt->qname_size) + 1;
+	if (pkt->qname_size != str_len) {
+		pkt->flags |= KNOT_PF_NULLBYTE;
+	}
 
 	return KNOT_EOK;
 }
