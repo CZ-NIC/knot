@@ -295,22 +295,17 @@ int zone_contents_find_dname(const zone_contents_t *zone,
 	if (found < 0) {
 		// error
 		return found;
-	} else if (found == 1 && previous != NULL) {
+	} else if (found == 1) {
 		// exact match
-
-		assert(node && prev);
-
-		*match = node;
-		*closest = node;
-		*previous = prev;
-
-		return ZONE_NAME_FOUND;
-	} else if (found == 1 && previous == NULL) {
-		// exact match, zone not adjusted yet
+		// if previous==NULL, zone not adjusted yet
 
 		assert(node);
 		*match = node;
 		*closest = node;
+		if (previous != NULL) {
+			assert(prev);
+			*previous = prev;
+		}
 
 		return ZONE_NAME_FOUND;
 	} else {
