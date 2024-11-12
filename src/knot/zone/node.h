@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -104,6 +104,8 @@ enum node_flags {
 	NODE_FLAGS_SUBTREE_AUTH =    1 << 11,
 	/*! \brief The node or some node in subtree has any data in it, possibly just insec deleg. */
 	NODE_FLAGS_SUBTREE_DATA =    1 << 12,
+	/*! \brief Node owner name contains \0 byte in some label. */
+	NODE_FLAGS_NULLBYTE =        1 << 13,
 };
 
 typedef void (*node_addrem_cb)(zone_node_t *, void *);
