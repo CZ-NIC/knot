@@ -117,6 +117,7 @@ zone_node_t *zone_contents_find_node_for_rr(zone_contents_t *contents, const kno
  *                       May match \a match if found exactly.
  * \param[out] previous  Previous domain name in canonical order.
  *                       Always previous, won't match \a match.
+ * \param[in] name_nullbyte The \a name parameter contains \0 byte.
  *
  * \note The encloser and previous mustn't be used directly for DNSSEC proofs.
  *       These nodes may be empty non-terminals or not authoritative.
@@ -131,7 +132,8 @@ int zone_contents_find_dname(const zone_contents_t *contents,
                              const knot_dname_t *name,
                              const zone_node_t **match,
                              const zone_node_t **closest,
-                             const zone_node_t **previous);
+                             const zone_node_t **previous,
+                             bool name_nullbyte);
 
 /*!
  * \brief Tries to find a node with the specified name among the NSEC3 nodes

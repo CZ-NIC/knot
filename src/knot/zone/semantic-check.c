@@ -171,7 +171,8 @@ static int check_delegation(const zone_node_t *node, semchecks_data_t *data)
 		const knot_dname_t *ns_dname = knot_ns_name(ns_rr);
 		const zone_node_t *glue_node = NULL, *glue_encloser = NULL;
 		int ret = zone_contents_find_dname(data->zone, ns_dname, &glue_node,
-		                                   &glue_encloser, NULL);
+		                                   &glue_encloser, NULL,
+		                                   knot_dname_with_null(ns_dname));
 		switch (ret) {
 		case KNOT_EOUTOFZONE:
 			continue; // NS is out of bailiwick

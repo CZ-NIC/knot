@@ -190,7 +190,8 @@ static int put_covering_nsec(const zone_contents_t *zone,
 
 	const zone_node_t *proof = NULL;
 
-	int ret = zone_contents_find_dname(zone, name, &match, &closest, &prev);
+	int ret = zone_contents_find_dname(zone, name, &match, &closest, &prev,
+	                                   qdata->query->flags & KNOT_PF_NULLBYTE);
 	if (ret == ZONE_NAME_FOUND) {
 		proof = match;
 	} else if (ret == ZONE_NAME_NOT_FOUND) {

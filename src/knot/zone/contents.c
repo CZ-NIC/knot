@@ -274,7 +274,8 @@ int zone_contents_find_dname(const zone_contents_t *zone,
                              const knot_dname_t *name,
                              const zone_node_t **match,
                              const zone_node_t **closest,
-                             const zone_node_t **previous)
+                             const zone_node_t **previous,
+                             bool name_nullbyte)
 {
 	if (name == NULL || match == NULL || closest == NULL) {
 		return KNOT_EINVAL;
@@ -300,6 +301,15 @@ int zone_contents_find_dname(const zone_contents_t *zone,
 		// if previous==NULL, zone not adjusted yet
 
 		assert(node);
+
+		// WARNING: for the sake of efficiency, Knot does not handle \0 byte in qname correctly
+		// which can lead to disasters here and there. This should cover most of the cases.
+		bool node_nullbyte = (node->flags & NODE_FLAGS_NULLBYTE);
+		if (node_nullbyte != name_nullbyte ||
+		    (node_nullbyte && !knot_dname_is_equal(node->owner, name))) {
+			goto nxd;
+		}
+
 		*match = node;
 		*closest = node;
 		if (previous != NULL) {
@@ -312,7 +322,7 @@ int zone_contents_find_dname(const zone_contents_t *zone,
 		// closest match
 
 		assert(!node && prev);
-
+nxd:
 		node = prev;
 		size_t matched_labels = knot_dname_matched_labels(node->owner, name);
 		while (matched_labels < knot_dname_labels(node->owner, NULL)) {
@@ -425,7 +435,7 @@ bool zone_contents_find_node_or_wildcard(const zone_contents_t *contents,
                                          const zone_node_t **found)
 {
 	const zone_node_t *encloser = NULL;
-	zone_contents_find_dname(contents, find, found, &encloser, NULL);
+	zone_contents_find_dname(contents, find, found, &encloser, NULL, knot_dname_with_null(find));
 	if (*found == NULL && encloser != NULL && (encloser->flags & NODE_FLAGS_WILDCARD_CHILD)) {
 		*found = zone_contents_find_wildcard_child(contents, encloser);
 		assert(*found != NULL);

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2020 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -53,6 +53,7 @@ enum {
 	KNOT_PF_ORIGTTL   = 1 << 6, /*!< Write RRSIGs with their original TTL. */
 	KNOT_PF_SOAMINTTL = 1 << 7, /*!< Write SOA with its minimum-ttl as TTL. */
 	KNOT_PF_BUFENOUGH = 1 << 8, /*!< The output buffer is big enough for the output. */
+	KNOT_PF_NULLBYTE  = 1 << 9, /*!< At lest one \0 byte is present in some qname label. */
 };
 
 typedef struct knot_pkt knot_pkt_t;

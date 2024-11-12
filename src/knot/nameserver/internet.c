@@ -460,7 +460,7 @@ static int solve_name(int state, knot_pkt_t *pkt, knotd_qdata_t *qdata)
 {
 	int ret = zone_contents_find_dname(qdata->extra->contents, qdata->name,
 	                                   &qdata->extra->node, &qdata->extra->encloser,
-	                                   &qdata->extra->previous);
+	                                   &qdata->extra->previous, qdata->query->flags & KNOT_PF_NULLBYTE);
 
 	switch (ret) {
 	case ZONE_NAME_FOUND:
