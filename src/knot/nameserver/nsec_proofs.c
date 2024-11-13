@@ -118,8 +118,8 @@ static const knot_dname_t *get_next_closer(const knot_dname_t *closest_encloser,
                                            const knot_dname_t *name)
 {
 	// make name only one label longer than closest_encloser
-	size_t ce_labels = knot_dname_labels(closest_encloser, NULL);
-	size_t qname_labels = knot_dname_labels(name, NULL);
+	ssize_t ce_labels = knot_dname_labels(closest_encloser, NULL);
+	ssize_t qname_labels = knot_dname_labels(name, NULL);
 	for (int i = 0; i < (qname_labels - ce_labels - 1); ++i) {
 		name = knot_wire_next_label(name, NULL);
 	}
