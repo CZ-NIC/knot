@@ -313,7 +313,7 @@ int zone_contents_find_dname(const zone_contents_t *zone,
 		bool node_nullbyte = (node->flags & NODE_FLAGS_NULLBYTE);
 		if (node_nullbyte != name_nullbyte ||
 		    (node_nullbyte && !knot_dname_is_equal(node->owner, name))) {
-			return -1; // SEERVFAIL to safety
+			goto nxd;
 		}
 
 		*match = node;
@@ -328,7 +328,7 @@ int zone_contents_find_dname(const zone_contents_t *zone,
 		// closest match
 
 		assert(!node && prev);
-
+nxd:
 		node = prev;
 		size_t matched_labels = knot_dname_matched_labels(node->owner, name);
 		while (matched_labels < knot_dname_labels(node->owner, NULL)) {
