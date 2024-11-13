@@ -27,7 +27,7 @@
 #include "utils/kxdpgun/main.h"
 #include "utils/kxdpgun/stats.h"
 
-#define IDX_TO_SCALAR(idx) ((((idx) * LATENCY_BUCKET_SIZE) + (LATENCY_BUCKET_SIZE / 2.f)) / 1000.f)
+#define IDX_TO_SCALAR(idx) ((((idx) * LATENCY_BUCKET_SIZE) + (LATENCY_BUCKET_SIZE / 2.f)) / (1000.f / LATENCY_DEVIDER_BASE))
 
 pthread_mutex_t stdout_mtx = PTHREAD_MUTEX_INITIALIZER;
 

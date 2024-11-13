@@ -1163,7 +1163,7 @@ static int set_mode(const char *arg, knot_xdp_config_t *config)
 
 static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 {
-	const char *opts_str = "hV::t:Q:b:rp:T::U::F:I:i:Bl:L:R:v:e:m:G:jS:";
+	const char *opts_str = "hV::t:Q:b:rp:T::U::F:I:i:Bl:L:R:v:e:m:G:jS:a:";
 	struct option opts[] = {
 		{ "help",         no_argument,       NULL, 'h' },
 		{ "version",      optional_argument, NULL, 'V' },

@@ -41,8 +41,9 @@
 #define STATS_FMT(ctx, stats, stats_type) \
 	((JSON_MODE(*(ctx)) ? json_stats : plain_stats)((ctx), (stats), (stats_type)))
 
-#define LATENCY_BUCKET_SIZE (512)
+#define LATENCY_BUCKET_SIZE (1)
 #define LATENCY_BUCKET_COUNT ((UINT16_MAX + 1) / LATENCY_BUCKET_SIZE)
+#define LATENCY_DEVIDER_BASE 500
 
 typedef struct {
 	size_t		collected;
@@ -71,13 +72,13 @@ static const struct {
 	uint32_t divider;
 	uint16_t multiplier;
 } latency_units[] = {
-	{"s",  1000000, 1},
-	{"ms", 100000,  100},
-	{"ms", 10000,   10},
-	{"ms", 1000,    1},
-	{"us", 100,     100},
-	{"us", 10,      10},
-	{"us", 1,       1},
+	{"s",  1000000 * LATENCY_DEVIDER_BASE, 1},
+	{"ms", 100000 * LATENCY_DEVIDER_BASE,  100},
+	{"ms", 10000 * LATENCY_DEVIDER_BASE,   10},
+	{"ms", 1000 * LATENCY_DEVIDER_BASE,    1},
+	{"us", 100 * LATENCY_DEVIDER_BASE,     100},
+	{"us", 10 * LATENCY_DEVIDER_BASE,      10},
+	{"us", 1 * LATENCY_DEVIDER_BASE,       1},
 };
 
 void clear_stats(kxdpgun_stats_t *st);
