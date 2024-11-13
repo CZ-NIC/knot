@@ -317,7 +317,7 @@ static void quic_free_cb(knot_quic_reply_t *rpl)
 static uint64_t timestamp_ns(void)
 {
 	struct timespec ts;
-	clock_gettime(CLOCK_REALTIME, &ts);
+	clock_gettime(CLOCK_MONOTONIC, &ts);
 	return ((uint64_t)ts.tv_sec * 1000000000) + ts.tv_nsec;
 }
 
@@ -642,10 +642,10 @@ void *xdp_gun_thread(void *_ctx)
 								const uint32_t divider = latency_units[ctx->latency_mode - 1].divider;
 								uint64_t start_ts = rl->conn->established_ts / divider;
 								uint64_t diff_ts = end_ts - start_ts;
-								if (diff_ts <= UINT16_MAX) {
-									periodic_stats.latency_histogram[diff_ts / LATENCY_BUCKET_SIZE]++;
+								if (diff_ts < UINT16_MAX) {
+									periodic_stats.latency_histogram[diff_ts]++;
 								} else {
-									printf("latency: out of range\n");
+									periodic_stats.latency_histogram[LATENCY_BUCKET_COUNT - 1]++;
 								}
 							}
 
@@ -768,7 +768,7 @@ void *xdp_gun_thread(void *_ctx)
 							memcpy(&start_ts, pkts[i].payload.iov_base, sizeof(start_ts));
 							start_ts = ntohs(start_ts);
 							uint16_t diff_ts = (end_ts - start_ts);
-							periodic_stats.latency_histogram[diff_ts / LATENCY_BUCKET_SIZE]++;
+							periodic_stats.latency_histogram[diff_ts]++;
 						}
 					} else {
 						for (uint32_t i = 0; i < recvd; i++) {

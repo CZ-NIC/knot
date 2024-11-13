@@ -41,8 +41,7 @@
 #define STATS_FMT(ctx, stats, stats_type) \
 	((JSON_MODE(*(ctx)) ? json_stats : plain_stats)((ctx), (stats), (stats_type)))
 
-#define LATENCY_BUCKET_SIZE (1)
-#define LATENCY_BUCKET_COUNT ((UINT16_MAX + 1) / LATENCY_BUCKET_SIZE)
+#define LATENCY_BUCKET_COUNT (UINT16_MAX + 1)
 #define LATENCY_DEVIDER_BASE 500
 
 typedef struct {

@@ -27,7 +27,7 @@
 #include "utils/kxdpgun/main.h"
 #include "utils/kxdpgun/stats.h"
 
-#define IDX_TO_SCALAR(idx) ((((idx) * LATENCY_BUCKET_SIZE) + (LATENCY_BUCKET_SIZE / 2.f)) / (1000.f / LATENCY_DEVIDER_BASE))
+#define IDX_TO_SCALAR(idx) (((idx) + .5f) / (1000.f / LATENCY_DEVIDER_BASE))
 
 pthread_mutex_t stdout_mtx = PTHREAD_MUTEX_INITIALIZER;
 
@@ -196,7 +196,7 @@ static void count_latency(const uint64_t *histogram, const uint64_t count,
 	const float quartil_count = count / 4.f;
 	float *quartil_results[] = {lq, median, uq};
 	bool min_flag = false;
-
+	const uint64_t outliers_count = histogram[LATENCY_BUCKET_COUNT - 1];
 	*min = 0.f;
 	*average = 0.f;
 	*max = 0.f;
@@ -204,7 +204,7 @@ static void count_latency(const uint64_t *histogram, const uint64_t count,
 	*median = 0.f;
 	*uq = 0.f;
 
-	for (int i = 0; i < LATENCY_BUCKET_COUNT; ++i) {
+	for (int i = 0; i < LATENCY_BUCKET_COUNT - 1; ++i) {
 		// min, average and max
 		if (histogram[i] > 0) {
 			if (min_flag == false) {
@@ -212,7 +212,7 @@ static void count_latency(const uint64_t *histogram, const uint64_t count,
 				min_flag = true;
 			}
 			*max = IDX_TO_SCALAR(i);
-			avarage_counter += (histogram[i] * IDX_TO_SCALAR(i)) / count;
+			avarage_counter += (histogram[i] * IDX_TO_SCALAR(i)) / (count - outliers_count);
 		}
 		// lower quartil, median and upper quartil
 		counter += histogram[i];
@@ -278,7 +278,7 @@ void plain_stats(const xdp_gun_ctx_t *ctx, kxdpgun_stats_t *st, stats_type_t stt
 			              &average, &max, &lq, &median, &uq);
 			const uint16_t multiplier = latency_units[ctx->latency_mode - 1].multiplier;
 			const char *units = latency_units[ctx->latency_mode - 1].units;
-			printf("latency [min, average, max, lower-quartile, median, upper-quartile]: %.2f %s, %.2f %s, %.2f %s, %.2f %s, %.2f %s, %.2f %s\n",
+			printf("latency [min, average, max, lower-quartile, median, upper-quartile]: %.1f %s, %.1f %s, %.1f %s, %.1f %s, %.1f %s, %.1f %s\n",
 			       min * multiplier,     units,
 			       average * multiplier, units,
 			       max * multiplier,     units,

@@ -41,7 +41,7 @@ static uint32_t get_timestamp(void)
 static uint64_t timestamp_ns(void)
 {
 	struct timespec ts;
-	clock_gettime(CLOCK_REALTIME, &ts);
+	clock_gettime(CLOCK_MONOTONIC, &ts);
 	return ((uint64_t)ts.tv_sec * 1000000000) + ts.tv_nsec;
 }
 
