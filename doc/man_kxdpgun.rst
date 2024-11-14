@@ -130,7 +130,7 @@ Options
   (inclusive), where 1 is the delay in seconds, 2 in hundreds of milliseconds,
   3 in tens of milliseconds and so on up to 7 - microseconds.
 
-  Protocols other than UDP are not supported.
+  Protocols other than UDP and TCP are not supported.
 
   The default is 4, the latency in milliseconds.
 
