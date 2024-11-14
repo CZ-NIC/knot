@@ -28,7 +28,7 @@ sudo apt-get install \
 #### Install optional packages:
 ```bash
 sudo apt-get install \
-  libcap-ng-dev libsystemd-dev libidn2-dev libprotobuf-c-dev protobuf-c-compiler libfstrm-dev libmaxminddb-dev libnghttp2-dev libbpf-dev libxdp-dev libmnl-dev python3-sphinx python3-sphinx-panels
+  libcap-ng-dev libsystemd-dev libidn2-dev libprotobuf-c-dev protobuf-c-compiler libfstrm-dev libmaxminddb-dev libnghttp2-dev libbpf-dev libxdp-dev libmnl-dev python3-sphinx python3-sphinx-panels softhsm2
 ```
 
 ### Fedora like distributions
@@ -52,7 +52,7 @@ dnf install \
 #### Install optional packages:
 ```bash
 dnf install \
-  libcap-ng-devel systemd-devel libidn2-devel protobuf-c-devel fstrm-devel libmaxminddb-devel libnghttp2-devel libbpf-devel libxdp-devel libmnl-devel python-sphinx python-sphinx-panels
+  libcap-ng-devel systemd-devel libidn2-devel protobuf-c-devel fstrm-devel libmaxminddb-devel libnghttp2-devel libbpf-devel libxdp-devel libmnl-devel python-sphinx python-sphinx-panels softhsm
 ```
 
 When compiling on RHEL based system, the Fedora EPEL repository has to be
