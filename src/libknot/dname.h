@@ -291,6 +291,17 @@ _pure_
 bool knot_dname_is_case_equal(const knot_dname_t *d1, const knot_dname_t *d2);
 
 /*!
+ * \brief Checks the domain name if it contains '\0' byte within a label.
+ *
+ * \param name  Domain name.
+ *
+ * \retval true if a zero byte is included
+ * \retval false if a zero byte isn't included
+ */
+_pure_
+bool knot_dname_with_null(const knot_dname_t *name);
+
+/*!
  * \brief Count length of the N first labels.
  *
  * \param name     Domain name.
