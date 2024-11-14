@@ -1,14 +1,15 @@
 Prerequisites:
 --------------
 
-Python >=3.3
-dnspython >=2.2.0
-python3-psutil
-dnssec-signzone
-dnssec-keygen
-dnssec-verify
+python3
+dnspython >=2.2.0 (python3-dnspython)
+psutil            (python3-psutil)
+bind9
+dnssec-signzone   (bind9-utils)
+dnssec-keygen     (bind9-utils)
+dnssec-verify     (bind9-utils)
+certtool          (gnutls-bin)
 ldnsutils
-Bind >= 9.11
 lsof
 gawk
 objdump
