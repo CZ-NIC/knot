@@ -155,18 +155,18 @@ zone_node_t *zone_tree_get(zone_tree_t *tree, const knot_dname_t *owner);
  * \brief Tries to find the given domain name in the zone tree and returns the
  *        associated node and previous node in canonical order.
  *
- * \param tree Zone to search in.
- * \param owner Owner of the node to find.
- * \param found Found node.
+ * \param tree     Zone to search in.
+ * \param owner    Owner of the node to find.
+ * \param found    Found node.
  * \param previous Previous node in canonical order (i.e. the one directly
  *                 preceding \a owner in canonical order, regardless if the name
  *                 is in the zone or not).
  *
- * \retval > 0 if the domain name was found. In such case \a found holds the
- *             zone node with \a owner as its owner.
- *             \a previous is set properly.
- * \retval 0 if the domain name was not found. \a found may hold any (or none)
- *           node. \a previous is set properly.
+ * \retval 1 if the domain name was found. In such case \a found holds the
+ *           zone node with \a owner as its owner.
+ *           \a previous is set properly.
+ * \retval 0 if the domain name was not found. \a found holds nothing.
+ *           \a previous is set properly.
  * \retval KNOT_EINVAL
  * \retval KNOT_ENOMEM
  */
