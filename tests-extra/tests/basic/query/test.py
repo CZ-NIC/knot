@@ -216,7 +216,12 @@ def query_test(knot, bind, dnssec):
 
     # DNAME-CNAME-DNAME loop
     resp = knot.dig("e.dname.flags", "A", udp=True, dnssec=dnssec)
-    resp.cmp(bind)
+    resp.check(rcode="NOERROR")
+    resp.check_record(name="dname.flags.",          rtype="DNAME", ttl=3600, rdata="dname-tree.flags.")
+    resp.check_record(name="e.dname.flags.",        rtype="CNAME", ttl=3600, rdata="e.dname-tree.flags.")
+    resp.check_record(name="e.dname-tree.flags.",   rtype="CNAME", ttl=3600, rdata="e.dname.flags.")
+    resp.check_counts(5 if dnssec else 3, 0, 0) # Knot returns 6 and 4 records, respectively, but two CNAMEs are the same
+    # resp.cmp(bind) BIND 9.20 responds SERVFAIL with different Answer section
 
     # DNAME-DNAME loop
     resp = knot.dig("x.f.dname.flags", "A", udp=True, dnssec=dnssec)
@@ -332,7 +337,7 @@ def query_test(knot, bind, dnssec):
 
     # Wildcard leading to CNAME loop
     resp = knot.dig("test.loop-entry.flags", "A", udp=True, dnssec=dnssec)
-    resp.cmp(bind)
+    resp.cmp(bind, rcode=False) # BIND 9.20 returns SERVFAIL
 
     # Wildcard-covered additional record discovery
     resp = knot.dig("mx-additional.flags", "MX", udp=True, dnssec=dnssec)
