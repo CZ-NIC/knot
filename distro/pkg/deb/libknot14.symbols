@@ -48,6 +48,7 @@ libknot.so.14 libknot14 #MINVER#
  knot_dname_to_wire@Base 3.3.0
  knot_dname_unpack@Base 3.3.0
  knot_dname_wire_check@Base 3.3.0
+ knot_dname_with_null@Base 3.3.10
  knot_dnssec_alg_names@Base 3.3.0
  knot_edns_add_option@Base 3.3.0
  knot_edns_alignment_size@Base 3.3.0

@@ -707,6 +707,17 @@ bool knot_dname_is_case_equal(const knot_dname_t *d1, const knot_dname_t *d2)
 }
 
 _public_
+bool knot_dname_with_null(const knot_dname_t *name)
+{
+	if (name == NULL) {
+		return false;
+	}
+
+	size_t size = knot_dname_size(name);
+	return (size != strnlen((const char *)name, size) + 1);
+}
+
+_public_
 size_t knot_dname_prefixlen(const uint8_t *name, unsigned nlabels, const uint8_t *pkt)
 {
 	if (name == NULL) {
