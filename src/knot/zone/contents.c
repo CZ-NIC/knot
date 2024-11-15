@@ -276,11 +276,28 @@ zone_node_t *zone_contents_find_node_for_rr(zone_contents_t *contents, const kno
 	               get_node(contents, rrset->owner);
 }
 
+static bool null_byte_mismatch(const zone_node_t *node, const knot_dname_t *name,
+                               bool name_nullbyte)
+{
+	/* WARNING: for the sake of efficiency, Knot does not handle \0 byte
+	 * in qname correctly, which can lead to disasters here and there.
+	 * The following check should cover most of the cases.
+	 */
+
+	bool node_nullbyte = (node->flags & NODE_FLAGS_NULLBYTE);
+	if (node_nullbyte != name_nullbyte ||
+	    (node_nullbyte && !knot_dname_is_equal(node->owner, name))) {
+		return true;
+	}
+	return false;
+}
+
 int zone_contents_find_dname(const zone_contents_t *zone,
                              const knot_dname_t *name,
                              const zone_node_t **match,
                              const zone_node_t **closest,
-                             const zone_node_t **previous)
+                             const zone_node_t **previous,
+                             bool name_nullbyte)
 {
 	if (name == NULL || match == NULL || closest == NULL) {
 		return KNOT_EINVAL;
@@ -299,44 +316,29 @@ int zone_contents_find_dname(const zone_contents_t *zone,
 
 	int found = zone_tree_get_less_or_equal(zone->nodes, name, &node, &prev);
 	if (found < 0) {
-		// error
 		return found;
-	} else if (found == 1 && previous != NULL) {
-		// exact match
+	}
 
-		assert(node && prev);
-
-		*match = node;
-		*closest = node;
+	if (previous != NULL) { // Null previous means zone not adjusted yet.
+		assert(prev);
 		*previous = prev;
+	}
 
-		return ZONE_NAME_FOUND;
-	} else if (found == 1 && previous == NULL) {
-		// exact match, zone not adjusted yet
-
+	if (found == 1 && !null_byte_mismatch(node, name, name_nullbyte)) {
 		assert(node);
 		*match = node;
 		*closest = node;
-
 		return ZONE_NAME_FOUND;
 	} else {
-		// closest match
-
-		assert(!node && prev);
-
+		assert(prev);
+		*match = NULL;
 		node = prev;
 		size_t matched_labels = knot_dname_matched_labels(node->owner, name);
 		while (matched_labels < knot_dname_labels(node->owner, NULL)) {
 			node = node_parent(node);
 			assert(node);
 		}
-
-		*match = NULL;
 		*closest = node;
-		if (previous != NULL) {
-			*previous = prev;
-		}
-
 		return ZONE_NAME_NOT_FOUND;
 	}
 }
@@ -436,7 +438,7 @@ bool zone_contents_find_node_or_wildcard(const zone_contents_t *contents,
                                          const zone_node_t **found)
 {
 	const zone_node_t *encloser = NULL;
-	zone_contents_find_dname(contents, find, found, &encloser, NULL);
+	zone_contents_find_dname(contents, find, found, &encloser, NULL, knot_dname_with_null(find));
 	if (*found == NULL && encloser != NULL && (encloser->flags & NODE_FLAGS_WILDCARD_CHILD)) {
 		*found = zone_contents_find_wildcard_child(contents, encloser);
 		assert(*found != NULL);

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -123,6 +123,10 @@ zone_node_t *node_new(const knot_dname_t *owner, bool binode, bool second, knot_
 
 	// Node is authoritative by default.
 	ret->flags = NODE_FLAGS_AUTH;
+
+	if (knot_dname_with_null(owner)) {
+		ret->flags |= NODE_FLAGS_NULLBYTE;
+	}
 
 	if (binode) {
 		ret->flags |= NODE_FLAGS_BINODE;

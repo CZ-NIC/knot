@@ -118,8 +118,9 @@ static const knot_dname_t *get_next_closer(const knot_dname_t *closest_encloser,
                                            const knot_dname_t *name)
 {
 	// make name only one label longer than closest_encloser
-	size_t ce_labels = knot_dname_labels(closest_encloser, NULL);
-	size_t qname_labels = knot_dname_labels(name, NULL);
+	ssize_t ce_labels = knot_dname_labels(closest_encloser, NULL);
+	ssize_t qname_labels = knot_dname_labels(name, NULL);
+	assert(qname_labels > ce_labels);
 	for (int i = 0; i < (qname_labels - ce_labels - 1); ++i) {
 		name = knot_dname_next_label(name);
 	}
@@ -189,7 +190,8 @@ static int put_covering_nsec(const zone_contents_t *zone,
 
 	const zone_node_t *proof = NULL;
 
-	int ret = zone_contents_find_dname(zone, name, &match, &closest, &prev);
+	int ret = zone_contents_find_dname(zone, name, &match, &closest, &prev,
+	                                   qdata->query->flags & KNOT_PF_NULLBYTE);
 	if (ret == ZONE_NAME_FOUND) {
 		proof = match;
 	} else if (ret == ZONE_NAME_NOT_FOUND) {
