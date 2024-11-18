@@ -152,7 +152,7 @@ static int get_backup_format(zone_backup_ctx_t *ctx)
 {
 	PREPARE_PATH(label_path, label_file_name);
 
-	int ret = KNOT_EMALF;
+	int ret;
 
 	struct stat sb;
 	if (stat(label_path, &sb) != 0) {
@@ -193,6 +193,7 @@ static int get_backup_format(zone_backup_ctx_t *ctx)
 	}
 
 	if (strcmp(line, label_file_head) != 0) {
+		ret = KNOT_EMALF;
 		goto done;
 	}
 
