@@ -65,16 +65,14 @@ typedef enum {
 	PURGE_ZONE_BEST     = 1 << 0, /*!< Best effort -- continue on failures. */
 	PURGE_ZONE_LOG      = 1 << 1, /*!< Log a purged zone even if requested less. */
 	PURGE_ZONE_NOSYNC   = 1 << 2, /*!< Remove even zone files with disabled syncing. */
-	PURGE_ZONE_TIMERS   = 1 << 3, /*!< Purge the zone timers. */
-	PURGE_ZONE_ZONEFILE = 1 << 4, /*!< Purge the zone file. */
-	PURGE_ZONE_JOURNAL  = 1 << 5, /*!< Purge the zone journal. */
-	PURGE_ZONE_KASPDB   = 1 << 6, /*!< Purge KASP DB. */
-	PURGE_ZONE_CATALOG  = 1 << 7, /*!< Purge the catalog. */
+	PURGE_ZONE_MEMBER   = 1 << 3, /*!< Remove even catalog member timer. */
+	PURGE_ZONE_TIMERS   = 1 << 4, /*!< Purge the zone timers. */
+	PURGE_ZONE_ZONEFILE = 1 << 5, /*!< Purge the zone file. */
+	PURGE_ZONE_JOURNAL  = 1 << 6, /*!< Purge the zone journal. */
+	PURGE_ZONE_KASPDB   = 1 << 7, /*!< Purge KASP DB. */
+	PURGE_ZONE_CATALOG  = 1 << 8, /*!< Purge the catalog. */
 } purge_flag_t;
 
-#define PURGE_ZONE_FULL       ~0U     /*!< Purge everything possible. */
-                                      /*!< Standard purge (respect C_ZONEFILE_SYNC param). */
-#define PURGE_ZONE_ALL        (PURGE_ZONE_FULL ^ PURGE_ZONE_NOSYNC)
                                       /*!< All data. */
 #define PURGE_ZONE_DATA       (PURGE_ZONE_TIMERS | PURGE_ZONE_ZONEFILE | PURGE_ZONE_JOURNAL | \
                                PURGE_ZONE_KASPDB | PURGE_ZONE_CATALOG)

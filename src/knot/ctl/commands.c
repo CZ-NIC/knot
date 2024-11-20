@@ -1564,7 +1564,7 @@ static int purge_orphan_member_cb(const knot_dname_t *member, const knot_dname_t
 
 	const purge_flag_t params =
 		PURGE_ZONE_TIMERS | PURGE_ZONE_JOURNAL | PURGE_ZONE_KASPDB |
-		PURGE_ZONE_BEST | PURGE_ZONE_LOG;
+		PURGE_ZONE_MEMBER | PURGE_ZONE_BEST | PURGE_ZONE_LOG;
 
 	int ret = selective_zone_purge(conf(), orphan, params);
 	free(orphan);
@@ -1764,6 +1764,7 @@ static int zone_purge(zone_t *zone, ctl_args_t *args)
 		MATCH_OR_FILTER(args, CTL_FILTER_PURGE_JOURNAL)  * PURGE_ZONE_JOURNAL |
 		MATCH_OR_FILTER(args, CTL_FILTER_PURGE_KASPDB)   * PURGE_ZONE_KASPDB |
 		MATCH_OR_FILTER(args, CTL_FILTER_PURGE_CATALOG)  * PURGE_ZONE_CATALOG |
+		(zone->catalog_gen == NULL) * PURGE_ZONE_MEMBER | // Purge unused member timer.
 		PURGE_ZONE_NOSYNC; // Purge even zonefiles with disabled syncing.
 
 	// Purge the requested zone data.

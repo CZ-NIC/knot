@@ -248,7 +248,8 @@ static void mark_changed_zones(knot_zonedb_t *zonedb, trie_t *changed)
 
 static void zone_purge(conf_t *conf, zone_t *zone)
 {
-	(void)selective_zone_purge(conf, zone, PURGE_ZONE_ALL);
+	(void)selective_zone_purge(conf, zone, PURGE_ZONE_DATA | PURGE_ZONE_MEMBER |
+	                                       PURGE_ZONE_BEST | PURGE_ZONE_LOG);
 }
 
 static zone_contents_t *zone_expire(zone_t *zone)
