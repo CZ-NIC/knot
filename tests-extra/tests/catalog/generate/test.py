@@ -69,6 +69,7 @@ slave.zones_wait(zone + zone_add)
 rem_online = random.choice([True, False])
 
 serial_bef_rem = slave.zone_wait(catz, tsig=True)
+master.ctl("-f zone-purge example.com")
 master.zones.pop("example.com.")
 master.gen_confile()
 

@@ -190,6 +190,10 @@ int zone_timers_read(knot_lmdb_db_t *db, const knot_dname_t *zone,
 int zone_timers_write(knot_lmdb_db_t *db, const knot_dname_t *zone,
                       const zone_timers_t *timers)
 {
+	int ret = knot_lmdb_open(db);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
 	knot_lmdb_txn_t txn = { 0 };
 	knot_lmdb_begin(db, &txn, true);
 	txn_write_timers(&txn, zone, timers);
