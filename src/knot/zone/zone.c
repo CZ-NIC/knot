@@ -285,13 +285,19 @@ int selective_zone_purge(conf_t *conf, zone_t *zone, purge_flag_t params)
 
 	// Purge the zone timers.
 	if (params & PURGE_ZONE_TIMERS) {
+		bool member = (zone->catalog_gen != NULL);
 		zone->timers = (zone_timers_t) {
-			.catalog_member = zone->timers.catalog_member
+			.catalog_member = member ? zone->timers.catalog_member : 0
 		};
+		if (member) {
+			ret = zone_timers_write(&zone->server->timerdb, zone->name,
+			                        &zone->timers);
+		} else {
+			ret = zone_timers_sweep(&zone->server->timerdb,
+			                        (sweep_cb)knot_dname_cmp, zone->name);
+		}
 		zone_timers_sanitize(conf, zone);
 		zone->zonefile.bootstrap_cnt = 0;
-		ret = zone_timers_sweep(&zone->server->timerdb,
-		                        (sweep_cb)knot_dname_cmp, zone->name);
 		RETURN_IF_FAILED("timers", KNOT_ENOENT);
 	}
 
@@ -325,7 +331,6 @@ int selective_zone_purge(conf_t *conf, zone_t *zone, purge_flag_t params)
 
 	// Purge Catalog.
 	if (params & PURGE_ZONE_CATALOG) {
-		zone->timers.catalog_member = 0;
 		ret = catalog_zone_purge(zone->server, conf, zone->name);
 		RETURN_IF_FAILED("catalog", KNOT_EOK);
 	}
