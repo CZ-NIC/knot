@@ -38,7 +38,7 @@
 #include "ngtcp2_tstamp.h"
 #include "ngtcp2_frame_chain.h"
 
-ngtcp2_objalloc_def(rtb_entry, ngtcp2_rtb_entry, oplent);
+ngtcp2_objalloc_def(rtb_entry, ngtcp2_rtb_entry, oplent)
 
 static void rtb_entry_init(ngtcp2_rtb_entry *ent, const ngtcp2_pkt_hd *hd,
                            ngtcp2_frame_chain *frc, ngtcp2_tstamp ts,
@@ -81,17 +81,14 @@ void ngtcp2_rtb_entry_objalloc_del(ngtcp2_rtb_entry *ent,
   ngtcp2_objalloc_rtb_entry_release(objalloc, ent);
 }
 
-static int greater(const ngtcp2_ksl_key *lhs, const ngtcp2_ksl_key *rhs) {
-  return *(int64_t *)lhs > *(int64_t *)rhs;
-}
-
 void ngtcp2_rtb_init(ngtcp2_rtb *rtb, ngtcp2_rst *rst, ngtcp2_cc *cc,
                      int64_t cc_pkt_num, ngtcp2_log *log, ngtcp2_qlog *qlog,
                      ngtcp2_objalloc *rtb_entry_objalloc,
                      ngtcp2_objalloc *frc_objalloc, const ngtcp2_mem *mem) {
   rtb->rtb_entry_objalloc = rtb_entry_objalloc;
   rtb->frc_objalloc = frc_objalloc;
-  ngtcp2_ksl_init(&rtb->ents, greater, sizeof(int64_t), mem);
+  ngtcp2_ksl_init(&rtb->ents, ngtcp2_ksl_int64_greater,
+                  ngtcp2_ksl_int64_greater_search, sizeof(int64_t), mem);
   rtb->rst = rst;
   rtb->cc = cc;
   rtb->log = log;
@@ -870,7 +867,8 @@ ngtcp2_ssize ngtcp2_rtb_recv_ack(ngtcp2_rtb *rtb, const ngtcp2_ack *fr,
   }
 
   if (largest_pkt_sent_ts != UINT64_MAX && ack_eliciting_pkt_acked) {
-    cc_ack.rtt = pkt_ts - largest_pkt_sent_ts;
+    cc_ack.rtt =
+      ngtcp2_max_uint64(pkt_ts - largest_pkt_sent_ts, NGTCP2_NANOSECONDS);
 
     rv = ngtcp2_conn_update_rtt(conn, cc_ack.rtt, fr->ack_delay_unscaled, ts);
     if (rv == 0 && cc->new_rtt_sample) {
