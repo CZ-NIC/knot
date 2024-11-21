@@ -333,7 +333,9 @@ int selective_zone_purge(conf_t *conf, zone_t *zone, purge_flag_t params)
 
 	// Purge Catalog.
 	if (params & PURGE_ZONE_CATALOG) {
-		zone->timers.catalog_member = 0;
+		if (zone->catalog_gen == NULL) {
+			zone->timers.catalog_member = 0;
+		}
 		ret = catalog_zone_purge(zone->server, conf, zone->name);
 		RETURN_IF_FAILED("catalog", KNOT_EOK);
 	}
