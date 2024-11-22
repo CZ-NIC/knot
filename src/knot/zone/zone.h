@@ -72,12 +72,12 @@ typedef enum {
 	PURGE_ZONE_CATALOG  = 1 << 7, /*!< Purge the catalog. */
 } purge_flag_t;
 
-#define PURGE_ZONE_FULL       ~0U     /*!< Purge everything possible. */
-                                      /*!< Standard purge (respect C_ZONEFILE_SYNC param). */
-#define PURGE_ZONE_ALL        (PURGE_ZONE_FULL ^ PURGE_ZONE_NOSYNC)
-                                      /*!< All data. */
-#define PURGE_ZONE_DATA       (PURGE_ZONE_TIMERS | PURGE_ZONE_ZONEFILE | PURGE_ZONE_JOURNAL | \
-                               PURGE_ZONE_KASPDB | PURGE_ZONE_CATALOG)
+/*!< All data. */
+#define PURGE_ZONE_DATA  (PURGE_ZONE_TIMERS | PURGE_ZONE_ZONEFILE | PURGE_ZONE_JOURNAL | \
+                          PURGE_ZONE_KASPDB | PURGE_ZONE_CATALOG)
+
+/*!< Standard purge (respect C_ZONEFILE_SYNC param). */
+#define PURGE_ZONE_ALL   (PURGE_ZONE_DATA | PURGE_ZONE_BEST | PURGE_ZONE_LOG)
 
 /*!
  * \brief Structure for holding DNS zone.
