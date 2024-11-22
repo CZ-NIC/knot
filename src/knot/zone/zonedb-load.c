@@ -156,8 +156,10 @@ static zone_t *create_zone_new(conf_t *conf, const knot_dname_t *name,
 		zone->catalog_gen = knot_dname_copy(conf_dname(&catz), NULL);
 		if (zone->timers.catalog_member == 0) {
 			zone->timers.catalog_member = time(NULL);
+			ret = zone_timers_write(&zone->server->timerdb, zone->name,
+			                        &zone->timers);
 		}
-		if (zone->catalog_gen == NULL) {
+		if (ret != KNOT_EOK || zone->catalog_gen == NULL) {
 			log_zone_error(zone->name, "failed to initialize catalog member zone (%s)",
 			               knot_strerror(KNOT_ENOMEM));
 			zone_free(&zone);
