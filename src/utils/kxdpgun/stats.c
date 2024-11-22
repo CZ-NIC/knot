@@ -180,6 +180,23 @@ void json_thrd_summary(const xdp_gun_ctx_t *ctx, const kxdpgun_stats_t *st)
 	pthread_mutex_unlock(&stdout_mtx);
 }
 
+static void format_with_separators(uint64_t num, char output[static 64])
+{
+	char temp[32];
+	int i, j;
+
+	(void)snprintf(temp, sizeof(temp), "%" PRIu64, num);
+	int length = strlen(temp);
+
+	for (i = 0, j = 0; j < length; i++, j++) {
+		output[i] = temp[j];
+		if ((length - j - 1) % 3 == 0 && j != length - 1) {
+			output[++i] = ',';
+		}
+	}
+	output[i] = '\0';
+}
+
 void plain_stats(const xdp_gun_ctx_t *ctx, kxdpgun_stats_t *st, stats_type_t stt)
 {
 	pthread_mutex_lock(&st->mutex);
@@ -190,28 +207,34 @@ void plain_stats(const xdp_gun_ctx_t *ctx, kxdpgun_stats_t *st, stats_type_t stt
 	uint64_t duration = DURATION_US(*st);
 	double rel_start_us = (st->since / 1000.0) - ctx->stats_start_us ;
 	double rel_end_us = rel_start_us + duration;
+	char pretty_print_pps[64];
 
 #define ps(counter)  ((typeof(counter))((counter) * 1000 / ((float)duration / 1000)))
 #define pct(counter) ((counter) * 100.0 / st->qry_sent)
 
 	const char *name = ctx->tcp ? "SYNs:    " : ctx->quic ? "initials:" : "queries: ";
-	printf("total %s    %"PRIu64" (%"PRIu64" pps) (%f%%)\n", name, st->qry_sent,
-	       ps(st->qry_sent), 100.0 * st->qry_sent / (duration / 1000000.0 * ctx->qps * ctx->n_threads));
+	format_with_separators(ps(st->qry_sent), pretty_print_pps);
+	printf("total %s    %"PRIu64" (%s pps) (%f%%)\n", name, st->qry_sent,
+	       pretty_print_pps, 100.0 * st->qry_sent / (duration / 1000000.0 * ctx->qps * ctx->n_threads));
 	if (st->qry_sent > 0 && recv) {
 		if (ctx->tcp || ctx->quic) {
 		name = ctx->tcp ? "established:" : "handshakes: ";
-		printf("total %s %"PRIu64" (%"PRIu64" pps) (%f%%)\n", name,
-		       st->synack_recv, ps(st->synack_recv), pct(st->synack_recv));
+		format_with_separators(ps(st->synack_recv), pretty_print_pps);
+		printf("total %s %"PRIu64" (%s pps) (%f%%)\n", name,
+		       st->synack_recv, pretty_print_pps, pct(st->synack_recv));
 		}
-		printf("total replies:     %"PRIu64" (%"PRIu64" pps) (%f%%)\n",
-		       st->ans_recv, ps(st->ans_recv), pct(st->ans_recv));
+		format_with_separators(ps(st->ans_recv), pretty_print_pps);
+		printf("total replies:     %"PRIu64" (%s pps) (%f%%)\n",
+		       st->ans_recv, pretty_print_pps, pct(st->ans_recv));
 		if (ctx->tcp) {
-		printf("total closed:      %"PRIu64" (%"PRIu64" pps) (%f%%)\n",
-		       st->finack_recv, ps(st->finack_recv), pct(st->finack_recv));
+		format_with_separators(ps(st->finack_recv), pretty_print_pps);
+		printf("total closed:      %"PRIu64" (%s pps) (%f%%)\n",
+		       st->finack_recv, pretty_print_pps, pct(st->finack_recv));
 		}
 		if (st->rst_recv > 0) {
-		printf("total reset:       %"PRIu64" (%"PRIu64" pps) (%f%%)\n",
-		       st->rst_recv, ps(st->rst_recv), pct(st->rst_recv));
+		format_with_separators(ps(st->rst_recv), pretty_print_pps);
+		printf("total reset:       %"PRIu64" (%s pps) (%f%%)\n",
+		       st->rst_recv, pretty_print_pps, pct(st->rst_recv));
 		}
 		printf("average DNS reply size: %"PRIu64" B\n",
 		       st->ans_recv > 0 ? st->size_recv / st->ans_recv : 0);
