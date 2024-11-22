@@ -1553,7 +1553,6 @@ static int purge_orphan_member_cb(const knot_dname_t *member, const knot_dname_t
 	              err_str, catz_str);
 
 	// Single-purpose fake zone_t containing only minimal data.
-	// malloc() should suffice here, but clean zone_t is more mishandling-proof.
 	zone_t *orphan = calloc(1, sizeof(zone_t));
 	if (orphan == NULL) {
 		return KNOT_ENOMEM;
