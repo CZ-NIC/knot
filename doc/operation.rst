@@ -1312,6 +1312,11 @@ The restore procedure does not care for keys deleted after taking the snapshot.
 Thus, after restore, there might remain some redundant ``.pem`` files
 of obsolete signing keys.
 
+.. NOTE::
+   Automatically generated unique-id's of member zones are kept in the
+   timers database. Therefore, backup of member zones' timers is crucial for
+   backup/restore of a :ref:`generated catalog zone<catalog-zones>`.
+
 .. TIP::
    In order to seamlessly deploy a restored backup of KASP DB with respect to
    a possibly ongoing DNSSEC key rollover, it's recommended to set
