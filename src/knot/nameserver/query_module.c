@@ -284,6 +284,10 @@ int knotd_mod_stats_add(knotd_mod_t *mod, const char *ctr_name, uint32_t idx_cou
 				knotd_mod_stats_free(mod);
 				return KNOT_ENOMEM;
 			}
+
+			for (unsigned j = 0; j < idx_count; j++) {
+				ATOMIC_INIT(mod->stats_vals[i][j], 0);
+			}
 		}
 	} else {
 		for (uint32_t i = 0; i < mod->stats_count; i++) {
@@ -311,9 +315,9 @@ int knotd_mod_stats_add(knotd_mod_t *mod, const char *ctr_name, uint32_t idx_cou
 				return KNOT_ENOMEM;
 			}
 			mod->stats_vals[i] = new_vals;
-			new_vals += offset;
-			for (uint32_t j = 0; j < idx_count; j++) {
-				*new_vals++ = 0;
+
+			for (unsigned j = 0; j < idx_count; j++) {
+				ATOMIC_INIT(mod->stats_vals[i][offset + j], 0);
 			}
 		}
 	}
@@ -338,6 +342,9 @@ void knotd_mod_stats_free(knotd_mod_t *mod)
 	if (mod->stats_vals != NULL) {
 		unsigned threads = knotd_mod_threads(mod);
 		for (unsigned i = 0; i < threads; i++) {
+			for (unsigned j = 0; j < mod->stats_info->count; j++) {
+				ATOMIC_DEINIT(mod->stats_vals[i][j]);
+			}
 			free(mod->stats_vals[i]);
 		}
 	}

@@ -248,8 +248,11 @@ int cookies_load(knotd_mod_t *mod)
 		return KNOT_ENOMEM;
 	}
 
-	// Initialize BADCOOKIE counter.
-	ctx->badcookie_ctr = BADCOOKIE_CTR_INIT;
+	// Initialize atomic variables.
+	ATOMIC_INIT(ctx->badcookie_ctr, BADCOOKIE_CTR_INIT);
+	for (int i = 0; i < 2; ++i) {
+		ATOMIC_INIT(ctx->secret[i].variable, 0);
+	}
 
 	// Set up configurable items.
 	knotd_conf_t conf = knotd_conf_mod(mod, MOD_BADCOOKIE_SLIP);
@@ -276,16 +279,22 @@ int cookies_load(knotd_mod_t *mod)
 	ctx->secret_cnt = conf.count;
 	for (int i = 0; i < ctx->secret_cnt; ++i) {
 		assert(conf.multi[i].data_len == KNOT_EDNS_COOKIE_SECRET_SIZE);
-		memcpy(&ctx->secret[i], conf.multi[i].data, conf.multi[i].data_len);
+		uint64_t conf_secret[2];
+		memcpy(conf_secret, conf.multi[i].data, conf.multi[i].data_len);
+		ATOMIC_SET(ctx->secret[i].variable, conf_secret[0]);
+		ctx->secret[i].constant = conf_secret[1];
 		assert(ctx->secret_lifetime == 0);
 	}
 	knotd_conf_free(&conf);
 	if (ctx->secret_cnt == 0) {
-		ret = dnssec_random_buffer((uint8_t *)&ctx->secret[0], sizeof(ctx->secret[0]));
+		uint64_t gen_secret[2];
+		ret = dnssec_random_buffer((uint8_t *)gen_secret, sizeof(gen_secret));
 		if (ret != KNOT_EOK) {
 			free(ctx);
 			return ret;
 		}
+		ATOMIC_SET(ctx->secret[0].variable, gen_secret[0]);
+		ctx->secret[0].constant = gen_secret[1];
 		ctx->secret_cnt = 1;
 
 		conf = knotd_conf_mod(mod, MOD_SECRET_LIFETIME);
@@ -313,6 +322,10 @@ void cookies_unload(knotd_mod_t *mod)
 	if (ctx->secret_lifetime > 0) {
 		(void)pthread_cancel(ctx->update_secret);
 		(void)pthread_join(ctx->update_secret, NULL);
+	}
+	ATOMIC_DEINIT(ctx->badcookie_ctr);
+	for (int i = 0; i < 2; ++i) {
+		ATOMIC_DEINIT(ctx->secret[i].variable);
 	}
 	memzero(&ctx->secret, sizeof(ctx->secret));
 	free(ctx);

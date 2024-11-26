@@ -444,7 +444,7 @@ static int backup_kaspdb(zone_backup_ctx_t *ctx, conf_t *conf, zone_t *zone,
 
 int zone_backup(conf_t *conf, zone_t *zone)
 {
-	zone_backup_ctx_t *ctx = zone->backup_ctx;
+	zone_backup_ctx_t *ctx = ATOMIC_GET(zone->backup_ctx);
 	if (ctx == NULL) {
 		return KNOT_EINVAL;
 	}
