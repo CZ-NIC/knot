@@ -154,9 +154,21 @@ class KnotCollector(object):
             yield val
 
 
+class KnotHelpFormatter(argparse.HelpFormatter):
+    def _get_help_string(self, action):
+        help = action.help
+        if help is None:
+            help = ''
+
+        if not (type(action.default) is bool or action.default in (None, argparse.SUPPRESS)):
+            help += argparse._(' (default: %(default)s)')
+
+        return help
+
+
 def main():
     parser = argparse.ArgumentParser(
-        formatter_class = argparse.ArgumentDefaultsHelpFormatter,
+        formatter_class = KnotHelpFormatter,
     )
 
     parser.add_argument(
@@ -193,46 +205,44 @@ def main():
 
     parser.add_argument(
         "--no-meminfo",
-        action='store_false',
+        dest="meminfo",
+        action="store_false",
         help="disable collection of memory usage"
     )
 
     parser.add_argument(
         "--no-global-stats",
-        action='store_false',
+        dest="global_stats",
+        action="store_false",
         help="disable collection of global statistics"
     )
 
     parser.add_argument(
         "--no-zone-stats",
-        action='store_false',
+        dest="zone_stats",
+        action="store_false",
         help="disable collection of zone statistics"
     )
 
     parser.add_argument(
         "--no-zone-status",
-        action='store_false',
+        dest="zone_status",
+        action="store_false",
         help="disable collection of zone status"
     )
 
     parser.add_argument(
         "--no-zone-serial",
-        action='store_false',
+        dest="zone_serial",
+        action="store_false",
         help="disable collection of zone serial"
     )
 
     parser.add_argument(
         "--zone-timers",
-        action='store_true',
-        default=False,
+        dest="zone_timers",
+        action="store_true",
         help="enable collection of zone SOA timer values"
-    )
-
-    parser.add_argument(
-        "--no-zone-timers",
-        action='store_const',
-        help="supported for compatibility reasons; no effect",
-        # deprecated=True # in python >=3.13
     )
 
     args = parser.parse_args()
@@ -241,12 +251,12 @@ def main():
         args.knot_library_path,
         args.knot_socket_path,
         args.knot_socket_timeout,
-        args.no_meminfo,
-        args.no_global_stats,
-        args.no_zone_stats,
-        args.no_zone_status,
+        args.meminfo,
+        args.global_stats,
+        args.zone_stats,
+        args.zone_status,
         args.zone_timers,
-        args.no_zone_serial,
+        args.zone_serial,
     ))
 
     class Server(http.server.HTTPServer):
