@@ -214,26 +214,26 @@ void plain_stats(const xdp_gun_ctx_t *ctx, kxdpgun_stats_t *st, stats_type_t stt
 
 	const char *name = ctx->tcp ? "SYNs:    " : ctx->quic ? "initials:" : "queries: ";
 	format_with_separators(ps(st->qry_sent), pretty_print_pps);
-	printf("total %s    %"PRIu64" (%s pps) (%f%%)\n", name, st->qry_sent,
+	printf("total %s    %"PRIu64" (%s pps) (%f %%)\n", name, st->qry_sent,
 	       pretty_print_pps, 100.0 * st->qry_sent / (duration / 1000000.0 * ctx->qps * ctx->n_threads));
 	if (st->qry_sent > 0 && recv) {
 		if (ctx->tcp || ctx->quic) {
 		name = ctx->tcp ? "established:" : "handshakes: ";
 		format_with_separators(ps(st->synack_recv), pretty_print_pps);
-		printf("total %s %"PRIu64" (%s pps) (%f%%)\n", name,
+		printf("total %s %"PRIu64" (%s pps) (%f %%)\n", name,
 		       st->synack_recv, pretty_print_pps, pct(st->synack_recv));
 		}
 		format_with_separators(ps(st->ans_recv), pretty_print_pps);
-		printf("total replies:     %"PRIu64" (%s pps) (%f%%)\n",
+		printf("total replies:     %"PRIu64" (%s pps) (%f %%)\n",
 		       st->ans_recv, pretty_print_pps, pct(st->ans_recv));
 		if (ctx->tcp) {
 		format_with_separators(ps(st->finack_recv), pretty_print_pps);
-		printf("total closed:      %"PRIu64" (%s pps) (%f%%)\n",
+		printf("total closed:      %"PRIu64" (%s pps) (%f %%)\n",
 		       st->finack_recv, pretty_print_pps, pct(st->finack_recv));
 		}
 		if (st->rst_recv > 0) {
 		format_with_separators(ps(st->rst_recv), pretty_print_pps);
-		printf("total reset:       %"PRIu64" (%s pps) (%f%%)\n",
+		printf("total reset:       %"PRIu64" (%s pps) (%f %%)\n",
 		       st->rst_recv, pretty_print_pps, pct(st->rst_recv));
 		}
 		printf("average DNS reply size: %"PRIu64" B\n",
