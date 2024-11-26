@@ -249,7 +249,7 @@ int cookies_load(knotd_mod_t *mod)
 	}
 
 	// Initialize BADCOOKIE counter.
-	ctx->badcookie_ctr = BADCOOKIE_CTR_INIT;
+	ATOMIC_INIT(ctx->badcookie_ctr, BADCOOKIE_CTR_INIT);
 
 	// Set up configurable items.
 	knotd_conf_t conf = knotd_conf_mod(mod, MOD_BADCOOKIE_SLIP);
@@ -309,6 +309,7 @@ void cookies_unload(knotd_mod_t *mod)
 		(void)pthread_cancel(ctx->update_secret);
 		(void)pthread_join(ctx->update_secret, NULL);
 	}
+	ATOMIC_DEINIT(ctx->badcookie_ctr);
 	memzero(&ctx->secret, sizeof(ctx->secret));
 	free(ctx);
 }
