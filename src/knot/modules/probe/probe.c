@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -47,6 +47,7 @@ static void free_probe_ctx(probe_ctx_t *ctx)
 {
 	for (int i = 0; ctx->probes != NULL && i < ctx->probe_count; ++i) {
 		knot_probe_free(ctx->probes[i]);
+		ATOMIC_DEINIT(ctx->last_times[i]);
 	}
 	free(ctx->probes);
 	free(ctx->last_times);
@@ -136,6 +137,9 @@ int probe_load(knotd_mod_t *mod)
 	if (ctx->last_times == NULL) {
 		free_probe_ctx(ctx);
 		return KNOT_ENOMEM;
+	}
+	for (int i = 0; i < ctx->probe_count; i++) {
+		ATOMIC_INIT(ctx->last_times[i], 0);
 	}
 
 	ctx->min_diff_ns = 0;
