@@ -773,7 +773,7 @@ static int update_catalog(conf_t *conf, zone_update_t *update)
 
 	if (ret == KNOT_EOK) {
 		log_zone_info(update->zone->name, "enqueued %zd catalog updates", upd_count);
-		update->zone->server->catalog_upd_signal = true;
+		ATOMIC_SET(update->zone->server->catalog_upd_signal, true);
 		if (kill(getpid(), SIGUSR1) != 0) {
 			ret = knot_map_errno();
 		}

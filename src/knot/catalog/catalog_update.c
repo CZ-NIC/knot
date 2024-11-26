@@ -405,7 +405,7 @@ int catalog_zone_purge(server_t *server, conf_t *conf, const knot_dname_t *zone)
 	int ret = catalog_update_del_all(&server->catalog_upd, &server->catalog, zone, &members);
 	if (ret == KNOT_EOK && members > 0) {
 		log_zone_info(zone, "catalog zone purged, %zd member zones deconfigured", members);
-		server->catalog_upd_signal = true;
+		ATOMIC_SET(server->catalog_upd_signal, true);
 		if (kill(getpid(), SIGUSR1) != 0) {
 			ret = knot_map_errno();
 		}

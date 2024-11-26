@@ -831,6 +831,7 @@ int server_init(server_t *server, int bg_workers)
 
 	/* Clear the structure. */
 	memset(server, 0, sizeof(server_t));
+	ATOMIC_INIT(server->catalog_upd_signal, false);
 
 	/* Initialize event scheduler. */
 	if (evsched_init(&server->sched, server) != KNOT_EOK) {
@@ -882,6 +883,7 @@ void server_deinit(server_t *server)
 		return;
 	}
 
+	ATOMIC_DEINIT(server->catalog_upd_signal);
 	zone_backups_deinit(&server->backup_ctxs);
 
 	/* Save zone timers. */

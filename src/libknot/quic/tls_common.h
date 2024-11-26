@@ -62,7 +62,7 @@ struct knot_creds *knot_creds_init(const char *key_file, const char *cert_file,
  *
  * \return Initialized creds.
  */
-struct knot_creds *knot_creds_init_peer(const struct knot_creds *local_creds,
+struct knot_creds *knot_creds_init_peer(struct knot_creds *local_creds,
                                         const uint8_t *peer_pin,
                                         uint8_t peer_pin_len);
 

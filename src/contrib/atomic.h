@@ -59,6 +59,7 @@
  typedef void* knot_atomic_ptr_t;
  typedef bool knot_atomic_bool;
 #else                            /* Fallback, non-atomic. */
+ #define KNOT_HAVE_ATOMIC
  #include <stdint.h>
  #include <stdbool.h>
  #include <stddef.h>

@@ -27,7 +27,7 @@ const knot_layer_api_t *process_query_layer(void);
 /*! \brief Query processing intermediate data. */
 typedef struct knotd_qdata_extra {
 	zone_t *zone;        /*!< Zone from which is answered. */
-	const zone_contents_t *contents; /*!< Zone contents from which is answered. */
+	zone_contents_t *contents; /*!< Zone contents from which is answered. */
 	list_t wildcards;    /*!< Visited wildcards. */
 	list_t rrsigs;       /*!< Section RRSIGs. */
 	uint8_t *opt_rr_pos; /*!< Place of the OPT RR in wire. */
