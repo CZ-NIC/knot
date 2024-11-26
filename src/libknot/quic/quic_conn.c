@@ -60,6 +60,7 @@ knot_quic_table_t *knot_quic_table_new(size_t max_conns, size_t max_ibufs, size_
 	res->max_conns = max_conns;
 	res->ibufs_max = max_ibufs;
 	res->obufs_max = max_obufs;
+	ATOMIC_INIT(res->obufs_size, 0);
 	res->udp_payload_limit = udp_payload;
 
 	int ret = gnutls_priority_init2(&res->priority, KNOT_TLS_PRIORITIES, NULL,
@@ -99,7 +100,9 @@ void knot_quic_table_free(knot_quic_table_t *table)
 		assert(table->usage == 0);
 		assert(table->pointers == 0);
 		assert(table->ibufs_size == 0);
-		assert(table->obufs_size == 0);
+		assert(ATOMIC_GET(table->obufs_size) == 0);
+
+		ATOMIC_DEINIT(table->obufs_size);
 
 		gnutls_priority_deinit(table->priority);
 		heap_deinit(table->expiry_heap);
@@ -134,7 +137,7 @@ void knot_quic_table_sweep(knot_quic_table_t *table, struct knot_quic_reply *swe
 			knot_sweep_stats_incr(stats, KNOT_SWEEP_CTR_LIMIT_CONN);
 			send_excessive_load(c, sweep_reply, table);
 			knot_quic_table_rem(c, table);
-		} else if (table->obufs_size > table->obufs_max) {
+		} else if (ATOMIC_GET(table->obufs_size) > table->obufs_max) {
 			knot_sweep_stats_incr(stats, KNOT_SWEEP_CTR_LIMIT_OBUF);
 			send_excessive_load(c, sweep_reply, table);
 			knot_quic_table_rem(c, table);
