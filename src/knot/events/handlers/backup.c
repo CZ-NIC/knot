@@ -26,7 +26,7 @@ int event_backup(conf_t *conf, zone_t *zone)
 {
 	assert(zone);
 
-	zone_backup_ctx_t *ctx = zone->backup_ctx;
+	zone_backup_ctx_t *ctx = ATOMIC_GET(zone->backup_ctx);
 	if (ctx == NULL) {
 		return KNOT_EINVAL;
 	}
@@ -66,6 +66,6 @@ int event_backup(conf_t *conf, zone_t *zone)
 
 done:
 	ret_deinit = zone_backup_deinit(ctx);
-	zone->backup_ctx = NULL;
+	ATOMIC_SET(zone->backup_ctx, NULL);
 	return (ret != KNOT_EOK) ? ret : ret_deinit;
 }
