@@ -47,6 +47,7 @@ static void free_probe_ctx(probe_ctx_t *ctx)
 {
 	for (int i = 0; ctx->probes != NULL && i < ctx->probe_count; ++i) {
 		knot_probe_free(ctx->probes[i]);
+		ATOMIC_DEINIT(ctx->last_times[i]);
 	}
 	free(ctx->probes);
 	free(ctx->last_times);
@@ -136,6 +137,10 @@ int probe_load(knotd_mod_t *mod)
 	if (ctx->last_times == NULL) {
 		free_probe_ctx(ctx);
 		return KNOT_ENOMEM;
+	}
+	for (knot_atomic_uint64_t *it = ctx->last_times;
+	     it < ctx->last_times + ctx->probe_count; ++it) {
+		ATOMIC_INIT(*it, 0);
 	}
 
 	ctx->min_diff_ns = 0;

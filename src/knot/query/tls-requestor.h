@@ -46,7 +46,7 @@ typedef struct knot_tls_req_ctx {
 int knot_tls_req_ctx_init(knot_tls_req_ctx_t *ctx, int fd,
                           const struct sockaddr_storage *remote,
                           const struct sockaddr_storage *local,
-                          const struct knot_creds *local_creds,
+                          struct knot_creds *local_creds,
                           const uint8_t *peer_pin, uint8_t peer_pin_len,
                           bool *reused_fd, int io_timeout_ms);
 

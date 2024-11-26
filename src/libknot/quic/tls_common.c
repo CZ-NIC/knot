@@ -185,7 +185,7 @@ fail:
 }
 
 _public_
-struct knot_creds *knot_creds_init_peer(const struct knot_creds *local_creds,
+struct knot_creds *knot_creds_init_peer(struct knot_creds *local_creds,
                                         const uint8_t *peer_pin,
                                         uint8_t peer_pin_len)
 {
@@ -196,7 +196,7 @@ struct knot_creds *knot_creds_init_peer(const struct knot_creds *local_creds,
 
 	if (local_creds != NULL) {
 		creds->peer = true;
-		creds->cert_creds =  ATOMIC_GET(local_creds->cert_creds);
+		ATOMIC_INIT(creds->cert_creds, ATOMIC_GET(local_creds->cert_creds));
 	} else {
 		gnutls_certificate_credentials_t new_creds;
 		int ret = gnutls_certificate_allocate_credentials(&new_creds);
@@ -204,7 +204,7 @@ struct knot_creds *knot_creds_init_peer(const struct knot_creds *local_creds,
 			free(creds);
 			return NULL;
 		}
-		creds->cert_creds = new_creds;
+		ATOMIC_INIT(creds->cert_creds, new_creds);
 	}
 
 	if (peer_pin_len > 0 && peer_pin != NULL) {
@@ -345,8 +345,9 @@ void knot_creds_free(struct knot_creds *creds)
 		return;
 	}
 
-	if (!creds->peer && creds->cert_creds != NULL) {
-		gnutls_certificate_free_credentials(creds->cert_creds);
+	if (!creds->peer && ATOMIC_GET(creds->cert_creds) != NULL) {
+		gnutls_certificate_free_credentials(ATOMIC_GET(creds->cert_creds));
+		ATOMIC_DEINIT(creds->cert_creds);
 		if (creds->cert_creds_prev != NULL) {
 			gnutls_certificate_free_credentials(creds->cert_creds_prev);
 		}

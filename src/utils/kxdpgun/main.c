@@ -58,8 +58,8 @@
 
 volatile int xdp_trigger = KXDPGUN_WAIT;
 
-volatile knot_atomic_uint64_t stats_trigger = 0;
-volatile knot_atomic_bool stats_switch = STATS_SUM;
+volatile knot_atomic_uint64_t stats_trigger;
+volatile knot_atomic_bool stats_switch;
 
 unsigned global_cpu_aff_start = 0;
 unsigned global_cpu_aff_step = 1;
@@ -1349,6 +1349,8 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 int main(int argc, char *argv[])
 {
 	int ecode = EXIT_FAILURE;
+	ATOMIC_INIT(stats_trigger, 0);
+	ATOMIC_INIT(stats_switch, STATS_SUM);
 
 	xdp_gun_ctx_t ctx = ctx_defaults, *thread_ctxs = NULL;
 	ctx.msgid = time(NULL) % UINT16_MAX;
@@ -1425,6 +1427,9 @@ int main(int argc, char *argv[])
 	ecode = EXIT_SUCCESS;
 
 err:
+
+	ATOMIC_DEINIT(stats_trigger);
+	ATOMIC_DEINIT(stats_switch);
 	free(ctx.rss_conf);
 	free(thread_ctxs);
 	free(threads);

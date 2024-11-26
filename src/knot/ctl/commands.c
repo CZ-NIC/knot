@@ -662,7 +662,7 @@ static int zone_backup_cmd(zone_t *zone, ctl_args_t *args)
 
 	int ret = KNOT_EOK;
 	pthread_mutex_lock(&zone->cu_lock);
-	if (zone->backup_ctx != NULL) {
+	if (ATOMIC_GET(zone->backup_ctx) != NULL) {
 		log_zone_warning(zone->name, "backup or restore already in progress, skipping zone");
 		ctx->failed = true;
 		ret = KNOT_EPROGRESS;
@@ -675,7 +675,7 @@ static int zone_backup_cmd(zone_t *zone, ctl_args_t *args)
 	}
 
 	if (ret == KNOT_EOK) {
-		zone->backup_ctx = ctx;
+		ATOMIC_SET(zone->backup_ctx, ctx);
 	}
 	pthread_mutex_unlock(&zone->cu_lock);
 
@@ -699,7 +699,7 @@ static int zone_backup_cmd(zone_t *zone, ctl_args_t *args)
 	}
 
 	if (ret != KNOT_EOK || finish) {
-		zone->backup_ctx = NULL;
+		ATOMIC_SET(zone->backup_ctx, NULL);
 		return ret;
 	}
 
@@ -874,7 +874,7 @@ static int zone_txn_begin_l(zone_t *zone, _unused_ ctl_args_t *args)
 		return KNOT_TXN_EEXISTS;
 	}
 
-	struct zone_backup_ctx *backup_ctx = zone->backup_ctx;
+	struct zone_backup_ctx *backup_ctx = ATOMIC_GET(zone->backup_ctx);
 	if (backup_ctx != NULL && backup_ctx->restore_mode) {
 		log_zone_warning(zone->name, "zone restore pending, try opening control transaction later");
 		return KNOT_EAGAIN;

@@ -74,7 +74,7 @@ typedef struct knot_request {
 
 	knot_sign_context_t sign; /*!< Required for async. DDNS processing. */
 
-	const struct knot_creds *creds;
+	struct knot_creds *creds;
 	size_t pin_len;
 	uint8_t pin[];
 } knot_request_t;
@@ -110,7 +110,7 @@ knot_request_t *knot_request_make_generic(knot_mm_t *mm,
                                           const struct sockaddr_storage *remote,
                                           const struct sockaddr_storage *source,
                                           knot_pkt_t *query,
-                                          const struct knot_creds *creds,
+                                          struct knot_creds *creds,
                                           const query_edns_data_t *edns,
                                           const knot_tsig_key_t *tsig_key,
                                           const uint8_t *pin,
@@ -126,7 +126,7 @@ knot_request_t *knot_request_make_generic(knot_mm_t *mm,
 knot_request_t *knot_request_make(knot_mm_t *mm,
                                   const conf_remote_t *remote,
                                   knot_pkt_t *query,
-                                  const struct knot_creds *creds,
+                                  struct knot_creds *creds,
                                   const query_edns_data_t *edns,
                                   knot_request_flag_t flags);
 

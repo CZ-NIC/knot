@@ -30,8 +30,8 @@
 #define UPPER_PTR ((void *) UPPER)
 #define LOWER_PTR ((void *) LOWER)
 
-static volatile knot_atomic_uint64_t counter_add = 0;
-static volatile knot_atomic_uint64_t counter_sub = 0;
+static volatile knot_atomic_uint64_t counter_add;
+static volatile knot_atomic_uint64_t counter_sub;
 static volatile knot_atomic_uint64_t atomic_var;
 static volatile knot_atomic_ptr_t atomic_var2;
 static int errors = 0;
@@ -110,6 +110,11 @@ int main(int argc, char *argv[])
 {
 	plan_lazy();
 
+	ATOMIC_INIT(counter_add, 0);
+	ATOMIC_INIT(counter_sub, 0);
+	ATOMIC_INIT(atomic_var, 0);
+	ATOMIC_INIT(atomic_var2, NULL);
+
 	// Register service and signal handler
 	struct sigaction sa;
 	sa.sa_handler = interrupt_handle;
@@ -123,8 +128,8 @@ int main(int argc, char *argv[])
 	dt_join(unit);
 	dt_delete(&unit);
 
-	is_int(THREADS * CYCLES1 * 7,  counter_add, "atomicity of ATOMIC_ADD");
-	is_int(THREADS * CYCLES1 * 7, -counter_sub, "atomicity of ATOMIC_SUB");
+	is_int(THREADS * CYCLES1 * 7,  ATOMIC_GET(counter_add), "atomicity of ATOMIC_ADD");
+	is_int(THREADS * CYCLES1 * 7, -ATOMIC_GET(counter_sub), "atomicity of ATOMIC_SUB");
 
 	// Test for atomicity of ATOMIC_SET and ATOMIC_GET.
 	unit = dt_create(THREADS, thread_set, NULL, NULL);
@@ -139,7 +144,7 @@ int main(int argc, char *argv[])
 	uppers = 0; // Initialize in code so as to calm down Coverity.
 	lowers = 0; // Idem.
 
-	atomic_var2 = UPPER_PTR;
+	ATOMIC_INIT(atomic_var2, UPPER_PTR);
 	uppers++;
 
 	pthread_mutex_init(&mx, NULL);
@@ -149,9 +154,9 @@ int main(int argc, char *argv[])
 	dt_delete(&unit);
 	pthread_mutex_destroy(&mx);
 
-	if (atomic_var2 == UPPER_PTR) {
+	if (ATOMIC_GET(atomic_var2) == UPPER_PTR) {
 		uppers_count++;
-	} else if (atomic_var2 == LOWER_PTR) {
+	} else if (ATOMIC_GET(atomic_var2) == LOWER_PTR) {
 		lowers_count++;
 	} else {
 		errors++;
@@ -160,6 +165,11 @@ int main(int argc, char *argv[])
 	is_int(0, errors, "set/get atomicity of ATOMIC_XCHG");
 	is_int(uppers, uppers_count, "atomicity of ATOMIC_XCHG");
 	is_int(lowers, lowers_count, "atomicity of ATOMIC_XCHG");
+
+	ATOMIC_DEINIT(counter_add);
+	ATOMIC_DEINIT(counter_sub);
+	ATOMIC_DEINIT(atomic_var);
+	ATOMIC_DEINIT(atomic_var2);
 
 	return 0;
 }
