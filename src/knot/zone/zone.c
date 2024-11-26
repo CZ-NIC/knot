@@ -194,6 +194,8 @@ zone_t* zone_new(const knot_dname_t *name)
 
 	init_list(&zone->internal_notify);
 
+	ATOMIC_INIT(zone->backup_ctx, NULL);
+
 	return zone;
 }
 
@@ -242,6 +244,8 @@ void zone_free(zone_t **zone_ptr)
 	conf_deactivate_modules(&zone->query_modules, &zone->query_plan);
 
 	ptrlist_free(&zone->internal_notify, NULL);
+
+	ATOMIC_DEINIT(zone->backup_ctx);
 
 	free(zone);
 	*zone_ptr = NULL;
