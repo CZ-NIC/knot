@@ -216,15 +216,23 @@ def main():
     )
 
     parser.add_argument(
-        "--no-zone-timers",
-        action='store_false',
-        help="disable collection of zone timer settings"
-    )
-
-    parser.add_argument(
         "--no-zone-serial",
         action='store_false',
         help="disable collection of zone serial"
+    )
+
+    parser.add_argument(
+        "--zone-timers",
+        action='store_true',
+        default=False,
+        help="enable collection of zone SOA timer values"
+    )
+
+    parser.add_argument(
+        "--no-zone-timers",
+        action='store_const',
+        help="supported for compatibility reasons; no effect",
+        # deprecated=True # in python >=3.13
     )
 
     args = parser.parse_args()
@@ -237,7 +245,7 @@ def main():
         args.no_global_stats,
         args.no_zone_stats,
         args.no_zone_status,
-        args.no_zone_timers,
+        args.zone_timers,
         args.no_zone_serial,
     ))
 
