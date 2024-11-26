@@ -25,6 +25,8 @@
 
  #include <stdatomic.h>
 
+ #define ATOMIC_INIT(dst, val) atomic_store_explicit(&(dst), (val), memory_order_relaxed)
+ #define ATOMIC_DEINIT(dst)
  #define ATOMIC_SET(dst, val)  atomic_store_explicit(&(dst), (val), memory_order_relaxed)
  #define ATOMIC_GET(src)       atomic_load_explicit(&(src), memory_order_relaxed)
  #define ATOMIC_ADD(dst, val)  (void)atomic_fetch_add_explicit(&(dst), (val), memory_order_relaxed)
@@ -43,6 +45,8 @@
  #include <stdbool.h>
  #include <stddef.h>
 
+ #define ATOMIC_INIT(dst, val) __atomic_store_n(&(dst), (val), __ATOMIC_RELAXED)
+ #define ATOMIC_DEINIT(dst)
  #define ATOMIC_SET(dst, val)  __atomic_store_n(&(dst), (val), __ATOMIC_RELAXED)
  #define ATOMIC_GET(src)       __atomic_load_n(&(src), __ATOMIC_RELAXED)
  #define ATOMIC_ADD(dst, val)  __atomic_add_fetch(&(dst), (val), __ATOMIC_RELAXED)
@@ -54,22 +58,65 @@
  typedef size_t knot_atomic_size_t;
  typedef void* knot_atomic_ptr_t;
  typedef bool knot_atomic_bool;
-#else                            /* Fallback, non-atomic. */
- #warning "Atomic operations not availabe, using unreliable replacement."
+#else                            /* Fallback using spinlocks. Much slower. */
+ #define KNOT_HAVE_ATOMIC
 
  #include <stdint.h>
  #include <stdbool.h>
  #include <stddef.h>
 
- #define ATOMIC_SET(dst, val)  ((dst) = (val))
- #define ATOMIC_GET(src)       (src)
- #define ATOMIC_ADD(dst, val)  ((dst) += (val))
- #define ATOMIC_SUB(dst, val)  ((dst) -= (val))
- #define ATOMIC_XCHG(dst, val) ({ __typeof__ (dst) _z = (dst); (dst) = (val); _z; })
+ #include "contrib/spinlock.h"
 
- typedef uint16_t knot_atomic_uint16_t;
- typedef uint64_t knot_atomic_uint64_t;
- typedef size_t knot_atomic_size_t;
- typedef void* knot_atomic_ptr_t;
- typedef bool knot_atomic_bool;
+ #define ATOMIC_SET(dst, val) ({ \
+	knot_spin_lock((knot_spin_t *)&(dst).lock); \
+	(dst).value = (val); \
+	knot_spin_unlock((knot_spin_t *)&(dst).lock); \
+ })
+
+ #define ATOMIC_INIT(dst, val) ({ \
+	knot_spin_init((knot_spin_t *)&(dst).lock); \
+	ATOMIC_SET(dst, val); \
+ })
+
+ #define ATOMIC_DEINIT(dst) ({ \
+	knot_spin_destroy((knot_spin_t *)&(dst).lock); \
+ })
+
+ #define ATOMIC_GET(src) ({ \
+	knot_spin_lock((knot_spin_t *)&(src).lock); \
+	typeof((src).value) _z = (src).value; \
+	knot_spin_unlock((knot_spin_t *)&(src).lock); \
+	_z; \
+ })
+
+ #define ATOMIC_ADD(dst, val) ({ \
+	knot_spin_lock((knot_spin_t *)&(dst).lock); \
+	(dst).value += (val); \
+	knot_spin_unlock((knot_spin_t *)&(dst).lock); \
+ })
+
+ #define ATOMIC_SUB(dst, val) ({ \
+	knot_spin_lock((knot_spin_t *)&(dst).lock); \
+	(dst).value -= (val); \
+	knot_spin_unlock((knot_spin_t *)&(dst).lock); \
+ })
+
+ #define ATOMIC_XCHG(dst, val) ({ \
+	knot_spin_lock((knot_spin_t *)&(dst).lock); \
+	typeof((dst).value) _z = (dst).value; \
+	(dst).value = (val); \
+	knot_spin_unlock((knot_spin_t *)&(dst).lock); \
+	_z; \
+ })
+
+ #define ATOMIC_T(x) struct { \
+	knot_spin_t lock; \
+	x value; \
+ }
+
+ typedef ATOMIC_T(uint16_t) knot_atomic_uint16_t;
+ typedef ATOMIC_T(uint64_t) knot_atomic_uint64_t;
+ typedef ATOMIC_T(size_t) knot_atomic_size_t;
+ typedef ATOMIC_T(void*) knot_atomic_ptr_t;
+ typedef ATOMIC_T(bool) knot_atomic_bool;
 #endif
