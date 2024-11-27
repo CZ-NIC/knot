@@ -37,7 +37,7 @@ const yp_item_t rrl_conf[] = {
 	{ MOD_SLIP,          YP_TINT, YP_VINT = { 0, 100, 1 } },
 	{ MOD_TBL_SIZE,      YP_TINT, YP_VINT = { 1, INT32_MAX, 524288 } },
 	{ MOD_WHITELIST,     YP_TNET, YP_VNONE, YP_FMULTI },
-	{ MOD_LOG_PERIOD,    YP_TINT, YP_VINT = { 0, INT32_MAX, 0 } },
+	{ MOD_LOG_PERIOD,    YP_TINT, YP_VINT = { 0, INT32_MAX, 30000 } },
 	{ MOD_DRY_RUN,       YP_TBOOL, YP_VNONE },
 	{ NULL }
 };

@@ -223,7 +223,7 @@ and sources with more blocked queries have greater probability to be chosen.
 The approach is used by counting-based and time-based limiting separately,
 so you can expect one message per `log-period` from each of them.
 
-*Default:* ``0`` (disabled)
+*Default:* ``30000`` (milliseconds)
 
 .. _mod-rrl_dry-run:
 
