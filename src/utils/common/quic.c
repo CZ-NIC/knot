@@ -713,7 +713,6 @@ int quic_recv_dns_response(quic_ctx_t *ctx, uint8_t *buf, const size_t buf_len,
 				WARN("QUIC, failed to send");
 				return KNOT_ECONNABORTED;
 			}
-			WARN("QUIC, peer took too long to respond");
 			goto send;
 		}
 
