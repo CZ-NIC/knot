@@ -64,6 +64,7 @@ int rrl_conf_check(knotd_conf_check_args_t *args)
 typedef struct {
 	ALIGNED_CPU_CACHE // Ensures that one thread context occupies one cache line.
 	struct timespec start_time; // Start time of the measurement.
+	bool initialized; // Indication whether the context has been already initialized.
 	bool whitelist_checked; // Indication whether whitelist check took place.
 	bool skip; // Skip the rest of the module callbacks.
 } thrd_ctx_t;
@@ -87,12 +88,17 @@ static knotd_proto_state_t protolimit_start(knotd_proto_state_t state,
                                             knotd_qdata_params_t *params,
                                             knotd_mod_t *mod)
 {
+	assert(params && mod);
+
 	rrl_ctx_t *ctx = knotd_mod_ctx(mod);
 	thrd_ctx_t *thrd = &ctx->thrd_ctx[params->thread_id];
+
+	thrd->initialized = true;
+	thrd->whitelist_checked = true;
 	thrd->skip = false;
+	// start_time is used only by the time limiting - initialization not needed.
 
 	// Check if a whitelisted client.
-	thrd->whitelist_checked = true;
 	if (knotd_conf_addr_range_match(&ctx->whitelist, params->remote)) {
 		thrd->skip = true;
 		return state;
@@ -118,10 +124,18 @@ static knotd_proto_state_t protolimit_end(knotd_proto_state_t state,
                                           knotd_qdata_params_t *params,
                                           knotd_mod_t *mod)
 {
+	assert(params && mod);
+
 	rrl_ctx_t *ctx = knotd_mod_ctx(mod);
 	thrd_ctx_t *thrd = &ctx->thrd_ctx[params->thread_id];
 
+	// Time rate limit is applied to non-UDP.
 	if (thrd->skip || params->proto == KNOTD_QUERY_PROTO_UDP) {
+		return state;
+	}
+
+	// Don't limit authorized operations.
+	if (params->flags & KNOTD_QUERY_FLAG_AUTHORIZED) {
 		return state;
 	}
 
@@ -144,25 +158,25 @@ static knotd_state_t ratelimit_apply(knotd_state_t state, knot_pkt_t *pkt,
 	rrl_ctx_t *ctx = knotd_mod_ctx(mod);
 	thrd_ctx_t *thrd = &ctx->thrd_ctx[qdata->params->thread_id];
 
-	if (thrd->skip) {
+	if (!thrd->initialized) {
+		thrd->whitelist_checked = false;
+		thrd->skip = false;
+	}
+	thrd->initialized = false; // Reset here in case protolimit_start() won't be called!
+
+	// Rate limit is applied to UDP.
+	if (thrd->skip || qdata->params->proto != KNOTD_QUERY_PROTO_UDP) {
 		return state;
 	}
 
 	// Don't limit authorized operations.
 	if (qdata->params->flags & KNOTD_QUERY_FLAG_AUTHORIZED) {
-		thrd->skip = true;
-		return state;
-	}
-
-	// Rate limit is applied to UDP only.
-	if (qdata->params->proto != KNOTD_QUERY_PROTO_UDP) {
 		return state;
 	}
 
 	// Check for whitelisted client IF PER-ZONE module (no proto callbacks).
 	if (!thrd->whitelist_checked &&
 	    knotd_conf_addr_range_match(&ctx->whitelist, qdata->params->remote)) {
-		thrd->skip = true;
 		return state;
 	}
 
