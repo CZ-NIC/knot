@@ -335,7 +335,7 @@ static int recv_stream_data(ngtcp2_conn *conn, uint32_t flags,
 
 	knot_quic_conn_t *ctx = (knot_quic_conn_t *)user_data;
 	assert(ctx->conn == conn);
-
+	ctx->recv_payload = true;
 	int ret = knot_quic_stream_recv_data(ctx, stream_id, data, datalen,
 	                                     (flags & NGTCP2_STREAM_DATA_FLAG_FIN));
 
@@ -721,6 +721,7 @@ int knot_quic_handle(knot_quic_table_t *table, knot_quic_reply_t *reply,
 
 	ngtcp2_pkt_info pi = { .ecn = reply->ecn, };
 
+	conn->recv_payload = false;
 	ret = ngtcp2_conn_read_pkt(conn->conn, &path, &pi, reply->in_payload->iov_base,
 	                           reply->in_payload->iov_len, now);
 

@@ -95,6 +95,8 @@ typedef struct knot_quic_conn {
 	size_t ibufs_size;
 	size_t obufs_size;
 
+	bool recv_payload;
+
 	struct knot_quic_table *quic_table;
 
 	struct knot_quic_conn *next;

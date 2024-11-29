@@ -4,7 +4,7 @@
 
 from dnstest.test import Test
 
-t = Test()
+t = Test(quic=True)
 
 master = t.server("knot")
 slave = t.server("knot")
