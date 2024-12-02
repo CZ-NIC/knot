@@ -15,7 +15,8 @@ responses as truncated or by dropping them altogether.
 This module can also help protect the server from excessive utilization by
 limiting incoming packets (including handshakes) based on consumed time.
 If a packet is time rate limited, it's dropped. This function works with
-all supported non-UDP transport protocols and cannot be configured per zone.
+all supported non-UDP transport protocols (TCP, TLS, and QUIC) and cannot
+be configured per zone.
 
 .. NOTE::
    This module introduces three statistics counters:
@@ -27,6 +28,12 @@ all supported non-UDP transport protocols and cannot be configured per zone.
 .. NOTE::
    If the :ref:`Cookies<mod-cookies>` module is active, RRL is not applied
    to UDP responses with a valid DNS cookie.
+
+.. NOTE::
+   The time limiting applies even to handshakes of incoming authorized requests
+   (e.g. NOTIFY, AXFR). In such cases, setting :ref:`mod-rrl_whitelist` or reusing
+   already established connections (e.g. :ref:`server_remote-pool-timeout` on
+   the remote server) can mitigate this issue.
 
 Example
 -------
@@ -96,6 +103,8 @@ i.e. they are lowered by a constant fraction of their value each millisecond.
 The specified rate limit is reached, when the number of queries is the same every millisecond;
 sending many queries once a second or even a larger timespan leads to a more strict limiting.
 
+Set to 0 to disable the rate limiting.
+
 *Default:* ``20``
 
 .. _mod-rrl_instant-limit:
@@ -160,6 +169,8 @@ time-rate-limit
 
 This limit works similarly to :ref:`mod-rrl_rate-limit` but considers the time
 consumed (in microseconds) by the remote over non-UDP transport protocols.
+
+Set to 0 to disable the time limiting.
 
 *Default:* ``4000`` (microseconds)
 
