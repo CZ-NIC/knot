@@ -61,6 +61,10 @@ typedef enum {
 	XDP_TCP_IGNORE_FIN         = (1 << 2),
 } knot_tcp_ignore_t;
 
+typedef enum {
+	KNOT_TCP_CONN_AUTHORIZED = (1 << 0),
+} knot_tcp_conn_flag_t;
+
 typedef struct knot_tcp_conn {
 	struct {
 		struct knot_tcp_conn *list_node_next;
@@ -79,6 +83,7 @@ typedef struct knot_tcp_conn {
 	uint32_t last_active;
 	uint32_t establish_rtt; // in microseconds
 	knot_tcp_state_t state;
+	knot_tcp_conn_flag_t flags;
 	struct iovec inbuf;
 	struct knot_tcp_outbuf *outbufs;
 	struct knot_tcp_conn *next;
