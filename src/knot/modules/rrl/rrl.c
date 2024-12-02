@@ -104,7 +104,8 @@ static knotd_proto_state_t protolimit_start(knotd_proto_state_t state,
 	}
 
 	// Check if the packet is limited.
-	if (rrl_query(ctx->time_table, params->remote, mod) != KNOT_EOK) {
+	rrl_log_params_t log = { .mod = mod, .proto = params->proto };
+	if (rrl_query(ctx->time_table, params->remote, &log) != KNOT_EOK) {
 		thrd->skip = true;
 		knotd_mod_stats_incr(mod, params->thread_id, 2, 0, 1);
 		return ctx->dry_run ? state : KNOTD_PROTO_STATE_BLOCK;
@@ -168,7 +169,8 @@ static knotd_state_t ratelimit_apply(knotd_state_t state, knot_pkt_t *pkt,
 		return state;
 	}
 
-	if (rrl_query(ctx->rate_table, knotd_qdata_remote_addr(qdata), mod) == KNOT_EOK) {
+	rrl_log_params_t log = { .mod = mod, .qdata = qdata };
+	if (rrl_query(ctx->rate_table, knotd_qdata_remote_addr(qdata), &log) == KNOT_EOK) {
 		// Rate limiting not applied.
 		return state;
 	}
