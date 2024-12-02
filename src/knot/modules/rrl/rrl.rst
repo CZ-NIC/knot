@@ -105,7 +105,7 @@ sending many queries once a second or even a larger timespan leads to a more str
 
 Set to 0 to disable the rate limiting.
 
-*Default:* ``20``
+*Default:* ``50``
 
 .. _mod-rrl_instant-limit:
 
@@ -124,7 +124,7 @@ is periodically lowered.
 The :ref:`mod-rrl_instant-limit` may be at least :ref:`mod-rrl_rate-limit` **/ 1000**, at which point the
 counters are zeroed each millisecond.
 
-*Default:* ``50``
+*Default:* ``125``
 
 .. _mod-rrl_slip:
 
@@ -172,7 +172,7 @@ consumed (in microseconds) by the remote over non-UDP transport protocols.
 
 Set to 0 to disable the time limiting.
 
-*Default:* ``4000`` (microseconds)
+*Default:* ``5000`` (microseconds)
 
 .. _mod-rrl_time-instant-limit:
 

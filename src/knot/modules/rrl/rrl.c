@@ -30,10 +30,10 @@
 #define MOD_DRY_RUN		"\x07""dry-run"
 
 const yp_item_t rrl_conf[] = {
-	{ MOD_INST_LIMIT,    YP_TINT, YP_VINT = { 1,  (1ll << 32) / 768 - 1, 50 } },
-	{ MOD_RATE_LIMIT,    YP_TINT, YP_VINT = { 0, ((1ll << 32) / 768 - 1) * 1000, 20 } },
+	{ MOD_INST_LIMIT,    YP_TINT, YP_VINT = { 1,  (1ll << 32) / 768 - 1, 125 } },
+	{ MOD_RATE_LIMIT,    YP_TINT, YP_VINT = { 0, ((1ll << 32) / 768 - 1) * 1000, 50 } },
 	{ MOD_T_INST_LIMIT,  YP_TINT, YP_VINT = { 1, 1000000, 5000 } },
-	{ MOD_T_RATE_LIMIT,  YP_TINT, YP_VINT = { 0, 1000000000, 4000 } },
+	{ MOD_T_RATE_LIMIT,  YP_TINT, YP_VINT = { 0, 1000000000, 5000 } },
 	{ MOD_SLIP,          YP_TINT, YP_VINT = { 0, 100, 1 } },
 	{ MOD_TBL_SIZE,      YP_TINT, YP_VINT = { 1, INT32_MAX, 524288 } },
 	{ MOD_WHITELIST,     YP_TNET, YP_VNONE, YP_FMULTI },
