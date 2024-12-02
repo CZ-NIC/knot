@@ -94,6 +94,13 @@ static void handle_quic_stream(knot_quic_conn_t *conn, int64_t stream_id, struct
 	}
 
 	handle_finish(layer);
+
+	// Store the qdata params AUTH flag to the connection.
+	if (params->flags & KNOTD_QUERY_FLAG_AUTHORIZED) {
+		conn->flags |= KNOT_QUIC_CONN_AUTHORIZED;
+	} else {
+		conn->flags &= ~KNOT_QUIC_CONN_AUTHORIZED;
+	}
 }
 
 void handle_quic_streams(knot_quic_conn_t *conn, knotd_qdata_params_t *params,
@@ -101,14 +108,15 @@ void handle_quic_streams(knot_quic_conn_t *conn, knotd_qdata_params_t *params,
 {
 	uint8_t ans_buf[KNOT_WIRE_MAX_PKTSIZE];
 
+	params_update_quic(params, conn);
+
 	int64_t stream_id;
 	knot_quic_stream_t *stream;
-
 	while (conn != NULL && (stream = knot_quic_stream_get_process(conn, &stream_id)) != NULL) {
 		assert(stream->inbufs != NULL);
 		assert(stream->inbufs->n_inbufs > 0);
 		struct iovec *inbufs = stream->inbufs->inbufs;
-		params_update_quic(params, knot_quic_conn_rtt(conn), conn, stream_id);
+		params_update_quic_stream(params, stream_id);
 		// NOTE: only the first msg in the stream is used, the rest is dropped.
 		handle_quic_stream(conn, stream_id, &inbufs[0], layer, params,
 		                   ans_buf, sizeof(ans_buf));

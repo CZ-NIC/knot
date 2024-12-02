@@ -53,18 +53,30 @@ inline static knotd_qdata_params_t params_init(knotd_query_proto_t proto,
 	return params;
 }
 
-inline static void params_update_tcp(knotd_qdata_params_t *params, uint32_t rtt)
+inline static void params_update_tcp(knotd_qdata_params_t *params,
+                                     knot_tcp_conn_t *conn)
 {
-	params->measured_rtt = rtt;
+	params->measured_rtt = conn->establish_rtt;
+	if (conn->flags & KNOT_TCP_CONN_AUTHORIZED) {
+		params->flags |= KNOTD_QUERY_FLAG_AUTHORIZED;
+	}
 }
 
 #ifdef ENABLE_QUIC
-inline static void params_update_quic(knotd_qdata_params_t *params, uint32_t rtt,
-                                      knot_quic_conn_t *conn, int64_t stream_id)
+inline static void params_update_quic(knotd_qdata_params_t *params,
+                                      knot_quic_conn_t *conn)
 {
 	params->quic_conn = conn;
+	if (conn->flags & KNOT_QUIC_CONN_AUTHORIZED) {
+		params->flags |= KNOTD_QUERY_FLAG_AUTHORIZED;
+	}
+}
+
+inline static void params_update_quic_stream(knotd_qdata_params_t *params,
+                                             int64_t stream_id)
+{
 	params->quic_stream = stream_id;
-	params->measured_rtt = rtt;
+	params->measured_rtt = knot_quic_conn_rtt(params->quic_conn);
 }
 #endif // ENABLE_QUIC
 
@@ -72,6 +84,9 @@ inline static void params_update_tls(knotd_qdata_params_t *params,
                                      knot_tls_conn_t *conn)
 {
 	params->tls_conn = conn;
+	if (params->tls_conn->flags & KNOT_TLS_CONN_AUTHORIZED) {
+		params->flags |= KNOTD_QUERY_FLAG_AUTHORIZED;
+	}
 }
 
 #ifdef ENABLE_XDP

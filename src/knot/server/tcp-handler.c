@@ -214,6 +214,15 @@ static int tcp_handle(tcp_context_t *tcp, knotd_qdata_params_t *params,
 
 	handle_finish(&tcp->layer);
 
+	if (params->tls_conn != NULL) {
+		// Store the qdata params AUTH flag to the connection.
+		if (params->flags & KNOTD_QUERY_FLAG_AUTHORIZED) {
+			params->tls_conn->flags |= KNOT_TLS_CONN_AUTHORIZED;
+		} else {
+			params->tls_conn->flags &= ~KNOT_TLS_CONN_AUTHORIZED;
+		}
+	}
+
 	return KNOT_EOK;
 }
 

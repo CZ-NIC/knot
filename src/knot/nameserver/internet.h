@@ -64,6 +64,7 @@ knot_layer_state_t internet_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 #define NS_NEED_AUTH(qdata, action) \
 	if (!process_query_acl_check(conf(), (action), (qdata)) || \
 	    process_query_verify(qdata) != KNOT_EOK) { \
+		qdata->params->flags &= ~KNOTD_QUERY_FLAG_AUTHORIZED; \
 		return KNOT_STATE_FAIL; \
 	} else { \
 		qdata->params->flags |= KNOTD_QUERY_FLAG_AUTHORIZED; \
