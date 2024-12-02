@@ -37,6 +37,12 @@ typedef struct rrl_table rrl_table_t;
 rrl_table_t *rrl_create(size_t size, uint32_t instant_limit, uint32_t rate_limit,
                         bool rw_mode, uint32_t log_period);
 
+typedef struct {
+	knotd_mod_t *mod;
+	knotd_qdata_t *qdata;      // For rate limiting.
+	knotd_query_proto_t proto; // For time limiting.
+} rrl_log_params_t;
+
 /*!
  * \brief Query the RRL table for accept or deny, when the rate limit is reached.
  *
@@ -44,12 +50,12 @@ rrl_table_t *rrl_create(size_t size, uint32_t instant_limit, uint32_t rate_limit
  *
  * \param rrl RRL table.
  * \param remote Source address.
- * \param mod Query module (needed for logging).
+ * \param log Logging parameters (can be NULL).
  *
  * \retval KNOT_EOK if passed.
  * \retval KNOT_ELIMIT when the limit is reached.
  */
-int rrl_query(rrl_table_t *rrl, const struct sockaddr_storage *remote, knotd_mod_t *mod);
+int rrl_query(rrl_table_t *rrl, const struct sockaddr_storage *remote, rrl_log_params_t *log);
 
 /*!
  * \brief Update the RRL table.
