@@ -244,7 +244,7 @@ static int generate_ksk(kdnssec_ctx_t *ctx, knot_time_t when_active, bool pre_ac
 static bool running_rollover(const kdnssec_ctx_t *ctx)
 {
 	bool res = false;
-	bool ready_ksk = false, active_ksk = false;
+	int ready_ksk = 0, active_ksk = 0, active_zsk = 0;
 
 	for (size_t i = 0; i < ctx->zone->num_keys; i++) {
 		knot_kasp_key_t *key = &ctx->zone->keys[i];
@@ -259,10 +259,11 @@ static bool running_rollover(const kdnssec_ctx_t *ctx)
 			res = true;
 			break;
 		case DNSSEC_KEY_STATE_READY:
-			ready_ksk = (ready_ksk || key->is_ksk);
+			ready_ksk += (key->is_ksk ? 1 : 0);
 			break;
 		case DNSSEC_KEY_STATE_ACTIVE:
-			active_ksk = (active_ksk || key->is_ksk);
+			active_ksk += (key->is_ksk ? 1 : 0);
+			active_zsk += (key->is_zsk ? 1 : 0);
 			break;
 		case DNSSEC_KEY_STATE_RETIRE_ACTIVE:
 		case DNSSEC_KEY_STATE_POST_ACTIVE:
@@ -274,7 +275,7 @@ static bool running_rollover(const kdnssec_ctx_t *ctx)
 			break;
 		}
 	}
-	if (ready_ksk && active_ksk) {
+	if (ready_ksk + active_ksk > 1 || active_zsk > 1) {
 		res = true;
 	}
 	return res;
