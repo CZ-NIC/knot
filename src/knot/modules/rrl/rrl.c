@@ -30,10 +30,10 @@
 #define MOD_DRY_RUN		"\x07""dry-run"
 
 const yp_item_t rrl_conf[] = {
-	{ MOD_INST_LIMIT,    YP_TINT, YP_VINT = { 1,  (1ll << 32) / 768 - 1, 50 } },
-	{ MOD_RATE_LIMIT,    YP_TINT, YP_VINT = { 0, ((1ll << 32) / 768 - 1) * 1000, 20 } },
+	{ MOD_INST_LIMIT,    YP_TINT, YP_VINT = { 1,  (1ll << 32) / 768 - 1, 125 } },
+	{ MOD_RATE_LIMIT,    YP_TINT, YP_VINT = { 0, ((1ll << 32) / 768 - 1) * 1000, 50 } },
 	{ MOD_T_INST_LIMIT,  YP_TINT, YP_VINT = { 1, 1000000, 5000 } },
-	{ MOD_T_RATE_LIMIT,  YP_TINT, YP_VINT = { 0, 1000000000, 4000 } },
+	{ MOD_T_RATE_LIMIT,  YP_TINT, YP_VINT = { 0, 1000000000, 5000 } },
 	{ MOD_SLIP,          YP_TINT, YP_VINT = { 0, 100, 1 } },
 	{ MOD_TBL_SIZE,      YP_TINT, YP_VINT = { 1, INT32_MAX, 524288 } },
 	{ MOD_WHITELIST,     YP_TNET, YP_VNONE, YP_FMULTI },
@@ -64,8 +64,7 @@ int rrl_conf_check(knotd_conf_check_args_t *args)
 typedef struct {
 	ALIGNED_CPU_CACHE // Ensures that one thread context occupies one cache line.
 	struct timespec start_time; // Start time of the measurement.
-	bool whitelist_checked; // Indication whether whitelist check took place.
-	bool skip; // Skip the rest of the module callbacks.
+	bool skip; // Skip the time table update.
 } thrd_ctx_t;
 
 typedef struct {
@@ -87,24 +86,26 @@ static knotd_proto_state_t protolimit_start(knotd_proto_state_t state,
                                             knotd_qdata_params_t *params,
                                             knotd_mod_t *mod)
 {
+	assert(params && mod);
+
 	rrl_ctx_t *ctx = knotd_mod_ctx(mod);
 	thrd_ctx_t *thrd = &ctx->thrd_ctx[params->thread_id];
 	thrd->skip = false;
 
+	// Time limiting not supported for UDP (source address can be forged).
+	if (params->proto == KNOTD_QUERY_PROTO_UDP) {
+		return state;
+	}
+
 	// Check if a whitelisted client.
-	thrd->whitelist_checked = true;
 	if (knotd_conf_addr_range_match(&ctx->whitelist, params->remote)) {
 		thrd->skip = true;
 		return state;
 	}
 
-	// UDP time limiting not implemented (source address can be forged).
-	if (params->proto == KNOTD_QUERY_PROTO_UDP) {
-		return state;
-	}
-
 	// Check if the packet is limited.
-	if (rrl_query(ctx->time_table, params->remote, mod) != KNOT_EOK) {
+	rrl_log_params_t log = { .mod = mod, .proto = params->proto };
+	if (rrl_query(ctx->time_table, params->remote, &log) != KNOT_EOK) {
 		thrd->skip = true;
 		knotd_mod_stats_incr(mod, params->thread_id, 2, 0, 1);
 		return ctx->dry_run ? state : KNOTD_PROTO_STATE_BLOCK;
@@ -118,10 +119,18 @@ static knotd_proto_state_t protolimit_end(knotd_proto_state_t state,
                                           knotd_qdata_params_t *params,
                                           knotd_mod_t *mod)
 {
+	assert(params && mod);
+
 	rrl_ctx_t *ctx = knotd_mod_ctx(mod);
 	thrd_ctx_t *thrd = &ctx->thrd_ctx[params->thread_id];
 
+	// Time rate limit is applied to non-UDP.
 	if (thrd->skip || params->proto == KNOTD_QUERY_PROTO_UDP) {
+		return state;
+	}
+
+	// Don't limit authorized operations.
+	if (params->flags & KNOTD_QUERY_FLAG_AUTHORIZED) {
 		return state;
 	}
 
@@ -142,36 +151,26 @@ static knotd_state_t ratelimit_apply(knotd_state_t state, knot_pkt_t *pkt,
 	assert(pkt && qdata && mod);
 
 	rrl_ctx_t *ctx = knotd_mod_ctx(mod);
-	thrd_ctx_t *thrd = &ctx->thrd_ctx[qdata->params->thread_id];
 
-	if (thrd->skip) {
-		return state;
-	}
-
-	// Don't limit authorized operations.
-	if (qdata->params->flags & KNOTD_QUERY_FLAG_AUTHORIZED) {
-		thrd->skip = true;
-		return state;
-	}
-
-	// Rate limit is applied to UDP only.
+	// Rate limiting is applied only to UDP.
 	if (qdata->params->proto != KNOTD_QUERY_PROTO_UDP) {
 		return state;
 	}
 
-	// Check for whitelisted client IF PER-ZONE module (no proto callbacks).
-	if (!thrd->whitelist_checked &&
-	    knotd_conf_addr_range_match(&ctx->whitelist, qdata->params->remote)) {
-		thrd->skip = true;
+	// NOTE: (qdata->params->flags & KNOTD_QUERY_FLAG_AUTHORIZED) can't be true here.
+
+	// Check for whitelisted client.
+	if (knotd_conf_addr_range_match(&ctx->whitelist, qdata->params->remote)) {
 		return state;
 	}
 
-	// Rate limit is not applied to responses with a valid cookie.
+	// Rate limiting is not applied to responses with a valid cookie.
 	if (qdata->params->flags & KNOTD_QUERY_FLAG_COOKIE) {
 		return state;
 	}
 
-	if (rrl_query(ctx->rate_table, knotd_qdata_remote_addr(qdata), mod) == KNOT_EOK) {
+	rrl_log_params_t log = { .mod = mod, .qdata = qdata };
+	if (rrl_query(ctx->rate_table, knotd_qdata_remote_addr(qdata), &log) == KNOT_EOK) {
 		// Rate limiting not applied.
 		return state;
 	}

@@ -223,7 +223,6 @@ static void handle_udp(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
 static void handle_tcp(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
                        knotd_qdata_params_t *params)
 {
-
 	uint8_t ans_buf[KNOT_WIRE_MAX_PKTSIZE];
 
 	for (uint32_t i = 0; i < ctx->msg_recv_count; i++) {
@@ -251,8 +250,7 @@ static void handle_tcp(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
 		} else if (knot_tcp_relay_empty(rl)) {
 			continue;
 		}
-
-		params_update_tcp(params, rl->conn->establish_rtt);
+		params_update_tcp(params, rl->conn);
 
 		// Process all complete DNS queries in one TCP stream.
 		for (size_t j = 0; rl->inbf != NULL && j < rl->inbf->n_inbufs; j++) {
@@ -273,6 +271,12 @@ static void handle_tcp(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
 			}
 
 			handle_finish(layer);
+
+			if (params->flags & KNOTD_QUERY_FLAG_AUTHORIZED) {
+				rl->conn->flags |= KNOT_TCP_CONN_AUTHORIZED;
+			} else {
+				rl->conn->flags &= ~KNOT_TCP_CONN_AUTHORIZED;
+			}
 		}
 
 		(void)process_query_proto(params, KNOTD_STAGE_PROTO_END);

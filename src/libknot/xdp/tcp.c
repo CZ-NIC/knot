@@ -227,6 +227,7 @@ static void conn_init_from_msg(knot_tcp_conn_t *conn, knot_xdp_msg_t *msg)
 	conn->last_active = get_timestamp();
 	conn->state = XDP_TCP_NORMAL;
 	conn->establish_rtt = 0;
+	conn->flags = 0;
 
 	memset(&conn->inbuf, 0, sizeof(conn->inbuf));
 	memset(&conn->outbufs, 0, sizeof(conn->outbufs));

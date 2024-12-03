@@ -68,18 +68,35 @@ static void addr_tostr(char *dst, size_t maxlen, const struct sockaddr_storage *
 	}
 }
 
-static void rrl_log_limited(knotd_mod_t *mod, const struct sockaddr_storage *ss,
+static void rrl_log_limited(rrl_log_params_t *params, const struct sockaddr_storage *ss,
                             const uint8_t prefix, bool rate)
 {
-	if (mod == NULL) {
+	if (params == NULL) {
 		return;
 	}
 
 	char addr_str[SOCKADDR_STRLEN];
 	addr_tostr(addr_str, sizeof(addr_str), ss);
 
-	knotd_mod_log(mod, LOG_NOTICE, "address %s limited on /%d by %s",
-	              addr_str, prefix, rate ? "rate" : "time");
+	const char *proto_str = "UDP";
+	const char *qname_str = NULL;
+	knot_dname_txt_storage_t buf;
+	if (params->qdata != NULL) {
+		qname_str = knot_dname_to_str(buf, knot_pkt_qname(params->qdata->query),
+		                              sizeof(buf));
+	} else {
+		switch (params->proto) {
+		case KNOTD_QUERY_PROTO_TCP:  proto_str = "TCP"; break;
+		case KNOTD_QUERY_PROTO_QUIC: proto_str = "QUIC"; break;
+		case KNOTD_QUERY_PROTO_TLS:  proto_str = "TLS"; break;
+		default:                     break;
+		}
+	}
+
+	knotd_mod_log(params->mod, LOG_NOTICE, "address %s %s limited on /%d by %s%s%s",
+	              addr_str, proto_str, prefix, rate ? "rate" : "time",
+	              (qname_str != NULL ? ", qname " : ""),
+	              (qname_str != NULL ? qname_str : ""));
 }
 
 rrl_table_t *rrl_create(size_t size, uint32_t instant_limit, uint32_t rate_limit,
@@ -131,7 +148,7 @@ rrl_table_t *rrl_create(size_t size, uint32_t instant_limit, uint32_t rate_limit
 	return rrl;
 }
 
-int rrl_query(rrl_table_t *rrl, const struct sockaddr_storage *remote, knotd_mod_t *mod)
+int rrl_query(rrl_table_t *rrl, const struct sockaddr_storage *remote, rrl_log_params_t *log)
 {
 	assert(rrl);
 	assert(remote);
@@ -186,7 +203,7 @@ int rrl_query(rrl_table_t *rrl, const struct sockaddr_storage *remote, knotd_mod
 		do {
 			if (atomic_compare_exchange_weak_explicit(&rrl->log_time, &log_time_orig, now,
 			                                          memory_order_relaxed, memory_order_relaxed)) {
-				rrl_log_limited(mod, remote, prefix, rrl->rw_mode);
+				rrl_log_limited(log, remote, prefix, rrl->rw_mode);
 				break;
 			}
 		} while (now - log_time_orig + 1024 >= rrl->log_period + 1024);

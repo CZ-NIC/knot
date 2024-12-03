@@ -175,7 +175,9 @@ static int tcp_handle(tcp_context_t *tcp, knotd_qdata_params_t *params,
 			recv = knot_tls_recv_dns(params->tls_conn, rx->iov_base, rx->iov_len);
 			break;
 		default: // E.g. handshake timeout.
-			return ret;
+			assert(ret < 0);
+			recv = ret;
+			break;
 		}
 	} else {
 		recv = net_dns_tcp_recv(params->socket, rx->iov_base, rx->iov_len, tcp->io_timeout);
@@ -211,6 +213,15 @@ static int tcp_handle(tcp_context_t *tcp, knotd_qdata_params_t *params,
 	}
 
 	handle_finish(&tcp->layer);
+
+	if (params->tls_conn != NULL) {
+		// Store the qdata params AUTH flag to the connection.
+		if (params->flags & KNOTD_QUERY_FLAG_AUTHORIZED) {
+			params->tls_conn->flags |= KNOT_TLS_CONN_AUTHORIZED;
+		} else {
+			params->tls_conn->flags &= ~KNOT_TLS_CONN_AUTHORIZED;
+		}
+	}
 
 	return KNOT_EOK;
 }
