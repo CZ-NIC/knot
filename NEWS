@@ -1,3 +1,29 @@
+Knot DNS 3.4.3 (2024-12-06)
+===========================
+
+Improvements:
+-------------
+ - knotd: improved processing of QNAMEs containing zero bytes
+ - knotd: zone expiration now aborts possible zone control transaction #929
+ - knotd: generated catalog memeber metadata is stored when the zone is loaded
+ - knotd: new configuration check for using default NSEC3 salt length, which will change
+ - mod-rrl: added QNAME (if possible) and transport protocol to log messages
+ - mod-rrl: increased defaults for 'log-period' to 30 secs, 'rate-limit' to 50,
+            'instant-rate-limit' to 125, and 'time-rate-limit' to 5 ms,
+ - kxdpgun: added space separators to some printed values for better readability
+ - libs: upgraded embedded libngtcp2 to 1.9.1
+ - knot-exporter: zone timers metric is now disabled by default (see '--zone-timers')
+ - packaging: added build dependency softhsm for PKCS #11 testing on RPM distributions
+ - doc: updated description of DNSSEC key management and module RRL
+
+Bugfixes:
+---------
+ - knotd: more active ZSKs causes cumulative ZSK rollovers
+ - knotd: zone purge clears active generated catalog memeber metadata
+ - mod-rrl: authorized requests are rate limited #943
+ - kdig: misleading warning about timeout during QUIC connection
+ - keymgr: public-only keys are marked as missing in the list output
+
 Knot DNS 3.4.2 (2024-10-31)
 ===========================
 
