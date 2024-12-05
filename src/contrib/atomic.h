@@ -21,8 +21,6 @@
 #pragma once
 
 #ifdef HAVE_C11_ATOMIC           /* C11 */
- #define KNOT_HAVE_ATOMIC
-
  #include <stdatomic.h>
 
  #define ATOMIC_INIT(dst, val) atomic_store_explicit(&(dst), (val), memory_order_relaxed)
@@ -39,8 +37,6 @@
  typedef _Atomic (void *) knot_atomic_ptr_t;
  typedef atomic_bool knot_atomic_bool;
 #elif defined(HAVE_GCC_ATOMIC)   /* GCC __atomic */
- #define KNOT_HAVE_ATOMIC
-
  #include <stdint.h>
  #include <stdbool.h>
  #include <stddef.h>
@@ -59,8 +55,6 @@
  typedef void* knot_atomic_ptr_t;
  typedef bool knot_atomic_bool;
 #else                            /* Fallback using spinlocks. Much slower. */
- #define KNOT_HAVE_ATOMIC
-
  #include <stdint.h>
  #include <stdbool.h>
  #include <stddef.h>

@@ -299,11 +299,6 @@ int cookies_load(knotd_mod_t *mod)
 		}
 	}
 
-#ifndef KNOT_HAVE_ATOMIC
-	knotd_mod_log(mod, LOG_WARNING, "the module might work slightly wrong on this platform");
-	ctx->badcookie_slip = 1;
-#endif
-
 	return knotd_mod_hook(mod, KNOTD_STAGE_BEGIN, cookies_process);
 }
 
