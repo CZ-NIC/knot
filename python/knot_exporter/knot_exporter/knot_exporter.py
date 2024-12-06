@@ -231,6 +231,7 @@ def main():
     parser.add_argument(
         "--no-zone-timers",
         action='store_const',
+        const=None,
         help="supported for compatibility reasons; no effect",
         # deprecated=True # in python >=3.13
     )
