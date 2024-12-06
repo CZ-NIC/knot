@@ -48,7 +48,6 @@ libtap_la_SOURCES = \
 EXTRA_PROGRAMS = tap/runtests
 
 check_PROGRAMS = \
-	contrib/test_atomic			\
 	contrib/test_base32hex			\
 	contrib/test_base64			\
 	contrib/test_base64url			\
@@ -60,7 +59,6 @@ check_PROGRAMS = \
 	contrib/test_qp-cow			\
 	contrib/test_siphash			\
 	contrib/test_sockaddr			\
-	contrib/test_spinlock			\
 	contrib/test_string			\
 	contrib/test_strtonum			\
 	contrib/test_time			\
@@ -88,6 +86,8 @@ check_PROGRAMS += \
 
 if HAVE_DAEMON
 check_PROGRAMS += \
+	contrib/test_atomic			\
+	contrib/test_spinlock			\
 	knot/test_acl				\
 	knot/test_changeset			\
 	knot/test_conf				\
