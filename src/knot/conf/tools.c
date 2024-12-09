@@ -358,9 +358,24 @@ int check_modulo(
 	knotd_conf_check_args_t *args)
 {
 	uint32_t rem, mod;
-	if (serial_modulo_parse((const char *)args->data, &rem, &mod) != KNOT_EOK ||
-	    mod > 256 || rem >= mod) {
+	int zero;
+	if (serial_modulo_parse((const char *)args->data, &rem, &mod, &zero) != KNOT_EOK ||
+	    mod > 256 || rem >= mod || zero != 0) {
 		args->err_str = "invalid value, expected format 'R/M', where R < M <= 256";
+		return KNOT_EINVAL;
+	}
+
+	return KNOT_EOK;
+}
+
+int check_modulo2(
+    knotd_conf_check_args_t *args)
+{
+	uint32_t rem, mod;
+	int add;
+	if (serial_modulo_parse((const char *)args->data, &rem, &mod, &add) != KNOT_EOK ||
+	    mod > 256 || rem >= mod || add > 2000000000 || add < -2000000000) {
+		args->err_str = "invalid value, expected format '[R/M][+-A]', where R < M <= 256 and |A| < 2e9";
 		return KNOT_EINVAL;
 	}
 
@@ -1066,8 +1081,9 @@ int check_zone(
 	                                             C_SERIAL_MODULO, yp_dname(args->id));
 	if (serial_modulo.code == KNOT_EOK) {
 		uint32_t rem, mod;
-		int ret = serial_modulo_parse(conf_str(&serial_modulo), &rem, &mod);
-		if (ret == KNOT_EOK && mod > 1) {
+		int add;
+		int ret = serial_modulo_parse(conf_str(&serial_modulo), &rem, &mod, &add);
+		if (ret == KNOT_EOK && (mod > 1 || add != 0)) {
 			if (!conf_bool(&signing)) {
 				args->err_str = "'serial-modulo' is only possible with `dnssec-signing`";
 				return KNOT_EINVAL;
