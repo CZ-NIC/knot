@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2025 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -72,13 +72,16 @@ uint32_t serial_next_generic(uint32_t current, unsigned policy, uint32_t must_in
 		result = minimum;
 	}
 
-	if (mod > 1) {
-		assert(rem < mod);
-		uint32_t incr = ((rem + mod) - (result % mod)) % mod;
-		assert(incr == 0 || result % mod != rem);
+	// SERIAL MODULO: find lowest X that fullfils X % mod == rem && X >= result
+	assert(rem < mod); // this also asserts mod >= 1
+	// rem+mod means "rem" but ensures that rem+mod >= mod > result%mod, so that the difference is > 0
+	uint32_t incr = ((rem + mod) - (result % mod)) % mod;
+	if (result + incr < result) { // uint32 overflow detected
+		result = rem;
+	} else {
 		result += incr;
-		assert(result % mod == rem);
 	}
+	assert(result % mod == rem);
 
 	return result;
 }
