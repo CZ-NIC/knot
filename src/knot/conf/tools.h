@@ -1,4 +1,4 @@
-/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2025 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -87,6 +87,10 @@ int check_cert_pin(
 );
 
 int check_modulo(
+	knotd_conf_check_args_t *args
+);
+
+int check_modulo_shift(
 	knotd_conf_check_args_t *args
 );
 

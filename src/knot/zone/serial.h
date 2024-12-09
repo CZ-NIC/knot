@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2025 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -56,11 +56,12 @@ inline static bool serial_equal(uint32_t a, uint32_t b)
  *                 0 only ensures policy; 1 also increments.
  * \param rem      Requested remainder after division by the modulus.
  * \param mod      Modulus of the given congruency.
+ * \param add      Serial incrementer.
  *
  * \return New serial.
  */
 uint32_t serial_next_generic(uint32_t current, unsigned policy, uint32_t must_increment,
-                             uint8_t rem, uint8_t mod);
+                             uint8_t rem, uint8_t mod, int add);
 
 /*!
  * \brief Get (next) serial for given serial update policy.
@@ -98,20 +99,13 @@ inline static bool kserial_equal(kserial_t a, kserial_t b)
 }
 
 /*!
- * Gets the tuple value (remainder, modulus) of a string in the format "#/#".
+ * Gets the tuple value (remainder, modulus) of a string in the format "#/#+-#".
  *
  * \param[in]    str  String value to parse.
  * \param[out]   rem  Parsed remainder value.
  * \param[out]   mod  Parsed modulus value.
+ * \param[out]   add  Parsed incrementer.
  *
  * \return KNOT_EOK if OK, KNOT_E* otherwise.
  */
-inline static int serial_modulo_parse(const char *str, uint32_t *rem, uint32_t *mod)
-{
-	if (str == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	char c; // Possible first trailing character.
-	return sscanf(str, "%"SCNu32"/%"SCNu32"%c", rem, mod, &c) == 2 ? KNOT_EOK : KNOT_EMALF;
-}
+int serial_modulo_parse(const char *str, uint32_t *rem, uint32_t *mod, int *add);

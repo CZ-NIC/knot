@@ -1,4 +1,4 @@
-/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2025 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -491,7 +491,7 @@ static const yp_item_t desc_policy[] = {
 	                                   { check_ref } }, \
 	{ C_REVERSE_GEN,         YP_TDNAME,YP_VNONE, FLAGS | CONF_IO_FRLD_ZONES }, \
 	{ C_SERIAL_POLICY,       YP_TOPT,  YP_VOPT = { serial_policies, SERIAL_POLICY_INCREMENT } }, \
-	{ C_SERIAL_MODULO,       YP_TSTR,  YP_VSTR = { "0/1" }, YP_FNONE, { check_modulo } }, \
+	{ C_SERIAL_MODULO,       YP_TSTR,  YP_VSTR = { "0/1" }, YP_FNONE, { check_modulo_shift } }, \
 	{ C_ZONEMD_GENERATE,     YP_TOPT,  YP_VOPT = { zone_digest, ZONE_DIGEST_NONE }, FLAGS }, \
 	{ C_ZONEMD_VERIFY,       YP_TBOOL, YP_VNONE, FLAGS }, \
 	{ C_REFRESH_MIN_INTERVAL,YP_TINT,  YP_VINT = { 2, UINT32_MAX, 2, YP_STIME } }, \

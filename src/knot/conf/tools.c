@@ -1,4 +1,4 @@
-/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2025 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -357,10 +357,25 @@ int check_cert_pin(
 int check_modulo(
 	knotd_conf_check_args_t *args)
 {
+	int zero;
 	uint32_t rem, mod;
-	if (serial_modulo_parse((const char *)args->data, &rem, &mod) != KNOT_EOK ||
-	    mod > 256 || rem >= mod) {
+	if (serial_modulo_parse((const char *)args->data, &rem, &mod, &zero) != KNOT_EOK ||
+	    mod > 256 || rem >= mod || zero != 0) {
 		args->err_str = "invalid value, expected format 'R/M', where R < M <= 256";
+		return KNOT_EINVAL;
+	}
+
+	return KNOT_EOK;
+}
+
+int check_modulo_shift(
+	knotd_conf_check_args_t *args)
+{
+	int add;
+	uint32_t rem, mod;
+	if (serial_modulo_parse((const char *)args->data, &rem, &mod, &add) != KNOT_EOK ||
+	    mod > 256 || rem >= mod || add > 2000000000 || add < -2000000000) {
+		args->err_str = "invalid value, expected format '[R/M][+-A]', where R < M <= 256 and |A| < 2e9";
 		return KNOT_EINVAL;
 	}
 
@@ -1072,9 +1087,10 @@ int check_zone(
 	conf_val_t serial_modulo = conf_zone_get_txn(args->extra->conf, args->extra->txn,
 	                                             C_SERIAL_MODULO, yp_dname(args->id));
 	if (serial_modulo.code == KNOT_EOK) {
+		int add;
 		uint32_t rem, mod;
-		int ret = serial_modulo_parse(conf_str(&serial_modulo), &rem, &mod);
-		if (ret == KNOT_EOK && mod > 1) {
+		int ret = serial_modulo_parse(conf_str(&serial_modulo), &rem, &mod, &add);
+		if (ret == KNOT_EOK && (mod > 1 || add != 0)) {
 			if (!conf_bool(&signing)) {
 				args->err_str = "'serial-modulo' is only possible with `dnssec-signing`";
 				return KNOT_EINVAL;
