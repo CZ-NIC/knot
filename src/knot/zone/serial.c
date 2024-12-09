@@ -48,7 +48,7 @@ static uint32_t serial_dateserial(uint32_t current)
 }
 
 uint32_t serial_next_generic(uint32_t current, unsigned policy, uint32_t must_increment,
-                             uint8_t rem, uint8_t mod)
+                             uint8_t rem, uint8_t mod, int add)
 {
 	uint32_t minimum, result;
 
@@ -57,10 +57,10 @@ uint32_t serial_next_generic(uint32_t current, unsigned policy, uint32_t must_in
 		minimum = current;
 		break;
 	case SERIAL_POLICY_UNIXTIME:
-		minimum = time(NULL);
+		minimum = time(NULL) + add;
 		break;
 	case SERIAL_POLICY_DATESERIAL:
-		minimum = serial_dateserial(current);
+		minimum = serial_dateserial(current) + add;
 		break;
 	default:
 		assert(0);
@@ -97,13 +97,14 @@ uint32_t serial_next(uint32_t current, conf_t *conf, const knot_dname_t *zone,
 	}
 
 	uint32_t rem, mod;
+	int add;
 	conf_val_t val = conf_zone_get(conf, C_SERIAL_MODULO, zone);
-	if (serial_modulo_parse(conf_str(&val), &rem, &mod) != KNOT_EOK) {
+	if (serial_modulo_parse(conf_str(&val), &rem, &mod, &add) != KNOT_EOK) {
 		assert(0); // cannot happen - ensured by conf check
 		return 0;
 	}
 
-	return serial_next_generic(current, policy, must_increment, rem, mod);
+	return serial_next_generic(current, policy, must_increment, rem, mod, add);
 }
 
 serial_cmp_result_t kserial_cmp(kserial_t a, kserial_t b)
