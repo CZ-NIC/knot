@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2025 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -144,6 +144,10 @@ static void test_modulo(void)
 	check_modulo(2, 5, 2, 3);
 	check_modulo(3, 5, 2, 3);
 	check_modulo(4, 5, 2, 3);
+
+	// uint32_t overflow
+
+	check_modulo(UINT32_MAX - 2, 1, 1, 7);
 }
 
 int main(int argc, char *argv[])
