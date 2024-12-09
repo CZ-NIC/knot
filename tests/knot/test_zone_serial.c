@@ -41,9 +41,9 @@ static uint32_t random_serial(void)
 	return s;
 }
 
-static void check_unixtime(uint32_t current, uint32_t increment, uint32_t expected, const char *msg)
+static void check_unixtime(uint32_t current, uint32_t increment, int add, uint32_t expected, const char *msg)
 {
-	uint32_t next = serial_next_generic(current, SERIAL_POLICY_UNIXTIME, increment, 0, 1);
+	uint32_t next = serial_next_generic(current, SERIAL_POLICY_UNIXTIME, increment, 0, 1, add);
 	ok(next == expected, "unixtime: %s", msg);
 }
 
@@ -53,17 +53,21 @@ static void test_unixtime(void)
 {
 	time_t serial0 = time(NULL);
 
-	check_unixtime(1000000000, 1, serial0, "from old second or policy");
-	check_unixtime(serial0, 0, serial0, "reuse current second");
-	check_unixtime(serial0, 1, serial0 + 1, "this second's first increment");
-	check_unixtime(serial0 + 1, 1, serial0 + 2, "this second's second increment");
-	check_unixtime(3000000000, 1, 3000000001, "from future second");
-	check_unixtime(3000000000, 0, 3000000000, "at future second");
+	check_unixtime(1000000000, 1, 0, serial0, "from old second or policy");
+	check_unixtime(serial0, 0, 0, serial0, "reuse current second");
+	check_unixtime(serial0, 1, 0, serial0 + 1, "this second's first increment");
+	check_unixtime(serial0 + 1, 1, 0, serial0 + 2, "this second's second increment");
+	check_unixtime(3000000000, 1, 0, 3000000001, "from future second");
+	check_unixtime(3000000000, 0, 0, 3000000000, "at future second");
+
+	check_unixtime(1000000000, 1, -3600, serial0 - 3600, "from old second - 3600");
+	check_unixtime(serial0, 1, -3600, serial0 + 1, "this second's incr, unused -3600");
+	check_unixtime(serial0, 1, 3600, serial0 + 3600, "this second +3600");
 }
 
-static void check_dateserial(uint32_t current, uint32_t increment, uint32_t expected, const char *msg)
+static void check_dateserial(uint32_t current, uint32_t increment, int add, uint32_t expected, const char *msg)
 {
-	uint32_t next = serial_next_generic(current, SERIAL_POLICY_DATESERIAL, increment, 0, 1);
+	uint32_t next = serial_next_generic(current, SERIAL_POLICY_DATESERIAL, increment, 0, 1, add);
 	ok(next == expected, "dateserial: %s", msg);
 }
 
@@ -84,17 +88,20 @@ static void test_dateserial(void)
 	ok(gm_ret != NULL && ret1 > 0 && ret2 == KNOT_EOK,
 	   "dateserial: prepare current value");
 
-	check_dateserial(2000010100, 1, serial0, "from old date or policy");
-	check_dateserial(serial0, 1, serial0 + 1, "today's first increment");
-	check_dateserial(serial0 + 98, 1, serial0 + 99, "today's last increment");
-	check_dateserial(serial0 + 99, 1, serial0 + 100, "wrap from today");
-	check_dateserial(2100010100, 1, 2100010101, "from future date");
-	check_dateserial(2100010100, 0, 2100010100, "at future date");
+	check_dateserial(2000010100, 1, 0, serial0, "from old date or policy");
+	check_dateserial(serial0, 1, 0, serial0 + 1, "today's first increment");
+	check_dateserial(serial0 + 98, 1, 0, serial0 + 99, "today's last increment");
+	check_dateserial(serial0 + 99, 1, 0, serial0 + 100, "wrap from today");
+	check_dateserial(2100010100, 1, 0, 2100010101, "from future date");
+	check_dateserial(2100010100, 0, 0, 2100010100, "at future date");
+
+	check_dateserial(2000010100, 1, 10100, serial0 + 10100, "from old date + 10100");
+	check_dateserial(serial0, 1, 10100, serial0 + 10100, "today's first increment + 10100");
 }
 
-static void check_modulo(uint32_t current, uint32_t expected, uint8_t rem, uint8_t mod)
+static void check_modulo(uint32_t current, int add, uint32_t expected, uint8_t rem, uint8_t mod)
 {
-	uint32_t next = serial_next_generic(current, SERIAL_POLICY_INCREMENT, 1, rem, mod);
+	uint32_t next = serial_next_generic(current, SERIAL_POLICY_INCREMENT, 1, rem, mod, add);
 	ok(next == expected, "modulo: %u->%u %u/%u", current, expected, rem, mod);
 }
 
@@ -102,52 +109,79 @@ static void test_modulo(void)
 {
 	// mod 1
 
-	check_modulo(0, 1, 0, 1);
-	check_modulo(1, 2, 0, 1);
-	check_modulo(2, 3, 0, 1);
-	check_modulo(3, 4, 0, 1);
-	check_modulo(S_2HIGHEST, S_HIGHEST, 0, 1);
-	check_modulo(S_HIGHEST, S_LOWEST,   0, 1);
+	check_modulo(0, 0, 1, 0, 1);
+	check_modulo(1, 0, 2, 0, 1);
+	check_modulo(2, 0, 3, 0, 1);
+	check_modulo(3, 0, 4, 0, 1);
+	check_modulo(S_2HIGHEST, 0, S_HIGHEST, 0, 1);
+	check_modulo(S_HIGHEST, 0, S_LOWEST,   0, 1);
 
 	// mod 2
 
-	check_modulo(0, 2, 0, 2);
-	check_modulo(1, 2, 0, 2);
-	check_modulo(2, 4, 0, 2);
-	check_modulo(3, 4, 0, 2);
-	check_modulo(4, 6, 0, 2);
-	check_modulo(S_2HIGHEST, S_LOWEST, 0, 2);
+	check_modulo(0, 0, 2, 0, 2);
+	check_modulo(1, 0, 2, 0, 2);
+	check_modulo(2, 0, 4, 0, 2);
+	check_modulo(3, 0, 4, 0, 2);
+	check_modulo(4, 0, 6, 0, 2);
+	check_modulo(S_2HIGHEST, 0, S_LOWEST, 0, 2);
 
-	check_modulo(0, 1, 1, 2);
-	check_modulo(1, 3, 1, 2);
-	check_modulo(2, 3, 1, 2);
-	check_modulo(3, 5, 1, 2);
-	check_modulo(4, 5, 1, 2);
-	check_modulo(S_2HIGHEST, S_HIGHEST, 1, 2);
+	check_modulo(0, 0, 1, 1, 2);
+	check_modulo(1, 0, 3, 1, 2);
+	check_modulo(2, 0, 3, 1, 2);
+	check_modulo(3, 0, 5, 1, 2);
+	check_modulo(4, 0, 5, 1, 2);
+	check_modulo(S_2HIGHEST, 0, S_HIGHEST, 1, 2);
 
 	// mod 3
 
-	check_modulo(0, 3, 0, 3);
-	check_modulo(1, 3, 0, 3);
-	check_modulo(2, 3, 0, 3);
-	check_modulo(3, 6, 0, 3);
-	check_modulo(4, 6, 0, 3);
+	check_modulo(0, 0, 3, 0, 3);
+	check_modulo(1, 0, 3, 0, 3);
+	check_modulo(2, 0, 3, 0, 3);
+	check_modulo(3, 0, 6, 0, 3);
+	check_modulo(4, 0, 6, 0, 3);
 
-	check_modulo(0, 1, 1, 3);
-	check_modulo(1, 4, 1, 3);
-	check_modulo(2, 4, 1, 3);
-	check_modulo(3, 4, 1, 3);
-	check_modulo(4, 7, 1, 3);
+	check_modulo(0, 0, 1, 1, 3);
+	check_modulo(1, 0, 4, 1, 3);
+	check_modulo(2, 0, 4, 1, 3);
+	check_modulo(3, 0, 4, 1, 3);
+	check_modulo(4, 0, 7, 1, 3);
 
-	check_modulo(0, 2, 2, 3);
-	check_modulo(1, 2, 2, 3);
-	check_modulo(2, 5, 2, 3);
-	check_modulo(3, 5, 2, 3);
-	check_modulo(4, 5, 2, 3);
+	check_modulo(0, 0, 2, 2, 3);
+	check_modulo(1, 0, 2, 2, 3);
+	check_modulo(2, 0, 5, 2, 3);
+	check_modulo(3, 0, 5, 2, 3);
+	check_modulo(4, 0, 5, 2, 3);
+
+	// shift only
+	check_modulo(100, -10, 101, 0, 1);
+	check_modulo(100, 10, 110, 0, 1);
 
 	// uint32_t overflow
 
-	check_modulo(UINT32_MAX - 2, 1, 1, 7);
+	check_modulo(UINT32_MAX - 2, 0, 1, 1, 7);
+}
+
+static void check_parse(const char *str, int expect_ret, uint8_t expect_rem, uint8_t expect_mod, int expect_add)
+{
+	uint32_t rem, mod;
+	int add, ret = serial_modulo_parse(str, &rem, &mod, &add);
+	ok(ret == expect_ret && rem == expect_rem && mod == expect_mod && add == expect_add,
+	   "parse '%s': %d|%d %u|%u %u|%u %d|%d", str, ret, expect_ret, rem, expect_rem, mod, expect_mod, add, expect_add);
+}
+
+static void test_parse(void)
+{
+	check_parse("1", KNOT_EMALF, 1, 1, 0);
+	check_parse("+1", KNOT_EOK, 0, 1, 1);
+	check_parse("-9999", KNOT_EOK, 0, 1, -9999);
+	check_parse("+2x", KNOT_EMALF, 0, 1, 2);
+	check_parse("+3/4", KNOT_EMALF, 0, 1, 3);
+	check_parse("1/3", KNOT_EOK, 1, 3, 0);
+	check_parse("2/3y", KNOT_EMALF, 2, 3, 0);
+	check_parse("3/3", KNOT_EOK, 3, 3, 0); // check of sensible modulo is outside of parse routine
+	check_parse("1/4-1", KNOT_EOK, 1, 4, -1);
+	check_parse("2/4+8888", KNOT_EOK, 2, 4, 8888);
+	check_parse("3/4+5w6", KNOT_EMALF, 3, 4, 5);
 }
 
 int main(int argc, char *argv[])
@@ -213,6 +247,7 @@ int main(int argc, char *argv[])
 	test_dateserial();
 	test_unixtime();
 	test_modulo();
+	test_parse();
 
 	return 0;
 }
