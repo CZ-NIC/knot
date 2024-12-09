@@ -144,6 +144,10 @@ static void test_modulo(void)
 	check_modulo(2, 5, 2, 3);
 	check_modulo(3, 5, 2, 3);
 	check_modulo(4, 5, 2, 3);
+
+	// uint32t overflow
+
+	check_modulo(UINT32_MAX - 2, 1, 1, 7);
 }
 
 int main(int argc, char *argv[])

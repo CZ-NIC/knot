@@ -72,13 +72,15 @@ uint32_t serial_next_generic(uint32_t current, unsigned policy, uint32_t must_in
 		result = minimum;
 	}
 
-	if (mod > 1) {
-		assert(rem < mod);
-		uint32_t incr = ((rem + mod) - (result % mod)) % mod;
-		assert(incr == 0 || result % mod != rem);
+	// SERIAL MODULO: find lowest X that fullfils X % mod == rem && X >= result
+	assert(rem < mod); // this also asserts mod >= 1
+	uint32_t incr = ((rem + mod) - (result % mod)) % mod; // rem+mod means "rem" but ensures that rem+mod >= mod > result%mod, so that the difference is > 0
+	if (result + incr < result) { // uint32 overflow detected
+		result = rem;
+	} else {
 		result += incr;
-		assert(result % mod == rem);
 	}
+	assert(result % mod == rem);
 
 	return result;
 }
