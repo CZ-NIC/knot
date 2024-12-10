@@ -279,7 +279,7 @@ int knotd_mod_stats_add(knotd_mod_t *mod, const char *ctr_name, uint32_t idx_cou
 		}
 
 		for (unsigned i = 0; i < threads; i++) {
-			mod->stats_vals[i] = calloc(idx_count, sizeof(**mod->stats_vals));
+			mod->stats_vals[i] = malloc(idx_count * sizeof(**mod->stats_vals));
 			if (mod->stats_vals[i] == NULL) {
 				knotd_mod_stats_free(mod);
 				return KNOT_ENOMEM;
