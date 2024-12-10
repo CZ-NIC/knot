@@ -1,3 +1,27 @@
+Knot DNS 3.3.10 (2024-12-12)
+============================
+
+Improvements:
+-------------
+ - libknot: added NXNAME meta type (Thanks to Jan Včelák)
+
+Improvements:
+-------------
+ - knotd: improved processing of QNAMEs containing zero bytes
+ - knotd: generated catalog memeber metadata is stored when the zone is loaded
+ - doc: various fixes and updates
+
+Bugfixes:
+---------
+ - knotd: more active ZSKs causes cumulative ZSK rollovers
+ - knotd: zone reload occasionally causes a core dump #939 (Thanks to solidcc2)
+ - knotd: zone purge clears active generated catalog memeber metadata
+ - knotc: zone backup filter +keysonly doesn't disable other defaults
+ - kxdpgun: failed to receive more data over QUIC until 1-RTT handshake is done
+ - knsupdate: memory leak if rdata parsing fails
+ - kdig: misleading warning about timeout during QUIC connection
+ - knot-exporter: faulty escape sequence in time value parsing
+
 Knot DNS 3.3.9 (2024-08-26)
 ===========================
 
