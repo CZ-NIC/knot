@@ -54,7 +54,7 @@
  typedef size_t knot_atomic_size_t;
  typedef void* knot_atomic_ptr_t;
  typedef bool knot_atomic_bool;
-#else                            /* Fallback, non-atomic. */
+#else                            /* Fallback using spinlocks. Much slower. */
  #include <stdint.h>
  #include <stdbool.h>
  #include <stddef.h>
