@@ -523,7 +523,7 @@ int net_connect(net_t *net)
 			{
 				// Establish TLS connection.
 				ret = tls_ctx_setup_remote_endpoint(&net->tls, &dot_alpn, 1,
-				        KNOT_TLS_PRIORITIES, net_get_remote(net));
+				        NULL, net_get_remote(net));
 				if (ret != 0) {
 					net_close(net);
 					return ret;
