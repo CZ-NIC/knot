@@ -133,7 +133,7 @@ int probe_load(knotd_mod_t *mod)
 		return KNOT_ENOMEM;
 	}
 
-	ctx->last_times = calloc(ctx->probe_count, sizeof(*ctx->last_times));
+	ctx->last_times = malloc(ctx->probe_count * sizeof(*ctx->last_times));
 	if (ctx->last_times == NULL) {
 		free_probe_ctx(ctx);
 		return KNOT_ENOMEM;
