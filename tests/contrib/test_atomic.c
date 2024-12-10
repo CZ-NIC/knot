@@ -30,10 +30,10 @@
 #define UPPER_PTR ((void *) UPPER)
 #define LOWER_PTR ((void *) LOWER)
 
-static knot_atomic_uint64_t counter_add;
-static knot_atomic_uint64_t counter_sub;
-static knot_atomic_uint64_t atomic_var;
-static knot_atomic_ptr_t atomic_var2;
+static volatile knot_atomic_uint64_t counter_add;
+static volatile knot_atomic_uint64_t counter_sub;
+static volatile knot_atomic_uint64_t atomic_var;
+static volatile knot_atomic_ptr_t atomic_var2;
 static int errors = 0;
 static int uppers;
 static int lowers;
