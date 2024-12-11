@@ -849,6 +849,7 @@ int server_init(server_t *server, int bg_workers)
 		evsched_deinit(&server->sched);
 		return ret;
 	}
+	ATOMIC_INIT(server->catalog_upd_signal, false);
 
 	pthread_rwlock_init(&server->ctl_lock, NULL);
 
@@ -913,6 +914,7 @@ void server_deinit(server_t *server)
 	catalog_update_clear(&server->catalog_upd);
 	catalog_update_deinit(&server->catalog_upd);
 	catalog_deinit(&server->catalog);
+	ATOMIC_DEINIT(server->catalog_upd_signal);
 
 	/* Close persistent timers DB. */
 	knot_lmdb_deinit(&server->timerdb);
