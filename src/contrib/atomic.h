@@ -69,7 +69,7 @@
 
  #define ATOMIC_SET(dst, val) ({ \
 	knot_spin_lock((knot_spin_t *)&(dst).lock); \
-	(dst).value = (val); \
+	(dst).value.vol = (val); \
 	knot_spin_unlock((knot_spin_t *)&(dst).lock); \
  })
 
@@ -84,34 +84,37 @@
 
  #define ATOMIC_GET(src) ({ \
 	knot_spin_lock((knot_spin_t *)&(src).lock); \
-	typeof((src).value) _z = (src).value; \
+	typeof((src).value.non_vol) _z = (typeof((src).value.non_vol))(src).value.vol; \
 	knot_spin_unlock((knot_spin_t *)&(src).lock); \
 	_z; \
  })
 
  #define ATOMIC_ADD(dst, val) ({ \
 	knot_spin_lock((knot_spin_t *)&(dst).lock); \
-	(dst).value += (val); \
+	(dst).value.vol += (val); \
 	knot_spin_unlock((knot_spin_t *)&(dst).lock); \
  })
 
  #define ATOMIC_SUB(dst, val) ({ \
 	knot_spin_lock((knot_spin_t *)&(dst).lock); \
-	(dst).value -= (val); \
+	(dst).value.vol -= (val); \
 	knot_spin_unlock((knot_spin_t *)&(dst).lock); \
  })
 
  #define ATOMIC_XCHG(dst, val) ({ \
 	knot_spin_lock((knot_spin_t *)&(dst).lock); \
-	typeof((dst).value) _z = (dst).value; \
-	(dst).value = (val); \
+	typeof((dst).value.non_vol) _z = (typeof((dst).value.non_vol))(dst).value.vol; \
+	(dst).value.vol = (val); \
 	knot_spin_unlock((knot_spin_t *)&(dst).lock); \
 	_z; \
  })
 
  #define ATOMIC_T(x) struct { \
 	knot_spin_t lock; \
-	x value; \
+	union { \
+		volatile x vol; \
+		x non_vol; \
+	} value; \
  }
 
  typedef ATOMIC_T(uint16_t) knot_atomic_uint16_t;
