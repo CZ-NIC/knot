@@ -7,7 +7,9 @@ A Python interface for managing the Knot DNS daemon.
 * [Introduction](#introduction)
 * [Control module](#control-module)
   + [Control usage](#control-usage)
+  + [KnotCTL protocol reference](#kctl-proto)
   + [Control examples](#control-examples)
+  +
 * [Probe module](#probe-module)
   + [Probe usage](#probe-usage)
   + [Probe examples](#probe-examples)
@@ -43,6 +45,86 @@ The module usage consists of several steps:
   with optional data to the daemon. The operation result has to be received
   afterwards.
 * Closing the connection and deinitialization.
+
+### KnotCTL protocol overview<a id="kctl-proto"></a>
+
+Connections are supposed to be short-lived, because maintaining a passive
+connection is costly for the server. Therefore the expected usage of the ctl
+interface is to always open a new connection on demand, then close it once it's
+not immediately needed.
+
+Messages are composed of units. These are of four types whose identifiers are
+defined in `libknot.control.KnotCtlType`:
+
+|  Type   | Description                                                | IO action |
+| ------- | ---------------------------------------------------------- | --------- |
+| `END`   | Signals intent to terminate connection.                    |   flush   |
+| `DATA`  | Holds various information - see about data sections below. |   cache   |
+| `EXTRA` | Additional data.                                           |   cache   |
+| `BLOCK` | End of data block.                                         |   flush   |
+
+A unit can optionaly hold data, though this is only meaningful for the `DATA`
+and `EXTRA` types. The data consists of several sections of which usually only
+a few at a time will be present. For example when a unit issuing a `stats`
+command is sent, there is no reason for it to contain an `ERROR` section.
+
+The data section identifiers are defined in `libknot.control.KnotCtlDataIdx`:
+
+| Section name | Description                                            |
+| ------------ | ------------------------------------------------------ |
+| `COMMAND`    | Command name.                                          |
+| `FLAGS`      | Command flags.                                         |
+| `ERROR`      | Error message.                                         |
+| `SECTION`    | Configuration section name.                            |
+| `ITEM`       | Configuration item name.                               |
+| `ID`         | Configuration item identifier.                         |
+| `ZONE`       | Zone name.                                             |
+| `OWNER`      | Zone record owner                                      |
+| `TTL`        | Zone record TTL.                                       |
+| `TYPE`       | Zone record type name.                                 |
+| `DATA`       | Configuration item/zone record data.                   |
+| `FILTERS`    | Command options or filters for output data processing. |
+
+* `status`
+* `stop`
+* `reload`
+* `stats`
+* `zone-status`
+* `zone-reload`
+* `zone-refresh`
+* `zone-retransfer`
+* `zone-notify`
+* `zone-flush`
+* `zone-backup`
+* `zone-restore`
+* `zone-sign`
+* `zone-validate`
+* `zone-keys-load`
+* `zone-key-rollover`
+* `zone-ksk-submitted`
+* `zone-freeze`
+* `zone-thaw`
+* `zone-xfr-freeze`
+* `zone-xfr-thaw`
+* `zone-read`
+* `zone-begin`
+* `zone-commit`
+* `zone-abort`
+* `zone-diff`
+* `zone-get`
+* `zone-set`
+* `zone-unset`
+* `zone-purge`
+* `zone-stats`
+* `conf-list`
+* `conf-read`
+* `conf-begin`
+* `conf-commit`
+* `conf-abort`
+* `conf-diff`
+* `conf-get`
+* `conf-set`
+* `conf-unset`
 
 ### Control examples<a id="control-examples"></a>
 
