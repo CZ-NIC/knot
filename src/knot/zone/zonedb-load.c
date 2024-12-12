@@ -652,6 +652,7 @@ int zone_reload_modules(conf_t *conf, server_t *server, const knot_dname_t *zone
 
 	zone_t *newzone = create_zone(conf, zone_name, server, *zone);
 	if (newzone == NULL) {
+		knot_sem_post(&(*zone)->cow_lock);
 		return KNOT_ENOMEM;
 	}
 	knot_sem_wait(&newzone->cow_lock);
