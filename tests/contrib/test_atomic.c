@@ -22,9 +22,16 @@
 #include "knot/server/dthreads.h"
 
 #define THREADS 16
-#define CYCLES1 100000
-#define CYCLES2 2000000
-#define CYCLES3 100000
+#if defined(HAVE_C11_ATOMIC) || defined(HAVE_GCC_ATOMIC)
+  // Spinlock-emulated atomics. Locking is much slower, enough collisions occur,
+  #define CYCLES1 50000
+  #define CYCLES2 100000
+  #define CYCLES3 100000
+#else
+  #define CYCLES1 100000
+  #define CYCLES2 2000000
+  #define CYCLES3 100000
+#endif
 #define UPPER 0xffffffff00000000
 #define LOWER 0x00000000ffffffff
 #define UPPER_PTR ((void *) UPPER)
