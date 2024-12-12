@@ -20,7 +20,8 @@
 
 #pragma once
 
-#ifdef HAVE_C11_ATOMIC           /* C11 */
+#if 0
+//#ifdef HAVE_C11_ATOMIC           /* C11 */
  #include <stdatomic.h>
 
  #define ATOMIC_INIT(dst, val) atomic_store_explicit(&(dst), (val), memory_order_relaxed)
@@ -36,7 +37,8 @@
  typedef atomic_size_t knot_atomic_size_t;
  typedef _Atomic (void *) knot_atomic_ptr_t;
  typedef atomic_bool knot_atomic_bool;
-#elif defined(HAVE_GCC_ATOMIC)   /* GCC __atomic */
+#elif 0
+//#elif defined(HAVE_GCC_ATOMIC)   /* GCC __atomic */
  #include <stdint.h>
  #include <stdbool.h>
  #include <stddef.h>
@@ -65,6 +67,7 @@
 	knot_spin_lock((knot_spin_t *)&(dst).lock); \
 	(dst).value.vol = (val); \
 	knot_spin_unlock((knot_spin_t *)&(dst).lock); \
+	(dst).fake.vol = (val); \
  })
 
  #define ATOMIC_INIT(dst, val) ({ \
@@ -80,19 +83,22 @@
 	knot_spin_lock((knot_spin_t *)&(src).lock); \
 	typeof((src).value.non_vol) _z = (typeof((src).value.non_vol))(src).value.vol; \
 	knot_spin_unlock((knot_spin_t *)&(src).lock); \
-	_z; \
+	typeof((src).fake.non_vol) _z2 = (typeof((src).fake.non_vol))(src).fake.vol; \
+	_z, _z2; \
  })
 
  #define ATOMIC_ADD(dst, val) ({ \
 	knot_spin_lock((knot_spin_t *)&(dst).lock); \
 	(dst).value.vol += (val); \
 	knot_spin_unlock((knot_spin_t *)&(dst).lock); \
+	(dst).fake.vol += (val); \
  })
 
  #define ATOMIC_SUB(dst, val) ({ \
 	knot_spin_lock((knot_spin_t *)&(dst).lock); \
 	(dst).value.vol -= (val); \
 	knot_spin_unlock((knot_spin_t *)&(dst).lock); \
+	(dst).fake.vol -= (val); \
  })
 
  #define ATOMIC_XCHG(dst, val) ({ \
@@ -100,7 +106,9 @@
 	typeof((dst).value.non_vol) _z = (typeof((dst).value.non_vol))(dst).value.vol; \
 	(dst).value.vol = (val); \
 	knot_spin_unlock((knot_spin_t *)&(dst).lock); \
-	_z; \
+	typeof((dst).fake.non_vol) _z2 = (typeof((dst).fake.non_vol))(dst).fake.vol; \
+	(dst).fake.vol = (val); \
+	_z, _z2; \
  })
 
  #define ATOMIC_T(x) struct { \
@@ -108,7 +116,7 @@
 	union { \
 		volatile x vol; \
 		x non_vol; \
-	} value; \
+	} value, fake; \
  }
 
  typedef ATOMIC_T(uint16_t) knot_atomic_uint16_t;
