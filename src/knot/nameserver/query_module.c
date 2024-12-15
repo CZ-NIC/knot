@@ -251,6 +251,19 @@ void knotd_mod_vlog(knotd_mod_t *mod, int priority, const char *fmt, va_list arg
 	#undef LOG_ARGS
 }
 
+static void clean_vals(knot_atomic_uint64_t **stats_vals, unsigned dirty_threads,
+                       uint32_t offset, uint32_t count)
+{
+	assert(stats_vals);
+
+	for (unsigned i = 0; i < dirty_threads; i++) {
+		assert(stats_vals[i]);
+		for (unsigned j = 0; j < count; j++) {
+			ATOMIC_DEINIT(stats_vals[i][offset + j]);
+		}
+	}
+}
+
 _public_
 int knotd_mod_stats_add(knotd_mod_t *mod, const char *ctr_name, uint32_t idx_count,
                         knotd_mod_idx_to_str_f idx_to_str)
@@ -281,6 +294,7 @@ int knotd_mod_stats_add(knotd_mod_t *mod, const char *ctr_name, uint32_t idx_cou
 		for (unsigned i = 0; i < threads; i++) {
 			mod->stats_vals[i] = calloc(idx_count, sizeof(**mod->stats_vals));
 			if (mod->stats_vals[i] == NULL) {
+				clean_vals(mod->stats_vals, i, 0, idx_count);
 				knotd_mod_stats_free(mod);
 				return KNOT_ENOMEM;
 			}
@@ -311,6 +325,7 @@ int knotd_mod_stats_add(knotd_mod_t *mod, const char *ctr_name, uint32_t idx_cou
 			knot_atomic_uint64_t *new_vals = realloc(mod->stats_vals[i],
 			                                 (offset + idx_count) * sizeof(*new_vals));
 			if (new_vals == NULL) {
+				clean_vals(mod->stats_vals, i, offset, idx_count);
 				knotd_mod_stats_free(mod);
 				return KNOT_ENOMEM;
 			}
@@ -341,10 +356,11 @@ void knotd_mod_stats_free(knotd_mod_t *mod)
 
 	if (mod->stats_vals != NULL) {
 		unsigned threads = knotd_mod_threads(mod);
+		for (unsigned i = 0; i < mod->stats_count; i++) {
+			clean_vals(mod->stats_vals, threads, mod->stats_info[i].offset,
+			           mod->stats_info[i].count);
+		}
 		for (unsigned i = 0; i < threads; i++) {
-			for (unsigned j = 0; j < mod->stats_info->count; j++) {
-				ATOMIC_DEINIT(mod->stats_vals[i][j]);
-			}
 			free(mod->stats_vals[i]);
 		}
 	}
