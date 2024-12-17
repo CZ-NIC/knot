@@ -316,8 +316,15 @@ static zone_t *reuse_member_zone(zone_t *zone, server_t *server, conf_t *conf,
 		log_zone_error(zone->name, "zone cannot be created");
 	} else {
 		assert(zone_get_flag(newzone, ZONE_IS_CAT_MEMBER, false));
-		conf_activate_modules(conf, server, newzone->name, &newzone->query_modules,
+		int ret = conf_activate_modules(conf, server, newzone->name, &newzone->query_modules,
 		                      &newzone->query_plan);
+		if (ret != KNOT_EOK) {
+			log_zone_error(newzone->name, "zone cannot be activated(%s)", knot_strerror(ret));
+			newzone->contents = NULL;
+			zone_free(&newzone);
+			return NULL;	// remove the member zone
+		}
+		
 	}
 
 	return newzone;
@@ -336,8 +343,14 @@ static zone_t *reuse_cold_zone(const knot_dname_t *zname, server_t *server, conf
 		log_zone_error(zname, "zone cannot be created");
 	} else {
 		zone_set_flag(zone, ZONE_IS_CAT_MEMBER);
-		conf_activate_modules(conf, server, zone->name, &zone->query_modules,
+		int ret = conf_activate_modules(conf, server, zone->name, &zone->query_modules,
 		                      &zone->query_plan);
+		if (ret != KNOT_EOK) {
+			log_zone_error(zone->name, "zone cannot be activated(%s)", knot_strerror(ret));
+			zone->contents = NULL;
+			zone_free(&zone);
+			return NULL;	// remove the member zone
+		}
 	}
 	return zone;
 }
@@ -384,8 +397,14 @@ static zone_t *add_member_zone(catalog_upd_val_t *val, knot_zonedb_t *check,
 		log_zone_error(val->member, "zone cannot be created");
 	} else {
 		zone_set_flag(zone, ZONE_IS_CAT_MEMBER);
-		conf_activate_modules(conf, server, zone->name, &zone->query_modules,
+		int ret = conf_activate_modules(conf, server, zone->name, &zone->query_modules,
 		                      &zone->query_plan);
+		if (ret != KNOT_EOK) {
+			log_zone_error(zone->name, "zone cannot be activated(%s)", knot_strerror(ret));
+			zone->contents = NULL;
+			zone_free(&zone);
+			return NULL;	// remove the member zone
+		}
 		log_zone_info(val->member, "zone added from catalog");
 	}
 	return zone;
@@ -420,7 +439,10 @@ static knot_zonedb_t *create_zonedb(conf_t *conf, server_t *server, reload_t mod
 	if (mode == RELOAD_COMMIT) {
 		mark_changed_zones(db_old, conf->io.zones);
 	}
-
+	list_t new_zone_set, old_zone_set;
+	init_list(&new_zone_set);
+	init_list(&old_zone_set);
+	int ret = KNOT_EOK;
 	/* Process regular zones from the configuration. */
 	for (conf_iter_t iter = conf_iter(conf, C_ZONE); iter.code == KNOT_EOK;
 	     conf_iter_next(conf, &iter)) {
@@ -431,7 +453,7 @@ static knot_zonedb_t *create_zonedb(conf_t *conf, server_t *server, reload_t mod
 		if (old_zone != NULL && (mode & (RELOAD_COMMIT | RELOAD_CATALOG))) {
 			/* Reuse unchanged zone. */
 			if (!(old_zone->change_type & CONF_IO_TRELOAD)) {
-				knot_zonedb_insert(db_new, old_zone);
+				ptrlist_add(&old_zone_set, old_zone, NULL);
 				continue;
 			}
 		}
@@ -442,10 +464,34 @@ static knot_zonedb_t *create_zonedb(conf_t *conf, server_t *server, reload_t mod
 			continue;
 		}
 
-		conf_activate_modules(conf, server, zone->name, &zone->query_modules,
+		ret = conf_activate_modules(conf, server, zone->name, &zone->query_modules,
 		                      &zone->query_plan);
+		if (ret != KNOT_EOK) {
+			log_zone_error(zone->name, "zone cannot be activated(%s)", knot_strerror(ret));
+			zone->contents = NULL;
+			zone_free(&zone);
+			break;
+		}
+		ptrlist_add(&new_zone_set, zone, NULL);
+	}
 
-		knot_zonedb_insert(db_new, zone);
+	ptrnode_t *n, *nxt;
+	if (ret!= KNOT_EOK) {
+		WALK_LIST_DELSAFE(n, nxt, new_zone_set) {
+			zone_free((zone_t**)&n->d);
+			ptrlist_rem(n, NULL);
+		}
+		knot_zonedb_deep_free(&db_new, false);
+		return NULL;
+	}
+
+	WALK_LIST_DELSAFE(n, nxt, new_zone_set) {
+		knot_zonedb_insert(db_new, (zone_t*)n->d);
+		ptrlist_rem(n, NULL);
+	}
+	WALK_LIST_DELSAFE(n, nxt, old_zone_set) {
+		knot_zonedb_insert(db_new, (zone_t*)n->d);
+		ptrlist_rem(n, NULL);
 	}
 
 	/* Purge decataloged zones before catalog removals are commited. */
@@ -463,7 +509,7 @@ static knot_zonedb_t *create_zonedb(conf_t *conf, server_t *server, reload_t mod
 	}
 	catalog_it_free(cat_it);
 
-	int ret = catalog_update_commit(&server->catalog_upd, &server->catalog);
+	ret = catalog_update_commit(&server->catalog_upd, &server->catalog);
 	if (ret != KNOT_EOK) {
 		log_error("catalog, failed to apply changes (%s)", knot_strerror(ret));
 		return db_new;
@@ -652,11 +698,20 @@ int zone_reload_modules(conf_t *conf, server_t *server, const knot_dname_t *zone
 
 	zone_t *newzone = create_zone(conf, zone_name, server, *zone);
 	if (newzone == NULL) {
+		knot_sem_post(&(*zone)->cow_lock);
 		return KNOT_ENOMEM;
 	}
 	knot_sem_wait(&newzone->cow_lock);
-	conf_activate_modules(conf, server, newzone->name, &newzone->query_modules,
+	int ret = conf_activate_modules(conf, server, newzone->name, &newzone->query_modules,
 	                      &newzone->query_plan);
+	if (ret != KNOT_EOK) {
+		log_zone_error(newzone->name, "zone cannot be activated(%s)", knot_strerror(ret));
+		knot_sem_post(&newzone->cow_lock);
+		knot_sem_post(&(*zone)->cow_lock);
+		newzone->contents = NULL;
+		zone_free(&newzone);
+		return ret;
+	}
 
 	zone_t *oldzone = rcu_xchg_pointer(zone, newzone);
 	synchronize_rcu();
