@@ -47,7 +47,7 @@ sub_slave.stop()
 
 # expire by shutting down the master
 master.stop()
-t.sleep(EXPIRE_SLEEP);
+t.sleep(EXPIRE_SLEEP)
 test_expire(zone, slave)
 
 # bring back master (notifies slave)
