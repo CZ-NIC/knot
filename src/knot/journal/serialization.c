@@ -146,7 +146,7 @@ skip_next_nsec3:
 		}
 		if (ctx->zone_diff) {
 			knot_rrset_t counter_rr = node_rrset(binode_counterpart(ctx->n), res.type);
-			if (counter_rr.ttl == res.ttl && !knot_rrset_empty(&counter_rr)) {
+			if ((counter_rr.ttl == res.ttl || res.type == KNOT_RRTYPE_RRSIG) && !knot_rrset_empty(&counter_rr)) {
 				if (knot_rdataset_subset(&res.rrs, &counter_rr.rrs)) {
 					goto skip_next_nsec3;
 				}
