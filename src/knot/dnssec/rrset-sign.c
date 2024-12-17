@@ -258,6 +258,7 @@ static int rrsigs_create_rdata(knot_rrset_t *rrsigs, dnssec_sign_ctx_t *ctx,
 
 	dnssec_binary_free(&signature);
 
+	rrsigs->ttl = 0;
 	return knot_rrset_add_rdata(rrsigs, rrsig, rrsig_size, mm);
 }
 

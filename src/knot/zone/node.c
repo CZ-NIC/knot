@@ -321,9 +321,7 @@ int node_add_rrset(zone_node_t *node, const knot_rrset_t *rrset, knot_mm_t *mm)
 		if (node->rrs[i].type == rrset->type) {
 			struct rr_data *node_data = &node->rrs[i];
 			const bool ttl_change = ttl_changed(node_data, rrset);
-			if (ttl_change) {
-				node_data->ttl = rrset->ttl;
-			}
+			node_data->ttl = rrset->ttl;
 
 			int ret = knot_rdataset_merge(&node_data->rrs,
 			                              &rrset->rrs, mm);
