@@ -125,7 +125,7 @@ for size in [query_size1, query_size2, query_size3]:
     if idx not in indices:
         indices[idx] = 1
     else:
-        indices[idx] += 1;
+        indices[idx] += 1
 for size in indices:
     check_item(knot, "mod-stats", "query-size", indices[size], idx=size)
 
@@ -136,7 +136,7 @@ for size in [reply_size1, reply_size2, reply_size3]:
     if idx not in indices:
         indices[idx] = 1
     else:
-        indices[idx] += 1;
+        indices[idx] += 1
 for size in indices:
     check_item(knot, "mod-stats", "reply-size", indices[size], idx=size)
 

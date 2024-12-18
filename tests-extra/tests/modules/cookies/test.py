@@ -98,17 +98,17 @@ response = check_rcode(knot, query, rcodeNoerror, "CORRECT COOKIE 2")
 reconfigure(knot, zone, 4, secret_lifetime=1000000)
 
 cookieOpt = dns.edns.option_from_wire(cookieOpcode, clientCookie, 0, clientCookieLen)
-query = dns.message.make_query("dns1.example.com", "A", use_edns=True, options=[cookieOpt]);
+query = dns.message.make_query("dns1.example.com", "A", use_edns=True, options=[cookieOpt])
 response = check_rcode(knot, query, rcodeBadcookie, "ONLY CLIENT COOKIE 2")
 
 # Next 3 attempts to get the server cookie should timeout
 for i in range(3):
-    query = dns.message.make_query("dns1.example.com", "A", use_edns=True, options=[cookieOpt]);
+    query = dns.message.make_query("dns1.example.com", "A", use_edns=True, options=[cookieOpt])
     response = check_rcode(knot, query, rcodeNoerror, "TIMEOUT "+str(i))
     compare(response, None, "BADCOOKIE TIMEOUT " + str(i))
 
 # The 4th attempt should succeed
-query = dns.message.make_query("dns1.example.com", "A", use_edns=True, options=[cookieOpt]);
+query = dns.message.make_query("dns1.example.com", "A", use_edns=True, options=[cookieOpt])
 check_rcode(knot, query, rcodeBadcookie, "BADCOOKIE")
 
 ## Fixed secret(s)

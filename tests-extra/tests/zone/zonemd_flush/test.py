@@ -55,7 +55,7 @@ def check_serial_incr(server, zones, serials, expect_incr, msg):
     new_serials = server.zones_wait(zones, serials)
     for z in zones:
         if new_serials[z.name] != serials[z.name] + expect_incr:
-            err_str = "%s: zone %s serial incremented by %d" % (msg, z.name, new_serials[z.name] - serial[z.name]);
+            err_str = "%s: zone %s serial incremented by %d" % (msg, z.name, new_serials[z.name] - serial[z.name])
             detail_log(err_str)
             set_err(err_str)
         serials[z.name] = new_serials[z.name]
