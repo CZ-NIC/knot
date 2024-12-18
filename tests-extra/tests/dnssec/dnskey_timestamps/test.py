@@ -20,7 +20,7 @@ def check_zone(server, expect_dnskey, expect_rrsig, msg):
     expect_rrsigs = 2 if expect_rrsig else 1
 
     check_log("DNSKEYs: %d (expected %d) RRSIGs: %d (expected %d)" %
-              (found_dnskeys, expect_dnskeys, found_rrsigs, expect_rrsigs));
+              (found_dnskeys, expect_dnskeys, found_rrsigs, expect_rrsigs))
 
     if found_dnskeys != expect_dnskeys or found_rrsigs != expect_rrsigs:
         set_err("BAD DNSKEY: " + msg)

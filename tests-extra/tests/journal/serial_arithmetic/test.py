@@ -67,7 +67,7 @@ for i in range(1, 6):
 
     fix = 0
     if i == 5: # Invalid serial change - zone unchanged
-        fix = 1;
+        fix = 1
         t.sleep(1)
 
     previous = dict()

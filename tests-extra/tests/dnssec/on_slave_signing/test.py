@@ -50,8 +50,8 @@ def test_one(master, slave, zone, master_policy, slave_policy, initial_serial,
     slave.stop()
     server_purge(slave, zone)
     master.zones[zone[0].name].zfile.update_soa(serial=initial_serial)
-    master.serial_policy = master_policy;
-    slave.serial_policy = slave_policy;
+    master.serial_policy = master_policy
+    slave.serial_policy = slave_policy
     master.gen_confile()
     slave.gen_confile()
     master.start()

@@ -122,7 +122,7 @@ class Zone(object):
     def get_module(self, mod_name):
         for m in self.modules:
             if m.mod_name == mod_name:
-               return m;
+               return m
 
     def clear_modules(self):
         self.modules.clear()

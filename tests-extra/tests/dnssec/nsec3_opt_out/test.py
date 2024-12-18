@@ -23,7 +23,7 @@ def check_deleg(deleg, nsec3_bitmap, opt_out_flag, msg):
     if first_bitmap != nsec3_bitmap:
         set_err("NSEC3 bitmap for '%s'" % msg)
 
-    first_flags = first_nsec3.split()[5];
+    first_flags = first_nsec3.split()[5]
     if first_flags != str(opt_out_flag):
         set_err("NSEC3 opt-out flag %s != %s for '%s'" % (first_flags, str(opt_out_flag), msg))
 
