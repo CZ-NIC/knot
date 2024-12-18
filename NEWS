@@ -9,7 +9,7 @@ Improvements:
  - knotd: new configuration check for using default NSEC3 salt length, which will change
  - mod-rrl: added QNAME (if possible) and transport protocol to log messages
  - mod-rrl: increased defaults for 'log-period' to 30 secs, 'rate-limit' to 50,
-            'instant-rate-limit' to 125, and 'time-rate-limit' to 5 ms,
+            'instant-rate-limit' to 125, and 'time-rate-limit' to 5 ms
  - kxdpgun: added space separators to some printed values for better readability
  - libs: upgraded embedded libngtcp2 to 1.9.1
  - knot-exporter: zone timers metric is now disabled by default (see '--zone-timers')
@@ -18,8 +18,8 @@ Improvements:
 
 Bugfixes:
 ---------
- - knotd: more active ZSKs causes cumulative ZSK rollovers
- - knotd: zone purge clears active generated catalog memeber metadata
+ - knotd: more active ZSKs cause cumulative ZSK rollovers
+ - knotd: zone purge clears active generated catalog member metadata
  - mod-rrl: authorized requests are rate limited #943
  - kdig: misleading warning about timeout during QUIC connection
  - keymgr: public-only keys are marked as missing in the list output
