@@ -83,8 +83,11 @@ static knotd_state_t log_message(knotd_state_t state, const knot_pkt_t *pkt,
 
 	/* Determine query / response. */
 	Dnstap__Message__Type msgtype = DNSTAP__MESSAGE__TYPE__AUTH_QUERY;
+	if (knot_wire_get_opcode(pkt->wire) == KNOT_OPCODE_UPDATE) {
+		msgtype = DNSTAP__MESSAGE__TYPE__UPDATE_QUERY;
+	}
 	if (knot_wire_get_qr(pkt->wire)) {
-		msgtype = DNSTAP__MESSAGE__TYPE__AUTH_RESPONSE;
+		msgtype++; // NOTE relies on RESPONSE always being an enum+1 of QUERY
 	}
 
 	/* Create a dnstap message. */
