@@ -1133,7 +1133,9 @@ void print_packet(const knot_pkt_t *packet,
 	}
 
 	// Print DNS sections.
-	switch (style->format) {
+	format_t format = (knot_wire_get_opcode(packet->wire) == KNOT_OPCODE_UPDATE)
+	                  ? FORMAT_NSUPDATE : style->format;
+	switch (format) {
 	case FORMAT_DIG:
 		if (ancount > 0) {
 			print_section_dig(knot_pkt_rr(answers, 0), ancount, style);
