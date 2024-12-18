@@ -21,6 +21,7 @@
 #include <urcu.h>
 
 #include "contrib/files.h"
+#include "contrib/openbsd/strlcpy.h"
 #include "contrib/threads.h"
 #include "knot/common/stats.h"
 #include "knot/common/log.h"
@@ -40,20 +41,17 @@ static uint64_t stats_get_counter(knot_atomic_uint64_t **stats_vals, uint32_t of
 int stats_xdp(stats_dump_ctr_f fcn, stats_dump_ctx_t *ctx)
 {
 #ifdef ENABLE_XDP
-#define DUMP(structure, item_name, avg) { \
-	params.item_begin = true; \
-	params.item = #item_name; \
-	params.id = stats[0].if_name; \
-	params.value = 0; \
-	for (int j = 0; j < i->fd_xdp_count; j++) { \
-		params.value += stats[j].structure.item_name; \
+#define CTR_FILL(structure, item_name, avg) { \
+	assert(ctr_id < CTR_COUNT); \
+	xdp_ctr_t *ctr = &if_stats[i][ctr_id++]; \
+	ctr->if_name = sock_stats[0].if_name; \
+	strlcpy(ctr->ctr_name, #item_name, sizeof(ctr->ctr_name)); \
+	ctr->value = 0; \
+	for (int j = 0; j < iface->fd_xdp_count; j++) { \
+		ctr->value += sock_stats[j].structure.item_name; \
 	} \
 	if (avg) { \
-		params.value /= i->fd_xdp_count; \
-	} \
-	int ret = fcn(&params, ctx); \
-	if (ret != KNOT_EOK) { \
-		return ret; \
+		ctr->value /= iface->fd_xdp_count; \
 	} \
 }
 	stats_dump_params_t params = { .section = "xdp" };
@@ -62,29 +60,62 @@ int stats_xdp(stats_dump_ctr_f fcn, stats_dump_ctx_t *ctx)
 		return KNOT_EOK;
 	}
 
-	for (const iface_t *i = ctx->server->ifaces;
-	     i != ctx->server->ifaces + ctx->server->n_ifaces; i++) {
-		if (i->fd_xdp_count == 0) {
+	typedef struct {
+		const char *if_name;
+		char ctr_name[16];
+		uint64_t value;
+	} xdp_ctr_t;
+
+	const unsigned CTR_COUNT = 11;
+	xdp_ctr_t if_stats[ctx->server->n_ifaces][CTR_COUNT];
+
+	bool have_xdp = false;
+	for (int i = 0; i < ctx->server->n_ifaces; i++) {
+		iface_t *iface = &ctx->server->ifaces[i];
+		if (iface->fd_xdp_count == 0) {
 			continue;
 		}
-		knot_xdp_stats_t stats[i->fd_xdp_count];
-		for (int j = 0; j < i->fd_xdp_count; j++) {
-			knot_xdp_socket_stats(i->xdp_sockets[j], &stats[j]);
+		have_xdp = true;
+
+		knot_xdp_stats_t sock_stats[iface->fd_xdp_count];
+		for (int j = 0; j < iface->fd_xdp_count; j++) {
+			knot_xdp_socket_stats(iface->xdp_sockets[j], &sock_stats[j]);
 		}
 
-		DUMP(socket, rx_dropped, false);
-		DUMP(socket, rx_invalid, false);
-		DUMP(socket, tx_invalid, false);
-		DUMP(socket, rx_full,    false);
-		DUMP(socket, fq_empty,   false);
-		DUMP(socket, tx_empty,   false);
-		DUMP(rings,  tx_busy,    true);
-		DUMP(rings,  fq_fill,    true);
-		DUMP(rings,  rx_fill,    true);
-		DUMP(rings,  tx_fill,    true);
-		DUMP(rings,  cq_fill,    true);
+		unsigned ctr_id = 0;
+		CTR_FILL(socket, rx_dropped, false);
+		CTR_FILL(socket, rx_invalid, false);
+		CTR_FILL(socket, tx_invalid, false);
+		CTR_FILL(socket, rx_full,    false);
+		CTR_FILL(socket, fq_empty,   false);
+		CTR_FILL(socket, tx_empty,   false);
+		CTR_FILL(rings,  tx_busy,    true);
+		CTR_FILL(rings,  fq_fill,    true);
+		CTR_FILL(rings,  rx_fill,    true);
+		CTR_FILL(rings,  tx_fill,    true);
+		CTR_FILL(rings,  cq_fill,    true);
 	}
-#undef DUMP
+
+	if (have_xdp) {
+		for (int j = 0; j < CTR_COUNT; j++) {
+			params.item_begin = true;
+			for (int i = 0; i < ctx->server->n_ifaces; i++) {
+				iface_t *iface = &ctx->server->ifaces[i];
+				if (iface->fd_xdp_count == 0) {
+					continue;
+				}
+				xdp_ctr_t *ctr = &if_stats[i][j];
+				params.id = ctr->if_name;
+				params.item = ctr->ctr_name;
+				params.value = ctr->value;
+				int ret = fcn(&params, ctx);
+				if (ret != KNOT_EOK) {
+					return ret;
+				}
+			}
+		}
+	}
+#undef CTR_FILL
 #endif
 	return KNOT_EOK;
 }
