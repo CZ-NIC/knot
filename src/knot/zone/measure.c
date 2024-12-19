@@ -1,4 +1,4 @@
-/*  Copyright (C) 2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -31,6 +31,21 @@ measure_t knot_measure_init(bool measure_whole, bool measure_diff)
 	return m;
 }
 
+static uint32_t rrset_max_ttl(const struct rr_data *r)
+{
+	if (r->type != KNOT_RRTYPE_RRSIG) {
+		return r->ttl;
+	}
+
+	uint32_t res = 0;
+	knot_rdata_t *rd = r->rrs.rdata;
+	for (int i = 0; i < r->rrs.count; i++) {
+		res = MAX(res, knot_rrsig_original_ttl(rd));
+		rd = knot_rdataset_next(rd);
+	}
+	return res;
+}
+
 bool knot_measure_node(zone_node_t *node, measure_t *m)
 {
 	if (m->how_size == MEASURE_SIZE_NONE && (m->how_ttl == MEASURE_TTL_NONE ||
@@ -45,7 +60,7 @@ bool knot_measure_node(zone_node_t *node, measure_t *m)
 			m->zone_size += knot_rrset_size(&rrset);
 		}
 		if (m->how_ttl != MEASURE_TTL_NONE) {
-			m->max_ttl = MAX(m->max_ttl, node->rrs[i].ttl);
+			m->max_ttl = MAX(m->max_ttl, rrset_max_ttl(&node->rrs[i]));
 		}
 	}
 
@@ -61,7 +76,7 @@ bool knot_measure_node(zone_node_t *node, measure_t *m)
 			m->zone_size -= knot_rrset_size(&rrset);
 		}
 		if (m->how_ttl == MEASURE_TTL_DIFF) {
-			m->rem_max_ttl = MAX(m->rem_max_ttl, node->rrs[i].ttl);
+			m->rem_max_ttl = MAX(m->rem_max_ttl, rrset_max_ttl(&node->rrs[i]));
 		}
 	}
 
