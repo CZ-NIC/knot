@@ -102,6 +102,7 @@ _public_
 void knot_tls_conn_del(knot_tls_conn_t *conn)
 {
 	if (conn != NULL && conn->fd_clones_count-- < 1) {
+		(void)gnutls_bye(conn->session, GNUTLS_SHUT_WR);
 		gnutls_deinit(conn->session);
 		free(conn);
 	}
