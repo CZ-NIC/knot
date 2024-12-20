@@ -42,6 +42,11 @@ bool additional_equal(additional_t *a, additional_t *b)
 	return true;
 }
 
+static uint32_t rr_insert_ttl(const knot_rrset_t *rr)
+{
+	return rr->type == KNOT_RRTYPE_RRSIG ? 0 : rr->ttl;
+}
+
 /*! \brief Clears allocated data in RRSet entry. */
 static void rr_data_clear(struct rr_data *data, knot_mm_t *mm)
 {
@@ -56,7 +61,7 @@ static int rr_data_from(const knot_rrset_t *rrset, struct rr_data *data, knot_mm
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
-	data->ttl = rrset->ttl;
+	data->ttl = rr_insert_ttl(rrset);
 	data->type = rrset->type;
 	data->additional = NULL;
 
@@ -321,9 +326,7 @@ int node_add_rrset(zone_node_t *node, const knot_rrset_t *rrset, knot_mm_t *mm)
 		if (node->rrs[i].type == rrset->type) {
 			struct rr_data *node_data = &node->rrs[i];
 			const bool ttl_change = ttl_changed(node_data, rrset);
-			if (ttl_change) {
-				node_data->ttl = rrset->ttl;
-			}
+			node_data->ttl = rr_insert_ttl(rrset);
 
 			int ret = knot_rdataset_merge(&node_data->rrs,
 			                              &rrset->rrs, mm);
