@@ -526,6 +526,8 @@ class Server(object):
         if Context().test.stress and self.inquirer:
             self.inquirer.stop()
 
+        pid = self.proc.pid
+
         if self.proc:
             try:
                 self.proc.terminate()
@@ -541,6 +543,16 @@ class Server(object):
             self._assert_check()
             self._valgrind_check()
             self._asan_check()
+
+        tries_stop = 20
+        wait_stop = 0.2
+        for i in range(tries_stop):
+            if not self.proc:
+                return
+            if i < tries_stop - 1:
+                time.sleep(wait_stop)
+
+        check_log("WARNING: %s (PID %d) DID NOT STOP" % (self.name, pid))
 
     def kill(self):
         if Context().test.stress and self.inquirer:
