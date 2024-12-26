@@ -355,6 +355,21 @@ static unsigned char complete(EditLine *el, int ch)
 			}
 		}
 		goto complete_exit;
+	// Complete status command detail.
+	} else if (desc->cmd == CTL_STATUS && token == 1) {
+		lookup_t lookup;
+		if (lookup_init(&lookup) != KNOT_EOK)
+			goto complete_exit;
+		ret  = lookup_insert(&lookup, "version", NULL);
+		ret |= lookup_insert(&lookup, "workers", NULL);
+		ret |= lookup_insert(&lookup, "configure", NULL);
+		ret |= lookup_insert(&lookup, "cert-key", NULL);
+		if (ret != KNOT_EOK) {
+			goto complete_exit;
+		}
+		(void)lookup_complete(&lookup, argv[1], pos, el, false);
+		lookup_deinit(&lookup);
+		goto complete_exit;
 	}
 
 complete_exit:
