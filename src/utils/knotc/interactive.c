@@ -14,8 +14,9 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include <stdio.h>
+#include <dirent.h>
 #include <histedit.h>
+#include <stdio.h>
 
 #include "knot/common/log.h"
 #include "utils/common/lookup.h"
@@ -277,6 +278,127 @@ static void item_lookup(EditLine *el, const char *str, const cmd_desc_t *cmd_des
 	}
 }
 
+static void filter_lookup(EditLine *el, const char *str, const cmd_desc_t *cmd,
+			  dup_check_ctx_t *dup_ctx)
+{
+	static const char *zone_status_filters[] = {
+		"+role", "+serial", "+transaction", "+events", "+freeze", "+catalog", NULL,
+	};
+
+	static const char *zone_backup_filters[] = {
+		"+zonefile",  "+journal",    "+timers",	   "+kaspdb",	"+keysonly", "+catalog",
+		"+quic",      "+nozonefile", "+nojournal", "+notimers", "+nokaspdb", "+nokeysonly",
+		"+nocatalog", "+noquic",     "+backupdir", NULL,
+	};
+
+	static const char *zone_purge_filters[] = {
+		"+expire", "+zonefile", "+journal", "+timers",
+		"+kaspdb", "+catalog",	"+orphan",  NULL,
+	};
+
+	static const char *zone_begin_filters[] = { "+benevolent", NULL };
+	static const char *zone_flush_filters[] = { "+outdir", NULL };
+	static const char *conf_import_filters[] = { "+nopurge", NULL };
+	static const char *conf_export_filters[] = { "+schema", NULL };
+
+	lookup_t lookup;
+	int ret = lookup_init(&lookup);
+	if (ret != KNOT_EOK) {
+		return;
+	}
+
+	ret  = lookup_insert(&lookup, "zone-status", zone_status_filters);
+	ret |= lookup_insert(&lookup, "zone-backup", zone_backup_filters);
+	ret |= lookup_insert(&lookup, "zone-restore", zone_backup_filters);
+	ret |= lookup_insert(&lookup, "zone-purge", zone_purge_filters);
+	ret |= lookup_insert(&lookup, "zone-begin", zone_begin_filters);
+	ret |= lookup_insert(&lookup, "zone-flush", zone_flush_filters);
+	ret |= lookup_insert(&lookup, "conf-import", conf_import_filters);
+	ret |= lookup_insert(&lookup, "conf-export", conf_export_filters);
+	if (ret != KNOT_EOK) {
+		goto cmds_lookup_finish;
+	}
+
+	ret = lookup_search(&lookup, cmd->name, strlen(cmd->name));
+	if (ret == KNOT_EOK) {
+		lookup_t flookup;
+		ret = lookup_init(&flookup);
+		if (ret != KNOT_EOK) {
+			goto cmds_lookup_finish;
+		}
+
+		for (const char **it = lookup.found.data; *it != NULL; ++it) {
+			ret = lookup_insert(&flookup, *it, NULL);
+			if (ret != KNOT_EOK) {
+				goto cmds_lookup_finish_both;
+			}
+		}
+
+		remove_duplicates(&flookup, dup_ctx);
+		(void)lookup_complete(&flookup, str, strlen(str), el, true);
+cmds_lookup_finish_both:
+		lookup_deinit(&flookup);
+	}
+
+cmds_lookup_finish:
+	lookup_deinit(&lookup);
+}
+
+static void path_lookup(EditLine *el, const char *str) {
+	if (str == NULL || *str == '\0') {
+		str = "./";
+	}
+
+	char path[PATH_MAX + 1] = { 0 }; // avoid editing argument directly
+	strncpy(path, str, PATH_MAX);
+	char *sep = strrchr(path, '/');
+	const char *dir, *base;
+	if (sep == NULL) {
+		dir = "./";
+		base = path;
+	} else {
+		dir = (sep == path) ? "/" : path;
+		base = sep + 1;
+		*sep = '\0';
+	}
+
+	struct dirent **namelist;
+	int nnames = scandir(dir, &namelist, NULL, alphasort);
+	if (nnames == -1) {
+		return;
+	}
+
+	lookup_t lookup;
+	int ret = lookup_init(&lookup);
+	if (ret != KNOT_EOK) {
+		goto finish2;
+	}
+
+	for (int i = 0; i < nnames; ++i) {
+		const struct dirent *it = namelist[i];
+		// WARNING: dirent.d_type is not POSIX/SuSv4 standardized, but is present on most
+		// systems. Problematic?
+		if (it->d_type == DT_DIR && strcmp(it->d_name, ".") && strcmp(it->d_name, "..")) {
+			char buf[PATH_MAX + 1];
+			snprintf(buf, PATH_MAX, "%s/", it->d_name);
+			ret = lookup_insert(&lookup, buf, NULL);
+			if (ret != KNOT_EOK) {
+				goto finish1;
+			}
+		}
+	}
+
+	lookup_complete(&lookup, base, strlen(base), el, false);
+
+finish1:
+	lookup_deinit(&lookup);
+finish2:
+	for (int i = 0; i < nnames; ++i) {
+		free(namelist[i]);
+	}
+	free(namelist);
+}
+
 static unsigned char complete(EditLine *el, int ch)
 {
 	int argc, token, pos;
@@ -321,6 +443,33 @@ static unsigned char complete(EditLine *el, int ch)
 	ret = set_config(desc, &params);
 	if (ret != KNOT_EOK) {
 		goto complete_exit;
+	}
+
+	// Complete filters.
+	if ((desc->flags & CMD_FOPT_FILTER) && token > 0) {
+		if (token < argc && *argv[token] == '+') {
+			dup_check_ctx_t ctx = { &argv[1], token - 1, false };
+			filter_lookup(el, argv[token], desc, &ctx);
+			goto complete_exit;
+		}
+
+		switch (desc->cmd) {
+		case CTL_ZONE_FLUSH:
+			if (!strcmp("+outdir", argv[token - 1])) {
+				path_lookup(el, argv[token]);
+				goto complete_exit;
+			}
+			break;
+		case CTL_ZONE_BACKUP:
+		case CTL_ZONE_RESTORE:
+			if (!strcmp("+backupdir", argv[token - 1])) {
+				path_lookup(el, argv[token]);
+				goto complete_exit;
+			}
+			break;
+		default:
+			break;
+		}
 	}
 
 	// Complete the zone name.
