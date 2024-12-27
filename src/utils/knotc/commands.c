@@ -623,7 +623,7 @@ const filter_desc_t zone_flush_filters[] = {
 };
 
 const filter_desc_t zone_backup_filters[] = {
-	{ "+backupdir",   CTL_FILTER_BACKUP_OUTDIR,      true },
+	{ "+backupdir",   CTL_FILTER_BACKUP_OUTDIR,      true },  // This must be the first.
 	{ "+zonefile",    CTL_FILTER_BACKUP_ZONEFILE,   false },
 	{ "+nozonefile",  CTL_FILTER_BACKUP_NOZONEFILE, false },
 	{ "+journal",     CTL_FILTER_BACKUP_JOURNAL,    false },
@@ -1209,18 +1209,18 @@ const cmd_desc_t cmd_table[] = {
 	{ CMD_STATS,           cmd_stats_ctl,     CTL_STATS },
 
 	{ CMD_ZONE_CHECK,      cmd_zone_check,        CTL_NONE,            CMD_FOPT_ZONE | CMD_FREAD },
-	{ CMD_ZONE_STATUS,     cmd_zone_ctl,          CTL_ZONE_STATUS,     CMD_FOPT_ZONE },
+	{ CMD_ZONE_STATUS,     cmd_zone_ctl,          CTL_ZONE_STATUS,     CMD_FOPT_ZONE | CMD_FOPT_FILTER },
 	{ CMD_ZONE_RELOAD,     cmd_zone_ctl,          CTL_ZONE_RELOAD,     CMD_FOPT_ZONE },
 	{ CMD_ZONE_REFRESH,    cmd_zone_ctl,          CTL_ZONE_REFRESH,    CMD_FOPT_ZONE },
 	{ CMD_ZONE_RETRANSFER, cmd_zone_ctl,          CTL_ZONE_RETRANSFER, CMD_FOPT_ZONE },
 	{ CMD_ZONE_NOTIFY,     cmd_zone_ctl,          CTL_ZONE_NOTIFY,     CMD_FOPT_ZONE },
-	{ CMD_ZONE_FLUSH,      cmd_zone_ctl,          CTL_ZONE_FLUSH,      CMD_FOPT_ZONE },
-	{ CMD_ZONE_BACKUP,     cmd_zone_ctl,          CTL_ZONE_BACKUP,     CMD_FOPT_ZONE },
-	{ CMD_ZONE_RESTORE,    cmd_zone_ctl,          CTL_ZONE_RESTORE,    CMD_FOPT_ZONE },
+	{ CMD_ZONE_FLUSH,      cmd_zone_ctl,          CTL_ZONE_FLUSH,      CMD_FOPT_ZONE | CMD_FOPT_FILTER},
+	{ CMD_ZONE_BACKUP,     cmd_zone_ctl,          CTL_ZONE_BACKUP,     CMD_FOPT_ZONE | CMD_FOPT_FILTER },
+	{ CMD_ZONE_RESTORE,    cmd_zone_ctl,          CTL_ZONE_RESTORE,    CMD_FOPT_ZONE | CMD_FOPT_FILTER },
 	{ CMD_ZONE_SIGN,       cmd_zone_ctl,          CTL_ZONE_SIGN,       CMD_FOPT_ZONE },
 	{ CMD_ZONE_VALIDATE,   cmd_zone_ctl,          CTL_ZONE_VALIDATE,   CMD_FOPT_ZONE },
 	{ CMD_ZONE_KEYS_LOAD,  cmd_zone_ctl,          CTL_ZONE_KEYS_LOAD,  CMD_FOPT_ZONE },
-	{ CMD_ZONE_KEY_ROLL,   cmd_zone_key_roll_ctl, CTL_ZONE_KEY_ROLL,   CMD_FREQ_ZONE },
+	{ CMD_ZONE_KEY_ROLL,   cmd_zone_key_roll_ctl, CTL_ZONE_KEY_ROLL,   CMD_FREQ_ZONE }, // Requires a key type.
 	{ CMD_ZONE_KSK_SBM,    cmd_zone_ctl,          CTL_ZONE_KSK_SBM,    CMD_FREQ_ZONE | CMD_FOPT_ZONE },
 	{ CMD_ZONE_FREEZE,     cmd_zone_ctl,          CTL_ZONE_FREEZE,     CMD_FOPT_ZONE },
 	{ CMD_ZONE_THAW,       cmd_zone_ctl,          CTL_ZONE_THAW,       CMD_FOPT_ZONE },
@@ -1228,20 +1228,20 @@ const cmd_desc_t cmd_table[] = {
 	{ CMD_ZONE_XFR_THAW,   cmd_zone_ctl,          CTL_ZONE_XFR_THAW,   CMD_FOPT_ZONE },
 
 	{ CMD_ZONE_READ,       cmd_zone_node_ctl,   CTL_ZONE_READ,       CMD_FREQ_ZONE },
-	{ CMD_ZONE_BEGIN,      cmd_zone_ctl,        CTL_ZONE_BEGIN,      CMD_FREQ_ZONE | CMD_FOPT_ZONE },
+	{ CMD_ZONE_BEGIN,      cmd_zone_ctl,        CTL_ZONE_BEGIN,      CMD_FREQ_ZONE | CMD_FOPT_ZONE | CMD_FOPT_FILTER },
 	{ CMD_ZONE_COMMIT,     cmd_zone_ctl,        CTL_ZONE_COMMIT,     CMD_FREQ_ZONE | CMD_FOPT_ZONE },
 	{ CMD_ZONE_ABORT,      cmd_zone_ctl,        CTL_ZONE_ABORT,      CMD_FREQ_ZONE | CMD_FOPT_ZONE },
 	{ CMD_ZONE_DIFF,       cmd_zone_node_ctl,   CTL_ZONE_DIFF,       CMD_FREQ_ZONE },
 	{ CMD_ZONE_GET,        cmd_zone_node_ctl,   CTL_ZONE_GET,        CMD_FREQ_ZONE },
 	{ CMD_ZONE_SET,        cmd_zone_node_ctl,   CTL_ZONE_SET,        CMD_FREQ_ZONE },
 	{ CMD_ZONE_UNSET,      cmd_zone_node_ctl,   CTL_ZONE_UNSET,      CMD_FREQ_ZONE },
-	{ CMD_ZONE_PURGE,      cmd_zone_ctl,        CTL_ZONE_PURGE,      CMD_FREQ_ZONE | CMD_FOPT_ZONE },
+	{ CMD_ZONE_PURGE,      cmd_zone_ctl,        CTL_ZONE_PURGE,      CMD_FREQ_ZONE | CMD_FOPT_ZONE | CMD_FOPT_FILTER },
 	{ CMD_ZONE_STATS,      cmd_stats_ctl,       CTL_ZONE_STATS,      CMD_FREQ_ZONE },
 
 	{ CMD_CONF_INIT,       cmd_conf_init,     CTL_NONE,            CMD_FWRITE },
 	{ CMD_CONF_CHECK,      cmd_conf_check,    CTL_NONE,            CMD_FREAD  | CMD_FREQ_MOD },
-	{ CMD_CONF_IMPORT,     cmd_conf_import,   CTL_NONE,            CMD_FWRITE | CMD_FOPT_MOD },
-	{ CMD_CONF_EXPORT,     cmd_conf_export,   CTL_NONE,            CMD_FREAD  | CMD_FOPT_MOD },
+	{ CMD_CONF_IMPORT,     cmd_conf_import,   CTL_NONE,            CMD_FWRITE | CMD_FOPT_MOD | CMD_FOPT_FILTER },
+	{ CMD_CONF_EXPORT,     cmd_conf_export,   CTL_NONE,            CMD_FREAD  | CMD_FOPT_MOD | CMD_FOPT_FILTER },
 	{ CMD_CONF_LIST,       cmd_conf_ctl,      CTL_CONF_LIST,       CMD_FOPT_ITEM | CMD_FLIST_SCHEMA },
 	{ CMD_CONF_READ,       cmd_conf_ctl,      CTL_CONF_READ,       CMD_FOPT_ITEM },
 	{ CMD_CONF_BEGIN,      cmd_conf_ctl,      CTL_CONF_BEGIN },
