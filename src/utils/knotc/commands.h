@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -33,6 +33,7 @@ typedef enum {
 	CMD_FOPT_MOD     = 1 << 8,  /*!< Optional configured modules dependency. */
 	CMD_FREQ_MOD     = 1 << 9,  /*!< Required configured modules dependency. */
 	CMD_FLIST_SCHEMA = 1 << 10, /*!< List schema or possible option values. */
+	CMD_FOPT_FILTER  = 1 << 11, /*!< Optional filter argument. */
 } cmd_flag_t;
 
 struct cmd_desc;
