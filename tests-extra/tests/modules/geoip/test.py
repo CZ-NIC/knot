@@ -29,7 +29,7 @@ iso_codes = ['AD', 'AE', 'AF', 'AG', 'AI', 'AL', 'AM', 'AO', 'AQ', 'AR', 'AS', '
              'SM', 'SN', 'SO', 'SR', 'SS', 'ST', 'SV', 'SX', 'SY', 'SZ', 'TC', 'TD',
              'TF', 'TG', 'TH', 'TJ', 'TK', 'TL', 'TM', 'TN', 'TO', 'TR', 'TT', 'TV',
              'TW', 'TZ', 'UA', 'UG', 'UM', 'US', 'UY', 'UZ', 'VA', 'VC', 'VE', 'VG',
-             'VI', 'VN', 'VU', 'WF', 'WS', 'YE', 'YT', 'ZA', 'ZM', 'ZW'];
+             'VI', 'VN', 'VU', 'WF', 'WS', 'YE', 'YT', 'ZA', 'ZM', 'ZW']
 
 RELOAD_OVERWRITE = random.choice([False, True])
 
@@ -77,7 +77,7 @@ mod_geoip = ModGeoip(geodb_filename, "geodb", t.data_dir + "db.mmdb",
                      ["country/iso_code", "(id)city/geoname_id"])
 mod_subnet = ModGeoip(subnet_filename)
 
-knot.add_module(zone, mod_geoip);
+knot.add_module(zone, mod_geoip)
 
 t.start()
 
@@ -105,7 +105,7 @@ for i in range(1, 1000):
 
 # Restart with subnet module.
 knot.clear_modules(zone)
-knot.add_module(zone, mod_subnet);
+knot.add_module(zone, mod_subnet)
 knot.gen_confile()
 knot.reload()
 knot.zone_wait(zone)

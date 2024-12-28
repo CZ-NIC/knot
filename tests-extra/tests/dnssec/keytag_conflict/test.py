@@ -22,8 +22,8 @@ def check_zone4(server, min_dnskeys, min_rrsigs, msg):
     soa = server.dig("mail." + ZONE, "A", dnssec=True)
     found_rrsigs = soa.count("RRSIG")
 
-    check_log("RRSIGs: %d (expected min %d)" % (found_rrsigs, min_rrsigs));
-    check_log("DNSKEYs: %d (expected min %d)" % (found_dnskeys, min_dnskeys));
+    check_log("RRSIGs: %d (expected min %d)" % (found_rrsigs, min_rrsigs))
+    check_log("DNSKEYs: %d (expected min %d)" % (found_dnskeys, min_dnskeys))
 
     if found_rrsigs < min_rrsigs:
         set_err("BAD RRSIG COUNT: " + msg)

@@ -22,11 +22,11 @@ zone_common2 = t.zone("test", storage=".", file_name="test.remote_zone")
 while True:
     zone_local = t.zone_rnd(1)
     if not is_subzone(zone_local[0], zone_common1[0]):
-        break;
+        break
 while True:
     zone_remote = t.zone_rnd(1)
     if not is_subzone(zone_remote[0], zone_common2[0]):
-        break;
+        break
 
 local = t.server("knot", tsig=TSIG)
 t.link(zone_common1, local)

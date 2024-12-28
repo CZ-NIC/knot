@@ -34,10 +34,10 @@ def check_zone(server, zone, dnskeys, dnskey_rrsigs, cdnskeys, soa_rrsigs, msg):
     qsoa = server.dig(zone.name, "SOA", dnssec=True, bufsize=4096)
     found_soa_rrsigs = qsoa.count("RRSIG")
 
-    check_log("DNSKEYs: %d (expected %d)" % (found_dnskeys, dnskeys));
-    check_log("RRSIGs: %d (expected %d)" % (found_soa_rrsigs, soa_rrsigs));
-    check_log("DNSKEY-RRSIGs: %d (expected %d)" % (found_rrsigs, dnskey_rrsigs));
-    check_log("CDNSKEYs: %d (expected %d)" % (found_cdnskeys, cdnskeys));
+    check_log("DNSKEYs: %d (expected %d)" % (found_dnskeys, dnskeys))
+    check_log("RRSIGs: %d (expected %d)" % (found_soa_rrsigs, soa_rrsigs))
+    check_log("DNSKEY-RRSIGs: %d (expected %d)" % (found_rrsigs, dnskey_rrsigs))
+    check_log("CDNSKEYs: %d (expected %d)" % (found_cdnskeys, cdnskeys))
 
     if found_dnskeys != dnskeys:
         set_err("BAD DNSKEY COUNT: " + msg)

@@ -284,6 +284,7 @@ class Test(object):
             if not server.listening():
                 self.stop(kill=True)
                 self.start()
+                break
 
         self.start_tries = 0
 

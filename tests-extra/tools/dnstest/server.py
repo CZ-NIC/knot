@@ -122,7 +122,7 @@ class Zone(object):
     def get_module(self, mod_name):
         for m in self.modules:
             if m.mod_name == mod_name:
-               return m;
+               return m
 
     def clear_modules(self):
         self.modules.clear()
@@ -232,9 +232,11 @@ class Server(object):
 
     def _check_socket(self, proto, port):
         if self.addr.startswith("/"):
+            ux_socket = True
             param = ""
             iface = self.addr
         else:
+            ux_socket = False
             param = "-i"
             if ipaddress.ip_address(self.addr).version == 4:
                 iface = "4%s@%s:%i" % (proto, self.addr, port)
@@ -254,7 +256,7 @@ class Server(object):
             pids = list(set(pids))
 
             # Check for successful bind.
-            if len(pids) == 1 and str(self.proc.pid) in pids:
+            if (ux_socket or len(pids) == 1) and str(self.proc.pid) in pids:
                 return True
 
             time.sleep(2)

@@ -34,10 +34,10 @@ def check_zone(server, zone, dnskeys, dnskey_rrsigs, cdnskeys, soa_rrsigs, msg):
     qsoa = server.dig("example.com", "SOA", dnssec=True, bufsize=4096)
     found_soa_rrsigs = qsoa.count("RRSIG")
 
-    check_log("DNSKEYs: %d (expected %d)" % (found_dnskeys, dnskeys));
-    check_log("RRSIGs: %d (expected %d)" % (found_soa_rrsigs, soa_rrsigs));
-    check_log("DNSKEY-RRSIGs: %d (expected %d)" % (found_rrsigs, dnskey_rrsigs));
-    check_log("CDNSKEYs: %d (expected %d)" % (found_cdnskeys, cdnskeys));
+    check_log("DNSKEYs: %d (expected %d)" % (found_dnskeys, dnskeys))
+    check_log("RRSIGs: %d (expected %d)" % (found_soa_rrsigs, soa_rrsigs))
+    check_log("DNSKEY-RRSIGs: %d (expected %d)" % (found_rrsigs, dnskey_rrsigs))
+    check_log("CDNSKEYs: %d (expected %d)" % (found_cdnskeys, cdnskeys))
 
     if found_dnskeys != dnskeys:
         set_err("BAD DNSKEY COUNT: " + msg)
@@ -96,7 +96,7 @@ def wait_for_cds_change(t, server, timeout):
 def watch_alg_rollover(t, server, zone, before_keys, after_keys, desc, set_alg, key_len, submission_cb):
     check_zone(server, zone, before_keys, 1, 1, 1, desc + ": initial keys")
 
-    z = server.zones[zone[0].name];
+    z = server.zones[zone[0].name]
     z.get_module("onlinesign").algorithm = set_alg
     z.get_module("onlinesign").key_size = key_len
     server.gen_confile()
@@ -128,7 +128,7 @@ def watch_alg_rollover(t, server, zone, before_keys, after_keys, desc, set_alg, 
 
 def watch_ksk_rollover(t, server, zone, before_keys, after_keys, total_keys, desc, set_ksk_lifetime, submission_cb):
     check_zone(server, zone, before_keys, 1, 1, 1, desc + ": initial keys")
-    z = server.zones[zone[0].name];
+    z = server.zones[zone[0].name]
     orig_ksk_lifetime = z.get_module("onlinesign").ksk_life
 
     z.get_module("onlinesign").ksk_life = set_ksk_lifetime if set_ksk_lifetime > 0 else orig_ksk_lifetime
