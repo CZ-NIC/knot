@@ -472,6 +472,21 @@ static unsigned char complete(EditLine *el, int ch)
 		}
 	}
 
+	// Complete zone-key-rollover key type.
+	if (desc->cmd == CTL_ZONE_KEY_ROLL && token == 2) {
+		lookup_t lookup;
+		if (lookup_init(&lookup) != KNOT_EOK)
+			goto complete_exit;
+		ret  = lookup_insert(&lookup, "zsk", NULL);
+		ret |= lookup_insert(&lookup, "ksk", NULL);
+		if (ret != KNOT_EOK) {
+			goto complete_exit;
+		}
+		(void)lookup_complete(&lookup, argv[2], pos, el, false);
+		lookup_deinit(&lookup);
+		goto complete_exit;
+	}
+
 	// Complete the zone name.
 	if (desc->flags & (CMD_FREQ_ZONE | CMD_FOPT_ZONE)) {
 		if (token > 1 && !(desc->flags & CMD_FOPT_ZONE)) {
@@ -507,8 +522,9 @@ static unsigned char complete(EditLine *el, int ch)
 	// Complete status command detail.
 	} else if (desc->cmd == CTL_STATUS && token == 1) {
 		lookup_t lookup;
-		if (lookup_init(&lookup) != KNOT_EOK)
+		if (lookup_init(&lookup) != KNOT_EOK) {
 			goto complete_exit;
+		}
 		ret  = lookup_insert(&lookup, "version", NULL);
 		ret |= lookup_insert(&lookup, "workers", NULL);
 		ret |= lookup_insert(&lookup, "configure", NULL);
