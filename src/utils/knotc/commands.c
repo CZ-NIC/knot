@@ -1214,7 +1214,7 @@ static int cmd_conf_ctl(cmd_args_t *args)
 
 	knot_ctl_data_t data = {
 		[KNOT_CTL_IDX_CMD] = ctl_cmd_to_str(args->desc->cmd),
-		[KNOT_CTL_IDX_FILTERS] = filters,
+		[KNOT_CTL_IDX_FILTERS] = *filters ? filters : NULL,
 	};
 
 	// Send the command without parameters.
