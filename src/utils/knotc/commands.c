@@ -767,11 +767,12 @@ static int cmd_zone_ctl(cmd_args_t *args)
 			if (data[KNOT_CTL_IDX_FILTERS] == NULL) {
 				data[KNOT_CTL_IDX_FILTERS] = filter_buff;
 			}
-			char filter_id[2] = { get_filter(args->desc->cmd, args->argv[i])->id[0], 0 };
-			if (filter_id[0] == '\0') {
+			const filter_desc_t *fd = get_filter(args->desc->cmd, args->argv[i]);
+			if (fd->id == NULL || fd->id[0] == '\0') {
 				log_error("unknown filter: %s", args->argv[i]);
 				return KNOT_EINVAL;
 			}
+			char filter_id[2] = {fd->id[0], 0 };
 			if (strchr(filter_buff, filter_id[0]) == NULL) {
 				assert(strlen(filter_buff) < MAX_FILTERS);
 				strlcat(filter_buff, filter_id, sizeof(filter_buff));
