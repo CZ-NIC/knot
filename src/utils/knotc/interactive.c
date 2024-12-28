@@ -467,6 +467,20 @@ static unsigned char complete(EditLine *el, int ch)
 		}
 	}
 
+	// Complete zone-key-rollover key type.
+	if (desc->cmd == CTL_ZONE_KEY_ROLL && token == 2) {
+		lookup_t lookup;
+		if (lookup_init(&lookup) != KNOT_EOK) {
+			goto complete_exit;
+		}
+		if (lookup_insert(&lookup, CMD_ROLLOVER_ZSK, NULL) == KNOT_EOK &&
+		    lookup_insert(&lookup, CMD_ROLLOVER_KSK, NULL) == KNOT_EOK) {
+			(void)lookup_complete(&lookup, argv[2], pos, el, true);
+		}
+		lookup_deinit(&lookup);
+		goto complete_exit;
+	}
+
 	// Complete the zone name.
 	if (desc->flags & (CMD_FREQ_ZONE | CMD_FOPT_ZONE)) {
 		if (token > 1 && !(desc->flags & CMD_FOPT_ZONE)) {
