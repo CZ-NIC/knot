@@ -35,6 +35,9 @@
 /* Define maximum reasonable number of NIC queues supported. */
 #define QUEUE_MAX	256
 
+/* DNS header size. */
+#define DNS_HDR_SIZE	12
+
 /* A map of configuration options. */
 struct {
 	__uint(type, BPF_MAP_TYPE_ARRAY);
@@ -217,6 +220,10 @@ int xdp_redirect_dns_func(struct xdp_md *ctx)
 		    (port_dest == opts.udp_port ||
 		     ((opts.flags & (KNOT_XDP_FILTER_PASS | KNOT_XDP_FILTER_DROP)) &&
 		      port_dest >= opts.udp_port))) {
+			/* Check for minimum DNS message content. */
+			if (bpf_ntohs(udp->len) - sizeof(*udp) < DNS_HDR_SIZE) {
+				return XDP_DROP;
+			}
 			match = 1;
 		} else if ((opts.flags & KNOT_XDP_FILTER_QUIC) &&
 		    (port_dest == opts.quic_port ||
