@@ -89,6 +89,7 @@ int xdp_redirect_dns_func(struct xdp_md *ctx)
 	const void *ip_hdr;
 	const struct iphdr *ip4;
 	const struct ipv6hdr *ip6;
+	__u16 ip_len;
 	__u8 ipv4;
 	__u8 ip_proto;
 	__u8 fragmented = 0;
@@ -128,7 +129,8 @@ int xdp_redirect_dns_func(struct xdp_md *ctx)
 
 		/* Check the IP length. Cannot use strict equality due to
 		 * Ethernet padding applied to frames shorter than 64 octects. */
-		if (data_end - data < __bpf_ntohs(ip4->tot_len)) {
+		ip_len = bpf_ntohs(ip4->tot_len);
+		if (data_end - data < ip_len) {
 			return XDP_DROP;
 		}
 
@@ -151,7 +153,8 @@ int xdp_redirect_dns_func(struct xdp_md *ctx)
 
 		/* Check the IP length. Cannot use strict equality due to
 		 * Ethernet padding applied to frames shorter than 64 octects. */
-		if (data_end - data < __bpf_ntohs(ip6->payload_len) + sizeof(*ip6)) {
+		ip_len = sizeof(*ip6) + bpf_ntohs(ip6->payload_len);
+		if (data_end - data < ip_len) {
 			return XDP_DROP;
 		}
 
@@ -203,8 +206,8 @@ int xdp_redirect_dns_func(struct xdp_md *ctx)
 			return XDP_DROP;
 		}
 
-		/* Check the UDP length. */
-		if (data_end - (void *)udp < __bpf_ntohs(udp->len)) {
+		/* Check if the UDP length matches the IP payload length. */
+		if ((void *)udp - ip_hdr != ip_len - bpf_ntohs(udp->len)) {
 			return XDP_DROP;
 		}
 
