@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2025 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -89,7 +89,6 @@ int xdp_redirect_dns_func(struct xdp_md *ctx)
 	const void *ip_hdr;
 	const struct iphdr *ip4;
 	const struct ipv6hdr *ip6;
-	const void *l4_hdr;
 	__u8 ipv4;
 	__u8 ip_proto;
 	__u8 fragmented = 0;
@@ -138,7 +137,7 @@ int xdp_redirect_dns_func(struct xdp_md *ctx)
 			fragmented = 1;
 		}
 		ip_proto = ip4->protocol;
-		l4_hdr = data + ip4->ihl * 4;
+		data += ip4->ihl * 4;
 		ipv4 = 1;
 		break;
 	case __constant_htons(ETH_P_IPV6):
@@ -167,7 +166,6 @@ int xdp_redirect_dns_func(struct xdp_md *ctx)
 			ip_proto = frag->nexthdr;
 			data += sizeof(*frag);
 		}
-		l4_hdr = data;
 		ipv4 = 0;
 		break;
 	default:
@@ -184,8 +182,8 @@ int xdp_redirect_dns_func(struct xdp_md *ctx)
 	switch (ip_proto) {
 	case IPPROTO_TCP:
 		/* Parse TCP header. */
-		tcp = l4_hdr;
-		if (l4_hdr + sizeof(*tcp) > data_end) {
+		tcp = data;
+		if ((void *)tcp + sizeof(*tcp) > data_end) {
 			return XDP_DROP;
 		}
 
@@ -200,8 +198,8 @@ int xdp_redirect_dns_func(struct xdp_md *ctx)
 		break;
 	case IPPROTO_UDP:
 		/* Parse UDP header. */
-		udp = l4_hdr;
-		if (l4_hdr + sizeof(*udp) > data_end) {
+		udp = data;
+		if ((void *)udp + sizeof(*udp) > data_end) {
 			return XDP_DROP;
 		}
 
