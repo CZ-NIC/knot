@@ -4,8 +4,6 @@
 #   sudo ip link set dev $eth xdp off
 #   sudo ip link set dev $eth xdp obj ./bpf-kernel.o
 #
-# Built using LLVM/CLANG 14.
-#
 # When updating check using `llvm-objdump -h bpf-kernel.o` if .BTF and .BTF.ext
 # sections are present.
 
