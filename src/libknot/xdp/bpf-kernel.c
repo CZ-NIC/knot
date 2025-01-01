@@ -105,7 +105,7 @@ int xdp_redirect_dns_func(struct xdp_md *ctx)
 	data += sizeof(*eth_hdr);
 
 	/* Parse possible VLAN (802.1Q) header. */
-	if (eth_hdr->h_proto == __constant_htons(ETH_P_8021Q)) {
+	if (eth_hdr->h_proto == bpf_htons(ETH_P_8021Q)) {
 		if (data + sizeof(__u16) + sizeof(eth_type) > data_end) {
 			return XDP_DROP;
 		} else if (meta == 0) { /* VLAN not supported. */
@@ -121,7 +121,7 @@ int xdp_redirect_dns_func(struct xdp_md *ctx)
 
 	/* Parse IPv4 or IPv6 header. */
 	switch (eth_type) {
-	case __constant_htons(ETH_P_IP):
+	case bpf_htons(ETH_P_IP):
 		ip4 = ip_hdr;
 		if ((void *)ip4 + sizeof(*ip4) > data_end) {
 			return XDP_DROP;
@@ -138,14 +138,14 @@ int xdp_redirect_dns_func(struct xdp_md *ctx)
 		}
 
 		if (ip4->frag_off != 0 &&
-		    ip4->frag_off != __constant_htons(IP_DF)) {
+		    ip4->frag_off != bpf_htons(IP_DF)) {
 			fragmented = 1;
 		}
 		ip_proto = ip4->protocol;
 		data += ip4->ihl * 4;
 		ipv4 = 1;
 		break;
-	case __constant_htons(ETH_P_IPV6):
+	case bpf_htons(ETH_P_IPV6):
 		ip6 = ip_hdr;
 		if ((void *)ip6 + sizeof(*ip6) > data_end) {
 			return XDP_DROP;
@@ -193,7 +193,7 @@ int xdp_redirect_dns_func(struct xdp_md *ctx)
 			return XDP_DROP;
 		}
 
-		port_dest = __bpf_ntohs(tcp->dest);
+		port_dest = bpf_ntohs(tcp->dest);
 
 		if ((opts.flags & KNOT_XDP_FILTER_TCP) &&
 		    (port_dest == opts.udp_port ||
@@ -214,7 +214,7 @@ int xdp_redirect_dns_func(struct xdp_md *ctx)
 			return XDP_DROP;
 		}
 
-		port_dest = __bpf_ntohs(udp->dest);
+		port_dest = bpf_ntohs(udp->dest);
 
 		if ((opts.flags & KNOT_XDP_FILTER_UDP) &&
 		    (port_dest == opts.udp_port ||
