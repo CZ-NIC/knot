@@ -128,9 +128,10 @@ Actions
   offline. (#)
 
 **zone-flush** [*zone*...] [**+outdir** *directory*]
-  Trigger a zone journal flush to the configured zone file. If an output
-  directory is specified, the current zone is immediately dumped (in the
-  blocking mode) to a zone file in the specified directory. See
+  Trigger a zone journal flush to the configured zone file. If zonefile
+  synchronization is disabled, the force option must be used.
+  If an output directory is specified, the current zone is immediately
+  dumped (in the blocking mode) to a zone file in the specified directory. See
   :ref:`Notes<notes>` below about the directory permissions. (#)
 
 **zone-backup** [*zone*...] **+backupdir** *directory* [*filter*...]
