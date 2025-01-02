@@ -235,7 +235,7 @@ static int zones_apply(ctl_args_t *args, int (*fcn)(zone_t *, ctl_args_t *))
 
 		// Get next zone name.
 		ret = knot_ctl_receive(args->ctl, &args->type, &args->data);
-		if (ret != KNOT_EOK || args->type != KNOT_CTL_TYPE_DATA) {
+		if (ret != KNOT_EOK || args->type != KNOT_CTL_TYPE_DATA || args->data[KNOT_CTL_IDX_ZONE] == NULL) {
 			break;
 		}
 		strtolower((char *)args->data[KNOT_CTL_IDX_ZONE]);
