@@ -39,7 +39,15 @@ typedef struct {
 	bool exclusive;
 } concurrent_ctl_ctx_t;
 
-void ctl_init_ctxs(concurrent_ctl_ctx_t *concurrent_ctxs, size_t n_ctxs, server_t *server);
+typedef struct {
+	knot_ctl_t *ctl;
+	server_t *server;
+	pthread_t thread;
+	int ret;
+	int parent_tid;
+} ctl_socket_ctx_t;
+
+void ctl_init_ctxs(concurrent_ctl_ctx_t *concurrent_ctxs, size_t n_ctxs, server_t *server, int parent_tid);
 
 int ctl_cleanup_ctxs(concurrent_ctl_ctx_t *concurrent_ctxs, size_t n_ctxs);
 
@@ -59,3 +67,5 @@ void ctl_finalize_ctxs(concurrent_ctl_ctx_t *concurrent_ctxs, size_t n_ctxs);
  */
 int ctl_manage(knot_ctl_t *ctl, server_t *server, bool *excl,
                int thrid, concurrent_ctl_ctx_t *ctxs, size_t n_ctxs);
+
+void *ctl_socket_thread(void *arg);

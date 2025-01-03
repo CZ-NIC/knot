@@ -20,14 +20,14 @@
 #include "knot/ctl/threads.h"
 #include "knot/server/signals.h"
 
-void ctl_init_ctxs(concurrent_ctl_ctx_t *concurrent_ctxs, size_t n_ctxs, server_t *server)
+void ctl_init_ctxs(concurrent_ctl_ctx_t *concurrent_ctxs, size_t n_ctxs, server_t *server, int parent_tid)
 {
 	for (size_t i = 0; i < n_ctxs; i++) {
 		concurrent_ctl_ctx_t *cctx = &concurrent_ctxs[i];
 		pthread_mutex_init(&cctx->mutex, NULL);
 		pthread_cond_init(&cctx->cond, NULL);
 		cctx->server = server;
-		cctx->thread_idx = i + 1;
+		cctx->thread_idx = parent_tid + i + 1;
 	}
 }
 
@@ -179,4 +179,41 @@ int ctl_manage(knot_ctl_t *ctl, server_t *server, bool *excl,
 		knot_ctl_close(ctl);
 	}
 	return ret;
+}
+
+void *ctl_socket_thread(void *arg)
+{
+	ctl_socket_ctx_t *ctx = arg;
+	rcu_register_thread();
+	signals_setup();
+
+	concurrent_ctl_ctx_t concurrent_ctxs[CTL_MAX_CONCURRENT] = { 0 };
+	ctl_init_ctxs(concurrent_ctxs, CTL_MAX_CONCURRENT, ctx->server, ctx->parent_tid);
+	bool this_thread_exclusive = false;
+
+	while (ctx->ret == KNOT_EOK) {
+		if (ctl_cleanup_ctxs(concurrent_ctxs, CTL_MAX_CONCURRENT) == KNOT_CTL_ESTOP) {
+			ctx->ret = KNOT_CTL_ESTOP;
+			break;
+		}
+
+		// Update control timeout.
+		knot_ctl_set_timeout(ctx->ctl, conf()->cache.ctl_timeout);
+
+		int ret = knot_ctl_accept(ctx->ctl);
+		if (ret != KNOT_EOK) {
+			continue;
+		}
+
+		ret = ctl_manage(ctx->ctl, ctx->server, &this_thread_exclusive, ctx->parent_tid, concurrent_ctxs, CTL_MAX_CONCURRENT);
+		if (ret == KNOT_CTL_ESTOP) {
+			ctx->ret = KNOT_CTL_ESTOP;
+			break;
+		}
+	}
+
+	ctl_finalize_ctxs(concurrent_ctxs, CTL_MAX_CONCURRENT);
+
+	rcu_unregister_thread();
+	return NULL;
 }
