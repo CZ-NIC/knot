@@ -1,4 +1,4 @@
-/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2025 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -130,6 +130,8 @@ typedef struct {
 		yp_flag_t flags;
 		/*! Changed zones. */
 		trie_t *zones;
+		/*! Thread that initiated the txn (should access it exclusively). */
+		int thread_id;
 	} io;
 
 	/*! Current config file (for reload if started with config file). */
