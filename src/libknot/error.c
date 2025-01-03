@@ -155,6 +155,7 @@ static const struct error errors[] = {
 	/* Transaction errors. */
 	{ KNOT_TXN_EEXISTS,    "too many transactions" },
 	{ KNOT_TXN_ENOTEXISTS, "no active transaction" },
+	{ KNOT_TXN_ETHREAD,    "transaction thread mismatch" },
 
 	/* DNSSEC errors. */
 	{ KNOT_INVALID_PUBLIC_KEY,    "invalid public key" },
