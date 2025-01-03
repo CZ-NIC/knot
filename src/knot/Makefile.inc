@@ -44,6 +44,8 @@ libknotd_la_SOURCES = \
 	knot/ctl/commands.h			\
 	knot/ctl/process.c			\
 	knot/ctl/process.h			\
+	knot/ctl/threads.c			\
+	knot/ctl/threads.h			\
 	knot/dnssec/context.c			\
 	knot/dnssec/context.h			\
 	knot/dnssec/ds_query.c			\
@@ -163,6 +165,8 @@ libknotd_la_SOURCES = \
 	knot/server/proxyv2.h			\
 	knot/server/server.c			\
 	knot/server/server.h			\
+	knot/server/signals.c			\
+	knot/server/signals.h			\
 	knot/server/tcp-handler.c		\
 	knot/server/tcp-handler.h		\
 	knot/server/udp-handler.c		\
