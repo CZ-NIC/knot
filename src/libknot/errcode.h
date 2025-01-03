@@ -156,6 +156,7 @@ enum knot_error {
 	/* Transaction errors. */
 	KNOT_TXN_EEXISTS,
 	KNOT_TXN_ENOTEXISTS,
+	KNOT_TXN_ETHREAD,
 
 	/* DNSSEC errors. */
 	KNOT_INVALID_PUBLIC_KEY,
