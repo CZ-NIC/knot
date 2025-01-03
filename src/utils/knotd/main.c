@@ -24,7 +24,7 @@
 #include "contrib/strtonum.h"
 #include "contrib/threads.h"
 #include "contrib/time.h"
-#include "knot/ctl/process.h"
+#include "knot/ctl/threads.h"
 #include "knot/conf/conf.h"
 #include "knot/conf/migration.h"
 #include "knot/conf/module.h"
@@ -34,36 +34,11 @@
 #include "knot/common/stats.h"
 #include "knot/common/systemd.h"
 #include "knot/server/server.h"
+#include "knot/server/signals.h"
 #include "knot/server/tcp-handler.h"
 #include "utils/common/params.h"
 
 #define PROGRAM_NAME "knotd"
-
-typedef enum {
-	CONCURRENT_EMPTY = 0,   // fresh cctx without a thread.
-	CONCURRENT_ASSIGNED,    // cctx assigned to process a command.
-	CONCURRENT_RUNNING,     // ctl command is being processed in the thread.
-	CONCURRENT_IDLE,        // command has been processed, waiting for a new one.
-	CONCURRENT_KILLED,      // cctx cleanup has started.
-	CONCURRENT_FINISHED,    // after having been killed, the thread is being joined.
-} concurrent_ctl_state_t;
-
-typedef struct {
-	concurrent_ctl_state_t state;
-	pthread_mutex_t mutex;  // Protects .state.
-	pthread_cond_t cond;
-	knot_ctl_t *ctl;
-	server_t *server;
-	pthread_t thread;
-	int ret;
-	int thread_idx;
-	bool exclusive;
-} concurrent_ctl_ctx_t;
-
-/* Signal flags. */
-static volatile bool sig_req_stop = false;
-static volatile bool sig_req_reload = false;
-static volatile bool sig_req_zones_reload = false;
 
 static int make_daemon(int nochdir, int noclose)
 {
@@ -122,83 +97,6 @@ static int make_daemon(int nochdir, int noclose)
 	return 0;
 }
 
-struct signal {
-	int signum;
-	bool handle;
-};
-
-/*! \brief Signals used by the server. */
-static const struct signal SIGNALS[] = {
-	{ SIGHUP,  true  },  /* Reload server. */
-	{ SIGUSR1, true  },  /* Reload zones. */
-	{ SIGINT,  true  },  /* Terminate server. */
-	{ SIGTERM, true  },  /* Terminate server. */
-	{ SIGALRM, false },  /* Internal thread synchronization. */
-	{ SIGPIPE, false },  /* Ignored. Some I/O errors. */
-	{ 0 }
-};
-
-/*! \brief Server signal handler. */
-static void handle_signal(int signum)
-{
-	switch (signum) {
-	case SIGHUP:
-		sig_req_reload = true;
-		break;
-	case SIGUSR1:
-		sig_req_zones_reload = true;
-		break;
-	case SIGINT:
-	case SIGTERM:
-		if (sig_req_stop) {
-			exit(EXIT_FAILURE);
-		}
-		sig_req_stop = true;
-		break;
-	default:
-		/* ignore */
-		break;
-	}
-}
-
-/*! \brief Setup signal handlers and blocking mask. */
-static void setup_signals(void)
-{
-	/* Block all signals. */
-	static sigset_t all;
-	sigfillset(&all);
-	sigdelset(&all, SIGPROF);
-	sigdelset(&all, SIGQUIT);
-	sigdelset(&all, SIGILL);
-	sigdelset(&all, SIGABRT);
-	sigdelset(&all, SIGBUS);
-	sigdelset(&all, SIGFPE);
-	sigdelset(&all, SIGSEGV);
-
-	/* Setup handlers. */
-	struct sigaction action = { .sa_handler = handle_signal };
-	for (const struct signal *s = SIGNALS; s->signum > 0; s++) {
-		sigaction(s->signum, &action, NULL);
-	}
-
-	pthread_sigmask(SIG_SETMASK, &all, NULL);
-}
-
-/*! \brief Unblock server control signals. */
-static void enable_signals(void)
-{
-	sigset_t mask;
-	sigemptyset(&mask);
-
-	for (const struct signal *s = SIGNALS; s->signum > 0; s++) {
-		if (s->handle) {
-			sigaddset(&mask, s->signum);
-		}
-	}
-
-	pthread_sigmask(SIG_UNBLOCK, &mask, NULL);
-}
-
 /*! \brief Drop POSIX 1003.1e capabilities. */
 static void drop_capabilities(void)
 {
@@ -255,158 +153,6 @@ static void check_loaded(server_t *server)
 	dbus_emit_running(true);
 }
 
-static void *ctl_process_thread(void *arg);
-
-/*!
- * Try to find an empty ctl processing context and if successful,
- * prepare to lauch the incomming command processing in it.
- *
- * \param[in]  concurrent_ctxs  Configured concurrent control contexts.
- * \param[in]  n_ctxs           Number of configured concurrent control contexts.
- * \param[in]  ctl              Control context.
- *
- * \return     Assigned concurrent control context, or NULL.
- */
-
-static concurrent_ctl_ctx_t *find_free_ctx(concurrent_ctl_ctx_t *concurrent_ctxs,
-                                           size_t n_ctxs, knot_ctl_t *ctl)
-{
-	concurrent_ctl_ctx_t *res = NULL;
-	for (size_t i = 0; i < n_ctxs && res == NULL; i++) {
-		concurrent_ctl_ctx_t *cctx = &concurrent_ctxs[i];
-		pthread_mutex_lock(&cctx->mutex);
-		if (cctx->exclusive) {
-			while (cctx->state != CONCURRENT_IDLE) {
-				pthread_cond_wait(&cctx->cond, &cctx->mutex);
-			}
-			knot_ctl_free(cctx->ctl);
-			cctx->ctl = knot_ctl_clone(ctl);
-			if (cctx->ctl == NULL) {
-				cctx->exclusive = false;
-				pthread_mutex_unlock(&cctx->mutex);
-				break;
-			}
-			cctx->state = CONCURRENT_ASSIGNED;
-			res = cctx;
-			pthread_cond_broadcast(&cctx->cond);
-		}
-		pthread_mutex_unlock(&cctx->mutex);
-	}
-	for (size_t i = 0; i < n_ctxs && res == NULL; i++) {
-		concurrent_ctl_ctx_t *cctx = &concurrent_ctxs[i];
-		pthread_mutex_lock(&cctx->mutex);
-		switch (cctx->state) {
-		case CONCURRENT_EMPTY:
-			(void)thread_create_nosignal(&cctx->thread, ctl_process_thread, cctx);
-			break;
-		case CONCURRENT_IDLE:
-			knot_ctl_free(cctx->ctl);
-			pthread_cond_broadcast(&cctx->cond);
-			break;
-		default:
-			pthread_mutex_unlock(&cctx->mutex);
-			continue;
-		}
-		cctx->ctl = knot_ctl_clone(ctl);
-		if (cctx->ctl != NULL) {
-			cctx->state = CONCURRENT_ASSIGNED;
-			res = cctx;
-		}
-		pthread_mutex_unlock(&cctx->mutex);
-	}
-	return res;
-}
-
-static void init_ctxs(concurrent_ctl_ctx_t *concurrent_ctxs, size_t n_ctxs, server_t *server)
-{
-	for (size_t i = 0; i < n_ctxs; i++) {
-		concurrent_ctl_ctx_t *cctx = &concurrent_ctxs[i];
-		pthread_mutex_init(&cctx->mutex, NULL);
-		pthread_cond_init(&cctx->cond, NULL);
-		cctx->server = server;
-		cctx->thread_idx = i + 1;
-	}
-}
-
-static int cleanup_ctxs(concurrent_ctl_ctx_t *concurrent_ctxs, size_t n_ctxs)
-{
-	int ret = KNOT_EOK;
-	for (size_t i = 0; i < n_ctxs; i++) {
-		concurrent_ctl_ctx_t *cctx = &concurrent_ctxs[i];
-		pthread_mutex_lock(&cctx->mutex);
-		if (cctx->state == CONCURRENT_IDLE) {
-			knot_ctl_free(cctx->ctl);
-			cctx->ctl = NULL;
-			if (cctx->ret == KNOT_CTL_ESTOP) {
-				ret = cctx->ret;
-			}
-		}
-		pthread_mutex_unlock(&cctx->mutex);
-	}
-	return ret;
-}
-
-static void finalize_ctxs(concurrent_ctl_ctx_t *concurrent_ctxs, size_t n_ctxs)
-{
-	for (size_t i = 0; i < n_ctxs; i++) {
-		concurrent_ctl_ctx_t *cctx = &concurrent_ctxs[i];
-		pthread_mutex_lock(&cctx->mutex);
-		if (cctx->state == CONCURRENT_EMPTY) {
-			pthread_mutex_unlock(&cctx->mutex);
-			pthread_mutex_destroy(&cctx->mutex);
-			pthread_cond_destroy(&cctx->cond);
-			continue;
-		}
-
-		cctx->state = CONCURRENT_KILLED;
-		pthread_cond_broadcast(&cctx->cond);
-		pthread_mutex_unlock(&cctx->mutex);
-		(void)pthread_join(cctx->thread, NULL);
-
-		assert(cctx->state == CONCURRENT_FINISHED);
-		knot_ctl_free(cctx->ctl);
-		pthread_mutex_destroy(&cctx->mutex);
-		pthread_cond_destroy(&cctx->cond);
-	}
-}
-
-static void *ctl_process_thread(void *arg)
-{
-	concurrent_ctl_ctx_t *ctx = arg;
-	rcu_register_thread();
-	setup_signals(); // in fact, this blocks common signals so that they
-	                 // arrive to main thread instead of this one
-
-	pthread_mutex_lock(&ctx->mutex);
-	while (ctx->state != CONCURRENT_KILLED) {
-		if (ctx->state != CONCURRENT_ASSIGNED) {
-			pthread_cond_wait(&ctx->cond, &ctx->mutex);
-			continue;
-		}
-		ctx->state = CONCURRENT_RUNNING;
-		bool exclusive = ctx->exclusive;
-		pthread_mutex_unlock(&ctx->mutex);
-
-		// Not IDLE, ctx can be read without locking.
-		int ret = ctl_process(ctx->ctl, ctx->server, ctx->thread_idx, &exclusive);
-
-		pthread_mutex_lock(&ctx->mutex);
-		ctx->ret = ret;
-		ctx->exclusive = exclusive;
-		if (ctx->state == CONCURRENT_RUNNING) { // not KILLED
-			ctx->state = CONCURRENT_IDLE;
-			pthread_cond_broadcast(&ctx->cond);
-		}
-	}
-
-	knot_ctl_close(ctx->ctl);
-
-	ctx->state = CONCURRENT_FINISHED;
-	pthread_mutex_unlock(&ctx->mutex);
-	rcu_unregister_thread();
-	return NULL;
-}
-
 /*! \brief Event loop listening for signals and remote commands. */
 static void event_loop(server_t *server, const char *socket, bool daemonize,
                        unsigned long pid)
@@ -452,10 +198,10 @@ static void event_loop(server_t *server, const char *socket, bool daemonize,
 	}
 	free(listen);
 
-	enable_signals();
+	signals_enable();
 
 	concurrent_ctl_ctx_t concurrent_ctxs[CTL_MAX_CONCURRENT] = { 0 };
-	init_ctxs(concurrent_ctxs, CTL_MAX_CONCURRENT, server);
+	ctl_init_ctxs(concurrent_ctxs, CTL_MAX_CONCURRENT, server);
 	bool main_thread_exclusive = false;
 
 	/* Notify systemd about successful start. */
@@ -469,28 +215,30 @@ static void event_loop(server_t *server, const char *socket, bool daemonize,
 	/* Run event loop. */
 	for (;;) {
 		/* Interrupts. */
-		if (sig_req_reload && !sig_req_stop) {
-			sig_req_reload = false;
+		if (signals_req_reload && !signals_req_stop) {
+			signals_req_reload = false;
 			pthread_rwlock_wrlock(&server->ctl_lock);
 			server_reload(server, RELOAD_FULL);
 			pthread_rwlock_unlock(&server->ctl_lock);
 		}
-		if (sig_req_zones_reload && !sig_req_stop) {
-			sig_req_zones_reload = false;
-			reload_t mode = ATOMIC_GET(server->catalog_upd_signal) ? RELOAD_CATALOG : RELOAD_ZONES;
+		if (signals_req_zones_reload && !signals_req_stop) {
+			signals_req_zones_reload = false;
+			reload_t mode = ATOMIC_GET(server->catalog_upd_signal) ?
+			                RELOAD_CATALOG : RELOAD_ZONES;
 			pthread_rwlock_wrlock(&server->ctl_lock);
 			ATOMIC_SET(server->catalog_upd_signal, false);
 			server_update_zones(conf(), server, mode);
 			pthread_rwlock_unlock(&server->ctl_lock);
 		}
-		if (sig_req_stop || cleanup_ctxs(concurrent_ctxs, CTL_MAX_CONCURRENT) == KNOT_CTL_ESTOP) {
+		if (signals_req_stop ||
+		    ctl_cleanup_ctxs(concurrent_ctxs, CTL_MAX_CONCURRENT) == KNOT_CTL_ESTOP) {
 			break;
 		}
 
 		// Update control timeout.
 		knot_ctl_set_timeout(ctl, conf()->cache.ctl_timeout);
 
-		if (sig_req_reload || sig_req_zones_reload) {
+		if (signals_req_reload || signals_req_zones_reload) {
 			continue;
 		}
 
@@ -501,17 +249,14 @@ static void event_loop(server_t *server, const char *socket, bool daemonize,
 			continue;
 		}
 
-		if (main_thread_exclusive ||
-		    find_free_ctx(concurrent_ctxs, CTL_MAX_CONCURRENT, ctl) == NULL) {
-			ret = ctl_process(ctl, server, 0, &main_thread_exclusive);
-			knot_ctl_close(ctl);
-			if (ret == KNOT_CTL_ESTOP) {
-				break;
-			}
+		ret = ctl_manage(ctl, server, &main_thread_exclusive, 0,
+		                 concurrent_ctxs, CTL_MAX_CONCURRENT);
+		if (ret == KNOT_CTL_ESTOP) {
+			break;
 		}
 	}
 
-	finalize_ctxs(concurrent_ctxs, CTL_MAX_CONCURRENT);
+	ctl_finalize_ctxs(concurrent_ctxs, CTL_MAX_CONCURRENT);
 
 	if (conf()->cache.srv_dbus_event & DBUS_EVENT_RUNNING) {
 		dbus_emit_running(false);
@@ -683,7 +428,7 @@ int main(int argc, char **argv)
 	}
 
 	/* Setup base signal handling. */
-	setup_signals();
+	signals_setup();
 
 	/* Initialize cryptographic backend. */
 	dnssec_crypto_init();
