@@ -201,9 +201,12 @@ static void event_loop(server_t *server, const char *socket, bool daemonize,
 
 	signals_enable();
 
-	concurrent_ctl_ctx_t concurrent_ctxs[CTL_MAX_CONCURRENT] = { 0 };
-	ctl_init_ctxs(concurrent_ctxs, CTL_MAX_CONCURRENT, server);
-	bool main_thread_exclusive = false;
+	ctl_socket_ctx_t sctx = { .ctl = ctl, .server = server };
+	ret = ctl_socket_thr_init(&sctx);
+	if (ret != KNOT_EOK) {
+		log_fatal("control, failed to launch socket thread (%s)", knot_strerror(ret));
+		return;
+	}
 
 	/* Notify systemd about successful start. */
 	systemd_ready_notify();
@@ -213,9 +216,8 @@ static void event_loop(server_t *server, const char *socket, bool daemonize,
 		log_info("server started in the foreground, PID %lu", pid);
 	}
 
-	/* Run event loop. */
+	/* Run interrupt processing loop. */
 	for (;;) {
-		/* Interrupts. */
 		if (signals_req_reload && !signals_req_stop) {
 			signals_req_reload = false;
 			pthread_rwlock_wrlock(&server->ctl_lock);
@@ -231,13 +233,9 @@ static void event_loop(server_t *server, const char *socket, bool daemonize,
 			server_update_zones(conf(), server, mode);
 			pthread_rwlock_unlock(&server->ctl_lock);
 		}
-		if (signals_req_stop ||
-		    ctl_cleanup_ctxs(concurrent_ctxs, CTL_MAX_CONCURRENT) == KNOT_CTL_ESTOP) {
+		if (signals_req_stop) {
 			break;
 		}
-
-		// Update control timeout.
-		knot_ctl_set_timeout(ctl, conf()->cache.ctl_timeout);
 
 		if (signals_req_reload || signals_req_zones_reload) {
 			continue;
@@ -245,23 +243,14 @@ static void event_loop(server_t *server, const char *socket, bool daemonize,
 
 		check_loaded(server);
 
-		ret = knot_ctl_accept(ctl);
-		if (ret != KNOT_EOK) {
-			continue;
-		}
-
-		ret = ctl_manage(ctl, server, &main_thread_exclusive, 0,
-		                 concurrent_ctxs, CTL_MAX_CONCURRENT);
-		if (ret == KNOT_CTL_ESTOP) {
-			break;
-		}
+		sleep(5); // wait for signals to arrive
 	}
-
-	ctl_finalize_ctxs(concurrent_ctxs, CTL_MAX_CONCURRENT);
 
 	if (conf()->cache.srv_dbus_event & DBUS_EVENT_RUNNING) {
 		dbus_emit_running(false);
 	}
+
+	ctl_socket_thr_end(&sctx);
 
 	/* Unbind the control socket. */
 	knot_ctl_unbind(ctl);
