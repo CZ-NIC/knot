@@ -209,6 +209,8 @@ src/knot/ctl/commands.c
 src/knot/ctl/commands.h
 src/knot/ctl/process.c
 src/knot/ctl/process.h
+src/knot/ctl/threads.c
+src/knot/ctl/threads.h
 src/knot/dnssec/context.c
 src/knot/dnssec/context.h
 src/knot/dnssec/ds_query.c
@@ -340,6 +342,8 @@ src/knot/server/quic-handler.c
 src/knot/server/quic-handler.h
 src/knot/server/server.c
 src/knot/server/server.h
+src/knot/server/signals.c
+src/knot/server/signals.h
 src/knot/server/tcp-handler.c
 src/knot/server/tcp-handler.h
 src/knot/server/udp-handler.c
