@@ -28,6 +28,12 @@ typedef struct {
 	bool exclusive;
 } concurrent_ctl_ctx_t;
 
+typedef struct {
+	knot_ctl_t *ctl;
+	server_t *server;
+	dt_unit_t *unit;
+} ctl_socket_ctx_t;
+
 /*!
  * \brief Initialize CTL thread processing contexts.
  *
@@ -70,3 +76,19 @@ void ctl_finalize_ctxs(concurrent_ctl_ctx_t *concurrent_ctxs, size_t n_ctxs);
  */
 int ctl_manage(knot_ctl_t *ctl, server_t *server, bool *exclusive,
                int thread_idx, concurrent_ctl_ctx_t *ctxs, size_t n_ctxs);
+
+/*!
+ * \brief Initialize CTL socket handling thread.
+ *
+ * \param ctx     Socket thread context.
+ *
+ * \return KNOT_E*
+ */
+int ctl_socket_thr_init(ctl_socket_ctx_t *ctx);
+
+/*!
+ * \brief De-initialize CTL socket handling thread.
+ *
+ * \param ctx     Socket thread context.
+ */
+void ctl_socket_thr_end(ctl_socket_ctx_t *ctx);

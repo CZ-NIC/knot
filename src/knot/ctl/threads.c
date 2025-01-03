@@ -3,6 +3,7 @@
  *  For more information, see <https://www.knot-dns.cz/>
  */
 
+#include <signal.h>
 #include <urcu.h>
 
 #include "contrib/threads.h"
@@ -157,4 +158,59 @@ int ctl_manage(knot_ctl_t *ctl, server_t *server, bool *exclusive,
 		knot_ctl_close(ctl);
 	}
 	return ret;
+}
+
+static int ctl_socket_thr(struct dthread *dt)
+{
+	ctl_socket_ctx_t *ctx = dt->data;
+
+	concurrent_ctl_ctx_t concurrent_ctxs[CTL_MAX_CONCURRENT] = { 0 };
+	ctl_init_ctxs(concurrent_ctxs, CTL_MAX_CONCURRENT, ctx->server);
+	bool this_thread_exclusive = false, stopped = false;
+
+	while (dt->unit->threads[0]->state & ThreadActive) {
+		if (ctl_cleanup_ctxs(concurrent_ctxs, CTL_MAX_CONCURRENT) == KNOT_CTL_ESTOP) {
+			stopped = true;
+			break;
+		}
+
+		// Update control timeout.
+		knot_ctl_set_timeout(ctx->ctl, conf()->cache.ctl_timeout);
+
+		int ret = knot_ctl_accept(ctx->ctl);
+		if (ret != KNOT_EOK) {
+			continue;
+		}
+
+		ret = ctl_manage(ctx->ctl, ctx->server, &this_thread_exclusive, 0, concurrent_ctxs, CTL_MAX_CONCURRENT);
+		if (ret == KNOT_CTL_ESTOP) {
+			stopped = true;
+			break;
+		}
+	}
+
+	if (stopped) {
+		(void)kill(getpid(), SIGTERM);
+	}
+
+	ctl_finalize_ctxs(concurrent_ctxs, CTL_MAX_CONCURRENT);
+
+	return 0;
+}
+
+int ctl_socket_thr_init(ctl_socket_ctx_t *ctx)
+{
+	dt_unit_t *dts = dt_create(1, ctl_socket_thr, NULL, ctx);
+	if (dts == NULL) {
+		return KNOT_ENOMEM;
+	}
+	ctx->unit = dts;
+	return dt_start(dts);
+}
+
+void ctl_socket_thr_end(ctl_socket_ctx_t *ctx)
+{
+	(void)dt_stop(ctx->unit);
+	(void)dt_join(ctx->unit);
+	dt_delete(&ctx->unit);
 }
