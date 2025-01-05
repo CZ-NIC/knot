@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2025 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -35,6 +35,12 @@
 /* Define maximum reasonable number of NIC queues supported. */
 #define QUEUE_MAX	256
 
+/* Define maximum number of allowed IPv6 headers. */
+#define IPV6_HDR_MAX	3
+
+/* DNS header size. */
+#define DNS_HDR_SIZE	12
+
 /* A map of configuration options. */
 struct {
 	__uint(type, BPF_MAP_TYPE_ARRAY);
@@ -50,11 +56,6 @@ struct {
 	__uint(key_size, sizeof(__u32)); /* Must be 4 bytes. */
 	__uint(value_size, sizeof(int));
 } xsks_map SEC(".maps");
-
-struct ipv6_frag_hdr {
-	unsigned char nexthdr;
-	unsigned char whatever[7];
-} __attribute__((packed));
 
 SEC("xdp")
 int xdp_redirect_dns_func(struct xdp_md *ctx)
@@ -89,10 +90,10 @@ int xdp_redirect_dns_func(struct xdp_md *ctx)
 	const void *ip_hdr;
 	const struct iphdr *ip4;
 	const struct ipv6hdr *ip6;
-	const void *l4_hdr;
+	__u16 ip_len;
 	__u8 ipv4;
 	__u8 ip_proto;
-	__u8 fragmented = 0;
+	__u8 fragmented = 0; /* Fragmented or IPv6 packet with a header extension. */
 	__u16 eth_type; /* In big endian. */
 
 	/* Parse Ethernet header. */
@@ -102,7 +103,7 @@ int xdp_redirect_dns_func(struct xdp_md *ctx)
 	data += sizeof(*eth_hdr);
 
 	/* Parse possible VLAN (802.1Q) header. */
-	if (eth_hdr->h_proto == __constant_htons(ETH_P_8021Q)) {
+	if (eth_hdr->h_proto == bpf_htons(ETH_P_8021Q)) {
 		if (data + sizeof(__u16) + sizeof(eth_type) > data_end) {
 			return XDP_DROP;
 		} else if (meta == 0) { /* VLAN not supported. */
@@ -113,13 +114,12 @@ int xdp_redirect_dns_func(struct xdp_md *ctx)
 	} else {
 		eth_type = eth_hdr->h_proto;
 	}
-
 	ip_hdr = data;
 
 	/* Parse IPv4 or IPv6 header. */
 	switch (eth_type) {
-	case __constant_htons(ETH_P_IP):
-		ip4 = ip_hdr;
+	case bpf_htons(ETH_P_IP):
+		ip4 = data;
 		if ((void *)ip4 + sizeof(*ip4) > data_end) {
 			return XDP_DROP;
 		}
@@ -129,20 +129,21 @@ int xdp_redirect_dns_func(struct xdp_md *ctx)
 
 		/* Check the IP length. Cannot use strict equality due to
 		 * Ethernet padding applied to frames shorter than 64 octects. */
-		if (data_end - data < __bpf_ntohs(ip4->tot_len)) {
+		ip_len = bpf_ntohs(ip4->tot_len);
+		if (data_end - data < ip_len) {
 			return XDP_DROP;
 		}
 
 		if (ip4->frag_off != 0 &&
-		    ip4->frag_off != __constant_htons(IP_DF)) {
+		    ip4->frag_off != bpf_htons(IP_DF)) {
 			fragmented = 1;
 		}
 		ip_proto = ip4->protocol;
-		l4_hdr = data + ip4->ihl * 4;
+		data += ip4->ihl * 4;
 		ipv4 = 1;
 		break;
-	case __constant_htons(ETH_P_IPV6):
-		ip6 = ip_hdr;
+	case bpf_htons(ETH_P_IPV6):
+		ip6 = data;
 		if ((void *)ip6 + sizeof(*ip6) > data_end) {
 			return XDP_DROP;
 		}
@@ -152,22 +153,50 @@ int xdp_redirect_dns_func(struct xdp_md *ctx)
 
 		/* Check the IP length. Cannot use strict equality due to
 		 * Ethernet padding applied to frames shorter than 64 octects. */
-		if (data_end - data < __bpf_ntohs(ip6->payload_len) + sizeof(*ip6)) {
+		ip_len = sizeof(*ip6) + bpf_ntohs(ip6->payload_len);
+		if (data_end - data < ip_len) {
 			return XDP_DROP;
 		}
 
-		ip_proto = ip6->nexthdr;
-		data += sizeof(*ip6);
-		if (ip_proto == IPPROTO_FRAGMENT) {
-			fragmented = 1;
-			const struct ipv6_frag_hdr *frag = data;
-			if ((void *)frag + sizeof(*frag) > data_end) {
+		for (int i = 0; i <= IPV6_HDR_MAX; i++) {
+			if (i == IPV6_HDR_MAX) {
 				return XDP_DROP;
 			}
-			ip_proto = frag->nexthdr;
-			data += sizeof(*frag);
+			const struct ipv6_opt_hdr *ext_hdr = (void *)&ip6->nexthdr;
+			if ((void *)ext_hdr + sizeof(*ext_hdr) > data_end) {
+				return XDP_DROP;
+			}
+			ip_proto = ext_hdr->nexthdr;
+
+			switch (ip_proto) {
+			case IPPROTO_HOPOPTS:
+			case IPPROTO_ROUTING:
+			case IPPROTO_DSTOPTS:
+			case IPPROTO_MH:
+			case 139: /* HIP */
+			case 140: /* Shim6 */
+				fragmented = 1;
+				data += (ext_hdr->hdrlen + 1) * 8;
+				break;
+			case IPPROTO_AH:
+				fragmented = 1;
+				data += (ext_hdr->hdrlen + 2) * 4;
+				break;
+			case IPPROTO_FRAGMENT:
+				fragmented = 1;
+				data += 8;
+				break;
+			case IPPROTO_NONE:
+			case 253: /* Reserved */
+			case 254: /* Reserved */
+				return XDP_DROP;
+			case IPPROTO_ESP: /* IPsec, different header format, stop. */
+			default: /* Not an IPv6 extension header, stop. */
+				i = IPV6_HDR_MAX + 1;
+			}
+			ip6 = data;
 		}
-		l4_hdr = data;
+		data += sizeof(*ip6);
 		ipv4 = 0;
 		break;
 	default:
@@ -184,12 +213,12 @@ int xdp_redirect_dns_func(struct xdp_md *ctx)
 	switch (ip_proto) {
 	case IPPROTO_TCP:
 		/* Parse TCP header. */
-		tcp = l4_hdr;
-		if (l4_hdr + sizeof(*tcp) > data_end) {
+		tcp = data;
+		if ((void *)tcp + sizeof(*tcp) > data_end) {
 			return XDP_DROP;
 		}
 
-		port_dest = __bpf_ntohs(tcp->dest);
+		port_dest = bpf_ntohs(tcp->dest);
 
 		if ((opts.flags & KNOT_XDP_FILTER_TCP) &&
 		    (port_dest == opts.udp_port ||
@@ -200,22 +229,26 @@ int xdp_redirect_dns_func(struct xdp_md *ctx)
 		break;
 	case IPPROTO_UDP:
 		/* Parse UDP header. */
-		udp = l4_hdr;
-		if (l4_hdr + sizeof(*udp) > data_end) {
+		udp = data;
+		if ((void *)udp + sizeof(*udp) > data_end) {
 			return XDP_DROP;
 		}
 
-		/* Check the UDP length. */
-		if (data_end - (void *)udp < __bpf_ntohs(udp->len)) {
+		/* Check if the UDP length matches the IP payload length. */
+		if ((void *)udp - ip_hdr != ip_len - bpf_ntohs(udp->len)) {
 			return XDP_DROP;
 		}
 
-		port_dest = __bpf_ntohs(udp->dest);
+		port_dest = bpf_ntohs(udp->dest);
 
 		if ((opts.flags & KNOT_XDP_FILTER_UDP) &&
 		    (port_dest == opts.udp_port ||
 		     ((opts.flags & (KNOT_XDP_FILTER_PASS | KNOT_XDP_FILTER_DROP)) &&
 		      port_dest >= opts.udp_port))) {
+			/* Check for minimum DNS message content. */
+			if (bpf_ntohs(udp->len) - sizeof(*udp) < DNS_HDR_SIZE) {
+				return XDP_DROP;
+			}
 			match = 1;
 		} else if ((opts.flags & KNOT_XDP_FILTER_QUIC) &&
 		    (port_dest == opts.quic_port ||
@@ -236,7 +269,7 @@ int xdp_redirect_dns_func(struct xdp_md *ctx)
 		/* Drop matching packet if requested. */
 		return XDP_DROP;
 	} else if (fragmented) {
-		/* Drop fragmented packet. */
+		/* Drop fragmented/extended DNS-related (UDP, TCP, QUIC) packet. */
 		return XDP_DROP;
 	}
 
