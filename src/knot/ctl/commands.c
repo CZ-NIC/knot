@@ -1,4 +1,4 @@
-/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2025 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -161,7 +161,7 @@ static void ctl_log_conf_data(knot_ctl_data_t *data)
 	}
 }
 
-static void send_error(ctl_args_t *args, const char *msg)
+void ctl_send_error(ctl_args_t *args, const char *msg)
 {
 	knot_ctl_data_t data;
 	memcpy(&data, args->data, sizeof(data));
@@ -215,7 +215,7 @@ static int zones_apply(ctl_args_t *args, int (*fcn)(zone_t *, ctl_args_t *))
 		if (failed) {
 			ret = KNOT_CTL_EZONE;
 			log_ctl_error("control, error (%s)", knot_strerror(ret));
-			send_error(args, knot_strerror(ret));
+			ctl_send_error(args, knot_strerror(ret));
 		}
 
 		return KNOT_EOK;
@@ -230,7 +230,7 @@ static int zones_apply(ctl_args_t *args, int (*fcn)(zone_t *, ctl_args_t *))
 		if (ret != KNOT_EOK) {
 			log_ctl_zone_str_error(args->data[KNOT_CTL_IDX_ZONE],
 			                       "control, error (%s)", knot_strerror(ret));
-			send_error(args, knot_strerror(ret));
+			ctl_send_error(args, knot_strerror(ret));
 		}
 
 		// Get next zone name.
@@ -730,7 +730,7 @@ static int zones_apply_backup(ctl_args_t *args, bool restore_mode)
 
 		/* Warning: zone name in the control command params discarded here. */
 		args->data[KNOT_CTL_IDX_ZONE] = NULL;
-		send_error(args, knot_strerror(ret));
+		ctl_send_error(args, knot_strerror(ret));
 		return KNOT_CTL_EZONE;
 	}
 
@@ -742,7 +742,7 @@ static int zones_apply_backup(ctl_args_t *args, bool restore_mode)
 		log_ctl_error("control, QUIC %s error (%s)",
 		              restore_mode ? "restore" : "backup",
 		              knot_strerror(ret));
-		send_error(args, knot_strerror(ret));
+		ctl_send_error(args, knot_strerror(ret));
 		ret = KNOT_EOK;
 		goto done;
 	}
@@ -753,7 +753,7 @@ static int zones_apply_backup(ctl_args_t *args, bool restore_mode)
 		ret = global_backup(ctx, &args->server->catalog, NULL);
 		if (ret != KNOT_EOK) {
 			log_ctl_error("control, error (%s)", knot_strerror(ret));
-			send_error(args, knot_strerror(ret));
+			ctl_send_error(args, knot_strerror(ret));
 			ret = KNOT_EOK;
 			goto done;
 		}
@@ -1672,7 +1672,7 @@ static int orphans_purge(ctl_args_t *args)
 		}
 
 		if (failed) {
-			send_error(args, knot_strerror(KNOT_CTL_EZONE));
+			ctl_send_error(args, knot_strerror(KNOT_CTL_EZONE));
 		}
 	} else {
 		knot_dname_storage_t buff;
@@ -1684,7 +1684,7 @@ static int orphans_purge(ctl_args_t *args)
 				log_ctl_zone_str_error(args->data[KNOT_CTL_IDX_ZONE],
 				                       "control, error (%s)",
 				                       knot_strerror(KNOT_EINVAL));
-				send_error(args, knot_strerror(KNOT_EINVAL));
+				ctl_send_error(args, knot_strerror(KNOT_EINVAL));
 				return KNOT_EINVAL;
 			}
 			knot_dname_to_lower(zone_name);
@@ -1719,7 +1719,7 @@ static int orphans_purge(ctl_args_t *args)
 				}
 
 				if (failed) {
-					send_error(args, knot_strerror(KNOT_ERROR));
+					ctl_send_error(args, knot_strerror(KNOT_ERROR));
 					failed = false;
 				}
 			}
@@ -1817,7 +1817,7 @@ static int common_stats(ctl_args_t *args, zone_t *zone)
 #define STATS_CHECK(ret, send) { \
 	if (ret != KNOT_EOK) { \
 		if ((send)) { /* Prevents duplicit zone error logs. */ \
-			send_error(args, knot_strerror(ret)); \
+			ctl_send_error(args, knot_strerror(ret)); \
 		} \
 		return ret; \
 	} \
@@ -1994,7 +1994,7 @@ static int ctl_server(ctl_args_t *args, ctl_cmd_t cmd)
 	case CTL_STATUS:
 		ret = server_status(args);
 		if (ret != KNOT_EOK) {
-			send_error(args, knot_strerror(ret));
+			ctl_send_error(args, knot_strerror(ret));
 		}
 		break;
 	case CTL_STOP:
@@ -2006,7 +2006,7 @@ static int ctl_server(ctl_args_t *args, ctl_cmd_t cmd)
 			ret = server_reload(args->server, RELOAD_FULL);
 		}
 		if (ret != KNOT_EOK) {
-			send_error(args, knot_strerror(ret));
+			ctl_send_error(args, knot_strerror(ret));
 		}
 		break;
 	default:
@@ -2176,7 +2176,7 @@ static int ctl_conf_txn(ctl_args_t *args, ctl_cmd_t cmd)
 	}
 
 	if (ret != KNOT_EOK) {
-		send_error(args, knot_strerror(ret));
+		ctl_send_error(args, knot_strerror(ret));
 	}
 
 	return ret;
@@ -2229,7 +2229,7 @@ static int ctl_conf_list(ctl_args_t *args, ctl_cmd_t cmd)
 			ret = conf_io_list(key0, key1, id, schema, current, &io);
 		}
 		if (ret != KNOT_EOK) {
-			send_error(args, knot_strerror(ret));
+			ctl_send_error(args, knot_strerror(ret));
 			break;
 		}
 
@@ -2274,7 +2274,7 @@ static int ctl_conf_read(ctl_args_t *args, ctl_cmd_t cmd)
 			ret = KNOT_EINVAL;
 		}
 		if (ret != KNOT_EOK) {
-			send_error(args, knot_strerror(ret));
+			ctl_send_error(args, knot_strerror(ret));
 			break;
 		}
 
@@ -2293,7 +2293,7 @@ static int ctl_conf_modify(ctl_args_t *args, ctl_cmd_t cmd)
 	// Start child transaction.
 	int ret = conf_io_begin(true);
 	if (ret != KNOT_EOK) {
-		send_error(args, knot_strerror(ret));
+		ctl_send_error(args, knot_strerror(ret));
 		return ret;
 	}
 
@@ -2317,7 +2317,7 @@ static int ctl_conf_modify(ctl_args_t *args, ctl_cmd_t cmd)
 			ret = KNOT_EINVAL;
 		}
 		if (ret != KNOT_EOK) {
-			send_error(args, knot_strerror(ret));
+			ctl_send_error(args, knot_strerror(ret));
 			break;
 		}
 
@@ -2332,7 +2332,7 @@ static int ctl_conf_modify(ctl_args_t *args, ctl_cmd_t cmd)
 	if (ret == KNOT_EOK) {
 		ret = conf_io_commit(true);
 		if (ret != KNOT_EOK) {
-			send_error(args, knot_strerror(ret));
+			ctl_send_error(args, knot_strerror(ret));
 		}
 	} else {
 		conf_io_abort(true);
