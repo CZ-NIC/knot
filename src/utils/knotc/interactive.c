@@ -1,4 +1,4 @@
-/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2025 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -326,7 +326,7 @@ cmds_lookup_finish:
 	lookup_deinit(&lookup);
 }
 
-static void path_lookup(EditLine *el, const char *str)
+static void path_lookup(EditLine *el, const char *str, bool dirsonly)
 {
 	if (str == NULL || *str == '\0') {
 		str = "./";
@@ -363,7 +363,7 @@ static void path_lookup(EditLine *el, const char *str)
 		bool is_dir;
 		is_dir = it->d_type == DT_DIR ||
 		         (it->d_type == DT_LNK && !stat(it->d_name, &sb) && S_ISDIR(sb.st_mode));
-		if (is_dir &&
+		if ((!dirsonly || is_dir) &&
 		    (strcmp(it->d_name, ".") && strcmp(it->d_name, ".."))) {
 			char buf[PATH_MAX + 1];
 			snprintf(buf, PATH_MAX + 1, is_dir ? "%s/" : "%s", it->d_name);
@@ -440,8 +440,14 @@ static unsigned char complete(EditLine *el, int ch)
 		goto complete_exit;
 	}
 
-	// Complete filters.
+	// Complete filters and path arguments.
 	if ((desc->flags & CMD_FOPT_FILTER) && token > 0) {
+		if ((argv[token] == NULL || *argv[token] != '+') &&
+		    (!strcmp(CMD_CONF_IMPORT, argv[0]) || !strcmp(CMD_CONF_EXPORT, argv[0]))) {
+			path_lookup(el, argv[token], false);
+			goto complete_exit;
+		}
+
 		if (token < argc && *argv[token] == '+') {
 			dup_check_ctx_t ctx = { &argv[1], token - 1, false };
 			filter_lookup(el, argv[token], desc, &ctx);
@@ -451,14 +457,14 @@ static unsigned char complete(EditLine *el, int ch)
 		switch (desc->cmd) {
 		case CTL_ZONE_FLUSH:
 			if (!strcmp(zone_flush_filters[0].name, argv[token - 1])) {
-				path_lookup(el, argv[token]);
+				path_lookup(el, argv[token], true);
 				goto complete_exit;
 			}
 			break;
 		case CTL_ZONE_BACKUP:
 		case CTL_ZONE_RESTORE:
 			if (!strcmp(zone_backup_filters[0].name, argv[token - 1])) {
-				path_lookup(el, argv[token]);
+				path_lookup(el, argv[token], true);
 				goto complete_exit;
 			}
 			break;
