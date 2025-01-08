@@ -107,7 +107,14 @@ int ctl_process(knot_ctl_t *ctl, server_t *server, int thread_idx, bool *exclusi
 		}
 
 		if ((cmd == CTL_CONF_COMMIT || cmd == CTL_CONF_ABORT) && !*exclusive) {
-			log_ctl_warning("control, invalid reception of '%s'", cmd_name);
+			if (conf()->io.txn != NULL) {
+				cmd_ret = KNOT_EBUSY;
+			} else if (cmd == CTL_CONF_COMMIT) {
+				cmd_ret = KNOT_TXN_ENOTEXISTS;
+			}
+			if (cmd_ret != KNOT_EOK) {
+				ctl_send_error(&args, knot_strerror(cmd_ret));
+			}
 			cmd_exec = false;
 		}
 

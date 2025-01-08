@@ -1,4 +1,4 @@
-/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2025 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -166,3 +166,11 @@ int ctl_exec(ctl_cmd_t cmd, ctl_args_t *args);
  * \return True if presented.
  */
 bool ctl_has_flag(const char *flags, const char *flag);
+
+/*!
+ * Send control error message.
+ *
+ * \param[in] args  Command arguments.
+ * \param[in] msg   Error message.
+ */
+void ctl_send_error(ctl_args_t *args, const char *msg);

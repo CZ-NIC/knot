@@ -29,8 +29,13 @@ ctl.connect(os.path.join(knot.dir, "knot.sock"))
 ctl.send_block(cmd="conf-abort")
 resp = ctl.receive_block()
 
-ctl.send_block(cmd="conf-commit")
-resp = ctl.receive_block()
+try:
+    ctl.send_block(cmd="conf-commit")
+    resp = ctl.receive_block()
+except libknot.control.KnotCtlError as exc:
+    isset(exc.message == "no active transaction", "abort error code")
+else:
+    set_err("UNEXPECTED RETURN")
 
 # Add new zone.
 ctl.send_block(cmd="conf-begin")
