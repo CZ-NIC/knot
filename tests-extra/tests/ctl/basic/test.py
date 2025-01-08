@@ -24,6 +24,14 @@ t.start()
 
 ctl.connect(os.path.join(knot.dir, "knot.sock"))
 
+# Check conf-abort and conf-commit without conf transaction open.
+
+ctl.send_block(cmd="conf-abort")
+resp = ctl.receive_block()
+
+ctl.send_block(cmd="conf-commit")
+resp = ctl.receive_block()
+
 # Add new zone.
 ctl.send_block(cmd="conf-begin")
 resp = ctl.receive_block()
