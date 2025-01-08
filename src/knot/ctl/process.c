@@ -1,4 +1,4 @@
-/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2025 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -39,6 +39,7 @@ int ctl_process(knot_ctl_t *ctl, server_t *server, int thread_idx, bool *exclusi
 
 	while (true) {
 		// Receive data unit.
+		int cmd_exec = true, cmd_ret = KNOT_EOK;
 		int ret = knot_ctl_receive(args.ctl, &args.type, &args.data);
 		if (ret != KNOT_EOK) {
 			log_ctl_debug("control, failed to receive (%s)",
@@ -106,12 +107,21 @@ int ctl_process(knot_ctl_t *ctl, server_t *server, int thread_idx, bool *exclusi
 		}
 
 		if ((cmd == CTL_CONF_COMMIT || cmd == CTL_CONF_ABORT) && !*exclusive) {
-			log_ctl_warning("control, invalid reception of '%s'", cmd_name);
-			continue;
+			if (conf()->io.txn != NULL) {
+				cmd_ret = KNOT_EBUSY;
+			} else if (cmd == CTL_CONF_COMMIT) {
+				cmd_ret = KNOT_TXN_ENOTEXISTS;
+			}
+			if (cmd_ret != KNOT_EOK) {
+				ctl_send_error(&args, knot_strerror(cmd_ret));
+			}
+			cmd_exec = false;
 		}
 
 		// Execute the command.
-		int cmd_ret = ctl_exec(cmd, &args);
+		if (cmd_exec) {
+			cmd_ret = ctl_exec(cmd, &args);
+		}
 		switch (cmd_ret) {
 		case KNOT_EOK:
 			strip = false;
