@@ -1,4 +1,4 @@
-/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2025 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -33,57 +33,6 @@
 #include "contrib/strtonum.h"
 #include "contrib/openbsd/strlcat.h"
 #include "utils/knotc/commands.h"
-
-#define CMD_EXIT		"exit"
-
-#define CMD_STATUS		"status"
-#define CMD_STOP		"stop"
-#define CMD_RELOAD		"reload"
-#define CMD_STATS		"stats"
-
-#define CMD_ZONE_CHECK		"zone-check"
-#define CMD_ZONE_STATUS		"zone-status"
-#define CMD_ZONE_RELOAD		"zone-reload"
-#define CMD_ZONE_REFRESH	"zone-refresh"
-#define CMD_ZONE_RETRANSFER	"zone-retransfer"
-#define CMD_ZONE_NOTIFY		"zone-notify"
-#define CMD_ZONE_FLUSH		"zone-flush"
-#define CMD_ZONE_BACKUP		"zone-backup"
-#define CMD_ZONE_RESTORE	"zone-restore"
-#define CMD_ZONE_SIGN		"zone-sign"
-#define CMD_ZONE_VALIDATE	"zone-validate"
-#define CMD_ZONE_KEYS_LOAD	"zone-keys-load"
-#define CMD_ZONE_KEY_ROLL	"zone-key-rollover"
-#define CMD_ZONE_KSK_SBM	"zone-ksk-submitted"
-#define CMD_ZONE_FREEZE		"zone-freeze"
-#define CMD_ZONE_THAW		"zone-thaw"
-#define CMD_ZONE_XFR_FREEZE	"zone-xfr-freeze"
-#define CMD_ZONE_XFR_THAW	"zone-xfr-thaw"
-
-#define CMD_ZONE_READ		"zone-read"
-#define CMD_ZONE_BEGIN		"zone-begin"
-#define CMD_ZONE_COMMIT		"zone-commit"
-#define CMD_ZONE_ABORT		"zone-abort"
-#define CMD_ZONE_DIFF		"zone-diff"
-#define CMD_ZONE_GET		"zone-get"
-#define CMD_ZONE_SET		"zone-set"
-#define CMD_ZONE_UNSET		"zone-unset"
-#define CMD_ZONE_PURGE		"zone-purge"
-#define CMD_ZONE_STATS		"zone-stats"
-
-#define CMD_CONF_INIT		"conf-init"
-#define CMD_CONF_CHECK		"conf-check"
-#define CMD_CONF_IMPORT		"conf-import"
-#define CMD_CONF_EXPORT		"conf-export"
-#define CMD_CONF_LIST		"conf-list"
-#define CMD_CONF_READ		"conf-read"
-#define CMD_CONF_BEGIN		"conf-begin"
-#define CMD_CONF_COMMIT		"conf-commit"
-#define CMD_CONF_ABORT		"conf-abort"
-#define CMD_CONF_DIFF		"conf-diff"
-#define CMD_CONF_GET		"conf-get"
-#define CMD_CONF_SET		"conf-set"
-#define CMD_CONF_UNSET		"conf-unset"
 
 #define CTL_LOG_STR		"failed to control"
 
