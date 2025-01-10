@@ -391,10 +391,10 @@ static int check_cname(const zone_node_t *node, semchecks_data_t *data)
 	unsigned rrset_limit = 1;
 	/* With DNSSEC node can contain RRSIGs or NSEC */
 	if (node_rrtype_exists(node, KNOT_RRTYPE_NSEC)) {
-		rrset_limit += 1;
+		rrset_limit++;
 	}
 	if (node_rrtype_exists(node, KNOT_RRTYPE_RRSIG)) {
-		rrset_limit += 1;
+		rrset_limit++;
 	}
 
 	if (node->rrset_count > rrset_limit) {

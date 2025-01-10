@@ -150,8 +150,8 @@ bool dname_equal(const uint8_t *one, const uint8_t *two)
 			return false;
 		}
 
-		scan_one += 1;
-		scan_two += 1;
+		scan_one++;
+		scan_two++;
 
 		if (!label_casecmp(scan_one, scan_two, len)) {
 			return false;

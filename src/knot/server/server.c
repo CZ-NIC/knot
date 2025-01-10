@@ -467,7 +467,7 @@ static iface_t *server_init_iface(struct sockaddr_storage *addr, bool tls,
 		}
 
 		new_if->fd_udp[new_if->fd_udp_count] = sock;
-		new_if->fd_udp_count += 1;
+		new_if->fd_udp_count++;
 	}
 
 	warn_bind = true;
@@ -501,7 +501,7 @@ static iface_t *server_init_iface(struct sockaddr_storage *addr, bool tls,
 		}
 
 		new_if->fd_tcp[new_if->fd_tcp_count] = sock;
-		new_if->fd_tcp_count += 1;
+		new_if->fd_tcp_count++;
 
 		/* Listen for incoming connections. */
 		int ret = listen(sock, TCP_BACKLOG_SIZE);

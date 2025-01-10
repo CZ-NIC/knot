@@ -95,8 +95,8 @@ static int asn1_decode_integer(wire_ctx_t *wire, dnssec_binary_t *_value)
 
 	// skip leading zeroes (unless equal to zero)
 	while (value.size > 1 && value.data[0] == 0) {
-		value.data += 1;
-		value.size -= 1;
+		value.data++;
+		value.size--;
 	}
 
 	*_value = value;

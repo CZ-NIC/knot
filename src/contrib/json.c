@@ -62,7 +62,7 @@ static void start_block(jsonw_t *w, int type)
 		.count = 0,
 	};
 
-	w->top -= 1;
+	w->top--;
 	w->stack[w->top] = b;
 }
 
@@ -93,7 +93,7 @@ static void end_block(jsonw_t *w)
 {
 	assert(w->top < MAX_DEPTH);
 
-	w->top += 1;
+	w->top++;
 }
 
 static void escaped_print(jsonw_t *w, const char *str, size_t maxlen, bool quote)

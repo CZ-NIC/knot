@@ -627,7 +627,7 @@ static void sweep_reset(knot_tcp_table_t *tcp_table, knot_tcp_relay_t *rl,
 	rl->answer = XDP_TCP_RESET | XDP_TCP_FREE;
 	tcp_table_remove(tcp_table_re_lookup(rl->conn, tcp_table), tcp_table); // also updates tcp_table->next_*
 
-	*free_conns -= 1;
+	(*free_conns)--;
 	*free_inbuf -= buffer_alloc_size(rl->conn->inbuf.iov_len);
 	*free_outbuf -= knot_tcp_outbufs_usage(rl->conn->outbufs);
 

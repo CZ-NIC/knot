@@ -72,13 +72,13 @@ static int worker_main(dthread_t *thread)
 		}
 
 		assert(task->run);
-		pool->running += 1;
+		pool->running++;
 
 		pthread_mutex_unlock(&pool->lock);
 		task->run(task);
 		pthread_mutex_lock(&pool->lock);
 
-		pool->running -= 1;
+		pool->running--;
 		pthread_cond_broadcast(&pool->wake);
 	}
 

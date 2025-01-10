@@ -120,7 +120,7 @@ static knot_time_t time_ctx_finalize(time_ctx_t *ctx)
 	} else if (ctx->calendar.tm_year != 0) {
 		ctx->calendar.tm_isdst = -1;
 		ctx->calendar.tm_year -= 1900;
-		ctx->calendar.tm_mon -= 1;
+		ctx->calendar.tm_mon--;
 		// Set UTC timezone before using mktime
 		putenv("TZ=UTC");
 		tzset();

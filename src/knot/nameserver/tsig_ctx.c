@@ -150,7 +150,7 @@ int tsig_verify_packet(tsig_ctx_t *ctx, knot_pkt_t *packet)
 	// Unsigned packet.
 
 	if (packet->tsig_rr == NULL) {
-		ctx->unsigned_count += 1;
+		ctx->unsigned_count++;
 		return KNOT_EOK;
 	}
 

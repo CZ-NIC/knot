@@ -191,10 +191,10 @@ size_t changeset_size(const changeset_t *ch)
 	changeset_iter_clear(&itt);
 
 	if (!knot_rrset_empty(ch->soa_from)) {
-		size += 1;
+		size++;
 	}
 	if (!knot_rrset_empty(ch->soa_to)) {
-		size += 1;
+		size++;
 	}
 
 	return size;

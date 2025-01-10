@@ -22,8 +22,8 @@
 static void skip_leading_zeroes(dnssec_binary_t *value)
 {
 	while (value->size > 0 && value->data[0] == 0) {
-		value->data += 1;
-		value->size -= 1;
+		value->data++;
+		value->size--;
 	}
 }
 

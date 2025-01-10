@@ -560,8 +560,8 @@ int knot_pkt_put_rotate(knot_pkt_t *pkt, uint16_t compr_hint, const knot_rrset_t
 	}
 
 	if (rr_added > 0) {
-		pkt->rrset_count += 1;
-		pkt->sections[pkt->current].count += 1;
+		pkt->rrset_count++;
+		pkt->sections[pkt->current].count++;
 		pkt->size += len;
 		pkt_rr_wirecount_add(pkt, pkt->current, rr_added);
 	}

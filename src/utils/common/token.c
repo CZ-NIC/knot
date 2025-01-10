@@ -108,7 +108,7 @@ const char *tok_skipspace(const char *lp)
 	}
 
 	while (is_space(*lp)) {
-		lp += 1;
+		lp++;
 	}
 
 	return lp;

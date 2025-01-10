@@ -80,7 +80,7 @@ void xfr_stats_add(struct xfr_stats *stats, unsigned bytes)
 {
 	assert(stats);
 
-	stats->messages += 1;
+	stats->messages++;
 	stats->bytes += bytes;
 }
 

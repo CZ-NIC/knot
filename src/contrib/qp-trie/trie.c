@@ -674,7 +674,7 @@ static int ns_find_branch(nstack_t *ns, const trie_key_t *key, uint32_t len,
 		uint8_t k2 = (uint8_t)lkey->chars[bytei];
 		uint8_t k1 = (uint8_t)key[bytei];
 		if (((k1 ^ k2) & 0xf0) == 0)
-			index += 1;
+			index++;
 	}
 	// now go up the trie from the current leaf
 	node_t *t;

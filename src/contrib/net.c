@@ -544,8 +544,8 @@ static void msg_iov_shift(struct msghdr *msg, size_t done)
 			done = 0;
 		} else {
 			done -= iov[i].iov_len;
-			msg->msg_iov += 1;
-			msg->msg_iovlen -= 1;
+			msg->msg_iov++;
+			msg->msg_iovlen--;
 		}
 	}
 

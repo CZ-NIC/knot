@@ -95,13 +95,13 @@ char *strstrip(const char *str)
 	// leading white-spaces
 	const char *scan = str;
 	while (is_space(scan[0])) {
-		scan += 1;
+		scan++;
 	}
 
 	// trailing white-spaces
 	size_t len = strlen(scan);
 	while (len > 0 && is_space(scan[len - 1])) {
-		len -= 1;
+		len--;
 	}
 
 	char *trimmed = malloc(len + 1);

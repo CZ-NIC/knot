@@ -71,7 +71,7 @@ int p11_load_module(const char *module)
 	}
 
 	pkcs11_modules[pkcs11_modules_count] = copy;
-	pkcs11_modules_count += 1;
+	pkcs11_modules_count++;
 
 	return DNSSEC_EOK;
 }

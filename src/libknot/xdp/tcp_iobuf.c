@@ -71,7 +71,7 @@ uint64_t buffer_alloc_size(uint64_t buffer_len)
 	if (buffer_len == 0) {
 		return 0;
 	}
-	buffer_len -= 1;
+	buffer_len--;
 	buffer_len |= 0x3f; // the result will be at least 64
 	buffer_len |= (buffer_len >> 1);
 	buffer_len |= (buffer_len >> 2);

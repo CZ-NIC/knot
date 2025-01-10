@@ -225,7 +225,7 @@ static int rrsigs_create_rdata(knot_rrset_t *rrsigs, dnssec_sign_ctx_t *ctx,
 
 	uint8_t owner_labels = knot_dname_labels(covered->owner, NULL);
 	if (knot_dname_is_wildcard(covered->owner)) {
-		owner_labels -= 1;
+		owner_labels--;
 	}
 
 	uint8_t header[header_size];

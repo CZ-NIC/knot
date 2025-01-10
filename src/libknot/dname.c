@@ -133,7 +133,7 @@ int knot_dname_wire_check(const uint8_t *name, const uint8_t *endp,
 	}
 
 	if (!is_compressed) { /* Terminal label. */
-		wire_len += 1;
+		wire_len++;
 	}
 
 	return wire_len;
@@ -277,7 +277,7 @@ char *knot_dname_to_str(char *dst, const knot_dname_t *name, size_t maxlen)
 				}
 			} else {
 				/* Extend output buffer for \x format. */
-				alloc_size += 1;
+				alloc_size++;
 				char *extended = realloc(res, alloc_size);
 				if (extended == NULL) {
 					goto dname_to_str_failed;

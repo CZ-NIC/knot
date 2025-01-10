@@ -37,7 +37,7 @@ static bool inc_label(const uint8_t *buffer, uint8_t **label_ptr)
 	// jump over trailing 0xff chars
 	uint8_t *scan = (uint8_t *)last;
 	while (scan >= first && *scan == 0xff) {
-		scan -= 1;
+		scan--;
 	}
 
 	// increase in place
@@ -45,7 +45,7 @@ static bool inc_label(const uint8_t *buffer, uint8_t **label_ptr)
 		if (*scan == 'A' - 1) {
 			*scan = 'Z' + 1;
 		} else {
-			*scan += 1;
+			(*scan)++;
 		}
 		memset(scan + 1, 0x00, last - scan);
 		return true;
@@ -57,7 +57,7 @@ static bool inc_label(const uint8_t *buffer, uint8_t **label_ptr)
 	}
 
 	// append a zero byte at the end of the label
-	scan -= 1;
+	scan--;
 	scan[0] = len + 1;
 	memmove(scan + 1, first, len);
 	scan[len + 1] = 0x00;
