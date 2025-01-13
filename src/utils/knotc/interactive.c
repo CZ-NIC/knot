@@ -531,14 +531,12 @@ static unsigned char complete(EditLine *el, int ch)
 		if (lookup_init(&lookup) != KNOT_EOK) {
 			goto complete_exit;
 		}
-		ret  = lookup_insert(&lookup, "version", NULL);
-		ret |= lookup_insert(&lookup, "workers", NULL);
-		ret |= lookup_insert(&lookup, "configure", NULL);
-		ret |= lookup_insert(&lookup, "cert-key", NULL);
-		if (ret != KNOT_EOK) {
-			goto complete_exit;
+		if (lookup_insert(&lookup, "version", NULL) == KNOT_EOK &&
+		    lookup_insert(&lookup, "workers", NULL) == KNOT_EOK &&
+		    lookup_insert(&lookup, "configure", NULL) == KNOT_EOK &&
+		    lookup_insert(&lookup, "cert-key", NULL) == KNOT_EOK) {
+			(void)lookup_complete(&lookup, argv[1], pos, el, false);
 		}
-		(void)lookup_complete(&lookup, argv[1], pos, el, false);
 		lookup_deinit(&lookup);
 		goto complete_exit;
 	}
