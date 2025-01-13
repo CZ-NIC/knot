@@ -361,14 +361,12 @@ static unsigned char complete(EditLine *el, int ch)
 		if (lookup_init(&lookup) != KNOT_EOK) {
 			goto complete_exit;
 		}
-		ret  = lookup_insert(&lookup, CMD_STATUS_VERSION, NULL);
-		ret |= lookup_insert(&lookup, CMD_STATUS_WORKERS, NULL);
-		ret |= lookup_insert(&lookup, CMD_STATUS_CONFIG, NULL);
-		ret |= lookup_insert(&lookup, CMD_STATUS_CERT, NULL);
-		if (ret != KNOT_EOK) {
-			goto complete_exit;
+		if (lookup_insert(&lookup, CMD_STATUS_VERSION, NULL) == KNOT_EOK &&
+		    lookup_insert(&lookup, CMD_STATUS_WORKERS, NULL) == KNOT_EOK &&
+		    lookup_insert(&lookup, CMD_STATUS_CONFIG, NULL) == KNOT_EOK &&
+		    lookup_insert(&lookup, CMD_STATUS_CERT, NULL) == KNOT_EOK) {
+			(void)lookup_complete(&lookup, argv[1], pos, el, false);
 		}
-		(void)lookup_complete(&lookup, argv[1], pos, el, false);
 		lookup_deinit(&lookup);
 		goto complete_exit;
 	}
