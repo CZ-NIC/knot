@@ -62,6 +62,10 @@ Copyright: 2011-2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
            2018 Tony Finch <dot@dotat.at>
 License: GPL-3+
 
+Files: src/contrib/redis/*
+Copyright: 2016 Redis Labs
+License: MIT
+
 Files: src/contrib/ucw/*
 Copyright: 2011-2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
            1997-2017 Martin Mares <mj@ucw.cz>
