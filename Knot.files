@@ -138,6 +138,7 @@ src/contrib/proxyv2/proxyv2.c
 src/contrib/proxyv2/proxyv2.h
 src/contrib/qp-trie/trie.c
 src/contrib/qp-trie/trie.h
+src/contrib/redis/redismodule.h
 src/contrib/semaphore.c
 src/contrib/semaphore.h
 src/contrib/sockaddr.c
