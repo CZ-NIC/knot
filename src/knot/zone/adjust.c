@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2025 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -492,7 +492,11 @@ int zone_adjust_contents(zone_contents_t *zone, adjust_cb_t nodes_cb, adjust_cb_
 	zone->dnssec = node_rrtype_is_signed(zone->apex, KNOT_RRTYPE_SOA);
 
 	measure_t m = knot_measure_init(measure_zone, false);
-	adjust_ctx_t ctx = { zone, add_changed, true };
+	adjust_ctx_t ctx = {
+		.zone = zone,
+		.changed_nodes = add_changed,
+		.nsec3_param_changed = true
+	};
 
 	if (threads > 1) {
 		assert(nodes_cb != adjust_cb_flags); // This cb demands parent to be adjusted before child
@@ -525,7 +529,11 @@ int zone_adjust_update(zone_update_t *update, adjust_cb_t nodes_cb, adjust_cb_t 
 {
 	int ret = KNOT_EOK;
 	measure_t m = knot_measure_init(false, measure_diff);
-	adjust_ctx_t ctx = { update->new_cont, update->a_ctx->adjust_ptrs, zone_update_changed_nsec3param(update) };
+	adjust_ctx_t ctx = {
+		.zone = update->new_cont,
+		.changed_nodes = update->a_ctx->adjust_ptrs,
+		.nsec3_param_changed = zone_update_changed_nsec3param(update)
+	};
 
 	if (nsec3_cb != NULL) {
 		ret = zone_adjust_tree(update->a_ctx->nsec3_ptrs, &ctx, nsec3_cb, false, &m);
@@ -575,7 +583,11 @@ int zone_adjust_incremental_update(zone_update_t *update, unsigned threads)
 		return ret;
 	}
 	bool nsec3change = zone_update_changed_nsec3param(update);
-	adjust_ctx_t ctx = { update->new_cont, update->a_ctx->adjust_ptrs, nsec3change };
+	adjust_ctx_t ctx = {
+		.zone = update->new_cont,
+		.changed_nodes = update->a_ctx->adjust_ptrs,
+		.nsec3_param_changed = nsec3change
+	};
 
 	ret = zone_adjust_contents(update->new_cont, adjust_cb_flags, adjust_cb_nsec3_flags,
 	                           false, true, 1, update->a_ctx->adjust_ptrs);
