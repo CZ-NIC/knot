@@ -1,6 +1,6 @@
 #include "redismodule.h"
 
-#define KNOT_ZONE_KEY_ENCODING_VERSION 0
+#define KNOT_ZONE_RRSET_ENCODING_VERSION 0
 
 typedef enum {
 	COUNTERS, //TODO replace random with counter ??
@@ -9,26 +9,83 @@ typedef enum {
 } KnotTypeID;
 
 typedef struct {
-	char zone[5];
-	char owner[5];
-	short type;
-}  KnotZoneK;
+	uint16_t len;
+	uint8_t data[];
+} knot_zone_rdata_v;
 
 typedef struct {
-	int ttl;
-	char data[5];
-}  KnotZoneV;
+	uint16_t count;
+	uint32_t size;
+	knot_zone_rdata_v *rdata;
+}  knot_zone_rdataset_v;
 
-static RedisModuleType *KnotZoneType;
+typedef struct {
+	uint32_t ttl;
+	uint16_t rclass;
+	knot_zone_rdataset_v rrs;
+}  knot_zone_rrset_v;
 
-// static void KnotZoneRDBSave(RedisModuleIO *rdb, void *value)
-// {
-// 	RedisModuleKey *key = RedisModule_OpenKey(rdb, value,
-// 	                                          REDISMODULE_WRITE);
-// 	KnotZoneV data = { 0 };
-// 	RedisModule_ModuleTypeSetValue(key, KnotZoneType, &data);
-// }
+static RedisModuleType *knot_zone_rrset_t;
 
+#include <string.h>
+
+static void *knot_zone_rrset_load(RedisModuleIO *rdb, int encver)
+{
+	if (encver != KNOT_ZONE_RRSET_ENCODING_VERSION) {
+		// TODO or version compatibility layers
+		return NULL;
+	}
+
+	knot_zone_rrset_v *rrset = RedisModule_Alloc(sizeof(knot_zone_rrset_v));
+	rrset->ttl = RedisModule_LoadUnsigned(rdb);
+	rrset->rclass = RedisModule_LoadUnsigned(rdb);
+	rrset->rrs.count = RedisModule_LoadUnsigned(rdb);
+	rrset->rrs.size = RedisModule_LoadUnsigned(rdb);
+	if (rrset->rrs.size == 0) {
+		rrset->rrs.rdata = RedisModule_Alloc(rrset->rrs.size);
+		uint8_t *pos = (uint8_t *)rrset->rrs.rdata;
+		for (size_t idx = 0; idx < rrset->rrs.count; ++idx) {
+			knot_zone_rdata_v *rdata = (knot_zone_rdata_v *)pos;
+			size_t len;
+			char *rdata_data = RedisModule_LoadStringBuffer(rdb, &len);
+			rdata->len = len;
+			memcpy(rdata->data, rdata_data, rdata->len);
+			pos += sizeof(knot_zone_rdata_v) + rdata->len;
+		}
+	}
+	return rrset;
+
+}
+
+static void knot_zone_rrset_save(RedisModuleIO *rdb, void *value)
+{
+	knot_zone_rrset_v *rrset = (knot_zone_rrset_v *)value;
+	RedisModule_SaveUnsigned(rdb, rrset->ttl);
+	RedisModule_SaveUnsigned(rdb, rrset->rclass);
+	RedisModule_SaveUnsigned(rdb, rrset->rrs.count);
+	RedisModule_SaveUnsigned(rdb, rrset->rrs.size);
+	if (rrset->rrs.size) {
+		uint8_t *pos = (uint8_t *)rrset->rrs.rdata;
+		for (size_t idx = 0; idx < rrset->rrs.count; ++idx) {
+			knot_zone_rdata_v *rdata = (knot_zone_rdata_v *)pos;
+			RedisModule_SaveStringBuffer(rdb, rdata->data, rdata->len);
+			pos += sizeof(knot_zone_rdata_v) + rdata->len;
+		}
+	}
+}
+
+static void knot_zone_rrset_rewrite(RedisModuleIO *aof, RedisModuleString *key, void *value)
+{
+	// TODO
+	RedisModule_EmitAOF(aof, "KNOT.RRSET.INSERT", "sss", "com.", "dns1.example.com.", "A");
+}
+
+static void knot_zone_rrset_free(void *value)
+{
+	knot_zone_rrset_v *rrset = (knot_zone_rrset_v *)value;
+	RedisModule_Free(rrset->rrs.rdata);
+	RedisModule_Free(value);
+}
 
 // #include "../libknot/dname.h"
 
@@ -62,20 +119,19 @@ static RedisModuleKey *find_zone(RedisModuleCtx *ctx, RedisModuleString *zone, i
 int knot_zone_insert(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 {
 	if (argc != 2) {
-		RedisModule_ReplyWithError(ctx, "Missing argument");
-		return REDISMODULE_OK;
+		return RedisModule_WrongArity(ctx);
 	}
 
 	RedisModuleKey *zone_k = find_zone(ctx, argv[1], REDISMODULE_READ | REDISMODULE_WRITE);
-	if (zone_k == NULL || RedisModule_KeyType(zone_k) != REDISMODULE_KEYTYPE_EMPTY) {
+	if (zone_k != NULL && RedisModule_KeyType(zone_k) != REDISMODULE_KEYTYPE_EMPTY) {
 		RedisModule_CloseKey(zone_k);
 		RedisModule_ReplyWithError(ctx, "Already exists");
 		return REDISMODULE_OK;
 	}
 
-	long long id;
+	uint32_t id;
 	RedisModule_GetRandomBytes((unsigned char *)&id, sizeof(id));
-	RedisModuleString *zone_id = RedisModule_CreateStringFromLongLong(ctx, id);
+	RedisModuleString *zone_id = RedisModule_CreateString(ctx, (const char*)&id, sizeof(id));
 	RedisModule_StringSet(zone_k, zone_id);
 
 	RedisModule_ReplyWithString(ctx, zone_id);
@@ -129,13 +185,10 @@ static RedisModuleKey *find_rrset(RedisModuleCtx *ctx,
 	const char *owner_str = RedisModule_StringPtrLen(owner, &owner_strlen);
 	const char *type_str = RedisModule_StringPtrLen(type, &type_strlen);
 
-	RedisModuleString *key_str = RedisModule_CreateStringPrintf(
-		ctx,
-		"%c%.*s%.*s%.*s",
-		RRSET,
-		(int)zoneid_strlen, zoneid_str,
-		(int)owner_strlen, owner_str,
-		(int)type_strlen, type_str);
+	RedisModuleString *key_str = RedisModule_CreateStringPrintf(ctx, "%c", RRSET);
+	RedisModule_StringAppendBuffer(ctx, key_str, zoneid_str, zoneid_strlen);
+	RedisModule_StringAppendBuffer(ctx, key_str, owner_str, owner_strlen);
+	RedisModule_StringAppendBuffer(ctx, key_str, type_str, type_strlen);
 	RedisModuleKey *key = RedisModule_OpenKey(ctx, key_str, rights);
 
 	RedisModule_FreeString(ctx, key_str);
@@ -144,39 +197,49 @@ static RedisModuleKey *find_rrset(RedisModuleCtx *ctx,
 
 int knot_rrset_insert(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 {
-	if (argc < 4) {
-		RedisModule_ReplyWithError(ctx, "Missing argument");
-		return REDISMODULE_OK;
-	}
-	if (argc > 5) { //TODO Set 5th argument custom TTL
-		RedisModule_ReplyWithError(ctx, "Too many argument");
-		return REDISMODULE_OK;
+	if (argc < 4 || argc > 5) { // TODO 5th argument TTL
+		return RedisModule_WrongArity(ctx);
 	}
 
 	RedisModuleKey *zone_k = find_zone(ctx, argv[1], REDISMODULE_READ | REDISMODULE_WRITE);
 	RedisModuleString *zone_id = NULL;
-	if (zone_k == NULL || RedisModule_KeyType(zone_k) != REDISMODULE_KEYTYPE_EMPTY) {
-		zone_id = RedisModule_CreateStringFromString(ctx, RedisModule_GetKeyNameFromModuleKey(zone_k));
+	if (zone_k != NULL && RedisModule_KeyType(zone_k) != REDISMODULE_KEYTYPE_EMPTY) {
+		size_t len = 0;
+		const char *val = RedisModule_StringDMA(zone_k, &len, REDISMODULE_READ);
+		zone_id = RedisModule_CreateString(ctx, val, len);
 		goto insert_rrset;
 	}
 
-	long long id;
+	uint32_t id;
 	RedisModule_GetRandomBytes((unsigned char *)&id, sizeof(id));
-	zone_id = RedisModule_CreateStringFromLongLong(ctx, id);
+	zone_id = RedisModule_CreateString(ctx, (const char *)&id, sizeof(id));
 	RedisModule_StringSet(zone_k, zone_id);
 	RedisModule_CloseKey(zone_k);
 
 insert_rrset:
 	RedisModuleKey *rrset_k = find_rrset(ctx, zone_id, argv[2], argv[3], REDISMODULE_READ | REDISMODULE_WRITE);
-	if (rrset_k == NULL || RedisModule_KeyType(rrset_k) != REDISMODULE_KEYTYPE_EMPTY) {
+	if (rrset_k != NULL && RedisModule_KeyType(rrset_k) != REDISMODULE_KEYTYPE_EMPTY) {
 		RedisModule_CloseKey(zone_k);
 		RedisModule_ReplyWithError(ctx, "Already exists");
 		return REDISMODULE_OK;
 	}
-	RedisModuleString *ttl = RedisModule_CreateStringFromLongLong(ctx, 3600);
-	RedisModule_ListInsert(rrset_k, 0, ttl); //TODO Right now just list, make it own structure
+
+	knot_zone_rrset_v *rrset = RedisModule_Alloc(sizeof(knot_zone_rrset_v));
+	rrset->ttl = 3600;
+	rrset->rclass = 1;
+	rrset->rrs = (knot_zone_rdataset_v){
+		.count = 0,
+		.size = 0
+	};
+
+	RedisModuleString *ttl = RedisModule_CreateStringFromLongLong(ctx, rrset->ttl);
+	RedisModule_ModuleTypeSetValue(rrset_k, knot_zone_rrset_t, rrset);
+	RedisModule_CloseKey(rrset_k);
+
+	// RedisModule_ListInsert(rrset_k, 0, ttl); //TODO Right now just list, make it own structure
 
 	RedisModule_ReplyWithString(ctx, ttl);
+
 
 	RedisModule_FreeString(ctx, zone_id);
 	RedisModule_FreeString(ctx, ttl);
@@ -184,26 +247,59 @@ insert_rrset:
 	return REDISMODULE_OK;
 }
 
+
+int knot_rrset_get(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
+{
+	if (argc != 5) {
+		return RedisModule_WrongArity(ctx);
+	}
+
+	RedisModuleKey *zone_k = find_zone(ctx, argv[1], REDISMODULE_READ);
+	if (zone_k == NULL || RedisModule_KeyType(zone_k) == REDISMODULE_KEYTYPE_EMPTY) {
+		RedisModule_ReplyWithError(ctx, "Does not exist");
+		return REDISMODULE_ERR;
+	}
+	size_t len = 0;
+	const char *val = RedisModule_StringDMA(zone_k, &len, REDISMODULE_READ);
+	RedisModuleString *zone_id = RedisModule_CreateString(ctx, val, len);
+	RedisModule_CloseKey(zone_k);
+
+	RedisModuleKey *rrset_k = find_rrset(ctx, zone_id, argv[2], argv[3], REDISMODULE_READ);
+	if (rrset_k == NULL || RedisModule_KeyType(rrset_k) == REDISMODULE_KEYTYPE_EMPTY) {
+		RedisModule_ReplyWithError(ctx, "Does not exist");
+		return REDISMODULE_ERR;
+	}
+	RedisModule_FreeString(ctx, zone_id);
+
+	if (RedisModule_ModuleTypeGetType(rrset_k) != knot_zone_rrset_t) {
+		RedisModule_ReplyWithError(ctx, "Wrong type");
+		return REDISMODULE_ERR;
+	}
+	knot_zone_rrset_v *rrset = RedisModule_ModuleTypeGetValue(rrset_k);
+	RedisModule_CloseKey(rrset_k);
+	//TODO parse last command argument (TTL, RCLASS etc.)
+	RedisModule_ReplyWithLongLong(ctx, rrset->ttl);
+
+	return REDISMODULE_OK;
+}
+
 int RedisModule_OnLoad(RedisModuleCtx *ctx)
 {
-	// RedisModuleTypeMethods tm = {
-	// 	.version = REDISMODULE_TYPE_METHOD_VERSION,
-	// 	.rdb_load = KnotZoneRDBLoad,
-	// 	.rdb_save = KnotZoneRDBSave,
-	// 	.aof_rewrite = MyTypeAOFRewrite,
-	// 	.free = MyTypeFree
-	// };
-
-	// KnotZoneType = RedisModule_CreateDataType(ctx, "KnotZoneT", // Note: Name length has to be exactly 9
-	//                                           KNOT_ZONE_KEY_ENCODING_VERSION,
-	//                                           &tm);
-	// if (KnotZoneType == NULL) {
-	// 	return REDISMODULE_ERR;
-	// }
-
-	// return REDISMODULE_OK;
+	RedisModuleTypeMethods tm = {
+		.version = REDISMODULE_TYPE_METHOD_VERSION,
+		.rdb_load = knot_zone_rrset_load,
+		.rdb_save = knot_zone_rrset_save,
+		.aof_rewrite = knot_zone_rrset_rewrite,
+		.free = knot_zone_rrset_free
+	};
 
 	if (RedisModule_Init(ctx, "knot", 1, REDISMODULE_APIVER_1) == REDISMODULE_ERR) {
+		return REDISMODULE_ERR;
+	}
+
+	knot_zone_rrset_t = RedisModule_CreateDataType(ctx, "KnotRRset", // Note: Name length has to be exactly 9
+	                                               KNOT_ZONE_RRSET_ENCODING_VERSION, &tm);
+	if (knot_zone_rrset_t == NULL) {
 		return REDISMODULE_ERR;
 	}
 
@@ -211,7 +307,8 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx)
 		// RedisModule_CreateCommand(ctx, "knot.zone.get", knot_zone_insert, "readonly", 1, 1, 1) == REDISMODULE_ERR ||
 		RedisModule_CreateCommand(ctx, "knot.zone.insert", knot_zone_insert, "write", 1, 1, 1) == REDISMODULE_ERR ||
 		RedisModule_CreateCommand(ctx, "knot.zone.list", knot_zone_list, "readonly", 1, 1, 1) == REDISMODULE_ERR ||
-		RedisModule_CreateCommand(ctx, "knot.rrset.insert", knot_rrset_insert, "write", 1, 1, 1) == REDISMODULE_ERR
+		RedisModule_CreateCommand(ctx, "knot.rrset.insert", knot_rrset_insert, "write", 1, 1, 1) == REDISMODULE_ERR ||
+		RedisModule_CreateCommand(ctx, "knot.rrset.get", knot_rrset_get, "readonly", 1, 1, 1) == REDISMODULE_ERR 
 	) {
 		return REDISMODULE_ERR;
 	}
