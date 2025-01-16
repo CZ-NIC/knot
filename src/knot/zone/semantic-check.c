@@ -1,4 +1,4 @@
-/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2025 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -427,7 +427,7 @@ static int check_dname(const zone_node_t *node, semchecks_data_t *data)
 	}
 	/* RFC 6672 Section 2.4 Paragraph 1 */
 	/* If the NSEC3 node of the apex is present, it is counted as apex's child. */
-	unsigned allowed_children = (is_apex && node_nsec3_get(node) != NULL) ? 1 : 0;
+	unsigned allowed_children = (is_apex && !zone_tree_is_empty(data->zone->nsec3_nodes)) ? 1 : 0;
 	if (node->children > allowed_children) {
 		data->handler->error = true;
 		data->handler->cb(data->handler, data->zone, node->owner,
