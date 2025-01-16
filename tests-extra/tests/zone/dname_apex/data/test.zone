@@ -1,0 +1,6 @@
+$ORIGIN test.
+$TTL 3600
+
+@	SOA	dns1 hostmaster 2010111201 10800 3600 1209600 7200
+	NS	ns.example.com.
+	DNAME	example.com.
