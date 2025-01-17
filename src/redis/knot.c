@@ -146,7 +146,7 @@ int knot_zone_insert(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 		return REDISMODULE_OK;
 	}
 
-	uint32_t id = dnssec_random_uint32_t();
+	uint32_t id = 0;//dnssec_random_uint32_t();
 	RedisModuleString *zone_id = RedisModule_CreateString(ctx, (const char*)&id, sizeof(id));
 	RedisModule_StringSet(zone_k, zone_id);
 
@@ -226,7 +226,7 @@ int knot_rrset_insert(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 		goto insert_rrset;
 	}
 
-	uint32_t id = dnssec_random_uint32_t();
+	uint32_t id = 0;//dnssec_random_uint32_t();
 	zone_id = RedisModule_CreateString(ctx, (const char *)&id, sizeof(id));
 	RedisModule_StringSet(zone_k, zone_id);
 	RedisModule_CloseKey(zone_k);
