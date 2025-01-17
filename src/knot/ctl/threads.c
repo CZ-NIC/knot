@@ -14,20 +14,22 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <signal.h>
+#include <stdio.h>
 #include <urcu.h>
 
 #include "contrib/threads.h"
 #include "knot/ctl/threads.h"
 #include "knot/server/signals.h"
 
-void ctl_init_ctxs(concurrent_ctl_ctx_t *concurrent_ctxs, size_t n_ctxs, server_t *server, int parent_tid)
+void ctl_init_ctxs(concurrent_ctl_ctx_t *concurrent_ctxs, size_t n_ctxs, server_t *server)
 {
 	for (size_t i = 0; i < n_ctxs; i++) {
 		concurrent_ctl_ctx_t *cctx = &concurrent_ctxs[i];
 		pthread_mutex_init(&cctx->mutex, NULL);
 		pthread_cond_init(&cctx->cond, NULL);
 		cctx->server = server;
-		cctx->thread_idx = parent_tid + i + 1;
+		cctx->thread_idx = i + 1;
 	}
 }
 
@@ -181,19 +183,17 @@ int ctl_manage(knot_ctl_t *ctl, server_t *server, bool *excl,
 	return ret;
 }
 
-void *ctl_socket_thread(void *arg)
+static int ctl_socket_thr(struct dthread *dt)
 {
-	ctl_socket_ctx_t *ctx = arg;
-	rcu_register_thread();
-	signals_setup();
+	ctl_socket_ctx_t *ctx = dt->data;
 
 	concurrent_ctl_ctx_t concurrent_ctxs[CTL_MAX_CONCURRENT] = { 0 };
-	ctl_init_ctxs(concurrent_ctxs, CTL_MAX_CONCURRENT, ctx->server, ctx->parent_tid);
-	bool this_thread_exclusive = false;
+	ctl_init_ctxs(concurrent_ctxs, CTL_MAX_CONCURRENT, ctx->server);
+	bool this_thread_exclusive = false, stopped = false;
 
-	while (ctx->ret == KNOT_EOK) {
+	while (dt->unit->threads[0]->state & ThreadActive) {
 		if (ctl_cleanup_ctxs(concurrent_ctxs, CTL_MAX_CONCURRENT) == KNOT_CTL_ESTOP) {
-			ctx->ret = KNOT_CTL_ESTOP;
+			stopped = true;
 			break;
 		}
 
@@ -205,15 +205,35 @@ void *ctl_socket_thread(void *arg)
 			continue;
 		}
 
-		ret = ctl_manage(ctx->ctl, ctx->server, &this_thread_exclusive, ctx->parent_tid, concurrent_ctxs, CTL_MAX_CONCURRENT);
+		ret = ctl_manage(ctx->ctl, ctx->server, &this_thread_exclusive, 0, concurrent_ctxs, CTL_MAX_CONCURRENT);
 		if (ret == KNOT_CTL_ESTOP) {
-			ctx->ret = KNOT_CTL_ESTOP;
+			stopped = true;
 			break;
 		}
 	}
 
+	if (stopped) {
+		(void)kill(getpid(), SIGTERM);
+	}
+
 	ctl_finalize_ctxs(concurrent_ctxs, CTL_MAX_CONCURRENT);
 
-	rcu_unregister_thread();
-	return NULL;
+	return 0;
+}
+
+int ctl_socket_thr_init(ctl_socket_ctx_t *ctx)
+{
+	dt_unit_t *dts = dt_create(1, ctl_socket_thr, NULL, ctx);
+	if (dts == NULL) {
+		return KNOT_ENOMEM;
+	}
+	ctx->unit = dts;
+	return dt_start(dts);
+}
+
+void ctl_socket_thr_end(ctl_socket_ctx_t *ctx)
+{
+	(void)dt_stop(ctx->unit);
+	(void)dt_join(ctx->unit);
+	dt_delete(&ctx->unit);
 }

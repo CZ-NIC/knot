@@ -214,10 +214,11 @@ static void event_loop(server_t *server, const char *socket, bool daemonize,
 
 	signals_enable();
 
-	ctl_socket_ctx_t sctx = { .ctl = ctl, .server = server, .ret = KNOT_EOK, .parent_tid = 0 };
-	ret = thread_create_nosignal(&sctx.thread, ctl_socket_thread, &sctx);
+	ctl_socket_ctx_t sctx = { .ctl = ctl, .server = server };
+	ret = ctl_socket_thr_init(&sctx);
 	if (ret != KNOT_EOK) {
 		log_fatal("failed to launch CTL socket thread (%s)", knot_strerror(ret));
+
 		return;
 	}
 
@@ -246,7 +247,7 @@ static void event_loop(server_t *server, const char *socket, bool daemonize,
 			server_update_zones(conf(), server, mode);
 			pthread_rwlock_unlock(&server->ctl_lock);
 		}
-		if (signals_req_stop || sctx.ret != KNOT_EOK) {
+		if (signals_req_stop) {
 			break;
 		}
 
@@ -255,14 +256,15 @@ static void event_loop(server_t *server, const char *socket, bool daemonize,
 		}
 
 		check_loaded(server);
+
+		sleep(5); // wait for signals to arrive
 	}
 
 	if (conf()->cache.srv_dbus_event & DBUS_EVENT_RUNNING) {
 		dbus_emit_running(false);
 	}
 
-	sctx.ret = KNOT_EOF;
-	(void)pthread_join(sctx.thread, NULL);
+	ctl_socket_thr_end(&sctx);
 
 	/* Unbind the control socket. */
 	knot_ctl_unbind(ctl);
