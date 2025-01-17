@@ -5,8 +5,15 @@ pkglibdir = ${libdir}/knot/redis
 
 if ENABLE_REDIS_MODULE
 pkglib_LTLIBRARIES = knot.la
-knot_la_SOURCES = knot.c
+knot_la_SOURCES = \
+        arg.h \
+        internal.h \
+        knot.c \
+        knot.h \
+        libs.h \
+        type_diff.h \
+        type_rrset.h
 
-knot_la_CPPFLAGS = $(AM_CPPFLAGS)
+knot_la_CPPFLAGS = $(AM_CPPFLAGS) $(CFLAG_VISIBILITY) $(gnutls_CFLAGS)
 knot_la_LDFLAGS  = $(AM_LDFLAGS) -module -shared -avoid-version
 endif
