@@ -40,9 +40,10 @@ typedef struct {
 } concurrent_ctl_ctx_t;
 
 typedef struct {
-	knot_ctl_t *ctl;
+	knot_ctl_t **ctls;
 	server_t *server;
 	dt_unit_t *unit;
+	int thrs_per_sock;
 } ctl_socket_ctx_t;
 
 /*!
@@ -51,8 +52,10 @@ typedef struct {
  * \param concurrent_ctxs    Structures to initialize.
  * \param n_ctxs             Their number/count.
  * \param server             Server structure.
+ * \param thr_idx_from       Base thread ID for sub-threads to start with.
  */
-void ctl_init_ctxs(concurrent_ctl_ctx_t *concurrent_ctxs, size_t n_ctxs, server_t *server);
+void ctl_init_ctxs(concurrent_ctl_ctx_t *concurrent_ctxs, size_t n_ctxs,
+                   server_t *server, int thr_idx_from);
 
 /*!
  * \brief Regularly check the state of parallel CTL processing workers.
@@ -89,13 +92,14 @@ int ctl_manage(knot_ctl_t *ctl, server_t *server, bool *exclusive,
                int thread_idx, concurrent_ctl_ctx_t *ctxs, size_t n_ctxs);
 
 /*!
- * \brief Initialize CTL socket handling thread.
+ * \brief Initialize CTL socket handling threads.
  *
- * \param ctx     Socket thread context.
+ * \param ctx     Socket thread contexts.
+ * \param n_ctls  Number of socket threads.
  *
  * \return KNOT_E*
  */
-int ctl_socket_thr_init(ctl_socket_ctx_t *ctx);
+int ctl_socket_thr_init(ctl_socket_ctx_t *ctx, size_t n_ctls);
 
 /*!
  * \brief De-initialize CTL socket handling thread.

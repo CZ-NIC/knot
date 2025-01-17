@@ -72,7 +72,7 @@ static struct {
 	            sizeof(((send_ctx_t *)0)->ttl) +
 	            sizeof(((send_ctx_t *)0)->type) +
 	            sizeof(((send_ctx_t *)0)->rdata)];
-} ctl_globals[CTL_MAX_CONCURRENT + 1];
+} ctl_globals[CTL_MAX_CONCURRENT];
 
 static bool allow_blocking_while_ctl_txn(zone_event_type_t event)
 {

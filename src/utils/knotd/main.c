@@ -164,55 +164,76 @@ static void check_loaded(server_t *server)
 	dbus_emit_running(true);
 }
 
+static void deinit_ctls(knot_ctl_t **ctls)
+{
+	for (int i = 0; ctls[i] != NULL; i++) {
+		knot_ctl_unbind(ctls[i]);
+		knot_ctl_free(ctls[i]);
+	}
+	free(ctls);
+}
+
+static int count_ctls(const char *socket, conf_val_t *listen_val)
+{
+	return socket == NULL ? MAX(1, conf_val_count(listen_val)) : 1;
+}
+
+static knot_ctl_t **init_ctls(const char *socket)
+{
+	uint16_t backlog = conf_get_int(conf(), C_CTL, C_BACKLOG);
+	conf_val_t listen_val = conf_get(conf(), C_CTL, C_LISTEN);
+	conf_val_t rundir_val = conf_get(conf(), C_SRV, C_RUNDIR);
+	char *rundir = conf_abs_path(&rundir_val, NULL);
+
+	int cnt = count_ctls(socket, &listen_val), ret = KNOT_EOK;
+	knot_ctl_t **res = calloc(cnt + 1, sizeof(*res)); // trick: NULL-terminated array for easier _deinit
+	for (int i = 0; res != NULL && i < cnt && ret == KNOT_EOK; i++) {
+		char *listen = socket == NULL ? conf_abs_path(&listen_val, rundir) : strdup(socket);
+		if (listen == NULL) {
+			log_fatal("control, empty socket path");
+			ret = KNOT_ENOENT;
+		} else {
+			res[i] = knot_ctl_alloc();
+			if (res[i] == NULL) {
+				ret = KNOT_ENOMEM;
+			} else {
+				knot_ctl_set_timeout(res[i], conf()->cache.ctl_timeout);
+				log_info("control, binding to '%s'", listen);
+				ret = knot_ctl_bind(res[i], listen, backlog);
+				if (ret != KNOT_EOK) {
+					log_fatal("control, failed to bind socket '%s' (%s)",
+					          listen, knot_strerror(ret));
+				}
+			}
+			free(listen);
+		}
+		conf_val_next(&listen_val);
+	}
+
+	if (ret != KNOT_EOK) {
+		deinit_ctls(res);
+		res = NULL;
+	}
+	free(rundir);
+	return res;
+}
+
 /*! \brief Event loop listening for signals and remote commands. */
 static void event_loop(server_t *server, const char *socket, bool daemonize,
                        unsigned long pid)
 {
-	knot_ctl_t *ctl = knot_ctl_alloc();
-	if (ctl == NULL) {
-		log_fatal("control, failed to initialize (%s)",
-		          knot_strerror(KNOT_ENOMEM));
+	conf_val_t listen_val = conf_get(conf(), C_CTL, C_LISTEN);
+	knot_ctl_t **ctls = init_ctls(socket);
+	if (ctls == NULL) {
 		return;
 	}
-
-	// Set control timeout.
-	knot_ctl_set_timeout(ctl, conf()->cache.ctl_timeout);
-
-	/* Get control socket configuration. */
-	char *listen;
-	if (socket == NULL) {
-		conf_val_t listen_val = conf_get(conf(), C_CTL, C_LISTEN);
-		conf_val_t rundir_val = conf_get(conf(), C_SRV, C_RUNDIR);
-		char *rundir = conf_abs_path(&rundir_val, NULL);
-		listen = conf_abs_path(&listen_val, rundir);
-		free(rundir);
-	} else {
-		listen = strdup(socket);
-	}
-	if (listen == NULL) {
-		knot_ctl_free(ctl);
-		log_fatal("control, empty socket path");
-		return;
-	}
-
-	log_info("control, binding to '%s'", listen);
-
-	/* Bind the control socket. */
-	uint16_t backlog = conf_get_int(conf(), C_CTL, C_BACKLOG);
-	int ret = knot_ctl_bind(ctl, listen, backlog);
-	if (ret != KNOT_EOK) {
-		knot_ctl_free(ctl);
-		log_fatal("control, failed to bind socket '%s' (%s)",
-		          listen, knot_strerror(ret));
-		free(listen);
-		return;
-	}
-	free(listen);
 
 	signals_enable();
 
-	ctl_socket_ctx_t sctx = { .ctl = ctl, .server = server };
-	ret = ctl_socket_thr_init(&sctx);
+	int n_ctlsocks = count_ctls(socket, &listen_val);
+	ctl_socket_ctx_t sctx = { .ctls = ctls, .server = server, .thrs_per_sock = CTL_MAX_CONCURRENT / n_ctlsocks };
+	assert(sctx.thrs_per_sock > 1);
+	int ret = ctl_socket_thr_init(&sctx, n_ctlsocks);
 	if (ret != KNOT_EOK) {
 		log_fatal("control, failed to launch socket thread (%s)", knot_strerror(ret));
 		return;
@@ -262,10 +283,7 @@ static void event_loop(server_t *server, const char *socket, bool daemonize,
 	}
 
 	ctl_socket_thr_end(&sctx);
-
-	/* Unbind the control socket. */
-	knot_ctl_unbind(ctl);
-	knot_ctl_free(ctl);
+	deinit_ctls(ctls);
 }
 
 static void print_help(void)

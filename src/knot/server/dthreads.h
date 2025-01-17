@@ -72,6 +72,7 @@ typedef int (*runnable_t)(struct dthread *);
  */
 typedef struct dthread {
 	volatile unsigned  state; /*!< Bitfield of dt_flag flags. */
+	int                  idx; /*!< Index of the thread within the unit. */
 	runnable_t           run; /*!< Runnable function or 0. */
 	runnable_t      destruct; /*!< Destructor function or 0. */
 	void               *data; /*!< Currently active data */

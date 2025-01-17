@@ -3,6 +3,7 @@
 '''Ctl conf and zone commands test.'''
 
 import os
+import random
 
 from dnstest.libknot import libknot
 from dnstest.module import ModStats
@@ -22,7 +23,8 @@ ZONE_NAME = "testzone."
 
 t.start()
 
-ctl.connect(os.path.join(knot.dir, "knot.sock"))
+sockname = random.choice(["knot.sock", "knot2.sock"])
+ctl.connect(os.path.join(knot.dir, sockname))
 
 # Check conf-abort and conf-commit without conf transaction open.
 
@@ -126,7 +128,8 @@ ctl.close()
 resp = knot.dig(ZONE_NAME, "SOA")
 resp.check(rcode="NOERROR")
 
-ctl.connect(os.path.join(knot.dir, "knot.sock"))
+sockname = random.choice(["knot.sock", "knot2.sock"])
+ctl.connect(os.path.join(knot.dir, sockname))
 
 # Abort remove SOA.
 ctl.send_block(cmd="zone-begin")

@@ -983,7 +983,7 @@ Configuration of the server control interface.
 ::
 
  control:
-     listen: STR
+     listen: STR ...
      backlog: INT
      timeout: TIME
 
@@ -996,6 +996,16 @@ A UNIX socket :ref:`path<default_paths>` where the server listens for
 control commands.
 
 Change of this parameter requires restart of the Knot server to take effect.
+
+Multiple sockets can be configured for parallel independent use, but their
+number is limited (currently 4) and some operations might be delayed on
+mutexes.
+
+.. WARNING::
+
+   Transaction-like operations like conf-begin/set/commit/abort or
+   zone-begin/set/commit/abort must be performed using one fixed
+   socket.
 
 *Default:* :ref:`rundir<server_rundir>`\ ``/knot.sock``
 
