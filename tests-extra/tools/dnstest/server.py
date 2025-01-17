@@ -389,13 +389,16 @@ class Server(object):
 
         self.binding_errors = errors
 
-    def ctl(self, cmd, wait=False, availability=True, read_result=False):
+    def ctl(self, cmd, wait=False, availability=True, read_result=False, custom_parm=None):
+        if custom_parm is None:
+            custom_parm = self.ctl_sock_rnd()
+
         if availability:
             # Check for listening control interface.
             ok = False
             for i in range(0, 5):
                 try:
-                    self.ctl("status", availability=False)
+                    self.ctl("status", availability=False, custom_parm=custom_parm)
                 except Failed:
                     time.sleep(1)
                     continue
@@ -406,7 +409,7 @@ class Server(object):
                 raise Failed("Unavailable remote control server='%s'" % self.name)
 
         # Send control command.
-        args = self.ctl_params + (self.control_wait if wait else []) + cmd.split()
+        args = self.ctl_params + custom_parm + (self.control_wait if wait else []) + cmd.split()
         try:
             check_call([self.control_bin] + args,
                        stdout=open(self.dir + "/call.out", mode="a"),
@@ -831,7 +834,8 @@ class Server(object):
         for t in range(attempts):
             try:
                 if use_ctl:
-                    ctl.connect(os.path.join(self.dir, "knot.sock"))
+                    sockname = random.choice(["knot.sock", "knot2.sock"])
+                    ctl.connect(os.path.join(self.dir, sockname))
                     ctl.send_block(cmd="zone-read", zone=zone_name,
                                    owner="@", rtype="SOA")
                     resp = ctl.receive_block()
@@ -1274,6 +1278,9 @@ class Bind(Server):
 
         return s.conf
 
+    def ctl_sock_rnd(self):
+        return []
+
     def start(self, clean=False):
         for zname in self.zones:
             z = self.zones[zname]
@@ -1494,7 +1501,7 @@ class Knot(Server):
             s.end()
 
         s.begin("control")
-        s.item_str("listen", "knot.sock")
+        s.item("listen", "[ \"knot.sock\", \"knot2.sock\"]")
         s.item_str("timeout", "15")
         s.end()
 
@@ -1913,6 +1920,12 @@ class Knot(Server):
             self.ctl_params += self.ctl_params_append
 
         return s.conf
+
+    def ctl_sock_rnd(self):
+        sockname = random.choice(["knot.sock", "knot2.sock"])
+        sockpath = os.path.join(self.dir, sockname)
+
+        return ["-s", sockpath]
 
     def check_quic(self):
         res = run([self.daemon_bin, '-VV'], stdout=PIPE)
