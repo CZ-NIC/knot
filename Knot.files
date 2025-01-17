@@ -569,6 +569,13 @@ src/libzscanner/functions.h
 src/libzscanner/scanner.h
 src/libzscanner/scanner.rl
 src/libzscanner/scanner_body.rl
+src/redis/arg.h
+src/redis/internal.h
+src/redis/knot.c
+src/redis/knot.h
+src/redis/libs.h
+src/redis/type_diff.h
+src/redis/type_rrset.h
 src/utils/common/exec.c
 src/utils/common/exec.h
 src/utils/common/hex.c
