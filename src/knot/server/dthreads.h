@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2025 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -72,6 +72,7 @@ typedef int (*runnable_t)(struct dthread *);
  */
 typedef struct dthread {
 	volatile unsigned  state; /*!< Bitfield of dt_flag flags. */
+	unsigned             idx; /*!< Index of the thread within the unit. */
 	runnable_t           run; /*!< Runnable function or 0. */
 	runnable_t      destruct; /*!< Destructor function or 0. */
 	void               *data; /*!< Currently active data */

@@ -131,7 +131,7 @@ for i in range(1, 1000):
 # Switch subnet file.
 if RELOAD_OVERWRITE:
     shutil.copyfile(subnet2_filename, subnet_filename)
-    knot.ctl("-f zone-reload example.com.", wait=True)
+    knot.ctl("-f zone-reload example.com.", wait=True, custom_parm=[]) # explicitly DON'T specify socket so that configuration is parsed also by knotc itself
 else:
     mod_subnet.config_file = subnet2_filename
     knot.gen_confile()
@@ -164,7 +164,7 @@ else:
 reload_failed = False
 try:
     if RELOAD_OVERWRITE:
-        knot.ctl("-f zone-reload example.com.", wait=True)
+        knot.ctl("-f zone-reload example.com.", wait=True, custom_parm=[]) # explicitly DON'T specify socket so that configuration is parsed also by knotc itself
     else:
         knot.reload()
 except:
