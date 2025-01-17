@@ -1382,14 +1382,16 @@ Pre-requisites
 * A multiqueue network card, which offers enough Combined RX/TX channels, with
   native XDP support is highly recommended. Successfully tested cards:
 
-  * NVIDIA (Mellanox) ConnectX-6 Dx (driver `mlx5_core`), maximum number of channels
-    per interface is 63. Official drivers are recommended.
-  * Intel series 700 (driver `i40e`), maximum number of channels per interface is 64.
+  * NVIDIA (Mellanox) ConnectX-6 Dx (driver `mlx5_core`), the maximum number of channels
+    per interface is 127.
+  * Intel series E810 (driver `ice`), the maximum number of channels per interface must
+    be limited to 127 or fewer. Linux kernel 6.10.4 or later, along with its driver,
+    is required for stability.
+  * Intel series 700 (driver `i40e`), the maximum number of channels per interface is 64.
     Linux kernel drivers are recommended.
 
   Cards with known instability issues:
 
-  * Intel series E810 (driver `ice`).
   * Intel series 500 (driver `ixgbe`).
 
 * If the `knotd` service is not directly executed in the privileged mode, some
