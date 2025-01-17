@@ -222,9 +222,10 @@ if resp3.count("DNSKEY") > 0:
 dnskey3 = resp2.resp.answer[0].to_rdataset()[0]
 
 # Check inaccessibility of catalog zone
-slave.ctl("conf-begin")
-slave.ctl("conf-unset zone[catalog1.].acl") # remove transfer-related ACLs
-slave.ctl("conf-commit")
+confsock = slave.ctl_sock_rnd()
+slave.ctl("conf-begin", custom_parm=confsock)
+slave.ctl("conf-unset zone[catalog1.].acl", custom_parm=confsock) # remove transfer-related ACLs
+slave.ctl("conf-commit", custom_parm=confsock)
 t.sleep(3)
 try:
     resp = slave.dig("version.catalog1.", "TXT", tsig=True)
@@ -233,8 +234,9 @@ except:
     pass
 
 # Check for member zones not leaking after zonedb reload (just trigger the reload)
-slave.ctl("conf-begin")
-slave.ctl("conf-set zone[catalog1.].journal-content changes")
-slave.ctl("conf-commit")
+confsock = slave.ctl_sock_rnd()
+slave.ctl("conf-begin", custom_parm=confsock)
+slave.ctl("conf-set zone[catalog1.].journal-content changes", custom_parm=confsock)
+slave.ctl("conf-commit", custom_parm=confsock)
 
 t.end()

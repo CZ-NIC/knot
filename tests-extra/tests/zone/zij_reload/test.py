@@ -16,9 +16,10 @@ t.link(zone, knot)
 t.start()
 knot.zone_wait(zone)
 
-knot.ctl("conf-begin")
-knot.ctl("conf-set zone[%s].journal-content all" % zone[0].name)
-knot.ctl("conf-commit")
+confsock = knot.ctl_sock_rnd()
+knot.ctl("conf-begin", custom_parm=confsock)
+knot.ctl("conf-set zone[%s].journal-content all" % zone[0].name, custom_parm=confsock)
+knot.ctl("conf-commit", custom_parm=confsock)
 t.sleep(2)
 
 knot.stop()

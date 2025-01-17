@@ -16,20 +16,22 @@
 
 #include <signal.h>
 #include <stdio.h>
+#include <string.h>
 #include <urcu.h>
 
 #include "contrib/threads.h"
 #include "knot/ctl/threads.h"
 #include "knot/server/signals.h"
 
-void ctl_init_ctxs(concurrent_ctl_ctx_t *concurrent_ctxs, size_t n_ctxs, server_t *server)
+void ctl_init_ctxs(concurrent_ctl_ctx_t *concurrent_ctxs, size_t n_ctxs, server_t *server, int thr_idx_from)
 {
 	for (size_t i = 0; i < n_ctxs; i++) {
 		concurrent_ctl_ctx_t *cctx = &concurrent_ctxs[i];
+		memset(cctx, 0, sizeof(*cctx));
 		pthread_mutex_init(&cctx->mutex, NULL);
 		pthread_cond_init(&cctx->cond, NULL);
 		cctx->server = server;
-		cctx->thread_idx = i + 1;
+		cctx->thread_idx = thr_idx_from + i + 1;
 	}
 }
 
@@ -186,26 +188,29 @@ int ctl_manage(knot_ctl_t *ctl, server_t *server, bool *excl,
 static int ctl_socket_thr(struct dthread *dt)
 {
 	ctl_socket_ctx_t *ctx = dt->data;
+	assert(dt == ctx->unit->threads[dt->idx]);
 
-	concurrent_ctl_ctx_t concurrent_ctxs[CTL_MAX_CONCURRENT] = { 0 };
-	ctl_init_ctxs(concurrent_ctxs, CTL_MAX_CONCURRENT, ctx->server);
+	concurrent_ctl_ctx_t concurrent_ctxs[ctx->thrs_per_sock - 1];
+	ctl_init_ctxs(concurrent_ctxs, ctx->thrs_per_sock - 1, ctx->server, dt->idx * ctx->thrs_per_sock);
 	bool this_thread_exclusive = false, stopped = false;
 
+	knot_ctl_t *my_ctl = ctx->ctls[dt->idx];
+
 	while (dt->unit->threads[0]->state & ThreadActive) {
-		if (ctl_cleanup_ctxs(concurrent_ctxs, CTL_MAX_CONCURRENT) == KNOT_CTL_ESTOP) {
+		if (ctl_cleanup_ctxs(concurrent_ctxs, ctx->thrs_per_sock - 1) == KNOT_CTL_ESTOP) {
 			stopped = true;
 			break;
 		}
 
 		// Update control timeout.
-		knot_ctl_set_timeout(ctx->ctl, conf()->cache.ctl_timeout);
+		knot_ctl_set_timeout(my_ctl, conf()->cache.ctl_timeout);
 
-		int ret = knot_ctl_accept(ctx->ctl);
+		int ret = knot_ctl_accept(my_ctl);
 		if (ret != KNOT_EOK) {
 			continue;
 		}
 
-		ret = ctl_manage(ctx->ctl, ctx->server, &this_thread_exclusive, 0, concurrent_ctxs, CTL_MAX_CONCURRENT);
+		ret = ctl_manage(my_ctl, ctx->server, &this_thread_exclusive, dt->idx * ctx->thrs_per_sock, concurrent_ctxs, ctx->thrs_per_sock - 1);
 		if (ret == KNOT_CTL_ESTOP) {
 			stopped = true;
 			break;
@@ -216,14 +221,16 @@ static int ctl_socket_thr(struct dthread *dt)
 		(void)kill(getpid(), SIGTERM);
 	}
 
-	ctl_finalize_ctxs(concurrent_ctxs, CTL_MAX_CONCURRENT);
+	ctl_finalize_ctxs(concurrent_ctxs, ctx->thrs_per_sock - 1);
 
 	return 0;
 }
 
-int ctl_socket_thr_init(ctl_socket_ctx_t *ctx)
+int ctl_socket_thr_init(ctl_socket_ctx_t *ctx, int n_ctls)
 {
-	dt_unit_t *dts = dt_create(1, ctl_socket_thr, NULL, ctx);
+	assert(n_ctls >= 1);
+
+	dt_unit_t *dts = dt_create(n_ctls, ctl_socket_thr, NULL, ctx);
 	if (dts == NULL) {
 		return KNOT_ENOMEM;
 	}
