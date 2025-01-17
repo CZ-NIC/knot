@@ -1383,13 +1383,15 @@ Pre-requisites
   native XDP support is highly recommended. Successfully tested cards:
 
   * NVIDIA (Mellanox) ConnectX-6 Dx (driver `mlx5_core`), maximum number of channels
-    per interface is 63. Official drivers are recommended.
+    per interface is 127. Linux kernel drivers are recommended.
   * Intel series 700 (driver `i40e`), maximum number of channels per interface is 64.
     Linux kernel drivers are recommended.
+  * Intel series E810 (driver `ice`), maximum number of channels per interface is 128
+    but the recommended number of channels is 127 due to stability. Version 6.12.3 of
+    Linux kernel and Linux kernel drivers are recommended.
 
-  Cards with known instability issues:
+  Card with known instability issues:
 
-  * Intel series E810 (driver `ice`).
   * Intel series 500 (driver `ixgbe`).
 
 * If the `knotd` service is not directly executed in the privileged mode, some
