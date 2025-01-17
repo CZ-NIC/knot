@@ -29,6 +29,7 @@
 #include "knot/conf/module.h"
 #include "knot/conf/schema.h"
 #include "knot/common/log.h"
+#include "knot/ctl/process.h"
 #include "knot/updates/acl.h"
 #include "knot/zone/serial.h"
 #include "knot/zone/skip.h"
@@ -352,6 +353,19 @@ int check_modulo(
 	if (serial_modulo_parse((const char *)args->data, &rem, &mod, &zero) != KNOT_EOK ||
 	    mod > 256 || rem >= mod || zero != 0) {
 		args->err_str = "invalid value, expected format 'R/M', where R < M <= 256";
+		return KNOT_EINVAL;
+	}
+
+	return KNOT_EOK;
+}
+
+int check_ctl_listen(
+	knotd_conf_check_args_t *args)
+{
+	conf_val_t val = conf_get_txn(args->extra->conf, args->extra->txn,
+	                              C_CTL, C_LISTEN);
+	if (conf_val_count(&val) > CTL_MAX_CONCURRENT / 2) {
+		args->err_str = "too many control sockets configured";
 		return KNOT_EINVAL;
 	}
 

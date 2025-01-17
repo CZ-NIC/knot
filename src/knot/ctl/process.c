@@ -10,7 +10,7 @@
 #include "contrib/openbsd/strlcat.h"
 #include "contrib/string.h"
 
-int ctl_process(knot_ctl_t *ctl, server_t *server, int thread_idx, bool *exclusive)
+int ctl_process(knot_ctl_t *ctl, server_t *server, unsigned thread_idx, bool *exclusive)
 {
 	if (ctl == NULL || server == NULL) {
 		return KNOT_EINVAL;

@@ -201,7 +201,7 @@ static void *thread_ep(void *data)
  * \retval New thread instance on success.
  * \retval NULL on error.
  */
-static dthread_t *dt_create_thread(dt_unit_t *unit)
+static dthread_t *dt_create_thread(dt_unit_t *unit, unsigned idx)
 {
 	// Alloc thread
 	dthread_t *thread = malloc(sizeof(dthread_t));
@@ -217,6 +217,7 @@ static dthread_t *dt_create_thread(dt_unit_t *unit)
 
 	// Set membership in unit
 	thread->unit = unit;
+	thread->idx = idx;
 
 	// Initialize attribute
 	pthread_attr_t *attr = &thread->_attr;
@@ -314,7 +315,7 @@ static dt_unit_t *dt_create_unit(int count)
 	// Initialize threads
 	int init_success = 1;
 	for (int i = 0; i < count; ++i) {
-		unit->threads[i] = dt_create_thread(unit);
+		unit->threads[i] = dt_create_thread(unit, i);
 		if (unit->threads[i] == 0) {
 			init_success = 0;
 			break;
