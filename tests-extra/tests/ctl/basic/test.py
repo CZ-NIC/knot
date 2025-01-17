@@ -22,7 +22,8 @@ ZONE_NAME = "testzone."
 
 t.start()
 
-ctl.connect(os.path.join(knot.dir, "knot.sock"))
+sockname = knot.ctl_sock_rnd(name_only=True)
+ctl.connect(os.path.join(knot.dir, sockname))
 
 # Check conf-abort and conf-commit without conf transaction open.
 
@@ -126,7 +127,8 @@ ctl.close()
 resp = knot.dig(ZONE_NAME, "SOA")
 resp.check(rcode="NOERROR")
 
-ctl.connect(os.path.join(knot.dir, "knot.sock"))
+sockname = knot.ctl_sock_rnd(name_only=True)
+ctl.connect(os.path.join(knot.dir, sockname))
 
 # Abort remove SOA.
 ctl.send_block(cmd="zone-begin")

@@ -29,9 +29,10 @@ typedef struct {
 } concurrent_ctl_ctx_t;
 
 typedef struct {
-	knot_ctl_t *ctl;
+	knot_ctl_t **ctls;
 	server_t *server;
 	dt_unit_t *unit;
+	unsigned thr_count;
 } ctl_socket_ctx_t;
 
 /*!
@@ -40,8 +41,10 @@ typedef struct {
  * \param concurrent_ctxs    Structures to initialize.
  * \param n_ctxs             Their number/count.
  * \param server             Server structure.
+ * \param thr_idx_from       Base thread ID for sub-threads to start with.
  */
-void ctl_init_ctxs(concurrent_ctl_ctx_t *concurrent_ctxs, size_t n_ctxs, server_t *server);
+void ctl_init_ctxs(concurrent_ctl_ctx_t *concurrent_ctxs, size_t n_ctxs,
+                   server_t *server, int thr_idx_from);
 
 /*!
  * \brief Regularly check the state of parallel CTL processing workers.
@@ -63,31 +66,17 @@ int ctl_cleanup_ctxs(concurrent_ctl_ctx_t *concurrent_ctxs, size_t n_ctxs);
 void ctl_finalize_ctxs(concurrent_ctl_ctx_t *concurrent_ctxs, size_t n_ctxs);
 
 /*!
- * Find/create a thread processing incomming control commands.
+ * \brief Initialize CTL socket handling threads.
  *
- * \param[in]       ctl         Control context.
- * \param[in]       server      Server instance.
- * \param[in/out]   exclusive   CTLs are being processed exclusively by calling thread.
- * \param[in]       thread_idx  Calling thread index.
- * \param[in]       ctxs        CTL thread contexts.
- * \param[in]       n_ctxs      Number of CTL thread contexts.
- *
- * \return Error code, KNOT_EOK if successful, KNOT_CTL_ESTOP if server shutdown desired.
- */
-int ctl_manage(knot_ctl_t *ctl, server_t *server, bool *exclusive,
-               int thread_idx, concurrent_ctl_ctx_t *ctxs, size_t n_ctxs);
-
-/*!
- * \brief Initialize CTL socket handling thread.
- *
- * \param ctx     Socket thread context.
+ * \param ctx         Socket thread contexts.
+ * \param sock_count  Number of socket threads.
  *
  * \return KNOT_E*
  */
-int ctl_socket_thr_init(ctl_socket_ctx_t *ctx);
+int ctl_socket_thr_init(ctl_socket_ctx_t *ctx, unsigned sock_count);
 
 /*!
- * \brief De-initialize CTL socket handling thread.
+ * \brief De-initialize CTL socket handling threads.
  *
  * \param ctx     Socket thread context.
  */

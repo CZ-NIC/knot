@@ -39,31 +39,32 @@ def random_ctls(server, zone_name):
         random_sleep()
 
 def ctl_txn_generic(server, txn_start, txn_modify, txn_commit, txn_abort, abort_failed_start):
+    txnsock = server.ctl_sock_rnd()
     try:
-        server.ctl("zone-status", availability=False)
+        server.ctl("zone-status", availability=False, custom_parm=txnsock)
     except:
         pass
     try:
-        server.ctl(txn_start, availability=False)
+        server.ctl(txn_start, availability=False, custom_parm=txnsock)
     except:
         try:
             if abort_failed_start:
-                server.ctl(txn_abort, availability=False)
+                server.ctl(txn_abort, availability=False, custom_parm=txnsock)
         except:
             pass
         return
     random_sleep()
     try:
-        server.ctl(txn_modify, availability=False)
+        server.ctl(txn_modify, availability=False, custom_parm=txnsock)
         random_sleep()
-        server.ctl(txn_commit, availability=False)
+        server.ctl(txn_commit, availability=False, custom_parm=txnsock)
     except:
         attempts = 9
         while attempts > 0:
             time.sleep(2)
             attempts -= 1
             try:
-                server.ctl(txn_abort, availability=False)
+                server.ctl(txn_abort, availability=False, custom_parm=txnsock)
                 attempts = 0
             except:
                 pass
