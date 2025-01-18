@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2025 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -684,4 +684,54 @@ int knot_edns_cookie_parse(knot_edns_cookie_t *cc, knot_edns_cookie_t *sc,
 	}
 
 	return KNOT_EOK;
+}
+
+_public_
+int knot_edns_zoneversion_parse(knot_dname_storage_t zone, uint8_t *type,
+                                uint32_t *version, const uint8_t *option,
+                                uint16_t option_len, const knot_dname_t *qname)
+{
+	if (zone == NULL || type == NULL || version == NULL || option == NULL ||
+	    qname == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	if (option_len == 0) {
+		return KNOT_ENOENT;
+	} else if (option_len != KNOT_EDNS_ZONEVERSION_LENGTH) {
+		return KNOT_EMALF;
+	}
+
+	wire_ctx_t wire = wire_ctx_init_const(option, option_len);
+	uint8_t labels = wire_ctx_read_u8(&wire);
+	*type = wire_ctx_read_u8(&wire);
+	*version = wire_ctx_read_u32(&wire);
+
+	size_t qname_labels = knot_dname_labels(qname, NULL);
+	if (labels > qname_labels) {
+		return KNOT_EMALF;
+	}
+	size_t prefix_size = knot_dname_prefixlen(qname, qname_labels - labels);
+	size_t qname_size = knot_dname_size(qname);
+	memcpy(zone, qname + prefix_size, qname_size - prefix_size);
+
+	return wire.error;
+}
+
+_public_
+int knot_edns_zoneversion_write(uint8_t *option, uint16_t option_len, uint8_t type,
+                                const knot_dname_t *zone, uint32_t version)
+{
+	if (option == NULL || zone == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	size_t labels = knot_dname_labels(zone, NULL);
+
+	wire_ctx_t wire = wire_ctx_init(option, option_len);
+	wire_ctx_write_u8(&wire, labels);
+	wire_ctx_write_u8(&wire, type);
+	wire_ctx_write_u32(&wire, version);
+
+	return wire.error;
 }
