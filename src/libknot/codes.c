@@ -1,4 +1,4 @@
-/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2025 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -142,5 +142,6 @@ const knot_lookup_t knot_edns_opt_names[] = {
 	{ KNOT_EDNS_OPTION_PADDING,       "PADDING" },
 	{ KNOT_EDNS_OPTION_CHAIN,         "CHAIN" },
 	{ KNOT_EDNS_OPTION_EDE,           "EDE" },
+	{ KNOT_EDNS_OPTION_ZONEVERSION,   "ZONEVERSION" },
 	{ 0, NULL }
 };
