@@ -281,6 +281,9 @@ Options
 **+**\ [\ **no**\ ]\ **nsid**
   Request the nameserver identifier (NSID).
 
+**+**\ [\ **no**\ ]\ **zoneversion**
+  Request the EDNS zone version.
+
 **+**\ [\ **no**\ ]\ **bufsize**\ =\ *B*
   Set EDNS buffer size in bytes (default is 1232 bytes).
 

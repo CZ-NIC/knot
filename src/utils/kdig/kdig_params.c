@@ -1,4 +1,4 @@
-/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2025 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -996,6 +996,24 @@ static int opt_nonsid(const char *arg, void *query)
 	return KNOT_EOK;
 }
 
+static int opt_zoneversion(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->zoneversion = true;
+
+	return KNOT_EOK;
+}
+
+static int opt_nozoneversion(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->zoneversion = false;
+
+	return KNOT_EOK;
+}
+
 static int opt_bufsize(const char *arg, void *query)
 {
 	query_t *q = query;
@@ -1244,6 +1262,7 @@ static int opt_noedns(const char *arg, void *query)
 	q->edns = -1;
 	opt_nodoflag(arg, query);
 	opt_nonsid(arg, query);
+	opt_nozoneversion(arg, query);
 	opt_nobufsize(arg, query);
 	opt_nocookie(arg, query);
 	opt_nopadding(arg, query);
@@ -1609,6 +1628,9 @@ static const param_t kdig_opts2[] = {
 	{ "nsid",           ARG_NONE,     opt_nsid },
 	{ "nonsid",         ARG_NONE,     opt_nonsid },
 
+	{ "zoneversion",    ARG_NONE,     opt_zoneversion },
+	{ "nozoneversion",  ARG_NONE,     opt_nozoneversion },
+
 	{ "bufsize",        ARG_REQUIRED, opt_bufsize },
 	{ "nobufsize",      ARG_NONE,     opt_nobufsize },
 
@@ -1690,6 +1712,7 @@ query_t *query_create(const char *owner, const query_t *conf)
 		query->style.style.now = knot_time();
 		query->idn = true;
 		query->nsid = false;
+		query->zoneversion = false;
 		query->edns = 0;
 		query->cc.len = 0;
 		query->sc.len = 0;
@@ -2377,6 +2400,7 @@ static void print_help(void)
 	       "       +[no]quic                  Use QUIC protocol.\n"
 #endif
 	       "       +[no]nsid                  Request NSID.\n"
+	       "       +[no]zoneversion           Request the EDNS zone version.\n"
 	       "       +[no]bufsize=B             Set EDNS buffer size.\n"
 	       "       +[no]padding[=N]           Pad with EDNS(0) (default or specify size).\n"
 	       "       +[no]alignment[=N]         Pad with EDNS(0) to blocksize (%u or specify size).\n"
