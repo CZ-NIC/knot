@@ -1,4 +1,4 @@
-/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2025 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -264,6 +264,16 @@ static int add_query_edns(knot_pkt_t *packet, const query_t *query, uint16_t max
 		}
 	}
 
+	/* Append Zone version. */
+	if (query->zoneversion) {
+		ret = knot_edns_add_option(&opt_rr, KNOT_EDNS_OPTION_ZONEVERSION,
+		                           0, NULL, &packet->mm);
+		if (ret != KNOT_EOK) {
+			knot_rrset_clear(&opt_rr, &packet->mm);
+			return ret;
+		}
+	}
+
 	/* Append EDNS-client-subnet. */
 	if (query->subnet.family != AF_UNSPEC) {
 		uint16_t size = knot_edns_client_subnet_size(&query->subnet);
@@ -355,8 +365,8 @@ static bool do_padding(const query_t *query)
 static bool use_edns(const query_t *query)
 {
 	return query->edns > -1 || query->udp_size > -1 || query->nsid ||
-	       query->flags.do_flag || query->subnet.family != AF_UNSPEC ||
-	       query->cc.len > 0 || do_padding(query) ||
+	       query->zoneversion || query->subnet.family != AF_UNSPEC ||
+	       query->flags.do_flag || query->cc.len > 0 || do_padding(query) ||
 	       !ednsopt_list_empty(&query->edns_opts);
 }
 
