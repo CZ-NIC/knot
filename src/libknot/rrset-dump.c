@@ -1,4 +1,4 @@
-/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2025 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -1171,6 +1171,9 @@ static void wire_ednsoptval_to_str(rrset_dump_params_t *p, uint16_t opt, uint16_
 		dump_string(p, "\" ");
 		CHECK_PRET
 		wire_text_to_str(p, len - sizeof(uint16_t), "", true, false);
+		break;
+	case KNOT_EDNS_OPTION_ZONEVERSION:
+		wire_data_to_hex(p, len); // not fully implemented, don't know QNAME
 		break;
 	default:
 		assert(0); // this should be handled in wire_ednsopt_to_str() by generic OPT##=hex

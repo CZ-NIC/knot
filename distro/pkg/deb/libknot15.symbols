@@ -85,6 +85,8 @@ libknot.so.15 libknot15 #MINVER#
  knot_edns_reserve_option@Base 3.4.0
  knot_edns_set_ext_rcode@Base 3.4.0
  knot_edns_set_version@Base 3.4.0
+ knot_edns_zoneversion_parse@Base 3.4.4
+ knot_edns_zoneversion_write@Base 3.4.4
  knot_error_from_libdnssec@Base 3.4.0
  knot_eth_mtu@Base 3.4.0
  knot_eth_name_from_addr@Base 3.4.0

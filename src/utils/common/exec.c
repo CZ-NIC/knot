@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2025 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -296,6 +296,23 @@ static void print_expire(const uint8_t *data, uint16_t len)
 	}
 }
 
+static void print_zoneversion(const uint8_t *data, uint16_t len, const knot_dname_t *qname)
+{
+	knot_dname_storage_t zone;
+	uint8_t type;
+	uint32_t version;
+	int ret = knot_edns_zoneversion_parse(zone, &type, &version, data, len, qname);
+	if (ret == KNOT_EOK) {
+		knot_dname_txt_storage_t zone_str;
+		(void)knot_dname_to_str(zone_str, zone, sizeof(zone_str));
+		const char *type_str = (type == KNOT_EDNS_ZONEVERSION_TYPE_SOA) ?
+		                       "SOA-SERIAL" : "UNKNOWN";
+		printf("%s %s %u", zone_str, type_str, version);
+	} else if (ret != KNOT_ENOENT) {
+		printf("(malformed)");
+	}
+}
+
 static void print_section_opt(const knot_pkt_t *packet, const style_t *style)
 {
 	if (style->present_edns) {
@@ -373,6 +390,11 @@ static void print_section_opt(const knot_pkt_t *packet, const style_t *style)
 		case KNOT_EDNS_OPTION_EXPIRE:
 			printf(";; EXPIRE: ");
 			print_expire(opt_data, opt_len);
+			break;
+		case KNOT_EDNS_OPTION_ZONEVERSION:
+			printf(";; ZONEVERSION: ");
+			const knot_dname_t *qname = knot_pkt_qname(packet);
+			print_zoneversion(opt_data, opt_len, qname);
 			break;
 		default:
 			printf(";; Option (%u): ", opt_code);
@@ -700,7 +722,37 @@ static void json_edns_ecs(jsonw_t *w, uint8_t *optdata, uint16_t optlen,
 	}
 }
 
-static void json_edns_opt(jsonw_t *w, uint8_t *optdata, uint16_t optype, uint16_t optlen)
+static int json_edns_zoneversion(jsonw_t *w, uint8_t *optdata, uint16_t optlen,
+                                 const knot_pkt_t *pkt)
+{
+	const knot_dname_t *qname = knot_pkt_qname(pkt);
+
+	knot_dname_storage_t zone;
+	uint8_t type;
+	uint32_t version;
+	int ret = knot_edns_zoneversion_parse(zone, &type, &version, optdata,
+	                                      optlen, qname);
+	if (ret != KNOT_EOK && ret != KNOT_ENOENT) {
+		return ret;
+	}
+
+	jsonw_object(w, "ZONEVERSION");
+	if (ret == KNOT_EOK) {
+		json_dname(w, "ZONE", zone);
+		if (type == KNOT_EDNS_ZONEVERSION_TYPE_SOA) {
+			jsonw_str(w, "TYPE", "SOA-SERIAL");
+		} else {
+			jsonw_int(w, "TYPE", type);
+		}
+		jsonw_ulong(w, "VERSION", version);
+	}
+	jsonw_end(w);
+
+	return KNOT_EOK;
+}
+
+static void json_edns_opt(jsonw_t *w, uint8_t *optdata, uint16_t optype,
+                          uint16_t optlen, const knot_pkt_t *pkt)
 {
 	char tmps[KNOT_DNAME_TXT_MAXLEN] = { 0 };
 	uint32_t tmpu = 0;
@@ -779,6 +831,11 @@ static void json_edns_opt(jsonw_t *w, uint8_t *optdata, uint16_t optype, uint16_
 			jsonw_end(w);
 		}
 		break;
+	case KNOT_EDNS_OPTION_ZONEVERSION:
+		if (json_edns_zoneversion(w, optdata, optlen, pkt) != KNOT_EOK) {
+			json_edns_unknown(w, optdata, optype, optlen);
+		}
+		break;
 	default:
 		json_edns_unknown(w, optdata, optype, optlen);
 		break;
@@ -825,7 +882,7 @@ static void json_print_edns(jsonw_t *w, const knot_pkt_t *pkt)
 		uint16_t optype = wire_ctx_read_u16(&opts);
 		uint16_t optlen = wire_ctx_read_u16(&opts);
 		if (wire_ctx_can_read(&opts, optlen) == KNOT_EOK) {
-			json_edns_opt(w, opts.position, optype, optlen);
+			json_edns_opt(w, opts.position, optype, optlen, pkt);
 			wire_ctx_skip(&opts, optlen);
 		}
 	}

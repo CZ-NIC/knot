@@ -1,4 +1,4 @@
-/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2025 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -381,6 +381,33 @@ static int answer_edns_put(knot_pkt_t *resp, knotd_qdata_t *qdata)
 			ret = knot_edns_add_option(&qdata->opt_rr, KNOT_EDNS_OPTION_EXPIRE,
 			                           sizeof(timer), (uint8_t *)&timer,
 			                           qdata->mm);
+			if (ret != KNOT_EOK) {
+				return ret;
+			}
+		}
+	}
+
+	/* Add ZONEVERSION if space and zone contents. */
+	uint8_t *zone_version = knot_pkt_edns_option(qdata->query, KNOT_EDNS_OPTION_ZONEVERSION);
+	if (zone_version != NULL) {
+		if (knot_edns_opt_get_length(zone_version) != 0) {
+			return KNOT_EMALF;
+		}
+		if (qdata->extra->contents != NULL &&
+		    knot_pkt_reserve(resp, KNOT_EDNS_ZONEVERSION_LENGTH) == KNOT_EOK) {
+			ret = knot_pkt_reclaim(resp, KNOT_EDNS_ZONEVERSION_LENGTH);
+			assert(ret == KNOT_EOK);
+
+			uint8_t data[KNOT_EDNS_ZONEVERSION_LENGTH];
+			ret = knot_edns_zoneversion_write(data, sizeof(data),
+			                                  KNOT_EDNS_ZONEVERSION_TYPE_SOA,
+			                                  qdata->extra->zone->name,
+			                                  zone_contents_serial(qdata->extra->contents));
+			if (ret != KNOT_EOK) {
+				return ret;
+			}
+			ret = knot_edns_add_option(&qdata->opt_rr, KNOT_EDNS_OPTION_ZONEVERSION,
+			                           sizeof(data), data, qdata->mm);
 			if (ret != KNOT_EOK) {
 				return ret;
 			}

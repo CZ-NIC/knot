@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2025 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -71,6 +71,14 @@ enum {
 	/*! \brief EDNS maximum server cookie size. */
 	KNOT_EDNS_COOKIE_SRVR_MAX_SIZE = 32,
 
+	/*! \brief The minimal length for EDE option including option header. */
+	KNOT_EDNS_EDE_MIN_LENGTH       = 6,
+
+	/*! \brief The SOA serial version type. */
+	KNOT_EDNS_ZONEVERSION_TYPE_SOA = 0,
+	/*! \brief The length of ZONEVERSION in a response. */
+	KNOT_EDNS_ZONEVERSION_LENGTH   = 6,
+
 	/*! \brief NSID option code. */
 	KNOT_EDNS_OPTION_NSID          = 3,
 	/*! \brief EDNS Client subnet option code. */
@@ -85,14 +93,13 @@ enum {
 	KNOT_EDNS_OPTION_PADDING       = 12,
 	/*! \brief EDNS Chain query option code. */
 	KNOT_EDNS_OPTION_CHAIN         = 13,
-
 	/*! \brief EDNS Extended error code. */
 	KNOT_EDNS_OPTION_EDE           = 15,
-	/*! \brief The minimal length for EDE option including option header. */
-	KNOT_EDNS_EDE_MIN_LENGTH       = 6,
+	/*! \brief EDNS Zone version option code. */
+	KNOT_EDNS_OPTION_ZONEVERSION   = 19,
 
 	/*! \brief Maximal currently known option code. */
-	KNOT_EDNS_MAX_OPTION_CODE      = 17,
+	KNOT_EDNS_MAX_OPTION_CODE      = 19,
 };
 
 /* Helpers for splitting extended RCODE. */
@@ -583,5 +590,34 @@ int knot_edns_cookie_write(uint8_t *option, uint16_t option_len,
  */
 int knot_edns_cookie_parse(knot_edns_cookie_t *cc, knot_edns_cookie_t *sc,
                            const uint8_t *option, uint16_t option_len);
+
+/*!
+ * \brief Writes EDNS Zone version wire data.
+ *
+ * \param[out] option      EDNS option data buffer.
+ * \param[in]  option_len  EDNS option data buffer size.
+ * \param[in]  type        The version type.
+ * \param[in]  zone        Zone name.
+ * \param[in]  version     The zone version.
+ *
+ * \return Error code, KNOT_EOK if successful or KNOT_ENOENT if no data.
+ */
+int knot_edns_zoneversion_write(uint8_t *option, uint16_t option_len, uint8_t type,
+                                const knot_dname_t *zone, uint32_t version);
+
+/*!
+ * \brief Parses EDNS Zone version wire data.
+ *
+ * \param[out] labels      The QNAME labels.
+ * \param[out] type        The version type.
+ * \param[out] version     The zone version.
+ * \param[in]  option      EDNS option data.
+ * \param[in]  option_len  EDNS option size.
+ *
+ * \return Error code, KNOT_EOK if successful.
+ */
+int knot_edns_zoneversion_parse(knot_dname_storage_t zone, uint8_t *type,
+                                uint32_t *version, const uint8_t *option,
+                                uint16_t option_len, const knot_dname_t *qname);
 
 /*! @} */
