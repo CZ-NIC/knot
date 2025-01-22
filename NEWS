@@ -1,3 +1,33 @@
+Knot DNS 3.4.4 (2025-01-22)
+===========================
+
+Features:
+---------
+ - knotd: added support for EDNS ZONEVERSION
+ - kdig: added support for EDNS ZONEVERSION (see '+zoneversion')
+
+Improvements:
+-------------
+ - knotd: improved control error detection and reporting
+ - kdig: proper section names for exported DDNS messages
+ - libs: upgraded embedded libngtcp2 to 1.10.0
+ - python: expanded documentation for the libknot control API
+ - doc: updated XDP prerequisites
+
+Bugfixes:
+---------
+ - knotd: a DNAME record at the zone apex with active NSEC3 not accepted via XFR
+ - knotd: configuration abort times out if no active transaction
+ - knotd: defective serial modulo result if it overflows
+ - knotd: TLS connections not properly terminated
+ - knotd: maximum zone TTL not correctly recomputed after RRSIG TTL change
+ - knotd: zone hangs if zone reload fails (Thanks to solidcc2)
+ - knotd: statistics dump generates invalid YAML output if XDP is enabled #947
+ - knotd: insufficient check for incomplete control message
+ - mod-dnstap: used incorrect type for DDNS messages
+ - knot-exporter: failed to run with Python 3.11 or older
+ - tests: test_atomic and test_spinlock require building with the daemon enabled #946
+
 Knot DNS 3.4.3 (2024-12-06)
 ===========================
 
