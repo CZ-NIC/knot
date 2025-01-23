@@ -76,7 +76,6 @@ libcontrib_la_SOURCES = \
 	contrib/proxyv2/proxyv2.c		\
 	contrib/proxyv2/proxyv2.h		\
 	contrib/ucw/array-sort.h		\
-	contrib/ucw/binsearch.h			\
 	contrib/ucw/heap.c			\
 	contrib/ucw/heap.h			\
 	contrib/ucw/lists.c			\

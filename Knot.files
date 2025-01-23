@@ -152,7 +152,6 @@ src/contrib/toeplitz.h
 src/contrib/tolower.h
 src/contrib/trim.h
 src/contrib/ucw/array-sort.h
-src/contrib/ucw/binsearch.h
 src/contrib/ucw/heap.c
 src/contrib/ucw/heap.h
 src/contrib/ucw/lists.c
