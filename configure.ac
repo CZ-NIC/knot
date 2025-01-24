@@ -257,6 +257,31 @@ AS_CASE([$enable_reuseport],
 AS_IF([test "$enable_reuseport" = yes],[
    AC_DEFINE([ENABLE_REUSEPORT], [1], [Use SO_REUSEPORT(_LB).])])
 
+# Redis zone backend support
+AC_ARG_ENABLE([redis],
+   AS_HELP_STRING([--enable-redis=auto|yes|no], [enable Redis support [default=auto]]),
+   [], [enable_redis=auto])
+
+PKG_CHECK_MODULES([hiredis], [hiredis], [have_hiredis=yes], [have_hiredis=no])
+
+AS_CASE([$enable_redis],
+   [auto], [AS_IF([test "$have_hiredis" = "yes"], [enable_redis=yes], [enable_redis=no])],
+   [yes],  [AS_IF([test "$have_hiredis" = "yes"], [enable_redis=yes], [AC_MSG_ERROR([libhiredis not available])])],
+   [no], [],
+   [*], [AC_MSG_ERROR([Invalid value of --enable-redis.])]
+)
+AM_CONDITIONAL([ENABLE_REDIS], [test "$enable_redis" != "no"])
+
+AS_IF([test "$enable_redis" = yes],[
+   AC_DEFINE([ENABLE_REDIS], [1], [Enable Redis support.])
+   AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <hiredis/hiredis.h>
+                                     #if HIREDIS_MAJOR < 1
+                                     #error "No TLS support in Redis"
+                                     #endif]])],
+                  [AC_DEFINE([ENABLE_REDIS_TLS], [1], [Enable Redis TLS support.])],
+                  [enable_redis="yes (no TLS)"])
+])
+
 #########################################
 # Dependencies needed for Knot DNS daemon
 #########################################
@@ -772,6 +797,7 @@ result_msg_base="
     Use SO_REUSEPORT(_LB):  ${enable_reuseport}
     XDP support:            ${enable_xdp}
     DoQ support:            ${enable_quic}
+    Redis support:          ${enable_redis}
     Socket polling:         ${socket_polling}
     Atomic support:         ${atomic_type}
     Memory allocator:       ${with_memory_allocator}
@@ -811,6 +837,7 @@ AC_CONFIG_FILES([Makefile
                  python/libknot/setup.py
                  python/libknot/libknot/__init__.py
                  src/Makefile
+                 src/redis/Makefile
                  src/libknot/xdp/Makefile
                  src/knot/modules/static_modules.h
                  ])
