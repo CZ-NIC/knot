@@ -135,6 +135,8 @@ AM_CONDITIONAL([HAVE_DOCS], [test "$enable_documentation" != "no"])
 AM_CONDITIONAL([HAVE_SPHINX], [test "$SPHINXBUILD" != "false"])
 AM_CONDITIONAL([HAVE_PDFLATEX], test "$PDFLATEX" != "false")
 
+link_mode=$(test "$enable_shared" = "yes" && echo "shared" || echo "static")
+
 ######################
 # Generic dependencies
 ######################
@@ -256,6 +258,35 @@ AS_CASE([$enable_reuseport],
 
 AS_IF([test "$enable_reuseport" = yes],[
    AC_DEFINE([ENABLE_REUSEPORT], [1], [Use SO_REUSEPORT(_LB).])])
+
+# Redis zone backend support
+AC_ARG_ENABLE([redis],
+   AS_HELP_STRING([--enable-redis=auto|yes|no], [enable Redis support [default=auto]]),
+   [], [enable_redis=auto])
+
+PKG_CHECK_MODULES([hiredis], [hiredis], [have_hiredis=yes], [have_hiredis=no])
+
+AS_CASE([$enable_redis],
+   [auto], [AS_IF([test "$have_hiredis" = "yes"], [enable_redis=yes], [enable_redis=no])],
+   [yes],  [AS_IF([test "$have_hiredis" = "yes"], [enable_redis=yes], [AC_MSG_ERROR([libhiredis not available])])],
+   [no], [],
+   [*], [AC_MSG_ERROR([Invalid value of --enable-redis.])]
+)
+AM_CONDITIONAL([ENABLE_REDIS], [test "$enable_redis" != "no"])
+AM_CONDITIONAL([ENABLE_REDIS_MODULE], [test "$enable_redis" != "no" && test "$enable_shared" = "yes"])
+
+AS_IF([test "$enable_redis" = yes],[
+   AC_DEFINE([ENABLE_REDIS], [1], [Enable Redis support.])
+   AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <hiredis/hiredis.h>
+                                     #if (HIREDIS_MAJOR < 1) || (HIREDIS_MAJOR == 1 && HIREDIS_MINOR < 1)
+                                     #error "No TLS support in Redis (need >= 1.1.0)"
+                                     #endif]])],
+                  [AC_DEFINE([ENABLE_REDIS_TLS], [1], [Enable Redis TLS support.])],
+                  [enable_redis="yes (no TLS)"])
+   AS_IF([test "$enable_shared" = yes],[
+      enable_redis="${enable_redis} module"
+   ])
+])
 
 #########################################
 # Dependencies needed for Knot DNS daemon
@@ -763,7 +794,7 @@ result_msg_base="
     Static modules: ${static_modules}
     Shared modules: ${shared_modules}
 
-    Knot DNS libraries:     yes
+    Knot DNS libraries:     ${link_mode}
     Knot DNS daemon:        ${enable_daemon}
     Knot DNS utilities:     ${enable_utilities}
     Knot DNS documentation: ${enable_documentation}
@@ -772,6 +803,7 @@ result_msg_base="
     Use SO_REUSEPORT(_LB):  ${enable_reuseport}
     XDP support:            ${enable_xdp}
     DoQ support:            ${enable_quic}
+    Redis support:          ${enable_redis}
     Socket polling:         ${socket_polling}
     Atomic support:         ${atomic_type}
     Memory allocator:       ${with_memory_allocator}
@@ -811,6 +843,7 @@ AC_CONFIG_FILES([Makefile
                  python/libknot/setup.py
                  python/libknot/libknot/__init__.py
                  src/Makefile
+                 src/redis/Makefile
                  src/libknot/xdp/Makefile
                  src/knot/modules/static_modules.h
                  ])
