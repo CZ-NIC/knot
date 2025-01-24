@@ -602,12 +602,6 @@ static int cmd_zone_key_roll_ctl(cmd_args_t *args)
 	return ctl_receive(args);
 }
 
-typedef struct {
-	const char *name;
-	char *id;
-	bool with_data; // Only ONE filter of each filter_desc_t may have data!
-} filter_desc_t;
-
 const filter_desc_t conf_import_filters[] = {
 	{ "+nopurge" },
 	{ NULL },
