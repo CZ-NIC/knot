@@ -282,40 +282,20 @@ static void item_lookup(EditLine *el, const char *str, const cmd_desc_t *cmd_des
 static void filter_lookup(EditLine *el, const char *str, const cmd_desc_t *cmd,
 			  dup_check_ctx_t *dup_ctx)
 {
-	static const char *zone_status_filters[] = {
-		"+role", "+serial", "+transaction", "+events", "+freeze", "+catalog", NULL,
-	};
-
-	static const char *zone_backup_filters[] = {
-		"+zonefile",  "+journal",    "+timers",	   "+kaspdb",	"+keysonly", "+catalog",
-		"+quic",      "+nozonefile", "+nojournal", "+notimers", "+nokaspdb", "+nokeysonly",
-		"+nocatalog", "+noquic",     "+backupdir", NULL,
-	};
-
-	static const char *zone_purge_filters[] = {
-		"+expire", "+zonefile", "+journal", "+timers",
-		"+kaspdb", "+catalog",	"+orphan",  NULL,
-	};
-
-	static const char *zone_begin_filters[] = { "+benevolent", NULL };
-	static const char *zone_flush_filters[] = { "+outdir", NULL };
-	static const char *conf_import_filters[] = { "+nopurge", NULL };
-	static const char *conf_export_filters[] = { "+schema", NULL };
-
 	lookup_t lookup;
 	int ret = lookup_init(&lookup);
 	if (ret != KNOT_EOK) {
 		return;
 	}
 
-	ret  = lookup_insert(&lookup, "zone-status", zone_status_filters);
-	ret |= lookup_insert(&lookup, "zone-backup", zone_backup_filters);
-	ret |= lookup_insert(&lookup, "zone-restore", zone_backup_filters);
-	ret |= lookup_insert(&lookup, "zone-purge", zone_purge_filters);
-	ret |= lookup_insert(&lookup, "zone-begin", zone_begin_filters);
-	ret |= lookup_insert(&lookup, "zone-flush", zone_flush_filters);
-	ret |= lookup_insert(&lookup, "conf-import", conf_import_filters);
-	ret |= lookup_insert(&lookup, "conf-export", conf_export_filters);
+	ret  = lookup_insert(&lookup, CMD_ZONE_STATUS, (void *)zone_status_filters);
+	ret |= lookup_insert(&lookup, CMD_ZONE_BACKUP, (void *)zone_backup_filters);
+	ret |= lookup_insert(&lookup, CMD_ZONE_RESTORE, (void *)zone_backup_filters);
+	ret |= lookup_insert(&lookup, CMD_ZONE_PURGE, (void *)zone_purge_filters);
+	ret |= lookup_insert(&lookup, CMD_ZONE_BEGIN, (void *)zone_begin_filters);
+	ret |= lookup_insert(&lookup, CMD_ZONE_FLUSH, (void *)zone_flush_filters);
+	ret |= lookup_insert(&lookup, CMD_CONF_IMPORT, (void *)conf_import_filters);
+	ret |= lookup_insert(&lookup, CMD_CONF_EXPORT, (void *)conf_export_filters);
 	if (ret != KNOT_EOK) {
 		goto cmds_lookup_finish;
 	}
@@ -328,8 +308,8 @@ static void filter_lookup(EditLine *el, const char *str, const cmd_desc_t *cmd,
 			goto cmds_lookup_finish;
 		}
 
-		for (const char **it = lookup.found.data; *it != NULL; ++it) {
-			ret = lookup_insert(&flookup, *it, NULL);
+		for (const filter_desc_t *it = lookup.found.data; it->name != NULL; ++it) {
+			ret = lookup_insert(&flookup, it->name, NULL);
 			if (ret != KNOT_EOK) {
 				goto cmds_lookup_finish_both;
 			}
