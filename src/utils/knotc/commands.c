@@ -653,8 +653,15 @@ static int cmd_zone_key_roll_ctl(cmd_args_t *args)
 	return ctl_receive(args);
 }
 
-#define FILTER_IMPORT_NOPURGE	 "+nopurge"
-#define FILTER_EXPORT_SCHEMA	 "+schema"
+const filter_desc_t conf_import_filters[] = {
+	{ "+nopurge" },
+	{ NULL },
+};
+
+const filter_desc_t conf_export_filters[] = {
+	{ "+schema" },
+	{ NULL },
+};
 
 typedef struct {
 	const char *name;
@@ -1106,7 +1113,7 @@ static int cmd_conf_import(cmd_args_t *args)
 	import_flag_t flags = IMPORT_FILE;
 	if (args->argc == 2) {
 		const char *filter = args->argv[1];
-		if (strcmp(filter, FILTER_IMPORT_NOPURGE) == 0) {
+		if (strcmp(filter, conf_import_filters[0].name) == 0) {
 			flags |= IMPORT_NO_PURGE;
 		} else {
 			log_error("unknown filter: %s", filter);
@@ -1158,7 +1165,7 @@ static int cmd_conf_export(cmd_args_t *args)
 	bool export_schema = false;
 	for (int i = 0; i < args->argc; i++) {
 		if (args->argv[i][0] == '+') {
-			if (strcmp(args->argv[i], FILTER_EXPORT_SCHEMA) == 0) {
+			if (strcmp(args->argv[i], conf_export_filters[0].name) == 0) {
 				export_schema = true;
 			} else {
 				log_error("unknown filter: %s", args->argv[i]);
