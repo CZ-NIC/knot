@@ -67,11 +67,14 @@ Copyright: 2011-2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
            1997-2017 Martin Mares <mj@ucw.cz>
            2007 Pavel Charvat <pchar@ucw.cz>
            2012 Ondrej Filip <feela@network.cz>
-License: LGPL-2.0
+License: LGPL-2+
 
-Files: src/contrib/ucw/heap.h
+Files: src/contrib/ucw/lists.*
 Copyright: 2011-2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
-License: GPL-3+
+           1998 Martin Mares <mj@ucw.cz>
+           1998 Pavel Machek <pavel@ucw.cz>
+           1998 Ondrej Zajicek <santiago@crfreenet.org>
+License: GPL-2+
 
 Files: src/contrib/url-parser/*
 Copyright: 2020 Igor Sysoev
@@ -105,7 +108,24 @@ License: GPL-3+
  On Debian systems, the full text of the GNU General Public License
  version 3 can be found in the file `/usr/share/common-licenses/GPL-3'.
 
-License: LGPL-2.0
+License: GPL-2+
+ This program is free software; you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation; either version 2 of the License, or
+ (at your option) any later version.
+ .
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
+ .
+ You should have received a copy of the GNU General Public License
+ along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ .
+ On Debian GNU/Linux systems, the complete text of the GNU General
+ Public License can be found in `/usr/share/common-licenses/GPL-2'.
+
+License: LGPL-2+
  This library is free software; you can redistribute it and/or
  modify it under the terms of the GNU Library General Public
  License as published by the Free Software Foundation; either
@@ -116,10 +136,11 @@ License: LGPL-2.0
  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  Library General Public License for more details.
  .
- You should have received a copy of the GNU Library General Public
- License along with this library; if not, write to the
- Free Software Foundation, Inc., 51 Franklin St, Fifth Floor,
- Boston, MA  02110-1301, USA.
+ You should have received a copy of the GNU General Public License
+ along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ .
+ On Debian GNU/Linux systems, the complete text of the GNU Lesser
+ General Public License can be found in `/usr/share/common-licenses/LGPL-2'.
 
 License: 0BSD
  Permission to use, copy, modify, and distribute this software for any
