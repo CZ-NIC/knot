@@ -288,15 +288,14 @@ static void filter_lookup(EditLine *el, const char *str, const cmd_desc_t *cmd,
 		return;
 	}
 
-	ret  = lookup_insert(&lookup, CMD_ZONE_STATUS, (void *)zone_status_filters);
-	ret |= lookup_insert(&lookup, CMD_ZONE_BACKUP, (void *)zone_backup_filters);
-	ret |= lookup_insert(&lookup, CMD_ZONE_RESTORE, (void *)zone_backup_filters);
-	ret |= lookup_insert(&lookup, CMD_ZONE_PURGE, (void *)zone_purge_filters);
-	ret |= lookup_insert(&lookup, CMD_ZONE_BEGIN, (void *)zone_begin_filters);
-	ret |= lookup_insert(&lookup, CMD_ZONE_FLUSH, (void *)zone_flush_filters);
-	ret |= lookup_insert(&lookup, CMD_CONF_IMPORT, (void *)conf_import_filters);
-	ret |= lookup_insert(&lookup, CMD_CONF_EXPORT, (void *)conf_export_filters);
-	if (ret != KNOT_EOK) {
+	if (lookup_insert(&lookup, CMD_ZONE_STATUS, (void *)zone_status_filters) != KNOT_EOK ||
+	    lookup_insert(&lookup, CMD_ZONE_BACKUP, (void *)zone_backup_filters) != KNOT_EOK ||
+	    lookup_insert(&lookup, CMD_ZONE_RESTORE, (void *)zone_backup_filters) != KNOT_EOK ||
+	    lookup_insert(&lookup, CMD_ZONE_PURGE, (void *)zone_purge_filters) != KNOT_EOK ||
+	    lookup_insert(&lookup, CMD_ZONE_BEGIN, (void *)zone_begin_filters) != KNOT_EOK ||
+	    lookup_insert(&lookup, CMD_ZONE_FLUSH, (void *)zone_flush_filters) != KNOT_EOK ||
+	    lookup_insert(&lookup, CMD_CONF_IMPORT, (void *)conf_import_filters) != KNOT_EOK ||
+	    lookup_insert(&lookup, CMD_CONF_EXPORT, (void *)conf_export_filters) != KNOT_EOK) {
 		goto cmds_lookup_finish;
 	}
 
