@@ -129,6 +129,22 @@ typedef struct {
 	unsigned thread_idx;
 } ctl_args_t;
 
+/*! Control command filter description. */
+typedef struct {
+	const char *name;
+	char *id;
+	bool with_data; // Only ONE filter of each filter_desc_t may have data!
+} filter_desc_t;
+
+/*! Exported filter descriptions. */
+extern const filter_desc_t conf_import_filters[];
+extern const filter_desc_t conf_export_filters[];
+extern const filter_desc_t zone_begin_filters[];
+extern const filter_desc_t zone_flush_filters[];
+extern const filter_desc_t zone_backup_filters[];
+extern const filter_desc_t zone_status_filters[];
+extern const filter_desc_t zone_purge_filters[];
+
 /*!
  * Returns a string equivalent of the command.
  *

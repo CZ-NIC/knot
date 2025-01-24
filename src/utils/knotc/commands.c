@@ -663,12 +663,6 @@ const filter_desc_t conf_export_filters[] = {
 	{ NULL },
 };
 
-typedef struct {
-	const char *name;
-	char *id;
-	bool with_data; // Only ONE filter of each filter_desc_t may have data!
-} filter_desc_t;
-
 const filter_desc_t zone_begin_filters[] = {
 	{ "+benevolent", CTL_FILTER_BEGIN_BENEVOLENT },
 	{ NULL },
