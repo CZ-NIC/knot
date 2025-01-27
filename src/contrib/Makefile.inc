@@ -10,7 +10,7 @@ libcontrib_LIBS        += $(gnutls_LIBS)
 endif USE_GNUTLS_MEMSET
 
 EXTRA_DIST += \
-	contrib/licenses/0BSD			\
+	contrib/licenses/ISC			\
 	contrib/licenses/BSD-3-Clause		\
 	contrib/licenses/GPL-2.0-or-later	\
 	contrib/licenses/LGPL-2.0-or-later	\
