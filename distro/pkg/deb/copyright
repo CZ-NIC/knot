@@ -50,7 +50,7 @@ License: BSD-3-Clause
 
 Files: src/contrib/openbsd/strl*
 Copyright: 1998 Todd C. Miller <Todd.Miller@courtesan.com>
-License: 0BSD
+License: ISC
 
 Files: src/contrib/proxyv2/*
 Copyright: 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
@@ -84,7 +84,7 @@ License: MIT
 
 Files: src/contrib/vpool/*
 Copyright: 2006, 2008 Alexey Vatchenko <av@bsdua.org>
-License: 0BSD
+License: ISC
 
 Files: tests-fuzz/main.c
 Copyright: 2011-2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
@@ -142,7 +142,7 @@ License: LGPL-2+
  On Debian GNU/Linux systems, the complete text of the GNU Lesser
  General Public License can be found in `/usr/share/common-licenses/LGPL-2'.
 
-License: 0BSD
+License: ISC
  Permission to use, copy, modify, and distribute this software for any
  purpose with or without fee is hereby granted, provided that the above
  copyright notice and this permission notice appear in all copies.
