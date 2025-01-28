@@ -834,16 +834,112 @@ static int configure_sockets(conf_t *conf, server_t *s)
 	return KNOT_EOK;
 }
 
+#ifdef ENABLE_REDIS
+#include "knot/common/hiredis.h"
+#include "redis/knot.h"
+
+#define RDB_TIMESTAMP_SIZE 42
+
+static void rdb_process_event(char *since, redisReply *reply, knot_zonedb_t *zone_db)
+{
+	redisReply *ev_timestamp = reply->element[0];
+	redisReply *ev_data = reply->element[1];
+	if (ev_data->type != REDIS_REPLY_ARRAY) {
+		log_error("rdb, unexpected response");
+		return;
+	}
+
+	if (ev_timestamp->len > RDB_TIMESTAMP_SIZE) {
+		log_error("rdb, unexpected response");
+		return;
+	}
+	strncpy(since, ev_timestamp->str, RDB_TIMESTAMP_SIZE);
+	int ev_type = atoi(ev_data->element[1]->str);
+	knot_dname_t *dname = (knot_dname_t *)ev_data->element[3]->str;
+	switch (ev_type) {
+	case RDB_EVENT_ZONE:;
+		uint32_t serial = atoi(ev_data->element[5]->str);
+		zone_t *zone = knot_zonedb_find(zone_db, dname);
+		if (zone == NULL) {
+			break;
+		}
+		if (serial > zone_contents_serial(zone->contents)) {
+			zone_events_schedule_now(zone, ZONE_EVENT_LOAD);
+		}
+		break;
+	default:
+		break;
+	}
+}
+
+static void rdb_process_events(char *since, redisReply *reply, knot_zonedb_t *zone_db)
+{
+	if (reply->type != REDIS_REPLY_ARRAY) {
+		log_error("rdb, unexpected response");
+		return;
+	}
+
+	for (int idx = 0; idx < reply->elements; ++idx) {
+		if (reply->element[idx]->type != REDIS_REPLY_ARRAY ||
+		    reply->element[idx]->elements != 2) {
+			log_error("rdb, unexpected response");
+			continue;
+		}
+		redisReply *events = reply->element[idx]->element[1];
+		for (int event_idx = 0; event_idx < events->elements; ++event_idx) {
+			rdb_process_event(since, events->element[event_idx], zone_db);
+		}
+	}
+}
+
+static int rdb_listener_run(struct dthread *thread)
+{
+	server_t *s = thread->data;
+
+	redisContext *ctx = NULL;
+
+	static const uint8_t STREAM_KEY = '\x00';
+	char since[RDB_TIMESTAMP_SIZE] = "$"; // NOTE size computed as 2 times unsigned 64bit number as string (2x20) plus zero byte and dash between
+
+	// TODO Need blocking time (eg. 1s), otherwice TLS connection timeout
+	// NOTE: BLOCK 0 means block indefinetly, use time in ms (milliseconds)
+	while (thread->state == ThreadActive) {
+		if (ctx == NULL && (ctx = rdb_connect(conf())) == NULL) {
+			log_error("rdb, failed to connect");
+			sleep(2);
+			continue;
+		}
+
+		redisReply *reply = redisCommand(ctx, "XREAD BLOCK %d STREAMS %b %s",
+		                                 1000, &STREAM_KEY, sizeof(STREAM_KEY), since);
+		if (reply == NULL) {
+			log_error("rdb, failed to read events");
+			sleep(2);
+			continue;
+		}
+		if (reply->type == REDIS_REPLY_NIL) {
+			continue;
+		}
+
+		knot_zonedb_t *zone_db = s->zone_db;
+		if (zone_db != NULL) {
+			rdb_process_events(since, reply, zone_db);
+		}
+		freeReplyObject(reply);
+	}
+
+	return KNOT_EOK;
+}
+#endif
+
 int server_init(server_t *server, int bg_workers)
 {
 	if (server == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	/* Clear the structure. */
 	memset(server, 0, sizeof(server_t));
 
-	/* Initialize event scheduler. */
 	if (evsched_init(&server->sched, server) != KNOT_EOK) {
 		return KNOT_ENOMEM;
 	}
@@ -854,8 +950,22 @@ int server_init(server_t *server, int bg_workers)
 		return KNOT_ENOMEM;
 	}
 
+#ifdef ENABLE_REDIS
+	conf_val_t rdb = conf_db_param(conf(), C_ZONE_DB_LISTEN);
+	if (rdb.code == KNOT_EOK) {
+		server->rdb_events = dt_create(1, rdb_listener_run, NULL, server);
+		if (server->rdb_events == NULL) {
+			worker_pool_destroy(server->workers);
+			evsched_deinit(&server->sched);
+			return KNOT_ENOMEM;
+		}
+	}
+#endif
+
 	int ret = catalog_update_init(&server->catalog_upd);
 	if (ret != KNOT_EOK) {
+		dt_stop(server->rdb_events);
+		dt_delete(&server->rdb_events);
 		worker_pool_destroy(server->workers);
 		evsched_deinit(&server->sched);
 		return ret;
@@ -911,6 +1021,10 @@ void server_deinit(server_t *server)
 
 	/* Free threads and event handlers. */
 	worker_pool_destroy(server->workers);
+
+	/* Free optional zone DB event thread. */
+	dt_stop(server->rdb_events);
+	dt_delete(&server->rdb_events);
 
 	/* Free zone database. */
 	knot_zonedb_deep_free(&server->zone_db, true);
@@ -1016,6 +1130,9 @@ int server_start(server_t *server, bool async)
 
 	/* Start workers. */
 	worker_pool_start(server->workers);
+
+	/* Start zone DB event processing. */
+	dt_start(server->rdb_events);
 
 	/* Wait for enqueued events if not asynchronous. */
 	if (!async) {
