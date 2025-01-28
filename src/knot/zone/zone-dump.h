@@ -1,4 +1,4 @@
-/*  Copyright (C) 2021 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2025 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,6 +16,10 @@
 
 #pragma once
 
+#ifdef ENABLE_REDIS
+#include <hiredis/hiredis.h>
+#endif
+
 #include "knot/zone/zone.h"
 
 /*!
@@ -30,3 +34,7 @@
  * \retval < 0 if error.
  */
 int zone_dump_text(zone_contents_t *zone, FILE *file, bool comments, const char *color);
+
+#ifdef ENABLE_REDIS
+int zone_dump_rdb(zone_contents_t *zone, redisContext *rdb);
+#endif

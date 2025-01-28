@@ -31,27 +31,42 @@ int zone_load_contents(conf_t *conf, const knot_dname_t *zone_name,
 	if (conf == NULL || zone_name == NULL || contents == NULL) {
 		return KNOT_EINVAL;
 	}
+	conf_val_t val = conf_zone_get(conf, C_ZONE_BACKEND, zone_name);
+	unsigned backend = conf_opt(&val);
 
-	char *zonefile = conf_zonefile(conf, zone_name);
-	conf_val_t val = conf_zone_get(conf, C_DEFAULT_TTL, zone_name);
-	uint32_t dflt_ttl = conf_int(&val);
-
-	zloader_t zl;
-	int ret = zonefile_open(&zl, zonefile, zone_name, dflt_ttl,
-	                        semcheck_mode, time(NULL));
-	free(zonefile);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
+	zloader_t loader;
 	sem_handler_t handler = {
 		.cb = err_handler_logger
 	};
 
-	zl.err_handler = &handler;
+	int ret;
+	if (backend == ZONE_BACKEND_FILE) {
+		char *zonefile = conf_zonefile(conf, zone_name);
+		val = conf_zone_get(conf, C_DEFAULT_TTL, zone_name);
+		uint32_t dflt_ttl = conf_int(&val);
 
-	*contents = zonefile_load(&zl);
-	zonefile_close(&zl);
+		ret = zonefile_open(&loader, zonefile, zone_name, dflt_ttl,
+		                    semcheck_mode, &handler, time(NULL));
+		free(zonefile);
+	} else {
+#ifdef ENABLE_REDIS
+		redisContext *rdb = zone_rdb_connect(conf);
+		if (rdb == NULL) {
+			return KNOT_ECONN;
+		}
+
+		ret = zone_rdb_open(&loader, rdb, zone_name, semcheck_mode,
+		                    &handler, time(NULL));
+#else
+		ret = KNOT_ENOTSUP;
+#endif
+	}
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	*contents = zonefile_load(&loader);
+	zonefile_close(&loader);
 	if (*contents == NULL) {
 		return KNOT_ERROR;
 	}
