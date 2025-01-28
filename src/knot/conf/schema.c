@@ -299,21 +299,25 @@ static const yp_item_t desc_stats[] = {
 };
 
 static const yp_item_t desc_database[] = {
-	{ C_STORAGE,             YP_TSTR,  YP_VSTR = { STORAGE_DIR } },
-	{ C_JOURNAL_DB,          YP_TSTR,  YP_VSTR = { "journal" } },
-	{ C_JOURNAL_DB_MODE,     YP_TOPT,  YP_VOPT = { journal_modes, JOURNAL_MODE_ROBUST } },
-	{ C_JOURNAL_DB_MAX_SIZE, YP_TINT,  YP_VINT = { MEGA(1), VIRT_MEM_LIMIT(TERA(100)),
-	                                               VIRT_MEM_LIMIT(GIGA(20)), YP_SSIZE } },
-	{ C_KASP_DB,             YP_TSTR,  YP_VSTR = { "keys" } },
-	{ C_KASP_DB_MAX_SIZE,    YP_TINT,  YP_VINT = { MEGA(5), VIRT_MEM_LIMIT(GIGA(100)),
-	                                               MEGA(500), YP_SSIZE } },
-	{ C_TIMER_DB,            YP_TSTR,  YP_VSTR = { "timers" } },
-	{ C_TIMER_DB_MAX_SIZE,   YP_TINT,  YP_VINT = { MEGA(1), VIRT_MEM_LIMIT(GIGA(100)),
-	                                               MEGA(100), YP_SSIZE } },
-	{ C_CATALOG_DB,          YP_TSTR,  YP_VSTR = { "catalog" } },
-	{ C_CATALOG_DB_MAX_SIZE, YP_TINT,  YP_VINT = { MEGA(5), VIRT_MEM_LIMIT(GIGA(100)),
-	                                               VIRT_MEM_LIMIT(GIGA(20)), YP_SSIZE } },
-	{ C_COMMENT,             YP_TSTR,  YP_VNONE },
+	{ C_STORAGE,               YP_TSTR,  YP_VSTR = { STORAGE_DIR } },
+	{ C_JOURNAL_DB,            YP_TSTR,  YP_VSTR = { "journal" } },
+	{ C_JOURNAL_DB_MODE,       YP_TOPT,  YP_VOPT = { journal_modes, JOURNAL_MODE_ROBUST } },
+	{ C_JOURNAL_DB_MAX_SIZE,   YP_TINT,  YP_VINT = { MEGA(1), VIRT_MEM_LIMIT(TERA(100)),
+	                                                 VIRT_MEM_LIMIT(GIGA(20)), YP_SSIZE } },
+	{ C_KASP_DB,               YP_TSTR,  YP_VSTR = { "keys" } },
+	{ C_KASP_DB_MAX_SIZE,      YP_TINT,  YP_VINT = { MEGA(5), VIRT_MEM_LIMIT(GIGA(100)),
+	                                                 MEGA(500), YP_SSIZE } },
+	{ C_TIMER_DB,              YP_TSTR,  YP_VSTR = { "timers" } },
+	{ C_TIMER_DB_MAX_SIZE,     YP_TINT,  YP_VINT = { MEGA(1), VIRT_MEM_LIMIT(GIGA(100)),
+	                                                 MEGA(100), YP_SSIZE } },
+	{ C_CATALOG_DB,            YP_TSTR,  YP_VSTR = { "catalog" } },
+	{ C_CATALOG_DB_MAX_SIZE,   YP_TINT,  YP_VINT = { MEGA(5), VIRT_MEM_LIMIT(GIGA(100)),
+	                                                 VIRT_MEM_LIMIT(GIGA(20)), YP_SSIZE } },
+	{ C_ZONE_DB_LISTEN,        YP_TADDR, YP_VADDR = { 6379 }, YP_FNONE, { check_rdb, check_listen } },
+	{ C_ZONE_DB_TLS,           YP_TBOOL, YP_VNONE },
+	{ C_ZONE_DB_CERT_KEY,      YP_TB64,  YP_VNONE, YP_FMULTI, { check_cert_pin } },
+	{ C_ZONE_DB_CERT_HOSTNAME, YP_TSTR,  YP_VNONE, YP_FMULTI },
+	{ C_COMMENT,               YP_TSTR,  YP_VNONE },
 	{ NULL }
 };
 
@@ -481,6 +485,8 @@ static const yp_item_t desc_external[] = {
 	{ C_ZONEFILE_SYNC,       YP_TINT,  YP_VINT = { -1, INT32_MAX, 0, YP_STIME } }, \
 	{ C_ZONEFILE_LOAD,       YP_TOPT,  YP_VOPT = { zonefile_load, ZONEFILE_LOAD_WHOLE } }, \
 	{ C_ZONEFILE_SKIP,       YP_TSTR,  YP_VNONE, YP_FMULTI, { check_zonefile_skip } }, \
+	{ C_ZONE_DB_IN,          YP_TINT,  YP_VINT = { 1, 8, 0 }, FLAGS }, \
+	{ C_ZONE_DB_OUT,         YP_TINT,  YP_VINT = { 1, 8, 0 }, FLAGS }, \
 	{ C_JOURNAL_CONTENT,     YP_TOPT,  YP_VOPT = { journal_content, JOURNAL_CONTENT_CHANGES }, FLAGS }, \
 	{ C_JOURNAL_MAX_USAGE,   YP_TINT,  YP_VINT = { KILO(40), SSIZE_MAX, MEGA(100), YP_SSIZE } }, \
 	{ C_JOURNAL_MAX_DEPTH,   YP_TINT,  YP_VINT = { 2, SSIZE_MAX, 20 } }, \

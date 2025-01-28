@@ -45,7 +45,8 @@ knotd_stdio_LDADD = \
 	$(liburcu_LIBS)				\
 	$(lmdb_LIBS)				\
 	$(systemd_LIBS)				\
-	$(libdbus_LIBS)
+	$(libdbus_LIBS)				\
+	$(hiredis_LIBS)
 
 BUILT_SOURCES = knotd_wrap/main.c
 CLEANFILES = knotd_wrap/main.c

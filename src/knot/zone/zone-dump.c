@@ -3,6 +3,7 @@
  *  For more information, see <https://www.knot-dns.cz/>
  */
 
+#include <string.h>
 #include <inttypes.h>
 
 #include "knot/dnssec/zone-nsec.h"
@@ -232,3 +233,111 @@ int zone_dump_text(zone_contents_t *zone, zone_skip_t *skip, FILE *file, bool co
 
 	return KNOT_EOK;
 }
+
+#ifdef ENABLE_REDIS
+#include "redis/knot.h"
+
+typedef struct {
+	redisContext *rdb;
+	const knot_dname_t *origin;
+	uint8_t origin_len;
+	rdb_txn_t txn;
+} dump_params_rdb_t;
+
+static int node_dump_rdb(zone_node_t *node, void *data)
+{
+	dump_params_rdb_t *params = (dump_params_rdb_t *)data;
+
+	for (uint16_t i = 0; i < node->rrset_count; i++) {
+		knot_rrset_t rrset = node_rrset_at(node, i);
+
+		redisReply *reply =
+			redisCommand(params->rdb,
+			             RDB_CMD_ZONE_STORE " %b %b %b %d %d %d %b",
+			             params->origin, params->origin_len,
+			             &params->txn, sizeof(params->txn),
+			             rrset.owner, knot_dname_size(rrset.owner),
+			             rrset.type,
+			             rrset.ttl,
+			             rrset.rrs.count,
+			             rrset.rrs.rdata, rrset.rrs.size);
+		if (reply == NULL) {
+			return KNOT_ECONN;
+		} else if (reply->type != REDIS_REPLY_STATUS ||
+		           memcmp(RDB_RETURN_OK, reply->str, reply->len) != 0) {
+			freeReplyObject(reply);
+			return KNOT_EACCES;
+		}
+		freeReplyObject(reply);
+	}
+
+	return KNOT_EOK;
+}
+
+int zone_dump_rdb(zone_contents_t *zone, redisContext *rdb, uint8_t instance)
+{
+	if (rdb == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	if (zone == NULL) {
+		return KNOT_EEMPTYZONE;
+	}
+
+	dump_params_rdb_t params = {
+		.rdb = rdb,
+		.origin = zone->apex->owner,
+		.origin_len = knot_dname_size(zone->apex->owner),
+	};
+
+	redisReply *reply = redisCommand(params.rdb, RDB_CMD_ZONE_BEGIN " %b %b",
+	                                 params.origin, params.origin_len,
+	                                 &instance, sizeof(instance));
+	if (reply == NULL || reply->type != REDIS_REPLY_STRING ||
+	    reply->len != sizeof(params.txn)) {
+		freeReplyObject(reply);
+		return KNOT_ECONN;
+	}
+	memcpy(&params.txn, reply->str, sizeof(params.txn));
+	freeReplyObject(reply);
+
+	// Dump standard zone records.
+	int ret = zone_contents_apply(zone, node_dump_rdb, &params);
+	if (ret != KNOT_EOK) {
+		goto abort;
+	}
+
+	// Dump NSEC3 records if available.
+	ret = zone_contents_nsec3_apply(zone, node_dump_rdb, &params);
+	if (ret != KNOT_EOK) {
+		goto abort;
+	}
+
+	reply = redisCommand(params.rdb, RDB_CMD_ZONE_COMMIT " %b %b",
+	                     params.origin, params.origin_len,
+	                     &params.txn, sizeof(params.txn));
+	if (reply == NULL) {
+		return KNOT_ECONN;
+	} else if (reply->type != REDIS_REPLY_STATUS ||
+		   memcmp(RDB_RETURN_OK, reply->str, reply->len) != 0) {
+		freeReplyObject(reply);
+		return KNOT_EACCES;
+	}
+	freeReplyObject(reply);
+
+	return KNOT_EOK;
+abort:
+	reply = redisCommand(params.rdb, RDB_CMD_ZONE_ABORT " %b %b",
+	                     params.origin, params.origin_len,
+	                     &params.txn, sizeof(params.txn));
+	if (reply == NULL) {
+		return KNOT_ECONN;
+	} else if (reply->type != REDIS_REPLY_STATUS ||
+		   memcmp(RDB_RETURN_OK, reply->str, reply->len) != 0) {
+		freeReplyObject(reply);
+		return KNOT_EACCES;
+	}
+	freeReplyObject(reply);
+	return ret;
+}
+#endif
