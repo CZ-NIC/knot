@@ -1954,9 +1954,9 @@ static int server_status(ctl_args_t *args)
 	char buff[4096] = "";
 
 	int ret;
-	if (strcasecmp(type, "version") == 0) {
+	if (strcasecmp(type, CMD_STATUS_VERSION) == 0) {
 		ret = snprintf(buff, sizeof(buff), "%s", PACKAGE_VERSION);
-	} else if (strcasecmp(type, "workers") == 0) {
+	} else if (strcasecmp(type, CMD_STATUS_WORKERS) == 0) {
 		int running_bkg_wrk, wrk_queue;
 		worker_pool_status(args->server->workers, false, &running_bkg_wrk, &wrk_queue);
 		ret = snprintf(buff, sizeof(buff), "UDP workers: %zu, TCP workers: %zu, "
@@ -1964,9 +1964,9 @@ static int server_status(ctl_args_t *args)
 		               conf()->cache.srv_udp_threads, conf()->cache.srv_tcp_threads,
 		               conf()->cache.srv_xdp_threads, conf()->cache.srv_bg_threads,
 		               running_bkg_wrk, wrk_queue);
-	} else if (strcasecmp(type, "configure") == 0) {
+	} else if (strcasecmp(type, CMD_STATUS_CONFIG) == 0) {
 		ret = snprintf(buff, sizeof(buff), "%s", configure_summary);
-	} else if (strcasecmp(type, "cert-key") == 0) {
+	} else if (strcasecmp(type, CMD_STATUS_CERT) == 0) {
 		uint8_t pin[128];
 		size_t pin_len = server_cert_pin(args->server, pin, sizeof(pin));
 		if (pin_len > 0) {
