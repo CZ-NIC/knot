@@ -1505,3 +1505,18 @@ int conf_xdp_iface(
 	return KNOT_EOK;
 #endif
 }
+
+bool conf_zone_rdb_enabled(
+	conf_t *conf,
+	const knot_dname_t *zone,
+	bool input,
+	uint8_t *instance)
+{
+	if (instance == NULL) {
+		return false;
+	}
+
+	conf_val_t val = conf_zone_get(conf, input ? C_ZONE_DB_IN : C_ZONE_DB_OUT, zone);
+	*instance = conf_int(&val);
+	return (*instance > 0);
+}

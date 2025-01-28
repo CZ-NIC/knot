@@ -4,10 +4,8 @@
  */
 
 #include <assert.h>
-#include <errno.h>
 #include <inttypes.h>
 #include <libgen.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
@@ -17,8 +15,8 @@
 
 #include "libknot/libknot.h"
 #include "contrib/files.h"
+#include "contrib/time.h"
 #include "knot/common/log.h"
-#include "knot/dnssec/zone-nsec.h"
 #include "knot/zone/semantic-check.h"
 #include "knot/zone/adjust.h"
 #include "knot/zone/contents.h"
@@ -31,8 +29,8 @@
 
 static void process_error(zs_scanner_t *s)
 {
-	zcreator_t *zc = s->process.data;
-	const knot_dname_t *zname = zc->z->apex->owner;
+	zloader_t *loader = s->process.data;
+	const knot_dname_t *zname = loader->contents->apex->owner;
 
 	ERROR(zname, "%s in zone, file '%s', line %"PRIu64" (%s)",
 	      s->error.fatal ? "fatal error" : "error",
@@ -84,18 +82,18 @@ int zcreator_step(zone_contents_t *contents, const knot_rrset_t *rr, zone_skip_t
 	return KNOT_EOK;
 }
 
-/*! \brief Creates RR from parser input, passes it to handling function. */
 static void process_data(zs_scanner_t *scanner)
 {
-	zcreator_t *zc = scanner->process.data;
-	if (zc->ret != KNOT_EOK) {
+	zloader_t *zl = scanner->process.data;
+
+	if (zl->ret != KNOT_EOK) {
 		scanner->state = ZS_STATE_STOP;
 		return;
 	}
 
 	knot_dname_t *owner = knot_dname_copy(scanner->r_owner, NULL);
 	if (owner == NULL) {
-		zc->ret = KNOT_ENOMEM;
+		zl->ret = KNOT_ENOMEM;
 		return;
 	}
 
@@ -105,19 +103,19 @@ static void process_data(zs_scanner_t *scanner)
 	int ret = knot_rrset_add_rdata(&rr, scanner->r_data, scanner->r_data_length, NULL);
 	if (ret != KNOT_EOK) {
 		knot_rrset_clear(&rr, NULL);
-		zc->ret = ret;
+		zl->ret = ret;
 		return;
 	}
 
-	/* Convert RDATA dnames to lowercase before adding to zone. */
 	ret = knot_rrset_rr_to_canonical(&rr);
 	if (ret != KNOT_EOK) {
 		knot_rrset_clear(&rr, NULL);
-		zc->ret = ret;
+		zl->ret = ret;
 		return;
 	}
 
-	zc->ret = zcreator_step(zc->z, &rr, zc->skip);
+	zl->ret = zcreator_step(zl->contents, &rr, zl->skip);
+
 	knot_rrset_clear(&rr, NULL);
 }
 
@@ -139,23 +137,16 @@ static void error_origin(zs_scanner_t *s)
 }
 
 int zonefile_open(zloader_t *loader, const char *source, const knot_dname_t *origin,
-                  uint32_t dflt_ttl, semcheck_optional_t semantic_checks, time_t time)
+                  uint32_t dflt_ttl, semcheck_optional_t sem_checks,
+                  sem_handler_t *sem_err_handler, time_t time, zone_skip_t *skip)
 {
 	if (loader == NULL || source == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	memset(loader, 0, sizeof(zloader_t));
-
 	if (access(source, F_OK | R_OK) != 0) {
 		return knot_map_errno();
 	}
-
-	zcreator_t *zc = malloc(sizeof(zcreator_t));
-	if (zc == NULL) {
-		return KNOT_ENOMEM;
-	}
-	memset(zc, 0, sizeof(zcreator_t));
 
 	uint8_t origin_buf[1 + KNOT_DNAME_MAXLEN];
 	if (origin == NULL) { // Origin autodetection based on SOA owner and source.
@@ -175,19 +166,16 @@ int zonefile_open(zloader_t *loader, const char *source, const knot_dname_t *ori
 		    zs_set_processing(&s, check_origin, error_origin, &origin_buf) != 0) {
 			free(origin_str);
 			zs_deinit(&s);
-			free(zc);
 			return KNOT_EFILE;
 		}
 		free(origin_str);
 		if (zs_parse_all(&s) != 0 && s.error.fatal) {
 			zs_deinit(&s);
-			free(zc);
 			return KNOT_EPARSEFAIL;
 		}
 		zs_deinit(&s);
 
 		if (origin_buf[0] == 0) {
-			free(zc);
 			return KNOT_ESOAINVAL;
 		}
 		origin = origin_buf + 1;
@@ -195,101 +183,91 @@ int zonefile_open(zloader_t *loader, const char *source, const knot_dname_t *ori
 
 	knot_dname_txt_storage_t origin_str;
 	if (knot_dname_to_str(origin_str, origin, sizeof(origin_str)) == NULL) {
-		free(zc);
 		return KNOT_EINVAL;
 	}
 
 	if (zs_init(&loader->scanner, origin_str, KNOT_CLASS_IN, dflt_ttl) != 0 ||
 	    zs_set_input_file(&loader->scanner, source) != 0 ||
-	    zs_set_processing(&loader->scanner, process_data, process_error, zc) != 0) {
+	    zs_set_processing(&loader->scanner, process_data, process_error, loader) != 0) {
 		zs_deinit(&loader->scanner);
-		free(zc);
 		return KNOT_EFILE;
 	}
 
-	zc->z = zone_contents_new(origin, true);
-	if (zc->z == NULL) {
+	loader->contents = zone_contents_new(origin, true);
+	if (loader->contents == NULL) {
 		zs_deinit(&loader->scanner);
-		free(zc);
 		return KNOT_ENOMEM;
 	}
 
 	loader->source = strdup(source);
-	loader->creator = zc;
-	loader->semantic_checks = semantic_checks;
+	loader->sem_checks = sem_checks;
+	loader->err_handler = sem_err_handler;
+	loader->skip = skip;
 	loader->time = time;
+	loader->ret = KNOT_EOK;
 
 	return KNOT_EOK;
 }
 
 zone_contents_t *zonefile_load(zloader_t *loader, uint16_t threads)
 {
-	if (!loader) {
+	if (loader == NULL) {
 		return NULL;
 	}
 
-	zcreator_t *zc = loader->creator;
-	const knot_dname_t *zname = zc->z->apex->owner;
+	const knot_dname_t *zname = loader->contents->apex->owner;
 
-	assert(zc);
 	int ret = zs_parse_all(&loader->scanner);
 	if (ret != 0 && loader->scanner.error.counter == 0) {
-		ERROR(zname, "failed to load zone, file '%s' (%s)",
+		ERROR(zname, "failed to load, file '%s' (%s)",
 		      loader->source, zs_strerror(loader->scanner.error.code));
 		goto fail;
-	}
-
-	if (zc->ret != KNOT_EOK) {
-		ERROR(zname, "failed to load zone, file '%s' (%s)",
-		      loader->source, knot_strerror(zc->ret));
+	} else if (loader->ret != KNOT_EOK) {
+		ERROR(zname, "failed to load, file '%s' (%s)",
+		      loader->source, knot_strerror(loader->ret));
 		goto fail;
-	}
-
-	if (loader->scanner.error.counter > 0) {
-		ERROR(zname, "failed to load zone, file '%s', %"PRIu64" errors",
+	} else if (loader->scanner.error.counter > 0) {
+		ERROR(zname, "failed to load, file '%s', %"PRIu64" errors",
 		      loader->source, loader->scanner.error.counter);
 		goto fail;
 	}
 
-	knot_rdataset_t *soa = node_rdataset(zc->z->apex, KNOT_RRTYPE_SOA);
+	knot_rdataset_t *soa = node_rdataset(loader->contents->apex, KNOT_RRTYPE_SOA);
 	if (soa == NULL || soa->count != 1) {
 		sem_error_t code = (soa == NULL) ? SEM_ERR_SOA_NONE : SEM_ERR_SOA_MULTIPLE;
 		loader->err_handler->error = true;
-		loader->err_handler->cb(loader->err_handler, zc->z, NULL, code, NULL);
+		loader->err_handler->cb(loader->err_handler, loader->contents, NULL, code, NULL);
 		goto fail;
 	}
 
-	ret = zone_adjust_contents(zc->z, adjust_cb_flags_and_nsec3, adjust_cb_nsec3_flags,
-	                           true, true, 1, NULL);
+	ret = zone_adjust_contents(loader->contents, adjust_cb_flags_and_nsec3,
+	                           adjust_cb_nsec3_flags, true, true, 1, NULL);
 	if (ret != KNOT_EOK) {
-		ERROR(zname, "failed to finalize zone contents (%s)",
-		      knot_strerror(ret));
+		ERROR(zname, "failed to finalize zone contents (%s)", knot_strerror(ret));
 		goto fail;
 	}
 
-	ret = sem_checks_process(zc->z, loader->semantic_checks,
+	ret = sem_checks_process(loader->contents, loader->sem_checks,
 	                         loader->err_handler, loader->time, threads);
 
 	if (ret != KNOT_EOK) {
-		ERROR(zname, "failed to load zone, file '%s' (%s)",
-		      loader->source, knot_strerror(ret));
+		ERROR(zname, "failed to check zone (%s)", knot_strerror(ret));
 		goto fail;
 	}
 
 	/* The contents will now change possibly messing up NSEC3 tree, it will
 	   be adjusted again at zone_update_commit. */
-	ret = zone_adjust_contents(zc->z, unadjust_cb_point_to_nsec3, NULL,
-	                           false, false, 1, NULL);
+	ret = zone_adjust_contents(loader->contents, unadjust_cb_point_to_nsec3,
+	                           NULL, false, false, 1, NULL);
 	if (ret != KNOT_EOK) {
-		ERROR(zname, "failed to finalize zone contents (%s)",
-		      knot_strerror(ret));
+		ERROR(zname, "failed to finalize zone contents (%s)", knot_strerror(ret));
 		goto fail;
 	}
 
-	return zc->z;
-
+	return loader->contents;
 fail:
-	zone_contents_deep_free(zc->z);
+	zone_contents_deep_free(loader->contents);
+
 	return NULL;
 }
 
@@ -359,13 +337,12 @@ int zonefile_write(const char *path, zone_contents_t *zone, zone_skip_t *skip)
 
 void zonefile_close(zloader_t *loader)
 {
-	if (!loader) {
+	if (loader == NULL) {
 		return;
 	}
 
 	zs_deinit(&loader->scanner);
 	free(loader->source);
-	free(loader->creator);
 }
 
 void err_handler_logger(sem_handler_t *handler, const zone_contents_t *zone,
