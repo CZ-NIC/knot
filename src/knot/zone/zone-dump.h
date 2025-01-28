@@ -5,6 +5,10 @@
 
 #pragma once
 
+#ifdef ENABLE_REDIS
+#include <hiredis/hiredis.h>
+#endif
+
 #include "knot/zone/skip.h"
 #include "knot/zone/zone.h"
 
@@ -21,3 +25,6 @@
  * \retval < 0 if error.
  */
 int zone_dump_text(zone_contents_t *zone, zone_skip_t *skip, FILE *file, bool comments, const char *color);
+#ifdef ENABLE_REDIS
+int zone_dump_rdb(zone_contents_t *zone, redisContext *rdb);
+#endif

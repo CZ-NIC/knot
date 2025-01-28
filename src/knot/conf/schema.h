@@ -181,6 +181,8 @@
 #define C_ZONEFILE_SYNC		"\x0D""zonefile-sync"
 #define C_ZONEMD_GENERATE	"\x0F""zonemd-generate"
 #define C_ZONEMD_VERIFY		"\x0D""zonemd-verify"
+#define C_ZONE_BACKEND		"\x0C""zone-backend"
+#define C_ZONE_DB_LISTEN	"\x0E""zone-db-listen"
 #define C_ZONE_MAX_SIZE		"\x0D""zone-max-size"
 #define C_ZONE_MAX_TTL		"\x0C""zone-max-ttl"
 #define C_ZSK_LIFETIME		"\x0C""zsk-lifetime"
@@ -189,6 +191,11 @@
 enum {
 	KEYSTORE_BACKEND_PEM    = 1,
 	KEYSTORE_BACKEND_PKCS11 = 2,
+};
+
+enum {
+	ZONE_BACKEND_FILE = 1,
+	ZONE_BACKEND_DB   = 2,
 };
 
 enum {
