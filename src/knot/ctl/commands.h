@@ -70,6 +70,12 @@
 
 #define STATUS_EMPTY			"-"
 
+/*! Optional 'status' command parameters. */
+#define CMD_STATUS_VERSION              "version"
+#define CMD_STATUS_WORKERS              "workers"
+#define CMD_STATUS_CONFIG               "configure"
+#define CMD_STATUS_CERT                 "cert-key"
+
 /*! Control commands. */
 typedef enum {
 	CTL_NONE,
