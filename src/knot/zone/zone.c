@@ -9,6 +9,9 @@
 #include <time.h>
 #include <urcu.h>
 
+#ifdef ENABLE_REDIS
+#include "knot/common/hiredis.h"
+#endif
 #include "knot/common/log.h"
 #include "knot/conf/module.h"
 #include "knot/dnssec/kasp/kasp_db.h"
@@ -82,8 +85,12 @@ static int flush_journal(conf_t *conf, zone_t *zone, bool allow_empty_zone, bool
 		return KNOT_EOK;
 	}
 
-	/* Check for updated zone. */
+	val = conf_zone_get(conf, C_ZONE_DB_OUT, zone->name);
+	unsigned instance = conf_int(&val);
+	bool to_file = (instance == 0);
+
 	rcu_read_lock();
+	struct stat st = { 0 };
 	zone_contents_t *contents = zone->contents;
 	uint32_t serial_to = zone_contents_serial(contents);
 	if (!force && !user_flush &&
@@ -94,37 +101,59 @@ static int flush_journal(conf_t *conf, zone_t *zone, bool allow_empty_zone, bool
 		goto flush_journal_replan;
 	}
 
-	char *zonefile = conf_zonefile(conf, zone->name);
+	if (to_file) {
+		char *zonefile = conf_zonefile(conf, zone->name);
 
-	/* Synchronize journal. */
-	ret = zonefile_write_skip(zonefile, contents, conf);
-	rcu_read_unlock();
-	if (ret != KNOT_EOK) {
-		log_zone_warning(zone->name, "failed to update zone file (%s)",
-		                 knot_strerror(ret));
+		ret = zonefile_write_skip(zonefile, contents, conf);
+		rcu_read_unlock();
+		if (ret != KNOT_EOK) {
+			log_zone_warning(zone->name, "failed to update zone file (%s)",
+			                 knot_strerror(ret));
+			free(zonefile);
+			goto flush_journal_replan;
+		}
+
+		if (zone->zonefile.exists) {
+			log_zone_info(zone->name, "zone file updated, serial %u -> %u",
+			              zone->zonefile.serial, serial_to);
+		} else {
+			log_zone_info(zone->name, "zone file updated, serial %u",
+			              serial_to);
+		}
+
+		/* Update zone version. */
+		if (stat(zonefile, &st) < 0) {
+			log_zone_warning(zone->name, "failed to update zone file (%s)",
+			                 knot_strerror(knot_map_errno()));
+			free(zonefile);
+			ret = KNOT_EACCES;
+			goto flush_journal_replan;
+		}
+
 		free(zonefile);
-		goto flush_journal_replan;
-	}
-
-	if (zone->zonefile.exists) {
-		log_zone_info(zone->name, "zone file updated, serial %u -> %u",
-		              zone->zonefile.serial, serial_to);
 	} else {
-		log_zone_info(zone->name, "zone file updated, serial %u",
-		              serial_to);
-	}
+#ifdef ENABLE_REDIS
+		redisContext *rdb = rdb_connect(conf);
+		if (rdb == NULL) {
+			ret = KNOT_ECONN;
+			rcu_read_unlock();
+			goto flush_journal_replan;
+		}
 
-	/* Update zone version. */
-	struct stat st;
-	if (stat(zonefile, &st) < 0) {
-		log_zone_warning(zone->name, "failed to update zone file (%s)",
-		                 knot_strerror(knot_map_errno()));
-		free(zonefile);
-		ret = KNOT_EACCES;
-		goto flush_journal_replan;
-	}
+		ret = zone_rdb_write(rdb, contents, instance);
+		rcu_read_unlock();
+		if (ret != KNOT_EOK) {
+			log_zone_warning(zone->name, "failed to update database (%s)",
+			                 knot_strerror(ret));
+			goto flush_journal_replan;
+		}
 
-	free(zonefile);
+		log_zone_info(zone->name, "database updated, instance %u, serial %u",
+		              instance, serial_to);
+#else
+		ret = KNOT_ENOTSUP;
+#endif
+	}
 
 	/* Update zone file attributes. */
 	zone->zonefile.exists = true;
