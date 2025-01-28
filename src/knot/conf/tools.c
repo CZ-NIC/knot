@@ -1192,6 +1192,17 @@ int check_catalog_tpl(
 	return check_zone_or_tpl(args);
 }
 
+int check_rdb(
+	knotd_conf_check_args_t *args)
+{
+#ifndef ENABLE_REDIS
+	args->err_str = "Zone database support not available";
+	return KNOT_ENOTSUP;
+#else
+	return KNOT_EOK;
+#endif
+}
+
 static int glob_error(
 	const char *epath,
 	int eerrno)
