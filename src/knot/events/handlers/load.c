@@ -92,6 +92,7 @@ int event_load(conf_t *conf, zone_t *zone)
 	val = conf_zone_get(conf, C_DNSSEC_SIGNING, zone->name);
 	bool dnssec_enable = (conf_bool(&val) && zone->cat_members == NULL), zu_from_zf_conts = false;
 	bool do_diff = (zf_from == ZONEFILE_LOAD_DIFF || zf_from == ZONEFILE_LOAD_DIFSE);
+	const char *zone_src = "zone file";
 
 	val = conf_zone_get(conf, C_ZONEMD_GENERATE, zone->name);
 	unsigned digest_alg = conf_opt(&val);
@@ -99,9 +100,23 @@ int event_load(conf_t *conf, zone_t *zone)
 
 	// If configured, attempt to load zonefile.
 	if (zf_from != ZONEFILE_LOAD_NONE && zone->cat_members == NULL) {
-		struct timespec mtime;
-		char *filename = conf_zonefile(conf, zone->name);
-		ret = zonefile_exists(filename, &mtime);
+		val = conf_zone_get(conf, C_ZONE_BACKEND, zone->name);
+		bool from_file = (conf_opt(&val) == ZONE_BACKEND_FILE);
+
+		struct timespec mtime = { 0 };
+		char *filename = NULL;
+		if (from_file) {
+			filename = conf_zonefile(conf, zone->name);
+			ret = zonefile_exists(filename, &mtime);
+		} else {
+#ifdef ENABLE_REDIS
+			zone_src = "database";
+			uint32_t serial;
+			ret = zone_rdb_exists(conf, zone->name, &serial);
+#else
+			ret = KNOT_ENOTSUP;
+#endif
+		}
 		if (ret == KNOT_EOK) {
 			conf_val_t semchecks = conf_zone_get(conf, C_SEM_CHECKS, zone->name);
 			semcheck_optional_t mode = conf_opt(&semchecks);
@@ -118,13 +133,13 @@ int event_load(conf_t *conf, zone_t *zone)
 		}
 		if (ret != KNOT_EOK) {
 			assert(!zf_conts);
-			if (dontcare_load_error(conf, zone)) {
-				log_zone_info(zone->name, "failed to parse zone file '%s' (%s)",
-				              filename, knot_strerror(ret));
-			} else {
-				log_zone_error(zone->name, "failed to parse zone file '%s' (%s)",
-				               filename, knot_strerror(ret));
-			}
+			int level = dontcare_load_error(conf, zone) ? LOG_INFO : LOG_ERR;
+			log_fmt_zone(level, LOG_SOURCE_ZONE, zone->name, NULL,
+			             "failed to load %s%s%s%s (%s)", zone_src,
+			             (from_file ? " '" : ""),
+			             (from_file ? filename : ""),
+			             (from_file ? "'" : ""),
+			             knot_strerror(ret));
 			free(filename);
 			goto load_end;
 		}
@@ -154,12 +169,12 @@ int event_load(conf_t *conf, zone_t *zone)
 			uint32_t serial = zone_contents_serial(relevant);
 			uint32_t set = serial_next(serial, conf, zone->name, SERIAL_POLICY_AUTO, 1);
 			zone_contents_set_soa_serial(zf_conts, set);
-			log_zone_info(zone->name, "zone file parsed, serial updated %u -> %u",
-			              zone->zonefile.serial, set);
+			log_zone_info(zone->name, "%s loaded, serial updated %u -> %u",
+			              zone_src, zone->zonefile.serial, set);
 			zone->zonefile.serial = set;
 		} else {
-			log_zone_info(zone->name, "zone file parsed, serial %u",
-			              zone->zonefile.serial);
+			log_zone_info(zone->name, "%s loaded, serial %u",
+			              zone_src, zone->zonefile.serial);
 		}
 
 		// If configured and appliable to zonefile, load journal changes.
@@ -276,13 +291,13 @@ load_end:
 			}
 			break;
 		case KNOT_ESEMCHECK:
-			log_zone_warning(zone->name, "zone file changed without SOA serial update");
+			log_zone_warning(zone->name, "%s changed without SOA serial update", zone_src);
 			break;
 		case KNOT_ERANGE:
 			if (serial_compare(zone->zonefile.serial, zone_contents_serial(zone->contents)) == SERIAL_INCOMPARABLE) {
-				log_zone_warning(zone->name, "zone file changed with incomparable SOA serial");
+				log_zone_warning(zone->name, "%s changed with incomparable SOA serial", zone_src);
 			} else {
-				log_zone_warning(zone->name, "zone file changed with decreased SOA serial");
+				log_zone_warning(zone->name, "%s changed with decreased SOA serial", zone_src);
 			}
 			break;
 		}
@@ -321,7 +336,7 @@ load_end:
 			log_zone_warning(zone->name,
 			                 "with automatic DNSSEC signing and outgoing transfers enabled, "
 			                 "'zonefile-load: difference' should be set to avoid malformed "
-			                 "IXFR after manual zone file update");
+			                 "IXFR after manual %s update", zone_src);
 		}
 	} else if (update_zonemd) {
 		/* Don't update ZONEMD if no change and ZONEMD is up-to-date.
