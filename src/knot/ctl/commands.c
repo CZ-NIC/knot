@@ -522,9 +522,13 @@ static int zone_notify(zone_t *zone, _unused_ ctl_args_t *args)
 static int zone_flush(zone_t *zone, ctl_args_t *args)
 {
 	if (MATCH_AND_FILTER(args, CTL_FILTER_FLUSH_OUTDIR)) {
-		rcu_read_lock();
-		int ret = zone_dump_to_dir(conf(), zone, args->data[KNOT_CTL_IDX_DATA]);
-		rcu_read_unlock();
+		int ret = KNOT_ENOPARAM;
+		const char *dir = args->data[KNOT_CTL_IDX_DATA];
+		if (dir != NULL) {
+			rcu_read_lock();
+			ret = zone_dump_to_dir(conf(), zone, dir);
+			rcu_read_unlock();
+		}
 		if (ret != KNOT_EOK) {
 			log_zone_warning(zone->name, "failed to update zone file (%s)",
 			                 knot_strerror(ret));
