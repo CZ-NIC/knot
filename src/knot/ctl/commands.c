@@ -578,6 +578,9 @@ static int init_backup(ctl_args_t *args, bool restore_mode)
 	const char *db_storage = conf_str(&db_storage_val);
 
 	const char *backup_dir = args->data[KNOT_CTL_IDX_DATA];
+	if (backup_dir == NULL) {
+		return KNOT_ENOPARAM;
+	}
 
 	if (same_path(backup_dir, db_storage)) {
 		char *msg = sprintf_alloc("%s the database storage directory not allowed",
@@ -615,8 +618,7 @@ static int init_backup(ctl_args_t *args, bool restore_mode)
 	// The present timer db size is not up-to-date, use the maximum one.
 	conf_val_t timer_db_size = conf_db_param(conf(), C_TIMER_DB_MAX_SIZE);
 
-	int ret = zone_backup_init(restore_mode, filters, forced,
-	                           args->data[KNOT_CTL_IDX_DATA],
+	int ret = zone_backup_init(restore_mode, filters, forced, backup_dir,
 	                           knot_lmdb_copy_size(&args->server->kaspdb),
 	                           conf_int(&timer_db_size),
 	                           knot_lmdb_copy_size(&args->server->journaldb),
