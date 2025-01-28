@@ -36,6 +36,14 @@ static const knot_lookup_t keystore_backends[] = {
 	{ 0, NULL }
 };
 
+static const knot_lookup_t zone_backends[] = {
+	{ ZONE_BACKEND_FILE, "file" },
+#ifdef ENABLE_REDIS
+	{ ZONE_BACKEND_DB,   "database" },
+#endif
+	{ 0, NULL }
+};
+
 static const knot_lookup_t tsig_key_algs[] = {
 	{ DNSSEC_TSIG_HMAC_MD5,    "hmac-md5" },
 	{ DNSSEC_TSIG_HMAC_SHA1,   "hmac-sha1" },
@@ -311,6 +319,7 @@ static const yp_item_t desc_database[] = {
 	{ C_CATALOG_DB,          YP_TSTR,  YP_VSTR = { "catalog" } },
 	{ C_CATALOG_DB_MAX_SIZE, YP_TINT,  YP_VINT = { MEGA(5), VIRT_MEM_LIMIT(GIGA(100)),
 	                                               VIRT_MEM_LIMIT(GIGA(20)), YP_SSIZE } },
+	{ C_ZONE_DB_LISTEN,      YP_TADDR, YP_VADDR = { 6379 }, YP_FNONE, { check_listen } },
 	{ C_COMMENT,             YP_TSTR,  YP_VNONE },
 	{ NULL }
 };
@@ -451,6 +460,7 @@ static const yp_item_t desc_policy[] = {
 };
 
 #define ZONE_ITEMS(FLAGS) \
+	{ C_ZONE_BACKEND,        YP_TOPT,  YP_VOPT = { zone_backends, ZONE_BACKEND_FILE }, FLAGS }, \
 	{ C_STORAGE,             YP_TSTR,  YP_VSTR = { STORAGE_DIR }, FLAGS }, \
 	{ C_FILE,                YP_TSTR,  YP_VNONE, FLAGS }, \
 	{ C_MASTER,              YP_TREF,  YP_VREF = { C_RMT, C_RMTS }, YP_FMULTI | CONF_REF_EMPTY, \
