@@ -3,6 +3,9 @@
  *  For more information, see <https://www.knot-dns.cz/>
  */
 
+#ifdef ENABLE_REDIS
+#include "knot/common/hiredis.h"
+#endif
 #include "knot/common/log.h"
 #include "knot/journal/journal_metadata.h"
 #include "knot/journal/journal_read.h"
@@ -21,6 +24,9 @@ int zone_load_contents(conf_t *conf, const knot_dname_t *zone_name,
 		return KNOT_EINVAL;
 	}
 
+	conf_val_t val = conf_zone_get(conf, C_ZONE_DB_IN, zone_name);
+	unsigned instance = conf_int(&val);
+
 	zone_skip_t skip = { 0 };
 	conf_val_t conf_skip = conf_zone_get(conf, C_ZONEFILE_SKIP, zone_name);
 	int ret = zone_skip_from_conf(&skip, &conf_skip);
@@ -28,28 +34,40 @@ int zone_load_contents(conf_t *conf, const knot_dname_t *zone_name,
 		return ret;
 	}
 
-	char *zonefile = conf_zonefile(conf, zone_name);
-	conf_val_t val = conf_zone_get(conf, C_DEFAULT_TTL, zone_name);
-	uint32_t dflt_ttl = conf_int(&val);
+	zloader_t loader;
+	sem_handler_t handler = {
+		.cb = err_handler_logger
+	};
 
-	zloader_t zl;
-	ret = zonefile_open(&zl, zonefile, zone_name, dflt_ttl,
-	                    semcheck_mode, time(NULL));
-	free(zonefile);
+	if (instance == 0) {
+		char *zonefile = conf_zonefile(conf, zone_name);
+		val = conf_zone_get(conf, C_DEFAULT_TTL, zone_name);
+		uint32_t dflt_ttl = conf_int(&val);
+
+		ret = zonefile_open(&loader, zonefile, zone_name, dflt_ttl,
+		                    semcheck_mode, &handler, time(NULL), &skip);
+		free(zonefile);
+	} else {
+#ifdef ENABLE_REDIS
+		redisContext *rdb = rdb_connect(conf);
+		if (rdb == NULL) {
+			zone_skip_free(&skip);
+			return KNOT_ECONN;
+		}
+
+		ret = zone_rdb_open(&loader, rdb, zone_name, instance, semcheck_mode,
+		                    &handler, time(NULL), &skip);
+#else
+		ret = KNOT_ENOTSUP;
+#endif
+	}
 	if (ret != KNOT_EOK) {
 		zone_skip_free(&skip);
 		return ret;
 	}
 
-	sem_handler_t handler = {
-		.cb = err_handler_logger
-	};
-
-	zl.err_handler = &handler;
-	zl.creator->skip = &skip;
-
-	*contents = zonefile_load(&zl, 0);
-	zonefile_close(&zl);
+	*contents = zonefile_load(&loader, 0);
+	zonefile_close(&loader);
 	zone_skip_free(&skip);
 	if (*contents == NULL) {
 		return KNOT_ERROR;
