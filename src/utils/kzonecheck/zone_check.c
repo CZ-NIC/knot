@@ -70,8 +70,9 @@ int zone_check(const char *zone_file, const knot_dname_t *zone_name, bool zonemd
 		.handler = { .cb = err_callback },
 	};
 
-	zloader_t zl;
-	int ret = zonefile_open(&zl, zone_file, zone_name, dflt_ttl, optional, time);
+	zloader_t loader;
+	int ret = zonefile_open(&loader, zone_file, zone_name, dflt_ttl, optional,
+	                        (sem_handler_t *)&stats, time);
 	switch (ret) {
 	case KNOT_EOK:
 		break;
@@ -83,10 +84,9 @@ int zone_check(const char *zone_file, const knot_dname_t *zone_name, bool zonemd
 		ERR2("failed to run semantic checks (%s)", knot_strerror(ret));
 		return ret;
 	}
-	zl.err_handler = (sem_handler_t *)&stats;
 
-	zone_contents_t *contents = zonefile_load(&zl);
-	zonefile_close(&zl);
+	zone_contents_t *contents = zonefile_load(&loader);
+	zonefile_close(&loader);
 	if (contents == NULL && !stats.handler.error) {
 		ERR2("failed to run semantic checks");
 		return KNOT_ERROR;

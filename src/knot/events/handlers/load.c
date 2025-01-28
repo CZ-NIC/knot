@@ -103,9 +103,17 @@ int event_load(conf_t *conf, zone_t *zone)
 
 	// If configured, attempt to load zonefile.
 	if (zf_from != ZONEFILE_LOAD_NONE && zone->cat_members == NULL) {
-		struct timespec mtime;
-		char *filename = conf_zonefile(conf, zone->name);
-		ret = zonefile_exists(filename, &mtime);
+		val = conf_zone_get(conf, C_ZONE_BACKEND, zone->name);
+		unsigned backend = conf_opt(&val);
+
+		struct timespec mtime =  { 0 };
+		char *filename = NULL;
+		if (backend == ZONE_BACKEND_FILE) {
+			filename = conf_zonefile(conf, zone->name);
+			ret = zonefile_exists(filename, &mtime);
+		} else {
+			// TODO check rdb
+		}
 		if (ret == KNOT_EOK) {
 			conf_val_t semchecks = conf_zone_get(conf, C_SEM_CHECKS, zone->name);
 			semcheck_optional_t mode = conf_opt(&semchecks);

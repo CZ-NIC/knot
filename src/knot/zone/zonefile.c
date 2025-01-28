@@ -1,4 +1,4 @@
-/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2025 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -24,6 +24,9 @@
 #include <time.h>
 #include <unistd.h>
 #include <inttypes.h>
+#ifdef ENABLE_REDIS
+#include <hiredis/hiredis.h>
+#endif
 
 #include "libknot/libknot.h"
 #include "contrib/files.h"
@@ -41,8 +44,8 @@
 
 static void process_error(zs_scanner_t *s)
 {
-	zcreator_t *zc = s->process.data;
-	const knot_dname_t *zname = zc->z->apex->owner;
+	zloader_t *loader = s->process.data;
+	const knot_dname_t *zname = loader->contents->apex->owner;
 
 	ERROR(zname, "%s in zone, file '%s', line %"PRIu64" (%s)",
 	      s->error.fatal ? "fatal error" : "error",
@@ -90,18 +93,18 @@ int zcreator_step(zone_contents_t *contents, const knot_rrset_t *rr)
 	return KNOT_EOK;
 }
 
-/*! \brief Creates RR from parser input, passes it to handling function. */
 static void process_data(zs_scanner_t *scanner)
 {
-	zcreator_t *zc = scanner->process.data;
-	if (zc->ret != KNOT_EOK) {
+	zloader_t *zl = scanner->process.data;
+
+	if (zl->ret != KNOT_EOK) {
 		scanner->state = ZS_STATE_STOP;
 		return;
 	}
 
 	knot_dname_t *owner = knot_dname_copy(scanner->r_owner, NULL);
 	if (owner == NULL) {
-		zc->ret = KNOT_ENOMEM;
+		zl->ret = KNOT_ENOMEM;
 		return;
 	}
 
@@ -111,122 +114,255 @@ static void process_data(zs_scanner_t *scanner)
 	int ret = knot_rrset_add_rdata(&rr, scanner->r_data, scanner->r_data_length, NULL);
 	if (ret != KNOT_EOK) {
 		knot_rrset_clear(&rr, NULL);
-		zc->ret = ret;
+		zl->ret = ret;
 		return;
 	}
 
-	/* Convert RDATA dnames to lowercase before adding to zone. */
 	ret = knot_rrset_rr_to_canonical(&rr);
 	if (ret != KNOT_EOK) {
 		knot_rrset_clear(&rr, NULL);
-		zc->ret = ret;
+		zl->ret = ret;
 		return;
 	}
 
-	zc->ret = zcreator_step(zc->z, &rr);
+	zl->ret = zcreator_step(zl->contents, &rr);
+
 	knot_rrset_clear(&rr, NULL);
 }
 
-int zonefile_open(zloader_t *loader, const char *source, const knot_dname_t *origin,
-                  uint32_t dflt_ttl, semcheck_optional_t semantic_checks, time_t time)
+static int open_common(zloader_t *loader, const knot_dname_t *origin, time_t time,
+                       semcheck_optional_t sem_checks, sem_handler_t *err_handler)
 {
-	if (!loader) {
+	if (loader == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	memset(loader, 0, sizeof(zloader_t));
+	memset(loader, 0, sizeof(*loader));
 
-	/* Check zone file. */
+	loader->contents = zone_contents_new(origin, true);
+	if (loader->contents == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	loader->sem_checks = sem_checks;
+	loader->err_handler = err_handler;
+	loader->time = time;
+
+	return KNOT_EOK;
+}
+
+static void close_common(zloader_t *loader)
+{
+	assert(loader);
+
+	zone_contents_deep_free(loader->contents);
+	memset(loader, 0, sizeof(*loader));
+}
+
+int zonefile_open(zloader_t *loader, const char *source, const knot_dname_t *origin,
+                  uint32_t dflt_ttl, semcheck_optional_t sem_checks,
+                  sem_handler_t *sem_err_handler, time_t time)
+{
+	int ret = open_common(loader, origin, time, sem_checks, sem_err_handler);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
 	if (access(source, F_OK | R_OK) != 0) {
+		close_common(loader);
 		return knot_map_errno();
 	}
 
-	/* Create context. */
-	zcreator_t *zc = malloc(sizeof(zcreator_t));
-	if (zc == NULL) {
-		return KNOT_ENOMEM;
-	}
-	memset(zc, 0, sizeof(zcreator_t));
-
-	zc->z = zone_contents_new(origin, true);
-	if (zc->z == NULL) {
-		free(zc);
-		return KNOT_ENOMEM;
-	}
-
-	/* Prepare textual owner for zone scanner. */
-	char *origin_str = knot_dname_to_str_alloc(origin);
-	if (origin_str == NULL) {
-		zone_contents_deep_free(zc->z);
-		free(zc);
+	knot_dname_txt_storage_t origin_str;
+	if (knot_dname_to_str(origin_str, origin, sizeof(origin_str)) == NULL) {
+		close_common(loader);
 		return KNOT_ENOMEM;
 	}
 
 	if (zs_init(&loader->scanner, origin_str, KNOT_CLASS_IN, dflt_ttl) != 0 ||
 	    zs_set_input_file(&loader->scanner, source) != 0 ||
-	    zs_set_processing(&loader->scanner, process_data, process_error, zc) != 0) {
+	    zs_set_processing(&loader->scanner, process_data, process_error, loader) != 0) {
 		zs_deinit(&loader->scanner);
-		free(origin_str);
-		zone_contents_deep_free(zc->z);
-		free(zc);
+		close_common(loader);
 		return KNOT_EFILE;
 	}
-	free(origin_str);
 
+	loader->type = ZONE_BACKEND_FILE;
 	loader->source = strdup(source);
-	loader->creator = zc;
-	loader->semantic_checks = semantic_checks;
-	loader->time = time;
+
+	return KNOT_EOK;
+}
+
+int zone_rdb_open(zloader_t *loader, const knot_dname_t *origin, const char *addr,
+                  int port, semcheck_optional_t sem_checks,
+                  sem_handler_t *sem_err_handler, time_t time)
+{
+#ifdef ENABLE_REDIS
+	int ret = open_common(loader, origin, time, sem_checks, sem_err_handler);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	redisContext *rdb = redisConnect(addr, port);
+	if (rdb == NULL || rdb->err) {
+		if (rdb) {
+			// TODO
+			printf("Error: %s\n", rdb->errstr);
+			// handle error
+		} else {
+			printf("Can't allocate redis context\n");
+		}
+		close_common(loader);
+		return KNOT_ERROR; // TODO
+	}
+
+	loader->type = ZONE_BACKEND_DB;
+	loader->rdb = rdb;
+
+	return KNOT_EOK;
+#else
+	return KNOT_ENOTSUP;
+#endif
+}
+
+#ifdef ENABLE_REDIS
+static int process_data_rdb(zone_contents_t *contents, redisReply *data)
+{
+	knot_dname_t *r_owner = (knot_dname_t *)data->element[0]->str;
+	uint16_t r_type = data->element[1]->integer;
+	uint32_t r_ttl = data->element[2]->integer;
+	knot_rdataset_t r_data = {
+		.count = data->element[3]->integer,
+		.size = data->element[4]->len,
+		.rdata = (knot_rdata_t *)data->element[4]->str
+	};
+
+	knot_dname_t *owner = knot_dname_copy(r_owner, NULL);
+	if (owner == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	knot_rrset_t rrs;
+	knot_rrset_init(&rrs, owner, r_type, KNOT_CLASS_IN, r_ttl);
+
+	int ret = knot_rdataset_copy(&rrs.rrs, &r_data, NULL);
+	if (ret != KNOT_EOK) {
+		knot_rrset_clear(&rrs, NULL);
+		return ret;
+	}
+
+	ret = zcreator_step(contents, &rrs);
+	knot_rrset_clear(&rrs, NULL);
+	return ret;
+}
+
+static int rdb_load(zloader_t *loader)
+{
+	assert(loader);
+	assert(loader->type == ZONE_BACKEND_DB);
+
+	const knot_dname_t *zname = loader->contents->apex->owner;
+
+	redisReply *reply = redisCommand(loader->rdb,
+	                                 "KNOT.ZONE.LOAD.U %b",
+	                                 zname, knot_dname_size(zname));
+	if (reply == NULL) {
+		ERROR(zname, "failed connect to Redis database");
+		return KNOT_ERROR;
+	} else if (reply->type == REDIS_REPLY_ERROR) {
+		ERROR(zname, "failed to load zone contents (%s)",
+		      reply->str);
+		freeReplyObject(reply);
+		return KNOT_ERROR;
+	} else if (reply->type != REDIS_REPLY_ARRAY) {
+		ERROR(zname, "failed to load zone contents (bad data)");
+		freeReplyObject(reply);
+		return KNOT_ERROR;
+	}
+
+	for (size_t i = 0; i < reply->elements; i++) {
+		redisReply *data = reply->element[i];
+		int ret = process_data_rdb(loader->contents, data);
+		if (ret != KNOT_EOK) {
+			// TODO
+		}
+	}
+
+	freeReplyObject(reply);
+
+	return KNOT_EOK;
+}
+#endif
+
+static int file_load(zloader_t *loader)
+{
+	assert(loader);
+	assert(loader->type == ZONE_BACKEND_FILE);
+
+	const knot_dname_t *zname = loader->contents->apex->owner;
+
+	int ret = zs_parse_all(&loader->scanner);
+	if (ret != 0 && loader->scanner.error.counter == 0) {
+		ERROR(zname, "failed to load zone, file '%s' (%s)",
+		      loader->source, zs_strerror(loader->scanner.error.code));
+		return KNOT_ERROR;
+	}
+
+	if (loader->ret != KNOT_EOK) {
+		ERROR(zname, "failed to load zone, file '%s' (%s)",
+		      loader->source, knot_strerror(loader->ret));
+		return KNOT_ERROR;
+	}
+
+	if (loader->scanner.error.counter > 0) {
+		ERROR(zname, "failed to load zone, file '%s', %"PRIu64" errors",
+		      loader->source, loader->scanner.error.counter);
+		return KNOT_ERROR;
+	}
 
 	return KNOT_EOK;
 }
 
 zone_contents_t *zonefile_load(zloader_t *loader)
 {
-	if (!loader) {
+	if (loader == NULL) {
 		return NULL;
 	}
 
-	zcreator_t *zc = loader->creator;
-	const knot_dname_t *zname = zc->z->apex->owner;
+	const knot_dname_t *zname = loader->contents->apex->owner;
 
-	assert(zc);
-	int ret = zs_parse_all(&loader->scanner);
-	if (ret != 0 && loader->scanner.error.counter == 0) {
-		ERROR(zname, "failed to load zone, file '%s' (%s)",
-		      loader->source, zs_strerror(loader->scanner.error.code));
-		goto fail;
+	int ret;
+	if (loader->type == ZONE_BACKEND_FILE) {
+		ret = file_load(loader);
+	} else {
+#ifdef ENABLE_REDIS
+		ret = rdb_load(loader);
+#else
+		ret = KNOT_ENOTSUP;
+#endif
+	}
+	if (ret != KNOT_EOK) {
+		zone_contents_deep_free(loader->contents);
+		return NULL;
 	}
 
-	if (zc->ret != KNOT_EOK) {
-		ERROR(zname, "failed to load zone, file '%s' (%s)",
-		      loader->source, knot_strerror(zc->ret));
-		goto fail;
-	}
-
-	if (loader->scanner.error.counter > 0) {
-		ERROR(zname, "failed to load zone, file '%s', %"PRIu64" errors",
-		      loader->source, loader->scanner.error.counter);
-		goto fail;
-	}
-
-	knot_rdataset_t *soa = node_rdataset(zc->z->apex, KNOT_RRTYPE_SOA);
+	knot_rdataset_t *soa = node_rdataset(loader->contents->apex, KNOT_RRTYPE_SOA);
 	if (soa == NULL || soa->count != 1) {
 		sem_error_t code = (soa == NULL) ? SEM_ERR_SOA_NONE : SEM_ERR_SOA_MULTIPLE;
 		loader->err_handler->error = true;
-		loader->err_handler->cb(loader->err_handler, zc->z, NULL, code, NULL);
+		loader->err_handler->cb(loader->err_handler, loader->contents, NULL, code, NULL);
 		goto fail;
 	}
 
-	ret = zone_adjust_contents(zc->z, adjust_cb_flags_and_nsec3, adjust_cb_nsec3_flags,
-	                           true, true, 1, NULL);
+	ret = zone_adjust_contents(loader->contents, adjust_cb_flags_and_nsec3,
+	                           adjust_cb_nsec3_flags, true, true, 1, NULL);
 	if (ret != KNOT_EOK) {
 		ERROR(zname, "failed to finalize zone contents (%s)",
 		      knot_strerror(ret));
 		goto fail;
 	}
 
-	ret = sem_checks_process(zc->z, loader->semantic_checks,
+	ret = sem_checks_process(loader->contents, loader->sem_checks,
 	                         loader->err_handler, loader->time);
 
 	if (ret != KNOT_EOK) {
@@ -237,19 +373,34 @@ zone_contents_t *zonefile_load(zloader_t *loader)
 
 	/* The contents will now change possibly messing up NSEC3 tree, it will
 	   be adjusted again at zone_update_commit. */
-	ret = zone_adjust_contents(zc->z, unadjust_cb_point_to_nsec3, NULL,
-	                           false, false, 1, NULL);
+	ret = zone_adjust_contents(loader->contents, unadjust_cb_point_to_nsec3,
+	                           NULL, false, false, 1, NULL);
 	if (ret != KNOT_EOK) {
 		ERROR(zname, "failed to finalize zone contents (%s)",
 		      knot_strerror(ret));
 		goto fail;
 	}
 
-	return zc->z;
+	return loader->contents;
 
 fail:
-	zone_contents_deep_free(zc->z);
+	close_common(loader);
+
 	return NULL;
+}
+
+void zonefile_close(zloader_t *loader)
+{
+	if (loader == NULL) {
+		return;
+	}
+
+	if (loader->type == ZONE_BACKEND_FILE) {
+		zs_deinit(&loader->scanner);
+		free(loader->source);
+	} else {
+
+	}
 }
 
 int zonefile_exists(const char *path, struct timespec *mtime)
@@ -294,6 +445,19 @@ int zonefile_write(const char *path, zone_contents_t *zone)
 		return ret;
 	}
 
+#ifdef ENABLE_REDIS
+	redisContext *rdb = redisConnect("127.0.0.1", 6379);
+	if (rdb == NULL || rdb->err) {
+		if (rdb) {
+			printf("Error: %s\n", rdb->errstr);
+			// handle error
+		} else {
+			printf("Can't allocate redis context\n");
+		}
+	}
+	ret = zone_dump_rdb(zone, rdb);
+#endif
+
 	ret = zone_dump_text(zone, file, true, NULL);
 	fclose(file);
 	if (ret != KNOT_EOK) {
@@ -314,17 +478,6 @@ int zonefile_write(const char *path, zone_contents_t *zone)
 	free(tmp_name);
 
 	return KNOT_EOK;
-}
-
-void zonefile_close(zloader_t *loader)
-{
-	if (!loader) {
-		return;
-	}
-
-	zs_deinit(&loader->scanner);
-	free(loader->source);
-	free(loader->creator);
 }
 
 void err_handler_logger(sem_handler_t *handler, const zone_contents_t *zone,
