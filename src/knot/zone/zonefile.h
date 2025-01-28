@@ -5,33 +5,20 @@
 
 #pragma once
 
-#include <stdbool.h>
-#include <stdio.h>
-
 #include "knot/zone/skip.h"
 #include "knot/zone/zone.h"
 #include "knot/zone/semantic-check.h"
 #include "libzscanner/scanner.h"
 
-/*!
- * \brief Zone creator structure.
- */
-typedef struct zcreator {
-	zone_contents_t *z;  /*!< Created zone. */
-	zone_skip_t *skip;   /*!< Skip configured types. */
-	int ret;             /*!< Return value. */
-} zcreator_t;
-
-/*!
- * \brief Zone loader structure.
- */
 typedef struct {
-	char *source;                /*!< Zone source file. */
-	semcheck_optional_t semantic_checks;  /*!< Do semantic checks. */
-	sem_handler_t *err_handler;  /*!< Semantic checks error handler. */
-	zcreator_t *creator;         /*!< Loader context. */
-	zs_scanner_t scanner;        /*!< Zone scanner. */
-	time_t time;                 /*!< time for zone check. */
+	char *source;                    /*!< Zone source file. */
+	zs_scanner_t scanner;            /*!< Zone scanner. */
+	zone_contents_t *contents;       /*!< Created zone. */
+	semcheck_optional_t sem_checks;  /*!< Do semantic checks. */
+	sem_handler_t *err_handler;      /*!< Semantic checks error handler. */
+	zone_skip_t *skip;               /*!< Skip configured types. */
+	time_t time;                     /*!< Time for zone check. */
+	int ret;                         /*!< Callback return value. */
 } zloader_t;
 
 void err_handler_logger(sem_handler_t *handler, const zone_contents_t *zone,
@@ -44,14 +31,17 @@ void err_handler_logger(sem_handler_t *handler, const zone_contents_t *zone,
  * \param source Source file name.
  * \param origin Zone origin.
  * \param dflt_ttl Default TTL.
- * \param semantic_checks Perform semantic checks.
+ * \param sem_checks Perform semantic checks.
+ * \param sem_err_handler Semantic checks error handler.
  * \param time Time for semantic check.
+ * \param skip RRTypes to be skipped.
  *
  * \retval Initialized loader on success.
  * \retval NULL on error.
  */
 int zonefile_open(zloader_t *loader, const char *source, const knot_dname_t *origin,
-                  uint32_t dflt_ttl, semcheck_optional_t semantic_checks, time_t time);
+                  uint32_t dflt_ttl, semcheck_optional_t sem_checks,
+                  sem_handler_t *sem_err_handler, time_t time, zone_skip_t *skip);
 
 /*!
  * \brief Loads zone from a zone file.
