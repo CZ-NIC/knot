@@ -108,6 +108,10 @@ typedef struct server {
 	/*! \brief Background jobs. */
 	worker_pool_t *workers;
 
+	/*! \brief Zone DB event loop context. */
+	dt_unit_t *rdb_events;
+	struct redisContext *rdb_ctx;
+
 	/*! \brief Event scheduler. */
 	evsched_t sched;
 
