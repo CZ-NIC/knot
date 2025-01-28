@@ -3,54 +3,33 @@
  *  For more information, see <https://www.knot-dns.cz/>
  */
 
-#include "knot/zone/digest.h"
-
+#include <stdio.h>
 #include <string.h>
 #include <tap/basic.h>
 
-#include "knot/zone/zonefile.h"
+#include "knot/zone/digest.h"
 #include "libzscanner/scanner.h"
 
-// copy-pasted from knot/zone/zonefile.c
 static void process_data(zs_scanner_t *scanner)
 {
-	zcreator_t *zc = scanner->process.data;
-	if (zc->ret != KNOT_EOK) {
-		scanner->state = ZS_STATE_STOP;
-		return;
-	}
+	zone_contents_t *cont = scanner->process.data;
 
 	knot_dname_t *owner = knot_dname_copy(scanner->r_owner, NULL);
-	if (owner == NULL) {
-		zc->ret = KNOT_ENOMEM;
-		return;
-	}
+	assert(owner != NULL);
 
 	knot_rrset_t rr;
 	knot_rrset_init(&rr, owner, scanner->r_type, scanner->r_class, scanner->r_ttl);
 
-	int ret = knot_rrset_add_rdata(&rr, scanner->r_data, scanner->r_data_length, NULL);
-	if (ret != KNOT_EOK) {
-		knot_rrset_clear(&rr, NULL);
-		zc->ret = ret;
-		return;
+	if (knot_rrset_add_rdata(&rr, scanner->r_data, scanner->r_data_length, NULL) == KNOT_EOK &&
+	    knot_rrset_rr_to_canonical(&rr) == KNOT_EOK) {
+		zone_node_t *node = NULL;
+		int ret = zone_contents_add_rr(cont, &rr, &node);
+		if (ret != KNOT_EOK && ret != KNOT_EOUTOFZONE) {
+			scanner->error.code = ZS_STATE_ERROR;
+		}
 	}
 
-	ret = knot_rrset_rr_to_canonical(&rr);
-	if (ret != KNOT_EOK) {
-		knot_rrset_clear(&rr, NULL);
-		zc->ret = ret;
-		return;
-	}
-
-	zc->ret = zcreator_step(zc->z, &rr, zc->skip);
 	knot_rrset_clear(&rr, NULL);
-}
-
-static void process_error(zs_scanner_t *s)
-{
-	(void)s;
-	assert(0);
 }
 
 static zone_contents_t *str2contents(const char *zone_str)
@@ -65,13 +44,12 @@ static zone_contents_t *str2contents(const char *zone_str)
 	assert(cont != NULL);
 	knot_dname_free(origin, NULL);
 
-	zcreator_t zc = { cont, NULL, KNOT_EOK };
-
 	zs_scanner_t sc;
 	ok(zs_init(&sc, origin_str, KNOT_CLASS_IN, 3600) == 0 &&
 	   zs_set_input_string(&sc, zone_str, strlen(zone_str)) == 0 &&
-	   zs_set_processing(&sc, process_data, process_error, &zc) == 0 &&
-	   zs_parse_all(&sc) == 0, "zscanner initialization");
+	   zs_set_processing(&sc, process_data, NULL, cont) == 0 &&
+	   zs_parse_all(&sc) == 0 &&
+	   sc.error.code == ZS_OK, "zscanner processing");
 	zs_deinit(&sc);
 
 	return cont;
