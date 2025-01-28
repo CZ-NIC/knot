@@ -232,3 +232,98 @@ int zone_dump_text(zone_contents_t *zone, zone_skip_t *skip, FILE *file, bool co
 
 	return KNOT_EOK;
 }
+
+#ifdef ENABLE_REDIS
+typedef struct {
+	redisContext *rdb;
+	const knot_dname_t *origin;
+	uint8_t origin_len;
+} dump_params_rdb_t;
+
+static int node_dump_rdb(zone_node_t *node, void *data)
+{
+	dump_params_rdb_t *params = (dump_params_rdb_t *)data;
+
+	for (uint16_t i = 0; i < node->rrset_count; i++) {
+		knot_rrset_t rrset = node_rrset_at(node, i);
+
+		redisReply *reply = redisCommand(params->rdb,
+		                     "KNOT.RRSET.STORE %b %b %d %d %d %b",
+		                     params->origin, params->origin_len,
+		                     rrset.owner, knot_dname_size(rrset.owner),
+		                     rrset.type,
+		                     rrset.ttl,
+		                     rrset.rrs.count,
+		                     rrset.rrs.rdata, rrset.rrs.size);
+		if (reply == NULL) {
+			return KNOT_ECONN;
+		} else if (reply->type == REDIS_REPLY_ERROR) {
+			freeReplyObject(reply);
+			return KNOT_EACCES;
+		}
+		freeReplyObject(reply);
+	}
+
+	return KNOT_EOK;
+}
+
+int zone_dump_rdb(zone_contents_t *zone, redisContext *rdb)
+{
+	if (rdb == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	if (zone == NULL) {
+		return KNOT_EEMPTYZONE;
+	}
+
+	dump_params_rdb_t params = {
+		.rdb = rdb,
+		.origin = zone->apex->owner,
+		.origin_len = knot_dname_size(zone->apex->owner)
+	};
+
+	redisReply *reply = redisCommand(params.rdb, "MULTI");
+	if (reply == NULL) {
+		return KNOT_ECONN;
+	} else if (reply->type == REDIS_REPLY_ERROR) {
+		// Error Unable to create transaction
+		freeReplyObject(reply);
+		return KNOT_EBUSY;
+	}
+	freeReplyObject(reply);
+
+	reply = redisCommand(params.rdb, "KNOT.ZONE.PURGE %b", params.origin, params.origin_len);
+	if (reply == NULL) {
+		return KNOT_ECONN;
+	} else if (reply->type == REDIS_REPLY_ERROR) {
+		freeReplyObject(reply);
+		return KNOT_EACCES;
+	}
+	freeReplyObject(reply);
+
+	// Dump standard zone records.
+	int ret = zone_contents_apply(zone, node_dump_rdb, &params);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	// Dump NSEC3 records if available.
+	ret = zone_contents_nsec3_apply(zone, node_dump_rdb, &params);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	reply = redisCommand(params.rdb, "EXEC");
+	if (reply == NULL) {
+		return KNOT_ECONN;
+	} else if (reply->type == REDIS_REPLY_ERROR) {
+		// Error Unable to commit transaction
+		freeReplyObject(reply);
+		return KNOT_EBUSY;
+	}
+	freeReplyObject(reply);
+
+	return KNOT_EOK;
+}
+#endif
