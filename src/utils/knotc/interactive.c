@@ -479,8 +479,8 @@ static unsigned char complete(EditLine *el, int ch)
 		if (lookup_init(&lookup) != KNOT_EOK) {
 			goto complete_exit;
 		}
-		if (lookup_insert(&lookup, "zsk", NULL) == KNOT_EOK &&
-		    lookup_insert(&lookup, "ksk", NULL) == KNOT_EOK) {
+		if (lookup_insert(&lookup, CMD_ROLLOVER_ZSK, NULL) == KNOT_EOK &&
+		    lookup_insert(&lookup, CMD_ROLLOVER_KSK, NULL) == KNOT_EOK) {
 			(void)lookup_complete(&lookup, argv[2], pos, el, false);
 		}
 		lookup_deinit(&lookup);
