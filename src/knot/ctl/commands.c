@@ -16,6 +16,7 @@
 
 #include <string.h>
 #include <unistd.h>
+#include <sys/stat.h>
 #include <sys/time.h>
 #include <time.h>
 #include <urcu.h>
@@ -534,27 +535,50 @@ static int zone_notify(zone_t *zone, _unused_ ctl_args_t *args)
 
 static int zone_flush(zone_t *zone, ctl_args_t *args)
 {
-	if (MATCH_AND_FILTER(args, CTL_FILTER_FLUSH_OUTDIR)) {
-		int ret = KNOT_ENOPARAM;
-		const char *dir = args->data[KNOT_CTL_IDX_DATA];
-		if (dir != NULL) {
-			rcu_read_lock();
-			ret = zone_dump_to_dir(conf(), zone, dir);
-			rcu_read_unlock();
-		}
-		if (ret != KNOT_EOK) {
-			log_zone_warning(zone->name, "failed to update zone file (%s)",
-			                 knot_strerror(ret));
-		}
-		return ret;
-	}
-
 	zone_set_flag(zone, ZONE_USER_FLUSH);
 	if (ctl_has_flag(args->data[KNOT_CTL_IDX_FLAGS], CTL_FLAG_FORCE)) {
 		zone_set_flag(zone, ZONE_FORCE_FLUSH);
 	}
 
 	return schedule_trigger(zone, args, ZONE_EVENT_FLUSH, true);
+}
+
+static int zone_flush_outdir(zone_t *zone, ctl_args_t *args)
+{
+	rcu_read_lock();
+	int ret = zone_dump_to_dir(conf(), zone, args->data[KNOT_CTL_IDX_DATA]);
+	rcu_read_unlock();
+
+	if (ret != KNOT_EOK) {
+		log_zone_warning(zone->name, "failed to update zone file (%s)",
+		                 knot_strerror(ret));
+	}
+	return ret;
+}
+
+static int zones_apply_flush(ctl_args_t *args)
+{
+	if (MATCH_AND_FILTER(args, CTL_FILTER_FLUSH_OUTDIR)) {
+		const char *dir = args->data[KNOT_CTL_IDX_DATA];
+		if (dir == NULL) {
+			char *msg = "flush, output directory not specified";
+			common_failure(args, KNOT_ENOPARAM, msg);
+			return KNOT_CTL_EZONE;
+		}
+		int ret = make_path(dir, S_IRUSR | S_IWUSR | S_IXUSR |
+		                         S_IRGRP | S_IWGRP | S_IXGRP);
+		if (ret != KNOT_EOK) {
+			char *msg = sprintf_alloc("flush, failed to create output directory '%s' (%s)",
+			                          dir, knot_strerror(ret));
+			common_failure(args, ret, msg);
+			free(msg);
+			return KNOT_CTL_EZONE;
+		}
+
+		return zones_apply(args, zone_flush_outdir);
+	}
+
+	return zones_apply(args, zone_flush);
 }
 
 static void report_insufficient_backup(ctl_args_t *args, zone_backup_ctx_t *ctx)
@@ -1878,7 +1902,7 @@ static int ctl_zone(ctl_args_t *args, ctl_cmd_t cmd)
 	case CTL_ZONE_NOTIFY:
 		return zones_apply(args, zone_notify);
 	case CTL_ZONE_FLUSH:
-		return zones_apply(args, zone_flush);
+		return zones_apply_flush(args);
 	case CTL_ZONE_BACKUP:
 		return zones_apply_backup(args, false);
 	case CTL_ZONE_RESTORE:
