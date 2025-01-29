@@ -360,10 +360,10 @@ static unsigned char complete(EditLine *el, int ch)
 		lookup_t lookup;
 		if (lookup_init(&lookup) != KNOT_EOK)
 			goto complete_exit;
-		ret  = lookup_insert(&lookup, "version", NULL);
-		ret |= lookup_insert(&lookup, "workers", NULL);
-		ret |= lookup_insert(&lookup, "configure", NULL);
-		ret |= lookup_insert(&lookup, "cert-key", NULL);
+		ret  = lookup_insert(&lookup, CMD_STATUS_VERSION, NULL);
+		ret |= lookup_insert(&lookup, CMD_STATUS_WORKERS, NULL);
+		ret |= lookup_insert(&lookup, CMD_STATUS_CONFIG, NULL);
+		ret |= lookup_insert(&lookup, CMD_STATUS_CERT, NULL);
 		if (ret != KNOT_EOK) {
 			goto complete_exit;
 		}
