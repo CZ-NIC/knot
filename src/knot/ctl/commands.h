@@ -76,6 +76,10 @@
 #define CMD_STATUS_CONFIG               "configure"
 #define CMD_STATUS_CERT                 "cert-key"
 
+/*! 'zone-key-rollover' command key types. */
+#define CMD_ROLLOVER_KSK                "ksk"
+#define CMD_ROLLOVER_ZSK                "zsk"
+
 /*! Control commands. */
 typedef enum {
 	CTL_NONE,

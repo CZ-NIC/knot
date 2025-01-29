@@ -841,9 +841,9 @@ static int zone_key_roll(zone_t *zone, ctl_args_t *args)
 	}
 
 	const char *key_type = args->data[KNOT_CTL_IDX_TYPE];
-	if (strncasecmp(key_type, "ksk", 3) == 0) {
+	if (strncasecmp(key_type, CMD_ROLLOVER_KSK, 3) == 0) {
 		zone_set_flag(zone, ZONE_FORCE_KSK_ROLL);
-	} else if (strncasecmp(key_type, "zsk", 3) == 0) {
+	} else if (strncasecmp(key_type, CMD_ROLLOVER_ZSK, 3) == 0) {
 		zone_set_flag(zone, ZONE_FORCE_ZSK_ROLL);
 	} else {
 		return KNOT_EINVAL;
