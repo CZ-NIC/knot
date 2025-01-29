@@ -476,8 +476,9 @@ static unsigned char complete(EditLine *el, int ch)
 	// Complete zone-key-rollover key type.
 	if (desc->cmd == CTL_ZONE_KEY_ROLL && token == 2) {
 		lookup_t lookup;
-		if (lookup_init(&lookup) != KNOT_EOK)
+		if (lookup_init(&lookup) != KNOT_EOK) {
 			goto complete_exit;
+		}
 		ret  = lookup_insert(&lookup, "zsk", NULL);
 		ret |= lookup_insert(&lookup, "ksk", NULL);
 		if (ret != KNOT_EOK) {
