@@ -377,9 +377,8 @@ static void path_lookup(EditLine *el, const char *str, bool dirsonly) {
 
 	for (int i = 0; i < nnames; ++i) {
 		const struct dirent *it = namelist[i];
-		if ((!dirsonly || it->d_type == DT_DIR)
-		    && strcmp(it->d_name, ".")
-		    && strcmp(it->d_name, "..")) {
+		if ((!dirsonly || it->d_type == DT_DIR) &&
+		    strcmp(it->d_name, ".") && strcmp(it->d_name, "..")) {
 			char buf[PATH_MAX + 1];
 			snprintf(buf, PATH_MAX, (it->d_type == DT_DIR) ? "%s/" : "%s", it->d_name);
 			ret = lookup_insert(&lookup, buf, NULL);
