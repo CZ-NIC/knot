@@ -358,8 +358,9 @@ static unsigned char complete(EditLine *el, int ch)
 	// Complete status command detail.
 	} else if (desc->cmd == CTL_STATUS && token == 1) {
 		lookup_t lookup;
-		if (lookup_init(&lookup) != KNOT_EOK)
+		if (lookup_init(&lookup) != KNOT_EOK) {
 			goto complete_exit;
+		}
 		ret  = lookup_insert(&lookup, CMD_STATUS_VERSION, NULL);
 		ret |= lookup_insert(&lookup, CMD_STATUS_WORKERS, NULL);
 		ret |= lookup_insert(&lookup, CMD_STATUS_CONFIG, NULL);
