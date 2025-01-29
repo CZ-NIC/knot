@@ -461,14 +461,14 @@ static unsigned char complete(EditLine *el, int ch)
 
 		switch (desc->cmd) {
 		case CTL_ZONE_FLUSH:
-			if (!strcmp("+outdir", argv[token - 1])) {
+			if (!strcmp(zone_flush_filters[0].name, argv[token - 1])) {
 				path_lookup(el, argv[token], true);
 				goto complete_exit;
 			}
 			break;
 		case CTL_ZONE_BACKUP:
 		case CTL_ZONE_RESTORE:
-			if (!strcmp("+backupdir", argv[token - 1])) {
+			if (!strcmp(zone_backup_filters[0].name, argv[token - 1])) {
 				path_lookup(el, argv[token], true);
 				goto complete_exit;
 			}

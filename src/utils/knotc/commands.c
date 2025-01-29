@@ -623,7 +623,7 @@ const filter_desc_t zone_flush_filters[] = {
 };
 
 const filter_desc_t zone_backup_filters[] = {
-	{ "+backupdir",   CTL_FILTER_BACKUP_OUTDIR,      true },
+	{ "+backupdir",   CTL_FILTER_BACKUP_OUTDIR,      true },  // This must be the first.
 	{ "+zonefile",    CTL_FILTER_BACKUP_ZONEFILE,   false },
 	{ "+nozonefile",  CTL_FILTER_BACKUP_NOZONEFILE, false },
 	{ "+journal",     CTL_FILTER_BACKUP_JOURNAL,    false },
