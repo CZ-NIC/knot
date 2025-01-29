@@ -513,6 +513,19 @@ static int zone_retransfer(zone_t *zone, _unused_ ctl_args_t *args)
 	return schedule_trigger(zone, args, ZONE_EVENT_REFRESH, true);
 }
 
+static void common_failure(_unused_ ctl_args_t *args, int err, const char *msg)
+{
+	if (args->data[KNOT_CTL_IDX_ZONE] == NULL) {
+		log_ctl_error("%s", msg);
+	} else {
+		log_ctl_zone_str_error(args->data[KNOT_CTL_IDX_ZONE], "%s", msg);
+	}
+
+	/* Warning: zone name in the control command params discarded here. */
+	args->data[KNOT_CTL_IDX_ZONE] = NULL;
+	ctl_send_error(args, knot_strerror(err));
+}
+
 static int zone_notify(zone_t *zone, _unused_ ctl_args_t *args)
 {
 	zone_notifailed_clear(zone);
@@ -725,18 +738,8 @@ static int zones_apply_backup(ctl_args_t *args, bool restore_mode)
 		char *msg = sprintf_alloc("%s init failed (%s)",
 		                          restore_mode ? "restore" : "backup",
 		                          knot_strerror(ret));
-
-		if (args->data[KNOT_CTL_IDX_ZONE] == NULL) {
-			log_ctl_error("%s", msg);
-		} else {
-			log_ctl_zone_str_error(args->data[KNOT_CTL_IDX_ZONE],
-			                       "%s", msg);
-		}
+		common_failure(args, ret, msg);
 		free (msg);
-
-		/* Warning: zone name in the control command params discarded here. */
-		args->data[KNOT_CTL_IDX_ZONE] = NULL;
-		ctl_send_error(args, knot_strerror(ret));
 		return KNOT_CTL_EZONE;
 	}
 
