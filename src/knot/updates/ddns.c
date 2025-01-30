@@ -1,4 +1,4 @@
-/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2025 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -397,16 +397,19 @@ static int process_add_soa(const zone_node_t *node,
                            const knot_rrset_t *rr,
                            zone_update_t *update)
 {
-	if (node == NULL || !node_rrtype_exists(node, KNOT_RRTYPE_SOA)) {
-		// Adding SOA to non-apex node, ignore.
-		return KNOT_EOK;
-	}
+	bool empty_zone = (update->flags & UPDATE_FULL);
+	if (!empty_zone) {
+		if (node == NULL || !node_rrtype_exists(node, KNOT_RRTYPE_SOA)) {
+			// Adding SOA to non-apex node, ignore.
+			return KNOT_EOK;
+		}
 
-	// Get current SOA RR.
-	knot_rrset_t removed = node_rrset(node, KNOT_RRTYPE_SOA);
-	if (knot_rrset_equal(&removed, rr, true)) {
-		// If they are identical, ignore.
-		return KNOT_EOK;
+		// Get current SOA RR.
+		knot_rrset_t removed = node_rrset(node, KNOT_RRTYPE_SOA);
+		if (knot_rrset_equal(&removed, rr, true)) {
+			// If they are identical, ignore.
+			return KNOT_EOK;
+		}
 	}
 
 	return add_rr_to_changeset(rr, update);
@@ -689,14 +692,15 @@ int ddns_process_update(const knot_pkt_t *query, zone_update_t *update,
 		return KNOT_EINVAL;
 	}
 
-	uint32_t sn_old = knot_soa_serial(zone_update_from(update)->rdata);
+	bool empty_zone = (update->flags & UPDATE_FULL);
+	uint32_t sn_old = !empty_zone ? knot_soa_serial(zone_update_from(update)->rdata) : 0;
 
 	// Process all RRs in the authority section.
 	const knot_pktsection_t *authority = knot_pkt_section(query, KNOT_AUTHORITY);
 	const knot_rrset_t *authority_rr = (authority->count > 0) ? knot_pkt_rr(authority, 0) : NULL;
 	for (uint16_t i = 0; i < authority->count; ++i) {
 		const knot_rrset_t *rr = &authority_rr[i];
-		if (skip_soa(rr, sn_old)) {
+		if (!empty_zone && skip_soa(rr, sn_old)) {
 			continue;
 		}
 
