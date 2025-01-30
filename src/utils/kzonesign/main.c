@@ -1,4 +1,4 @@
-/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2025 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -151,7 +151,7 @@ static int zonesign(sign_params_t *params)
 
 	if (params->outdir == NULL) {
 		zonefile = conf_zonefile(conf(), params->zone_name);
-		ret = zonefile_write(zonefile, up.new_cont);
+		ret = zonefile_write_skip(zonefile, up.new_cont, conf());
 	} else {
 		zone_contents_t *temp = zone_struct->contents;
 		zone_struct->contents = up.new_cont;

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2025 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -106,9 +106,6 @@ static void print_changeset(const changeset_t *chs, uint64_t timestamp, print_pa
 	}
 	changeset_print(chs, stdout, params->color);
 }
-
-knot_dynarray_declare(rrtype, uint16_t, DYNARRAY_VISIBILITY_STATIC, 100)
-knot_dynarray_define(rrtype, uint16_t, DYNARRAY_VISIBILITY_STATIC)
 
 typedef struct {
 	rrtype_dynarray_t *arr;

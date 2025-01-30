@@ -1,4 +1,4 @@
-/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2025 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -338,7 +338,7 @@ static int backup_zonefile(conf_t *conf, zone_t *zone, zone_backup_ctx_t *ctx)
 		if (ret == KNOT_EOK) {
 			if (can_flush) {
 				if (zone->contents != NULL) {
-					ret = zonefile_write(backup_zf, zone->contents);
+					ret = zonefile_write_skip(backup_zf, zone->contents, conf);
 				} else {
 					log_zone_notice(zone->name,
 					                "empty zone, skipping a zone file backup");

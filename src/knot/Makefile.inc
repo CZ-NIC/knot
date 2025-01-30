@@ -205,6 +205,8 @@ libknotd_la_SOURCES = \
 	knot/zone/semantic-check.h		\
 	knot/zone/serial.c			\
 	knot/zone/serial.h			\
+	knot/zone/skip.c			\
+	knot/zone/skip.h			\
 	knot/zone/timers.c			\
 	knot/zone/timers.h			\
 	knot/zone/zone-diff.c			\

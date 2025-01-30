@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2025 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -17,6 +17,7 @@
 #include <inttypes.h>
 
 #include "knot/dnssec/zone-nsec.h"
+#include "knot/zone/skip.h"
 #include "knot/zone/zone-dump.h"
 #include "libknot/libknot.h"
 
@@ -31,6 +32,7 @@ typedef struct {
 	uint64_t rr_count;
 	bool     dump_rrsig;
 	bool     dump_nsec;
+	zone_skip_t *skip;
 	const knot_dname_t *origin;
 	const knot_dump_style_t *style;
 	const char *first_comment;
@@ -41,7 +43,7 @@ static int apex_node_dump_text(zone_node_t *node, dump_params_t *params)
 	knot_rrset_t soa = node_rrset(node, KNOT_RRTYPE_SOA);
 
 	// Dump SOA record as a first.
-	if (!params->dump_nsec) {
+	if (!params->dump_nsec && !zone_skip_type(params->skip, KNOT_RRTYPE_SOA)) {
 		int ret = knot_rrset_txt_dump(&soa, &params->buf, &params->buflen,
 		                              params->style);
 		if (ret < 0) {
@@ -55,6 +57,9 @@ static int apex_node_dump_text(zone_node_t *node, dump_params_t *params)
 	// Dump other records.
 	for (uint16_t i = 0; i < node->rrset_count; i++) {
 		knot_rrset_t rrset = node_rrset_at(node, i);
+		if (zone_skip_type(params->skip, rrset.type)) {
+			continue;
+		}
 		switch (rrset.type) {
 		case KNOT_RRTYPE_NSEC:
 			continue;
@@ -93,6 +98,9 @@ static int node_dump_text(zone_node_t *node, void *data)
 	// Dump non-apex rrsets.
 	for (uint16_t i = 0; i < node->rrset_count; i++) {
 		knot_rrset_t rrset = node_rrset_at(node, i);
+		if (zone_skip_type(params->skip, rrset.type)) {
+			continue;
+		}
 		switch (rrset.type) {
 		case KNOT_RRTYPE_RRSIG:
 			if (params->dump_rrsig) {
@@ -135,7 +143,7 @@ static int node_dump_text(zone_node_t *node, void *data)
 	return KNOT_EOK;
 }
 
-int zone_dump_text(zone_contents_t *zone, FILE *file, bool comments, const char *color)
+int zone_dump_text(zone_contents_t *zone, zone_skip_t *skip, FILE *file, bool comments, const char *color)
 {
 	if (file == NULL) {
 		return KNOT_EINVAL;
@@ -164,6 +172,7 @@ int zone_dump_text(zone_contents_t *zone, FILE *file, bool comments, const char 
 		.buf = buf,
 		.buflen = DUMP_BUF_LEN,
 		.rr_count = 0,
+		.skip = skip,
 		.origin = zone->apex->owner,
 		.style = &style,
 		.dump_rrsig = false,

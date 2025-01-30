@@ -1,4 +1,4 @@
-/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2025 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -619,7 +619,7 @@ void changeset_print(const changeset_t *changeset, FILE *outfile, bool color)
 		(void)knot_rrset_txt_dump(changeset->soa_from, &buff, &buflen, &style);
 		fprintf(outfile, "%s%s%s", style.color, buff, COL_RST(color));
 	}
-	(void)zone_dump_text(changeset->remove, outfile, false, style.color);
+	(void)zone_dump_text(changeset->remove, NULL, outfile, false, style.color);
 
 	style.color = COL_GRN(color);
 	if (changeset->soa_to != NULL || !zone_contents_is_empty(changeset->add)) {
@@ -629,7 +629,7 @@ void changeset_print(const changeset_t *changeset, FILE *outfile, bool color)
 		(void)knot_rrset_txt_dump(changeset->soa_to, &buff, &buflen, &style);
 		fprintf(outfile, "%s%s%s", style.color, buff, COL_RST(color));
 	}
-	(void)zone_dump_text(changeset->add, outfile, false, style.color);
+	(void)zone_dump_text(changeset->add, NULL, outfile, false, style.color);
 
 	free(buff);
 }

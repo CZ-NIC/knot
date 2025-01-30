@@ -1,4 +1,4 @@
-/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2025 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -79,6 +79,10 @@ int zcreator_step(zcreator_t *zc, const knot_rrset_t *rr)
 {
 	if (zc == NULL || rr == NULL || rr->rrs.count != 1) {
 		return KNOT_EINVAL;
+	}
+
+	if (zone_skip_type(zc->skip, rr->type)) {
+		return KNOT_EOK;
 	}
 
 	zone_node_t *node = NULL;
@@ -273,7 +277,7 @@ int zonefile_exists(const char *path, struct timespec *mtime)
 	return KNOT_EOK;
 }
 
-int zonefile_write(const char *path, zone_contents_t *zone)
+int zonefile_write(const char *path, zone_contents_t *zone, zone_skip_t *skip)
 {
 	if (path == NULL) {
 		return KNOT_EINVAL;
@@ -297,7 +301,7 @@ int zonefile_write(const char *path, zone_contents_t *zone)
 		return ret;
 	}
 
-	ret = zone_dump_text(zone, file, true, NULL);
+	ret = zone_dump_text(zone, skip, file, true, NULL);
 	fclose(file);
 	if (ret != KNOT_EOK) {
 		unlink(tmp_name);

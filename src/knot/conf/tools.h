@@ -150,6 +150,10 @@ int check_template(
 	knotd_conf_check_args_t *args
 );
 
+int check_zonefile_skip(
+	knotd_conf_check_args_t *args
+);
+
 int check_zone(
 	knotd_conf_check_args_t *args
 );

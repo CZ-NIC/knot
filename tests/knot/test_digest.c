@@ -76,7 +76,7 @@ static zone_contents_t *str2contents(const char *zone_str)
 	assert(cont != NULL);
 	knot_dname_free(origin, NULL);
 
-	zcreator_t zc = { cont, true, KNOT_EOK };
+	zcreator_t zc = { cont, NULL, true, KNOT_EOK };
 
 	zs_scanner_t sc;
 	ok(zs_init(&sc, origin_str, KNOT_CLASS_IN, 3600) == 0 &&

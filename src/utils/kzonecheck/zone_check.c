@@ -1,4 +1,4 @@
-/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2025 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -119,7 +119,7 @@ int zone_check(const char *zone_file, const knot_dname_t *zone_name, bool zonemd
 			fprintf(stderr, "\n");
 		}
 		printf(";; Zone dump (Knot DNS %s)\n", PACKAGE_VERSION);
-		zone_dump_text(contents, stdout, false, NULL);
+		zone_dump_text(contents, NULL, stdout, false, NULL);
 	}
 
 	zone_contents_deep_free(contents);
