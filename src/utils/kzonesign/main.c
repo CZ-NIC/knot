@@ -151,7 +151,7 @@ static int zonesign(sign_params_t *params)
 
 	if (params->outdir == NULL) {
 		zonefile = conf_zonefile(conf(), params->zone_name);
-		ret = zonefile_write(zonefile, up.new_cont);
+		ret = zonefile_write_skip(zonefile, up.new_cont, conf());
 	} else {
 		zone_contents_t *temp = zone_struct->contents;
 		zone_struct->contents = up.new_cont;

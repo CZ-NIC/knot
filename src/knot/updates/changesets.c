@@ -619,7 +619,7 @@ void changeset_print(const changeset_t *changeset, FILE *outfile, bool color)
 		(void)knot_rrset_txt_dump(changeset->soa_from, &buff, &buflen, &style);
 		fprintf(outfile, "%s%s%s", style.color, buff, COL_RST(color));
 	}
-	(void)zone_dump_text(changeset->remove, outfile, false, style.color);
+	(void)zone_dump_text(changeset->remove, NULL, outfile, false, style.color);
 
 	style.color = COL_GRN(color);
 	if (changeset->soa_to != NULL || !zone_contents_is_empty(changeset->add)) {
@@ -629,7 +629,7 @@ void changeset_print(const changeset_t *changeset, FILE *outfile, bool color)
 		(void)knot_rrset_txt_dump(changeset->soa_to, &buff, &buflen, &style);
 		fprintf(outfile, "%s%s%s", style.color, buff, COL_RST(color));
 	}
-	(void)zone_dump_text(changeset->add, outfile, false, style.color);
+	(void)zone_dump_text(changeset->add, NULL, outfile, false, style.color);
 
 	free(buff);
 }

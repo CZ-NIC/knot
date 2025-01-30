@@ -107,9 +107,6 @@ static void print_changeset(const changeset_t *chs, uint64_t timestamp, print_pa
 	changeset_print(chs, stdout, params->color);
 }
 
-knot_dynarray_declare(rrtype, uint16_t, DYNARRAY_VISIBILITY_STATIC, 100)
-knot_dynarray_define(rrtype, uint16_t, DYNARRAY_VISIBILITY_STATIC)
-
 typedef struct {
 	rrtype_dynarray_t *arr;
 	size_t *counter;

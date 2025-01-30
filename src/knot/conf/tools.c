@@ -42,6 +42,7 @@
 #include "knot/common/log.h"
 #include "knot/updates/acl.h"
 #include "knot/zone/serial.h"
+#include "knot/zone/skip.h"
 #include "libknot/errcode.h"
 #include "libknot/quic/tls_common.h"
 #include "libknot/yparser/yptrafo.h"
@@ -1034,6 +1035,18 @@ static int sub_check_catalog_tpl(
 		CHECK_CATZ_TPL(C_CATALOG_GROUP, "catalog-group");
 		return KNOT_EOK;
 	}
+}
+
+int check_zonefile_skip(
+	knotd_conf_check_args_t *args)
+{
+	zone_skip_t skip = { 0 };
+	if (zone_skip_add(&skip, (const char *)args->data) != KNOT_EOK) {
+		args->err_str = "invalid type";
+		return KNOT_EINVAL;
+	}
+	zone_skip_free(&skip);
+	return KNOT_EOK;
 }
 
 int check_zone(

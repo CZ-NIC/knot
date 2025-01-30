@@ -1,4 +1,4 @@
-/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2025 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -19,6 +19,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 
+#include "knot/zone/skip.h"
 #include "knot/zone/zone.h"
 #include "knot/zone/semantic-check.h"
 #include "libzscanner/scanner.h"
@@ -28,6 +29,7 @@
  */
 typedef struct zcreator {
 	zone_contents_t *z;  /*!< Created zone. */
+	zone_skip_t *skip;   /*!< Skip configured types. */
 	bool master;         /*!< True if server is a primary master for the zone. */
 	int ret;             /*!< Return value. */
 } zcreator_t;
@@ -85,8 +87,14 @@ int zonefile_exists(const char *path, struct timespec *mtime);
 
 /*!
  * \brief Write zone contents to zone file.
+ *
+ * \param path    Zonefile path.
+ * \param zone    Zone contents.
+ * \param skip    RRTypes to be skipped.
+ *
+ * \return KNOT_E*
  */
-int zonefile_write(const char *path, zone_contents_t *zone);
+int zonefile_write(const char *path, zone_contents_t *zone, zone_skip_t *skip);
 
 /*!
  * \brief Close zone file loader.

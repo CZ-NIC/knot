@@ -476,6 +476,7 @@ static const yp_item_t desc_policy[] = {
 	{ C_DEFAULT_TTL,         YP_TINT,  YP_VINT = { 1, INT32_MAX, DEFAULT_TTL, YP_STIME }, FLAGS }, \
 	{ C_ZONEFILE_SYNC,       YP_TINT,  YP_VINT = { -1, INT32_MAX, 0, YP_STIME } }, \
 	{ C_ZONEFILE_LOAD,       YP_TOPT,  YP_VOPT = { zonefile_load, ZONEFILE_LOAD_WHOLE } }, \
+	{ C_ZONEFILE_SKIP,       YP_TSTR,  YP_VNONE, YP_FMULTI, { check_zonefile_skip } }, \
 	{ C_JOURNAL_CONTENT,     YP_TOPT,  YP_VOPT = { journal_content, JOURNAL_CONTENT_CHANGES }, FLAGS }, \
 	{ C_JOURNAL_MAX_USAGE,   YP_TINT,  YP_VINT = { KILO(40), SSIZE_MAX, MEGA(100), YP_SSIZE } }, \
 	{ C_JOURNAL_MAX_DEPTH,   YP_TINT,  YP_VINT = { 2, SSIZE_MAX, 20 } }, \

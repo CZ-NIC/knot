@@ -315,6 +315,28 @@ class ZoneFile(object):
                             pass
         return changes
 
+    def count(self, rrtype):
+        '''WARNING works well only if zone file is properly flushed by Knot'''
+        res = 0
+        with open(self.path, 'r') as file:
+            for fline in file:
+                line = fline.split(None, 4)
+                if len(line) < 3 or line[0][0] in [";", "@"]:
+                    continue
+                if line[2] == rrtype:
+                    res = res + 1
+        return res
+
+    def check_count(self, expected, rrtype):
+        found = self.count(rrtype)
+        if found != expected:
+            set_err("ZONEFILE RR COUNT")
+            check_log("ERROR: ZONEFILE RR COUNT")
+            detail_log("!Invalid RR count type=%s zonefile=%s %d!=%d" % (
+                rrtype, self.name, found, expected
+            ))
+            detail_log(SEP)
+
     def remove(self):
         '''Remove zone file.'''
 
