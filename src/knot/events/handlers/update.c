@@ -1,4 +1,4 @@
-/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2025 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -173,7 +173,9 @@ static int process_normal(conf_t *conf, zone_t *zone, list_t *requests)
 
 	// Init zone update structure
 	zone_update_t up;
-	int ret = zone_update_init(&up, zone, UPDATE_INCREMENTAL | UPDATE_NO_CHSET);
+	zone_update_flags_t type = (zone->contents == NULL) ? UPDATE_FULL :
+	                           UPDATE_INCREMENTAL | UPDATE_NO_CHSET;
+	int ret = zone_update_init(&up, zone, type);
 	if (ret != KNOT_EOK) {
 		set_rcodes(requests, KNOT_RCODE_SERVFAIL);
 		return ret;
@@ -181,6 +183,9 @@ static int process_normal(conf_t *conf, zone_t *zone, list_t *requests)
 
 	// Process all updates.
 	ret = process_bulk(zone, requests, &up);
+	if (ret == KNOT_EOK && !node_rrtype_exists(up.new_cont->apex, KNOT_RRTYPE_SOA)) {
+		ret = KNOT_ESEMCHECK;
+	}
 	if (ret == KNOT_EOK) {
 		ret = zone_update_verify_digest(conf, &up);
 	}
@@ -196,7 +201,14 @@ static int process_normal(conf_t *conf, zone_t *zone, list_t *requests)
 	val = conf_zone_get(conf, C_ZONEMD_GENERATE, zone->name);
 	unsigned digest_alg = conf_opt(&val);
 	if (dnssec_enable) {
-		ret = knot_dnssec_sign_update(&up, conf);
+		if (up.flags & UPDATE_FULL) {
+			zone_sign_reschedule_t resch = { 0 };
+			zone_sign_roll_flags_t rflags = KEY_ROLL_ALLOW_ALL;
+			ret = knot_dnssec_zone_sign(&up, conf, 0, rflags, 0, &resch);
+			event_dnssec_reschedule(conf, zone, &resch, false);
+		} else {
+			ret = knot_dnssec_sign_update(&up, conf);
+		}
 	} else if (digest_alg != ZONE_DIGEST_NONE) {
 		if (zone_update_to(&up) == NULL) {
 			ret = zone_update_increment_soa(&up, conf);

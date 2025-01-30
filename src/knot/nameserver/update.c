@@ -1,4 +1,4 @@
-/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2025 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -120,8 +120,6 @@ knot_layer_state_t update_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 
 	/* Need valid transaction security. */
 	NS_NEED_AUTH(qdata, ACL_ACTION_UPDATE);
-	/* Check expiration. */
-	NS_NEED_ZONE_CONTENTS(qdata);
 
 	/* Store update into DDNS queue. */
 	int ret = update_enqueue((zone_t *)qdata->extra->zone, qdata);
