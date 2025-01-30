@@ -1,4 +1,4 @@
-/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2025 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -188,6 +188,7 @@
 #define C_XDP			"\x03""xdp"
 #define C_ZONE			"\x04""zone"
 #define C_ZONEFILE_LOAD		"\x0D""zonefile-load"
+#define C_ZONEFILE_SKIP		"\x0D""zonefile-skip"
 #define C_ZONEFILE_SYNC		"\x0D""zonefile-sync"
 #define C_ZONEMD_GENERATE	"\x0F""zonemd-generate"
 #define C_ZONEMD_VERIFY		"\x0D""zonemd-verify"

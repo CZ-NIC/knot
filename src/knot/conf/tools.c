@@ -42,6 +42,7 @@
 #include "knot/common/log.h"
 #include "knot/updates/acl.h"
 #include "knot/zone/serial.h"
+#include "knot/zone/skip.h"
 #include "libknot/errcode.h"
 #include "libknot/quic/tls_common.h"
 #include "libknot/yparser/yptrafo.h"
@@ -1058,6 +1059,16 @@ int check_zone(
 			CONF_LOG(LOG_NOTICE, "'zonefile-load: whole' not compatible with 'journal-content: all'");
 		}
 	}
+
+	conf_val_t zf_skip = conf_zone_get_txn(args->extra->conf, args->extra->txn,
+	                                       C_ZONEFILE_SKIP, yp_dname(args->id));
+	zone_skip_t skip = { 0 };
+	if (zone_skip_from_conf(&skip, &zf_skip) != KNOT_EOK) {
+		args->err_str = "'zonefile-skip' contains unknown types";
+		return KNOT_EINVAL;
+	}
+	zone_skip_free(&skip);
+
 
 	conf_val_t signing = conf_zone_get_txn(args->extra->conf, args->extra->txn,
 	                                       C_DNSSEC_SIGNING, yp_dname(args->id));

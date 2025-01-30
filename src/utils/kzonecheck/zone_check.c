@@ -119,7 +119,7 @@ int zone_check(const char *zone_file, const knot_dname_t *zone_name, bool zonemd
 			fprintf(stderr, "\n");
 		}
 		printf(";; Zone dump (Knot DNS %s)\n", PACKAGE_VERSION);
-		zone_dump_text(contents, stdout, false, NULL);
+		zone_dump_text(contents, NULL, stdout, false, NULL);
 	}
 
 	zone_contents_deep_free(contents);

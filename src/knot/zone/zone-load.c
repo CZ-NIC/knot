@@ -1,4 +1,4 @@
-/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2025 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -32,15 +32,23 @@ int zone_load_contents(conf_t *conf, const knot_dname_t *zone_name,
 		return KNOT_EINVAL;
 	}
 
+	zone_skip_t skip = { 0 };
+	conf_val_t conf_skip = conf_zone_get(conf, C_ZONEFILE_SKIP, zone_name);
+	int ret = zone_skip_from_conf(&skip, &conf_skip);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
 	char *zonefile = conf_zonefile(conf, zone_name);
 	conf_val_t val = conf_zone_get(conf, C_DEFAULT_TTL, zone_name);
 	uint32_t dflt_ttl = conf_int(&val);
 
 	zloader_t zl;
-	int ret = zonefile_open(&zl, zonefile, zone_name, dflt_ttl,
-	                        semcheck_mode, time(NULL));
+	ret = zonefile_open(&zl, zonefile, zone_name, dflt_ttl,
+	                    semcheck_mode, time(NULL));
 	free(zonefile);
 	if (ret != KNOT_EOK) {
+		zone_skip_free(&skip);
 		return ret;
 	}
 
@@ -50,9 +58,11 @@ int zone_load_contents(conf_t *conf, const knot_dname_t *zone_name,
 
 	zl.err_handler = &handler;
 	zl.creator->master = !zone_load_can_bootstrap(conf, zone_name);
+	zl.creator->skip = &skip;
 
 	*contents = zonefile_load(&zl);
 	zonefile_close(&zl);
+	zone_skip_free(&skip);
 	if (*contents == NULL) {
 		return KNOT_ERROR;
 	}
