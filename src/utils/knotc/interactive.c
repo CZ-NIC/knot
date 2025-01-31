@@ -23,6 +23,7 @@
 #include "utils/knotc/interactive.h"
 #include "utils/knotc/commands.h"
 #include "contrib/openbsd/strlcat.h"
+#include "contrib/openbsd/strlcpy.h"
 #include "contrib/string.h"
 
 #define PROGRAM_NAME	"knotc"
@@ -349,8 +350,8 @@ static void path_lookup(EditLine *el, const char *str) {
 		str = "./";
 	}
 
-	char path[PATH_MAX + 1] = { 0 }; // avoid editing argument directly
-	strncpy(path, str, PATH_MAX);
+	char path[PATH_MAX]; // avoid editing argument directly
+	strlcpy(path, str, PATH_MAX);
 	char *sep = strrchr(path, '/');
 	const char *dir, *base;
 	if (sep == NULL) {
