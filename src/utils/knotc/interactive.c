@@ -447,8 +447,8 @@ static unsigned char complete(EditLine *el, int ch)
 
 	// Complete filters and path arguments.
 	if ((desc->flags & CMD_FOPT_FILTER) && token > 0) {
-		if ((!strcmp(CMD_CONF_IMPORT, argv[0]) || !strcmp(CMD_CONF_EXPORT, argv[0]))
-		    && token == 1) {
+		if ((argv[token] == NULL || *argv[token] != '+') &&
+		    (!strcmp(CMD_CONF_IMPORT, argv[0]) || !strcmp(CMD_CONF_EXPORT, argv[0]))) {
 			path_lookup(el, argv[token], false);
 			goto complete_exit;
 		}
