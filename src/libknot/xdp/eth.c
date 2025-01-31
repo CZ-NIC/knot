@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2025 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -224,9 +224,6 @@ int knot_eth_vlans(uint16_t *vlan_map[], uint16_t *vlan_map_max)
 
 	unsigned map_size = 0;
 	for (struct ifaddrs *ifa = ifaces; ifa != NULL; ifa = ifa->ifa_next) {
-		if (ifa->ifa_addr->sa_family != AF_PACKET) {
-			continue;
-		}
 		map_size++;
 	}
 
