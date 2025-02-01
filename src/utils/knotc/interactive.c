@@ -528,7 +528,7 @@ static unsigned char complete(EditLine *el, int ch)
 		    lookup_insert(&lookup, CMD_STATUS_WORKERS, NULL) == KNOT_EOK &&
 		    lookup_insert(&lookup, CMD_STATUS_CONFIG, NULL) == KNOT_EOK &&
 		    lookup_insert(&lookup, CMD_STATUS_CERT, NULL) == KNOT_EOK) {
-			(void)lookup_complete(&lookup, argv[1], pos, el, false);
+			(void)lookup_complete(&lookup, argv[1], pos, el, true);
 		}
 		lookup_deinit(&lookup);
 		goto complete_exit;
