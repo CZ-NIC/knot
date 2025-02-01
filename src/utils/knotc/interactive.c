@@ -325,7 +325,8 @@ cmds_lookup_finish:
 	lookup_deinit(&lookup);
 }
 
-static void path_lookup(EditLine *el, const char *str, bool dirsonly) {
+static void path_lookup(EditLine *el, const char *str, bool dirsonly)
+{
 	if (str == NULL || *str == '\0') {
 		str = "./";
 	}
