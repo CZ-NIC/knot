@@ -355,13 +355,17 @@ static void path_lookup(EditLine *el, const char *str, bool dirsonly) {
 		goto finish2;
 	}
 
+	struct stat sb;
 	for (int i = 0; i < nnames; ++i) {
 		const struct dirent *it = namelist[i];
-		if ((!dirsonly || it->d_type == DT_DIR) &&
-		    strcmp(it->d_name, ".") && strcmp(it->d_name, "..")) {
+		bool is_dir;
+		is_dir = it->d_type == DT_DIR ||
+		         (it->d_type == DT_LNK && !stat(it->d_name, &sb) && S_ISDIR(sb.st_mode));
+		if ((!dirsonly || is_dir) &&
+		    (strcmp(it->d_name, ".") && strcmp(it->d_name, ".."))) {
 			char buf[PATH_MAX + 1];
 			snprintf(buf, PATH_MAX + 1,
-			         (it->d_type == DT_DIR) ? "%s/" : "%s", it->d_name);
+			         is_dir ? "%s/" : "%s", it->d_name);
 			ret = lookup_insert(&lookup, buf, NULL);
 			if (ret != KNOT_EOK) {
 				goto finish1;
@@ -375,7 +379,6 @@ static void path_lookup(EditLine *el, const char *str, bool dirsonly) {
 			*sep = '/';
 		}
 		strlcpy(base, lookup.found.key, PATH_MAX - (size_t)(base - path));
-		struct stat sb;
 		if (!stat(path, &sb) && !S_ISDIR(sb.st_mode)) {
 			el_insertstr(el, " ");
 		}
