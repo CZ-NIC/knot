@@ -480,7 +480,7 @@ static unsigned char complete(EditLine *el, int ch)
 		}
 		if (lookup_insert(&lookup, CMD_ROLLOVER_ZSK, NULL) == KNOT_EOK &&
 		    lookup_insert(&lookup, CMD_ROLLOVER_KSK, NULL) == KNOT_EOK) {
-			(void)lookup_complete(&lookup, argv[2], pos, el, false);
+			(void)lookup_complete(&lookup, argv[2], pos, el, true);
 		}
 		lookup_deinit(&lookup);
 		goto complete_exit;
