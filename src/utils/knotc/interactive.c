@@ -17,6 +17,7 @@
 #include <dirent.h>
 #include <histedit.h>
 #include <stdio.h>
+#include <sys/stat.h>
 
 #include "knot/common/log.h"
 #include "utils/common/lookup.h"
@@ -332,7 +333,7 @@ static void path_lookup(EditLine *el, const char *str, bool dirsonly) {
 	char path[PATH_MAX]; // avoid editing argument directly
 	strlcpy(path, str, PATH_MAX);
 	char *sep = strrchr(path, '/');
-	const char *dir, *base;
+	char *dir, *base;
 	if (sep == NULL) {
 		dir = "./";
 		base = path;
@@ -368,7 +369,17 @@ static void path_lookup(EditLine *el, const char *str, bool dirsonly) {
 		}
 	}
 
-	lookup_complete(&lookup, base, strlen(base), el, false);
+	ret = lookup_complete(&lookup, base, strlen(base), el, false);
+	if (ret == KNOT_EOK) {
+		if (sep != NULL) {
+			*sep = '/';
+		}
+		strlcpy(base, lookup.found.key, PATH_MAX - (size_t)(base - path));
+		struct stat sb;
+		if (!stat(path, &sb) && !S_ISDIR(sb.st_mode)) {
+			el_insertstr(el, " ");
+		}
+	}
 
 finish1:
 	lookup_deinit(&lookup);
