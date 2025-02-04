@@ -1221,7 +1221,7 @@ const cmd_desc_t cmd_table[] = {
 	{ CMD_ZONE_SIGN,       cmd_zone_ctl,          CTL_ZONE_SIGN,       CMD_FOPT_ZONE },
 	{ CMD_ZONE_VALIDATE,   cmd_zone_ctl,          CTL_ZONE_VALIDATE,   CMD_FOPT_ZONE },
 	{ CMD_ZONE_KEYS_LOAD,  cmd_zone_ctl,          CTL_ZONE_KEYS_LOAD,  CMD_FOPT_ZONE },
-	{ CMD_ZONE_KEY_ROLL,   cmd_zone_key_roll_ctl, CTL_ZONE_KEY_ROLL,   CMD_FREQ_ZONE },
+	{ CMD_ZONE_KEY_ROLL,   cmd_zone_key_roll_ctl, CTL_ZONE_KEY_ROLL,   CMD_FREQ_ZONE }, // Requires a key type.
 	{ CMD_ZONE_KSK_SBM,    cmd_zone_ctl,          CTL_ZONE_KSK_SBM,    CMD_FREQ_ZONE | CMD_FOPT_ZONE },
 	{ CMD_ZONE_FREEZE,     cmd_zone_ctl,          CTL_ZONE_FREEZE,     CMD_FOPT_ZONE },
 	{ CMD_ZONE_THAW,       cmd_zone_ctl,          CTL_ZONE_THAW,       CMD_FOPT_ZONE },
