@@ -44,6 +44,7 @@
 	typedef struct prefix ## _dynarray { \
 		ssize_t capacity; \
 		ssize_t size; \
+		int sorted; \
 		ntype *(*arr)(struct prefix ## _dynarray *dynarray); \
 		ntype init[initial_capacity]; \
 		ntype *_arr; \
@@ -97,6 +98,7 @@
 	visibility ntype *prefix ## _dynarray_add(struct prefix ## _dynarray *dynarray, \
 	                                          ntype const *to_add) \
 	{ \
+		dynarray->sorted = 0; \
 		if (dynarray->capacity < 0) { \
 			return NULL; \
 		} \
@@ -134,6 +136,7 @@
 		knot_dynarray_foreach(prefix, ntype, removable, *dynarray) { \
 			if (memcmp(removable, to_remove, sizeof(*to_remove)) == 0) { \
 				if (removable != orig_arr + --dynarray->size) { \
+					dynarray->sorted = 0; \
 					*(removable--) = orig_arr[dynarray->size]; \
 				} \
 			} \
@@ -150,12 +153,14 @@
 	{ \
 		ntype *arr = prefix ## _dynarray_arr(dynarray); \
 		qsort(arr, dynarray->size, sizeof(*arr), prefix ## _dynarray_memb_cmp); \
+		dynarray->sorted = 1; \
 	} \
 	\
 	_unused_ \
 	visibility ntype *prefix ## _dynarray_bsearch(struct prefix ## _dynarray *dynarray, const ntype *bskey) \
 	{ \
 		ntype *arr = prefix ## _dynarray_arr(dynarray); \
+		assert(dynarray->sorted || dynarray->size < 2); \
 		return bsearch(bskey, arr, dynarray->size, sizeof(*arr), prefix ## _dynarray_memb_cmp); \
 	} \
 	\

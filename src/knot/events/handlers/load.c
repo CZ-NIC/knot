@@ -76,6 +76,13 @@ int event_load(conf_t *conf, zone_t *zone)
 
 	int ret = KNOT_EOK;
 
+	val = conf_zone_get(conf, C_ZONEFILE_SKIP, zone->name);
+	zone_skip_t skip = { 0 };
+	ret = zone_skip_from_conf(&skip, &val);
+	if (ret != KNOT_EOK) {
+		goto cleanup;
+	}
+
 	// If configured, load journal contents.
 	if (!old_contents_exist && (load_from == JOURNAL_CONTENT_ALL && zf_from != ZONEFILE_LOAD_WHOLE)) {
 		ret = zone_load_from_journal(conf, zone, &journal_conts);
@@ -208,7 +215,15 @@ int event_load(conf_t *conf, zone_t *zone)
 		}
 	}
 
-	bool ignore_dnssec = (do_diff && dnssec_enable);
+	if (do_diff && dnssec_enable) {
+		ret = zone_skip_add(&skip, "dnssec");
+	}
+	if (update_zonemd && ret == KNOT_EOK) {
+		ret = zone_skip_add(&skip, "zonemd");
+	}
+	if (ret != KNOT_EOK) {
+		goto cleanup;
+	}
 
 	// Create zone_update structure according to current state.
 	if (old_contents_exist) {
@@ -233,8 +248,7 @@ int event_load(conf_t *conf, zone_t *zone)
 			zu_from_zf_conts = true;
 		} else {
 			// compute ZF diff and if success, apply it
-			ret = zone_update_from_differences(&up, zone, NULL, zf_conts, UPDATE_INCREMENTAL,
-			                                   ignore_dnssec, update_zonemd);
+			ret = zone_update_from_differences(&up, zone, NULL, zf_conts, UPDATE_INCREMENTAL, &skip);
 		}
 	} else {
 		if (journal_conts != NULL && zf_from != ZONEFILE_LOAD_WHOLE) {
@@ -244,7 +258,7 @@ int event_load(conf_t *conf, zone_t *zone)
 			} else {
 				// load zone-in-journal, compute ZF diff and if success, apply it
 				ret = zone_update_from_differences(&up, zone, journal_conts, zf_conts,
-				                                   UPDATE_HYBRID, ignore_dnssec, update_zonemd);
+				                                   UPDATE_HYBRID, &skip);
 				if (ret == KNOT_ESEMCHECK || ret == KNOT_ERANGE) {
 					log_zone_warning(zone->name,
 					                 "zone file changed with SOA serial %s, "
@@ -424,6 +438,7 @@ load_end:
 	if (!zone_timers_serial_notified(&zone->timers, new_serial)) {
 		zone_schedule_notify(zone, 0);
 	}
+	zone_skip_free(&skip);
 
 	return KNOT_EOK;
 
@@ -434,6 +449,7 @@ cleanup:
 	zone_update_clear(&up);
 	zone_contents_deep_free(zf_conts);
 	zone_contents_deep_free(journal_conts);
+	zone_skip_free(&skip);
 
 	return (dontcare_load_error(conf, zone) ? KNOT_EOK : ret);
 }

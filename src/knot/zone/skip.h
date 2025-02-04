@@ -24,6 +24,11 @@ struct zone_contents; // elsewhere
 typedef rrtype_dynarray_t zone_skip_t;
 
 /*!
+ * \brief Add signle type (or "dnssec") to given list of skip types.
+ */
+int zone_skip_add(zone_skip_t *skip, const char *type_s);
+
+/*!
  * \brief Fill in zone_skip structure according to a configuration option.
  */
 int zone_skip_from_conf(zone_skip_t *skip, conf_val_t *val);
