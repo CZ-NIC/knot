@@ -722,7 +722,7 @@ static int cmd_zone_ctl(cmd_args_t *args)
 				log_error("unknown filter: %s", args->argv[i]);
 				return KNOT_EINVAL;
 			}
-			char filter_id[2] = {fd->id[0], 0 };
+			char filter_id[2] = { fd->id[0], 0 };
 			if (strchr(filter_buff, filter_id[0]) == NULL) {
 				assert(strlen(filter_buff) < MAX_FILTERS);
 				strlcat(filter_buff, filter_id, sizeof(filter_buff));
