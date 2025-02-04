@@ -1,4 +1,4 @@
-/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2025 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -33,57 +33,6 @@
 #include "contrib/strtonum.h"
 #include "contrib/openbsd/strlcat.h"
 #include "utils/knotc/commands.h"
-
-#define CMD_EXIT		"exit"
-
-#define CMD_STATUS		"status"
-#define CMD_STOP		"stop"
-#define CMD_RELOAD		"reload"
-#define CMD_STATS		"stats"
-
-#define CMD_ZONE_CHECK		"zone-check"
-#define CMD_ZONE_STATUS		"zone-status"
-#define CMD_ZONE_RELOAD		"zone-reload"
-#define CMD_ZONE_REFRESH	"zone-refresh"
-#define CMD_ZONE_RETRANSFER	"zone-retransfer"
-#define CMD_ZONE_NOTIFY		"zone-notify"
-#define CMD_ZONE_FLUSH		"zone-flush"
-#define CMD_ZONE_BACKUP		"zone-backup"
-#define CMD_ZONE_RESTORE	"zone-restore"
-#define CMD_ZONE_SIGN		"zone-sign"
-#define CMD_ZONE_VALIDATE	"zone-validate"
-#define CMD_ZONE_KEYS_LOAD	"zone-keys-load"
-#define CMD_ZONE_KEY_ROLL	"zone-key-rollover"
-#define CMD_ZONE_KSK_SBM	"zone-ksk-submitted"
-#define CMD_ZONE_FREEZE		"zone-freeze"
-#define CMD_ZONE_THAW		"zone-thaw"
-#define CMD_ZONE_XFR_FREEZE	"zone-xfr-freeze"
-#define CMD_ZONE_XFR_THAW	"zone-xfr-thaw"
-
-#define CMD_ZONE_READ		"zone-read"
-#define CMD_ZONE_BEGIN		"zone-begin"
-#define CMD_ZONE_COMMIT		"zone-commit"
-#define CMD_ZONE_ABORT		"zone-abort"
-#define CMD_ZONE_DIFF		"zone-diff"
-#define CMD_ZONE_GET		"zone-get"
-#define CMD_ZONE_SET		"zone-set"
-#define CMD_ZONE_UNSET		"zone-unset"
-#define CMD_ZONE_PURGE		"zone-purge"
-#define CMD_ZONE_STATS		"zone-stats"
-
-#define CMD_CONF_INIT		"conf-init"
-#define CMD_CONF_CHECK		"conf-check"
-#define CMD_CONF_IMPORT		"conf-import"
-#define CMD_CONF_EXPORT		"conf-export"
-#define CMD_CONF_LIST		"conf-list"
-#define CMD_CONF_READ		"conf-read"
-#define CMD_CONF_BEGIN		"conf-begin"
-#define CMD_CONF_COMMIT		"conf-commit"
-#define CMD_CONF_ABORT		"conf-abort"
-#define CMD_CONF_DIFF		"conf-diff"
-#define CMD_CONF_GET		"conf-get"
-#define CMD_CONF_SET		"conf-set"
-#define CMD_CONF_UNSET		"conf-unset"
 
 #define CTL_LOG_STR		"failed to control"
 
@@ -494,7 +443,7 @@ static int cmd_ctl(cmd_args_t *args)
 
 	knot_ctl_data_t data = {
 		[KNOT_CTL_IDX_CMD] = ctl_cmd_to_str(args->desc->cmd),
-		[KNOT_CTL_IDX_FLAGS] = args->flags,
+		[KNOT_CTL_IDX_FLAGS] = *args->flags ? args->flags : NULL,
 		[KNOT_CTL_IDX_TYPE] = args->argc > 0 ? args->argv[0] : NULL
 	};
 
@@ -549,7 +498,7 @@ static int cmd_stats_ctl(cmd_args_t *args)
 {
 	knot_ctl_data_t data = {
 		[KNOT_CTL_IDX_CMD] = ctl_cmd_to_str(args->desc->cmd),
-		[KNOT_CTL_IDX_FLAGS] = args->flags,
+		[KNOT_CTL_IDX_FLAGS] = *args->flags ? args->flags : NULL,
 	};
 
 	int ret = set_stats_items(args, &data);
@@ -642,7 +591,7 @@ static int cmd_zone_key_roll_ctl(cmd_args_t *args)
 
 	knot_ctl_data_t data = {
 		[KNOT_CTL_IDX_CMD] = ctl_cmd_to_str(args->desc->cmd),
-		[KNOT_CTL_IDX_FLAGS] = args->flags,
+		[KNOT_CTL_IDX_FLAGS] = *args->flags ? args->flags : NULL,
 		[KNOT_CTL_IDX_ZONE] = args->argv[0],
 		[KNOT_CTL_IDX_TYPE] = args->argv[1],
 	};
@@ -653,14 +602,15 @@ static int cmd_zone_key_roll_ctl(cmd_args_t *args)
 	return ctl_receive(args);
 }
 
-#define FILTER_IMPORT_NOPURGE	 "+nopurge"
-#define FILTER_EXPORT_SCHEMA	 "+schema"
+const filter_desc_t conf_import_filters[] = {
+	{ "+nopurge" },
+	{ NULL },
+};
 
-typedef struct {
-	const char *name;
-	char *id;
-	bool with_data; // Only ONE filter of each filter_desc_t may have data!
-} filter_desc_t;
+const filter_desc_t conf_export_filters[] = {
+	{ "+schema" },
+	{ NULL },
+};
 
 const filter_desc_t zone_begin_filters[] = {
 	{ "+benevolent", CTL_FILTER_BEGIN_BENEVOLENT },
@@ -673,7 +623,7 @@ const filter_desc_t zone_flush_filters[] = {
 };
 
 const filter_desc_t zone_backup_filters[] = {
-	{ "+backupdir",   CTL_FILTER_BACKUP_OUTDIR,      true },
+	{ "+backupdir",   CTL_FILTER_BACKUP_OUTDIR,      true },  // This must be the first.
 	{ "+zonefile",    CTL_FILTER_BACKUP_ZONEFILE,   false },
 	{ "+nozonefile",  CTL_FILTER_BACKUP_NOZONEFILE, false },
 	{ "+journal",     CTL_FILTER_BACKUP_JOURNAL,    false },
@@ -751,7 +701,7 @@ static int cmd_zone_ctl(cmd_args_t *args)
 {
 	knot_ctl_data_t data = {
 		[KNOT_CTL_IDX_CMD] = ctl_cmd_to_str(args->desc->cmd),
-		[KNOT_CTL_IDX_FLAGS] = args->flags,
+		[KNOT_CTL_IDX_FLAGS] = *args->flags ? args->flags : NULL,
 	};
 
 	if (args->desc->cmd == CTL_ZONE_PURGE && !args->force) {
@@ -767,11 +717,12 @@ static int cmd_zone_ctl(cmd_args_t *args)
 			if (data[KNOT_CTL_IDX_FILTERS] == NULL) {
 				data[KNOT_CTL_IDX_FILTERS] = filter_buff;
 			}
-			char filter_id[2] = { get_filter(args->desc->cmd, args->argv[i])->id[0], 0 };
-			if (filter_id[0] == '\0') {
+			const filter_desc_t *fd = get_filter(args->desc->cmd, args->argv[i]);
+			if (fd->id == NULL || fd->id[0] == '\0') {
 				log_error("unknown filter: %s", args->argv[i]);
 				return KNOT_EINVAL;
 			}
+			char filter_id[2] = { fd->id[0], 0 };
 			if (strchr(filter_buff, filter_id[0]) == NULL) {
 				assert(strlen(filter_buff) < MAX_FILTERS);
 				strlcat(filter_buff, filter_id, sizeof(filter_buff));
@@ -909,7 +860,7 @@ static int cmd_zone_node_ctl(cmd_args_t *args)
 {
 	knot_ctl_data_t data = {
 		[KNOT_CTL_IDX_CMD] = ctl_cmd_to_str(args->desc->cmd),
-		[KNOT_CTL_IDX_FLAGS] = args->flags,
+		[KNOT_CTL_IDX_FLAGS] = *args->flags ? args->flags : NULL,
 	};
 
 	char rdata[65536]; // Maximum item size in libknot control interface.
@@ -1106,7 +1057,7 @@ static int cmd_conf_import(cmd_args_t *args)
 	import_flag_t flags = IMPORT_FILE;
 	if (args->argc == 2) {
 		const char *filter = args->argv[1];
-		if (strcmp(filter, FILTER_IMPORT_NOPURGE) == 0) {
+		if (strcmp(filter, conf_import_filters[0].name) == 0) {
 			flags |= IMPORT_NO_PURGE;
 		} else {
 			log_error("unknown filter: %s", filter);
@@ -1158,7 +1109,7 @@ static int cmd_conf_export(cmd_args_t *args)
 	bool export_schema = false;
 	for (int i = 0; i < args->argc; i++) {
 		if (args->argv[i][0] == '+') {
-			if (strcmp(args->argv[i], FILTER_EXPORT_SCHEMA) == 0) {
+			if (strcmp(args->argv[i], conf_export_filters[0].name) == 0) {
 				export_schema = true;
 			} else {
 				log_error("unknown filter: %s", args->argv[i]);
@@ -1212,7 +1163,7 @@ static int cmd_conf_ctl(cmd_args_t *args)
 
 	knot_ctl_data_t data = {
 		[KNOT_CTL_IDX_CMD] = ctl_cmd_to_str(args->desc->cmd),
-		[KNOT_CTL_IDX_FILTERS] = filters,
+		[KNOT_CTL_IDX_FILTERS] = *filters ? filters : NULL,
 	};
 
 	// Send the command without parameters.
@@ -1259,18 +1210,18 @@ const cmd_desc_t cmd_table[] = {
 	{ CMD_STATS,           cmd_stats_ctl,     CTL_STATS },
 
 	{ CMD_ZONE_CHECK,      cmd_zone_check,        CTL_NONE,            CMD_FOPT_ZONE | CMD_FREAD },
-	{ CMD_ZONE_STATUS,     cmd_zone_ctl,          CTL_ZONE_STATUS,     CMD_FOPT_ZONE },
+	{ CMD_ZONE_STATUS,     cmd_zone_ctl,          CTL_ZONE_STATUS,     CMD_FOPT_ZONE | CMD_FOPT_FILTER },
 	{ CMD_ZONE_RELOAD,     cmd_zone_ctl,          CTL_ZONE_RELOAD,     CMD_FOPT_ZONE },
 	{ CMD_ZONE_REFRESH,    cmd_zone_ctl,          CTL_ZONE_REFRESH,    CMD_FOPT_ZONE },
 	{ CMD_ZONE_RETRANSFER, cmd_zone_ctl,          CTL_ZONE_RETRANSFER, CMD_FOPT_ZONE },
 	{ CMD_ZONE_NOTIFY,     cmd_zone_ctl,          CTL_ZONE_NOTIFY,     CMD_FOPT_ZONE },
-	{ CMD_ZONE_FLUSH,      cmd_zone_ctl,          CTL_ZONE_FLUSH,      CMD_FOPT_ZONE },
-	{ CMD_ZONE_BACKUP,     cmd_zone_ctl,          CTL_ZONE_BACKUP,     CMD_FOPT_ZONE },
-	{ CMD_ZONE_RESTORE,    cmd_zone_ctl,          CTL_ZONE_RESTORE,    CMD_FOPT_ZONE },
+	{ CMD_ZONE_FLUSH,      cmd_zone_ctl,          CTL_ZONE_FLUSH,      CMD_FOPT_ZONE | CMD_FOPT_FILTER},
+	{ CMD_ZONE_BACKUP,     cmd_zone_ctl,          CTL_ZONE_BACKUP,     CMD_FOPT_ZONE | CMD_FOPT_FILTER },
+	{ CMD_ZONE_RESTORE,    cmd_zone_ctl,          CTL_ZONE_RESTORE,    CMD_FOPT_ZONE | CMD_FOPT_FILTER },
 	{ CMD_ZONE_SIGN,       cmd_zone_ctl,          CTL_ZONE_SIGN,       CMD_FOPT_ZONE },
 	{ CMD_ZONE_VALIDATE,   cmd_zone_ctl,          CTL_ZONE_VALIDATE,   CMD_FOPT_ZONE },
 	{ CMD_ZONE_KEYS_LOAD,  cmd_zone_ctl,          CTL_ZONE_KEYS_LOAD,  CMD_FOPT_ZONE },
-	{ CMD_ZONE_KEY_ROLL,   cmd_zone_key_roll_ctl, CTL_ZONE_KEY_ROLL,   CMD_FREQ_ZONE },
+	{ CMD_ZONE_KEY_ROLL,   cmd_zone_key_roll_ctl, CTL_ZONE_KEY_ROLL,   CMD_FREQ_ZONE }, // Requires a key type.
 	{ CMD_ZONE_KSK_SBM,    cmd_zone_ctl,          CTL_ZONE_KSK_SBM,    CMD_FREQ_ZONE | CMD_FOPT_ZONE },
 	{ CMD_ZONE_FREEZE,     cmd_zone_ctl,          CTL_ZONE_FREEZE,     CMD_FOPT_ZONE },
 	{ CMD_ZONE_THAW,       cmd_zone_ctl,          CTL_ZONE_THAW,       CMD_FOPT_ZONE },
@@ -1278,20 +1229,20 @@ const cmd_desc_t cmd_table[] = {
 	{ CMD_ZONE_XFR_THAW,   cmd_zone_ctl,          CTL_ZONE_XFR_THAW,   CMD_FOPT_ZONE },
 
 	{ CMD_ZONE_READ,       cmd_zone_node_ctl,   CTL_ZONE_READ,       CMD_FREQ_ZONE },
-	{ CMD_ZONE_BEGIN,      cmd_zone_ctl,        CTL_ZONE_BEGIN,      CMD_FREQ_ZONE | CMD_FOPT_ZONE },
+	{ CMD_ZONE_BEGIN,      cmd_zone_ctl,        CTL_ZONE_BEGIN,      CMD_FREQ_ZONE | CMD_FOPT_ZONE | CMD_FOPT_FILTER },
 	{ CMD_ZONE_COMMIT,     cmd_zone_ctl,        CTL_ZONE_COMMIT,     CMD_FREQ_ZONE | CMD_FOPT_ZONE },
 	{ CMD_ZONE_ABORT,      cmd_zone_ctl,        CTL_ZONE_ABORT,      CMD_FREQ_ZONE | CMD_FOPT_ZONE },
 	{ CMD_ZONE_DIFF,       cmd_zone_node_ctl,   CTL_ZONE_DIFF,       CMD_FREQ_ZONE },
 	{ CMD_ZONE_GET,        cmd_zone_node_ctl,   CTL_ZONE_GET,        CMD_FREQ_ZONE },
 	{ CMD_ZONE_SET,        cmd_zone_node_ctl,   CTL_ZONE_SET,        CMD_FREQ_ZONE },
 	{ CMD_ZONE_UNSET,      cmd_zone_node_ctl,   CTL_ZONE_UNSET,      CMD_FREQ_ZONE },
-	{ CMD_ZONE_PURGE,      cmd_zone_ctl,        CTL_ZONE_PURGE,      CMD_FREQ_ZONE | CMD_FOPT_ZONE },
+	{ CMD_ZONE_PURGE,      cmd_zone_ctl,        CTL_ZONE_PURGE,      CMD_FREQ_ZONE | CMD_FOPT_ZONE | CMD_FOPT_FILTER },
 	{ CMD_ZONE_STATS,      cmd_stats_ctl,       CTL_ZONE_STATS,      CMD_FREQ_ZONE },
 
 	{ CMD_CONF_INIT,       cmd_conf_init,     CTL_NONE,            CMD_FWRITE },
 	{ CMD_CONF_CHECK,      cmd_conf_check,    CTL_NONE,            CMD_FREAD  | CMD_FREQ_MOD },
-	{ CMD_CONF_IMPORT,     cmd_conf_import,   CTL_NONE,            CMD_FWRITE | CMD_FOPT_MOD },
-	{ CMD_CONF_EXPORT,     cmd_conf_export,   CTL_NONE,            CMD_FREAD  | CMD_FOPT_MOD },
+	{ CMD_CONF_IMPORT,     cmd_conf_import,   CTL_NONE,            CMD_FWRITE | CMD_FOPT_MOD | CMD_FOPT_FILTER },
+	{ CMD_CONF_EXPORT,     cmd_conf_export,   CTL_NONE,            CMD_FREAD  | CMD_FOPT_MOD | CMD_FOPT_FILTER },
 	{ CMD_CONF_LIST,       cmd_conf_ctl,      CTL_CONF_LIST,       CMD_FOPT_ITEM | CMD_FLIST_SCHEMA },
 	{ CMD_CONF_READ,       cmd_conf_ctl,      CTL_CONF_READ,       CMD_FOPT_ITEM },
 	{ CMD_CONF_BEGIN,      cmd_conf_ctl,      CTL_CONF_BEGIN },
@@ -1299,7 +1250,7 @@ const cmd_desc_t cmd_table[] = {
 	{ CMD_CONF_ABORT,      cmd_conf_ctl,      CTL_CONF_ABORT },
 	{ CMD_CONF_DIFF,       cmd_conf_ctl,      CTL_CONF_DIFF,       CMD_FOPT_ITEM | CMD_FREQ_TXN },
 	{ CMD_CONF_GET,        cmd_conf_ctl,      CTL_CONF_GET,        CMD_FOPT_ITEM | CMD_FREQ_TXN },
-	{ CMD_CONF_SET,        cmd_conf_ctl,      CTL_CONF_SET,        CMD_FREQ_ITEM | CMD_FOPT_DATA | CMD_FREQ_TXN | CMD_FLIST_SCHEMA},
+	{ CMD_CONF_SET,        cmd_conf_ctl,      CTL_CONF_SET,        CMD_FREQ_ITEM | CMD_FOPT_DATA | CMD_FREQ_TXN },
 	{ CMD_CONF_UNSET,      cmd_conf_ctl,      CTL_CONF_UNSET,      CMD_FOPT_ITEM | CMD_FOPT_DATA | CMD_FREQ_TXN },
 	{ NULL }
 };

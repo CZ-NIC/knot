@@ -1,4 +1,4 @@
-/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2025 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -14,14 +14,18 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include <stdio.h>
+#include <dirent.h>
 #include <histedit.h>
+#include <limits.h>
+#include <stdio.h>
+#include <sys/stat.h>
 
 #include "knot/common/log.h"
 #include "utils/common/lookup.h"
 #include "utils/knotc/interactive.h"
 #include "utils/knotc/commands.h"
 #include "contrib/openbsd/strlcat.h"
+#include "contrib/openbsd/strlcpy.h"
 #include "contrib/string.h"
 
 #define PROGRAM_NAME	"knotc"
@@ -277,6 +281,119 @@ static void item_lookup(EditLine *el, const char *str, const cmd_desc_t *cmd_des
 	}
 }
 
+static void filter_lookup(EditLine *el, const char *str, const cmd_desc_t *cmd,
+			  dup_check_ctx_t *dup_ctx)
+{
+	lookup_t lookup;
+	int ret = lookup_init(&lookup);
+	if (ret != KNOT_EOK) {
+		return;
+	}
+
+	if (lookup_insert(&lookup, CMD_ZONE_STATUS, (void *)zone_status_filters) != KNOT_EOK ||
+	    lookup_insert(&lookup, CMD_ZONE_BACKUP, (void *)zone_backup_filters) != KNOT_EOK ||
+	    lookup_insert(&lookup, CMD_ZONE_RESTORE, (void *)zone_backup_filters) != KNOT_EOK ||
+	    lookup_insert(&lookup, CMD_ZONE_PURGE, (void *)zone_purge_filters) != KNOT_EOK ||
+	    lookup_insert(&lookup, CMD_ZONE_BEGIN, (void *)zone_begin_filters) != KNOT_EOK ||
+	    lookup_insert(&lookup, CMD_ZONE_FLUSH, (void *)zone_flush_filters) != KNOT_EOK ||
+	    lookup_insert(&lookup, CMD_CONF_IMPORT, (void *)conf_import_filters) != KNOT_EOK ||
+	    lookup_insert(&lookup, CMD_CONF_EXPORT, (void *)conf_export_filters) != KNOT_EOK) {
+		goto cmds_lookup_finish;
+	}
+
+	ret = lookup_search(&lookup, cmd->name, strlen(cmd->name));
+	if (ret == KNOT_EOK) {
+		lookup_t flookup;
+		ret = lookup_init(&flookup);
+		if (ret != KNOT_EOK) {
+			goto cmds_lookup_finish;
+		}
+
+		for (const filter_desc_t *it = lookup.found.data; it->name != NULL; ++it) {
+			ret = lookup_insert(&flookup, it->name, NULL);
+			if (ret != KNOT_EOK) {
+				goto cmds_lookup_finish_both;
+			}
+		}
+
+		remove_duplicates(&flookup, dup_ctx);
+		(void)lookup_complete(&flookup, str, strlen(str), el, true);
+cmds_lookup_finish_both:
+		lookup_deinit(&flookup);
+	}
+
+cmds_lookup_finish:
+	lookup_deinit(&lookup);
+}
+
+static void path_lookup(EditLine *el, const char *str, bool dirsonly)
+{
+	if (str == NULL || *str == '\0') {
+		str = "./";
+	}
+
+	char path[PATH_MAX]; // avoid editing argument directly
+	strlcpy(path, str, PATH_MAX);
+	char *sep = strrchr(path, '/');
+	char *dir, *base;
+	if (sep == NULL) {
+		dir = "./";
+		base = path;
+	} else {
+		dir = (sep == path) ? "/" : path;
+		base = sep + 1;
+		*sep = '\0';
+	}
+
+	struct dirent **namelist;
+	int nnames = scandir(dir, &namelist, NULL, alphasort);
+	if (nnames == -1) {
+		return;
+	}
+
+	lookup_t lookup;
+	int ret = lookup_init(&lookup);
+	if (ret != KNOT_EOK) {
+		goto finish2;
+	}
+
+	struct stat sb;
+	for (int i = 0; i < nnames; ++i) {
+		const struct dirent *it = namelist[i];
+		bool is_dir;
+		is_dir = it->d_type == DT_DIR ||
+		         (it->d_type == DT_LNK && !stat(it->d_name, &sb) && S_ISDIR(sb.st_mode));
+		if ((!dirsonly || is_dir) &&
+		    (strcmp(it->d_name, ".") && strcmp(it->d_name, ".."))) {
+			char buf[PATH_MAX + 1];
+			snprintf(buf, PATH_MAX + 1, is_dir ? "%s/" : "%s", it->d_name);
+			ret = lookup_insert(&lookup, buf, NULL);
+			if (ret != KNOT_EOK) {
+				goto finish1;
+			}
+		}
+	}
+
+	ret = lookup_complete(&lookup, base, strlen(base), el, false);
+	if (ret == KNOT_EOK) {
+		if (sep != NULL) {
+			*sep = '/';
+		}
+		strlcpy(base, lookup.found.key, PATH_MAX - (size_t)(base - path));
+		if (!stat(path, &sb) && !S_ISDIR(sb.st_mode)) {
+			el_insertstr(el, " ");
+		}
+	}
+
+finish1:
+	lookup_deinit(&lookup);
+finish2:
+	for (int i = 0; i < nnames; ++i) {
+		free(namelist[i]);
+	}
+	free(namelist);
+}
+
 static unsigned char complete(EditLine *el, int ch)
 {
 	int argc, token, pos;
@@ -323,6 +440,53 @@ static unsigned char complete(EditLine *el, int ch)
 		goto complete_exit;
 	}
 
+	// Complete filters and path arguments.
+	if ((desc->flags & CMD_FOPT_FILTER) && token > 0) {
+		if ((argv[token] == NULL || *argv[token] != '+') &&
+		    (!strcmp(CMD_CONF_IMPORT, argv[0]) || !strcmp(CMD_CONF_EXPORT, argv[0]))) {
+			path_lookup(el, argv[token], false);
+			goto complete_exit;
+		}
+
+		if (token < argc && *argv[token] == '+') {
+			dup_check_ctx_t ctx = { &argv[1], token - 1, false };
+			filter_lookup(el, argv[token], desc, &ctx);
+			goto complete_exit;
+		}
+
+		switch (desc->cmd) {
+		case CTL_ZONE_FLUSH:
+			if (!strcmp(zone_flush_filters[0].name, argv[token - 1])) {
+				path_lookup(el, argv[token], true);
+				goto complete_exit;
+			}
+			break;
+		case CTL_ZONE_BACKUP:
+		case CTL_ZONE_RESTORE:
+			if (!strcmp(zone_backup_filters[0].name, argv[token - 1])) {
+				path_lookup(el, argv[token], true);
+				goto complete_exit;
+			}
+			break;
+		default:
+			break;
+		}
+	}
+
+	// Complete zone-key-rollover key type.
+	if (desc->cmd == CTL_ZONE_KEY_ROLL && token == 2) {
+		lookup_t lookup;
+		if (lookup_init(&lookup) != KNOT_EOK) {
+			goto complete_exit;
+		}
+		if (lookup_insert(&lookup, CMD_ROLLOVER_ZSK, NULL) == KNOT_EOK &&
+		    lookup_insert(&lookup, CMD_ROLLOVER_KSK, NULL) == KNOT_EOK) {
+			(void)lookup_complete(&lookup, argv[2], pos, el, true);
+		}
+		lookup_deinit(&lookup);
+		goto complete_exit;
+	}
+
 	// Complete the zone name.
 	if (desc->flags & (CMD_FREQ_ZONE | CMD_FOPT_ZONE)) {
 		if (token > 1 && !(desc->flags & CMD_FOPT_ZONE)) {
@@ -354,6 +518,20 @@ static unsigned char complete(EditLine *el, int ch)
 				           &ctx, desc->flags & CMD_FLIST_SCHEMA);
 			}
 		}
+		goto complete_exit;
+	// Complete status command detail.
+	} else if (desc->cmd == CTL_STATUS && token == 1) {
+		lookup_t lookup;
+		if (lookup_init(&lookup) != KNOT_EOK) {
+			goto complete_exit;
+		}
+		if (lookup_insert(&lookup, CMD_STATUS_VERSION, NULL) == KNOT_EOK &&
+		    lookup_insert(&lookup, CMD_STATUS_WORKERS, NULL) == KNOT_EOK &&
+		    lookup_insert(&lookup, CMD_STATUS_CONFIG, NULL) == KNOT_EOK &&
+		    lookup_insert(&lookup, CMD_STATUS_CERT, NULL) == KNOT_EOK) {
+			(void)lookup_complete(&lookup, argv[1], pos, el, true);
+		}
+		lookup_deinit(&lookup);
 		goto complete_exit;
 	}
 

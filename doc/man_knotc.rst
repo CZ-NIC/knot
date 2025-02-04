@@ -252,7 +252,7 @@ Actions
 **conf-check**
   Check the server configuration. (*)
 
-**conf-import** *filename* [+nopurge]
+**conf-import** *filename* [**+nopurge**]
   Import a configuration file into the configuration database. If the database
   doesn't exist yet, execute this command as an intended user to ensure the server
   is permitted to access the database (e.g. *sudo -u knot knotc conf-import ...*).
@@ -260,7 +260,7 @@ Actions
   database from purging before the import itself.
   Also ensure the server is not using the configuration database at the same time! (*)
 
-**conf-export** [*filename*] [+schema]
+**conf-export** [*filename*] [**+schema**]
   Export the configuration database (or JSON schema) into a file or stdout. (*)
 
 **conf-list** [*item*]

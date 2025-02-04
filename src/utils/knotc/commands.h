@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2025 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -19,6 +19,57 @@
 #include "libknot/control/control.h"
 #include "knot/ctl/commands.h"
 
+#define CMD_EXIT		"exit"
+
+#define CMD_STATUS		"status"
+#define CMD_STOP		"stop"
+#define CMD_RELOAD		"reload"
+#define CMD_STATS		"stats"
+
+#define CMD_ZONE_CHECK		"zone-check"
+#define CMD_ZONE_STATUS		"zone-status"
+#define CMD_ZONE_RELOAD		"zone-reload"
+#define CMD_ZONE_REFRESH	"zone-refresh"
+#define CMD_ZONE_RETRANSFER	"zone-retransfer"
+#define CMD_ZONE_NOTIFY		"zone-notify"
+#define CMD_ZONE_FLUSH		"zone-flush"
+#define CMD_ZONE_BACKUP		"zone-backup"
+#define CMD_ZONE_RESTORE	"zone-restore"
+#define CMD_ZONE_SIGN		"zone-sign"
+#define CMD_ZONE_VALIDATE	"zone-validate"
+#define CMD_ZONE_KEYS_LOAD	"zone-keys-load"
+#define CMD_ZONE_KEY_ROLL	"zone-key-rollover"
+#define CMD_ZONE_KSK_SBM	"zone-ksk-submitted"
+#define CMD_ZONE_FREEZE		"zone-freeze"
+#define CMD_ZONE_THAW		"zone-thaw"
+#define CMD_ZONE_XFR_FREEZE	"zone-xfr-freeze"
+#define CMD_ZONE_XFR_THAW	"zone-xfr-thaw"
+
+#define CMD_ZONE_READ		"zone-read"
+#define CMD_ZONE_BEGIN		"zone-begin"
+#define CMD_ZONE_COMMIT		"zone-commit"
+#define CMD_ZONE_ABORT		"zone-abort"
+#define CMD_ZONE_DIFF		"zone-diff"
+#define CMD_ZONE_GET		"zone-get"
+#define CMD_ZONE_SET		"zone-set"
+#define CMD_ZONE_UNSET		"zone-unset"
+#define CMD_ZONE_PURGE		"zone-purge"
+#define CMD_ZONE_STATS		"zone-stats"
+
+#define CMD_CONF_INIT		"conf-init"
+#define CMD_CONF_CHECK		"conf-check"
+#define CMD_CONF_IMPORT		"conf-import"
+#define CMD_CONF_EXPORT		"conf-export"
+#define CMD_CONF_LIST		"conf-list"
+#define CMD_CONF_READ		"conf-read"
+#define CMD_CONF_BEGIN		"conf-begin"
+#define CMD_CONF_COMMIT		"conf-commit"
+#define CMD_CONF_ABORT		"conf-abort"
+#define CMD_CONF_DIFF		"conf-diff"
+#define CMD_CONF_GET		"conf-get"
+#define CMD_CONF_SET		"conf-set"
+#define CMD_CONF_UNSET		"conf-unset"
+
 /*! \brief Command condition flags. */
 typedef enum {
 	CMD_FNONE        = 0,       /*!< Empty flag. */
@@ -33,6 +84,7 @@ typedef enum {
 	CMD_FOPT_MOD     = 1 << 8,  /*!< Optional configured modules dependency. */
 	CMD_FREQ_MOD     = 1 << 9,  /*!< Required configured modules dependency. */
 	CMD_FLIST_SCHEMA = 1 << 10, /*!< List schema or possible option values. */
+	CMD_FOPT_FILTER  = 1 << 11, /*!< Optional filter argument. */
 } cmd_flag_t;
 
 struct cmd_desc;
@@ -66,6 +118,22 @@ typedef struct {
 	const char *params;
 	const char *desc;
 } cmd_help_t;
+
+/*! Control command filter description. */
+typedef struct {
+	const char *name;
+	char *id;
+	bool with_data; // Only ONE filter of each filter_desc_t may have data!
+} filter_desc_t;
+
+/*! Exported filter descriptions. */
+extern const filter_desc_t conf_import_filters[];
+extern const filter_desc_t conf_export_filters[];
+extern const filter_desc_t zone_begin_filters[];
+extern const filter_desc_t zone_flush_filters[];
+extern const filter_desc_t zone_backup_filters[];
+extern const filter_desc_t zone_status_filters[];
+extern const filter_desc_t zone_purge_filters[];
 
 /*! \brief Table of commands. */
 extern const cmd_desc_t cmd_table[];
