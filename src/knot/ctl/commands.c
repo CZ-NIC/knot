@@ -16,6 +16,7 @@
 
 #include <string.h>
 #include <unistd.h>
+#include <sys/stat.h>
 #include <sys/time.h>
 #include <time.h>
 #include <urcu.h>
@@ -513,6 +514,19 @@ static int zone_retransfer(zone_t *zone, _unused_ ctl_args_t *args)
 	return schedule_trigger(zone, args, ZONE_EVENT_REFRESH, true);
 }
 
+static void common_failure(_unused_ ctl_args_t *args, int err, const char *msg)
+{
+	if (args->data[KNOT_CTL_IDX_ZONE] == NULL) {
+		log_ctl_error("%s", msg);
+	} else {
+		log_ctl_zone_str_error(args->data[KNOT_CTL_IDX_ZONE], "%s", msg);
+	}
+
+	/* Warning: zone name in the control command params discarded here. */
+	args->data[KNOT_CTL_IDX_ZONE] = NULL;
+	ctl_send_error(args, knot_strerror(err));
+}
+
 static int zone_notify(zone_t *zone, _unused_ ctl_args_t *args)
 {
 	zone_notifailed_clear(zone);
@@ -521,23 +535,50 @@ static int zone_notify(zone_t *zone, _unused_ ctl_args_t *args)
 
 static int zone_flush(zone_t *zone, ctl_args_t *args)
 {
-	if (MATCH_AND_FILTER(args, CTL_FILTER_FLUSH_OUTDIR)) {
-		rcu_read_lock();
-		int ret = zone_dump_to_dir(conf(), zone, args->data[KNOT_CTL_IDX_DATA]);
-		rcu_read_unlock();
-		if (ret != KNOT_EOK) {
-			log_zone_warning(zone->name, "failed to update zone file (%s)",
-			                 knot_strerror(ret));
-		}
-		return ret;
-	}
-
 	zone_set_flag(zone, ZONE_USER_FLUSH);
 	if (ctl_has_flag(args->data[KNOT_CTL_IDX_FLAGS], CTL_FLAG_FORCE)) {
 		zone_set_flag(zone, ZONE_FORCE_FLUSH);
 	}
 
 	return schedule_trigger(zone, args, ZONE_EVENT_FLUSH, true);
+}
+
+static int zone_flush_outdir(zone_t *zone, ctl_args_t *args)
+{
+	rcu_read_lock();
+	int ret = zone_dump_to_dir(conf(), zone, args->data[KNOT_CTL_IDX_DATA]);
+	rcu_read_unlock();
+
+	if (ret != KNOT_EOK) {
+		log_zone_warning(zone->name, "failed to update zone file (%s)",
+		                 knot_strerror(ret));
+	}
+	return ret;
+}
+
+static int zones_apply_flush(ctl_args_t *args)
+{
+	if (MATCH_AND_FILTER(args, CTL_FILTER_FLUSH_OUTDIR)) {
+		const char *dir = args->data[KNOT_CTL_IDX_DATA];
+		if (dir == NULL) {
+			char *msg = "flush, output directory not specified";
+			common_failure(args, KNOT_ENOPARAM, msg);
+			return KNOT_CTL_EZONE;
+		}
+		int ret = make_path(dir, S_IRUSR | S_IWUSR | S_IXUSR |
+		                         S_IRGRP | S_IWGRP | S_IXGRP);
+		if (ret != KNOT_EOK) {
+			char *msg = sprintf_alloc("flush, failed to create output directory '%s' (%s)",
+			                          dir, knot_strerror(ret));
+			common_failure(args, ret, msg);
+			free(msg);
+			return KNOT_CTL_EZONE;
+		}
+
+		return zones_apply(args, zone_flush_outdir);
+	}
+
+	return zones_apply(args, zone_flush);
 }
 
 static void report_insufficient_backup(ctl_args_t *args, zone_backup_ctx_t *ctx)
@@ -578,6 +619,9 @@ static int init_backup(ctl_args_t *args, bool restore_mode)
 	const char *db_storage = conf_str(&db_storage_val);
 
 	const char *backup_dir = args->data[KNOT_CTL_IDX_DATA];
+	if (backup_dir == NULL) {
+		return KNOT_ENOPARAM;
+	}
 
 	if (same_path(backup_dir, db_storage)) {
 		char *msg = sprintf_alloc("%s the database storage directory not allowed",
@@ -615,8 +659,7 @@ static int init_backup(ctl_args_t *args, bool restore_mode)
 	// The present timer db size is not up-to-date, use the maximum one.
 	conf_val_t timer_db_size = conf_db_param(conf(), C_TIMER_DB_MAX_SIZE);
 
-	int ret = zone_backup_init(restore_mode, filters, forced,
-	                           args->data[KNOT_CTL_IDX_DATA],
+	int ret = zone_backup_init(restore_mode, filters, forced, backup_dir,
 	                           knot_lmdb_copy_size(&args->server->kaspdb),
 	                           conf_int(&timer_db_size),
 	                           knot_lmdb_copy_size(&args->server->journaldb),
@@ -719,18 +762,8 @@ static int zones_apply_backup(ctl_args_t *args, bool restore_mode)
 		char *msg = sprintf_alloc("%s init failed (%s)",
 		                          restore_mode ? "restore" : "backup",
 		                          knot_strerror(ret));
-
-		if (args->data[KNOT_CTL_IDX_ZONE] == NULL) {
-			log_ctl_error("%s", msg);
-		} else {
-			log_ctl_zone_str_error(args->data[KNOT_CTL_IDX_ZONE],
-			                       "%s", msg);
-		}
+		common_failure(args, ret, msg);
 		free (msg);
-
-		/* Warning: zone name in the control command params discarded here. */
-		args->data[KNOT_CTL_IDX_ZONE] = NULL;
-		ctl_send_error(args, knot_strerror(ret));
 		return KNOT_CTL_EZONE;
 	}
 
@@ -1869,7 +1902,7 @@ static int ctl_zone(ctl_args_t *args, ctl_cmd_t cmd)
 	case CTL_ZONE_NOTIFY:
 		return zones_apply(args, zone_notify);
 	case CTL_ZONE_FLUSH:
-		return zones_apply(args, zone_flush);
+		return zones_apply_flush(args);
 	case CTL_ZONE_BACKUP:
 		return zones_apply_backup(args, false);
 	case CTL_ZONE_RESTORE:
