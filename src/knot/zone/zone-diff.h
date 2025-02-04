@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2025 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -17,13 +17,14 @@
 #pragma once
 
 #include "knot/zone/contents.h"
+#include "knot/zone/skip.h"
 #include "knot/updates/changesets.h"
 
 /*!
  * \brief Create diff between two zone trees.
  * */
 int zone_contents_diff(const zone_contents_t *zone1, const zone_contents_t *zone2,
-                       changeset_t *changeset, bool ignore_dnssec, bool ignore_zonemd);
+                       changeset_t *changeset, zone_skip_t *skip);
 
 /*!
  * \brief Add diff between two zone trees into the changeset.

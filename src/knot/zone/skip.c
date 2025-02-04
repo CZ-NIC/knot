@@ -20,7 +20,7 @@
 knot_dynarray_define(rrtype, uint16_t, DYNARRAY_VISIBILITY_NORMAL)
 
 // NOTE check against knot_rrtype_is_dnssec()
-static uint16_t dnssec_types[] = {
+static const uint16_t dnssec_types[] = {
 	KNOT_RRTYPE_DNSKEY,
 	KNOT_RRTYPE_RRSIG,
 	KNOT_RRTYPE_NSEC,
@@ -31,9 +31,59 @@ static uint16_t dnssec_types[] = {
 	0
 };
 
+static const uint16_t dnssec_diff_types[] = {
+	KNOT_RRTYPE_RRSIG,
+	KNOT_RRTYPE_NSEC,
+	KNOT_RRTYPE_NSEC3,
+	KNOT_RRTYPE_NSEC3PARAM,
+	0
+};
+
 static int skip_add(zone_skip_t *skip, uint16_t type)
 {
 	return rrtype_dynarray_add(skip, &type) == NULL ? KNOT_ENOMEM : KNOT_EOK;
+}
+
+static int skip_add_dnssec(zone_skip_t *skip, const uint16_t types[])
+{
+	int ret = KNOT_EOK;
+	for (const uint16_t *t = types; *t != 0 && ret == KNOT_EOK; t++) {
+		ret = skip_add(skip, *t);
+	}
+	return ret;
+}
+
+static int skip_add_string(zone_skip_t *skip, const char *type_str)
+{
+	if (strncasecmp(type_str, "dnssec", 7) == 0) {
+		return skip_add_dnssec(skip, dnssec_types);
+	} else {
+		uint16_t type = 0;
+		if (knot_rrtype_from_string(type_str, &type) > -1) {
+			return skip_add(skip, type);
+		} else {
+			return KNOT_EINVAL;
+		}
+	}
+}
+
+static void skip_add_finish(zone_skip_t *skip)
+{
+	rrtype_dynarray_sort_dedup(skip);
+}
+
+int zone_skip_add(zone_skip_t *skip, const char *type_str)
+{
+	int ret = skip_add_string(skip, type_str);
+	skip_add_finish(skip);
+	return ret;
+}
+
+int zone_skip_add_dnssec_diff(zone_skip_t *skip)
+{
+	int ret = skip_add_dnssec(skip, dnssec_diff_types);
+	skip_add_finish(skip);
+	return ret;
 }
 
 int zone_skip_from_conf(zone_skip_t *skip, conf_val_t *val)
@@ -41,27 +91,14 @@ int zone_skip_from_conf(zone_skip_t *skip, conf_val_t *val)
 	int ret = KNOT_EOK;
 
 	while (val->code == KNOT_EOK && ret == KNOT_EOK) {
-		const char *type_s = conf_str(val);
-		if (strncasecmp(type_s, "dnssec", 7) == 0) {
-			for (uint16_t *t = dnssec_types; *t != 0 && ret == KNOT_EOK; t++) {
-				ret = skip_add(skip, *t);
-			}
-		} else {
-			uint16_t type = 0;
-			ret = knot_rrtype_from_string(type_s, &type);
-			if (ret > -1) {
-				ret = skip_add(skip, type);
-			} else {
-				ret = KNOT_ENOENT;
-			}
-		}
+		ret = skip_add_string(skip, conf_str(val));
 		conf_val_next(val);
 	}
 
 	if (val->code == KNOT_EOF) {
 		conf_val_reset(val);
 	}
-	rrtype_dynarray_sort_dedup(skip);
+	skip_add_finish(skip);
 
 	if (ret != KNOT_EOK) {
 		zone_skip_free(skip);

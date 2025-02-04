@@ -25,6 +25,19 @@ knot_dynarray_declare(rrtype, uint16_t, DYNARRAY_VISIBILITY_NORMAL, 64)
 typedef rrtype_dynarray_t zone_skip_t;
 
 /*!
+ * \brief Add single type (or "dnssec") to given list of skip types.
+ */
+int zone_skip_add(zone_skip_t *skip, const char *type_str);
+
+/*!
+ * \brief Add DNSSEC types relevant for zone diff computation to skip.
+ *
+ * \note This inclused RRSIGs and NSECs due to zone being signed, but DNSKEYs
+ *       might be partially managed from outside in the case of incremental policy.
+ */
+int zone_skip_add_dnssec_diff(zone_skip_t *skip);
+
+/*!
  * \brief Fill in zone_skip structure according to a configuration option.
  */
 int zone_skip_from_conf(zone_skip_t *skip, conf_val_t *val);
