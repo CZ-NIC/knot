@@ -449,6 +449,22 @@ The sizing of journal limits needs to be taken into consideration
 .. NOTE::
    This mode is not suitable if the zone can be modified externally (e.g. DDNS, knotc).
 
+Example 5
+---------
+
+Managing specific RRtypes externally::
+
+   zonefile-sync: -1
+   zonefile-load: difference-no-serial
+   journal-content: all
+   zonefile-skip: [ "DS", "TXT" ]
+
+Most of the zone contents is still managed by editing the input-only zone file,
+but some specific resource record types (DS and TXT in this example) are managed
+externally (DDNS, knotc). The :ref:`zone_zonefile-skip` option ensures that
+both approaches do not interfere and that DDNS additions of those records are not
+reverted by reloading the zone file not containing them.
+
 .. _Multi-primary:
 
 Multi-primary
