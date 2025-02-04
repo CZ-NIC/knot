@@ -27,8 +27,8 @@ Knot DNS features
 DNS features:
 
 * Primary and secondary server operation
-* Internet (IN) and Chaos (CH) classes
-* DNS extension (EDNS0, EDE, EXPIRE)
+* Internet (IN) and limited Chaos (CH) classes
+* DNS extension (EDNS0, EDE, EXPIRE, PADDING, ZONEVERSION)
 * UDP, TCP, TLS 1.3, and QUIC protocols
 * Zone catalog generation and interpretation
 * Minimal responses
