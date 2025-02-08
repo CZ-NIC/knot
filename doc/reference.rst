@@ -2543,7 +2543,7 @@ Definition of zones served by the server.
      zonemd-verify: BOOL
      zonemd-generate: none | zonemd-sha384 | zonemd-sha512 | remove
      serial-policy: increment | unixtime | dateserial
-     serial-modulo: INT/INT
+     serial-modulo: INT/INT | +INT | -INT | INT/INT+INT | INT/INT-INT
      reverse-generate: DNAME
      refresh-min-interval: TIME
      refresh-max-interval: TIME
@@ -3032,23 +3032,32 @@ Possible values:
 serial-modulo
 -------------
 
-Specifies that the zone serials shall be congruent by specified modulo.
-The option value must be a string in the format ``R/M``, where ``R < M <= 256`` are
+The option value is a string consisting of two parts (with no separator between them),
+each of which is optional.
+
+The first part specifies that the zone serials must be congruent modulo the specified value.
+The format is ``R/M``, where ``R < M <= 256`` are
 positive integers. Whenever the zone serial is incremented, it is ensured
 that ``serial % M == R``. This can be useful in the case of multiple inconsistent
 primaries, where distinct zone serial sequences prevent cross-master-IXFR
 by any secondary.
 
 .. NOTE::
+   Because the zone serial effectively always increments by ``M`` instead of
+   ``1``, it is not recommended to use ``dateserial`` or even ``unixtime``
+   :ref:`zone_serial-policy` in the case of rapidly updated zone.
+
+The second part specifies a numeric shift for the generated zone serial.
+The shift is formatted as a signed integer, including the sign (``+`` or ``-``).
+It is mostly useful with ``unixtime`` :ref:`zone_serial-policy`, where the generated
+zone serial is shifted relative to the Unix time.
+
+.. NOTE::
    In order to ensure the congruent policy, this option is only allowed
    with :ref:`DNSSEC signing enabled<zone_dnssec-signing>` and
    :ref:`zone_zonefile-load` to be either ``difference-no-serial`` or ``none``.
 
-   Because the zone serial effectively always increments by ``M`` instead of
-   ``1``, it is not recommended to use ``dateserial`` :ref:`zone_serial-policy`
-   or even ``unixtime`` in case of rapidly updated zone.
-
-*Default:* ``0/1``
+*Default:* ``0/1+0``
 
 .. _zone_reverse-generate:
 

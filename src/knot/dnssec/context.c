@@ -1,4 +1,4 @@
-/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2025 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -170,10 +170,11 @@ static void policy_load(knot_kasp_policy_t *policy, conf_t *conf, conf_val_t *id
 		conf_val_next(&val);
 	}
 
+	int zero;
 	val = conf_id_get(conf, C_POLICY, C_KEYTAG_MODULO, id);
 	int ret = serial_modulo_parse(conf_str(&val), &policy->keytag_remain,
-	                              &policy->keytag_modulo);
-	if (ret != KNOT_EOK) {
+	                              &policy->keytag_modulo, &zero);
+	if (ret != KNOT_EOK || zero != 0) {
 		assert(0); // cannot happen - ensured by conf check
 	}
 }

@@ -48,19 +48,19 @@ static uint32_t serial_dateserial(uint32_t current)
 }
 
 uint32_t serial_next_generic(uint32_t current, unsigned policy, uint32_t must_increment,
-                             uint8_t rem, uint8_t mod)
+                             uint8_t rem, uint8_t mod, int add)
 {
 	uint32_t minimum, result;
 
 	switch (policy) {
 	case SERIAL_POLICY_INCREMENT:
-		minimum = current;
+		minimum = current + add;
 		break;
 	case SERIAL_POLICY_UNIXTIME:
-		minimum = time(NULL);
+		minimum = time(NULL) + add;
 		break;
 	case SERIAL_POLICY_DATESERIAL:
-		minimum = serial_dateserial(current);
+		minimum = serial_dateserial(current) + add;
 		break;
 	default:
 		assert(0);
@@ -97,17 +97,42 @@ uint32_t serial_next(uint32_t current, conf_t *conf, const knot_dname_t *zone,
 		policy = conf_opt(&val);
 	}
 
+	int add;
 	uint32_t rem, mod;
 	conf_val_t val = conf_zone_get(conf, C_SERIAL_MODULO, zone);
-	if (serial_modulo_parse(conf_str(&val), &rem, &mod) != KNOT_EOK) {
+	if (serial_modulo_parse(conf_str(&val), &rem, &mod, &add) != KNOT_EOK) {
 		assert(0); // cannot happen - ensured by conf check
 		return 0;
 	}
 
-	return serial_next_generic(current, policy, must_increment, rem, mod);
+	return serial_next_generic(current, policy, must_increment, rem, mod, add);
 }
 
 serial_cmp_result_t kserial_cmp(kserial_t a, kserial_t b)
 {
 	return ((a.valid && b.valid) ? serial_compare(a.serial, b.serial) : SERIAL_INCOMPARABLE);
+}
+
+int serial_modulo_parse(const char *str, uint32_t *rem, uint32_t *mod, int *add)
+{
+	if (str == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	char c; // Possible first trailing character.
+
+	*rem = 0;
+	*mod = 1;
+	*add = 0;
+
+	if (str[0] == '+' || str[0] == '-') {
+		return sscanf(str, "%d%c", add, &c) == 1 ? KNOT_EOK : KNOT_EMALF;
+	}
+
+	int res = sscanf(str, "%"SCNu32"/%"SCNu32"%c", rem, mod, &c);
+	if (res > 2) {
+		res = sscanf(str, "%"SCNu32"/%"SCNu32"%d%c", rem, mod, add, &c) - 1;
+	}
+
+	return (res == 2) ? KNOT_EOK : KNOT_EMALF;
 }
