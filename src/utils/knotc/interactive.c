@@ -366,7 +366,7 @@ static void path_lookup(EditLine *el, const char *str, bool dirsonly)
 		if ((!dirsonly || is_dir) &&
 		    (strcmp(it->d_name, ".") && strcmp(it->d_name, ".."))) {
 			char buf[PATH_MAX + 1];
-			snprintf(buf, PATH_MAX + 1, is_dir ? "%s/" : "%s", it->d_name);
+			(void)snprintf(buf, PATH_MAX + 1, is_dir ? "%s/" : "%s", it->d_name);
 			ret = lookup_insert(&lookup, buf, NULL);
 			if (ret != KNOT_EOK) {
 				goto finish1;
