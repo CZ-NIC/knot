@@ -9,7 +9,7 @@ import time
 from dnstest.test import Test
 from dnstest.utils import *
 
-PIN = 4
+PIN = 5
 RUNNING = True
 
 t = Test(address=4, tsig=False)
@@ -71,18 +71,18 @@ check_cur(masterA, masterB)
 
 masterA.ctl("zone-freeze")
 
-t.sleep(PIN + 3)
+t.sleep(PIN + 4)
 
 check_cur(masterB, masterA)
 
 masterA.ctl("zone-thaw")
 
-t.sleep(3)
+t.sleep(4)
 
 check_cur(masterA, masterB)
 
 RUNNING = False
 
-t.sleep(3)
+t.sleep(4)
 
 t.end()
