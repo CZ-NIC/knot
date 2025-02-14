@@ -236,16 +236,19 @@ class Response(object):
             compare(self.count("ANY"), axfr.count("ANY"),
                     "Count of RRs in Answer")
 
-    def check_edns(self, nsid=None, buff_size=None):
+    def check_nsid(self, nsid=None):
         compare(self.resp.edns, 0, "EDNS VERSION")
 
-        options = 1 if nsid != None else 0
-        compare(len(self.resp.options), options, "NUMBER OF EDNS0 OPTIONS")
+        nsid_count = 0
+        nsid_opt = None
+        for opt in self.resp.options:
+            if opt.otype == dns.edns.NSID:
+                nsid_count += 1
+                nsid_opt = opt
 
-        if options > 0:
-            option = list(self.resp.options)[0]
-            val = option.nsid if hasattr(option, 'nsid') else option.data
-            compare(option.otype, dns.edns.NSID, "OPTION TYPE")
+        compare(nsid_count, 1 if nsid else 0, "NUMBER OF NSID OPTIONS")
+        if nsid and nsid_opt:
+            val = nsid_opt.to_wire()
             if nsid[:2] == "0x":
                 compare(binascii.hexlify(val).decode('ascii'),
                         nsid[2:], "HEX NSID")
