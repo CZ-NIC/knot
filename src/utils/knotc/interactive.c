@@ -357,16 +357,24 @@ static void path_lookup(EditLine *el, const char *str, bool dirsonly)
 		goto finish2;
 	}
 
+	if (sep != NULL) {
+		*sep = '/';
+	}
+	char obase[NAME_MAX + 1];  // Max. name length + terminator.
+	strlcpy(obase, base, NAME_MAX + 1);
+
 	struct stat sb;
 	for (int i = 0; i < nnames; ++i) {
 		const struct dirent *it = namelist[i];
-		bool is_dir;
-		is_dir = it->d_type == DT_DIR ||
-		         (it->d_type == DT_LNK && !stat(it->d_name, &sb) && S_ISDIR(sb.st_mode));
+		bool is_dir = (it->d_type == DT_DIR);
+		if (it->d_type == DT_LNK) {
+			strlcpy(base, it->d_name, PATH_MAX - (size_t)(base - path));
+			is_dir = !stat(path, &sb) && S_ISDIR(sb.st_mode);
+		}
 		if ((!dirsonly || is_dir) &&
 		    (strcmp(it->d_name, ".") && strcmp(it->d_name, ".."))) {
-			char buf[PATH_MAX + 1];
-			(void)snprintf(buf, PATH_MAX + 1, is_dir ? "%s/" : "%s", it->d_name);
+			char buf[NAME_MAX + 2];  // Max. name length + slash + terminator.
+			(void)snprintf(buf, NAME_MAX + 2, is_dir ? "%s/" : "%s", it->d_name);
 			ret = lookup_insert(&lookup, buf, NULL);
 			if (ret != KNOT_EOK) {
 				goto finish1;
@@ -374,11 +382,8 @@ static void path_lookup(EditLine *el, const char *str, bool dirsonly)
 		}
 	}
 
-	ret = lookup_complete(&lookup, base, strlen(base), el, false);
+	ret = lookup_complete(&lookup, obase, strlen(obase), el, false);
 	if (ret == KNOT_EOK) {
-		if (sep != NULL) {
-			*sep = '/';
-		}
 		strlcpy(base, lookup.found.key, PATH_MAX - (size_t)(base - path));
 		if (!stat(path, &sb) && !S_ISDIR(sb.st_mode)) {
 			el_insertstr(el, " ");
