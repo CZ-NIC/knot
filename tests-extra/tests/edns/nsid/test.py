@@ -23,18 +23,18 @@ t.start()
 
 # 1) Custom identification string.
 resp = server1.dig("example.com", "SOA", nsid=True)
-resp.check_edns(nsid=name)
+resp.check_nsid(nsid=name)
 
 # 2) Disabled.
 resp = server2.dig("example.com", "SOA", nsid=True)
-resp.check_edns()
+resp.check_nsid()
 
 # 3) FQDN hostname.
 resp = server3.dig("example.com", "SOA", nsid=True)
-resp.check_edns(nsid=t.hostname)
+resp.check_nsid(nsid=t.hostname)
 
 # 4) Hex string.
 resp = server4.dig("example.com", "SOA", nsid=True)
-resp.check_edns(nsid=hex_name)
+resp.check_nsid(nsid=hex_name)
 
 t.end()
