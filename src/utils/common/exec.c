@@ -1155,9 +1155,9 @@ void print_packet(const knot_pkt_t *packet,
 
 	uint16_t qdcount = packet->parsed >= KNOT_WIRE_OFFSET_ANCOUNT ?
 	                   knot_wire_get_qdcount(packet->wire) : 0;
-	uint16_t ancount = packet->sections[KNOT_ANSWER].count;
-	uint16_t nscount = packet->sections[KNOT_AUTHORITY].count;
-	uint16_t arcount = packet->sections[KNOT_ADDITIONAL].count;
+	uint16_t ancount = answers->count;
+	uint16_t nscount = authority->count;
+	uint16_t arcount = additional->count;
 
 	// Disable additionals printing if there are no other records.
 	// OPT record may be placed anywhere within additionals!
