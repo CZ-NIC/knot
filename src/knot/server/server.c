@@ -1587,8 +1587,10 @@ void server_update_zones(conf_t *conf, server_t *server, reload_t mode)
 	}
 
 	/* Suspend adding events to worker pool queue, wait for queued events. */
+	log_debug("suspending zone events");
 	evsched_pause(&server->sched);
 	worker_pool_wait(server->workers);
+	log_info("suspended zone events");
 
 	/* Reload zone database and free old zones. */
 	zonedb_reload(conf, server, mode);
@@ -1601,6 +1603,7 @@ void server_update_zones(conf_t *conf, server_t *server, reload_t mode)
 	if (server->zone_db) {
 		knot_zonedb_foreach(server->zone_db, zone_events_start);
 	}
+	log_info("resumed zone events");
 }
 
 size_t server_cert_pin(server_t *server, uint8_t *out, size_t out_size)
