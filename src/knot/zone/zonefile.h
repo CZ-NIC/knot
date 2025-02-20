@@ -30,7 +30,6 @@
 typedef struct zcreator {
 	zone_contents_t *z;  /*!< Created zone. */
 	zone_skip_t *skip;   /*!< Skip configured types. */
-	bool master;         /*!< True if server is a primary master for the zone. */
 	int ret;             /*!< Return value. */
 } zcreator_t;
 

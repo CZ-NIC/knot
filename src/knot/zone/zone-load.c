@@ -57,7 +57,6 @@ int zone_load_contents(conf_t *conf, const knot_dname_t *zone_name,
 	};
 
 	zl.err_handler = &handler;
-	zl.creator->master = !zone_load_can_bootstrap(conf, zone_name);
 	zl.creator->skip = &skip;
 
 	*contents = zonefile_load(&zl);

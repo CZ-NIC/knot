@@ -84,7 +84,6 @@ int zone_check(const char *zone_file, const knot_dname_t *zone_name, bool zonemd
 		return ret;
 	}
 	zl.err_handler = (sem_handler_t *)&stats;
-	zl.creator->master = true;
 
 	zone_contents_t *contents = zonefile_load(&zl);
 	zonefile_close(&zl);

@@ -430,7 +430,6 @@ static int axfr_consume_rr(const knot_rrset_t *rr, struct refresh_data *data)
 	// the changes are stored only in data->axfr.zone (aka zc.z)
 	zcreator_t zc = {
 		.z = data->axfr.zone,
-		.master = false,
 		.ret = KNOT_EOK
 	};
 
