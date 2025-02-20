@@ -400,6 +400,7 @@ typedef enum {
 typedef enum {
 	KNOTD_QUERY_FLAG_COOKIE     = 1 << 0, /*!< Valid DNS Cookie indication. */
 	KNOTD_QUERY_FLAG_AUTHORIZED = 1 << 1, /*!< Successfully authorized operation. */
+	KNOTD_QUERY_FLAG_ONLINESIGN = 1 << 2, /*!< DNSSEC signing takes place, so don't put DNSSEC-related RRtypes into the packet from zone. */
 } knotd_query_flag_t;
 
 /*! Query processing data context parameters. */

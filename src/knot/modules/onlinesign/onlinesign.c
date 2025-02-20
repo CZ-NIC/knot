@@ -471,6 +471,15 @@ static bool is_apex_query(knotd_qdata_t *qdata)
 	return knot_dname_is_equal(qdata->name, knotd_qdata_zone_name(qdata));
 }
 
+static knotd_in_state_t pre_ans(knotd_in_state_t state, knot_pkt_t *pkt,
+                                knotd_qdata_t *qdata, knotd_mod_t *mod)
+{
+	(void)pkt;
+	(void)mod;
+	qdata->params->flags |= KNOTD_QUERY_FLAG_ONLINESIGN;
+	return state;
+}
+
 static knotd_in_state_t pre_routine(knotd_in_state_t state, knot_pkt_t *pkt,
                                     knotd_qdata_t *qdata, knotd_mod_t *mod)
 {
@@ -714,6 +723,7 @@ int online_sign_load(knotd_mod_t *mod)
 
 	knotd_mod_ctx_set(mod, ctx);
 
+	knotd_mod_in_hook(mod, KNOTD_STAGE_PREANSWER, pre_ans);
 	knotd_mod_in_hook(mod, KNOTD_STAGE_ANSWER, pre_routine);
 
 	knotd_mod_in_hook(mod, KNOTD_STAGE_ANSWER, synth_answer);
