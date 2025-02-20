@@ -344,7 +344,7 @@ build:documentation:
       - pkg/
     expire_in: '1 week'
   script:
-    - python3 -m pip install apkg
+    - python3 -m pip install git+https://gitlab.nic.cz/packaging/apkg.git
     # make sure the archive from pkg:make-archive is available
     - apkg info cache | grep archive/dev
     - apkg install --build-dep
