@@ -97,9 +97,9 @@ void zonefile_close(zloader_t *loader);
 /*!
  * \brief Adds one RR into zone.
  *
- * \param zl  Zone loader.
+ * \param contents  Zone contents to add rr to.
  * \param rr  RR to add.
  *
  * \return KNOT_E*
  */
-int zcreator_step(zcreator_t *zl, const knot_rrset_t *rr);
+int zcreator_step(zone_contents_t *contents, const knot_rrset_t *rr);

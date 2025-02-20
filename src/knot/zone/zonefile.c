@@ -50,10 +50,8 @@ static void process_error(zs_scanner_t *s)
 	      zs_strerror(s->error.code));
 }
 
-static bool handle_err(zcreator_t *zc, const knot_rrset_t *rr, int ret)
+static bool handle_err(const knot_dname_t *zname, const knot_rrset_t *rr, int ret)
 {
-	const knot_dname_t *zname = zc->z->apex->owner;
-
 	knot_dname_txt_storage_t buff;
 	char *owner = knot_dname_to_str(buff, rr->owner, sizeof(buff));
 	if (owner == NULL) {
@@ -75,16 +73,15 @@ static bool handle_err(zcreator_t *zc, const knot_rrset_t *rr, int ret)
 	}
 }
 
-int zcreator_step(zcreator_t *zc, const knot_rrset_t *rr)
+int zcreator_step(zone_contents_t *contents, const knot_rrset_t *rr)
 {
-	if (zc == NULL || rr == NULL || rr->rrs.count != 1) {
-		return KNOT_EINVAL;
-	}
+	assert(contents);
+	assert(rr);
 
 	zone_node_t *node = NULL;
-	int ret = zone_contents_add_rr(zc->z, rr, &node);
+	int ret = zone_contents_add_rr(contents, rr, &node);
 	if (ret != KNOT_EOK) {
-		if (!handle_err(zc, rr, ret)) {
+		if (!handle_err(contents->apex->owner, rr, ret)) {
 			// Fatal error
 			return ret;
 		}
@@ -126,7 +123,7 @@ static void process_data(zs_scanner_t *scanner)
 		return;
 	}
 
-	zc->ret = zcreator_step(zc, &rr);
+	zc->ret = zcreator_step(zc->z, &rr);
 	knot_rrset_clear(&rr, NULL);
 }
 
