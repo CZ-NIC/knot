@@ -117,7 +117,8 @@ static bool dname_cname_cannot_synth(const knot_rrset_t *rrset, const knot_dname
 static bool have_dnssec(knotd_qdata_t *qdata)
 {
 	return knot_pkt_has_dnssec(qdata->query) &&
-	       qdata->extra->contents->dnssec;
+	       qdata->extra->contents->dnssec &&
+	       !(qdata->params->flags & KNOTD_QUERY_FLAG_ONLINESIGN);
 }
 
 /*! \brief This is a wildcard-covered or any other terminal node for QNAME.
@@ -653,8 +654,6 @@ static knot_layer_state_t answer_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 	struct query_plan *plan = qdata->extra->zone->query_plan;
 	struct query_step *step;
 
-	bool with_dnssec = have_dnssec(qdata);
-
 	/* Resolve PREANSWER. */
 	if (plan != NULL) {
 		WALK_LIST(step, plan->stage[KNOTD_STAGE_PREANSWER]) {
@@ -662,6 +661,8 @@ static knot_layer_state_t answer_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 			SOLVE_STEP(step->in_hook, state, step->ctx);
 		}
 	}
+
+	bool with_dnssec = have_dnssec(qdata);
 
 	/* Resolve ANSWER. */
 	knot_pkt_begin(pkt, KNOT_ANSWER);
