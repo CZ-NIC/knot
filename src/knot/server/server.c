@@ -1326,8 +1326,13 @@ int server_reload(server_t *server, reload_t mode)
 			return ret;
 		}
 
-		conf_activate_modules(new_conf, server, NULL, new_conf->query_modules,
+		ret = conf_activate_modules(new_conf, server, NULL, new_conf->query_modules,
 		                      &new_conf->query_plan);
+		if (ret!= KNOT_EOK) {
+			conf_free(new_conf);
+			systemd_ready_notify();
+			return ret;
+		}
 	}
 
 	conf_update_flag_t upd_flags = CONF_UPD_FNOFREE;
