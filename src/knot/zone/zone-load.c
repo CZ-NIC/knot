@@ -1,4 +1,4 @@
-/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2025 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -49,7 +49,6 @@ int zone_load_contents(conf_t *conf, const knot_dname_t *zone_name,
 	};
 
 	zl.err_handler = &handler;
-	zl.creator->master = !zone_load_can_bootstrap(conf, zone_name);
 
 	*contents = zonefile_load(&zl);
 	zonefile_close(&zl);
