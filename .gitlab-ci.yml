@@ -375,6 +375,10 @@ pkg:make-archive:
     - apkg build-dep
     - apkg make-archive
 
+pkg:debian-13:
+  <<: *pkg_test_deb
+  image: $CI_REGISTRY/packaging/apkg/test/debian-13
+
 pkg:debian-12:
   <<: *pkg_test_deb
   image: $CI_REGISTRY/packaging/apkg/test/debian-12
