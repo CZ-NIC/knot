@@ -1,4 +1,4 @@
-/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2025 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -28,7 +28,6 @@
  */
 typedef struct zcreator {
 	zone_contents_t *z;  /*!< Created zone. */
-	bool master;         /*!< True if server is a primary master for the zone. */
 	int ret;             /*!< Return value. */
 } zcreator_t;
 

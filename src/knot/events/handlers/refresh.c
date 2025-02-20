@@ -1,4 +1,4 @@
-/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2025 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -426,7 +426,6 @@ static int axfr_consume_rr(const knot_rrset_t *rr, struct refresh_data *data)
 	// the changes are stored only in data->axfr.zone (aka zc.z)
 	zcreator_t zc = {
 		.z = data->axfr.zone,
-		.master = false,
 		.ret = KNOT_EOK
 	};
 
