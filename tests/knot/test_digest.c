@@ -1,4 +1,4 @@
-/*  Copyright (C) 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2025 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -54,7 +54,7 @@ static void process_data(zs_scanner_t *scanner)
 		return;
 	}
 
-	zc->ret = zcreator_step(zc, &rr);
+	zc->ret = zcreator_step(zc->z, &rr, zc->skip);
 	knot_rrset_clear(&rr, NULL);
 }
 

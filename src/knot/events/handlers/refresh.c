@@ -426,19 +426,14 @@ static int axfr_consume_rr(const knot_rrset_t *rr, struct refresh_data *data)
 	assert(data);
 	assert(data->axfr.zone);
 
-	// zc is stateless structure which can be initialized for each rr
-	// the changes are stored only in data->axfr.zone (aka zc.z)
-	zcreator_t zc = {
-		.z = data->axfr.zone,
-		.ret = KNOT_EOK
-	};
+	zone_contents_t *contents = data->axfr.zone;
 
 	if (rr->type == KNOT_RRTYPE_SOA &&
-	    node_rrtype_exists(zc.z->apex, KNOT_RRTYPE_SOA)) {
+	    node_rrtype_exists(contents->apex, KNOT_RRTYPE_SOA)) {
 		return KNOT_STATE_DONE;
 	}
 
-	data->ret = zcreator_step(&zc, rr);
+	data->ret = zcreator_step(contents, rr, NULL);
 	if (data->ret != KNOT_EOK) {
 		return KNOT_STATE_FAIL;
 	}
