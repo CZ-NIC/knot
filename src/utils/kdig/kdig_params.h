@@ -141,6 +141,9 @@ struct query {
 		struct sockaddr_storage src;
 		struct sockaddr_storage dst;
 	} proxy;
+	/*!< Trigger of DNSSEC validation and related contents_t. */
+	int		dnssec_validation;
+	struct kdig_dnssec_ctx *dv_ctx;
 #if USE_DNSTAP
 	/*!< Context for dnstap reader input. */
 	dt_reader_t	*dt_reader;

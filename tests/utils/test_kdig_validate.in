@@ -1,0 +1,107 @@
+#!/bin/bash
+
+BUILDROOT="@top_builddir@"
+SRCROOT="@top_srcdir@"
+TMPDIR=/tmp
+PREFIX=ktv_$$_$(date +%s)
+SCN=$TMPDIR/${PREFIX}_scenario.txt
+CONF=$TMPDIR/${PREFIX}_knot.conf
+PORT=$(comm -23 <(seq 50000 65000 | sort) <(ss -Htan | awk '{print $4}' | cut -d':' -f2 | sort -u) | shuf | head -n 1)
+RUNDIR=$TMPDIR/${PREFIX}_knot
+VALGRIND=
+
+. "@top_srcdir@/tests/tap/libtap.sh"
+
+if [ "$2" == "v" ]; then
+    VALGRIND="valgrind --leak-check=full --show-leak-kinds=all"
+fi
+
+cat << EOF > $SCN
+delegation.signed                deleg         A       NOK!   DS.NODATA.*found          x.deleg       A       NOK!   DS.NODATA.*found
+different_signer_name.signed     dns1          A       OK!    answer.found              dns1          TXT     NOK!   NODATA.*found
+dname_apex_nsec3.signed          foo           A       OK!    limit.of.*DNAME           x             TXT     OK!    limit.of.*DNAME
+dnskey_keytags.many              dns1          A       FAILED many.*keytag              dns2          A       FAILED many.*keytag
+no_rrsig.signed                  dns1          AAAA    NOK!   missing.RRSIG.*NSEC       dns2          A       NOK!   missing.RRSIG.*NSEC
+no_rrsig_with_delegation.signed  deleg         A       NOK!   any.RRSIG                 deleg         DS      NOK!   missing.RRSIG.*NSEC
+nsec_broken_chain_01.signed      eee           A       NOK!   invalid.*RRSIG.*NSEC      zzz           A       OK!    wildcard.non.*proven
+nsec_broken_chain_02.signed      eee           A       OK!    wildcard.non.*proven      zzz           A       NOK!   wrongly.proves.NXDOMAIN
+nsec_missing.signed              www           AAAA    NOK!   NXDOMAIN.*missing         dns2          A       NOK!   invalid.*RRSIG.*NSEC
+nsec_multiple.signed             www           AAAA    NOK!   wrongly.proves.NXDOMAIN   zzz           A       NOK!   wrongly.proves.NXDOMAIN
+nsec_nonauth.invalid             nonauth.deleg NS      NOK!   invalid.*RRSIG.*SOA       nonauth.deleg DS      NOK!   invalid.*RRSIG.*SOA
+nsec_wrong_bitmap_01.signed      www           A       OK!    answer.found              www           AAAA    NOK!   NODATA.*missing
+nsec_wrong_bitmap_02.signed      www           A       OK!    answer.found              www           AAAA    NOK!   invalid.*RRSIG.*NSEC
+nsec3_chain_01.signed            deleg         A       NOK!   invalid.*RRSIG.*NSEC3     dns2          A       NOK!   overlapping.*NSEC3
+nsec3_chain_02.signed            deleg         A       OK!    DS.NODATA.*found          dns2          A       NOK!   overlapping.*NSEC3
+nsec3_chain_03.signed            deleg         A       NOK!   invalid.*RRSIG.*NSEC3     dns2          A       NOK!   overlapping.*NSEC3
+nsec3_missing.signed             extra         AAAA    NOK!   NXDOMAIN.*missing         extrb         A       NOK!   invalid.*RRSIG.*NSEC3
+nsec3_optout_ent.all             x.deleg2.ent  A       OK!    opt-out.*found            ent           A       OK!    NODATA.*unprovable
+nsec3_optout_ent.invalid         x.deleg1.ent  A       OK!    DS.NODATA.*found          ent           A       OK!    NODATA.*unprovable
+nsec3_optout_ent.valid           x.deleg1.ent  A       OK!    DS.NODATA.*found          ent           A       OK!    NODATA.*found
+nsec3_optout.signed              zzz           A       NOK!   DS.non.*missing           xx.zzz        A       NOK!   DS.non.*missing
+nsec3_param_invalid.signed       dns1          A       OK!    answer.found              dns2          A       NOK!   any.RRSIG
+nsec3_wrong_bitmap_01.signed     example.com.  DNSKEY  OK!    answer.found              example.com.  SSHFP   NOK!   wrongly.proves.NODATA
+nsec3_wrong_bitmap_02.signed     dns1          TXT     NOK!   invalid.*RRSIG.*NSEC3     dns1          NSEC    NOK!   NODATA.*missing
+rrsig_rdata_ttl.signed           dns1          A       NOK!   invalid.*RRSIG.*A         dns1          TXT     OK!    NODATA.*found
+rrsig_signed.signed              dns1          A       OK!    answer.found              dns1          RRSIG   OK!    answer.found
+rrsig_ttl.signed                 dns1          A       OK!    answer.found              dns1          AAAA    OK!    NODATA.*found
+EOF
+
+cat << EOF > $CONF
+server:
+    listen: 0.0.0.0@$PORT
+    rundir: $RUNDIR
+database:
+    storage: $RUNDIR
+zone:
+  - domain: example.com.
+    storage: $RUNDIR
+    file: example.com.zone
+log:
+  - target: stdout
+    any: debug
+EOF
+
+plan $(( $(cat "$SCN" | wc -l) * 4 ))
+
+function q() {
+    echo "debug count $count"
+    QN="$2"
+    if [ "${QN: -1}" != "." ]; then
+        QN="$QN.example.com."
+    fi
+    echo "$1" $VALGRIND $BUILDROOT/src/kdig @127.0.0.1 -p $PORT +validate "$QN" -t "$3" >&2
+    RESP=$($VALGRIND $BUILDROOT/src/kdig @127.0.0.1 -p $PORT +validate "$QN" -t "$3" 2>&1)
+    echo "$RESP" >&2
+    echo "$RESP" | grep -q "[^N]$4"
+    ok "$1 outcome" test $? -eq 0
+    echo "$RESP" | grep -q "$5"
+    ok "$1 point" test $? -eq 0
+}
+
+rm -rf $RUNDIR; mkdir $RUNDIR
+$BUILDROOT/src/knotd -c $CONF > $RUNDIR/knot.log &
+PID=$!
+while ! grep -q 'server started' $RUNDIR/knot.log; do
+    continue
+done
+
+i=0
+while read ZFILE QNAME QTYPE OUT POINT QNAME2 QTYPE2 OUT2 POINT2; do
+    i=$((i+1))
+    if [ -n "$1" -a "$1" != "$i" ]; then
+	continue
+    fi
+    NLOADED_WAS=$(grep -c 'loaded, serial' $RUNDIR/knot.log)
+    cat $SRCROOT/tests/knot/semantic_check_data/$ZFILE > $RUNDIR/example.com.zone
+    $BUILDROOT/src/knotc -s $RUNDIR/knot.sock -f zone-reload >&2
+    while [ $(grep -c 'loaded, serial' $RUNDIR/knot.log) == "$NLOADED_WAS" ]; do
+        sleep 0.02
+    done
+    q "(${i}a)" "$QNAME" "$QTYPE" "$OUT" "$POINT"
+    q "(${i}b)" "$QNAME2" "$QTYPE2" "$OUT2" "$POINT2"
+done < "$SCN"
+
+
+kill -TERM $PID
+sleep 0.1
+rm -rf $RUNDIR $SCN $CONF

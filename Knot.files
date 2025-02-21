@@ -593,6 +593,8 @@ src/utils/common/token.h
 src/utils/common/util_conf.c
 src/utils/common/util_conf.h
 src/utils/kcatalogprint/main.c
+src/utils/kdig/dnssec_validation.c
+src/utils/kdig/dnssec_validation.h
 src/utils/kdig/kdig_exec.c
 src/utils/kdig/kdig_exec.h
 src/utils/kdig/kdig_main.c

@@ -161,6 +161,17 @@ static inline knot_dname_t *knot_dname_from_str_alloc(const char *name)
 }
 
 /*!
+ * \brief Append an asterix label on the beginning.
+ *
+ * \param from        Original name to append to.
+ * \param dest        Optional: destination buffer.
+ * \param dest_size   Destination buffer length.
+ *
+ * \return Wildcard name, or NULL if error.
+ */
+knot_dname_t *knot_dname_wildcard(const knot_dname_t *from, knot_dname_t *dest, size_t dest_size);
+
+/*!
  * \brief Convert domain name to lowercase.
  *
  * \param name  Domain name to be converted.
@@ -311,6 +322,14 @@ bool knot_dname_with_null(const knot_dname_t *name);
  */
 _pure_
 size_t knot_dname_prefixlen(const uint8_t *name, unsigned nlabels);
+
+/*!
+ * \brief Shift by given number of labels, but no more than to the final one.
+ */
+inline static const knot_dname_t *knot_dname_next_labels(const knot_dname_t *name, unsigned nlabels)
+{
+	return name + knot_dname_prefixlen(name, nlabels);
+}
 
 /*!
  * \brief Return number of labels in the domain name.
