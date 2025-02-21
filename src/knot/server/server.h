@@ -1,4 +1,4 @@
-/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2025 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -96,6 +96,12 @@ enum {
 typedef struct server {
 	/*! \brief Server state tracking. */
 	volatile unsigned state;
+
+	struct {
+		knot_atomic_uint64_t tcp_io_timeout;
+		knot_atomic_uint64_t tcp_idle_timeout;
+
+	} stats;
 
 	knot_zonedb_t *zone_db;
 	knot_lmdb_db_t timerdb;
