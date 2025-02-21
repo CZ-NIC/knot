@@ -112,6 +112,13 @@ int knot_dname_unpack(uint8_t *dst, const knot_dname_t *src,
                       size_t maxlen, const uint8_t *pkt);
 
 /*!
+ * \brief Check equality of dnames while the first one is in a packet (may contain pointers or uppercase).
+ */
+bool knot_dname_wire_equal(const knot_dname_t *wire_name,
+                           const uint8_t *wire,
+                           const knot_dname_t *cmp_name);
+
+/*!
  * \brief Converts the given domain name to its string representation.
  *
  * \note Output buffer is allocated automatically if dst is NULL.

@@ -416,4 +416,19 @@ static inline size_t knot_pkt_size(const knot_pkt_t *pkt)
 	return pkt->size + (knot_pkt_has_tsig(pkt) ? pkt->tsig_wire.len : 0);
 }
 
+/*!
+ * \brief Find matching RRset in pkt section.
+ *
+ * \param pkt        Packet to search in.
+ * \param sect       Section to search in.
+ * \param owner      Optional: searched owner.
+ * \param rrtype     Searched RR type.
+ * \param rclass     Searched RR class.
+ *
+ * \return First found RRset or NULL.
+ */
+const knot_rrset_t *knot_pkt_find(knot_pkt_t *pkt, knot_section_t sect,
+                                  const knot_dname_t *owner,
+                                  uint16_t rrtype, uint16_t rclass);
+
 /*! @} */
