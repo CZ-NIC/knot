@@ -177,6 +177,10 @@ Options
 **+**\ [\ **no**\ ]\ **dnssec**
   Same as **+**\ [\ **no**\ ]\ **doflag**
 
+**+**\ [\ **no**\ ]\ **validate**
+  Also query for DNSKEY, validate DNSSEC in the answer. Implies DO flag.
+  Optional argument specifies verbosity (1-3, default 3).
+
 **+**\ [\ **no**\ ]\ **all**
   Show all packet sections.
 

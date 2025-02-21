@@ -629,6 +629,11 @@ AC_ARG_WITH(libnghttp2,
   with_libnghttp2=yes
 )
 
+dnl DNSSEC validation in kdig
+AC_ARG_ENABLE([kdig_validation],
+  AS_HELP_STRING([--enable-kdig-validation=yes|no], [DNSSEC validation in kdig [default=yes]]),
+    [enable_kdig_validation="$enableval"], [enable_kdig_validation=yes])
+
 AS_IF([test "$enable_utilities" = "yes"], [
   AS_IF([test "$with_libidn" != "no"], [
     PKG_CHECK_MODULES([libidn2], [libidn2 >= 2.0.0], [
@@ -649,6 +654,12 @@ AS_IF([test "$enable_utilities" = "yes"], [
       AC_MSG_WARN([libnghttp2 not found])
     ])
   ])
+
+  AS_IF([test "$enable_daemon" = "no"], [enable_kdig_validation=no])
+  AS_IF([test "$enable_kdig_validation" != "no"], [
+    AC_DEFINE([HAVE_KDIG_VALIDATION], [1], [Define to 1 to enable DNSSEC validation in kdig.])
+  ])
+  AM_CONDITIONAL([HAVE_KDIG_VALIDATION], [test "$enable_kdig_validation" = yes])
 
   AS_IF([test "$enable_xdp" != "no"], [
     PKG_CHECK_MODULES([libmnl], [libmnl], [], [
@@ -824,6 +835,7 @@ result_msg_base="
     Utilities with IDN:     ${with_libidn}
     Utilities with DoH:     ${with_libnghttp2}
     Utilities with Dnstap:  ${enable_dnstap}
+    Kdig DNSSEC validation: ${enable_kdig_validation}
     MaxMind DB support:     ${enable_maxminddb}
     Systemd integration:    ${enable_systemd}
     D-Bus support:          ${enable_dbus}
