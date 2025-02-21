@@ -219,6 +219,27 @@ int knot_dname_unpack(uint8_t *dst, const knot_dname_t *src,
 }
 
 _public_
+bool knot_dname_wire_equal(const knot_dname_t *wire_name,
+                           const uint8_t *wire,
+                           const knot_dname_t *cmp_name)
+{
+	if (wire_name == NULL || wire == NULL || cmp_name == NULL) {
+		return false;
+	}
+
+	wire_name = knot_wire_seek_label(wire_name, wire);
+	while (*wire_name != '\0' && *cmp_name != '\0') {
+		if (!label_is_equal(wire_name, cmp_name, true)) {
+			return false;
+		}
+		wire_name = knot_wire_next_label(wire_name, wire);
+		cmp_name = knot_dname_next_label(cmp_name);
+	}
+
+	return *wire_name == *cmp_name; // == '\0'
+}
+
+_public_
 char *knot_dname_to_str(char *dst, const knot_dname_t *name, size_t maxlen)
 {
 	if (name == NULL) {

@@ -416,4 +416,26 @@ static inline size_t knot_pkt_size(const knot_pkt_t *pkt)
 	return pkt->size + (knot_pkt_has_tsig(pkt) ? pkt->tsig_wire.len : 0);
 }
 
+/*!
+ * \brief Find matching RRset in pkt section.
+ *
+ * \param pkt        Packet to search in.
+ * \param sect       Section to search in.
+ * \param owner      Optional: searched owner.
+ * \param rrtype     Searched RR type.
+ * \param rclass     Searched RR class.
+ *
+ * \return First found RRset or NULL.
+ *
+ * \note It might be tricky to understand what is a "RRset" in knot_pkt_t.
+ *       If it came from outside thru knot_pkt_parse(), there will probably be one
+ *       knot_rrset_t per each record, so this in fact returns only the first record.
+ *       If it was added by knot_pkt_put(), there will probably be the whole RRset.
+ *       If it was added somehow by multiple knot_pkt_put()s per partes,
+ *       this will probably find the first part.
+ */
+const knot_rrset_t *knot_pkt_find(knot_pkt_t *pkt, knot_section_t sect,
+                                  const knot_dname_t *owner,
+                                  uint16_t rrtype, uint16_t rclass);
+
 /*! @} */

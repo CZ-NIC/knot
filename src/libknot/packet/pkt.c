@@ -840,3 +840,19 @@ const char *knot_pkt_ext_rcode_name(const knot_pkt_t *pkt)
 
 	return (item != NULL) ? item->name : "";
 }
+
+_public_
+const knot_rrset_t *knot_pkt_find(knot_pkt_t *pkt, knot_section_t sect,
+                                  const knot_dname_t *owner,
+                                  uint16_t rrtype, uint16_t rclass)
+{
+	const knot_pktsection_t *section = &pkt->sections[sect];
+	for (int i = 0; i < section->count; i++) {
+		const knot_rrset_t *rr = knot_pkt_rr(section, i);
+		if (rr->type == rrtype && rr->rclass == rclass &&
+		    (owner == NULL || knot_dname_wire_equal(rr->owner, pkt->wire, owner))) {
+			return rr;
+		}
+	}
+	return NULL;
+}

@@ -291,13 +291,23 @@ static glue_t *find_glue_for(const knot_rrset_t *rr, const knot_pkt_t *pkt)
 	return NULL;
 }
 
+inline static bool is_apex_dnssec(uint16_t t)
+{
+	return t == KNOT_RRTYPE_DNSKEY || t == KNOT_RRTYPE_CDNSKEY || t == KNOT_RRTYPE_CDS;
+}
+
 static bool shall_sign_rr(const knot_rrset_t *rr, const knot_pkt_t *pkt, knotd_qdata_t *qdata)
 {
-	if (pkt->current == KNOT_ADDITIONAL) {
+	if (rr->type == KNOT_RRTYPE_RRSIG) {
+		return false;
+	} else if (pkt->current == KNOT_ADDITIONAL) {
 		glue_t *g = find_glue_for(rr, pkt);
 		assert(g); // finds actually the node which is rr in
 		const zone_node_t *gn = glue_node(g, qdata->extra->node);
 		return !(gn->flags & NODE_FLAGS_NONAUTH);
+	} else if (knot_dname_wire_equal(rr->owner, pkt->wire, qdata->extra->zone->name) &&
+	           is_apex_dnssec(rr->type)) {
+		return false; // signed as part of insertion
 	} else {
 		return !is_deleg(pkt) || rr->type == KNOT_RRTYPE_NSEC;
 	}
@@ -537,6 +547,42 @@ static knotd_in_state_t pre_routine(knotd_in_state_t state, knot_pkt_t *pkt,
 	return state;
 }
 
+// NOTE frees synthd at the end
+static int synth_apex_merge_and_sign(knot_pkt_t *pkt, knot_rrset_t *synthd, knotd_qdata_t *qdata, knotd_mod_t *mod)
+{
+	assert(pkt->current == KNOT_ANSWER);
+
+	const knot_rrset_t *pkt_rr = knot_pkt_find(pkt, KNOT_ANSWER, synthd->owner, synthd->type, synthd->rclass);
+	zone_sign_ctx_t *sign_ctx = zone_sign_ctx(mod->keyset, mod->dnssec);
+
+	int ret = sign_ctx != NULL ? KNOT_EOK : KNOT_ERROR;
+	if (ret == KNOT_EOK && pkt_rr != NULL) {
+		ret = knot_rdataset_merge(&synthd->rrs, &pkt_rr->rrs, &pkt->mm); // prepare complete RRset before signing
+	}
+	if (ret == KNOT_EOK) {
+		knot_rrset_t *rrsig = sign_rrset(synthd->owner, synthd, mod, sign_ctx, &pkt->mm);
+		if (rrsig != NULL) {
+			ret = knot_pkt_put(pkt, KNOT_COMPR_HINT_NONE, rrsig, KNOT_PF_FREE);
+		} else {
+			ret = KNOT_ERROR;
+		}
+		if (ret != KNOT_EOK) {
+			knot_rrset_free(rrsig, &pkt->mm);
+		}
+	}
+	if (ret == KNOT_EOK && pkt_rr != NULL) {
+		ret = knot_rdataset_subtract(&synthd->rrs, &pkt_rr->rrs, &pkt->mm); // insert only what is not already there
+	}
+	if (ret == KNOT_EOK) {
+		ret = knot_pkt_put(pkt, KNOT_COMPR_HINT_QNAME, synthd, KNOT_PF_FREE);
+	}
+	if (ret != KNOT_EOK) {
+		knot_rrset_free(synthd, &pkt->mm);
+	}
+	zone_sign_ctx_free(sign_ctx);
+	return ret;
+}
+
 static knotd_in_state_t synth_answer(knotd_in_state_t state, knot_pkt_t *pkt,
                                      knotd_qdata_t *qdata, knotd_mod_t *mod)
 {
@@ -555,9 +601,8 @@ static knotd_in_state_t synth_answer(knotd_in_state_t state, knot_pkt_t *pkt,
 			return KNOTD_IN_STATE_ERROR;
 		}
 
-		int r = knot_pkt_put(pkt, KNOT_COMPR_HINT_QNAME, dnskey, KNOT_PF_FREE);
+		int r = synth_apex_merge_and_sign(pkt, dnskey, qdata, mod);
 		if (r != DNSSEC_EOK) {
-			knot_rrset_free(dnskey, &pkt->mm);
 			return KNOTD_IN_STATE_ERROR;
 		}
 		state = KNOTD_IN_STATE_HIT;
@@ -569,9 +614,8 @@ static knotd_in_state_t synth_answer(knotd_in_state_t state, knot_pkt_t *pkt,
 			return KNOTD_IN_STATE_ERROR;
 		}
 
-		int r = knot_pkt_put(pkt, KNOT_COMPR_HINT_QNAME, dnskey, KNOT_PF_FREE);
+		int r = synth_apex_merge_and_sign(pkt, dnskey, qdata, mod);
 		if (r != DNSSEC_EOK) {
-			knot_rrset_free(dnskey, &pkt->mm);
 			return KNOTD_IN_STATE_ERROR;
 		}
 		state = KNOTD_IN_STATE_HIT;
@@ -583,9 +627,8 @@ static knotd_in_state_t synth_answer(knotd_in_state_t state, knot_pkt_t *pkt,
 			return KNOTD_IN_STATE_ERROR;
 		}
 
-		int r = knot_pkt_put(pkt, KNOT_COMPR_HINT_QNAME, ds, KNOT_PF_FREE);
+		int r = synth_apex_merge_and_sign(pkt, ds, qdata, mod);
 		if (r != DNSSEC_EOK) {
-			knot_rrset_free(ds, &pkt->mm);
 			return KNOTD_IN_STATE_ERROR;
 		}
 		state = KNOTD_IN_STATE_HIT;
