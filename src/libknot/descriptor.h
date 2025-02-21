@@ -1,4 +1,4 @@
-/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2025 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -28,6 +28,8 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+
+#include "libknot/dynarray.h"
 
 #define KNOT_MAX_RDATA_BLOCKS	8
 #define KNOT_MAX_RDATA_DNAMES	2	// Update this when defining new RR types!
@@ -306,5 +308,7 @@ bool knot_rrtype_should_be_lowercased(const uint16_t type);
  * \retval -1 if error.
  */
 int knot_opt_code_to_string(const uint16_t code, char *out, const size_t out_len);
+
+knot_dynarray_declare(rrtype, uint16_t, DYNARRAY_VISIBILITY_PUBLIC, 64)
 
 /*! @} */

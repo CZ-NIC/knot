@@ -107,34 +107,17 @@ static void print_changeset(const changeset_t *chs, uint64_t timestamp, print_pa
 	changeset_print(chs, stdout, params->color);
 }
 
-knot_dynarray_declare(rrtype, uint16_t, DYNARRAY_VISIBILITY_STATIC, 100)
-knot_dynarray_define(rrtype, uint16_t, DYNARRAY_VISIBILITY_STATIC)
-
 typedef struct {
 	rrtype_dynarray_t *arr;
 	size_t *counter;
 } rrtypelist_ctx_t;
-
-static void rrtypelist_add(rrtype_dynarray_t *arr, uint16_t add_type)
-{
-	bool already_present = false;
-	knot_dynarray_foreach(rrtype, uint16_t, i, *arr) {
-		if (*i == add_type) {
-			already_present = true;
-			break;
-		}
-	}
-	if (!already_present) {
-		rrtype_dynarray_add(arr, &add_type);
-	}
-}
 
 static int rrtypelist_callback(zone_node_t *node, void *data)
 {
 	rrtypelist_ctx_t *ctx = data;
 	for (int i = 0; i < node->rrset_count; i++) {
 		knot_rrset_t rrset = node_rrset_at(node, i);
-		rrtypelist_add(ctx->arr, rrset.type);
+		rrtype_dynarray_add_sort_optim(ctx->arr, &rrset.type);
 		*ctx->counter += rrset.rrs.count;
 	}
 	return KNOT_EOK;

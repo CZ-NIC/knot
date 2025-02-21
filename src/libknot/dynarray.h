@@ -44,6 +44,7 @@
 	typedef struct prefix ## _dynarray { \
 		ssize_t capacity; \
 		ssize_t size; \
+		int sorted; \
 		ntype *(*arr)(struct prefix ## _dynarray *dynarray); \
 		ntype init[initial_capacity]; \
 		ntype *_arr; \
@@ -52,6 +53,8 @@
 	visibility ntype *prefix ## _dynarray_arr(prefix ## _dynarray_t *dynarray); \
 	visibility ntype *prefix ## _dynarray_add(prefix ## _dynarray_t *dynarray, \
 	                                        ntype const *to_add); \
+	visibility ntype *prefix ## _dynarray_add_sort_optim(struct prefix ## _dynarray *dynarray, \
+	                                                     ntype const *to_add); \
 	visibility void prefix ## _dynarray_remove(prefix ## _dynarray_t *dynarray, \
 	                                        ntype const *to_remove); \
 	visibility void prefix ## _dynarray_sort(prefix ## _dynarray_t *dynarray); \
@@ -97,6 +100,7 @@
 	visibility ntype *prefix ## _dynarray_add(struct prefix ## _dynarray *dynarray, \
 	                                          ntype const *to_add) \
 	{ \
+		dynarray->sorted = 0; \
 		if (dynarray->capacity < 0) { \
 			return NULL; \
 		} \
@@ -127,6 +131,20 @@
 	} \
 	\
 	_unused_ \
+	visibility ntype *prefix ## _dynarray_add_sort_optim(struct prefix ## _dynarray *dynarray, \
+	                                                     ntype const *to_add) \
+	{ \
+		ntype *res; \
+		if (!dynarray->sorted && dynarray->size >= dynarray->capacity) { \
+			prefix ## _dynarray_sort_dedup(dynarray); \
+		} \
+		if (dynarray->sorted && (res = prefix ## _dynarray_bsearch(dynarray, to_add)) != NULL) { \
+			return res; \
+		} \
+		return prefix ## _dynarray_add(dynarray, to_add); \
+	} \
+	\
+	_unused_ \
 	visibility void prefix ## _dynarray_remove(struct prefix ## _dynarray *dynarray, \
 	                                           ntype const *to_remove) \
 	{ \
@@ -134,6 +152,7 @@
 		knot_dynarray_foreach(prefix, ntype, removable, *dynarray) { \
 			if (memcmp(removable, to_remove, sizeof(*to_remove)) == 0) { \
 				if (removable != orig_arr + --dynarray->size) { \
+					dynarray->sorted = 0; \
 					*(removable--) = orig_arr[dynarray->size]; \
 				} \
 			} \
@@ -150,12 +169,14 @@
 	{ \
 		ntype *arr = prefix ## _dynarray_arr(dynarray); \
 		qsort(arr, dynarray->size, sizeof(*arr), prefix ## _dynarray_memb_cmp); \
+		dynarray->sorted = 1; \
 	} \
 	\
 	_unused_ \
 	visibility ntype *prefix ## _dynarray_bsearch(struct prefix ## _dynarray *dynarray, const ntype *bskey) \
 	{ \
 		ntype *arr = prefix ## _dynarray_arr(dynarray); \
+		assert(dynarray->sorted || dynarray->size < 2); \
 		return bsearch(bskey, arr, dynarray->size, sizeof(*arr), prefix ## _dynarray_memb_cmp); \
 	} \
 	\

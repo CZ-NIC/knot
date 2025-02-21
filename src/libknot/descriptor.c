@@ -1,4 +1,4 @@
-/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2025 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,6 +16,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <strings.h>
 
 #include "libknot/attribute.h"
@@ -427,3 +428,5 @@ int knot_opt_code_to_string(const uint16_t code, char *out, const size_t out_len
 		return ret;
 	}
 }
+
+knot_dynarray_define(rrtype, uint16_t, DYNARRAY_VISIBILITY_PUBLIC)

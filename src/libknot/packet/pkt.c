@@ -570,6 +570,58 @@ int knot_pkt_put_rotate(knot_pkt_t *pkt, uint16_t compr_hint, const knot_rrset_t
 }
 
 _public_
+int knot_pkt_rrtypes(const knot_pktsection_t *section, rrtype_dynarray_t *out)
+{
+	if (section == NULL || out == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	for (int i = 0; i < section->count; i++) {
+		uint16_t t = knot_pkt_rr(section, i)->type;
+		if (rrtype_dynarray_add_sort_optim(out, &t) == NULL) {
+			return KNOT_ENOMEM;
+		}
+	}
+
+	rrtype_dynarray_sort_dedup(out);
+	return KNOT_EOK;
+}
+
+_public_
+int knot_pkt_rr_whole(const knot_pktsection_t *section, uint16_t rrtype,
+                      const knot_rrset_t **out, knot_rrset_t **tofree, knot_mm_t *mm)
+{
+	if (section == NULL || out == NULL || tofree == NULL ||
+	    *out != NULL || *tofree != NULL) {
+		return KNOT_EINVAL;
+	}
+
+	int ret = KNOT_EOK;
+	for (int i = 0; i < section->count && ret == KNOT_EOK; i++) {
+		const knot_rrset_t *rr = knot_pkt_rr(section, i);
+		if (rr->type != rrtype) {
+			continue;
+		}
+		if (*out == NULL) {
+			assert(*tofree == NULL);
+			*out = rr;
+			continue;
+		}
+
+		if (*tofree == NULL) {
+			*tofree = knot_rrset_copy(*out, mm);
+			if (*tofree == NULL) {
+				return KNOT_ENOMEM;
+			}
+		}
+		*out = *tofree;
+		ret = knot_rdataset_merge(&(*tofree)->rrs, &rr->rrs, mm);
+	}
+
+	return ret;
+}
+
+_public_
 int knot_pkt_parse_question(knot_pkt_t *pkt)
 {
 	if (pkt == NULL) {

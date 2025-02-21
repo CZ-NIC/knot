@@ -298,6 +298,33 @@ static inline uint16_t knot_pkt_rr_offset(const knot_pktsection_t *section,
 	return section->pkt->rr_info[section->pos + i].pos;
 }
 
+/*!
+ * \brief Get all RR Types represented in given section.
+ *
+ * \param section    Packet section to be scanned.
+ * \param out        Dynarray to be filled in, sorted and deduplicated.
+ *
+ * \return KNOT_EOK, KNOT_ENOMEM, KNOT_EINVAL
+ */
+int knot_pkt_rrtypes(const knot_pktsection_t *section, rrtype_dynarray_t *out);
+
+/*!
+ * \brief Get all records of given type as single RRset.
+ *
+ * In and incoming or wrongly populated outgoing packets, there might be
+ * multiple RRsets of the same type in a section. This merges them all.
+ *
+ * \param section    Packet section to be scanned.
+ * \param rrtype     RR type to be searched for.
+ * \param out        Out: Resulting RRset.
+ * \param tofree     Out: Auxiliary RRset to be freed after 'out' is processed.
+ * \param mm         Memory context.
+ *
+ * \return KNOT_EOK, KNOT_ENOMEM, KNOT_EINVAL
+ */
+int knot_pkt_rr_whole(const knot_pktsection_t *section, uint16_t rrtype,
+                      const knot_rrset_t **out, knot_rrset_t **tofree, knot_mm_t *mm);
+
 /*
  * Packet parsing API.
  */
