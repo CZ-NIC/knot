@@ -93,11 +93,13 @@ static void free_tls_ctx(fdset_t *set, int idx)
 	}
 }
 
-/*! \brief Sweep TCP connection. */
-static fdset_sweep_state_t tcp_sweep(fdset_t *set, int idx, _unused_ void *data)
+static fdset_sweep_state_t tcp_sweep(fdset_t *set, int idx, void *data)
 {
 	const int fd = fdset_get_fd(set, idx);
 	assert(set && fd >= 0);
+
+	server_t *server = data;
+	ATOMIC_ADD(server->stats.tcp_idle_timeout, 1);
 
 	if (log_enabled_debug()) {
 		/* Best-effort, name and shame. */
@@ -115,10 +117,17 @@ static fdset_sweep_state_t tcp_sweep(fdset_t *set, int idx, _unused_ void *data)
 	return FDSET_SWEEP;
 }
 
-static void tcp_log_error(const struct sockaddr_storage *ss, const char *operation, int ret)
+static void tcp_log_error(const struct sockaddr_storage *ss, const char *operation,
+                          int ret, server_t *server)
 {
 	/* Don't log ECONN as it usually means client closed the connection. */
-	if (ret == KNOT_ETIMEOUT && log_enabled_debug()) {
+	if (ret != KNOT_ETIMEOUT) {
+		return;
+	}
+
+	ATOMIC_ADD(server->stats.tcp_io_timeout, 1);
+
+	if (log_enabled_debug()) {
 		char addr_str[SOCKADDR_STRLEN];
 		sockaddr_tostr(addr_str, sizeof(addr_str), ss);
 		log_debug("TCP, failed to %s due to IO timeout, closing connection, address %s",
@@ -187,7 +196,7 @@ static int tcp_handle(tcp_context_t *tcp, knotd_qdata_params_t *params,
 	if (recv > 0) {
 		rx->iov_len = recv;
 	} else {
-		tcp_log_error(params->remote, "receive", recv);
+		tcp_log_error(params->remote, "receive", recv, tcp->server);
 		return KNOT_EOF;
 	}
 
@@ -207,7 +216,7 @@ static int tcp_handle(tcp_context_t *tcp, knotd_qdata_params_t *params,
 				                        tcp->io_timeout, NULL);
 			}
 			if (sent != ans->size) {
-				tcp_log_error(params->remote, "send", sent);
+				tcp_log_error(params->remote, "send", sent, tcp->server);
 				handle_finish(&tcp->layer);
 				return KNOT_EOF;
 			}
@@ -444,7 +453,7 @@ int tcp_master(dthread_t *thread)
 
 		/* Sweep inactive clients and refresh TCP configuration. */
 		if (tcp.last_poll_time.tv_sec >= next_sweep.tv_sec) {
-			fdset_sweep(&tcp.set, &tcp_sweep, NULL);
+			fdset_sweep(&tcp.set, &tcp_sweep, handler->server);
 			update_sweep_timer(&next_sweep);
 			update_tcp_conf(&tcp);
 		}
