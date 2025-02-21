@@ -1,4 +1,4 @@
-/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2025 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -99,13 +99,15 @@ static fdset_sweep_state_t tcp_sweep(fdset_t *set, int idx, _unused_ void *data)
 	const int fd = fdset_get_fd(set, idx);
 	assert(set && fd >= 0);
 
-	/* Best-effort, name and shame. */
-	struct sockaddr_storage ss = { 0 };
-	socklen_t len = sizeof(struct sockaddr_storage);
-	if (getpeername(fd, (struct sockaddr *)&ss, &len) == 0) {
-		char addr_str[SOCKADDR_STRLEN];
-		sockaddr_tostr(addr_str, sizeof(addr_str), &ss);
-		log_notice("TCP, terminated inactive client, address %s", addr_str);
+	if (log_enabled_debug()) {
+		/* Best-effort, name and shame. */
+		struct sockaddr_storage ss = { 0 };
+		socklen_t len = sizeof(struct sockaddr_storage);
+		if (getpeername(fd, (struct sockaddr *)&ss, &len) == 0) {
+			char addr_str[SOCKADDR_STRLEN];
+			sockaddr_tostr(addr_str, sizeof(addr_str), &ss);
+			log_debug("TCP, terminated inactive client, address %s", addr_str);
+		}
 	}
 
 	free_tls_ctx(set, idx);
