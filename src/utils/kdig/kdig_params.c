@@ -275,6 +275,37 @@ static int opt_nodoflag(const char *arg, void *query)
 	return KNOT_EOK;
 }
 
+static int opt_validate(const char *arg, void *query)
+{
+#if defined(HAVE_KDIG_VALIDATION) && !defined(NO_DNSSEC_VALIDATION)
+	query_t *q = query;
+
+	q->dnssec_validation = 3;
+	if (arg != NULL) {
+		if (!is_digit(arg[0]) || arg[0] < '1' || arg[0] > '3') {
+			ERR("invalid +validation=%s", arg);
+			return KNOT_EINVAL;
+		}
+		q->dnssec_validation = arg[0] - '0';
+	}
+	q->flags.do_flag = true;
+
+	return KNOT_EOK;
+#else
+	ERR("DNSSEC validation support not compiled");
+	return KNOT_ENOTSUP;
+#endif // HAVE_KDIG_VALIDATION && !NO_DNSSEC_VALIDATION
+}
+
+static int opt_novalidate(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->dnssec_validation = 0;
+
+	return KNOT_EOK;
+}
+
 static int opt_all(const char *arg, void *query)
 {
 	query_t *q = query;
@@ -1550,6 +1581,9 @@ static const param_t kdig_opts2[] = {
 	{ "dnssec",         ARG_NONE,     opt_doflag },   // Alias.
 	{ "nodnssec",       ARG_NONE,     opt_nodoflag },
 
+	{ "validate",       ARG_OPTIONAL, opt_validate },
+	{ "novalidate",     ARG_NONE,     opt_novalidate },
+
 	{ "all",            ARG_NONE,     opt_all },
 	{ "noall",          ARG_NONE,     opt_noall },
 
@@ -2377,6 +2411,7 @@ static void print_help(void)
 	       "       +[no]cdflag                Set CD flag.\n"
 	       "       +[no]doflag                Set DO flag.\n"
 	       "       +[no]dnssec                Same as +[no]doflag.\n"
+	       "       +[no]validate[=LEVEL]      Re-query for SOA and DNSKEY, validate DNSSEC.\n"
 	       "       +[no]all                   Show all packet sections.\n"
 	       "       +[no]qr                    Show query packet.\n"
 	       "       +[no]header              * Show packet header.\n"
