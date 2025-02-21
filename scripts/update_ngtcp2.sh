@@ -37,7 +37,7 @@ done <"${clonedir}/deleted"
 # update changed files
 find . -type f | while IFS=$'\n' read -r line; do
 	base="$(basename "$line")"
-	match="$(grep -m1 "$base" "${clonedir}/changed" || true)"
+	match="$(grep -Em1 '(^|/)'"$base"'$' "${clonedir}/changed" || true)"
 	if [ -n "$match" ]; then
 		cp "$match" "$line"
 	fi
