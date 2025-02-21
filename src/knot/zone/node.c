@@ -445,6 +445,19 @@ bool node_rrtype_is_signed(const zone_node_t *node, uint16_t type)
 	return false;
 }
 
+int node_set_ttl(zone_node_t *node, uint16_t type, uint32_t ttl)
+{
+	int res = 0, remain = node->rrset_count;
+	while (--remain >= 0) {
+		if (node->rrs[remain].type == type) {
+			node->rrs[remain].ttl = ttl;
+			res++;
+		}
+	}
+	assert(res < 2);
+	return res;
+}
+
 bool node_bitmap_equal(const zone_node_t *a, const zone_node_t *b)
 {
 	if (a == NULL || b == NULL || a->rrset_count != b->rrset_count) {

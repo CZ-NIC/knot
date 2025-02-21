@@ -384,6 +384,17 @@ static inline knot_rrset_t node_rrset(const zone_node_t *node, uint16_t type)
 }
 
 /*!
+ * \brief Set TTL of specific RRset.
+ *
+ * \param node    Zone node.
+ * \param type    RRtype to search the RRset.
+ * \param ttl     TTL to be set.
+ *
+ * \return 0 if nothing set, 1 if set, >1 should not happen (two rrsets of same type in node)
+ */
+int node_set_ttl(zone_node_t *node, uint16_t type, uint32_t ttl);
+
+/*!
  * \brief Returns RRSet structure initialized with data from node at position
  *        equal to \a pos.
  *
