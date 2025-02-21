@@ -32,6 +32,8 @@ src/contrib/libngtcp2/ngtcp2/crypto/shared.h
 src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_acktr.c
 src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_acktr.h
 src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_addr.c
+src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_dcidtr.c
+src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_dcidtr.h
 src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_addr.h
 src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_balloc.c
 src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_balloc.h
