@@ -53,6 +53,8 @@ if HAVE_UTILS
 bin_PROGRAMS += kdig khost knsec3hash knsupdate
 
 kdig_SOURCES = \
+	utils/kdig/dnssec_validation.c		\
+	utils/kdig/dnssec_validation.h		\
 	utils/kdig/kdig_exec.c			\
 	utils/kdig/kdig_exec.h			\
 	utils/kdig/kdig_main.c			\

@@ -19,6 +19,7 @@
 #include <sys/socket.h>
 #include <sys/time.h>
 
+#include "utils/kdig/dnssec_validation.h"
 #include "utils/kdig/kdig_exec.h"
 #include "utils/common/exec.h"
 #include "utils/common/msg.h"
@@ -807,6 +808,34 @@ static int process_query_packet(const knot_pkt_t      *query,
 		knot_pkt_free(new_query);
 
 		return ret;
+	}
+
+	if (query_ctx->dnssec_validation) {
+		knot_dname_t *zone_name = NULL;
+		uint16_t type_needed = 0;
+		struct zone_contents *dv_contents = query_ctx->dv_contents;
+		ret = kdig_dnssec_validate(reply, &dv_contents, &zone_name, &type_needed);
+		if (ret == KNOT_EAGAIN) { // need to re-query to get DNSKEY and/or SOA
+			knot_pkt_free(reply);
+
+			query_t new_ctx = *query_ctx;
+			new_ctx.owner = knot_dname_to_str_alloc(zone_name);
+			if (new_ctx.owner == NULL) {
+				return KNOT_ENOMEM;
+			}
+			new_ctx.type_num = type_needed;
+			new_ctx.dv_contents = dv_contents;
+			knot_pkt_t *new_query = create_query_packet(&new_ctx);
+			ret = process_query_packet(new_query, net, &new_ctx, ignore_tc,
+			                           sign_ctx, style);
+			knot_pkt_free(new_query);
+			free(zone_name);
+			free(new_ctx.owner);
+			return ret;
+		}
+		if (ret != KNOT_EOK) {
+			ERR("DNSSEC VALIDATION: failed (%s)", knot_strerror(ret));
+		}
 	}
 
 	knot_pkt_free(reply);
