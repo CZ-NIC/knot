@@ -580,6 +580,14 @@ AC_ARG_WITH(libnghttp2,
   with_libnghttp2=yes
 )
 
+# DNSSEC validation support for kdig
+AC_ARG_ENABLE([kdig_validation],
+    AS_HELP_STRING([--enable-kdig-validation=yes|no], [enable DNSSEC validation in kdig [default=no]]),
+    [enable_kdig_validation="$enableval"], [enable_kdig_validation=no])
+AS_IF([test "$enable_daemon" = "no"],[enable_kdig_validation=no])
+AS_IF([test "$enable_kdig_validation" = yes], [AC_DEFINE([HAVE_KDIG_VALIDATION], [1], [Define to 1 to enable DNSSEC validation in kdig.])])
+AM_CONDITIONAL([HAVE_KDIG_VALIDATION], [test "$enable_kdig_validation" = yes])
+
 AS_IF([test "$enable_utilities" = "yes"], [
   AS_IF([test "$with_libidn" != "no"], [
     PKG_CHECK_MODULES([libidn2], [libidn2 >= 2.0.0], [

@@ -74,13 +74,14 @@ int adjust_cb_void(zone_node_t *node, adjust_ctx_t *ctx);
  * \param nsec3_cb      Callback for NSEC3 nodes.
  * \param measure_zone  While adjusting, count the size and max TTL of the zone.
  * \param adjust_prevs  Also (re-)generate node->prev pointers.
+ * \param load_nsec3p   Load NSEC3PARAM from zone.
  * \param threads       Operate in parallel using specified threads.
  * \param add_changed   Special tree to add any changed node (by adjusting) into.
  *
  * \return KNOT_E*
  */
 int zone_adjust_contents(zone_contents_t *zone, adjust_cb_t nodes_cb, adjust_cb_t nsec3_cb,
-                         bool measure_zone, bool adjust_prevs, unsigned threads,
+                         bool measure_zone, bool adjust_prevs, bool load_nsec3p, unsigned threads,
                          zone_tree_t *add_changed);
 
 /*!

@@ -472,6 +472,24 @@ dname_from_str_failed:
 }
 
 _public_
+knot_dname_t *knot_dname_wildcard(const knot_dname_t *from, knot_dname_t *dest, size_t dest_size)
+{
+	size_t from_size = knot_dname_size(from);
+	if ((from_size + 2 > dest_size && dest != NULL) || from_size + 2 > KNOT_DNAME_MAXLEN) {
+		return NULL;
+	}
+	if (dest == NULL) {
+		dest = malloc(from_size + 2);
+		if (dest == NULL) {
+			return NULL;
+		}
+	}
+	memcpy(dest, "\x01*", 2);
+	memcpy(dest + 2, from, from_size);
+	return dest;
+}
+
+_public_
 void knot_dname_to_lower(knot_dname_t *name)
 {
 	if (name == NULL) {

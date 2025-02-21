@@ -19,6 +19,7 @@
 #include <sys/socket.h>
 #include <sys/time.h>
 
+#include "utils/kdig/dnssec_validation.h"
 #include "utils/kdig/kdig_exec.h"
 #include "utils/common/exec.h"
 #include "utils/common/msg.h"
@@ -807,6 +808,45 @@ static int process_query_packet(const knot_pkt_t      *query,
 		knot_pkt_free(new_query);
 
 		return ret;
+	}
+
+	if (query_ctx->dnssec_validation > 0) {
+#if HAVE_KDIG_VALIDATION + 0 == 1 && !defined(NO_DNSSEC_VALIDATION)
+		knot_dname_t zone_name[KNOT_DNAME_MAXLEN] = { 0 };
+		uint16_t type_needed = 0;
+		struct kdig_dnssec_ctx *dv_ctx = query_ctx->dv_ctx;
+		ret = kdig_dnssec_validate(reply, &dv_ctx, query_ctx->dnssec_validation, zone_name, &type_needed);
+		if (ret == KNOT_EAGAIN) { // need to re-query to get DNSKEY and/or SOA
+			knot_pkt_free(reply);
+
+			query_t new_ctx = *query_ctx;
+			new_ctx.owner = knot_dname_to_str_alloc(zone_name);
+			if (new_ctx.owner == NULL) {
+				return KNOT_ENOMEM;
+			}
+			new_ctx.type_num = type_needed;
+			new_ctx.dv_ctx = dv_ctx;
+			new_ctx.style.show_header = false;
+			new_ctx.style.show_edns = false;
+			new_ctx.style.show_footer = false;
+			new_ctx.style.show_section = false;
+			new_ctx.style.show_question = false;
+			new_ctx.style.show_authority = false;
+			new_ctx.style.show_additional = false;
+			knot_pkt_t *new_query = create_query_packet(&new_ctx);
+			ret = process_query_packet(new_query, net, &new_ctx, ignore_tc,
+			                           sign_ctx, &new_ctx.style);
+			knot_pkt_free(new_query);
+			free(new_ctx.owner);
+			return ret;
+		}
+		if (ret != KNOT_EOK) {
+			ERR("DNSSEC VALIDATION FAILED to proceed (%s)", knot_strerror(ret));
+		}
+#else
+		ERR("DNSSEC validation support not compiled");
+		goto fail;
+#endif // HAVE_KDIG_VALIDATION &&!NO_DNSSEC_VALIDATION
 	}
 
 	knot_pkt_free(reply);

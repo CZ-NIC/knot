@@ -99,3 +99,4 @@
 /modules/test_rrl
 
 /utils/test_lookup
+/utils/test_kdig_validate

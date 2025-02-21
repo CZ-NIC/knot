@@ -47,6 +47,8 @@ libtap_la_SOURCES = \
 
 EXTRA_PROGRAMS = tap/runtests
 
+check_SCRIPTS =
+
 check_PROGRAMS = \
 	contrib/test_base32hex			\
 	contrib/test_base64			\
@@ -168,6 +170,16 @@ endif ENABLE_XDP
 if HAVE_LIBUTILS
 check_PROGRAMS += \
 	utils/test_lookup
+
+if HAVE_KDIG_VALIDATION
+check_SCRIPTS += \
+	utils/test_kdig_validate
+
+utils/test_kdig_validate:
+	@$(edit) < $(top_srcdir)/tests/$@.in > $(top_builddir)/tests/$@
+	@chmod +x $(top_builddir)/tests/$@
+endif HAVE_KDIG_VALIDATION
+
 endif HAVE_LIBUTILS
 
 if HAVE_DAEMON
@@ -214,7 +226,7 @@ libzscanner_zscanner_tool_SOURCES = \
 	libzscanner/processing.h		\
 	libzscanner/processing.c
 
-check_SCRIPTS = \
+check_SCRIPTS += \
 	libzscanner/test_zscanner
 
 edit = $(SED) \
