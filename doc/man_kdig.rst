@@ -170,6 +170,9 @@ Options
 **+**\ [\ **no**\ ]\ **dnssec**
   Set the DO flag.
 
+**+**\ [\ **no**\ ]\ **validate**
+  Also query for SOA and DNSKEY, validate DNSSEC in the answer. Implies DO flag.
+
 **+**\ [\ **no**\ ]\ **all**
   Show all packet sections.
 

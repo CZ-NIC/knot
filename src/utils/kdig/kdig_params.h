@@ -143,7 +143,7 @@ struct query {
 	} proxy;
 	/*!< Trigger of DNSSEC validation and related contents_t. */
 	bool		dnssec_validation;
-	struct zone_contents *dv_contents;
+	struct kdig_dnssec_ctx *dv_ctx;
 #if USE_DNSTAP
 	/*!< Context for dnstap reader input. */
 	dt_reader_t	*dt_reader;

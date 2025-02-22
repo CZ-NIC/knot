@@ -580,6 +580,8 @@ AC_ARG_WITH(libnghttp2,
   with_libnghttp2=yes
 )
 
+AM_CONDITIONAL([KDIG_DNSSEC_VALIDATION], [test "$enable_daemon" != "no"])
+
 AS_IF([test "$enable_utilities" = "yes"], [
   AS_IF([test "$with_libidn" != "no"], [
     PKG_CHECK_MODULES([libidn2], [libidn2 >= 2.0.0], [
@@ -605,6 +607,10 @@ AS_IF([test "$enable_utilities" = "yes"], [
     PKG_CHECK_MODULES([libmnl], [libmnl], [], [
       AC_MSG_ERROR([libmnl not found])
     ])
+  ])
+
+  AS_IF([test "$enable_daemon" = "yes"], [
+    AC_DEFINE([KDIG_DNSSEC_VALIDATION], [1], [Define to 1 to enable DNSSEC validation in kdig])
   ])
 ]) # Knot DNS utilities dependencies
 

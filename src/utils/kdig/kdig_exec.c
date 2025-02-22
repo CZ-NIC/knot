@@ -810,11 +810,12 @@ static int process_query_packet(const knot_pkt_t      *query,
 		return ret;
 	}
 
+#if KDIG_DNSSEC_VALIDATION + 0 == 1 && !defined(NO_DNSSEC_VALIDATION)
 	if (query_ctx->dnssec_validation) {
 		knot_dname_t *zone_name = NULL;
 		uint16_t type_needed = 0;
-		struct zone_contents *dv_contents = query_ctx->dv_contents;
-		ret = kdig_dnssec_validate(reply, &dv_contents, &zone_name, &type_needed);
+		struct kdig_dnssec_ctx *dv_ctx = query_ctx->dv_ctx;
+		ret = kdig_dnssec_validate(reply, &dv_ctx, &zone_name, &type_needed);
 		if (ret == KNOT_EAGAIN) { // need to re-query to get DNSKEY and/or SOA
 			knot_pkt_free(reply);
 
@@ -824,7 +825,7 @@ static int process_query_packet(const knot_pkt_t      *query,
 				return KNOT_ENOMEM;
 			}
 			new_ctx.type_num = type_needed;
-			new_ctx.dv_contents = dv_contents;
+			new_ctx.dv_ctx = dv_ctx;
 			knot_pkt_t *new_query = create_query_packet(&new_ctx);
 			ret = process_query_packet(new_query, net, &new_ctx, ignore_tc,
 			                           sign_ctx, style);
@@ -837,6 +838,7 @@ static int process_query_packet(const knot_pkt_t      *query,
 			ERR("DNSSEC VALIDATION: failed (%s)", knot_strerror(ret));
 		}
 	}
+#endif // KDIG_DNSSEC_VALIDATION &&!NO_DNSSEC_VALIDATION
 
 	knot_pkt_free(reply);
 	net_close_keepopen(net, query_ctx);

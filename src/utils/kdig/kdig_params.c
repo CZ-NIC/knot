@@ -289,6 +289,26 @@ static int opt_nodoflag(const char *arg, void *query)
 	return KNOT_EOK;
 }
 
+static int opt_validate(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->dnssec_validation = true;
+	q->flags.do_flag = true;
+
+	return KNOT_EOK;
+}
+
+static int opt_novalidate(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->dnssec_validation = false;
+
+	return KNOT_EOK;
+}
+
+
 static int opt_all(const char *arg, void *query)
 {
 	query_t *q = query;
@@ -1532,6 +1552,9 @@ static const param_t kdig_opts2[] = {
 	{ "dnssec",         ARG_NONE,     opt_doflag },
 	{ "nodnssec",       ARG_NONE,     opt_nodoflag },
 
+        { "validate",       ARG_NONE,     opt_validate },
+        { "novalidate",     ARG_NONE,     opt_novalidate },
+
 	{ "all",            ARG_NONE,     opt_all },
 	{ "noall",          ARG_NONE,     opt_noall },
 
@@ -2362,6 +2385,7 @@ static void print_help(void)
 	       "       +[no]adflag                Set AD flag.\n"
 	       "       +[no]cdflag                Set CD flag.\n"
 	       "       +[no]dnssec                Set DO flag.\n"
+	       "       +[no]validate              Re-query for SOA and DNSKEY, validate DNSSEC.\n"
 	       "       +[no]all                   Show all packet sections.\n"
 	       "       +[no]qr                    Show query packet.\n"
 	       "       +[no]header                Show packet header.\n"

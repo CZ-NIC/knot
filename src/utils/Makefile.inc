@@ -53,13 +53,17 @@ if HAVE_UTILS
 bin_PROGRAMS += kdig khost knsec3hash knsupdate
 
 kdig_SOURCES = \
-	utils/kdig/dnssec_validation.c		\
-	utils/kdig/dnssec_validation.h		\
 	utils/kdig/kdig_exec.c			\
 	utils/kdig/kdig_exec.h			\
 	utils/kdig/kdig_main.c			\
 	utils/kdig/kdig_params.c		\
 	utils/kdig/kdig_params.h
+
+if KDIG_DNSSEC_VALIDATION
+kdig_SOURCES += \
+	utils/kdig/dnssec_validation.c		\
+	utils/kdig/dnssec_validation.h
+endif KDIG_DNSSEC_VALIDATION
 
 khost_SOURCES = \
 	utils/kdig/kdig_exec.c			\
@@ -82,9 +86,10 @@ knsupdate_SOURCES = \
 	utils/knsupdate/knsupdate_params.c		\
 	utils/knsupdate/knsupdate_params.h
 
-kdig_CPPFLAGS          = $(libknotus_la_CPPFLAGS)
-kdig_LDADD             = $(libknotus_LIBS)
-khost_CPPFLAGS         = $(libknotus_la_CPPFLAGS)
+kdig_CPPFLAGS     = $(libknotus_la_CPPFLAGS)
+kdig_LDADD        = $(libknotd_LIBS) $(libknotus_LIBS)
+kdig_LDFLAGS      = $(AM_LDFLAGS) -rdynamic
+khost_CPPFLAGS         = $(libknotus_la_CPPFLAGS) -DNO_DNSSEC_VALIDATION
 khost_LDADD            = $(libknotus_LIBS)
 knsec3hash_CPPFLAGS    = $(libknotus_la_CPPFLAGS)
 knsec3hash_LDADD       = libknot.la libdnssec.la $(libcontrib_LIBS)
