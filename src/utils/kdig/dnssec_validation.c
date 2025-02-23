@@ -48,7 +48,7 @@ static bool bitmap_covers_nsec3(const knot_rdata_t *rdata, uint16_t covered_type
 	return dnssec_nsec_bitmap_contains(bitmap, bm_len, covered_type);
 }
 
-static bool has_nodata(zone_contents_t *conts, const knot_dname_t *name, uint16_t type)
+static bool has_nodata_nolog(zone_contents_t *conts, const knot_dname_t *name, uint16_t type)
 {
 	if (!has_nsec3(conts)) {
 		const zone_node_t *node = zone_contents_find_node(conts, name);
@@ -63,6 +63,15 @@ static bool has_nodata(zone_contents_t *conts, const knot_dname_t *name, uint16_
 	}
 	knot_rrset_t nsec3 = node_rrset(nsec3_node, KNOT_RRTYPE_NSEC3);
 	return !knot_rrset_empty(&nsec3) && (!type || !bitmap_covers_nsec3(nsec3.rrs.rdata, type));
+}
+
+static bool has_nodata(zone_contents_t *conts, const knot_dname_t *name, uint16_t type, bool is_deleg, int debug)
+{
+	bool res = has_nodata_nolog(conts, name, type);
+	if (debug > 1) {
+		printf(";; INFO: DNSSEC VALIDATION: %s proof %s\n", type == 0 ? "encloser" : is_deleg ? "DS nonexistence" : "NODATA", res ? "found" : "not found");
+	}
+	return res;
 }
 
 static bool nsec_covers_name(const knot_dname_t *nsec_owner, const knot_rdata_t *nsec_rdata,
@@ -82,9 +91,9 @@ static bool nsec3_covers_name(const knot_dname_t *nsec3_owner, const knot_rdata_
 	return ret == KNOT_EOK /* best effort */ && knot_dname_cmp(nsec3_owner, name) <= 0 && knot_dname_cmp(name, nsec3_next) > 0;
 }
 
-static bool has_nxdomain_for_wildcard(zone_contents_t *conts, const knot_dname_t *closest);
+static bool has_nxdomain_for_wildcard(zone_contents_t *conts, const knot_dname_t *closest, int debug);
 
-static bool has_nxdomain(zone_contents_t *conts, const knot_dname_t *name, bool also_wildcard, bool opt_out)
+static bool has_nxdomain_nolog(zone_contents_t *conts, const knot_dname_t *name, bool also_wildcard, bool opt_out, int debug)
 {
 	if (!has_nsec3(conts)) {
 		const zone_node_t *match = NULL, *closest = NULL, *prev = NULL;
@@ -94,14 +103,14 @@ static bool has_nxdomain(zone_contents_t *conts, const knot_dname_t *name, bool 
 		}
 		knot_rrset_t nsec = node_rrset(closest, KNOT_RRTYPE_NSEC);
 		return !knot_rrset_empty(&nsec) && nsec_covers_name(closest->owner, nsec.rrs.rdata, name) &&
-		       (!also_wildcard || has_nxdomain_for_wildcard(conts, closest->owner)) && !opt_out;
+		       (!also_wildcard || has_nxdomain_for_wildcard(conts, closest->owner, debug)) && !opt_out;
 	}
 
 	// scan for closest encloser represented by some NSEC3, because the closest encloser node might not be here
 	size_t apex_lbs = knot_dname_labels(conts->apex->owner, NULL);
 	const knot_dname_t *encloser = knot_dname_next_label(name);
 	for (size_t name_lbs = knot_dname_labels(name, NULL); name_lbs > apex_lbs; name_lbs--) {
-		if (has_nodata(conts, encloser, 0)) {
+		if (has_nodata(conts, encloser, 0, false, debug)) {
 			break;
 		}
 		name = encloser;
@@ -115,15 +124,26 @@ static bool has_nxdomain(zone_contents_t *conts, const knot_dname_t *name, bool 
 	}
 	knot_rrset_t nsec3 = node_rrset(nsec3_prev, KNOT_RRTYPE_NSEC3);
 	return !knot_rrset_empty(&nsec3) && nsec3_covers_name(nsec3_prev->owner, nsec3.rrs.rdata, name, conts->apex->owner) &&
-	       (!also_wildcard || has_nxdomain_for_wildcard(conts, encloser)) &&
+	       (!also_wildcard || has_nxdomain_for_wildcard(conts, encloser, debug)) &&
 	       (!opt_out || (knot_nsec3_flags(nsec3.rrs.rdata) & KNOT_NSEC3_FLAG_OPT_OUT));
 }
 
-static bool has_nxdomain_for_wildcard(zone_contents_t *conts, const knot_dname_t *closest)
+static bool has_nxdomain(zone_contents_t *conts, const knot_dname_t *name,
+                         bool also_wildcard, bool opt_out, bool is_wildcard, int debug)
+{
+	bool res = has_nxdomain_nolog(conts, name, also_wildcard, opt_out, debug);
+	if (debug > 1) {
+		printf(";; INFO: DNSSEC VALIDATION: %s proof%s %s\n", opt_out ? "opt-out" : "NXDOMAIN",
+		       is_wildcard ? " of wildcard" : "", res ? "found" : "not found");
+	}
+	return res;
+}
+
+static bool has_nxdomain_for_wildcard(zone_contents_t *conts, const knot_dname_t *closest, int debug)
 {
 	uint8_t wc[KNOT_DNAME_MAXLEN + 2] = { 1, '*', 0 };
 	memcpy(wc + 2, closest, knot_dname_size(closest));
-	return has_nxdomain(conts, wc, false, false);
+	return has_nxdomain(conts, wc, false, false, true, debug);
 }
 
 static const knot_rrset_t *find_first(knot_pkt_t *pkt, uint16_t rrtype, knot_section_t limit)
@@ -222,7 +242,7 @@ static int dv(knot_pkt_t *pkt, kdig_dnssec_ctx_t **dv_ctx, int debug,
 		(*dv_ctx)->orig_qname = orig_qname;
 		(*dv_ctx)->orig_qtype = knot_pkt_qtype(pkt);
 
-		int ret = rrsets_pkt2conts(pkt, conts, KNOT_ADDITIONAL, 0);
+		int ret = rrsets_pkt2conts(pkt, conts, KNOT_AUTHORITY, 0);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
@@ -272,22 +292,22 @@ static int dv(knot_pkt_t *pkt, kdig_dnssec_ctx_t **dv_ctx, int debug,
 	}
 	if ((closest->flags & NODE_FLAGS_DELEG)) {
 		if (!node_rrtype_exists(closest, KNOT_RRTYPE_DS) &&
-		    !has_nodata(conts, closest->owner, KNOT_RRTYPE_DS) &&
-		    !has_nxdomain(conts, closest->owner, false, true)) {
+		    !has_nodata(conts, closest->owner, KNOT_RRTYPE_DS, true, debug) &&
+		    !has_nxdomain(conts, closest->owner, false, true, false, debug)) {
 			hint->warning = KNOT_DNSSEC_ENONSEC;
 			hint->node = closest->owner;
 			hint->rrtype = KNOT_RRTYPE_DS;
 			return 1;
 		}
 	} else if (ret == ZONE_NAME_NOT_FOUND) {
-		if (!has_nxdomain(conts, (*dv_ctx)->orig_qname, true, false)) {
+		if (!has_nxdomain(conts, (*dv_ctx)->orig_qname, true, false, false, debug)) {
 			hint->warning = KNOT_DNSSEC_ENSEC_CHAIN;
 			hint->node = (*dv_ctx)->orig_qname;
 			hint->rrtype = (*dv_ctx)->orig_qtype;
 			return 1;
 		}
 	} else if (!node_rrtype_exists(match, (*dv_ctx)->orig_qtype)) {
-		if (!has_nodata(conts, match->owner, (*dv_ctx)->orig_qtype)) {
+		if (!has_nodata(conts, match->owner, (*dv_ctx)->orig_qtype, false, debug)) {
 			hint->warning = KNOT_DNSSEC_ENSEC_BITMAP;
 			hint->node = match->owner;
 			hint->rrtype = (*dv_ctx)->orig_qtype;
@@ -309,6 +329,8 @@ static int dv(knot_pkt_t *pkt, kdig_dnssec_ctx_t **dv_ctx, int debug,
 		hint->warning = ret;
 		return 1;
 	}
+
+	// TODO check expected RCODE against found one
 
 	return ret;
 }
