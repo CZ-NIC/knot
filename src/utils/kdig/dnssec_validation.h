@@ -20,5 +20,5 @@
 
 struct kdig_dnssec_ctx;
 
-int kdig_dnssec_validate(knot_pkt_t *pkt, struct kdig_dnssec_ctx **dv_ctx,
+int kdig_dnssec_validate(knot_pkt_t *pkt, struct kdig_dnssec_ctx **dv_ctx, int debug,
                          knot_dname_t **zone_name, uint16_t *type_needed);

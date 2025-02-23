@@ -151,7 +151,7 @@ static int rrsets_pkt2conts(knot_pkt_t *pkt, zone_contents_t *conts,
 				if (type_only && knot_rrsig_type_covered(rr->rrs.rdata) != type_only) {
 					continue;
 				}
-			} else if (type_only && rr->type != type_only) {
+			} else if ((type_only && rr->type != type_only) || knot_rrtype_is_metatype(rr->type)) {
 				continue;
 			}
 
@@ -185,7 +185,7 @@ static int solve_missing_apex(knot_pkt_t *pkt, uint16_t rrtype, zone_contents_t 
 	return ret;
 }
 
-static int dv(knot_pkt_t *pkt, kdig_dnssec_ctx_t **dv_ctx,
+static int dv(knot_pkt_t *pkt, kdig_dnssec_ctx_t **dv_ctx, int debug,
 	      knot_dname_t **zone_name, uint16_t *type_needed)
 {
 	zone_contents_t *conts = NULL;
@@ -206,6 +206,11 @@ static int dv(knot_pkt_t *pkt, kdig_dnssec_ctx_t **dv_ctx,
 		}
 		const knot_dname_t *rrsig_zone = knot_rrsig_signer_name(some_rrsig->rrs.rdata);
 		memcpy(*zone_name, rrsig_zone, knot_dname_size(rrsig_zone));
+		if (debug > 1) {
+			char zn[KNOT_DNAME_TXT_MAXLEN] = { 0 };
+			knot_dname_to_str(zn, rrsig_zone, sizeof(zn));
+			fprintf(stderr, ";; INFO: DNSSEC VALIDATION for zone: %s\n", zn);
+		}
 
 		*dv_ctx = calloc(1, sizeof(**dv_ctx));
 		knot_dname_t *orig_qname = knot_dname_copy(knot_pkt_qname(pkt), NULL);
@@ -248,7 +253,7 @@ static int dv(knot_pkt_t *pkt, kdig_dnssec_ctx_t **dv_ctx,
 		return ret;
 	}
 
-	ret = zone_adjust_contents(conts, adjust_cb_flags, NULL, false, false, 1, NULL);
+	ret = zone_adjust_contents(conts, adjust_cb_flags, NULL, false, true, 1, NULL);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -308,18 +313,28 @@ static int dv(knot_pkt_t *pkt, kdig_dnssec_ctx_t **dv_ctx,
 	return ret;
 }
 
-int kdig_dnssec_validate(knot_pkt_t *pkt, struct kdig_dnssec_ctx **dv_ctx,
+int kdig_dnssec_validate(knot_pkt_t *pkt, struct kdig_dnssec_ctx **dv_ctx, int debug,
 	                 knot_dname_t **zone_name, uint16_t *type_needed)
 {
-	int ret = dv(pkt, dv_ctx, zone_name, type_needed);
+	int ret = dv(pkt, dv_ctx, debug, zone_name, type_needed);
 	if (ret == 1) {
-		// TODO print error and hint
+		char hint_name[KNOT_DNAME_TXT_MAXLEN] = { 0 }, hint_type[16] = { 0 };
+		fprintf(stderr, ";; INFO: DNSSEC VALIDATION NOK! (%s)\n", knot_strerror((*dv_ctx)->hint.warning));
+		knot_dname_to_str(hint_name, (*dv_ctx)->hint.node, sizeof(hint_name));
+		knot_rrtype_to_string((*dv_ctx)->hint.rrtype, hint_type, sizeof(hint_type));
+		fprintf(stderr, ";; INFO: DNSSEC VALIDATION HINT: %s %s\n", hint_name, hint_type);
+		ret = KNOT_EOK;
+	} else if (ret == KNOT_EOK) {
+		fprintf(stderr, ";; INFO: DNSSEC VALIDATION OK!\n");
 	}
+
 	if (ret != KNOT_EAGAIN) {
-		zone_contents_deep_free((*dv_ctx)->conts);
-		free((*dv_ctx)->orig_qname);
-		free(*dv_ctx);
-		*dv_ctx = NULL;
+		if (*dv_ctx != NULL) {
+			zone_contents_deep_free((*dv_ctx)->conts);
+			free((*dv_ctx)->orig_qname);
+			free(*dv_ctx);
+			*dv_ctx = NULL;
+		}
 		free(*zone_name);
 		*zone_name = NULL;
 	}
