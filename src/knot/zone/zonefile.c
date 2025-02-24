@@ -24,9 +24,6 @@
 #include <time.h>
 #include <unistd.h>
 #include <inttypes.h>
-#ifdef ENABLE_REDIS
-#include <hiredis/hiredis.h>
-#endif
 
 #include "libknot/libknot.h"
 #include "contrib/files.h"
@@ -193,39 +190,53 @@ int zonefile_open(zloader_t *loader, const char *source, const knot_dname_t *ori
 	return KNOT_EOK;
 }
 
-int zone_rdb_open(zloader_t *loader, const knot_dname_t *origin, const char *addr,
-                  int port, semcheck_optional_t sem_checks,
-                  sem_handler_t *sem_err_handler, time_t time)
-{
 #ifdef ENABLE_REDIS
+redisContext *zone_rdb_connect(conf_t *conf)
+{
+	conf_val_t db_listen = conf_db_param(conf, C_ZONE_DB_LISTEN);
+	struct sockaddr_storage addr = conf_addr(&db_listen, NULL);
+
+	int port = sockaddr_port(&addr);
+	sockaddr_port_set(&addr, 0);
+
+	char addr_str[SOCKADDR_STRLEN];
+	if (sockaddr_tostr(addr_str, sizeof(addr_str), &addr) <= 0) {
+		return NULL;
+	}
+
+	const struct timeval timeout = { 0 };
+
+	redisContext *rdb;
+	if (addr.ss_family == AF_UNIX) {
+		rdb = redisConnectUnixWithTimeout(addr_str, timeout);
+	} else {
+		rdb = redisConnectWithTimeout(addr_str, port, timeout);
+	}
+	if (rdb == NULL) {
+		log_error("rdb, failed to connect");
+	} else if (rdb->err) {
+		log_error("rdb, failed to connect (%s)", rdb->errstr);
+		return NULL;
+	}
+
+	return rdb;
+}
+
+int zone_rdb_open(zloader_t *loader, redisContext *rdb, const knot_dname_t *origin,
+                  semcheck_optional_t sem_checks, sem_handler_t *sem_err_handler,
+                  time_t time)
+{
 	int ret = open_common(loader, origin, time, sem_checks, sem_err_handler);
 	if (ret != KNOT_EOK) {
 		return ret;
-	}
-
-	redisContext *rdb = redisConnect(addr, port);
-	if (rdb == NULL || rdb->err) {
-		if (rdb) {
-			// TODO
-			printf("Error: %s\n", rdb->errstr);
-			// handle error
-		} else {
-			printf("Can't allocate redis context\n");
-		}
-		close_common(loader);
-		return KNOT_ERROR; // TODO
 	}
 
 	loader->type = ZONE_BACKEND_DB;
 	loader->rdb = rdb;
 
 	return KNOT_EOK;
-#else
-	return KNOT_ENOTSUP;
-#endif
 }
 
-#ifdef ENABLE_REDIS
 static int process_data_rdb(zone_contents_t *contents, redisReply *data)
 {
 	knot_dname_t *r_owner = (knot_dname_t *)data->element[0]->str;
@@ -284,13 +295,39 @@ static int rdb_load(zloader_t *loader)
 		redisReply *data = reply->element[i];
 		int ret = process_data_rdb(loader->contents, data);
 		if (ret != KNOT_EOK) {
-			// TODO
+			freeReplyObject(reply);
+			return ret;
 		}
 	}
 
 	freeReplyObject(reply);
 
 	return KNOT_EOK;
+}
+
+int zone_rdb_exists(conf_t *conf, const knot_dname_t *zone)
+{
+	if (zone == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	redisContext *rdb = zone_rdb_connect(conf);
+	if (rdb == NULL) {
+		return KNOT_ECONN;
+	}
+
+	int val = 0;
+	redisReply *reply = redisCommand(rdb,
+	                                 "KNOT.ZONE.EXISTS %b",
+	                                 zone, knot_dname_size(zone));
+	if (reply != NULL && reply->type == REDIS_REPLY_INTEGER) {
+		val = reply->integer;
+	}
+	freeReplyObject(reply);
+
+	redisFree(rdb);
+
+	return (val == 1) ? KNOT_EOK : KNOT_ENOENT;
 }
 #endif
 
@@ -382,7 +419,6 @@ zone_contents_t *zonefile_load(zloader_t *loader)
 	}
 
 	return loader->contents;
-
 fail:
 	close_common(loader);
 
@@ -399,7 +435,7 @@ void zonefile_close(zloader_t *loader)
 		zs_deinit(&loader->scanner);
 		free(loader->source);
 	} else {
-
+		redisFree(loader->rdb);
 	}
 }
 

@@ -106,13 +106,13 @@ int event_load(conf_t *conf, zone_t *zone)
 		val = conf_zone_get(conf, C_ZONE_BACKEND, zone->name);
 		unsigned backend = conf_opt(&val);
 
-		struct timespec mtime =  { 0 };
+		struct timespec mtime = { 0 };
 		char *filename = NULL;
 		if (backend == ZONE_BACKEND_FILE) {
 			filename = conf_zonefile(conf, zone->name);
 			ret = zonefile_exists(filename, &mtime);
 		} else {
-			// TODO check rdb
+			ret = zone_rdb_exists(conf, zone->name);
 		}
 		if (ret == KNOT_EOK) {
 			conf_val_t semchecks = conf_zone_get(conf, C_SEM_CHECKS, zone->name);

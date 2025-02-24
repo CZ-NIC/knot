@@ -49,17 +49,17 @@ int zone_load_contents(conf_t *conf, const knot_dname_t *zone_name,
 		                    semcheck_mode, &handler, time(NULL));
 		free(zonefile);
 	} else {
-		conf_val_t db_listen = conf_db_param(conf, C_ZONE_DB_LISTEN);
-		struct sockaddr_storage addr = conf_addr(&db_listen, NULL);
-		int port = sockaddr_port(&addr);
-		sockaddr_port_set(&addr, 0);
-		char addr_str[SOCKADDR_STRLEN];
-		if (port <= 0 || sockaddr_tostr(addr_str, sizeof(addr_str), &addr) <= 0) {
-			return KNOT_EINVAL;
+#ifdef ENABLE_REDIS
+		redisContext *rdb = zone_rdb_connect(conf);
+		if (rdb == NULL) {
+			return KNOT_ECONN;
 		}
 
-		ret = zone_rdb_open(&loader, zone_name, addr_str, port,
-		                    semcheck_mode, &handler, time(NULL));
+		ret = zone_rdb_open(&loader, rdb, zone_name, semcheck_mode,
+		                    &handler, time(NULL));
+#else
+		ret = KNOT_ENOTSUP;
+#endif
 	}
 	if (ret != KNOT_EOK) {
 		return ret;

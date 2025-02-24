@@ -20,6 +20,10 @@
 #include "knot/zone/semantic-check.h"
 #include "libzscanner/scanner.h"
 
+#ifdef ENABLE_REDIS
+#include <hiredis/hiredis.h>
+#endif
+
 typedef struct {
 	unsigned type;
 	union {
@@ -57,9 +61,15 @@ int zonefile_open(zloader_t *loader, const char *source, const knot_dname_t *ori
                   uint32_t dflt_ttl, semcheck_optional_t sem_checks,
                   sem_handler_t *sem_err_handler, time_t time);
 
-int zone_rdb_open(zloader_t *loader, const knot_dname_t *origin, const char *addr,
-                  int port, semcheck_optional_t sem_checks,
-                  sem_handler_t *sem_err_handler, time_t time);
+#ifdef ENABLE_REDIS
+redisContext *zone_rdb_connect(conf_t *conf);
+
+int zone_rdb_exists(conf_t *conf, const knot_dname_t *zone);
+
+int zone_rdb_open(zloader_t *loader, redisContext *rdb, const knot_dname_t *origin,
+                  semcheck_optional_t sem_checks, sem_handler_t *sem_err_handler,
+                  time_t time);
+#endif
 
 /*!
  * \brief Loads zone from a zone file.
