@@ -835,6 +835,8 @@ static int process_query_packet(const knot_pkt_t      *query,
 			new_ctx.style.show_footer = false;
 			new_ctx.style.show_section = false;
 			new_ctx.style.show_question = false;
+			new_ctx.style.show_authority = false;
+			new_ctx.style.show_additional = false;
 			knot_pkt_t *new_query = create_query_packet(&new_ctx);
 			ret = process_query_packet(new_query, net, &new_ctx, ignore_tc,
 			                           sign_ctx, &new_ctx.style);

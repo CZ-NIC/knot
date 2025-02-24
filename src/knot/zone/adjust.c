@@ -479,10 +479,10 @@ static int zone_adjust_tree_parallel(zone_tree_t *tree, adjust_ctx_t *ctx,
 }
 
 int zone_adjust_contents(zone_contents_t *zone, adjust_cb_t nodes_cb, adjust_cb_t nsec3_cb,
-                         bool measure_zone, bool adjust_prevs, unsigned threads,
+                         bool measure_zone, bool adjust_prevs, bool load_nsec3p, unsigned threads,
                          zone_tree_t *add_changed)
 {
-	int ret = zone_contents_load_nsec3param(zone);
+	int ret = load_nsec3p ? zone_contents_load_nsec3param(zone) : KNOT_EOK;
 	if (ret != KNOT_EOK) {
 		log_zone_error(zone->apex->owner,
 		               "failed to load NSEC3 parameters (%s)",
@@ -550,10 +550,10 @@ int zone_adjust_update(zone_update_t *update, adjust_cb_t nodes_cb, adjust_cb_t 
 int zone_adjust_full(zone_contents_t *zone, unsigned threads)
 {
 	int ret = zone_adjust_contents(zone, adjust_cb_flags, adjust_cb_nsec3_flags,
-	                               true, true, 1, NULL);
+	                               true, true, true, 1, NULL);
 	if (ret == KNOT_EOK) {
 		ret = zone_adjust_contents(zone, adjust_cb_nsec3_and_additionals, NULL,
-		                           false, false, threads, NULL);
+		                           false, false, true, threads, NULL);
 	}
 	if (ret == KNOT_EOK) {
 		additionals_tree_free(zone->adds_tree);
@@ -590,11 +590,11 @@ int zone_adjust_incremental_update(zone_update_t *update, unsigned threads)
 	};
 
 	ret = zone_adjust_contents(update->new_cont, adjust_cb_flags, adjust_cb_nsec3_flags,
-	                           false, true, 1, update->a_ctx->adjust_ptrs);
+	                           false, true, true, 1, update->a_ctx->adjust_ptrs);
 	if (ret == KNOT_EOK) {
 		if (nsec3change) {
 			ret = zone_adjust_contents(update->new_cont, adjust_cb_nsec3_and_wildcard, NULL,
-			                           false, false, threads, update->a_ctx->adjust_ptrs);
+			                           false, false, true, threads, update->a_ctx->adjust_ptrs);
 			if (ret == KNOT_EOK) {
 				// just measure zone size
 				ret = zone_adjust_update(update, adjust_cb_void, adjust_cb_void, true);

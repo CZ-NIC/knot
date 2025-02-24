@@ -29,6 +29,19 @@ typedef struct kdig_dnssec_ctx {
 	dnssec_validation_hint_t hint;
 } kdig_dnssec_ctx_t;
 
+static int restore_orig_ttls(zone_node_t *node, void *unused)
+{
+	knot_rdataset_t *rrsig = node_rdataset(node, KNOT_RRTYPE_RRSIG);
+	if (rrsig != NULL) {
+		knot_rdata_t *rd = rrsig->rdata;
+		for (int i = 0; i < rrsig->count; i++) {
+			(void)node_set_ttl(node, knot_rrsig_type_covered(rd), knot_rrsig_original_ttl(rd));
+			rd = knot_rdataset_next(rd);
+		}
+	}
+	return KNOT_EOK;
+}
+
 static bool has_nsec3(const zone_contents_t *conts)
 {
         return conts->nsec3_params.algorithm > 0;
@@ -48,11 +61,13 @@ static bool bitmap_covers_nsec3(const knot_rdata_t *rdata, uint16_t covered_type
 	return dnssec_nsec_bitmap_contains(bitmap, bm_len, covered_type);
 }
 
-static bool has_nodata_nolog(zone_contents_t *conts, const knot_dname_t *name, uint16_t type)
+static bool has_nodata_nolog(zone_contents_t *conts, const knot_dname_t *name, uint16_t type,
+                             const knot_dname_t **where)
 {
 	if (!has_nsec3(conts)) {
 		const zone_node_t *node = zone_contents_find_node(conts, name);
 		knot_rrset_t nsec = node_rrset(node, KNOT_RRTYPE_NSEC);
+		*where = nsec.owner;
 		return !knot_rrset_empty(&nsec) && (!type || !bitmap_covers_nsec(nsec.rrs.rdata, type));
 	}
 
@@ -62,14 +77,22 @@ static bool has_nodata_nolog(zone_contents_t *conts, const knot_dname_t *name, u
 		return false; // best effort
 	}
 	knot_rrset_t nsec3 = node_rrset(nsec3_node, KNOT_RRTYPE_NSEC3);
+	*where = nsec3.owner;
 	return !knot_rrset_empty(&nsec3) && (!type || !bitmap_covers_nsec3(nsec3.rrs.rdata, type));
 }
 
 static bool has_nodata(zone_contents_t *conts, const knot_dname_t *name, uint16_t type, bool is_deleg, int debug)
 {
-	bool res = has_nodata_nolog(conts, name, type);
+	const knot_dname_t *where = NULL;
+	bool res = has_nodata_nolog(conts, name, type, &where);
 	if (debug > 1) {
-		printf(";; INFO: DNSSEC VALIDATION: %s proof %s\n", type == 0 ? "encloser" : is_deleg ? "DS nonexistence" : "NODATA", res ? "found" : "not found");
+		char where_txt[KNOT_DNAME_TXT_MAXLEN] = { 0 };
+		if (where != NULL) {
+			knot_dname_to_str(where_txt, where, sizeof(where_txt));
+		}
+		printf(";; INFO: DNSSEC VALIDATION: %s proof %s %s\n",
+		       type == 0 ? "encloser" : is_deleg ? "DS nonexistence" : "NODATA",
+		       res ? "found" : "not found", where_txt);
 	}
 	return res;
 }
@@ -78,7 +101,7 @@ static bool nsec_covers_name(const knot_dname_t *nsec_owner, const knot_rdata_t 
                              const knot_dname_t *name)
 {
 	const knot_dname_t *nsec_next = knot_nsec_next(nsec_rdata);
-	return knot_dname_cmp(nsec_owner, name) <= 0 && knot_dname_cmp(name, nsec_next) > 0;
+	return knot_dname_cmp(nsec_owner, name) <= 0 && knot_dname_cmp(name, nsec_next) < 0;
 }
 
 static bool nsec3_covers_name(const knot_dname_t *nsec3_owner, const knot_rdata_t *nsec3_rdata,
@@ -88,12 +111,13 @@ static bool nsec3_covers_name(const knot_dname_t *nsec3_owner, const knot_rdata_
 	uint16_t n3h_len = knot_nsec3_next_len(nsec3_rdata);
 	uint8_t nsec3_next[KNOT_DNAME_MAXLEN] = { 0 };
 	int ret = knot_nsec3_hash_to_dname(nsec3_next, sizeof(nsec3_next), nsec3_hash, n3h_len, apex);
-	return ret == KNOT_EOK /* best effort */ && knot_dname_cmp(nsec3_owner, name) <= 0 && knot_dname_cmp(name, nsec3_next) > 0;
+	return ret == KNOT_EOK /* best effort */ && knot_dname_cmp(nsec3_owner, name) <= 0 && knot_dname_cmp(name, nsec3_next) < 0;
 }
 
 static bool has_nxdomain_for_wildcard(zone_contents_t *conts, const knot_dname_t *closest, int debug);
 
-static bool has_nxdomain_nolog(zone_contents_t *conts, const knot_dname_t *name, bool also_wildcard, bool opt_out, int debug)
+static bool has_nxdomain_nolog(zone_contents_t *conts, const knot_dname_t *name, bool also_wildcard,
+                               bool opt_out, int debug, const knot_dname_t **where)
 {
 	if (!has_nsec3(conts)) {
 		const zone_node_t *match = NULL, *closest = NULL, *prev = NULL;
@@ -102,6 +126,7 @@ static bool has_nxdomain_nolog(zone_contents_t *conts, const knot_dname_t *name,
 			return false;
 		}
 		knot_rrset_t nsec = node_rrset(closest, KNOT_RRTYPE_NSEC);
+		*where = nsec.owner;
 		return !knot_rrset_empty(&nsec) && nsec_covers_name(closest->owner, nsec.rrs.rdata, name) &&
 		       (!also_wildcard || has_nxdomain_for_wildcard(conts, closest->owner, debug)) && !opt_out;
 	}
@@ -118,12 +143,18 @@ static bool has_nxdomain_nolog(zone_contents_t *conts, const knot_dname_t *name,
 	}
 
 	const zone_node_t *nsec3_node = NULL, *nsec3_prev = NULL;
-	int ret = zone_contents_find_nsec3_for_name(conts, name, &nsec3_node, &nsec3_prev);
+	knot_dname_storage_t nsec3_name;
+	int ret = knot_create_nsec3_owner(nsec3_name, sizeof(nsec3_name), name,
+	                                  conts->apex->owner, &conts->nsec3_params);
+	if (ret == KNOT_EOK) {
+		ret = zone_contents_find_nsec3(conts, nsec3_name, &nsec3_node, &nsec3_prev);
+	}
 	if (ret != ZONE_NAME_NOT_FOUND) {
 		return false; // best effort
 	}
 	knot_rrset_t nsec3 = node_rrset(nsec3_prev, KNOT_RRTYPE_NSEC3);
-	return !knot_rrset_empty(&nsec3) && nsec3_covers_name(nsec3_prev->owner, nsec3.rrs.rdata, name, conts->apex->owner) &&
+	*where = nsec3.owner;
+	return !knot_rrset_empty(&nsec3) && nsec3_covers_name(nsec3_prev->owner, nsec3.rrs.rdata, nsec3_name, conts->apex->owner) &&
 	       (!also_wildcard || has_nxdomain_for_wildcard(conts, encloser, debug)) &&
 	       (!opt_out || (knot_nsec3_flags(nsec3.rrs.rdata) & KNOT_NSEC3_FLAG_OPT_OUT));
 }
@@ -131,10 +162,15 @@ static bool has_nxdomain_nolog(zone_contents_t *conts, const knot_dname_t *name,
 static bool has_nxdomain(zone_contents_t *conts, const knot_dname_t *name,
                          bool also_wildcard, bool opt_out, bool is_wildcard, int debug)
 {
-	bool res = has_nxdomain_nolog(conts, name, also_wildcard, opt_out, debug);
+	const knot_dname_t *where = NULL;
+	bool res = has_nxdomain_nolog(conts, name, also_wildcard, opt_out, debug, &where);
 	if (debug > 1) {
-		printf(";; INFO: DNSSEC VALIDATION: %s proof%s %s\n", opt_out ? "opt-out" : "NXDOMAIN",
-		       is_wildcard ? " of wildcard" : "", res ? "found" : "not found");
+		char where_txt[KNOT_DNAME_TXT_MAXLEN] = { 0 };
+		if (where) {
+			knot_dname_to_str(where_txt, where, sizeof(where_txt));
+		}
+		printf(";; INFO: DNSSEC VALIDATION: %s proof%s %s %s\n", opt_out ? "opt-out" : "NXDOMAIN",
+		       is_wildcard ? " of wildcard" : "", res ? "found" : "not found", where_txt);
 	}
 	return res;
 }
@@ -273,7 +309,13 @@ static int dv(knot_pkt_t *pkt, kdig_dnssec_ctx_t **dv_ctx, int debug,
 		return ret;
 	}
 
-	ret = zone_adjust_contents(conts, adjust_cb_flags, NULL, false, true, 1, NULL);
+	ret = zone_adjust_contents(conts, adjust_cb_flags, adjust_cb_nsec3_flags, false, true, false, 1, NULL);
+	if (ret == KNOT_EOK) {
+		ret = zone_tree_apply(conts->nodes, restore_orig_ttls, NULL);
+	}
+	if (ret == KNOT_EOK) {
+		ret = zone_tree_apply(conts->nsec3_nodes, restore_orig_ttls, NULL);
+	}
 	if (ret != KNOT_EOK) {
 		return ret;
 	}

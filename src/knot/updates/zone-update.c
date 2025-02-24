@@ -854,7 +854,7 @@ int zone_update_semcheck(conf_t *conf, zone_update_t *update)
 
 	// adjust_cb_nsec3_pointer not needed as we don't check DNSSEC here
 	int ret = zone_adjust_contents(update->new_cont, adjust_cb_flags, NULL,
-	                               false, false, 1, node_ptrs);
+	                               false, false, true, 1, node_ptrs);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
