@@ -93,15 +93,17 @@ static void *knot_zone_rrset_load(RedisModuleIO *rdb, int encver)
 	}
 
 	knot_zone_rrset_v *rrset = RedisModule_Alloc(sizeof(knot_zone_rrset_v));
+	if (rrset == NULL) {
+		return NULL;
+	}
+	size_t len = 0;
 	rrset->ttl = RedisModule_LoadUnsigned(rdb);
 	rrset->rrs.count = RedisModule_LoadUnsigned(rdb);
-	size_t len;
-	char *rdata_data = RedisModule_LoadStringBuffer(rdb, &len);
-	if (len != 0) {
-		rrset->rrs.rdata = RedisModule_Alloc(rrset->rrs.size);
-		memcpy(rrset->rrs.rdata, rdata_data, len);
-	} else {
-		rrset->rrs.rdata = NULL;
+	rrset->rrs.rdata = (knot_rdata_t *)RedisModule_LoadStringBuffer(rdb, &len);
+	if (len > UINT32_MAX) {
+		RedisModule_Free(rrset->rrs.rdata);
+		RedisModule_Free(rrset);
+		return NULL;
 	}
 	rrset->rrs.size = len;
 	return rrset;
@@ -1012,9 +1014,14 @@ static int knot_rrset_store(RedisModuleCtx *ctx, RedisModuleString **argv, int a
 
 	size_t rdataset_strlen;
 	const char *rdataset_str = RedisModule_StringPtrLen(argv[6], &rdataset_strlen);
-	rrset->rrs.rdata = RedisModule_Alloc(rdataset_strlen);
-	rrset->rrs.size = rdataset_strlen;
-	memcpy(rrset->rrs.rdata, rdataset_str, rdataset_strlen);
+	if (rdataset_strlen != 0) {
+		rrset->rrs.rdata = RedisModule_Alloc(rdataset_strlen);
+		rrset->rrs.size = rdataset_strlen;
+		memcpy(rrset->rrs.rdata, rdataset_str, rdataset_strlen);
+	} else {
+		rrset->rrs.rdata = NULL;
+		rrset->rrs.size = 0;
+	}
 
 	RedisModule_ModuleTypeSetValue(rrset_key, knot_zone_rrset_t, rrset);
 	RedisModule_CloseKey(rrset_key);
