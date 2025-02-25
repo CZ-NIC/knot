@@ -104,7 +104,7 @@ int event_load(conf_t *conf, zone_t *zone)
 	// If configured, attempt to load zonefile.
 	if (zf_from != ZONEFILE_LOAD_NONE && zone->cat_members == NULL) {
 		struct timespec mtime;
-		char *filename = conf_zonefile(conf, zone->name);
+		char *filename = conf_zonefile(conf, zone->name, NULL /*TODO*/);
 		ret = zonefile_exists(filename, &mtime);
 		if (ret == KNOT_EOK) {
 			conf_val_t semchecks = conf_zone_get(conf, C_SEM_CHECKS, zone->name);

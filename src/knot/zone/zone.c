@@ -105,7 +105,7 @@ static int flush_journal(conf_t *conf, zone_t *zone, bool allow_empty_zone, bool
 		goto flush_journal_replan;
 	}
 
-	char *zonefile = conf_zonefile(conf, zone->name);
+	char *zonefile = conf_zonefile(conf, zone->name, NULL);
 
 	/* Synchronize journal. */
 	ret = zonefile_write(zonefile, contents);
@@ -319,7 +319,7 @@ int selective_zone_purge(conf_t *conf, zone_t *zone, purge_flag_t params)
 		if ((params & PURGE_ZONE_NOSYNC) ||
 		    (sync = conf_zone_get(conf, C_ZONEFILE_SYNC, zone->name),
 		     conf_int(&sync) > -1)) {
-			char *zonefile = conf_zonefile(conf, zone->name);
+			char *zonefile = conf_zonefile(conf, zone->name, NULL);
 			ret = (unlink(zonefile) == -1 ? knot_map_errno() : KNOT_EOK);
 			free(zonefile);
 			RETURN_IF_FAILED("zone file", KNOT_ENOENT);
@@ -771,27 +771,10 @@ int zone_dump_to_dir(conf_t *conf, zone_t *zone, const char *dir)
 		return KNOT_EINVAL;
 	}
 
-	size_t dir_len = strlen(dir);
-	if (dir_len == 0) {
-		return KNOT_EINVAL;
-	}
-
-	char *zonefile = conf_zonefile(conf, zone->name);
-	char *zonefile_basename = strrchr(zonefile, '/');
-	if (zonefile_basename == NULL) {
-		zonefile_basename = zonefile;
-	}
-
-	size_t target_length = strlen(zonefile_basename) + dir_len + 2;
-	char target[target_length];
-	(void)snprintf(target, target_length, "%s/%s", dir, zonefile_basename);
-	if (strcmp(target, zonefile) == 0) {
-		free(zonefile);
-		return KNOT_EDENIED;
-	}
-	free(zonefile);
-
-	return zonefile_write(target, zone->contents);
+	char *target = conf_zonefile(conf, zone->name, dir);
+	int ret = zonefile_write(target, zone->contents);
+	free(target);
+	return ret;
 }
 
 void zone_local_notify_subscribe(zone_t *zone, zone_t *subscribe)

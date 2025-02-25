@@ -32,7 +32,7 @@ int zone_load_contents(conf_t *conf, const knot_dname_t *zone_name,
 		return KNOT_EINVAL;
 	}
 
-	char *zonefile = conf_zonefile(conf, zone_name);
+	char *zonefile = conf_zonefile(conf, zone_name, NULL /*TODO*/);
 	conf_val_t val = conf_zone_get(conf, C_DEFAULT_TTL, zone_name);
 	uint32_t dflt_ttl = conf_int(&val);
 

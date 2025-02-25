@@ -149,15 +149,8 @@ static int zonesign(sign_params_t *params)
 		goto fail;
 	}
 
-	if (params->outdir == NULL) {
-		zonefile = conf_zonefile(conf(), params->zone_name);
-		ret = zonefile_write(zonefile, up.new_cont);
-	} else {
-		zone_contents_t *temp = zone_struct->contents;
-		zone_struct->contents = up.new_cont;
-		ret = zone_dump_to_dir(conf(), zone_struct, params->outdir);
-		zone_struct->contents = temp;
-	}
+	zonefile = conf_zonefile(conf(), params->zone_name, params->outdir);
+	ret = zonefile_write(zonefile, up.new_cont);
 	zone_update_clear(&up);
 	if (ret != KNOT_EOK) {
 		if (params->outdir == NULL) {
