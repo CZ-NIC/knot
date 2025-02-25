@@ -14,11 +14,12 @@
 /*!
  * \brief Load zone contents according to the configuration.
  *
- * \param conf
- * \param zone_name
- * \param contents
- * \param semcheck_mode
- * \param fail_on_warning
+ * \param conf                Configuration.
+ * \param zone_name           Zone name.
+ * \param contents            Zone contents to be loaded.
+ * \param semcheck_mode       Sematic check trigger.
+ * \param load_dir            Optional: load from specified directory.
+ * \param fail_on_warning     Semantic check: stop on any warning.
  *
  * \retval KNOT_EOK        if success.
  * \retval KNOT_ESEMCHECK  if any semantic check warning.
@@ -26,7 +27,7 @@
  */
 int zone_load_contents(conf_t *conf, const knot_dname_t *zone_name,
                        zone_contents_t **contents, semcheck_optional_t semcheck_mode,
-                       bool fail_on_warning);
+                       const char *load_dir, bool fail_on_warning);
 
 /*!
  * \brief Update zone contents from the journal.

@@ -116,6 +116,10 @@ typedef struct zone
 	/*! \brief Zone backup context (NULL unless backup pending). */
 	knot_atomic_ptr_t backup_ctx;
 
+	/*! \brief Trigger of zonefile load from directory. */
+	int load_dir_how;
+	char *load_dir;
+
 	/*! \brief Catalog-generate feature. */
 	knot_dname_t *catalog_gen;
 	catalog_update_t *cat_members;

@@ -285,6 +285,7 @@ static void filter_lookup(EditLine *el, const char *str, const cmd_desc_t *cmd,
 	    lookup_insert(&lookup, CMD_ZONE_PURGE, (void *)zone_purge_filters) != KNOT_EOK ||
 	    lookup_insert(&lookup, CMD_ZONE_BEGIN, (void *)zone_begin_filters) != KNOT_EOK ||
 	    lookup_insert(&lookup, CMD_ZONE_FLUSH, (void *)zone_flush_filters) != KNOT_EOK ||
+	    lookup_insert(&lookup, CMD_ZONE_RELOAD, (void *)zone_reload_filters) != KNOT_EOK ||
 	    lookup_insert(&lookup, CMD_CONF_IMPORT, (void *)conf_import_filters) != KNOT_EOK ||
 	    lookup_insert(&lookup, CMD_CONF_EXPORT, (void *)conf_export_filters) != KNOT_EOK) {
 		goto cmds_lookup_finish;
@@ -451,6 +452,12 @@ static unsigned char complete(EditLine *el, int ch)
 		switch (desc->cmd) {
 		case CTL_ZONE_FLUSH:
 			if (!strcmp(zone_flush_filters[0].name, argv[token - 1])) {
+				path_lookup(el, argv[token], true);
+				goto complete_exit;
+			}
+			break;
+		case CTL_ZONE_RELOAD:
+			if (!strcmp(zone_reload_filters[0].name, argv[token - 1])) {
 				path_lookup(el, argv[token], true);
 				goto complete_exit;
 			}

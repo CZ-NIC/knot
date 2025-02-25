@@ -292,7 +292,7 @@ static int backup_zonefile(conf_t *conf, zone_t *zone, zone_backup_ctx_t *ctx)
 {
 	int ret = KNOT_EOK;
 
-	char *local_zf = conf_zonefile(conf, zone->name);
+	char *local_zf = conf_zonefile(conf, zone->name, NULL);
 	char *backup_zfiles_dir = NULL, *backup_zf = NULL, *zone_name_str;
 
 	switch (ctx->backup_format) {

@@ -105,12 +105,14 @@ Actions
   *bold font (highlited)* - zone is active / *normal* - zone is empty,
   *underscored* - zone is an interpreted catalog member.
 
-**zone-reload** [*zone*...]
+**zone-reload** [*zone*...] [**+indir** *directory*]
   Trigger a zone reload from a disk without checking its modification time. For
   secondary zone, the refresh event from primary server(s) is scheduled;
   for primary zone, the notify event to secondary server(s) is scheduled. An open
   zone transaction will be aborted! If invoked with the force option, also zone
-  modules will be re-loaded, but blocking mode might not work reliably. (#)
+  modules will be re-loaded, but blocking mode might not work reliably.
+  If an input directory is specified, the current zone will be loaded from a
+  zone file in the specified directory, overriding zonefile configuration.(#)
 
 **zone-refresh** [*zone*...]
   Trigger a check for the zone serial on the zone's primary server. If

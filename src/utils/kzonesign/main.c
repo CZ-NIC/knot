@@ -84,7 +84,7 @@ static int zonesign(sign_params_t *params)
 	}
 
 	ret = zone_load_contents(conf(), params->zone_name, &unsigned_conts,
-	                         SEMCHECK_MANDATORY_SOFT, false);
+	                         SEMCHECK_MANDATORY_SOFT, NULL, false);
 	if (ret != KNOT_EOK) {
 		ERR2("failed to load zone contents (%s)", knot_strerror(ret));
 		goto fail;
@@ -138,15 +138,8 @@ static int zonesign(sign_params_t *params)
 		goto fail;
 	}
 
-	if (params->outdir == NULL) {
-		zonefile = conf_zonefile(conf(), params->zone_name);
-		ret = zonefile_write_skip(zonefile, up.new_cont, conf());
-	} else {
-		zone_contents_t *temp = zone_struct->contents;
-		zone_struct->contents = up.new_cont;
-		ret = zone_dump_to_dir(conf(), zone_struct, params->outdir);
-		zone_struct->contents = temp;
-	}
+	zonefile = conf_zonefile(conf(), params->zone_name, params->outdir);
+	ret = zonefile_write_skip(zonefile, up.new_cont, conf());
 	zone_update_clear(&up);
 	if (ret != KNOT_EOK) {
 		if (params->outdir == NULL) {

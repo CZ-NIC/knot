@@ -19,6 +19,7 @@
 #define CTL_FILTER_LIST_ZONES		"z"
 
 #define CTL_FILTER_FLUSH_OUTDIR		"d"
+#define CTL_FILTER_LOAD_INDIR           "d"
 
 #define CTL_FILTER_STATUS_ROLE		"r"
 #define CTL_FILTER_STATUS_SERIAL	"s"

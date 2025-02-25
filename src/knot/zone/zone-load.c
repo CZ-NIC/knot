@@ -15,7 +15,7 @@
 
 int zone_load_contents(conf_t *conf, const knot_dname_t *zone_name,
                        zone_contents_t **contents, semcheck_optional_t semcheck_mode,
-                       bool fail_on_warning)
+                       const char *load_dir, bool fail_on_warning)
 {
 	if (conf == NULL || zone_name == NULL || contents == NULL) {
 		return KNOT_EINVAL;
@@ -28,7 +28,7 @@ int zone_load_contents(conf_t *conf, const knot_dname_t *zone_name,
 		return ret;
 	}
 
-	char *zonefile = conf_zonefile(conf, zone_name);
+	char *zonefile = conf_zonefile(conf, zone_name, load_dir);
 	conf_val_t val = conf_zone_get(conf, C_DEFAULT_TTL, zone_name);
 	uint32_t dflt_ttl = conf_int(&val);
 

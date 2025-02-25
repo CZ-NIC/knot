@@ -31,7 +31,7 @@ static bool zone_file_updated(conf_t *conf, const zone_t *old_zone,
 		return false;
 	}
 
-	char *zonefile = conf_zonefile(conf, zone_name);
+	char *zonefile = conf_zonefile(conf, zone_name, NULL);
 	struct timespec mtime;
 	int ret = zonefile_exists(zonefile, &mtime);
 	free(zonefile);

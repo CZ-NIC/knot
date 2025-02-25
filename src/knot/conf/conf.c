@@ -1074,7 +1074,8 @@ static char* get_filename(
 	conf_t *conf,
 	knot_db_txn_t *txn,
 	const knot_dname_t *zone,
-	const char *name)
+	const char *name,
+	const char *in_dir)
 {
 	assert(name);
 
@@ -1155,8 +1156,10 @@ static char* get_filename(
 		}
 	} while (name < end);
 
-	// Use storage prefix if not absolute path.
-	if (out[0] == '/') {
+	if (in_dir != NULL) {
+		const char *out_slash = strrchr(out, '/');
+		return sprintf_alloc("%s/%s", in_dir, out_slash == NULL ? out : out_slash + 1);
+	} else if (out[0] == '/') {
 		return strdup(out);
 	} else {
 		conf_val_t val = conf_zone_get_txn(conf, txn, C_STORAGE, zone);
@@ -1173,7 +1176,8 @@ static char* get_filename(
 char* conf_zonefile_txn(
 	conf_t *conf,
 	knot_db_txn_t *txn,
-	const knot_dname_t *zone)
+	const knot_dname_t *zone,
+	const char *in_dir)
 {
 	if (zone == NULL) {
 		return NULL;
@@ -1187,7 +1191,7 @@ char* conf_zonefile_txn(
 		file = "%s.zone";
 	}
 
-	return get_filename(conf, txn, zone, file);
+	return get_filename(conf, txn, zone, file, in_dir);
 }
 
 char* conf_db_txn(

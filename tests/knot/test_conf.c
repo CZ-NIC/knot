@@ -20,7 +20,7 @@ static void check_name(const char *zone, const char *name, const char *ref)
 {
 	knot_dname_t *z = knot_dname_from_str_alloc(zone);
 
-	char *file = get_filename(conf(), NULL, z, name);
+	char *file = get_filename(conf(), NULL, z, name, NULL);
 	ok(file != NULL, "Get zonefile path for %s", zone);
 	if (file != NULL) {
 		ok(strcmp(file, ref) == 0, "Zonefile path compare %s", name);
@@ -34,7 +34,7 @@ static void check_name_err(const char *zone, const char *name)
 {
 	knot_dname_t *z = knot_dname_from_str_alloc(zone);
 
-	char *filename = get_filename(conf(), NULL, z, name);
+	char *filename = get_filename(conf(), NULL, z, name, NULL);
 	ok(filename == NULL, "Invalid name %s", name);
 	free(filename);
 
@@ -142,7 +142,7 @@ static void test_conf_zonefile(void)
 	is_int(KNOT_EOK, ret, "Prepare configuration");
 
 	// Relative path with formatters.
-	file = conf_zonefile(conf(), zone_arpa);
+	file = conf_zonefile(conf(), zone_arpa, NULL);
 	ok(file != NULL, "Get zonefile path for "ZONE_ARPA);
 	if (file != NULL) {
 		ok(strcmp(file, "/tmp/dir/a%b/0_25.2.0.192.in-addr.arpa.suffix/") == 0,
@@ -151,7 +151,7 @@ static void test_conf_zonefile(void)
 	}
 
 	// Absolute path without formatters - root zone.
-	file = conf_zonefile(conf(), zone_root);
+	file = conf_zonefile(conf(), zone_root, NULL);
 	ok(file != NULL, "Get zonefile path for "ZONE_ROOT);
 	if (file != NULL) {
 		ok(strcmp(file, "/") == 0,
@@ -160,7 +160,7 @@ static void test_conf_zonefile(void)
 	}
 
 	// Absolute path without formatters - non-root zone.
-	file = conf_zonefile(conf(), zone_1label);
+	file = conf_zonefile(conf(), zone_1label, NULL);
 	ok(file != NULL, "Get zonefile path for "ZONE_1LABEL);
 	if (file != NULL) {
 		ok(strcmp(file, "/x") == 0,
@@ -169,7 +169,7 @@ static void test_conf_zonefile(void)
 	}
 
 	// Default zonefile path.
-	file = conf_zonefile(conf(), zone_3label);
+	file = conf_zonefile(conf(), zone_3label, NULL);
 	ok(file != NULL, "Get zonefile path for "ZONE_3LABEL);
 	if (file != NULL) {
 		ok(strcmp(file, "/tmp/abc.ab.a.zone") == 0,
@@ -178,11 +178,20 @@ static void test_conf_zonefile(void)
 	}
 
 	// Unknown zone zonefile path.
-	file = conf_zonefile(conf(), zone_unknown);
+	file = conf_zonefile(conf(), zone_unknown, NULL);
 	ok(file != NULL, "Get zonefile path for "ZONE_UNKNOWN);
 	if (file != NULL) {
 		ok(strcmp(file, "/tmp/unknown.zone") == 0,
 		          "Zonefile path compare for "ZONE_UNKNOWN);
+		free(file);
+	}
+
+	// Specified alternative directory.
+	file = conf_zonefile(conf(), zone_unknown, "/root");
+	ok(file != NULL, "Get alternative path for "ZONE_UNKNOWN);
+	if (file != NULL) {
+		ok(strcmp(file, "/root/unknown.zone") == 0,
+		   "Zonefile alternative path compare for "ZONE_UNKNOWN);
 		free(file);
 	}
 

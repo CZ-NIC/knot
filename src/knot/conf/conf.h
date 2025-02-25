@@ -666,22 +666,25 @@ void conf_free_mod_id(
  *
  * \note The result must be explicitly deallocated.
  *
- * \param[in] conf  Configuration.
- * \param[in] txn   Configuration DB transaction.
- * \param[in] zone  Zone name.
+ * \param[in] conf     Configuration.
+ * \param[in] txn      Configuration DB transaction.
+ * \param[in] zone     Zone name.
+ * \param[in] in_dir   Optional: specified directory for zone file location.
  *
  * \return Absolute zone file path string pointer.
  */
 char* conf_zonefile_txn(
 	conf_t *conf,
 	knot_db_txn_t *txn,
-	const knot_dname_t *zone
+	const knot_dname_t *zone,
+	const char *in_dir
 );
 static inline char* conf_zonefile(
 	conf_t *conf,
-	const knot_dname_t *zone)
+	const knot_dname_t *zone,
+	const char *in_dir)
 {
-	return conf_zonefile_txn(conf, &conf->read_txn, zone);
+	return conf_zonefile_txn(conf, &conf->read_txn, zone, in_dir);
 }
 
 /*!

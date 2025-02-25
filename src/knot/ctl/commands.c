@@ -466,6 +466,8 @@ static int zone_status(zone_t *zone, ctl_args_t *args)
 	return KNOT_EOK;
 }
 
+static void common_failure(_unused_ ctl_args_t *args, int err, const char *msg);
+
 static int zone_reload(zone_t *zone, _unused_ ctl_args_t *args)
 {
 	if (zone_expired(zone)) {
@@ -475,6 +477,32 @@ static int zone_reload(zone_t *zone, _unused_ ctl_args_t *args)
 
 	if (ctl_has_flag(args->data[KNOT_CTL_IDX_FLAGS], CTL_FLAG_FORCE)) {
 		return zone_reload_modules(conf(), args->server, zone->name);
+	}
+
+	int dir_how = ZONEFILE_LOAD_WHOLE;
+
+	if (MATCH_AND_FILTER(args, CTL_FILTER_LOAD_INDIR)) {
+		const char *dir = args->data[KNOT_CTL_IDX_DATA];
+		if (dir == NULL) {
+			char *msg = "zone-reload, input directory not specified";
+			common_failure(args, KNOT_ENOPARAM, msg);
+			return KNOT_CTL_EZONE;
+		}
+		pthread_mutex_lock(&zone->cu_lock);
+		if (zone->load_dir_how != ZONEFILE_LOAD_NONE) {
+			char *msg = "zone-reload, already pending";
+			common_failure(args, KNOT_EAGAIN, msg);
+			pthread_mutex_unlock(&zone->cu_lock);
+			return KNOT_CTL_EZONE;
+		}
+		assert(zone->load_dir == NULL);
+		zone->load_dir = strdup(dir);
+		if (zone->load_dir == NULL) {
+			pthread_mutex_unlock(&zone->cu_lock);
+			return KNOT_ENOMEM;
+		}
+		zone->load_dir_how = dir_how;
+		pthread_mutex_unlock(&zone->cu_lock);
 	}
 
 	return schedule_trigger(zone, args, ZONE_EVENT_LOAD, true);
