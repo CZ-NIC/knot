@@ -1326,6 +1326,9 @@ int server_reload(server_t *server, reload_t mode)
 			return ret;
 		}
 
+		ATOMIC_SET(server->stats.tcp_io_timeout, 0);
+		ATOMIC_SET(server->stats.tcp_idle_timeout, 0);
+
 		conf_activate_modules(new_conf, server, NULL, new_conf->query_modules,
 		                      &new_conf->query_plan);
 	}
