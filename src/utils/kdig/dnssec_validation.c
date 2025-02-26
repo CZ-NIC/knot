@@ -26,6 +26,7 @@ typedef struct kdig_dnssec_ctx {
 	zone_contents_t *conts;
 	knot_dname_t *orig_qname;
 	uint16_t orig_qtype;
+	knot_rcode_t orig_rcode;
 	dnssec_validation_hint_t hint;
 } kdig_dnssec_ctx_t;
 
@@ -125,9 +126,9 @@ static bool has_nxdomain_nolog(zone_contents_t *conts, const knot_dname_t *name,
 		if (ret != 0) { // either found or error
 			return false;
 		}
-		knot_rrset_t nsec = node_rrset(closest, KNOT_RRTYPE_NSEC);
+		knot_rrset_t nsec = node_rrset(prev, KNOT_RRTYPE_NSEC);
 		*where = nsec.owner;
-		return !knot_rrset_empty(&nsec) && nsec_covers_name(closest->owner, nsec.rrs.rdata, name) &&
+		return !knot_rrset_empty(&nsec) && nsec_covers_name(prev->owner, nsec.rrs.rdata, name) &&
 		       (!also_wildcard || has_nxdomain_for_wildcard(conts, closest->owner, debug)) && !opt_out;
 	}
 
@@ -221,6 +222,12 @@ static int rrsets_pkt2conts(knot_pkt_t *pkt, zone_contents_t *conts,
 
 			zone_node_t *unused = NULL;
 			ret = zone_contents_add_rr(conts, &rrcpy, &unused);
+			if (ret == KNOT_ETTL) {
+				char rrtype[16] = { 0 };
+				knot_rrtype_to_string(rr->type, rrtype, sizeof(rrtype));
+				fprintf(stderr, ";; WARNING: DNSSSEC VALIDATION: mismatched TTLs for type %s\n", rrtype);
+				ret = KNOT_EOK;
+			}
 		}
 	}
 	return ret;
@@ -277,6 +284,7 @@ static int dv(knot_pkt_t *pkt, kdig_dnssec_ctx_t **dv_ctx, int debug,
 		(*dv_ctx)->conts = conts;
 		(*dv_ctx)->orig_qname = orig_qname;
 		(*dv_ctx)->orig_qtype = knot_pkt_qtype(pkt);
+		(*dv_ctx)->orig_rcode = knot_pkt_ext_rcode(pkt);
 
 		int ret = rrsets_pkt2conts(pkt, conts, KNOT_AUTHORITY, 0);
 		if (ret != KNOT_EOK) {
@@ -323,6 +331,7 @@ static int dv(knot_pkt_t *pkt, kdig_dnssec_ctx_t **dv_ctx, int debug,
 	// NOTE at this point we have complete "contents" filled with the answer, relevant SOA and DNSKEY and their RRSIGs
 
 	dnssec_validation_hint_t *hint = &(*dv_ctx)->hint;
+	knot_rcode_t expected_rcode = KNOT_RCODE_NOERROR;
 
 	const zone_node_t *match = NULL, *closest = NULL, *prev = NULL;
 	ret = zone_contents_find_dname(conts, (*dv_ctx)->orig_qname, &match, &closest, &prev, false/*FIME*/);
@@ -342,6 +351,7 @@ static int dv(knot_pkt_t *pkt, kdig_dnssec_ctx_t **dv_ctx, int debug,
 			return 1;
 		}
 	} else if (ret == ZONE_NAME_NOT_FOUND) {
+		expected_rcode = KNOT_RCODE_NXDOMAIN;
 		if (!has_nxdomain(conts, (*dv_ctx)->orig_qname, true, false, false, debug)) {
 			hint->warning = KNOT_DNSSEC_ENSEC_CHAIN;
 			hint->node = (*dv_ctx)->orig_qname;
@@ -372,7 +382,12 @@ static int dv(knot_pkt_t *pkt, kdig_dnssec_ctx_t **dv_ctx, int debug,
 		return 1;
 	}
 
-	// TODO check expected RCODE against found one
+	if (expected_rcode != (*dv_ctx)->orig_rcode) {
+		const knot_lookup_t *item = knot_lookup_by_id(knot_rcode_names, expected_rcode);
+		fprintf(stderr, ";; INFO: DNSSEC VALIDATION expected RCODE was: %s\n", item->name);
+	} else if (debug > 1) {
+		printf(";; INFO: DNSSEC VALIDATION: correct RCODE found\n");
+	}
 
 	return ret;
 }
