@@ -17,6 +17,7 @@
 #include <stdbool.h>
 #include <string.h>
 
+#define REDISMODULE_MAIN // Fixes loading error undefined symbol: RedisModule_ReplySetArrayLength.
 #include "contrib/redis/redismodule.h"
 
 #define KNOT_ZONE_RRSET_ENCODING_VERSION 0
@@ -50,17 +51,9 @@ typedef struct {
 	} rrs;
 } knot_zone_rrset_v;
 
-struct rrset_list_ctx {
-	RedisModuleString *origin;
-	long ctr;
-	uint32_t lookup_id;
-};
-
 static RedisModuleType *knot_zone_rrset_t;
 
-typedef uint8_t knot_dname_t;
-
-size_t knot_dname_size(const knot_dname_t *name)
+static size_t dname_size(const uint8_t *name)
 {
 	size_t len = 0;
 	while (*name != '\0') {
@@ -117,7 +110,7 @@ static void knot_zone_rrset_free(void *value)
 	RedisModule_Free(rrset);
 }
 
-static inline RedisModuleKey *find_zone(RedisModuleCtx *ctx, const knot_dname_t *origin, int rights)
+static inline RedisModuleKey *find_zone(RedisModuleCtx *ctx, const uint8_t *origin, size_t origin_len, int rights)
 {
 	static const uint8_t prefix = ZONE_INDEX;
 
@@ -125,7 +118,6 @@ static inline RedisModuleKey *find_zone(RedisModuleCtx *ctx, const knot_dname_t 
 		return NULL;
 	}
 
-	const size_t origin_len = knot_dname_size(origin);
 	RedisModuleString *keyname = RedisModule_CreateString(ctx, (const char *)&prefix, sizeof(prefix));
 	RedisModule_StringAppendBuffer(ctx, keyname, (const char *)origin, origin_len);
 	RedisModuleKey *key = RedisModule_OpenKey(ctx, keyname, rights);
@@ -151,9 +143,9 @@ static int knot_zone_exists(RedisModuleCtx *ctx, RedisModuleString **argv, int a
 	}
 
 	size_t origin_len = 0;
-	const knot_dname_t *origin_dname = (const knot_dname_t *)RedisModule_StringPtrLen(argv[1], &origin_len);
+	const uint8_t *origin = (const uint8_t *)RedisModule_StringPtrLen(argv[1], &origin_len);
 
-	RedisModuleKey *zone_key = find_zone(ctx, origin_dname, REDISMODULE_READ);
+	RedisModuleKey *zone_key = find_zone(ctx, origin, origin_len, REDISMODULE_READ);
 	if (zone_key == NULL) {
 		return RedisModule_ReplyWithLongLong(ctx, false);
 	} else if (RedisModule_KeyType(zone_key) == REDISMODULE_KEYTYPE_EMPTY) {
@@ -179,9 +171,9 @@ static int knot_zone_load(RedisModuleCtx *ctx, RedisModuleString **argv, int arg
 	}
 
 	size_t origin_len = 0;
-	const knot_dname_t *origin_dname = (const knot_dname_t *)RedisModule_StringPtrLen(argv[1], &origin_len);
+	const uint8_t *origin = (const uint8_t *)RedisModule_StringPtrLen(argv[1], &origin_len);
 
-	RedisModuleKey *zone_key = find_zone(ctx, origin_dname, REDISMODULE_READ);
+	RedisModuleKey *zone_key = find_zone(ctx, origin, origin_len, REDISMODULE_READ);
 	if (zone_key == NULL) {
 		return RedisModule_ReplyWithError(ctx, "ERR Unable find");
 	}
@@ -236,9 +228,9 @@ static int knot_zone_purge(RedisModuleCtx *ctx, RedisModuleString **argv, int ar
 	}
 
 	size_t origin_len = 0;
-	const knot_dname_t *origin_dname = (const knot_dname_t *)RedisModule_StringPtrLen(argv[1], &origin_len);
+	const uint8_t *origin = (const uint8_t *)RedisModule_StringPtrLen(argv[1], &origin_len);
 
-	RedisModuleKey *zone_key = find_zone(ctx, origin_dname, REDISMODULE_READ | REDISMODULE_WRITE);
+	RedisModuleKey *zone_key = find_zone(ctx, origin, origin_len, REDISMODULE_READ | REDISMODULE_WRITE);
 	if (zone_key == NULL) {
 		return RedisModule_ReplyWithError(ctx, "ERR Unable find");
 	}
@@ -278,10 +270,10 @@ static int knot_rrset_store(RedisModuleCtx *ctx, RedisModuleString **argv, int a
 		return RedisModule_WrongArity(ctx);
 	}
 
-	size_t origin_strlen;
-	const knot_dname_t *origin_dname = (const knot_dname_t *)RedisModule_StringPtrLen(argv[1], &origin_strlen);
+	size_t origin_len = 0;
+	const uint8_t *origin = (const uint8_t *)RedisModule_StringPtrLen(argv[1], &origin_len);
 
-	RedisModuleKey *zone_key = find_zone(ctx, origin_dname, REDISMODULE_READ | REDISMODULE_WRITE);
+	RedisModuleKey *zone_key = find_zone(ctx, origin, origin_len, REDISMODULE_READ | REDISMODULE_WRITE);
 	if (zone_key == NULL) {
 		return RedisModule_ReplyWithError(ctx, "ERR Unable find");
 	}
@@ -307,8 +299,8 @@ static int knot_rrset_store(RedisModuleCtx *ctx, RedisModuleString **argv, int a
 	uint8_t key_data[KNOT_RRSET_KEY_MAXLEN];
 	uint8_t *key_ptr = key_data;
 	key_ptr[0] = RRSET;
-	key_ptr = memcpy(key_ptr + 1, origin_dname, origin_strlen);
-	key_ptr = memcpy(key_ptr + origin_strlen, owner_str, owner_strlen);
+	key_ptr = memcpy(key_ptr + 1, origin, origin_len);
+	key_ptr = memcpy(key_ptr + origin_len, owner_str, owner_strlen);
 	key_ptr = memcpy(key_ptr + owner_strlen, &rtype, sizeof(rtype));
 	key_ptr += sizeof(rtype);
 	RedisModuleString *rrset_keystr = RedisModule_CreateString(ctx, (const char *)key_data, key_ptr - key_data);
