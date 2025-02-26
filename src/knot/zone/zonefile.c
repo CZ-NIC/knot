@@ -480,19 +480,6 @@ int zonefile_write(const char *path, zone_contents_t *zone)
 		return ret;
 	}
 
-#ifdef ENABLE_REDIS
-	redisContext *rdb = redisConnect("127.0.0.1", 6379);
-	if (rdb == NULL || rdb->err) {
-		if (rdb) {
-			printf("Error: %s\n", rdb->errstr);
-			// handle error
-		} else {
-			printf("Can't allocate redis context\n");
-		}
-	}
-	ret = zone_dump_rdb(zone, rdb);
-#endif
-
 	ret = zone_dump_text(zone, file, true, NULL);
 	fclose(file);
 	if (ret != KNOT_EOK) {
@@ -514,6 +501,21 @@ int zonefile_write(const char *path, zone_contents_t *zone)
 
 	return KNOT_EOK;
 }
+
+#ifdef ENABLE_REDIS
+int zone_rdb_write(redisContext *rdb, zone_contents_t *zone)
+{
+	if (rdb == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	if (zone == NULL) {
+		return KNOT_EEMPTYZONE;
+	}
+
+	return zone_dump_rdb(zone, rdb);
+}
+#endif
 
 void err_handler_logger(sem_handler_t *handler, const zone_contents_t *zone,
                         const knot_dname_t *node, sem_error_t error, const char *data)
