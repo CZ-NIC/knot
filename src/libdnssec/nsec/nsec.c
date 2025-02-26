@@ -71,7 +71,7 @@ int dnssec_nsec3_params_from_rdata(dnssec_nsec3_params_t *params,
 	}
 
 	binary_read(&wire, &new_params.salt);
-	assert(wire_ctx_offset(&wire) < rdata->size);
+	assert(wire_ctx_offset(&wire) <= rdata->size);
 
 	*params = new_params;
 
