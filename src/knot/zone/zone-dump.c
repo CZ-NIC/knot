@@ -257,7 +257,7 @@ static int node_dump_rdb(zone_node_t *node, void *data)
 		                     rrset.ttl,
 		                     rrset.rrs.count,
 		                     rrset.rrs.rdata, rrset.rrs.size);
-		if  (reply == NULL) {
+		if (reply == NULL) {
 			return KNOT_ECONN;
 		} else if (reply->type == REDIS_REPLY_ERROR) {
 			freeReplyObject(reply);

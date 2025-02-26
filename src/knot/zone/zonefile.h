@@ -27,7 +27,7 @@
 typedef struct {
 	unsigned type;
 	union {
-		void *rdb;
+		void *rdb;                     /*!< Rdb context. */
 		struct {
 			char *source;          /*!< Zone source file. */
 			zs_scanner_t scanner;  /*!< Zone scanner. */
@@ -69,6 +69,8 @@ int zone_rdb_exists(conf_t *conf, const knot_dname_t *zone);
 int zone_rdb_open(zloader_t *loader, redisContext *rdb, const knot_dname_t *origin,
                   semcheck_optional_t sem_checks, sem_handler_t *sem_err_handler,
                   time_t time);
+
+int zone_rdb_write(redisContext *rdb, zone_contents_t *zone);
 #endif
 
 /*!

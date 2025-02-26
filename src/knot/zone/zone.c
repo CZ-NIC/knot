@@ -96,66 +96,57 @@ static int flush_journal(conf_t *conf, zone_t *zone, bool allow_empty_zone, bool
 	val = conf_zone_get(conf, C_ZONE_BACKEND, zone->name);
 	unsigned backend = conf_opt(&val);
 
-	if (backend == ZONE_BACKEND_FILE) {
-		/* Check for updated zone. */
-		rcu_read_lock();
-		zone_contents_t *contents = zone->contents;
-		uint32_t serial_to = zone_contents_serial(contents);
-		if (!force && !user_flush &&
-		    zone->zonefile.exists && zone->zonefile.serial == serial_to &&
-		    !zone->zonefile.retransfer && !zone->zonefile.resigned) {
-			ret = KNOT_EOK; /* No differences. */
-			rcu_read_unlock();
-			goto flush_journal_replan;
-		}
+	rcu_read_lock();
+	struct stat st = { 0 };
+	zone_contents_t *contents = zone->contents;
+	uint32_t serial_to = zone_contents_serial(contents);
+	if (!force && !user_flush &&
+	    zone->zonefile.exists && zone->zonefile.serial == serial_to &&
+	    !zone->zonefile.retransfer && !zone->zonefile.resigned) {
+		ret = KNOT_EOK; /* No differences. */
+		rcu_read_unlock();
+		goto flush_journal_replan;
+	}
 
+	if (backend == ZONE_BACKEND_FILE) {
 		char *zonefile = conf_zonefile(conf, zone->name);
 
-		/* Synchronize journal. */
 		ret = zonefile_write(zonefile, contents);
 		rcu_read_unlock();
 		if (ret != KNOT_EOK) {
 			log_zone_warning(zone->name, "failed to update zone file (%s)",
-					 knot_strerror(ret));
+			                 knot_strerror(ret));
 			free(zonefile);
 			goto flush_journal_replan;
 		}
 
 		if (zone->zonefile.exists) {
 			log_zone_info(zone->name, "zone file updated, serial %u -> %u",
-				      zone->zonefile.serial, serial_to);
+			              zone->zonefile.serial, serial_to);
 		} else {
 			log_zone_info(zone->name, "zone file updated, serial %u",
-				      serial_to);
+			              serial_to);
 		}
 
 		/* Update zone version. */
-		struct stat st;
 		if (stat(zonefile, &st) < 0) {
 			log_zone_warning(zone->name, "failed to update zone file (%s)",
-					 knot_strerror(knot_map_errno()));
+			                 knot_strerror(knot_map_errno()));
 			free(zonefile);
 			ret = KNOT_EACCES;
 			goto flush_journal_replan;
 		}
 
 		free(zonefile);
-
-		/* Update zone file attributes. */
-		zone->zonefile.exists = true;
-		zone->zonefile.mtime = st.st_mtim;
-		zone->zonefile.serial = serial_to;
-		zone->zonefile.resigned = false;
-		zone->zonefile.retransfer = false;
 	} else {
 #ifdef ENABLE_REDIS
 		redisContext *rdb = zone_rdb_connect(conf);
 		if (rdb == NULL) {
-			return KNOT_ECONN;
+			ret = KNOT_ECONN;
+			rcu_read_unlock();
+			goto flush_journal_replan;
 		}
 
-		rcu_read_lock();
-		zone_contents_t *contents = zone->contents;
 		ret = zone_rdb_write(rdb, contents);
 		rcu_read_unlock();
 		if (ret != KNOT_EOK) {
@@ -167,6 +158,13 @@ static int flush_journal(conf_t *conf, zone_t *zone, bool allow_empty_zone, bool
 		ret = KNOT_ENOTSUP;
 #endif
 	}
+
+	/* Update zone file attributes. */
+	zone->zonefile.exists = true;
+	zone->zonefile.mtime = st.st_mtim;
+	zone->zonefile.serial = serial_to;
+	zone->zonefile.resigned = false;
+	zone->zonefile.retransfer = false;
 
 	/* Flush journal. */
 	if (journal_is_existing(j)) {
