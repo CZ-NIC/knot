@@ -22,17 +22,12 @@
 #define KNOT_ZONE_RRSET_ENCODING_VERSION 0
 
 #define KNOT_DNAME_MAXLEN 255
-#define KNOT_RRSET_KEY_MAXLEN (1 + sizeof(uint32_t) + KNOT_DNAME_MAXLEN + sizeof(uint16_t))
+#define KNOT_RRSET_KEY_MAXLEN (1 + KNOT_DNAME_MAXLEN + KNOT_DNAME_MAXLEN + sizeof(uint16_t))
 
 #define RRTYPE_SOA 6
 
 #define KNOT_SCORE_SOA     0.
 #define KNOT_SCORE_DEFAULT 1.
-
-#define KNOT_CHANNEL "knot.events"
-
-#define find_zone(ctx, origin, rights)       find1(ZONE, (ctx), (origin), (rights))
-#define find_zone_index(ctx, origin, rights) find1(ZONE_INDEX, (ctx), (origin), (rights))
 
 #define foreach_in_zset_subset(key, min, max) \
 		for (RedisModule_ZsetFirstInScoreRange(key, min, max, 0, 0); \
@@ -41,7 +36,7 @@
 #define foreach_in_zset(key) foreach_in_zset_subset(key, REDISMODULE_NEGATIVE_INFINITE, REDISMODULE_POSITIVE_INFINITE)
 
 typedef enum {
-	ZONE,
+	EVENTS,
 	ZONE_INDEX,
 	RRSET
 } KnotTypeID;
@@ -122,8 +117,10 @@ static void knot_zone_rrset_free(void *value)
 	RedisModule_Free(rrset);
 }
 
-static inline RedisModuleKey *find1(const uint8_t prefix, RedisModuleCtx *ctx, const knot_dname_t *origin, int rights)
+static inline RedisModuleKey *find_zone(RedisModuleCtx *ctx, const knot_dname_t *origin, int rights)
 {
+	static const uint8_t prefix = ZONE_INDEX;
+
 	if (ctx == NULL || origin == NULL) {
 		return NULL;
 	}
@@ -147,20 +144,6 @@ static double evaluate_score(uint16_t rtype)
 	}
 }
 
-static int read_zone_id(RedisModuleKey *key, uint32_t *id)
-{
-	if (RedisModule_KeyType(key) != REDISMODULE_KEYTYPE_STRING) {
-		return -1;
-	}
-	size_t len = 0;
-	const uint32_t *val = (const uint32_t *)RedisModule_StringDMA(key, &len, REDISMODULE_READ);
-	if (len != sizeof(uint32_t)) {
-		return -1;
-	}
-	memcpy(id, val, sizeof(uint32_t));
-	return 0;
-}
-
 static int knot_zone_exists(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 {
 	if (argc != 2) {
@@ -170,21 +153,21 @@ static int knot_zone_exists(RedisModuleCtx *ctx, RedisModuleString **argv, int a
 	size_t origin_len = 0;
 	const knot_dname_t *origin_dname = (const knot_dname_t *)RedisModule_StringPtrLen(argv[1], &origin_len);
 
-	RedisModuleKey *zone_index_key = find_zone_index(ctx, origin_dname, REDISMODULE_READ);
-	if (zone_index_key == NULL) {
+	RedisModuleKey *zone_key = find_zone(ctx, origin_dname, REDISMODULE_READ);
+	if (zone_key == NULL) {
 		return RedisModule_ReplyWithLongLong(ctx, false);
-	} else if (RedisModule_KeyType(zone_index_key) == REDISMODULE_KEYTYPE_EMPTY) {
-		RedisModule_CloseKey(zone_index_key);
+	} else if (RedisModule_KeyType(zone_key) == REDISMODULE_KEYTYPE_EMPTY) {
+		RedisModule_CloseKey(zone_key);
 		return RedisModule_ReplyWithLongLong(ctx, false);
-	} else if (RedisModule_KeyType(zone_index_key) != REDISMODULE_KEYTYPE_ZSET) {
-		RedisModule_CloseKey(zone_index_key);
+	} else if (RedisModule_KeyType(zone_key) != REDISMODULE_KEYTYPE_ZSET) {
+		RedisModule_CloseKey(zone_key);
 		return RedisModule_ReplyWithError(ctx, "ERR Bad data");
 	}
 
-	RedisModule_ZsetFirstInScoreRange(zone_index_key, KNOT_SCORE_SOA, KNOT_SCORE_SOA, 0, 0);
-	bool exists = !RedisModule_ZsetRangeEndReached(zone_index_key);
-	RedisModule_ZsetRangeStop(zone_index_key);
-	RedisModule_CloseKey(zone_index_key);
+	RedisModule_ZsetFirstInScoreRange(zone_key, KNOT_SCORE_SOA, KNOT_SCORE_SOA, 0, 0);
+	bool exists = !RedisModule_ZsetRangeEndReached(zone_key);
+	RedisModule_ZsetRangeStop(zone_key);
+	RedisModule_CloseKey(zone_key);
 
 	return RedisModule_ReplyWithLongLong(ctx, exists);
 }
@@ -198,24 +181,24 @@ static int knot_zone_load(RedisModuleCtx *ctx, RedisModuleString **argv, int arg
 	size_t origin_len = 0;
 	const knot_dname_t *origin_dname = (const knot_dname_t *)RedisModule_StringPtrLen(argv[1], &origin_len);
 
-	RedisModuleKey *zone_index_key = find_zone_index(ctx, origin_dname, REDISMODULE_READ);
-	if (zone_index_key == NULL) {
+	RedisModuleKey *zone_key = find_zone(ctx, origin_dname, REDISMODULE_READ);
+	if (zone_key == NULL) {
 		return RedisModule_ReplyWithError(ctx, "ERR Unable find");
 	}
-	int zone_index_type = RedisModule_KeyType(zone_index_key);
-	if (zone_index_type == REDISMODULE_KEYTYPE_EMPTY) {
-		RedisModule_CloseKey(zone_index_key);
+	int zone_keytype = RedisModule_KeyType(zone_key);
+	if (zone_keytype == REDISMODULE_KEYTYPE_EMPTY) {
+		RedisModule_CloseKey(zone_key);
 		return RedisModule_ReplyWithError(ctx, "ERR Does not exist");
-	} else if (zone_index_type != REDISMODULE_KEYTYPE_ZSET) {
-		RedisModule_CloseKey(zone_index_key);
+	} else if (zone_keytype != REDISMODULE_KEYTYPE_ZSET) {
+		RedisModule_CloseKey(zone_key);
 		return RedisModule_ReplyWithError(ctx, "ERR Bad data");
 	}
 
 	long count = 0;
 	RedisModule_ReplyWithArray(ctx, REDISMODULE_POSTPONED_ARRAY_LEN);
-	foreach_in_zset (zone_index_key) {
+	foreach_in_zset (zone_key) {
 		double score = 0.0;
-		RedisModuleString *el = RedisModule_ZsetRangeCurrentElement(zone_index_key, &score);
+		RedisModuleString *el = RedisModule_ZsetRangeCurrentElement(zone_key, &score);
 		if (el == NULL) {
 			break;
 		}
@@ -231,7 +214,7 @@ static int knot_zone_load(RedisModuleCtx *ctx, RedisModuleString **argv, int arg
 		RedisModule_CloseKey(rrset_key);
 
 		RedisModule_ReplyWithArray(ctx, 5);
-		RedisModule_ReplyWithStringBuffer(ctx, rrset_str + 5, rrset_strlen - (5 + 2));
+		RedisModule_ReplyWithStringBuffer(ctx, rrset_str + origin_len + 1, rrset_strlen - origin_len - 3);
 		RedisModule_ReplyWithLongLong(ctx, rtype);
 		RedisModule_ReplyWithLongLong(ctx, rrset->ttl);
 		RedisModule_ReplyWithLongLong(ctx, rrset->rrs.count);
@@ -239,8 +222,8 @@ static int knot_zone_load(RedisModuleCtx *ctx, RedisModuleString **argv, int arg
 
 		++count;
 	}
-	RedisModule_ZsetRangeStop(zone_index_key);
-	RedisModule_CloseKey(zone_index_key);
+	RedisModule_ZsetRangeStop(zone_key);
+	RedisModule_CloseKey(zone_key);
 	RedisModule_ReplySetArrayLength(ctx, count);
 
 	return REDISMODULE_OK;
@@ -255,23 +238,23 @@ static int knot_zone_purge(RedisModuleCtx *ctx, RedisModuleString **argv, int ar
 	size_t origin_len = 0;
 	const knot_dname_t *origin_dname = (const knot_dname_t *)RedisModule_StringPtrLen(argv[1], &origin_len);
 
-	RedisModuleKey *zone_index_key = find_zone_index(ctx, origin_dname, REDISMODULE_READ | REDISMODULE_WRITE);
-	if (zone_index_key == NULL) {
+	RedisModuleKey *zone_key = find_zone(ctx, origin_dname, REDISMODULE_READ | REDISMODULE_WRITE);
+	if (zone_key == NULL) {
 		return RedisModule_ReplyWithError(ctx, "ERR Unable find");
 	}
 
-	int zone_index_type = RedisModule_KeyType(zone_index_key);
+	int zone_index_type = RedisModule_KeyType(zone_key);
 	if (zone_index_type == REDISMODULE_KEYTYPE_EMPTY) {
-		RedisModule_CloseKey(zone_index_key);
+		RedisModule_CloseKey(zone_key);
 		return RedisModule_ReplyWithError(ctx, "ERR Does not exist");
 	} else if (zone_index_type != REDISMODULE_KEYTYPE_ZSET) {
-		RedisModule_CloseKey(zone_index_key);
+		RedisModule_CloseKey(zone_key);
 		return RedisModule_ReplyWithError(ctx, "ERR Bad data");
 	}
 
-	foreach_in_zset (zone_index_key) {
+	foreach_in_zset (zone_key) {
 		double score = 0.0;
-		RedisModuleString *el = RedisModule_ZsetRangeCurrentElement(zone_index_key, &score);
+		RedisModuleString *el = RedisModule_ZsetRangeCurrentElement(zone_key, &score);
 		if (el == NULL) {
 			break;
 		}
@@ -280,11 +263,7 @@ static int knot_zone_purge(RedisModuleCtx *ctx, RedisModuleString **argv, int ar
 		RedisModule_DeleteKey(rrset_key);
 		RedisModule_CloseKey(rrset_key);
 	}
-	RedisModule_ZsetRangeStop(zone_index_key);
-	RedisModule_DeleteKey(zone_index_key);
-	RedisModule_CloseKey(zone_index_key);
-
-	RedisModuleKey *zone_key = find_zone(ctx, origin_dname, REDISMODULE_READ | REDISMODULE_WRITE);
+	RedisModule_ZsetRangeStop(zone_key);
 	RedisModule_DeleteKey(zone_key);
 	RedisModule_CloseKey(zone_key);
 
@@ -306,59 +285,39 @@ static int knot_rrset_store(RedisModuleCtx *ctx, RedisModuleString **argv, int a
 	if (zone_key == NULL) {
 		return RedisModule_ReplyWithError(ctx, "ERR Unable find");
 	}
-	RedisModuleString *zone_id = NULL;
-	if (RedisModule_KeyType(zone_key) != REDISMODULE_KEYTYPE_EMPTY) {
-		uint32_t id = 0;
-		int ret = read_zone_id(zone_key, &id);
-		if (ret == -1) {
-			RedisModule_CloseKey(zone_key);
-			return RedisModule_ReplyWithError(ctx, "ERR Bad data");
-		}
-		zone_id = RedisModule_CreateString(ctx, (const char *)&id, sizeof(id));
-	} else {
-		uint32_t id;
-		RedisModule_GetRandomBytes((unsigned char *)&id, sizeof(id));
-		zone_id = RedisModule_CreateString(ctx, (const char *)&id, sizeof(id));
-		RedisModule_StringSet(zone_key, zone_id);
-	}
-	RedisModule_CloseKey(zone_key);
 
-	size_t zoneid_strlen, owner_strlen;
-	const char *zoneid_str = RedisModule_StringPtrLen(zone_id, &zoneid_strlen);
+	int zone_keytype = RedisModule_KeyType(zone_key);
+	if (zone_keytype != REDISMODULE_KEYTYPE_EMPTY && zone_keytype != REDISMODULE_KEYTYPE_ZSET) {
+		RedisModule_CloseKey(zone_key);
+		return RedisModule_ReplyWithError(ctx, "ERR Bad data");
+	}
+
+	size_t owner_strlen;
 	const char *owner_str = RedisModule_StringPtrLen(argv[2], &owner_strlen);
 	long long type = 0;
 	int ret = RedisModule_StringToLongLong(argv[3], &type);
 	if (ret != REDISMODULE_OK) {
-		RedisModule_FreeString(ctx, zone_id);
+		RedisModule_CloseKey(zone_key);
 		return RedisModule_ReplyWithError(ctx, "ERR Wrong RRTYPE format");
 	} else if (type < 0 || type > UINT16_MAX) {
-		RedisModule_FreeString(ctx, zone_id);
+		RedisModule_CloseKey(zone_key);
 		return RedisModule_ReplyWithError(ctx, "ERR Value out of range");
 	}
 	uint16_t rtype = type;
 	uint8_t key_data[KNOT_RRSET_KEY_MAXLEN];
 	uint8_t *key_ptr = key_data;
 	key_ptr[0] = RRSET;
-	key_ptr = memcpy(key_ptr + 1, zoneid_str, zoneid_strlen);
-	key_ptr = memcpy(key_ptr + zoneid_strlen, owner_str, owner_strlen);
+	key_ptr = memcpy(key_ptr + 1, origin_dname, origin_strlen);
+	key_ptr = memcpy(key_ptr + origin_strlen, owner_str, owner_strlen);
 	key_ptr = memcpy(key_ptr + owner_strlen, &rtype, sizeof(rtype));
 	key_ptr += sizeof(rtype);
+	RedisModuleString *rrset_keystr = RedisModule_CreateString(ctx, (const char *)key_data, key_ptr - key_data);
 
-	RedisModule_FreeString(ctx, zone_id);
-	RedisModuleString *key_str = RedisModule_CreateString(ctx, (const char *)key_data, key_ptr - key_data);
+	RedisModule_ZsetAdd(zone_key, evaluate_score(rtype), rrset_keystr, NULL);
+	RedisModule_CloseKey(zone_key);
 
-	// NOTE remove this when testing legacy rrset scanning (without ZONE_INDEX)
-	static const uint8_t zone_index_prefix = ZONE_INDEX;
-	RedisModuleString *list_key_str =  RedisModule_CreateString(ctx, (const char *)(&zone_index_prefix), sizeof(zone_index_prefix));
-	ret = RedisModule_StringAppendBuffer(ctx, list_key_str, (const char *)origin_dname, origin_strlen);
-	RedisModuleKey *zone_index_key = RedisModule_OpenKey(ctx, list_key_str, REDISMODULE_READ | REDISMODULE_WRITE);
-	RedisModule_FreeString(ctx, list_key_str);
-	RedisModule_ZsetAdd(zone_index_key, evaluate_score(rtype), key_str, NULL);
-	RedisModule_CloseKey(zone_index_key);
-	// END OF BLOCK
-
-	RedisModuleKey *rrset_key = RedisModule_OpenKey(ctx, key_str, REDISMODULE_READ | REDISMODULE_WRITE);
-	RedisModule_FreeString(ctx, key_str);
+	RedisModuleKey *rrset_key = RedisModule_OpenKey(ctx, rrset_keystr, REDISMODULE_READ | REDISMODULE_WRITE);
+	RedisModule_FreeString(ctx, rrset_keystr);
 
 	knot_zone_rrset_v *rrset = RedisModule_Calloc(1, sizeof(knot_zone_rrset_v));
 	long long ttl_val = 0;
