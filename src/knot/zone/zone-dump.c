@@ -326,6 +326,12 @@ int zone_dump_rdb(zone_contents_t *zone, redisContext *rdb)
 	}
 	freeReplyObject(reply);
 
+	uint8_t message[1 + KNOT_DNAME_MAXLEN];
+	message[0] = 0; // ZONE-UPDATED event (TODO some enum value)
+	memcpy(message + 1, params.origin, params.origin_len);
+	reply = redisCommand(params.rdb, "PUBLISH knot.events %b", message, (size_t)params.origin_len + 1);
+	freeReplyObject(reply);
+
 	return KNOT_EOK;
 }
 #endif

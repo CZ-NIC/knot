@@ -29,6 +29,8 @@
 #define KNOT_SCORE_SOA     0.
 #define KNOT_SCORE_DEFAULT 1.
 
+#define KNOT_CHANNEL "knot.events"
+
 #define find_zone(ctx, origin, rights)       find1(ZONE, (ctx), (origin), (rights))
 #define find_zone_index(ctx, origin, rights) find1(ZONE_INDEX, (ctx), (origin), (rights))
 
@@ -419,8 +421,8 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx)
 
 	if (	RedisModule_CreateCommand(ctx, "knot.zone.exists", knot_zone_exists, "readonly", 1, 1, 1) == REDISMODULE_ERR ||
 		RedisModule_CreateCommand(ctx, "knot.zone.load", knot_zone_load, "readonly", 1, 1, 1) == REDISMODULE_ERR ||
-		RedisModule_CreateCommand(ctx, "knot.zone.purge", knot_zone_purge, "write", 1, 1, 1) == REDISMODULE_ERR ||
-		RedisModule_CreateCommand(ctx, "knot.rrset.store", knot_rrset_store, "write", 1, 1, 1) == REDISMODULE_ERR
+		RedisModule_CreateCommand(ctx, "knot.zone.purge", knot_zone_purge, "write pubsub", 1, 1, 1) == REDISMODULE_ERR ||
+		RedisModule_CreateCommand(ctx, "knot.rrset.store", knot_rrset_store, "write pubsub", 1, 1, 1) == REDISMODULE_ERR
 	) {
 		RedisModule_Log(ctx, REDISMODULE_LOGLEVEL_WARNING, "ERR 'knot' module already loaded");
 		RedisModule_ReplyWithError(ctx, "ERR 'knot' module already loaded");
