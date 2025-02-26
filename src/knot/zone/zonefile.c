@@ -275,7 +275,7 @@ static int rdb_load(zloader_t *loader)
 	const knot_dname_t *zname = loader->contents->apex->owner;
 
 	redisReply *reply = redisCommand(loader->rdb,
-	                                 "KNOT.ZONE.LOAD.U %b",
+	                                 "KNOT.ZONE.LOAD %b",
 	                                 zname, knot_dname_size(zname));
 	if (reply == NULL) {
 		ERROR(zname, "failed to connect to database");
