@@ -324,8 +324,7 @@ static int backup_zonefile(conf_t *conf, zone_t *zone, zone_backup_ctx_t *ctx)
 
 	if (ctx->restore_mode) {
 		ret = backup_file(local_zf, backup_zf);
-                ret = ret == KNOT_ENOENT ? KNOT_EFILE : ret;
-
+		ret = (ret == KNOT_ENOENT) ? KNOT_EFILE : ret;
 	} else {
 		conf_val_t val = conf_zone_get(conf, C_ZONEFILE_SYNC, zone->name);
 		bool can_flush = (conf_int(&val) > -1);
