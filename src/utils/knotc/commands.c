@@ -566,7 +566,7 @@ static int zone_check(const knot_dname_t *dname, void *data)
 
 	zone_contents_t *contents = NULL;
 	conf_val_t mode = conf_zone_get(conf(), C_SEM_CHECKS, dname);
-	int ret = zone_load_contents(conf(), dname, &contents, conf_opt(&mode), args->force);
+	int ret = zone_load_contents(conf(), dname, &contents, conf_opt(&mode), NULL, args->force);
 	zone_contents_deep_free(contents);
 	if (ret != KNOT_EOK && ret != KNOT_ESEMCHECK) {
 		knot_dname_txt_storage_t name;
@@ -615,6 +615,11 @@ const filter_desc_t conf_export_filters[] = {
 const filter_desc_t zone_begin_filters[] = {
 	{ "+benevolent", CTL_FILTER_BEGIN_BENEVOLENT },
 	{ NULL },
+};
+
+const filter_desc_t zone_reload_filters[] = {
+        { "+indir", CTL_FILTER_LOAD_INDIR, true },
+        { NULL },
 };
 
 const filter_desc_t zone_flush_filters[] = {
@@ -675,6 +680,9 @@ static const filter_desc_t *get_filter(ctl_cmd_t cmd, const char *filter_name)
 		break;
 	case CTL_ZONE_FLUSH:
 		fd = zone_flush_filters;
+		break;
+	case CTL_ZONE_RELOAD:
+		fd = zone_reload_filters;
 		break;
 	case CTL_ZONE_BACKUP:
 	case CTL_ZONE_RESTORE:

@@ -1,4 +1,4 @@
-/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2025 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -95,7 +95,7 @@ static int zonesign(sign_params_t *params)
 	}
 
 	ret = zone_load_contents(conf(), params->zone_name, &unsigned_conts,
-	                         SEMCHECK_MANDATORY_SOFT, false);
+	                         SEMCHECK_MANDATORY_SOFT, NULL, false);
 	if (ret != KNOT_EOK) {
 		ERR2("failed to load zone contents (%s)", knot_strerror(ret));
 		goto fail;

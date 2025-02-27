@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2025 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -76,6 +76,15 @@ int event_load(conf_t *conf, zone_t *zone)
 
 	int ret = KNOT_EOK;
 
+	char *load_dir = NULL;
+	if (zone->load_dir_how != ZONEFILE_LOAD_NONE) {
+		assert(zone->load_dir != NULL);
+		load_dir = zone->load_dir;
+		zf_from = zone->load_dir_how;
+		zone->load_dir = NULL;
+		zone->load_dir_how = 0;
+	}
+
 	// If configured, load journal contents.
 	if (!old_contents_exist && (load_from == JOURNAL_CONTENT_ALL && zf_from != ZONEFILE_LOAD_WHOLE)) {
 		ret = zone_load_from_journal(conf, zone, &journal_conts);
@@ -104,7 +113,7 @@ int event_load(conf_t *conf, zone_t *zone)
 	// If configured, attempt to load zonefile.
 	if (zf_from != ZONEFILE_LOAD_NONE && zone->cat_members == NULL) {
 		struct timespec mtime;
-		char *filename = conf_zonefile(conf, zone->name, NULL /*TODO*/);
+		char *filename = conf_zonefile(conf, zone->name, load_dir);
 		ret = zonefile_exists(filename, &mtime);
 		if (ret == KNOT_EOK) {
 			conf_val_t semchecks = conf_zone_get(conf, C_SEM_CHECKS, zone->name);
@@ -117,8 +126,7 @@ int event_load(conf_t *conf, zone_t *zone)
 					mode = SEMCHECK_DNSSEC_OFF;
 				}
 			}
-
-			ret = zone_load_contents(conf, zone->name, &zf_conts, mode, false);
+			ret = zone_load_contents(conf, zone->name, &zf_conts, mode, load_dir, false);
 		}
 		if (ret != KNOT_EOK) {
 			assert(!zf_conts);
@@ -135,9 +143,11 @@ int event_load(conf_t *conf, zone_t *zone)
 		free(filename);
 
 		// Save zonefile information.
-		zone->zonefile.serial = zone_contents_serial(zf_conts);
-		zone->zonefile.exists = (zf_conts != NULL);
-		zone->zonefile.mtime = mtime;
+		if (load_dir == NULL) {
+			zone->zonefile.serial = zone_contents_serial(zf_conts);
+			zone->zonefile.exists = (zf_conts != NULL);
+			zone->zonefile.mtime = mtime;
+		}
 
 		// If configured, add reverse records to zone contents
 		if (zone->reverse_from != NULL) {
@@ -168,11 +178,13 @@ int event_load(conf_t *conf, zone_t *zone)
 			uint32_t set = serial_next(serial, conf, zone->name, SERIAL_POLICY_AUTO, 1);
 			zone_contents_set_soa_serial(zf_conts, set);
 			log_zone_info(zone->name, "zone file parsed, serial updated %u -> %u",
-			              zone->zonefile.serial, set);
-			zone->zonefile.serial = set;
+			              zone_contents_serial(zf_conts), set);
+			if (load_dir == NULL) {
+				zone->zonefile.serial = set;
+			}
 		} else {
 			log_zone_info(zone->name, "zone file parsed, serial %u",
-			              zone->zonefile.serial);
+			              zone_contents_serial(zf_conts));
 		}
 
 		// If configured and appliable to zonefile, load journal changes.
@@ -285,7 +297,7 @@ load_end:
 			log_zone_warning(zone->name, "zone file changed without SOA serial update");
 			break;
 		case KNOT_ERANGE:
-			if (serial_compare(zone->zonefile.serial, zone_contents_serial(zone->contents)) == SERIAL_INCOMPARABLE) {
+			if (serial_compare(zone_contents_serial(zf_conts), zone_contents_serial(zone->contents)) == SERIAL_INCOMPARABLE) {
 				log_zone_warning(zone->name, "zone file changed with incomparable SOA serial");
 			} else {
 				log_zone_warning(zone->name, "zone file changed with decreased SOA serial");
@@ -424,6 +436,7 @@ load_end:
 	if (!zone_timers_serial_notified(&zone->timers, new_serial)) {
 		zone_schedule_notify(zone, 0);
 	}
+	free(load_dir);
 
 	return KNOT_EOK;
 
@@ -434,6 +447,7 @@ cleanup:
 	zone_update_clear(&up);
 	zone_contents_deep_free(zf_conts);
 	zone_contents_deep_free(journal_conts);
+	free(load_dir);
 
 	return (dontcare_load_error(conf, zone) ? KNOT_EOK : ret);
 }

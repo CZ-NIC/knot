@@ -1,4 +1,4 @@
-/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2025 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -233,6 +233,8 @@ void zone_free(zone_t **zone_ptr)
 
 	free(zone->catalog_gen);
 	catalog_update_free(zone->cat_members);
+
+	free(zone->load_dir);
 
 	/* Free preferred master. */
 	pthread_mutex_destroy(&zone->preferred_lock);
