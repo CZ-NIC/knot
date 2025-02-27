@@ -307,9 +307,9 @@ static int rdb_load(zloader_t *loader)
 	return KNOT_EOK;
 }
 
-int zone_rdb_exists(conf_t *conf, const knot_dname_t *zone)
+int zone_rdb_exists(conf_t *conf, const knot_dname_t *zone, uint32_t *serial)
 {
-	if (zone == NULL) {
+	if (zone == NULL || serial == NULL) {
 		return KNOT_EINVAL;
 	}
 
@@ -318,7 +318,7 @@ int zone_rdb_exists(conf_t *conf, const knot_dname_t *zone)
 		return KNOT_ECONN;
 	}
 
-	int val = 0;
+	int64_t val = -1;
 	redisReply *reply = redisCommand(rdb,
 	                                 "KNOT.ZONE.EXISTS %b",
 	                                 zone, knot_dname_size(zone));
@@ -329,7 +329,7 @@ int zone_rdb_exists(conf_t *conf, const knot_dname_t *zone)
 
 	redisFree(rdb);
 
-	return (val == 1) ? KNOT_EOK : KNOT_ENOENT;
+	return (val != -1) ? KNOT_EOK : KNOT_ENOENT;
 }
 #endif
 

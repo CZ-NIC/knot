@@ -113,7 +113,8 @@ int event_load(conf_t *conf, zone_t *zone)
 			ret = zonefile_exists(filename, &mtime);
 		} else {
 #ifdef ENABLE_REDIS
-			ret = zone_rdb_exists(conf, zone->name);
+			uint32_t serial;
+			ret = zone_rdb_exists(conf, zone->name, &serial);
 #else
 			ret = KNOT_ENOTSUP;
 #endif

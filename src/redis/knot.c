@@ -14,7 +14,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include <stdbool.h>
+#include <arpa/inet.h>
 #include <string.h>
 
 #define REDISMODULE_MAIN // Fixes loading error undefined symbol: RedisModule_ReplySetArrayLength.
@@ -32,7 +32,7 @@
 
 #define foreach_in_zset_subset(key, min, max) \
 		for (RedisModule_ZsetFirstInScoreRange(key, min, max, 0, 0); \
-		     RedisModule_ZsetRangeEndReached(key) == false; \
+		     RedisModule_ZsetRangeEndReached(key) == 0; \
 		     RedisModule_ZsetRangeNext(key))
 #define foreach_in_zset(key) foreach_in_zset_subset(key, REDISMODULE_NEGATIVE_INFINITE, REDISMODULE_POSITIVE_INFINITE)
 
@@ -40,7 +40,7 @@ typedef enum {
 	EVENTS,
 	ZONE_INDEX,
 	RRSET
-} KnotTypeID;
+} knot_type_id;
 
 typedef struct {
 	uint32_t ttl;
@@ -163,21 +163,39 @@ static int knot_zone_exists(RedisModuleCtx *ctx, RedisModuleString **argv, int a
 
 	RedisModuleKey *zone_key = find_zone(ctx, origin, origin_len, REDISMODULE_READ);
 	if (zone_key == NULL) {
-		return RedisModule_ReplyWithLongLong(ctx, false);
+		return RedisModule_ReplyWithLongLong(ctx, -1);
 	} else if (RedisModule_KeyType(zone_key) == REDISMODULE_KEYTYPE_EMPTY) {
 		RedisModule_CloseKey(zone_key);
-		return RedisModule_ReplyWithLongLong(ctx, false);
+		return RedisModule_ReplyWithLongLong(ctx, -1);
 	} else if (RedisModule_KeyType(zone_key) != REDISMODULE_KEYTYPE_ZSET) {
 		RedisModule_CloseKey(zone_key);
 		return RedisModule_ReplyWithError(ctx, "ERR Bad data");
 	}
 
-	RedisModule_ZsetFirstInScoreRange(zone_key, KNOT_SCORE_SOA, KNOT_SCORE_SOA, 0, 0);
-	bool exists = !RedisModule_ZsetRangeEndReached(zone_key);
-	RedisModule_ZsetRangeStop(zone_key);
-	RedisModule_CloseKey(zone_key);
+	foreach_in_zset_subset(zone_key, KNOT_SCORE_SOA, KNOT_SCORE_SOA) {
+		double score = 0.0;
+		RedisModuleString *el = RedisModule_ZsetRangeCurrentElement(zone_key, &score);
+		if (el == NULL) {
+			break;
+		}
 
-	return RedisModule_ReplyWithLongLong(ctx, exists);
+		RedisModuleKey *rrset_key = RedisModule_OpenKey(ctx, el, REDISMODULE_READ);
+		knot_zone_rrset_v *rrset = RedisModule_ModuleTypeGetValue(rrset_key);
+
+		uint8_t *soa = rrset->rrs.rdata + sizeof(uint16_t);
+		soa += dname_size(soa);
+		soa += dname_size(soa);
+		uint32_t serial = 0;
+		memcpy(&serial, soa, sizeof(serial));
+
+		RedisModule_CloseKey(rrset_key);
+		RedisModule_ZsetRangeStop(zone_key);
+
+		return RedisModule_ReplyWithLongLong(ctx, ntohl(serial));
+	}
+	RedisModule_ZsetRangeStop(zone_key);
+
+	return RedisModule_ReplyWithLongLong(ctx, -1);
 }
 
 static int knot_zone_load(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
