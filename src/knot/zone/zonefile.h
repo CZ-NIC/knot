@@ -64,7 +64,7 @@ int zonefile_open(zloader_t *loader, const char *source, const knot_dname_t *ori
 #ifdef ENABLE_REDIS
 redisContext *zone_rdb_connect(conf_t *conf);
 
-int zone_rdb_exists(conf_t *conf, const knot_dname_t *zone);
+int zone_rdb_exists(conf_t *conf, const knot_dname_t *zone, uint32_t *serial);
 
 int zone_rdb_open(zloader_t *loader, redisContext *rdb, const knot_dname_t *origin,
                   semcheck_optional_t sem_checks, sem_handler_t *sem_err_handler,
