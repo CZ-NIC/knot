@@ -332,6 +332,9 @@ static int check_name(zone_contents_t *conts, const knot_dname_t *name,
 			return 1;
 		}
 	} else if (ret == ZONE_NAME_NOT_FOUND) {
+		if (has_nsec3(conts) && has_nodata(conts, name, type, false, debug)) {
+			return KNOT_EOK;
+		}
 		if (node_rrtype_exists(closest, KNOT_RRTYPE_DNAME)) {
 			const knot_dname_t *dname_tgt = knot_dname_target(node_rdataset(closest, KNOT_RRTYPE_DNAME)->rdata);
 			size_t labels = knot_dname_labels(closest->owner, NULL);
