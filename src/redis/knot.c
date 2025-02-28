@@ -42,6 +42,11 @@ typedef enum {
 	RRSET
 } knot_type_id;
 
+typedef enum {
+	CREATED,
+	PURGED
+} knot_event_id;
+
 typedef struct {
 	uint32_t ttl;
 	struct {
@@ -123,16 +128,14 @@ static void knot_zone_rrset_free(void *value)
 	RedisModule_Free(rrset);
 }
 
-static inline RedisModuleKey *find_event_stream(RedisModuleCtx *ctx, const uint8_t *origin, size_t origin_len, int rights)
+static inline RedisModuleKey *find_event_stream(RedisModuleCtx *ctx, int rights)
 {
-	static const uint8_t prefix = EVENTS;
-
-	if (ctx == NULL || origin == NULL) {
+	if (ctx == NULL) {
 		return NULL;
 	}
 
+	static const uint8_t prefix = EVENTS;
 	RedisModuleString *keyname = RedisModule_CreateString(ctx, (const char *)&prefix, sizeof(prefix));
-	RedisModule_StringAppendBuffer(ctx, keyname, (const char *)origin, origin_len);
 	RedisModuleKey *key = RedisModule_OpenKey(ctx, keyname, rights);
 	RedisModule_FreeString(ctx, keyname);
 
@@ -271,15 +274,13 @@ static int knot_zone_load(RedisModuleCtx *ctx, RedisModuleString **argv, int arg
 
 static int emit_event(RedisModuleCtx *ctx, const int event, RedisModuleString *origin_str)
 {
-	size_t origin_len = 0;
-	const uint8_t *origin = (const uint8_t *)RedisModule_StringPtrLen(origin_str, &origin_len);
-
-	RedisModuleKey *stream_key = find_event_stream(ctx, origin, origin_len, REDISMODULE_READ | REDISMODULE_WRITE);
+	RedisModuleKey *stream_key = find_event_stream(ctx, REDISMODULE_READ | REDISMODULE_WRITE);
 	int zone_stream_type = RedisModule_KeyType(stream_key);
 	if (zone_stream_type != REDISMODULE_KEYTYPE_EMPTY && zone_stream_type != REDISMODULE_KEYTYPE_STREAM) {
 		RedisModule_CloseKey(stream_key);
 		return RedisModule_ReplyWithError(ctx, "ERR ERR Bad data");
 	}
+
 	RedisModuleString *_event[] = {
 		RedisModule_CreateString(ctx, "event", sizeof("event")),
 		RedisModule_CreateStringFromLongLong(ctx, event),
@@ -335,7 +336,7 @@ static int knot_zone_purge(RedisModuleCtx *ctx, RedisModuleString **argv, int ar
 	RedisModule_DeleteKey(zone_key);
 	RedisModule_CloseKey(zone_key);
 
-	(void)emit_event(ctx, 0, argv[1]); // TODO 0 == PURGED
+	(void)emit_event(ctx, PURGED, argv[1]);
 
 	RedisModule_ReplyWithEmptyString(ctx);
 
@@ -371,7 +372,7 @@ static int knot_rrset_store(RedisModuleCtx *ctx, RedisModuleString **argv, int a
 		RedisModule_CloseKey(zone_key);
 		return RedisModule_ReplyWithError(ctx, "ERR Bad data");
 	} else if (zone_keytype == REDISMODULE_KEYTYPE_EMPTY) {
-		(void)emit_event(ctx, 1, argv[1]); // TODO 1 == CREATED
+		(void)emit_event(ctx, CREATED, argv[1]);
 	}
 
 	uint16_t rtype = type;
