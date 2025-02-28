@@ -207,6 +207,7 @@ static int knot_zone_exists(RedisModuleCtx *ctx, RedisModuleString **argv, int a
 		return RedisModule_ReplyWithLongLong(ctx, ntohl(serial));
 	}
 	RedisModule_ZsetRangeStop(zone_key);
+	RedisModule_CloseKey(zone_key);
 
 	return RedisModule_ReplyWithLongLong(ctx, -1);
 }
