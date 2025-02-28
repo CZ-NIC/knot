@@ -99,8 +99,21 @@ static void knot_zone_rrset_save(RedisModuleIO *rdb, void *value)
 
 static void knot_zone_rrset_rewrite(RedisModuleIO *aof, RedisModuleString *key, void *value)
 {
-	// TODO insert-by-id
-	RedisModule_EmitAOF(aof, "KNOT.RRSET.INSERT", "sss", "com.", "dns1.example.com.", "A");
+	knot_zone_rrset_v *rrset = (knot_zone_rrset_v *)value;
+	size_t key_strlen = 0;
+	const uint8_t *key_str = (const uint8_t *)RedisModule_StringPtrLen(key, &key_strlen);
+	const uint8_t *origin = (const uint8_t *)(key_str + 1);
+	const uint8_t *owner = key_str + 1 + dname_size(origin);
+	uint16_t rtype = 0;
+	memcpy(&rtype, key_str + key_strlen - 2, sizeof(rtype));
+
+	RedisModule_EmitAOF(aof, "KNOT.RRSET.STORE", "bblllb",
+	                    origin, owner - origin,
+	                    owner, dname_size(owner),
+	                    (long long)rtype,
+	                    (long long)rrset->ttl,
+	                    (long long)rrset->rrs.count,
+	                    rrset->rrs.rdata, rrset->rrs.size);
 }
 
 static void knot_zone_rrset_free(void *value)
