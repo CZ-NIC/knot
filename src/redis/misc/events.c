@@ -16,11 +16,11 @@ int main(int argv, char** args)
 		return 1;
 	}
 
-	uint8_t stream[] = {'\x00', '\x02', 'n', 'u', '\x00'};
+	uint8_t stream = '\x00';
 	char begin[128] = { '$', '\x00'};
 	redisReply *reply;
 	// BLOCK 0 means block indefinetly, use time in ms (milliseconds)
-	while(reply = redisCommand(ctx,"XREAD BLOCK 0 STREAMS %b %s", stream, sizeof(stream), begin)) {
+	while(reply = redisCommand(ctx,"XREAD BLOCK 0 STREAMS %b %s", &stream, sizeof(stream), begin)) {
 		if (reply == NULL){
 			printf("Response not recev");
 			return -1;
