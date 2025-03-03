@@ -102,6 +102,15 @@ static void knot_zone_rrset_save(RedisModuleIO *rdb, void *value)
 	RedisModule_SaveStringBuffer(rdb, (const char *)rrset->rrs.rdata, rrset->rrs.size);
 }
 
+static size_t knot_zone_rrset_mem_usage(const void *value)
+{
+	const knot_zone_rrset_v *rrset = (const knot_zone_rrset_v *)value;
+	if (value == NULL) {
+		return 0UL;
+	}
+	return sizeof(*rrset) + rrset->rrs.size;
+}
+
 static void knot_zone_rrset_rewrite(RedisModuleIO *aof, RedisModuleString *key, void *value)
 {
 	knot_zone_rrset_v *rrset = (knot_zone_rrset_v *)value;
@@ -433,6 +442,7 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx)
 		.version = REDISMODULE_TYPE_METHOD_VERSION,
 		.rdb_load = knot_zone_rrset_load,
 		.rdb_save = knot_zone_rrset_save,
+		.mem_usage = knot_zone_rrset_mem_usage,
 		.aof_rewrite = knot_zone_rrset_rewrite,
 		.free = knot_zone_rrset_free
 	};
