@@ -815,13 +815,9 @@ static int process_query_packet(const knot_pkt_t      *query,
 		knot_dname_t *zone_name = NULL;
 		uint16_t type_needed = 0;
 		struct kdig_dnssec_ctx *dv_ctx = query_ctx->dv_ctx;
-		ret = kdig_dnssec_validate(reply, &dv_ctx, 2, &zone_name, &type_needed);
+		ret = kdig_dnssec_validate(reply, &dv_ctx, KDIG_VALIDATION_LOG_REASONING, &zone_name, &type_needed);
 		if (ret == KNOT_EAGAIN) { // need to re-query to get DNSKEY and/or SOA
 			knot_pkt_free(reply);
-
-			if (type_needed == KNOT_RRTYPE_SOA) {
-				INFO("DNSSEC VALIDATION: subsequent queries in short:");
-			}
 
 			query_t new_ctx = *query_ctx;
 			new_ctx.owner = knot_dname_to_str_alloc(zone_name);
@@ -846,7 +842,7 @@ static int process_query_packet(const knot_pkt_t      *query,
 			return ret;
 		}
 		if (ret != KNOT_EOK) {
-			ERR("DNSSEC VALIDATION: failed (%s)", knot_strerror(ret));
+			ERR("DNSSEC VALIDATION FAILED to proceed (%s)", knot_strerror(ret));
 		}
 	}
 #endif // KDIG_DNSSEC_VALIDATION &&!NO_DNSSEC_VALIDATION

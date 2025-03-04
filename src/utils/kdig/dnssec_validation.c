@@ -32,6 +32,30 @@ typedef struct kdig_dnssec_ctx {
 	dnssec_validation_hint_t hint;
 } kdig_dnssec_ctx_t;
 
+static void kdv_log(kdig_validation_log_level_t log_level, kdig_validation_log_level_t set_level,
+                    const knot_dname_t *at, const char *msg, ...)
+{
+	if (set_level >= log_level) {
+		fprintf(stdout, ";; DNSSEC VALIDATION: ");
+		va_list args;
+		va_start(args, msg);
+		vfprintf(stdout, msg, args);
+		va_end(args);
+		if (at != NULL) {
+			char at_txt[KNOT_DNAME_TXT_MAXLEN] = { 0 };
+			knot_dname_to_str(at_txt, at, sizeof(at_txt));
+			fprintf(stdout, " at %s\n", at_txt);
+		} else {
+			fprintf(stdout, "\n");
+		}
+	}
+}
+
+#define LOG_OUTCOME(level, at, msg, ...) kdv_log(KDIG_VALIDATION_LOG_OUTCOME,   level, at, msg, ##__VA_ARGS__)
+#define LOG_ERROR(level, at, msg, ...)   kdv_log(KDIG_VALIDATION_LOG_ERRORS,    level, at, msg, ##__VA_ARGS__)
+#define LOG_INF(level, at, msg, ...)     kdv_log(KDIG_VALIDATION_LOG_INFOS,     level, at, msg, ##__VA_ARGS__)
+#define LOG_REASON(level, at, msg, ...)  kdv_log(KDIG_VALIDATION_LOG_REASONING, level, at, msg, ##__VA_ARGS__)
+
 static bool parents_have_rrtype(zone_node_t *n, uint16_t type)
 {
 	while ((n = node_parent(n)) != NULL) {
@@ -112,13 +136,15 @@ static bool bitmap_covers_nsec3(const knot_rdata_t *rdata, uint16_t covered_type
 	return dnssec_nsec_bitmap_contains(bitmap, bm_len, covered_type);
 }
 
-static bool has_nodata_nolog(zone_contents_t *conts, const knot_dname_t *name, uint16_t type,
-                             const knot_dname_t **where)
+static bool has_nodata(zone_contents_t *conts, const knot_dname_t *name, uint16_t type,
+                       const knot_dname_t **where)
 {
 	if (!has_nsec3(conts)) {
 		const zone_node_t *node = zone_contents_find_node(conts, name);
 		knot_rrset_t nsec = node_rrset(node, KNOT_RRTYPE_NSEC);
-		*where = nsec.owner;
+		if (where != NULL) {
+			*where = nsec.owner;
+		}
 		return !knot_rrset_empty(&nsec) && (!type || !bitmap_covers_nsec(nsec.rrs.rdata, type));
 	}
 
@@ -128,24 +154,10 @@ static bool has_nodata_nolog(zone_contents_t *conts, const knot_dname_t *name, u
 		return false; // best effort
 	}
 	knot_rrset_t nsec3 = node_rrset(nsec3_node, KNOT_RRTYPE_NSEC3);
-	*where = nsec3.owner;
-	return !knot_rrset_empty(&nsec3) && (!type || !bitmap_covers_nsec3(nsec3.rrs.rdata, type));
-}
-
-static bool has_nodata(zone_contents_t *conts, const knot_dname_t *name, uint16_t type, bool is_deleg, int debug)
-{
-	const knot_dname_t *where = NULL;
-	bool res = has_nodata_nolog(conts, name, type, &where);
-	if (debug > 1) {
-		char where_txt[KNOT_DNAME_TXT_MAXLEN] = { 0 };
-		if (where != NULL) {
-			knot_dname_to_str(where_txt, where, sizeof(where_txt));
-		}
-		printf(";; INFO: DNSSEC VALIDATION: %s proof %s %s\n",
-		       type == 0 ? "encloser" : is_deleg ? "DS nonexistence" : "NODATA",
-		       res ? "found" : "not found", where_txt);
+	if (where != NULL) {
+		*where = nsec3.owner;
 	}
-	return res;
+	return !knot_rrset_empty(&nsec3) && (!type || !bitmap_covers_nsec3(nsec3.rrs.rdata, type));
 }
 
 static bool nsec_covers_name(const knot_dname_t *nsec_owner, const knot_rdata_t *nsec_rdata,
@@ -165,8 +177,9 @@ static bool nsec3_covers_name(const knot_dname_t *nsec3_owner, const knot_rdata_
 	return ret == KNOT_EOK /* best effort */ && knot_dname_cmp(nsec3_owner, name) <= 0 && knot_dname_cmp(name, nsec3_next) < 0;
 }
 
-static bool has_nxdomain_nolog(zone_contents_t *conts, const knot_dname_t *name, bool opt_out, int debug,
-                               const knot_dname_t **where, const knot_dname_t **encloser)
+static bool has_nxdomain(zone_contents_t *conts, const knot_dname_t *name, bool opt_out,
+                         kdig_validation_log_level_t level,
+                         const knot_dname_t **where, const knot_dname_t **encloser)
 {
 	if (!has_nsec3(conts)) {
 		const zone_node_t *match = NULL, *closest = NULL, *prev = NULL;
@@ -184,14 +197,24 @@ static bool has_nxdomain_nolog(zone_contents_t *conts, const knot_dname_t *name,
 	}
 
 	// scan for closest encloser represented by some NSEC3, because the closest encloser node might not be here
-	size_t apex_lbs = knot_dname_labels(conts->apex->owner, NULL);
+	size_t apex_lbs = knot_dname_labels(conts->apex->owner, NULL), name_lbs = knot_dname_labels(name, NULL);
+	const knot_dname_t *enc_where = NULL;
 	*encloser = knot_dname_next_label(name);
-	for (size_t name_lbs = knot_dname_labels(name, NULL); name_lbs > apex_lbs; name_lbs--) {
-		if (has_nodata(conts, *encloser, 0, false, debug)) {
+	for ( ; name_lbs > apex_lbs; name_lbs--) {
+		if (has_nodata(conts, *encloser, 0, &enc_where) ||
+		    zone_contents_find_node(conts, *encloser) != NULL) { // tricky exception: in some cases the closest encloser is proven by existence of stuff, e.g. RFC 5155 § 7.2.6
 			break;
 		}
 		name = *encloser;
 		*encloser = knot_dname_next_label(name);
+	}
+	if (name_lbs <= apex_lbs) {
+		LOG_ERROR(level, name, "NSEC3 encloser proof not found");
+		return false;
+	} else {
+		char enc_name[KNOT_DNAME_TXT_MAXLEN] = { 0 };
+		(void)knot_dname_to_str(enc_name, *encloser, sizeof(enc_name));
+		LOG_INF(level, enc_where != NULL ? enc_where : *encloser, "NSEC3 encloser %s found", enc_name);
 	}
 
 	const zone_node_t *nsec3_node = NULL, *nsec3_prev = NULL;
@@ -208,25 +231,6 @@ static bool has_nxdomain_nolog(zone_contents_t *conts, const knot_dname_t *name,
 	*where = nsec3.owner;
 	return !knot_rrset_empty(&nsec3) && nsec3_covers_name(nsec3_prev->owner, nsec3.rrs.rdata, nsec3_name, conts->apex->owner) &&
 	       (!opt_out || (knot_nsec3_flags(nsec3.rrs.rdata) & KNOT_NSEC3_FLAG_OPT_OUT));
-}
-
-static bool has_nxdomain(zone_contents_t *conts, const knot_dname_t *name,
-                         bool opt_out, int debug,
-                         const knot_dname_t **encloser)
-{
-	const knot_dname_t *where = NULL;
-	bool res = has_nxdomain_nolog(conts, name, opt_out, debug, &where, encloser);
-	if (debug > 1) {
-		char name_txt[KNOT_DNAME_TXT_MAXLEN] = { 0 }, where_txt[KNOT_DNAME_TXT_MAXLEN] = { 0 };
-		knot_dname_to_str(name_txt, name, sizeof(name_txt));
-		if (where != NULL) {
-			knot_dname_to_str(where_txt, where, sizeof(where_txt));
-		}
-		printf(";; INFO: DNSSEC VALIDATION: %s proof of %s %s %s\n",
-		       opt_out ? "opt-out" : *encloser == name ? "empty non-terminal" : "NXDOMAIN",
-		       name_txt, res ? "found" : "not found", where_txt);
-	}
-	return res;
 }
 
 static const knot_rrset_t *find_first(knot_pkt_t *pkt, uint16_t rrtype, knot_section_t limit)
@@ -253,7 +257,8 @@ int remove_cnames(zone_node_t *node, void *data)
 }
 
 static int rrsets_pkt2conts(knot_pkt_t *pkt, zone_contents_t *conts,
-                            knot_section_t limit, uint16_t type_only)
+                            knot_section_t limit, uint16_t type_only,
+                            kdig_validation_log_level_t level)
 {
 	int ret = KNOT_EOK;
 	for (int i = 0; i <= limit && ret == KNOT_EOK; i++) {
@@ -281,7 +286,7 @@ static int rrsets_pkt2conts(knot_pkt_t *pkt, zone_contents_t *conts,
 			if (ret == KNOT_ETTL) {
 				char rrtype[16] = { 0 };
 				knot_rrtype_to_string(rr->type, rrtype, sizeof(rrtype));
-				fprintf(stderr, ";; WARNING: DNSSSEC VALIDATION: mismatched TTLs for type %s\n", rrtype);
+				LOG_INF(level, rr->owner, "WARNING: mismatched TTLs for type %s", rrtype);
 				ret = KNOT_EOK;
 			}
 		}
@@ -289,7 +294,7 @@ static int rrsets_pkt2conts(knot_pkt_t *pkt, zone_contents_t *conts,
 	return ret;
 }
 
-static int solve_missing_apex(knot_pkt_t *pkt, uint16_t rrtype, zone_contents_t *conts)
+static int solve_missing_apex(knot_pkt_t *pkt, uint16_t rrtype, zone_contents_t *conts, kdig_validation_log_level_t level)
 {
 	if (node_rrtype_exists(conts->apex, rrtype)) {
 		return KNOT_EOK;
@@ -297,7 +302,7 @@ static int solve_missing_apex(knot_pkt_t *pkt, uint16_t rrtype, zone_contents_t 
 	if (knot_pkt_qtype(pkt) != rrtype || !knot_dname_is_equal(knot_pkt_qname(pkt), conts->apex->owner)) {
 		return KNOT_EAGAIN;
 	}
-	int ret = rrsets_pkt2conts(pkt, conts, KNOT_ANSWER, rrtype);
+	int ret = rrsets_pkt2conts(pkt, conts, KNOT_ANSWER, rrtype, level);
 	if (ret == KNOT_EOK && !node_rrtype_exists(conts->apex, rrtype)) {
 		ret = KNOT_ENOENT;
 	}
@@ -305,14 +310,16 @@ static int solve_missing_apex(knot_pkt_t *pkt, uint16_t rrtype, zone_contents_t 
 }
 
 static int check_cname(zone_contents_t *conts, const knot_dname_t *cname,
-                       uint16_t type, dnssec_validation_hint_t *hint, int debug,
+                       uint16_t type, dnssec_validation_hint_t *hint,
+                       kdig_validation_log_level_t level,
                        unsigned cname_visit, knot_rcode_t *expected_rcode);
 
 static int check_name(zone_contents_t *conts, const knot_dname_t *name,
-                      uint16_t type, dnssec_validation_hint_t *hint, int debug,
+                      uint16_t type, dnssec_validation_hint_t *hint,
+                      kdig_validation_log_level_t level,
                       unsigned cname_visit, knot_rcode_t *expected_rcode)
 {
-	const knot_dname_t *encloser = NULL;
+	const knot_dname_t *where = NULL, *encloser = NULL;
 	const zone_node_t *match = NULL, *closest = NULL, *prev = NULL;
 	int ret = zone_contents_find_dname(conts, name, &match, &closest, &prev, false/*FIME*/);
 	if (ret < 0) {
@@ -325,32 +332,48 @@ static int check_name(zone_contents_t *conts, const knot_dname_t *name,
 		closest = node_parent(closest);
 	}
 	if ((closest->flags & NODE_FLAGS_DELEG)) {
-		if (!node_rrtype_exists(closest, KNOT_RRTYPE_DS) &&
-		    !has_nodata(conts, closest->owner, KNOT_RRTYPE_DS, true, debug) &&
-		    !has_nxdomain(conts, closest->owner, true, debug, &encloser)) {
+		if (node_rrtype_exists(closest, KNOT_RRTYPE_DS)) {
+			LOG_INF(level, closest->owner, "secure delegation, DS found");
+			return KNOT_EOK;
+		} else if (has_nodata(conts, closest->owner, KNOT_RRTYPE_DS, &where)) {
+			LOG_INF(level, where, "insecure delegation, DS NODATA proof found");
+		} else if (has_nxdomain(conts, closest->owner, true, level, &where, &encloser)) {
+			LOG_INF(level, where, "insecure delegation, opt-out proof found");
+		} else {
+			LOG_ERROR(level, closest->owner, "delegation, DS non-existence proof missing");
 			set_hint(hint, closest->owner, KNOT_RRTYPE_DS, KNOT_DNSSEC_ENONSEC);
 			return 1;
 		}
 	} else if (ret == ZONE_NAME_NOT_FOUND) {
-		if (has_nsec3(conts) && has_nodata(conts, name, type, false, debug)) {
+		if (has_nsec3(conts) && has_nodata(conts, name, type, &where)) {
+			LOG_INF(level, where, "NSEC3 NODATA proof found");
 			return KNOT_EOK;
 		}
 		if (node_rrtype_exists(closest, KNOT_RRTYPE_DNAME)) {
 			const knot_dname_t *dname_tgt = knot_dname_target(node_rdataset(closest, KNOT_RRTYPE_DNAME)->rdata);
 			size_t labels = knot_dname_labels(closest->owner, NULL);
 			knot_dname_t *cname = knot_dname_replace_suffix(name, labels, dname_tgt, NULL);
-			ret = cname == NULL ? KNOT_ENOMEM : check_cname(conts, cname, type, hint, debug, cname_visit, expected_rcode);
+			if (cname == NULL) {
+				return KNOT_ENOMEM;
+			}
+			LOG_INF(level, cname, "DNAME found, continuing validation");
+			ret = check_cname(conts, cname, type, hint, level, cname_visit, expected_rcode);
 			knot_dname_free(cname, NULL);
 			return ret;
 		}
-		if (!has_nxdomain(conts, name, false, debug, &encloser)) {
+		if (has_nxdomain(conts, name, false, level, &where, &encloser)) {
+			LOG_INF(level, where, "NXDOMAIN proven");
+		} else {
 			if (cname_visit > 0) {
+				LOG_INF(level, name, "CNAME/DNAME chain not returned whole, please re-query for the target");
 				return KNOT_EOK; // auth is not obligated to follow the chain whole
 			}
+			LOG_ERROR(level, name, "NXDOMAIN proof missing");
 			set_hint(hint, name, type, KNOT_DNSSEC_ENSEC_CHAIN);
 			return 1;
 		}
 		if (encloser == name) {
+			LOG_INF(level, name, "empty non-terminal detected, wildcard non-applicable");
 			return KNOT_EOK; // empty non-terminal
 		}
 		if (knot_dname_is_wildcard(name)) {
@@ -360,39 +383,44 @@ static int check_name(zone_contents_t *conts, const knot_dname_t *name,
 		} else {
 			knot_dname_t wc[2 + knot_dname_size(encloser)];
 			knot_dname_wildcard(encloser, wc, sizeof(wc));
-			ret = check_name(conts, wc, type, hint, debug, cname_visit, expected_rcode);
+			LOG_INF(level, wc, "checking wildcard non/existence");
+			return check_name(conts, wc, type, hint, level, cname_visit, expected_rcode);
 		}
 	} else if (node_rrtype_exists(match, KNOT_RRTYPE_CNAME)) {
 		const knot_rdataset_t *cn = node_rdataset(match, KNOT_RRTYPE_CNAME);
-		return check_cname(conts, knot_cname_name(cn->rdata), type, hint, debug, cname_visit, expected_rcode);
+		LOG_INF(level, knot_cname_name(cn->rdata), "CNAME found, continuing validation");
+		return check_cname(conts, knot_cname_name(cn->rdata), type, hint, level, cname_visit, expected_rcode);
 	} else if (!node_rrtype_exists(match, type)) {
-		if (!has_nodata(conts, match->owner, type, false, debug)) {
+		if (has_nodata(conts, match->owner, type, &where)) {
+			LOG_INF(level, match->owner, "NSEC NODATA proof found");
+		} else {
+			LOG_ERROR(level, match->owner, "NODATA proof missing");
 			set_hint(hint, match->owner, type, KNOT_DNSSEC_ENSEC_BITMAP);
 			return 1;
 		}
-	} else if (debug > 1) {
-		char name_txt[KNOT_DNAME_TXT_MAXLEN] = { 0 };
-		knot_dname_to_str(name_txt, match->owner, sizeof(name_txt));
-		printf(";; INFO: DNSSEC VALIDATION: detected positive answer %s\n", name_txt);
+	} else {
+		LOG_INF(level, match->owner, "positive answer found");
 	}
 	return KNOT_EOK;
 }
 
 static int check_cname(zone_contents_t *conts, const knot_dname_t *cname,
-                       uint16_t type, dnssec_validation_hint_t *hint, int debug,
+                       uint16_t type, dnssec_validation_hint_t *hint,
+                       kdig_validation_log_level_t level,
                        unsigned cname_visit, knot_rcode_t *expected_rcode)
 {
 	if (knot_dname_in_bailiwick(cname, conts->apex->owner) < 0) {
 		return KNOT_EOK;
 	}
 	if (cname_visit >= CNAME_LIMIT) {
-		printf(";; INFO: DNSSEC VALIDATION: limit of CNAME/DNAME chain reached, giving up\n");
+		LOG_INF(level, cname, "limit of CNAME/DNAME chain reached, giving up");
 		return KNOT_EOK;
 	}
-	return check_name(conts, cname, type, hint, debug, cname_visit + 1, expected_rcode);
+	return check_name(conts, cname, type, hint, level, cname_visit + 1, expected_rcode);
 }
 
-static int dv(knot_pkt_t *pkt, kdig_dnssec_ctx_t **dv_ctx, int debug,
+static int dv(knot_pkt_t *pkt, kdig_dnssec_ctx_t **dv_ctx,
+              kdig_validation_log_level_t level,
 	      knot_dname_t **zone_name, uint16_t *type_needed)
 {
 	zone_contents_t *conts = NULL;
@@ -413,10 +441,10 @@ static int dv(knot_pkt_t *pkt, kdig_dnssec_ctx_t **dv_ctx, int debug,
 		}
 		const knot_dname_t *rrsig_zone = knot_rrsig_signer_name(some_rrsig->rrs.rdata);
 		memcpy(*zone_name, rrsig_zone, knot_dname_size(rrsig_zone));
-		if (debug > 1) {
+		if (level >= KDIG_VALIDATION_LOG_INFOS) {
 			char zn[KNOT_DNAME_TXT_MAXLEN] = { 0 };
 			knot_dname_to_str(zn, rrsig_zone, sizeof(zn));
-			fprintf(stderr, ";; INFO: DNSSEC VALIDATION for zone: %s\n", zn);
+			LOG_INF(level, NULL, "for zone: %s", zn);
 		}
 
 		*dv_ctx = calloc(1, sizeof(**dv_ctx));
@@ -430,7 +458,7 @@ static int dv(knot_pkt_t *pkt, kdig_dnssec_ctx_t **dv_ctx, int debug,
 		(*dv_ctx)->orig_qtype = knot_pkt_qtype(pkt);
 		(*dv_ctx)->orig_rcode = knot_pkt_ext_rcode(pkt);
 
-		int ret = rrsets_pkt2conts(pkt, conts, KNOT_AUTHORITY, 0);
+		int ret = rrsets_pkt2conts(pkt, conts, KNOT_AUTHORITY, 0, level);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
@@ -449,13 +477,13 @@ static int dv(knot_pkt_t *pkt, kdig_dnssec_ctx_t **dv_ctx, int debug,
 		memcpy(*zone_name, conts->apex->owner, knot_dname_size(conts->apex->owner));
 	}
 
-	int ret = solve_missing_apex(pkt, KNOT_RRTYPE_SOA, conts);
+	int ret = solve_missing_apex(pkt, KNOT_RRTYPE_SOA, conts, level);
 	if (ret != KNOT_EOK) { // EAGAIN or failure
 		*type_needed = KNOT_RRTYPE_SOA;
 		return ret;
 	}
 
-	ret = solve_missing_apex(pkt, KNOT_RRTYPE_DNSKEY, conts);
+	ret = solve_missing_apex(pkt, KNOT_RRTYPE_DNSKEY, conts, level);
 	if (ret != KNOT_EOK) { // EAGAIN or failure
 		*type_needed = KNOT_RRTYPE_DNSKEY;
 		return ret;
@@ -507,7 +535,7 @@ static int dv(knot_pkt_t *pkt, kdig_dnssec_ctx_t **dv_ctx, int debug,
 	dnssec_validation_hint_t *hint = &(*dv_ctx)->hint;
 	knot_rcode_t expected_rcode = KNOT_RCODE_NOERROR;
 
-	ret = check_name(conts, (*dv_ctx)->orig_qname, (*dv_ctx)->orig_qtype, hint, debug, 0, &expected_rcode);
+	ret = check_name(conts, (*dv_ctx)->orig_qname, (*dv_ctx)->orig_qtype, hint, level, 0, &expected_rcode);
 	if (ret != KNOT_EOK) { // also '1'
 		return ret;
 	}
@@ -530,34 +558,40 @@ static int dv(knot_pkt_t *pkt, kdig_dnssec_ctx_t **dv_ctx, int debug,
 
 	if (expected_rcode != (*dv_ctx)->orig_rcode) {
 		const knot_lookup_t *item = knot_lookup_by_id(knot_rcode_names, expected_rcode);
-		fprintf(stderr, ";; INFO: DNSSEC VALIDATION expected RCODE was: %s\n", item->name);
-	} else if (debug > 1) {
-		printf(";; INFO: DNSSEC VALIDATION: correct RCODE found\n");
+		LOG_ERROR(level, NULL, "expected RCODE was: %s", item->name);
+		hint->warning = KNOT_ESEMCHECK;
+		return 1;
+	} else {
+		LOG_INF(level, NULL, "correct RCODE found");
 	}
 
 	return ret;
 }
 
-int kdig_dnssec_validate(knot_pkt_t *pkt, struct kdig_dnssec_ctx **dv_ctx, int debug,
-	                 knot_dname_t **zone_name, uint16_t *type_needed)
+int kdig_dnssec_validate(knot_pkt_t *pkt, struct kdig_dnssec_ctx **dv_ctx,
+                         kdig_validation_log_level_t level,
+                         knot_dname_t **zone_name, uint16_t *type_needed)
 {
-	int ret = dv(pkt, dv_ctx, debug, zone_name, type_needed);
+	char type_txt[16] = { 0 };
+	int ret = dv(pkt, dv_ctx, level, zone_name, type_needed);
 	if (ret == 1) {
-		fprintf(stderr, ";; INFO: DNSSEC VALIDATION NOK! (%s)\n", knot_strerror((*dv_ctx)->hint.warning));
 		if ((*dv_ctx)->hint.node != NULL) {
-			char hint_name[KNOT_DNAME_TXT_MAXLEN] = { 0 }, hint_type[16] = { 0 };
-			knot_dname_to_str(hint_name, (*dv_ctx)->hint.node, sizeof(hint_name));
-			knot_rrtype_to_string((*dv_ctx)->hint.rrtype, hint_type, sizeof(hint_type));
-			fprintf(stderr, ";; INFO: DNSSEC VALIDATION HINT: %s %s\n", hint_name, hint_type);
+			knot_rrtype_to_string((*dv_ctx)->hint.rrtype, type_txt, sizeof(type_txt));
+			LOG_OUTCOME(level, (*dv_ctx)->hint.node, "failure hint: %s", type_txt);
+
 			knot_dname_free((void*)(*dv_ctx)->hint.node, NULL);
 			(*dv_ctx)->hint.node = NULL;
 		}
+		LOG_OUTCOME(level, NULL, "NOK! (%s)", knot_strerror((*dv_ctx)->hint.warning));
 		ret = KNOT_EOK;
 	} else if (ret == KNOT_EOK) {
-		fprintf(stderr, ";; INFO: DNSSEC VALIDATION OK!\n");
+		LOG_OUTCOME(level, NULL, "OK!");
 	}
 
-	if (ret != KNOT_EAGAIN) {
+	if (ret == KNOT_EAGAIN) {
+		knot_rrtype_to_string(*type_needed, type_txt, sizeof(type_txt));
+		LOG_INF(level, *zone_name, "need to re-query for %s", type_txt);
+	} else {
 		if (*dv_ctx != NULL) {
 			zone_contents_deep_free((*dv_ctx)->conts);
 			free((*dv_ctx)->orig_qname);

@@ -20,5 +20,14 @@
 
 struct kdig_dnssec_ctx;
 
-int kdig_dnssec_validate(knot_pkt_t *pkt, struct kdig_dnssec_ctx **dv_ctx, int debug,
+typedef enum {
+	KDIG_VALIDATION_LOG_NONE,
+	KDIG_VALIDATION_LOG_OUTCOME,
+	KDIG_VALIDATION_LOG_ERRORS,
+	KDIG_VALIDATION_LOG_INFOS,
+	KDIG_VALIDATION_LOG_REASONING,
+} kdig_validation_log_level_t;
+
+int kdig_dnssec_validate(knot_pkt_t *pkt, struct kdig_dnssec_ctx **dv_ctx,
+                         kdig_validation_log_level_t level,
                          knot_dname_t **zone_name, uint16_t *type_needed);
