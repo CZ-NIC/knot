@@ -187,6 +187,9 @@ static bool has_nxdomain(zone_contents_t *conts, const knot_dname_t *name, bool 
 		if (ret != 0) { // either found or error
 			return false;
 		}
+		while (prev->rrset_count == 0) {
+			prev = node_prev(prev);
+		}
 		knot_rrset_t nsec = node_rrset(prev, KNOT_RRTYPE_NSEC);
 		*where = nsec.owner;
 		*encloser = closest->owner;
@@ -384,7 +387,7 @@ static int check_name(zone_contents_t *conts, const knot_dname_t *name,
 			knot_dname_t wc[2 + knot_dname_size(encloser)];
 			knot_dname_wildcard(encloser, wc, sizeof(wc));
 			LOG_INF(level, wc, "checking wildcard non/existence");
-			return check_name(conts, wc, type, hint, level, cname_visit, expected_rcode);
+			return check_name(conts, wc, type, hint, level, 0, expected_rcode);
 		}
 	} else if (node_rrtype_exists(match, KNOT_RRTYPE_CNAME)) {
 		const knot_rdataset_t *cn = node_rdataset(match, KNOT_RRTYPE_CNAME);
