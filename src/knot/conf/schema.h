@@ -183,6 +183,8 @@
 #define C_ZONEMD_VERIFY		"\x0D""zonemd-verify"
 #define C_ZONE_BACKEND		"\x0C""zone-backend"
 #define C_ZONE_DB_LISTEN	"\x0E""zone-db-listen"
+#define C_ZONE_DB_TLS		"\x0B""zone-db-tls"
+#define C_ZONE_DB_CERT_KEY	"\x10""zone-db-cert-key"
 #define C_ZONE_MAX_SIZE		"\x0D""zone-max-size"
 #define C_ZONE_MAX_TTL		"\x0C""zone-max-ttl"
 #define C_ZSK_LIFETIME		"\x0C""zsk-lifetime"

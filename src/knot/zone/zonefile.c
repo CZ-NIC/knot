@@ -186,6 +186,9 @@ int zonefile_open(zloader_t *loader, const char *source, const knot_dname_t *ori
 }
 
 #ifdef ENABLE_REDIS
+
+#include "knot/common/hiredis.h"
+
 redisContext *zone_rdb_connect(conf_t *conf)
 {
 	conf_val_t db_listen = conf_db_param(conf, C_ZONE_DB_LISTEN);
@@ -212,6 +215,30 @@ redisContext *zone_rdb_connect(conf_t *conf)
 	} else if (rdb->err) {
 		log_error("rdb, failed to connect (%s)", rdb->errstr);
 		return NULL;
+	}
+
+	if (conf_get_bool(conf, C_DB, C_ZONE_DB_TLS)) {
+		char *cert_file = conf_tls(conf, C_CERT_FILE);
+		char *key_file = conf_tls(conf, C_KEY_FILE);
+		//
+		free(key_file);
+		free(cert_file);
+
+		conf_val_t val = conf_db_param(conf, C_ZONE_DB_CERT_KEY);
+		size_t pin_len;
+		const uint8_t *pin = conf_bin(&val, &pin_len);
+		struct knot_creds *creds = knot_creds_init_peer(NULL, pin, pin_len);
+		if (creds == NULL) {
+			redisFree(rdb);
+			return NULL;
+		}
+
+		int ret = hiredis_attach_gnutls(rdb, creds);
+		if (ret != KNOT_EOK) {
+			knot_creds_free(creds);
+			redisFree(rdb);
+			return NULL;
+		}
 	}
 
 	return rdb;

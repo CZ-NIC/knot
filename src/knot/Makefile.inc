@@ -232,6 +232,12 @@ libknotd_la_SOURCES = \
 	knot/zone/zonefile.c			\
 	knot/zone/zonefile.h
 
+if ENABLE_REDIS
+libknotd_la_SOURCES += \
+	knot/common/hiredis.c	\
+	knot/common/hiredis.h
+endif ENABLE_REDIS
+
 if ENABLE_QUIC
 libknotd_la_SOURCES += \
 	knot/query/quic-requestor.c		\
