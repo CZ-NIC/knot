@@ -183,53 +183,44 @@ static concurrent_ctl_ctx_t *find_free_ctx(concurrent_ctl_ctx_t *concurrent_ctxs
 	return res;
 }
 
-static int ctl_manage(knot_ctl_t *ctl, server_t *server, bool *exclusive,
-                      int thread_idx, concurrent_ctl_ctx_t *ctxs, size_t n_ctxs)
-{
-	int ret = KNOT_EOK;
-	if (*exclusive || find_free_ctx(ctxs, n_ctxs, ctl) == NULL) {
-		ret = ctl_process(ctl, server, thread_idx, exclusive);
-		knot_ctl_close(ctl);
-	}
-	return ret;
-}
-
 static int ctl_socket_thr(struct dthread *dt)
 {
 	ctl_socket_ctx_t *ctx = dt->data;
 	assert(dt == ctx->unit->threads[dt->idx]);
 
-	concurrent_ctl_ctx_t concurrent_ctxs[ctx->thrs_per_sock - 1];
-	ctl_init_ctxs(concurrent_ctxs, ctx->thrs_per_sock - 1, ctx->server,
-	              dt->idx * ctx->thrs_per_sock);
-	bool this_thread_exclusive = false;
+	unsigned sock_thrs_count = ctx->thrs_per_sock - 1;
+	unsigned thr_idx = dt->idx * ctx->thrs_per_sock;
+	knot_ctl_t *thr_ctl = ctx->ctls[dt->idx];
+	bool thr_exclusive = false;
 
-	knot_ctl_t *my_ctl = ctx->ctls[dt->idx];
+	concurrent_ctl_ctx_t concurrent_ctxs[sock_thrs_count];
+	ctl_init_ctxs(concurrent_ctxs, sock_thrs_count, ctx->server, thr_idx);
 
 	while (dt->unit->threads[0]->state & ThreadActive) {
-		if (ctl_cleanup_ctxs(concurrent_ctxs, ctx->thrs_per_sock - 1) == KNOT_CTL_ESTOP) {
+		if (ctl_cleanup_ctxs(concurrent_ctxs, sock_thrs_count) == KNOT_CTL_ESTOP) {
 			signals_req_stop = true;
 			break;
 		}
 
-		// Update control timeout.
-		knot_ctl_set_timeout(my_ctl, conf()->cache.ctl_timeout);
+		knot_ctl_set_timeout(thr_ctl, conf()->cache.ctl_timeout);
 
-		int ret = knot_ctl_accept(my_ctl);
+		int ret = knot_ctl_accept(thr_ctl);
 		if (ret != KNOT_EOK) {
 			continue;
 		}
 
-		ret = ctl_manage(my_ctl, ctx->server, &this_thread_exclusive,
-		                 dt->idx * ctx->thrs_per_sock, concurrent_ctxs,
-		                 ctx->thrs_per_sock - 1);
+		if (thr_exclusive ||
+		    find_free_ctx(concurrent_ctxs, sock_thrs_count, thr_ctl) == NULL) {
+			ret = ctl_process(thr_ctl, ctx->server, thr_idx, &thr_exclusive);
+			knot_ctl_close(thr_ctl);
+		}
 		if (ret == KNOT_CTL_ESTOP) {
 			signals_req_stop = true;
 			break;
 		}
 	}
 
-	ctl_finalize_ctxs(concurrent_ctxs, CTL_MAX_CONCURRENT);
+	ctl_finalize_ctxs(concurrent_ctxs, sock_thrs_count);
 
 	return 0;
 }

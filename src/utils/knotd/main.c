@@ -231,7 +231,11 @@ static void event_loop(server_t *server, const char *socket, bool daemonize,
 	signals_enable();
 
 	int n_ctlsocks = count_ctls(socket, &listen_val);
-	ctl_socket_ctx_t sctx = { .ctls = ctls, .server = server, .thrs_per_sock = CTL_MAX_CONCURRENT / n_ctlsocks };
+	ctl_socket_ctx_t sctx = {
+		.ctls = ctls,
+		.server = server,
+		.thrs_per_sock = CTL_MAX_CONCURRENT / n_ctlsocks
+	};
 	assert(sctx.thrs_per_sock > 1);
 	int ret = ctl_socket_thr_init(&sctx, n_ctlsocks);
 	if (ret != KNOT_EOK) {

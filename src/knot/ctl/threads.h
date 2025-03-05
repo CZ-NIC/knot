@@ -22,7 +22,7 @@ typedef struct {
 	knot_ctl_t **ctls;
 	server_t *server;
 	dt_unit_t *unit;
-	int thrs_per_sock;
+	unsigned thrs_per_sock;
 } ctl_socket_ctx_t;
 
 /*!

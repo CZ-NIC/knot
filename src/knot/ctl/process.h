@@ -1,4 +1,4 @@
-/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2025 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -31,4 +31,4 @@
  *
  * \return Error code, KNOT_EOK if successful.
  */
-int ctl_process(knot_ctl_t *ctl, server_t *server, int thread_idx, bool *exclusive);
+int ctl_process(knot_ctl_t *ctl, server_t *server, unsigned thread_idx, bool *exclusive);
