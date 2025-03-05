@@ -209,6 +209,8 @@ libknotd_la_SOURCES = \
 	knot/zone/serial.h			\
 	knot/zone/timers.c			\
 	knot/zone/timers.h			\
+	knot/zone/tls.c				\
+	knot/zone/tls.h				\
 	knot/zone/zone-diff.c			\
 	knot/zone/zone-diff.h			\
 	knot/zone/zone-dump.c			\
