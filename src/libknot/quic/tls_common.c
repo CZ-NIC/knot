@@ -1,4 +1,4 @@
-/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2025 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -367,7 +367,7 @@ int knot_tls_session(struct gnutls_session_int **session,
                      bool early_data,
                      bool server)
 {
-	if (session == NULL || creds == NULL || priority == NULL || alpn == NULL) {
+	if (session == NULL || creds == NULL || priority == NULL) {
 		return KNOT_EINVAL;
 	}
 
@@ -389,8 +389,10 @@ int knot_tls_session(struct gnutls_session_int **session,
 		ret = gnutls_session_ticket_enable_server(*session, &creds->tls_ticket_key);
 	}
 	if (ret == GNUTLS_E_SUCCESS) {
-		const gnutls_datum_t alpn_datum = { (void *)&alpn[1], alpn[0] };
-		gnutls_alpn_set_protocols(*session, &alpn_datum, 1, GNUTLS_ALPN_MANDATORY);
+		if (alpn) {
+			const gnutls_datum_t alpn_datum = { (void *)&alpn[1], alpn[0] };
+			gnutls_alpn_set_protocols(*session, &alpn_datum, 1, GNUTLS_ALPN_MANDATORY);
+		}
 		if (early_data) {
 			gnutls_record_set_max_early_data_size(*session, 0xffffffffu);
 		}

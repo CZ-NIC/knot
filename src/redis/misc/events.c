@@ -6,9 +6,18 @@
 
 #include <hiredis/hiredis.h>
 
+static void push_cb(void *privdata, void *reply)
+{
+	freeReplyObject(reply);
+}
+
 int main(int argv, char** args)
 {
-	redisContext *ctx = redisConnect("127.0.0.1", 6379);
+	redisOptions o = { 0 };
+	REDIS_OPTIONS_SET_TCP(&o, "127.0.0.1", 6379);
+	o.push_cb = push_cb;
+
+	redisContext *ctx = redisConnectWithOptions(&o);
 
 	if (ctx->err) {
 		/* Let context leak for now... */
