@@ -16,6 +16,8 @@
 
 #pragma once
 
+#include <pthread.h>
+
 #include "libknot/libknot.h"
 #include "libknot/yparser/ypschema.h"
 #include "contrib/qp-trie/trie.h"
@@ -131,7 +133,7 @@ typedef struct {
 		/*! Changed zones. */
 		trie_t *zones;
 		/*! Thread that initiated the txn (should access it exclusively). */
-		int thread_id;
+		pthread_t thread_id;
 	} io;
 
 	/*! Current config file (for reload if started with config file). */
