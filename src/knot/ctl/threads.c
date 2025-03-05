@@ -14,8 +14,6 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include <signal.h>
-#include <stdio.h>
 #include <urcu.h>
 
 #include "contrib/threads.h"
@@ -178,11 +176,11 @@ static int ctl_socket_thr(struct dthread *dt)
 
 	concurrent_ctl_ctx_t concurrent_ctxs[CTL_MAX_CONCURRENT] = { 0 };
 	ctl_init_ctxs(concurrent_ctxs, CTL_MAX_CONCURRENT, ctx->server);
-	bool this_thread_exclusive = false, stopped = false;
+	bool this_thread_exclusive = false;
 
 	while (dt->unit->threads[0]->state & ThreadActive) {
 		if (ctl_cleanup_ctxs(concurrent_ctxs, CTL_MAX_CONCURRENT) == KNOT_CTL_ESTOP) {
-			stopped = true;
+			signals_req_stop = true;
 			break;
 		}
 
@@ -196,13 +194,9 @@ static int ctl_socket_thr(struct dthread *dt)
 
 		ret = ctl_manage(ctx->ctl, ctx->server, &this_thread_exclusive, 0, concurrent_ctxs, CTL_MAX_CONCURRENT);
 		if (ret == KNOT_CTL_ESTOP) {
-			stopped = true;
+			signals_req_stop = true;
 			break;
 		}
-	}
-
-	if (stopped) {
-		(void)kill(getpid(), SIGTERM);
 	}
 
 	ctl_finalize_ctxs(concurrent_ctxs, CTL_MAX_CONCURRENT);
