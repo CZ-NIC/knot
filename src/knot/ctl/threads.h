@@ -51,7 +51,7 @@ void ctl_init_ctxs(concurrent_ctl_ctx_t *concurrent_ctxs, size_t n_ctxs, server_
 /*!
  * \brief Regularly check the state of parallel CTL processing workers.
  *
- * \param concurrent_ctxs    Parallel CTL procesing contexts.
+ * \param concurrent_ctxs    Parallel CTL processing contexts.
  * \param n_ctxs             Their number/count.
  *
  * \retval KNOT_ESTOP   Server shutdown requested.
@@ -70,14 +70,14 @@ void ctl_finalize_ctxs(concurrent_ctl_ctx_t *concurrent_ctxs, size_t n_ctxs);
 /*!
  * Find/create a thread processing incomming control commands.
  *
- * \param[in]       ctl        Control context.
- * \param[in]       server     Server instance.
- * \param[in/out]   excl       CTLs are being processed exclusively by calling thread.
- * \param[in]       thrid      Calling thread id.
- * \param[in]       ctxs       CTL threads contexts.
- * \param[in]       n_ctxs     Number of CTL threads contexts.
+ * \param[in]       ctl         Control context.
+ * \param[in]       server      Server instance.
+ * \param[in/out]   exclusive   CTLs are being processed exclusively by calling thread.
+ * \param[in]       thread_idx  Calling thread index.
+ * \param[in]       ctxs        CTL thread contexts.
+ * \param[in]       n_ctxs      Number of CTL thread contexts.
  *
  * \return Error code, KNOT_EOK if successful, KNOT_CTL_ESTOP if server shutdown desired.
  */
-int ctl_manage(knot_ctl_t *ctl, server_t *server, bool *excl,
-               int thrid, concurrent_ctl_ctx_t *ctxs, size_t n_ctxs);
+int ctl_manage(knot_ctl_t *ctl, server_t *server, bool *exclusive,
+               int thread_idx, concurrent_ctl_ctx_t *ctxs, size_t n_ctxs);

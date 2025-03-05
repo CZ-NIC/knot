@@ -51,9 +51,6 @@
 
 #define PROGRAM_NAME "knotd"
 
-/* Signal flags. */
-
-
 static int make_daemon(int nochdir, int noclose)
 {
 	int ret;
@@ -237,13 +234,15 @@ static void event_loop(server_t *server, const char *socket, bool daemonize,
 		}
 		if (signals_req_zones_reload && !signals_req_stop) {
 			signals_req_zones_reload = false;
-			reload_t mode = ATOMIC_GET(server->catalog_upd_signal) ? RELOAD_CATALOG : RELOAD_ZONES;
+			reload_t mode = ATOMIC_GET(server->catalog_upd_signal) ?
+			                RELOAD_CATALOG : RELOAD_ZONES;
 			pthread_rwlock_wrlock(&server->ctl_lock);
 			ATOMIC_SET(server->catalog_upd_signal, false);
 			server_update_zones(conf(), server, mode);
 			pthread_rwlock_unlock(&server->ctl_lock);
 		}
-		if (signals_req_stop || ctl_cleanup_ctxs(concurrent_ctxs, CTL_MAX_CONCURRENT) == KNOT_CTL_ESTOP) {
+		if (signals_req_stop ||
+		    ctl_cleanup_ctxs(concurrent_ctxs, CTL_MAX_CONCURRENT) == KNOT_CTL_ESTOP) {
 			break;
 		}
 
@@ -261,7 +260,8 @@ static void event_loop(server_t *server, const char *socket, bool daemonize,
 			continue;
 		}
 
-		ret = ctl_manage(ctl, server, &main_thread_exclusive, 0, concurrent_ctxs, CTL_MAX_CONCURRENT);
+		ret = ctl_manage(ctl, server, &main_thread_exclusive, 0,
+		                 concurrent_ctxs, CTL_MAX_CONCURRENT);
 		if (ret == KNOT_CTL_ESTOP) {
 			break;
 		}

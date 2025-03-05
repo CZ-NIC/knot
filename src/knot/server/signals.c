@@ -14,10 +14,10 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include "knot/server/signals.h"
-
 #include <signal.h>
 #include <stdlib.h>
+
+#include "knot/server/signals.h"
 
 volatile bool signals_req_stop = false;
 volatile bool signals_req_reload = false;
@@ -28,15 +28,14 @@ struct signal {
 	bool handle;
 };
 
-/*! \brief Signals used by the server. */
 static const struct signal SIGNALS[] = {
-    { SIGHUP,  true  },  /* Reload server. */
-    { SIGUSR1, true  },  /* Reload zones. */
-    { SIGINT,  true  },  /* Terminate server. */
-    { SIGTERM, true  },  /* Terminate server. */
-    { SIGALRM, false },  /* Internal thread synchronization. */
-    { SIGPIPE, false },  /* Ignored. Some I/O errors. */
-    { 0 }
+	{ SIGHUP,  true  },  /* Reload server. */
+	{ SIGUSR1, true  },  /* Reload zones. */
+	{ SIGINT,  true  },  /* Terminate server. */
+	{ SIGTERM, true  },  /* Terminate server. */
+	{ SIGALRM, false },  /* Internal thread synchronization. */
+	{ SIGPIPE, false },  /* Ignored. Some I/O errors. */
+	{ 0 }
 };
 
 static void handle_signal(int signum)

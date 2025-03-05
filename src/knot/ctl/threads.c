@@ -78,7 +78,7 @@ static void *ctl_process_thread(void *arg)
 	concurrent_ctl_ctx_t *ctx = arg;
 	rcu_register_thread();
 	signals_setup(); // in fact, this blocks common signals so that they
-					 // arrive to main thread instead of this one
+	                 // arrive to main thread instead of this one
 
 	pthread_mutex_lock(&ctx->mutex);
 	while (ctx->state != CONCURRENT_KILLED) {
@@ -109,17 +109,6 @@ static void *ctl_process_thread(void *arg)
 	rcu_unregister_thread();
 	return NULL;
 }
-
-/*!
- * Try to find an empty ctl processing context and if successful,
- * prepare to lauch the incomming command processing in it.
- *
- * \param[in]  concurrent_ctxs  Configured concurrent control contexts.
- * \param[in]  n_ctxs           Number of configured concurrent control contexts.
- * \param[in]  ctl              Control context.
- *
- * \return     Assigned concurrent control context, or NULL.
- */
 
 static concurrent_ctl_ctx_t *find_free_ctx(concurrent_ctl_ctx_t *concurrent_ctxs,
                                            size_t n_ctxs, knot_ctl_t *ctl)
@@ -170,12 +159,12 @@ static concurrent_ctl_ctx_t *find_free_ctx(concurrent_ctl_ctx_t *concurrent_ctxs
 	return res;
 }
 
-int ctl_manage(knot_ctl_t *ctl, server_t *server, bool *excl,
-               int thrid, concurrent_ctl_ctx_t *ctxs, size_t n_ctxs)
+int ctl_manage(knot_ctl_t *ctl, server_t *server, bool *exclusive,
+               int thread_idx, concurrent_ctl_ctx_t *ctxs, size_t n_ctxs)
 {
 	int ret = KNOT_EOK;
-	if (*excl || find_free_ctx(ctxs, n_ctxs, ctl) == NULL) {
-		ret = ctl_process(ctl, server, thrid, excl);
+	if (*exclusive || find_free_ctx(ctxs, n_ctxs, ctl) == NULL) {
+		ret = ctl_process(ctl, server, thread_idx, exclusive);
 		knot_ctl_close(ctl);
 	}
 	return ret;
