@@ -32,8 +32,6 @@ src/contrib/libngtcp2/ngtcp2/crypto/shared.h
 src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_acktr.c
 src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_acktr.h
 src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_addr.c
-src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_dcidtr.c
-src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_dcidtr.h
 src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_addr.h
 src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_balloc.c
 src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_balloc.h
@@ -52,6 +50,8 @@ src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_conv.c
 src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_conv.h
 src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_crypto.c
 src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_crypto.h
+src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_dcidtr.c
+src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_dcidtr.h
 src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_err.c
 src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_err.h
 src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_frame_chain.c
@@ -180,6 +180,8 @@ src/knot/common/evsched.c
 src/knot/common/evsched.h
 src/knot/common/fdset.c
 src/knot/common/fdset.h
+src/knot/common/hiredis.c
+src/knot/common/hiredis.h
 src/knot/common/log.c
 src/knot/common/log.h
 src/knot/common/process.c
@@ -570,6 +572,7 @@ src/libzscanner/scanner.h
 src/libzscanner/scanner.rl
 src/libzscanner/scanner_body.rl
 src/redis/knot.c
+src/redis/misc/events.c
 src/utils/common/exec.c
 src/utils/common/exec.h
 src/utils/common/hex.c
