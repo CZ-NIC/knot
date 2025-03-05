@@ -191,6 +191,82 @@ int zonefile_open(zloader_t *loader, const char *source, const knot_dname_t *ori
 }
 
 #ifdef ENABLE_REDIS
+#include <hiredis/alloc.h>
+#include <hiredis/sds.h>
+
+#include "libknot/quic/tls_common.h"
+#include "libknot/quic/tls.h"
+
+typedef struct {
+	struct knot_tls_ctx *tls;
+	struct knot_tls_conn *conn;
+	size_t last_len;
+} redis_tls_ctx_t;
+
+static void ctx_deinit(redis_tls_ctx_t *ctx)
+{
+	if (ctx != NULL) {
+		if (ctx->tls != NULL) {
+			knot_creds_free(ctx->tls->creds);
+		}
+		knot_tls_conn_del(ctx->conn);
+		knot_tls_ctx_free(ctx->tls);
+		hi_free(ctx);
+	}
+}
+
+static void knot_redis_tls_close(redisContext *ctx)
+{
+	redis_tls_ctx_t *tls_ctx = ctx->privctx;
+	if (ctx && ctx->fd != REDIS_INVALID_FD) {
+		knot_tls_conn_del(tls_ctx->conn);
+		close(ctx->fd);
+		ctx->fd = REDIS_INVALID_FD;
+	}
+}
+
+static void knot_redis_tls_free(void *privctx)
+{
+	redis_tls_ctx_t *tls_ctx = privctx;
+	ctx_deinit(tls_ctx);
+}
+
+static ssize_t knot_redis_tls_read(struct redisContext *ctx, char *buff, size_t size)
+{
+	redis_tls_ctx_t *tls_ctx = ctx->privctx;
+
+	int ret = knot_tls_recv(tls_ctx->conn, buff, size, false);
+	if (ret > 0) {
+		return ret;
+	} else if (ret == 0) {
+		return -1;
+	} else {
+		return ret;
+	}
+}
+
+static ssize_t knot_redis_tls_write(struct redisContext *ctx)
+{
+	redis_tls_ctx_t *tls_ctx = ctx->privctx;
+
+	size_t len = tls_ctx->last_len ? tls_ctx->last_len : sdslen(ctx->obuf);
+	int ret = knot_tls_send(tls_ctx->conn, ctx->obuf, sdslen(ctx->obuf), false);
+	if (ret > 0) {
+		tls_ctx->last_len = 0;
+	} else if (ret < 0) {
+		tls_ctx->last_len = len;
+		return 0;
+	}
+	return len;
+}
+
+redisContextFuncs redisContextGnuTLSFuncs = {
+	.close = knot_redis_tls_close,
+	.free_privctx = knot_redis_tls_free,
+	.read = knot_redis_tls_read,
+	.write = knot_redis_tls_write
+};
+
 redisContext *zone_rdb_connect(conf_t *conf)
 {
 	conf_val_t db_listen = conf_db_param(conf, C_ZONE_DB_LISTEN);
@@ -217,6 +293,47 @@ redisContext *zone_rdb_connect(conf_t *conf)
 	} else if (rdb->err) {
 		log_error("rdb, failed to connect (%s)", rdb->errstr);
 		return NULL;
+	}
+
+	if (conf_get_bool(conf, C_DB, C_ZONE_DB_TLS)) {
+		redis_tls_ctx_t *ctx = hi_calloc(1, sizeof(redis_tls_ctx_t));
+		if (ctx == NULL) {
+			redisFree(rdb);
+			return NULL;
+		}
+
+		char *cert_file = conf_tls(conf, C_CERT_FILE);
+		char *key_file = conf_tls(conf, C_KEY_FILE);
+		//
+		free(key_file);
+		free(cert_file);
+
+		conf_val_t val = conf_db_param(conf, C_ZONE_DB_CERT_KEY);
+		size_t pin_len;
+		const uint8_t *pin = conf_bin(&val, &pin_len);
+		struct knot_creds *creds = knot_creds_init_peer(NULL, pin, pin_len);
+		if (creds == NULL) {
+			ctx_deinit(ctx);
+			redisFree(rdb);
+			return NULL;
+		}
+
+		ctx->tls = knot_tls_ctx_new(creds, 10000, 10000, false);
+		if (ctx->tls == NULL) {
+			ctx_deinit(ctx);
+			redisFree(rdb);
+			return NULL;
+		}
+
+		ctx->conn = knot_tls_conn_new(ctx->tls, rdb->fd);
+		if (ctx->conn == NULL) {
+			ctx_deinit(ctx);
+			redisFree(rdb);
+			return NULL;
+		}
+
+		rdb->funcs = &redisContextGnuTLSFuncs;
+		rdb->privctx = ctx;
 	}
 
 	return rdb;
