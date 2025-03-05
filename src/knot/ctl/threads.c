@@ -21,8 +21,29 @@
 #include "knot/ctl/threads.h"
 #include "knot/server/signals.h"
 
-void ctl_init_ctxs(concurrent_ctl_ctx_t *concurrent_ctxs, size_t n_ctxs,
-                   server_t *server, int thr_idx_from)
+typedef enum {
+	CONCURRENT_EMPTY = 0,   // fresh cctx without a thread.
+	CONCURRENT_ASSIGNED,    // cctx assigned to process a command.
+	CONCURRENT_RUNNING,     // ctl command is being processed in the thread.
+	CONCURRENT_IDLE,        // command has been processed, waiting for a new one.
+	CONCURRENT_KILLED,      // cctx cleanup has started.
+	CONCURRENT_FINISHED,    // after having been killed, the thread is being joined.
+} concurrent_ctl_state_t;
+
+typedef struct {
+	concurrent_ctl_state_t state;
+	pthread_mutex_t mutex;  // Protects .state.
+	pthread_cond_t cond;
+	knot_ctl_t *ctl;
+	server_t *server;
+	pthread_t thread;
+	int ret;
+	int thread_idx;
+	bool exclusive;
+} concurrent_ctl_ctx_t;
+
+static void ctl_init_ctxs(concurrent_ctl_ctx_t *concurrent_ctxs, size_t n_ctxs,
+                          server_t *server, int thr_idx_from)
 {
 	for (size_t i = 0; i < n_ctxs; i++) {
 		concurrent_ctl_ctx_t *cctx = &concurrent_ctxs[i];
@@ -34,7 +55,7 @@ void ctl_init_ctxs(concurrent_ctl_ctx_t *concurrent_ctxs, size_t n_ctxs,
 	}
 }
 
-int ctl_cleanup_ctxs(concurrent_ctl_ctx_t *concurrent_ctxs, size_t n_ctxs)
+static int ctl_cleanup_ctxs(concurrent_ctl_ctx_t *concurrent_ctxs, size_t n_ctxs)
 {
 	int ret = KNOT_EOK;
 	for (size_t i = 0; i < n_ctxs; i++) {
@@ -52,7 +73,7 @@ int ctl_cleanup_ctxs(concurrent_ctl_ctx_t *concurrent_ctxs, size_t n_ctxs)
 	return ret;
 }
 
-void ctl_finalize_ctxs(concurrent_ctl_ctx_t *concurrent_ctxs, size_t n_ctxs)
+static void ctl_finalize_ctxs(concurrent_ctl_ctx_t *concurrent_ctxs, size_t n_ctxs)
 {
 	for (size_t i = 0; i < n_ctxs; i++) {
 		concurrent_ctl_ctx_t *cctx = &concurrent_ctxs[i];
@@ -162,8 +183,8 @@ static concurrent_ctl_ctx_t *find_free_ctx(concurrent_ctl_ctx_t *concurrent_ctxs
 	return res;
 }
 
-int ctl_manage(knot_ctl_t *ctl, server_t *server, bool *exclusive,
-               int thread_idx, concurrent_ctl_ctx_t *ctxs, size_t n_ctxs)
+static int ctl_manage(knot_ctl_t *ctl, server_t *server, bool *exclusive,
+                      int thread_idx, concurrent_ctl_ctx_t *ctxs, size_t n_ctxs)
 {
 	int ret = KNOT_EOK;
 	if (*exclusive || find_free_ctx(ctxs, n_ctxs, ctl) == NULL) {
