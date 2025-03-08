@@ -183,7 +183,7 @@ static int tcp_handle(tcp_context_t *tcp, knotd_qdata_params_t *params,
 		case KNOT_EAGAIN: // Unfinished handshake, continue later.
 			return KNOT_EOK;
 		case KNOT_EOK: // Finished handshake, continue with receiving message.
-			recv = knot_tls_recv_dns(params->tls_conn, rx->iov_base, rx->iov_len);
+			recv = knot_tls_recv(params->tls_conn, rx->iov_base, rx->iov_len, true);
 			break;
 		default: // E.g. handshake timeout.
 			assert(ret < 0);
@@ -210,7 +210,7 @@ static int tcp_handle(tcp_context_t *tcp, knotd_qdata_params_t *params,
 		if (ans->size > 0 && send_state(tcp->layer.state)) {
 			int sent;
 			if (params->tls_conn != NULL) {
-				sent = knot_tls_send_dns(params->tls_conn, ans->wire, ans->size);
+				sent = knot_tls_send(params->tls_conn, ans->wire, ans->size, true);
 			} else {
 				sent = net_dns_tcp_send(params->socket, ans->wire, ans->size,
 				                        tcp->io_timeout, NULL);

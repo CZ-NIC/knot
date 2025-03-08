@@ -129,28 +129,32 @@ int knot_tls_session_load(knot_tls_conn_t *conn, struct knot_tls_session *sessio
 int knot_tls_handshake(knot_tls_conn_t *conn, bool oneshot);
 
 /*!
- * \brief Receive a size-word-prefixed DNS message.
+ * \brief Receive a data blob.
  *
- * \param conn       DoT connection.
- * \param data       Destination buffer.
- * \param size       Maximum buffer size.
+ * \note The two-byte-size prefix is stripped upon reception, not stored to the buffer.
+ *
+ * \param conn      DoT connection.
+ * \param data      Destination buffer.
+ * \param size      Maximum buffer size.
+ * \param dns       Indication of a two-byte-size-prefixed data blob (DNS message).
  *
  * \return Either the DNS message size received or negative error code.
- *
- * \note The two-byte-size-prefix is stripped upon reception, not stored to the buffer.
  */
-ssize_t knot_tls_recv_dns(knot_tls_conn_t *conn, void *data, size_t size);
+ssize_t knot_tls_recv(knot_tls_conn_t *conn, void *data, size_t size, bool dns);
 
 /*!
- * \brief Send a size-word-prefixed DNS message.
+ * \brief Send a data blob.
+ *
+ * \note The two-byte-size prefix is sended before the data blob itself.
  *
  * \param conn      DoT connection.
  * \param data      DNS payload.
  * \param size      Payload size.
+ * \param dns       Indication of a two-byte-size-prefixed data blob (DNS message).
  *
  * \return Either exactly 'size' or a negative error code.
  */
-ssize_t knot_tls_send_dns(knot_tls_conn_t *conn, void *data, size_t size);
+ssize_t knot_tls_send(knot_tls_conn_t *conn, void *data, size_t size, bool dns);
 
 /*!
  * \brief Set or unset the conection's BLOCKED flag.
