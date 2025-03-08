@@ -1,4 +1,4 @@
-/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2025 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -32,6 +32,12 @@
 struct gnutls_priority_st;
 
 typedef enum {
+	KNOT_TLS_CLIENT = 0,
+	KNOT_TLS_SERVER = (1 << 0),
+	KNOT_TLS_DNS    = (1 << 1),
+} knot_tls_flag_t;
+
+typedef enum {
 	KNOT_TLS_CONN_HANDSHAKE_DONE = (1 << 0),
 	KNOT_TLS_CONN_SESSION_TAKEN  = (1 << 1), // unused, to be implemeted later
 	KNOT_TLS_CONN_BLOCKED        = (1 << 2),
@@ -41,9 +47,9 @@ typedef enum {
 typedef struct knot_tls_ctx {
 	struct knot_creds *creds;
 	struct gnutls_priority_st *priority;
+	knot_tls_flag_t flags;
 	unsigned handshake_timeout;
 	unsigned io_timeout;
-	bool server;
 } knot_tls_ctx_t;
 
 typedef struct knot_tls_conn {
@@ -60,12 +66,12 @@ typedef struct knot_tls_conn {
  * \param creds       Certificate credentials.
  * \param io_timeout  Connections' IO-timeout (in milliseconds).
  * \param hs_timeout  Handshake timeout (in milliseconds).
- * \param server      Server context (otherwise client).
+ * \param flags       Specify client/server mode and common/dns format.
  *
  * \return Initialized context or NULL.
  */
 knot_tls_ctx_t *knot_tls_ctx_new(struct knot_creds *creds, unsigned io_timeout,
-                                 unsigned hs_timeout, bool server);
+                                 unsigned hs_timeout, knot_tls_flag_t flags);
 
 /*!
  * \brief Free DoT answering context.
@@ -129,20 +135,24 @@ int knot_tls_session_load(knot_tls_conn_t *conn, struct knot_tls_session *sessio
 int knot_tls_handshake(knot_tls_conn_t *conn, bool oneshot);
 
 /*!
- * \brief Receive a size-word-prefixed DNS message.
+ * \brief Receive a data blob.
  *
- * \param conn       DoT connection.
- * \param data       Destination buffer.
- * \param size       Maximum buffer size.
+ * \note In the DNS mode, the two-byte-size prefix is stripped upon reception,
+ *       not stored to the buffer.
+ *
+ * \param conn      DoT connection.
+ * \param data      Destination buffer.
+ * \param size      Maximum buffer size.
  *
  * \return Either the DNS message size received or negative error code.
- *
- * \note The two-byte-size-prefix is stripped upon reception, not stored to the buffer.
  */
-ssize_t knot_tls_recv_dns(knot_tls_conn_t *conn, void *data, size_t size);
+ssize_t knot_tls_recv(knot_tls_conn_t *conn, void *data, size_t size);
 
 /*!
- * \brief Send a size-word-prefixed DNS message.
+ * \brief Send a data blob.
+ *
+ * \note In the DNS mode, the two-byte-size prefix is sended before the data
+ *       blob itself.
  *
  * \param conn      DoT connection.
  * \param data      DNS payload.
@@ -150,7 +160,7 @@ ssize_t knot_tls_recv_dns(knot_tls_conn_t *conn, void *data, size_t size);
  *
  * \return Either exactly 'size' or a negative error code.
  */
-ssize_t knot_tls_send_dns(knot_tls_conn_t *conn, void *data, size_t size);
+ssize_t knot_tls_send(knot_tls_conn_t *conn, void *data, size_t size);
 
 /*!
  * \brief Set or unset the conection's BLOCKED flag.

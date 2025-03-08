@@ -1,4 +1,4 @@
-/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2025 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -145,7 +145,7 @@ static int request_send(knot_request_t *request, int timeout_ms, bool *reused_fd
 
 	/* Send query. */
 	if (use_tls(request)) {
-		ret = knot_tls_send_dns(request->tls_req_ctx.conn, wire, wire_len);
+		ret = knot_tls_send(request->tls_req_ctx.conn, wire, wire_len);
 		knot_tls_req_ctx_maint(&request->tls_req_ctx, request);
 	} else if (use_quic(request)) {
 #ifdef ENABLE_QUIC
@@ -186,7 +186,7 @@ static int request_recv(knot_request_t *request, int timeout_ms)
 
 	/* Receive it */
 	if (use_tls(request)) {
-		ret = knot_tls_recv_dns(request->tls_req_ctx.conn, resp->wire, resp->max_size);
+		ret = knot_tls_recv(request->tls_req_ctx.conn, resp->wire, resp->max_size);
 		knot_tls_req_ctx_maint(&request->tls_req_ctx, request);
 	} else if (use_quic(request)) {
 #ifdef ENABLE_QUIC

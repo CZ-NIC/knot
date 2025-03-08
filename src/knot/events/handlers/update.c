@@ -393,8 +393,8 @@ static void send_update_response(conf_t *conf, zone_t *zone, knot_request_t *req
 		}
 
 		if (net_is_stream(req->fd) && req->tls_req_ctx.conn != NULL) {
-			(void)knot_tls_send_dns(req->tls_req_ctx.conn,
-			                        req->resp->wire, req->resp->size);
+			(void)knot_tls_send(req->tls_req_ctx.conn,
+			                    req->resp->wire, req->resp->size);
 			knot_tls_conn_block(req->tls_req_ctx.conn, false);
 		}
 #ifdef ENABLE_QUIC

@@ -183,7 +183,7 @@ static int tcp_handle(tcp_context_t *tcp, knotd_qdata_params_t *params,
 		case KNOT_EAGAIN: // Unfinished handshake, continue later.
 			return KNOT_EOK;
 		case KNOT_EOK: // Finished handshake, continue with receiving message.
-			recv = knot_tls_recv_dns(params->tls_conn, rx->iov_base, rx->iov_len);
+			recv = knot_tls_recv(params->tls_conn, rx->iov_base, rx->iov_len);
 			break;
 		default: // E.g. handshake timeout.
 			assert(ret < 0);
@@ -210,7 +210,7 @@ static int tcp_handle(tcp_context_t *tcp, knotd_qdata_params_t *params,
 		if (ans->size > 0 && send_state(tcp->layer.state)) {
 			int sent;
 			if (params->tls_conn != NULL) {
-				sent = knot_tls_send_dns(params->tls_conn, ans->wire, ans->size);
+				sent = knot_tls_send(params->tls_conn, ans->wire, ans->size);
 			} else {
 				sent = net_dns_tcp_send(params->socket, ans->wire, ans->size,
 				                        tcp->io_timeout, NULL);
@@ -435,7 +435,8 @@ int tcp_master(dthread_t *thread)
 	if (tls) {
 		// Set the HS timeout to 8x the RMT IO one as the HS duration can be up to 4*roundtrip.
 		tcp.tls_ctx = knot_tls_ctx_new(handler->server->quic_creds,
-		                               tcp.io_timeout, 8 * tcp.io_timeout, true);
+		                               tcp.io_timeout, 8 * tcp.io_timeout,
+		                               KNOT_TLS_SERVER | KNOT_TLS_DNS);
 		if (tcp.tls_ctx == NULL) {
 			ret = KNOT_ENOMEM;
 			goto finish;
