@@ -26,6 +26,14 @@ struct gnutls_x509_crt_int;
 struct knot_creds;
 struct knot_tls_session;
 
+typedef enum {
+	KNOT_TLS_CLIENT     = 0,
+	KNOT_TLS_SERVER     = (1 << 0),
+	KNOT_TLS_QUIC       = (1 << 1),
+	KNOT_TLS_DNS        = (1 << 2),
+	KNOT_TLS_EARLY_DATA = (1 << 3),
+} knot_tls_flag_t;
+
 /*!
  * \brief Get priority string for GnuTLS priority initialization.
  *
@@ -96,18 +104,14 @@ void knot_creds_free(struct knot_creds *creds);
  * \param session      Out: initialized GnuTLS session struct.
  * \param creds        Certificate credentials.
  * \param priority     Session priority configuration.
- * \param quic         Session is for ngtcp2/QUIC (otherwise TLS).
- * \param early_data   Allow early data.
- * \param server       Should be server session (otherwise client).
+ * \param flags        TLS-related flags.
  *
  * \return KNOT_E*
  */
 int knot_tls_session(struct gnutls_session_int **session,
                      struct knot_creds *creds,
                      struct gnutls_priority_st *priority,
-                     bool quic,
-                     bool early_data,
-                     bool server);
+                     knot_tls_flag_t flags);
 
 /*!
  * \brief Gets local or remote certificate pin.

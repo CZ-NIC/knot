@@ -24,7 +24,8 @@ int knot_tls_req_ctx_init(knot_tls_req_ctx_t *ctx, int fd,
 	}
 
 	// Use HS = 4x IO timeout, as the RMT IO timeout is usually high.
-	ctx->ctx = knot_tls_ctx_new(creds, io_timeout_ms, 4 * io_timeout_ms, false);
+	ctx->ctx = knot_tls_ctx_new(creds, io_timeout_ms, 4 * io_timeout_ms,
+	                            KNOT_TLS_CLIENT | KNOT_TLS_DNS | KNOT_TLS_EARLY_DATA);
 	if (ctx->ctx == NULL) {
 		knot_creds_free(creds);
 		return KNOT_ENOMEM;
