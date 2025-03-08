@@ -381,8 +381,10 @@ int knot_tls_session(struct gnutls_session_int **session,
 		ret = gnutls_session_ticket_enable_server(*session, &creds->tls_ticket_key);
 	}
 	if (ret == GNUTLS_E_SUCCESS) {
-		const gnutls_datum_t alpn_datum = { (void *)&alpn[1], alpn[0] };
-		gnutls_alpn_set_protocols(*session, &alpn_datum, 1, GNUTLS_ALPN_MANDATORY);
+		if (alpn) {
+			const gnutls_datum_t alpn_datum = { (void *)&alpn[1], alpn[0] };
+			gnutls_alpn_set_protocols(*session, &alpn_datum, 1, GNUTLS_ALPN_MANDATORY);
+		}
 		if (early_data) {
 			gnutls_record_set_max_early_data_size(*session, 0xffffffffu);
 		}
