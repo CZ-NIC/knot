@@ -527,7 +527,7 @@ static int sign_node_rrsets(const zone_node_t *node,
 		}
 	}
 
-	if (result == KNOT_EOK) {
+	if (result == KNOT_EOK && !sign_ctx->dnssec_ctx->validation_mode) {
 		result = remove_standalone_rrsigs(node, &rrsigs, changeset);
 	}
 	return result;
