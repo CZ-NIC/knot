@@ -235,7 +235,7 @@ static ssize_t knot_redis_tls_read(struct redisContext *ctx, char *buff, size_t 
 {
 	redis_tls_ctx_t *tls_ctx = ctx->privctx;
 
-	int ret = knot_tls_recv(tls_ctx->conn, buff, size, false);
+	int ret = knot_tls_recv(tls_ctx->conn, buff, size);
 	if (ret > 0) {
 		return ret;
 	} else if (ret == 0) {
@@ -250,7 +250,7 @@ static ssize_t knot_redis_tls_write(struct redisContext *ctx)
 	redis_tls_ctx_t *tls_ctx = ctx->privctx;
 
 	size_t len = tls_ctx->last_len ? tls_ctx->last_len : sdslen(ctx->obuf);
-	int ret = knot_tls_send(tls_ctx->conn, ctx->obuf, sdslen(ctx->obuf), false);
+	int ret = knot_tls_send(tls_ctx->conn, ctx->obuf, sdslen(ctx->obuf));
 	if (ret > 0) {
 		tls_ctx->last_len = 0;
 	} else if (ret < 0) {
@@ -318,7 +318,7 @@ redisContext *zone_rdb_connect(conf_t *conf)
 			return NULL;
 		}
 
-		ctx->tls = knot_tls_ctx_new(creds, 10000, 10000, false);
+		ctx->tls = knot_tls_ctx_new(creds, 10000, 10000, KNOT_TLS_OPT_CLIENT);
 		if (ctx->tls == NULL) {
 			ctx_deinit(ctx);
 			redisFree(rdb);

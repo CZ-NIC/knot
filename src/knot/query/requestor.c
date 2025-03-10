@@ -145,7 +145,7 @@ static int request_send(knot_request_t *request, int timeout_ms, bool *reused_fd
 
 	/* Send query. */
 	if (use_tls(request)) {
-		ret = knot_tls_send(request->tls_req_ctx.conn, wire, wire_len, true);
+		ret = knot_tls_send(request->tls_req_ctx.conn, wire, wire_len);
 		knot_tls_req_ctx_maint(&request->tls_req_ctx, request);
 	} else if (use_quic(request)) {
 #ifdef ENABLE_QUIC
@@ -186,7 +186,7 @@ static int request_recv(knot_request_t *request, int timeout_ms)
 
 	/* Receive it */
 	if (use_tls(request)) {
-		ret = knot_tls_recv(request->tls_req_ctx.conn, resp->wire, resp->max_size, true);
+		ret = knot_tls_recv(request->tls_req_ctx.conn, resp->wire, resp->max_size);
 		knot_tls_req_ctx_maint(&request->tls_req_ctx, request);
 	} else if (use_quic(request)) {
 #ifdef ENABLE_QUIC

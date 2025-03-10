@@ -41,7 +41,7 @@ typedef struct knot_tls_session {
 
 _public_
 knot_tls_ctx_t *knot_tls_ctx_new(struct knot_creds *creds, unsigned io_timeout,
-                                 unsigned hs_timeout, bool server)
+                                 unsigned hs_timeout, int opts)
 {
 	knot_tls_ctx_t *res = calloc(1, sizeof(*res));
 	if (res == NULL) {
@@ -51,7 +51,7 @@ knot_tls_ctx_t *knot_tls_ctx_new(struct knot_creds *creds, unsigned io_timeout,
 	res->creds = creds;
 	res->handshake_timeout = hs_timeout;
 	res->io_timeout = io_timeout;
-	res->server = server;
+	res->opts = opts;
 
 	int ret = gnutls_priority_init2(&res->priority, KNOT_TLS_PRIORITIES, NULL,
 	                                GNUTLS_PRIORITY_INIT_DEF_APPEND);
@@ -83,7 +83,9 @@ knot_tls_conn_t *knot_tls_conn_new(knot_tls_ctx_t *ctx, int sock_fd)
 	res->fd = sock_fd;
 
 	int ret = knot_tls_session(&res->session, ctx->creds, ctx->priority,
-	                           "\x03""dot", true, ctx->server);
+	                           (ctx->opts & KNOT_TLS_OPT_DNS) ? "\x03""dot" : NULL,
+	                           true,
+	                           ctx->opts & KNOT_TLS_OPT_SERVER);
 	if (ret != KNOT_EOK) {
 		goto fail;
 	}
@@ -235,7 +237,7 @@ static ssize_t recv_data(knot_tls_conn_t *conn, void *data, size_t size,
 }
 
 _public_
-ssize_t knot_tls_recv(knot_tls_conn_t *conn, void *data, size_t size, bool dns)
+ssize_t knot_tls_recv(knot_tls_conn_t *conn, void *data, size_t size)
 {
 	if (conn == NULL || data == NULL) {
 		return KNOT_EINVAL;
@@ -252,7 +254,7 @@ ssize_t knot_tls_recv(knot_tls_conn_t *conn, void *data, size_t size, bool dns)
 
 	int timeout = conn->ctx->io_timeout;
 
-	if (dns) {
+	if (conn->ctx->opts & KNOT_TLS_OPT_DNS) {
 		uint16_t msg_len;
 		ret = recv_data(conn, &msg_len, sizeof(msg_len), &timeout, false);
 		if (ret != sizeof(msg_len)) {
@@ -276,7 +278,7 @@ ssize_t knot_tls_recv(knot_tls_conn_t *conn, void *data, size_t size, bool dns)
 }
 
 _public_
-ssize_t knot_tls_send(knot_tls_conn_t *conn, void *data, size_t size, bool dns)
+ssize_t knot_tls_send(knot_tls_conn_t *conn, void *data, size_t size)
 {
 	if (conn == NULL || data == NULL || size > UINT16_MAX) {
 		return KNOT_EINVAL;
@@ -290,7 +292,7 @@ ssize_t knot_tls_send(knot_tls_conn_t *conn, void *data, size_t size, bool dns)
 	// Enable data buffering.
 	gnutls_record_cork(conn->session);
 
-	if (dns) {
+	if (conn->ctx->opts & KNOT_TLS_OPT_DNS) {
 		uint16_t msg_len = htons(size);
 		res = gnutls_record_send(conn->session, &msg_len, sizeof(msg_len));
 		if (res != sizeof(msg_len)) {

@@ -38,12 +38,18 @@ typedef enum {
 	KNOT_TLS_CONN_AUTHORIZED     = (1 << 3),
 } knot_tls_conn_flag_t;
 
+typedef enum {
+	KNOT_TLS_OPT_CLIENT = 0,
+	KNOT_TLS_OPT_SERVER = (1 << 0),
+	KNOT_TLS_OPT_DNS    = (1 << 1),
+} knot_tls_opt_flag_t;
+
 typedef struct knot_tls_ctx {
 	struct knot_creds *creds;
 	struct gnutls_priority_st *priority;
 	unsigned handshake_timeout;
 	unsigned io_timeout;
-	bool server;
+	int opts;
 } knot_tls_ctx_t;
 
 typedef struct knot_tls_conn {
@@ -65,7 +71,7 @@ typedef struct knot_tls_conn {
  * \return Initialized context or NULL.
  */
 knot_tls_ctx_t *knot_tls_ctx_new(struct knot_creds *creds, unsigned io_timeout,
-                                 unsigned hs_timeout, bool server);
+                                 unsigned hs_timeout, int opts);
 
 /*!
  * \brief Free DoT answering context.
@@ -140,7 +146,7 @@ int knot_tls_handshake(knot_tls_conn_t *conn, bool oneshot);
  *
  * \return Either the DNS message size received or negative error code.
  */
-ssize_t knot_tls_recv(knot_tls_conn_t *conn, void *data, size_t size, bool dns);
+ssize_t knot_tls_recv(knot_tls_conn_t *conn, void *data, size_t size);
 
 /*!
  * \brief Send a data blob.
@@ -154,7 +160,7 @@ ssize_t knot_tls_recv(knot_tls_conn_t *conn, void *data, size_t size, bool dns);
  *
  * \return Either exactly 'size' or a negative error code.
  */
-ssize_t knot_tls_send(knot_tls_conn_t *conn, void *data, size_t size, bool dns);
+ssize_t knot_tls_send(knot_tls_conn_t *conn, void *data, size_t size);
 
 /*!
  * \brief Set or unset the conection's BLOCKED flag.
