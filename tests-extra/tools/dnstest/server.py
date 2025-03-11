@@ -611,6 +611,26 @@ class Server(object):
         hostname3 = socket.gethostname()
         return ("", certfile, hostname1 or hostname2 or hostname3, ssearch(gcli_s, r'pin-sha256:([^\n]*)'))
 
+    def kdig(self, rname, rtype, rclass="IN", dnssec=None, validate=None):
+        cmd = [ params.kdig_bin, "@" + self.addr, "-p", str(self.port), rname, "-t", rtype, "-c", rclass ]
+        if dnssec:
+            cmd += [ "+dnssec" ]
+        if validate:
+            cmd += [ "+validate" ]
+        print(str(cmd))
+        out = check_output(cmd, stderr=open(self.dir + "/kdig.err", mode="a"))
+        out_s = out.rstrip().decode('ascii')
+        with open(self.dir + "/kdig.out", mode="a") as sout:
+            sout.write(out_s)
+            sout.write("\n")
+
+        expect = "OK"
+        if isinstance(validate, str):
+            expect = validate
+        if validate and not (("DNSSEC VALIDATION: %s!" % expect) in out_s):
+            set_err("KDIG VALIDATION")
+        return out_s
+
     def dig(self, rname, rtype, rclass="IN", udp=None, serial=None, timeout=None,
             tries=3, flags="", bufsize=None, edns=None, nsid=False, dnssec=False,
             log_no_sep=False, tsig=None, addr=None, source=None, xdp=None):
