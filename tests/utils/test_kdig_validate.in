@@ -72,7 +72,7 @@ function q() {
     echo "$1" $VALGRIND $BUILDROOT/src/kdig @127.0.0.1 -p $PORT +validate "$QN" -t "$3" >&2
     RESP=$($VALGRIND $BUILDROOT/src/kdig @127.0.0.1 -p $PORT +validate "$QN" -t "$3" 2>&1)
     echo "$RESP" >&2
-    echo "$RESP" | grep -q "$4"
+    echo "$RESP" | grep -q "[^N]$4"
     ok "$1 outcome" test $? -eq 0
     echo "$RESP" | grep -q "$5"
     ok "$1 point" test $? -eq 0
