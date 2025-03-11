@@ -200,7 +200,6 @@ int zonefile_open(zloader_t *loader, const char *source, const knot_dname_t *ori
 typedef struct {
 	struct knot_tls_ctx *tls;
 	struct knot_tls_conn *conn;
-	size_t last_len;
 } redis_tls_ctx_t;
 
 static void ctx_deinit(redis_tls_ctx_t *ctx)
@@ -236,28 +235,33 @@ static ssize_t knot_redis_tls_read(struct redisContext *ctx, char *buff, size_t 
 	redis_tls_ctx_t *tls_ctx = ctx->privctx;
 
 	int ret = knot_tls_recv(tls_ctx->conn, buff, size);
-	if (ret > 0) {
+	if (ret >= 0) {
 		return ret;
-	} else if (ret == 0) {
+	} else if (ret == KNOT_NET_ERECV ||
+	           ret == KNOT_NET_ECONNECT ||
+	           ret == KNOT_NET_EHSHAKE ||
+	           ret == KNOT_ETIMEOUT
+	) {
 		return -1;
-	} else {
-		return ret;
 	}
+	return 0;
 }
 
 static ssize_t knot_redis_tls_write(struct redisContext *ctx)
 {
 	redis_tls_ctx_t *tls_ctx = ctx->privctx;
 
-	size_t len = tls_ctx->last_len ? tls_ctx->last_len : sdslen(ctx->obuf);
 	int ret = knot_tls_send(tls_ctx->conn, ctx->obuf, sdslen(ctx->obuf));
-	if (ret > 0) {
-		tls_ctx->last_len = 0;
-	} else if (ret < 0) {
-		tls_ctx->last_len = len;
-		return 0;
+	if (ret >= 0) {
+		return ret;
+	} else if (ret == KNOT_NET_ESEND ||
+	           ret == KNOT_NET_ECONNECT ||
+	           ret == KNOT_NET_EHSHAKE ||
+	           ret == KNOT_ETIMEOUT
+	) {
+		return -1;
 	}
-	return len;
+	return 0;
 }
 
 redisContextFuncs redisContextGnuTLSFuncs = {
