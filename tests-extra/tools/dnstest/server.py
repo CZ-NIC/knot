@@ -670,10 +670,10 @@ class Server(object):
         if outcome.returncode != 0:
             set_err("KDIG FAILED")
 
-        expect = "OK"
+        expect = "Valid"
         if isinstance(validate, str):
             expect = validate
-        if validate and not (("DNSSEC VALIDATION: %s!" % expect) in out_s):
+        if validate and not (("OUTCOME: %s!" % expect) in out_s):
             set_err("KDIG VALIDATION")
         return out_s
 
