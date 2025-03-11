@@ -25,6 +25,7 @@ def check_zone(zone, dnskey_rdata_start):
     soa1 = knot.dig(zone.name, "SOA", dnssec=True)
     soa1.check(rcode="NOERROR", flags="QR AA")
     soa1.check_count(1, "RRSIG")
+    knot.kdig(zone.name, "SOA", validate=True)
 
     t.sleep(1) # Ensure different RRSIGs.
 
@@ -51,6 +52,7 @@ def check_zone(zone, dnskey_rdata_start):
     resp.check(rcode="NOERROR", flags="QR AA")
     resp.check_count(1, "DNSKEY")
     resp.check_count(1, "RRSIG")
+    knot.kdig(zone.name, "DNSKEY", validate=True)
 
     for rrset in resp.resp.answer:
         if rrset.rdtype != dns.rdatatype.DNSKEY:
@@ -65,6 +67,7 @@ def check_zone(zone, dnskey_rdata_start):
     resp.check_count(1, "SOA", section="authority")
     resp.check_count(1, "NSEC", section="authority")
     resp.check_count(2, "RRSIG", section="authority")
+    knot.kdig("nx." + zone.name, "A", validate=True)
 
 t.start()
 serial = knot.zones_wait(zones)
