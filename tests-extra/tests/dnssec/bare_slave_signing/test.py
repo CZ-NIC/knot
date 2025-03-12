@@ -26,7 +26,6 @@ detail_log("soa1rrsig_exp "+soa1rrsig_expire)
 
 slave.stop()
 try:
-    shutil.rmtree(os.path.join(slave.dir, "timers"))
     shutil.rmtree(os.path.join(slave.dir, "journal"))
 except:
     pass

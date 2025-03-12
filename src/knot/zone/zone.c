@@ -298,10 +298,13 @@ int selective_zone_purge(conf_t *conf, zone_t *zone, purge_flag_t params)
 	// Purge the zone timers.
 	if (params & PURGE_ZONE_TIMERS) {
 		bool member = (zone->catalog_gen != NULL);
+		bool lss = (zone->timers.last_signed_s_flags & LAST_SIGNED_SERIAL_VALID);
 		zone->timers = (zone_timers_t) {
-			.catalog_member = member ? zone->timers.catalog_member : 0
+			.catalog_member = member ? zone->timers.catalog_member : 0,
+			.last_signed_serial = lss ? zone->timers.last_signed_serial : 0,
+			.last_signed_s_flags = zone->timers.last_signed_s_flags,
 		};
-		if (member) {
+		if (member || lss) {
 			ret = zone_timers_write(&zone->server->timerdb, zone->name,
 			                        &zone->timers);
 		} else {
@@ -817,14 +820,23 @@ int zone_get_master_serial(zone_t *zone, uint32_t *serial)
 	return kasp_db_load_serial(zone_kaspdb(zone), zone->name, KASPDB_SERIAL_MASTER, serial);
 }
 
-int zone_set_lastsigned_serial(zone_t *zone, uint32_t serial)
+void zone_set_lastsigned_serial(zone_t *zone, uint32_t serial)
 {
-	return kasp_db_store_serial(zone_kaspdb(zone), zone->name, KASPDB_SERIAL_LASTSIGNED, serial);
+	zone->timers.last_signed_serial = serial;
+	zone->timers.last_signed_s_flags |= LAST_SIGNED_SERIAL_FOUND | LAST_SIGNED_SERIAL_VALID;
 }
 
 int zone_get_lastsigned_serial(zone_t *zone, uint32_t *serial)
 {
-	return kasp_db_load_serial(zone_kaspdb(zone), zone->name, KASPDB_SERIAL_LASTSIGNED, serial);
+	if (!(zone->timers.last_signed_s_flags & LAST_SIGNED_SERIAL_FOUND)) {
+		// backwards compatibility: it used to be stored in KASP DB, moved to timers for performance
+		return kasp_db_load_serial(zone_kaspdb(zone), zone->name, KASPDB_SERIAL_LASTSIGNED, serial);
+	}
+	if (!(zone->timers.last_signed_s_flags & LAST_SIGNED_SERIAL_VALID)) {
+		return KNOT_ENOENT;
+	}
+	*serial = zone->timers.last_signed_serial;
+	return KNOT_EOK;
 }
 
 int slave_zone_serial(zone_t *zone, conf_t *conf, uint32_t *serial)

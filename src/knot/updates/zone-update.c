@@ -967,13 +967,7 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 	}
 
 	if (dnssec) {
-		ret = zone_set_lastsigned_serial(update->zone,
-		                                 zone_contents_serial(update->new_cont));
-		if (ret != KNOT_EOK) {
-			log_zone_warning(update->zone->name,
-			                 "unable to save lastsigned serial, "
-			                 "future transfers might be broken");
-		}
+		zone_set_lastsigned_serial(update->zone, zone_contents_serial(update->new_cont));
 
 		if ((update->flags & UPDATE_SIGNED_FULL)) {
 			zone_set_flag(update->zone, ZONE_LAST_SIGN_OK);
