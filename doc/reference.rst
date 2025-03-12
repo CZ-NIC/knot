@@ -2528,6 +2528,7 @@ Definition of zones served by the server.
      default-ttl: TIME
      zonefile-sync: TIME
      zonefile-load: none | difference | difference-no-serial | whole
+     zonefile-skip: STR ...
      journal-content: none | changes | all
      journal-max-usage: SIZE
      journal-max-depth: INT
@@ -2791,6 +2792,26 @@ and no zone contents in the journal), it behaves the same way as ``whole``.
 .. NOTE::
    See :ref:`Handling, zone file, journal, changes, serials` for guidance on
    configuring these and related options to ensure reliable operation.
+
+.. _zone_zonefile-skip:
+
+zonefile-skip
+-------------
+
+Specifies resource record types to be omitted when loading and syncing zone files.
+
+Resource record types are represented as strings (e.g. "DS") and multiple types
+may be specified. The special string ``dnssec`` represents all types usually
+created by DNSSEC signing routines (DNSKEY, RRSIG, NSEC, NSEC3, NSEC3PARAM,
+CDNSKEY, CDS — but not DS).
+
+.. NOTE::
+   This option takes effect while a zone file is being read or written, but it does
+   not directly trigger any zone file operation. Therefore, the configured record
+   types cannot be expected to disappear from the zone file or running zone immediately
+   after setting the option.
+
+*Default:* not set
 
 .. _zone_journal-content:
 

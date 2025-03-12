@@ -1,4 +1,4 @@
-/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2025 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -343,19 +343,23 @@ static int axfr_finalize(struct refresh_data *data)
 	bool dnssec_enable = conf_bool(&val);
 	uint32_t old_serial = zone_contents_serial(data->zone->contents), master_serial = 0;
 	bool bootstrap = (data->zone->contents == NULL);
+	zone_skip_t skip = { 0 };
+	int ret = KNOT_EOK;
 
 	if (dnssec_enable) {
 		axfr_slave_sign_serial(new_zone, data->zone, data->conf, &master_serial);
+		ret = zone_skip_add_dnssec_diff(&skip);
+		assert(ret == KNOT_EOK); // static size of zone_skip is enough to cover dnssec types
 	}
 
 	zone_update_t up = { 0 };
-	int ret;
 
 	if (data->ixfr_from_axfr && data->axfr_style_ixfr) {
-		ret = zone_update_from_differences(&up, data->zone, NULL, new_zone, UPDATE_INCREMENTAL, dnssec_enable, false);
+		ret = zone_update_from_differences(&up, data->zone, NULL, new_zone, UPDATE_INCREMENTAL, &skip);
 	} else {
 		ret = zone_update_from_contents(&up, data->zone, new_zone, UPDATE_FULL);
 	}
+	zone_skip_free(&skip);
 	if (ret != KNOT_EOK) {
 		data->fallback->remote = false;
 		return ret;

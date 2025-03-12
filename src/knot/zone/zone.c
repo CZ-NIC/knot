@@ -1,4 +1,4 @@
-/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2025 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -108,7 +108,7 @@ static int flush_journal(conf_t *conf, zone_t *zone, bool allow_empty_zone, bool
 	char *zonefile = conf_zonefile(conf, zone->name);
 
 	/* Synchronize journal. */
-	ret = zonefile_write(zonefile, contents);
+	ret = zonefile_write_skip(zonefile, contents, conf);
 	rcu_read_unlock();
 	if (ret != KNOT_EOK) {
 		log_zone_warning(zone->name, "failed to update zone file (%s)",
@@ -791,7 +791,7 @@ int zone_dump_to_dir(conf_t *conf, zone_t *zone, const char *dir)
 	}
 	free(zonefile);
 
-	return zonefile_write(target, zone->contents);
+	return zonefile_write_skip(target, zone->contents, conf);
 }
 
 void zone_local_notify_subscribe(zone_t *zone, zone_t *subscribe)

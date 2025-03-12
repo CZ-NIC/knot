@@ -196,6 +196,7 @@ class Server(object):
         self.semantic_check = True
         self.zonefile_sync = "1d"
         self.zonefile_load = None
+        self.zonefile_skip = None
         self.zonemd_verify = None
         self.zonemd_generate = None
         self.ixfr_benevolent = None
@@ -1865,6 +1866,9 @@ class Knot(Server):
                 s.item_str("zonefile-load", self.zonefile_load)
             elif z.ixfr:
                 s.item_str("zonefile-load", "difference")
+
+            if self.zonefile_skip is not None:
+                s.item_list("zonefile-skip", self.zonefile_skip)
 
             self._str(s, "master-pin-tolerance", self.master_pin_tol)
 

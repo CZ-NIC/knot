@@ -1,4 +1,4 @@
-/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2025 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -192,9 +192,12 @@ int event_notify(conf_t *conf, zone_t *zone)
 		pthread_mutex_lock(&zone->preferred_lock);
 		if (ret != KNOT_EOK) {
 			failed = true;
-			notifailed_rmt_dynarray_add(&zone->notifailed, &rmt_hash);
+			if (!retry) {
+				notifailed_rmt_dynarray_add(&zone->notifailed, &rmt_hash);
+			}
 		} else {
 			notifailed_rmt_dynarray_remove(&zone->notifailed, &rmt_hash);
+			notifailed_rmt_dynarray_sort(&zone->notifailed);
 		}
 
 		conf_mix_iter_next(&iter);
