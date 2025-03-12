@@ -35,8 +35,8 @@ def check_soa_diff(master, slave, zone, min_diff, max_diff):
 
 def server_purge(server, zones, purge_kaspdb=True):
     shutil.rmtree(os.path.join(server.dir, "journal"), ignore_errors=True)
-    shutil.rmtree(os.path.join(server.dir, "timers"), ignore_errors=True)
     if purge_kaspdb:
+        shutil.rmtree(os.path.join(server.dir, "timers"), ignore_errors=True)
         shutil.rmtree(os.path.join(server.dir, "keys"), ignore_errors=True)
     for z in zones:
         os.remove(server.zones[z.name].zfile.path)

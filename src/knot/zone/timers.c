@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2025 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -61,6 +61,7 @@ enum timer_id {
 	TIMER_NEXT_EXPIRE    = 0x8a,
 	TIMER_LAST_MASTER    = 0x8b,
 	TIMER_MASTER_PIN_HIT = 0x8c,
+	TIMER_LAST_SIGNED    = 0x8d,
 };
 
 #define TIMER_SIZE (sizeof(uint8_t) + sizeof(uint64_t))
@@ -99,6 +100,11 @@ static int deserialize_timers(zone_timers_t *timers_ptr,
 		case TIMER_CATALOG_MEMBER: timers.catalog_member = value; break;
 		case TIMER_NEXT_EXPIRE:    timers.next_expire = value; break;
 		case TIMER_MASTER_PIN_HIT: timers.master_pin_hit = value; break;
+		case TIMER_LAST_SIGNED:
+			timers.last_signed_serial = (value & 0xffffffffLLU);
+			timers.last_signed_s_flags = LAST_SIGNED_SERIAL_FOUND;
+			timers.last_signed_s_flags |= (value >> 32) & LAST_SIGNED_SERIAL_VALID;
+			break;
 		default:                   break; // ignore
 		}
 	}
@@ -118,8 +124,8 @@ static void txn_write_timers(knot_lmdb_txn_t *txn, const knot_dname_t *zone,
 {
 	const char *format = (timers->last_master.sin6_family == AF_INET ||
 	                      timers->last_master.sin6_family == AF_INET6) ?
-	                     "BLBLBLBLBLBLBLBLBDBL" :
-	                     "BLBLBLBLBLBLBLBL";
+	                     "BLBLBLBLBLBLBLBLBLBLBD" :
+	                     "BLBLBLBLBLBLBLBLBL";
 
 	MDB_val k = { knot_dname_size(zone), (void *)zone };
 	MDB_val v = knot_lmdb_make_key(format,
@@ -131,8 +137,9 @@ static void txn_write_timers(knot_lmdb_txn_t *txn, const knot_dname_t *zone,
 		TIMER_NEXT_DS_PUSH,  (uint64_t)timers->next_ds_push,
 		TIMER_CATALOG_MEMBER,(uint64_t)timers->catalog_member,
 		TIMER_NEXT_EXPIRE,   (uint64_t)timers->next_expire,
-		TIMER_LAST_MASTER,   &timers->last_master, sizeof(timers->last_master),
-		TIMER_MASTER_PIN_HIT,(uint64_t)timers->master_pin_hit);
+		TIMER_LAST_SIGNED,   (uint64_t)timers->last_signed_serial | (((uint64_t)timers->last_signed_s_flags) << 32),
+		TIMER_MASTER_PIN_HIT,(uint64_t)timers->master_pin_hit, // those items should be last two
+		TIMER_LAST_MASTER,   &timers->last_master, sizeof(timers->last_master));
 	knot_lmdb_insert(txn, &k, &v);
 	free(v.mv_data);
 }
