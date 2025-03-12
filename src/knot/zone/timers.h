@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2025 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -24,6 +24,8 @@
 #include "knot/journal/knot_lmdb.h"
 
 #define LAST_NOTIFIED_SERIAL_VALID (1LLU << 32)
+#define LAST_SIGNED_SERIAL_FOUND (1 << 0)
+#define LAST_SIGNED_SERIAL_VALID (1 << 1)
 
 /*!
  * \brief Persistent zone timers.
@@ -33,6 +35,8 @@ struct zone_timers {
 	time_t last_flush;             //!< Last zone file synchronization.
 	time_t last_refresh;           //!< Last successful zone refresh attempt. DEPRECATED
 	time_t next_refresh;           //!< Next zone refresh attempt.
+	uint32_t last_signed_serial;   //!< SOA serial of last signed zone version.
+	uint8_t last_signed_s_flags;   //!< If last signed serial detected and valid;
 	bool last_refresh_ok;          //!< Last zone refresh attempt was successful.
 	uint64_t last_notified_serial; //!< SOA serial of last successful NOTIFY; (1<<32) if none.
 	time_t next_ds_check;          //!< Next parent DS check.

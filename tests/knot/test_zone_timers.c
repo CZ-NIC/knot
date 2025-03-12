@@ -1,4 +1,4 @@
-/*  Copyright (C) 2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2025 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -36,6 +36,8 @@ static const zone_timers_t MOCK_TIMERS = {
 	.next_expire    = 1474559965,
 	.last_master    = { .sin6_family = AF_INET, .sin6_port = 53 },
 	.master_pin_hit = 1474559966,
+	.last_signed_serial = 12354678,
+	.last_signed_s_flags = LAST_SIGNED_SERIAL_FOUND | LAST_SIGNED_SERIAL_VALID,
 };
 
 static bool timers_eq(const zone_timers_t *val, const zone_timers_t *ref)
@@ -50,7 +52,9 @@ static bool timers_eq(const zone_timers_t *val, const zone_timers_t *ref)
 		val->next_expire == ref->next_expire &&
 		sockaddr_cmp((struct sockaddr_storage *)&val->last_master,
 		             (struct sockaddr_storage *)&ref->last_master, false) == 0 &&
-		val->master_pin_hit == ref->master_pin_hit;
+		val->master_pin_hit == ref->master_pin_hit &&
+		(val->last_signed_s_flags & LAST_SIGNED_SERIAL_VALID) == (ref->last_signed_s_flags & LAST_SIGNED_SERIAL_VALID) &&
+		(val->last_signed_serial == ref->last_signed_serial || !(val->last_signed_s_flags & LAST_SIGNED_SERIAL_VALID));
 }
 
 static bool keep_all(const knot_dname_t *zone, void *data)
