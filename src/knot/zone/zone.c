@@ -299,10 +299,13 @@ int selective_zone_purge(conf_t *conf, zone_t *zone, purge_flag_t params)
 	if (params & PURGE_ZONE_TIMERS) {
 		bool member = (zone->catalog_gen != NULL);
 		bool lss = (zone->timers.last_signed_s_flags & LAST_SIGNED_SERIAL_VALID);
+		if (params & PURGE_ZONE_KASPDB) {
+			lss = false;
+		}
 		zone->timers = (zone_timers_t) {
 			.catalog_member = member ? zone->timers.catalog_member : 0,
 			.last_signed_serial = lss ? zone->timers.last_signed_serial : 0,
-			.last_signed_s_flags = zone->timers.last_signed_s_flags,
+			.last_signed_s_flags = lss ? zone->timers.last_signed_s_flags : 0,
 		};
 		if (member || lss) {
 			ret = zone_timers_write(&zone->server->timerdb, zone->name,
