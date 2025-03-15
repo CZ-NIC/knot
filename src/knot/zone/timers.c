@@ -102,7 +102,7 @@ static int deserialize_timers(zone_timers_t *timers_ptr,
 		case TIMER_MASTER_PIN_HIT: timers.master_pin_hit = value; break;
 		case TIMER_LAST_SIGNED:
 			timers.last_signed_serial = (value & 0xffffffffLLU);
-			timers.last_signed_s_flags |= LAST_SIGNED_SERIAL_FOUND;
+			timers.last_signed_s_flags = LAST_SIGNED_SERIAL_FOUND;
 			timers.last_signed_s_flags |= (value >> 32) & LAST_SIGNED_SERIAL_VALID;
 			break;
 		default:                   break; // ignore

@@ -826,7 +826,7 @@ int zone_get_master_serial(zone_t *zone, uint32_t *serial)
 void zone_set_lastsigned_serial(zone_t *zone, uint32_t serial)
 {
 	zone->timers.last_signed_serial = serial;
-	zone->timers.last_signed_s_flags |= LAST_SIGNED_SERIAL_FOUND | LAST_SIGNED_SERIAL_VALID;
+	zone->timers.last_signed_s_flags = LAST_SIGNED_SERIAL_FOUND | LAST_SIGNED_SERIAL_VALID;
 }
 
 int zone_get_lastsigned_serial(zone_t *zone, uint32_t *serial)
