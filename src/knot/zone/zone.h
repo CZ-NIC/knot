@@ -1,4 +1,4 @@
-/*  Copyright (C) 2024 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+/*  Copyright (C) 2025 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -298,7 +298,7 @@ int zone_set_master_serial(zone_t *zone, uint32_t serial);
 
 int zone_get_master_serial(zone_t *zone, uint32_t *serial);
 
-int zone_set_lastsigned_serial(zone_t *zone, uint32_t serial);
+void zone_set_lastsigned_serial(zone_t *zone, uint32_t serial);
 
 int zone_get_lastsigned_serial(zone_t *zone, uint32_t *serial);
 
