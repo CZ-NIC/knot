@@ -19,8 +19,9 @@ knot.add_module(zones[1], ModOnlineSign("ECDSAP384SHA384", key_size="384"))
 knot.dnssec(zones[2]).enable = True
 knot.dnssec(zones[3]).enable = True
 knot.dnssec(zones[3]).nsec3 = True
+knot.dnssec(zones[3]).single_type_signing = True
 
-def check_zone(zone, dnskey_rdata_start):
+def check_zone(zone, dnskey_rdata_start, dnskey_count=1):
     # Check SOA record.
     soa1 = knot.dig(zone.name, "SOA", dnssec=True)
     soa1.check(rcode="NOERROR", flags="QR AA")
@@ -50,7 +51,7 @@ def check_zone(zone, dnskey_rdata_start):
     # Check DNSKEY record.
     resp = knot.dig(zone.name, "DNSKEY", dnssec=True)
     resp.check(rcode="NOERROR", flags="QR AA")
-    resp.check_count(1, "DNSKEY")
+    resp.check_count(dnskey_count, "DNSKEY")
     resp.check_count(1, "RRSIG")
     knot.kdig(zone.name, "DNSKEY", validate=True)
 
@@ -80,6 +81,26 @@ for z in zones:
 
 knot.reload()
 knot.zones_wait(zones, serial)
+
+check_zone(zones[0], "257 3 13")
+check_zone(zones[1], "257 3 14")
+
+knot.ctl("zone-freeze " + zones[3].name, wait=True)
+knot.ctl("-f zone-purge +kaspdb " + zones[3].name)
+knot.dnssec(zones[3]).enable = False
+knot.add_module(zones[3], ModOnlineSign())
+knot.gen_confile()
+knot.reload()
+knot.ctl("zone-thaw " + zones[3].name, wait=True)
+t.sleep(2)
+
+check_zone(zones[3], "257 3 13", dnskey_count=2)
+
+up = knot.update(zones[3])
+up.add(zones[3].name, 3600, "DNSKEY", "257 3 13 1d5lDu1o1HEn2lx+YAi2xsjOVE44wjBca/NMlKORpL7C4QERGUztd9SLo0r55+j5P7uHFoeGEnLM+ppwWwdH5A==")
+up.send()
+t.sleep(1)
+check_zone(zones[3], "257 3 13", dnskey_count=3)
 
 t.end()
 
