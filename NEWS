@@ -1,3 +1,27 @@
+Knot DNS 3.4.5 (2025-03-18)
+===========================
+
+Features:
+---------
+ - knotd: support for SOA serial shift (see 'serial-modulo')
+ - knotd: new server statistics (see 'tcp-io-timeout"' and 'tcp-idle-timeout')
+
+Improvements:
+-------------
+ - knotd: better signing performance of many zones in parallel by
+          moving 'last_signed_serial' from KASP database to timer database
+ - knotd: the 'terminated inactive client' TCP log moved to debug level
+ - knotd: allowed initial DDNS to an empty zone
+ - knotd: extended backup and flush argument checks
+ - knotd: new debug logs for zone events suspension
+ - libs: upgraded embedded libngtcp2 to 1.11.0
+ - doc: new section Multi-primary, updates
+
+Bugfixes:
+---------
+ - libdnssec: inappropriate DNSKEY flags evaluation
+ - libknot: incorrect VLAN map size calculation for XDP
+
 Knot DNS 3.4.4 (2025-01-22)
 ===========================
 
