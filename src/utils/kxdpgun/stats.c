@@ -31,30 +31,14 @@ pthread_mutex_t stdout_mtx = PTHREAD_MUTEX_INITIALIZER;
 
 void clear_stats(kxdpgun_stats_t *st)
 {
-	pthread_mutex_lock(&st->mutex);
-	st->since       = 0;
-	st->until       = 0;
-	st->qry_sent    = 0;
-	st->synack_recv = 0;
-	st->ans_recv    = 0;
-	st->finack_recv = 0;
-	st->rst_recv    = 0;
-	st->size_recv   = 0;
-	st->wire_recv   = 0;
-	st->collected   = 0;
-	st->lost        = 0;
-	st->errors      = 0;
-	memset(st->rcodes_recv, 0, sizeof(st->rcodes_recv));
-	pthread_mutex_unlock(&st->mutex);
+	*st = (kxdpgun_stats_t){ 0 };
 }
 
 size_t collect_stats(kxdpgun_stats_t *into, const kxdpgun_stats_t *what)
 {
-	pthread_mutex_lock(&into->mutex);
 	into->since = what->since;
 	collect_periodic_stats(into, what);
 	size_t res = ++into->collected;
-	pthread_mutex_unlock(&into->mutex);
 	return res;
 }
 
@@ -114,7 +98,6 @@ void json_stats_header(const xdp_gun_ctx_t *ctx)
 		if (ctx->stats_period_ns > 0) {
 			jsonw_double(w, "stats_interval", ctx->stats_period_ns / 1000000000.0);
 		}
-		// TODO: timeout
 
 		// mirror the info given by the plaintext printout
 		jsonw_object(w, "additional_info");
@@ -199,8 +182,6 @@ static void format_with_separators(uint64_t num, char output[static 64])
 
 void plain_stats(const xdp_gun_ctx_t *ctx, kxdpgun_stats_t *st, stats_type_t stt)
 {
-	pthread_mutex_lock(&st->mutex);
-
 	printf("%s metrics:\n", (stt == STATS_SUM) ? "cumulative" : "periodic");
 
 	bool recv = !(ctx->flags & KNOT_XDP_FILTER_DROP);
@@ -256,8 +237,6 @@ void plain_stats(const xdp_gun_ctx_t *ctx, kxdpgun_stats_t *st, stats_type_t stt
 	} else {
 		printf("since: %.4fs   until: %.4fs\n", rel_start_us / 1000000, rel_end_us / 1000000);
 	}
-
-	pthread_mutex_unlock(&st->mutex);
 }
 
 /* see https://github.com/DNS-OARC/dns-metrics/blob/main/dns-metrics.schema.json
@@ -268,8 +247,6 @@ void json_stats(const xdp_gun_ctx_t *ctx, kxdpgun_stats_t *st, stats_type_t stt)
 
 	jsonw_t *w = ctx->jw;
 
-	pthread_mutex_lock(&st->mutex);
-
 	jsonw_object(w, NULL);
 	{
 		jsonw_ulong(w, "runid", ctx->runid);
@@ -279,37 +256,34 @@ void json_stats(const xdp_gun_ctx_t *ctx, kxdpgun_stats_t *st, stats_type_t stt)
 		jsonw_ulong(w, "queries", st->qry_sent);
 		jsonw_ulong(w, "responses", st->ans_recv);
 
-		jsonw_object(w, "response_rcodes");
-		{
-			for (size_t i = 0; i < RCODE_MAX; ++i) {
-				if (st->rcodes_recv[i] > 0) {
-					const knot_lookup_t *rc = knot_lookup_by_id(knot_rcode_names, i);
-					jsonw_ulong(w, (rc == NULL) ? "unknown" : rc->name, st->rcodes_recv[i]);
+		if (st->ans_recv > 0) {
+			jsonw_object(w, "response_rcodes");
+			{
+				for (size_t i = 0; i < RCODE_MAX; ++i) {
+					if (st->rcodes_recv[i] > 0) {
+						const knot_lookup_t *rc = knot_lookup_by_id(knot_rcode_names, i);
+						jsonw_ulong(w, (rc == NULL) ? "unknown" : rc->name, st->rcodes_recv[i]);
+					}
 				}
 			}
+			jsonw_end(w);
 		}
-		jsonw_end(w);
 
 		jsonw_object(w, "conn_info");
 		{
 			jsonw_str(w, "type", ctx->tcp ? "tcp" : (ctx->quic ? "quic_conn" : "udp"));
-
-			// TODO:
-			// packets_sent
-			// packets_recieved
-
+			jsonw_ulong(w, "packets_sent", st->qry_sent);
+			jsonw_ulong(w, "packets_recieved", st->ans_recv);
 			jsonw_ulong(w, "socket_errors", st->errors);
 			if (ctx->tcp || ctx->quic) {
 				jsonw_ulong(w, "handshakes", st->synack_recv);
 				// TODO: handshakes_failed
 				if (ctx->quic) {
-					// TODO: conn_resumption
+					// TODO: conn resumption stats
 				}
 			}
 		}
 		jsonw_end(w);
 	}
 	jsonw_end(w);
-
-	pthread_mutex_unlock(&st->mutex);
 }
