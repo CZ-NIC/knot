@@ -576,13 +576,7 @@ static int dv(knot_pkt_t *pkt, kdig_dnssec_ctx_t **dv_ctx,
 	zone_contents_t *conts = (*dv_ctx)->conts;
 	memcpy(zone_name, conts->apex->owner, knot_dname_size(conts->apex->owner));
 
-	int ret = solve_missing_apex(pkt, KNOT_RRTYPE_SOA, conts, level);
-	if (ret != KNOT_EOK) { // EAGAIN or failure
-		*type_needed = KNOT_RRTYPE_SOA;
-		return ret;
-	}
-
-	ret = solve_missing_apex(pkt, KNOT_RRTYPE_DNSKEY, conts, level);
+	int ret = solve_missing_apex(pkt, KNOT_RRTYPE_DNSKEY, conts, level);
 	if (ret != KNOT_EOK) { // EAGAIN or failure
 		*type_needed = KNOT_RRTYPE_DNSKEY;
 		return ret;
@@ -629,7 +623,7 @@ static int dv(knot_pkt_t *pkt, kdig_dnssec_ctx_t **dv_ctx,
 		return ret;
 	}
 
-	// NOTE at this point we have complete "contents" filled with the answer, relevant SOA and DNSKEY and their RRSIGs
+	// NOTE at this point we have complete "contents" filled with the answer, DNSKEY and their RRSIGs
 
 	knot_rcode_t expected_rcode = KNOT_RCODE_NOERROR;
 	tmp_ctx_t tmp = { .conts = conts, .level = level };

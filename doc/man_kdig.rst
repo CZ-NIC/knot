@@ -171,7 +171,7 @@ Options
   Set the DO flag.
 
 **+**\ [\ **no**\ ]\ **validate**
-  Also query for SOA and DNSKEY, validate DNSSEC in the answer. Implies DO flag.
+  Also query for DNSKEY, validate DNSSEC in the answer. Implies DO flag.
   Optional argument specifies verbosity (1-3, default 3).
 
 **+**\ [\ **no**\ ]\ **all**

@@ -816,7 +816,7 @@ static int process_query_packet(const knot_pkt_t      *query,
 		uint16_t type_needed = 0;
 		struct kdig_dnssec_ctx *dv_ctx = query_ctx->dv_ctx;
 		ret = kdig_dnssec_validate(reply, &dv_ctx, query_ctx->dnssec_validation, zone_name, &type_needed);
-		if (ret == KNOT_EAGAIN) { // need to re-query to get DNSKEY and/or SOA
+		if (ret == KNOT_EAGAIN) { // need to re-query to get DNSKEY
 			knot_pkt_free(reply);
 
 			query_t new_ctx = *query_ctx;
