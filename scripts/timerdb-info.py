@@ -67,6 +67,8 @@ class TimerDBInfo:
                 # knot >= 3.3
                 0x8b: ("last_master",     28, cls.format_last_master),
                 0x8c: ("master_pin_hit",   8, cls.format_timestamp),
+                # knot >= 3.5
+                0x8d: ("signed_serial",    8, cls.format_notify_serial),
         }
         if id in timers:
             return (timers[id][0], timers[id][2](value)) if value != None else timers[id][1]
