@@ -45,13 +45,8 @@ master_doc = 'index'
 
 # General information about the project.
 project = 'Knot DNS'
-copyright_year = 2025
-current_year = time.localtime().tm_year
-if current_year > copyright_year:
-    logging.warning('Copyright year is %d, but current year is %d.'%(copyright_year, current_year))
-    logging.warning('Maybe you should update copyright_year in doc/conf.py?')
-copyright = u'Copyright 2010–%d, CZ.NIC, z.s.p.o.' % copyright_year
-author = 'CZ.NIC Labs <https://www.knot-dns.cz>'
+copyright = u'Copyright (C) CZ.NIC, z.s.p.o. and contributors'
+author = 'CZ.NIC, z.s.p.o. and contributors <https://www.knot-dns.cz/>'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
