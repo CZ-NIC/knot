@@ -1,3 +1,7 @@
+# Copyright (C) CZ.NIC, z.s.p.o. and contributors
+# SPDX-License-Identifier: GPL-2.0-or-later
+# For more information, see <https://www.knot-dns.cz/>
+
 # KNOT_LIB_VERSION([library-name], [current], [revision], [age])
 # --------------------------------------------------------------
 # See https://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html

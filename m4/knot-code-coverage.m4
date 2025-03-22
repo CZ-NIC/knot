@@ -1,16 +1,6 @@
-# Copyright 2014 CZ.NIC, z.s.p.o.
-#
-# This program is free software: you can redistribute it and/or modify it 
-# under the terms of the GNU General Public License version 3, as published 
-# by the Free Software Foundation.
-#
-# This program is distributed in the hope that it will be useful, but 
-# WITHOUT ANY WARRANTY; without even the implied warranties of 
-# MERCHANTABILITY, SATISFACTORY QUALITY, or FITNESS FOR A PARTICULAR 
-# PURPOSE.  See the GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License along 
-# with this program.  If not, see <https://www.gnu.org/licenses/>.
+# Copyright (C) CZ.NIC, z.s.p.o. and contributors
+# SPDX-License-Identifier: GPL-2.0-or-later
+# For more information, see <https://www.knot-dns.cz/>
 
 AC_DEFUN([AX_CODE_COVERAGE], [
 	dnl Check for --enable-code-coverage
