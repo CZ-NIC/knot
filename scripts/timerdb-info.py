@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-# vim: et ts=4 sw=4 sts=4
-#
-# Dump content of zone timers database in user readable format.
-#
+# Copyright (C) CZ.NIC, z.s.p.o. and contributors
+# SPDX-License-Identifier: GPL-2.0-or-later
+# For more information, see <https://www.knot-dns.cz/>
+
+"""Dumps content of zone timers database in user readable format."""
 
 import datetime
 import lmdb
