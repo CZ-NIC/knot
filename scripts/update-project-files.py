@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-# vim: et:sw=4:ts=4:sts=4
-#
-# Script regenerates project file list from the list of files tracked by Git.
-#
+# Copyright (C) CZ.NIC, z.s.p.o. and contributors
+# SPDX-License-Identifier: GPL-2.0-or-later
+# For more information, see <https://www.knot-dns.cz/>
+
+"""Regenerates project file list from the list of files tracked by Git."""
 
 SOURCES = [
     "src/*.c", "src/*.h", "src/*.rl",
