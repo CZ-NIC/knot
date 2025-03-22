@@ -1,7 +1,7 @@
 [project]
 name = "knot-dns"
 # needed for make-archive
-make_archive_script = "scripts/make-dev-archive.sh"
+make_archive_script = "scripts/make_dev_archive.sh"
 
 [upstream]
 # needed for get-archive
