@@ -4,36 +4,21 @@ Upstream-Contact: knot-dns@labs.nic.cz
 Source: https://secure.nic.cz/files/knot-dns/
 
 Files: *
-Copyright: 2011-2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
-License: GPL-3+
+Copyright: 2011-2025 CZ.NIC, z.s.p.o. and contributors <knot-dns@labs.nic.cz>
+License: GPL-2+
 
-Files: m4/*
-Copyright: 2011-2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
-           1996-2001, 2003-2015 Free Software Foundation, Inc.
-License: GPL-3+
+Files: m4/ax_check_compile_flag.m4 m4/ax_check_link_flag.m4
+Copyright: 2008 Guido U. Draheim <guidod@gmx.de>
+           2011 Maarten Bosmans <mkbosmans@gmail.com>
+License: FSFAP
+
+Files: m4/ltoptions.m4 m4/ltsugar.m4 m4/ltversion.m4 m4/lt~obsolete.m4 m4/visibility.m4
+Copyright: 2004-2005, 2007-2008, 2011-2019, 2021-2022 Free Software Foundation, Inc.
+License: FSFULLR
 
 Files: install-sh
 Copyright: 1994 X Consortium
 License: MIT
-
-Files: debian/* distro/pkg/deb/*
-Copyright: 2011-2023 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
-           2011 Ondřej Surý <ondrej@debian.org>
-License: GPL-3+
-
-Files: tests/tap/*
-Copyright: 2000-2001, 2004, 2006-2012 Russ Allbery <rra@stanford.edu>
-           2006, 2007, 2008, 2013 The Board of Trustees of the Leland Stanford Junior University
-License: MIT
-
-Files: tests/tap/files.*
-Copyright: 2011-2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
-License: GPL-3+
-
-Files: src/contrib/dnstap/*
-Copyright: 2014, Farsight Security, Inc. <software@farsightsecurity.com>
-           2011-2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
-License: GPL-3+
 
 Files: src/contrib/libngtcp2/*
 Copyright: 2016-2023 ngtcp2 contributors
@@ -52,25 +37,15 @@ Files: src/contrib/openbsd/strl*
 Copyright: 1998 Todd C. Miller <Todd.Miller@courtesan.com>
 License: ISC
 
-Files: src/contrib/proxyv2/*
-Copyright: 2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
-           2021 Fastly, Inc.
-License: GPL-3+
-
-Files: src/contrib/qp-trie/*
-Copyright: 2011-2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
-           2018 Tony Finch <dot@dotat.at>
-License: GPL-3+
-
 Files: src/contrib/ucw/*
-Copyright: 2011-2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+Copyright: 2011-2025 CZ.NIC, z.s.p.o. and contributors <knot-dns@labs.nic.cz>
            1997-2017 Martin Mares <mj@ucw.cz>
            2007 Pavel Charvat <pchar@ucw.cz>
            2012 Ondrej Filip <feela@network.cz>
 License: LGPL-2+
 
 Files: src/contrib/ucw/lists.*
-Copyright: 2011-2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+Copyright: 2011-2025 CZ.NIC, z.s.p.o. and contributors <knot-dns@labs.nic.cz>
            1998 Martin Mares <mj@ucw.cz>
            1998 Pavel Machek <pavel@ucw.cz>
            1998 Ondrej Zajicek <santiago@crfreenet.org>
@@ -86,27 +61,15 @@ Files: src/contrib/vpool/*
 Copyright: 2006, 2008 Alexey Vatchenko <av@bsdua.org>
 License: ISC
 
-Files: tests-fuzz/main.c
-Copyright: 2011-2019 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
-           2017 Tim Ruehsen
+Files: tests/tap/basic.* tests/tap/float.* tests/tap/libtap.sh tests/tap/macros.h tests/tap/runtests.c
+Copyright: 2000-2001, 2004, 2006-2012 Russ Allbery <rra@stanford.edu>
+           2006, 2007, 2008, 2013 The Board of Trustees of the Leland Stanford Junior University
 License: MIT
 
-License: GPL-3+
- This program is free software: you can redistribute it and/or modify
- it under the terms of the GNU General Public License as published by
- the Free Software Foundation, either version 3 of the License, or
- (at your option) any later version.
- .
- This program is distributed in the hope that it will be useful, but
- WITHOUT ANY WARRANTY; without even the implied warranty of
- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- General Public License for more details.
- .
- You should have received a copy of the GNU General Public License
- along with this program.  If not, see <https://www.gnu.org/licenses/>.
- .
- On Debian systems, the full text of the GNU General Public License
- version 3 can be found in the file `/usr/share/common-licenses/GPL-3'.
+Files: tests-fuzz/main.c
+Copyright: 2011-2025 CZ.NIC, z.s.p.o. and contributors <knot-dns@labs.nic.cz>
+           2017 Tim Ruehsen
+License: MIT
 
 License: GPL-2+
  This program is free software; you can redistribute it and/or modify
@@ -141,6 +104,17 @@ License: LGPL-2+
  .
  On Debian GNU/Linux systems, the complete text of the GNU Lesser
  General Public License can be found in `/usr/share/common-licenses/LGPL-2'.
+
+License: FSFAP
+ Copying and distribution of this file, with or without modification, are
+ permitted in any medium without royalty provided the copyright notice
+ and this notice are preserved. This file is offered as-is, without any
+ warranty.
+
+License: FSFULLR
+ This file is free software; the Free Software Foundation gives unlimited
+ permission to copy and/or distribute it, with or without modifications,
+ as long as this notice is preserved.
 
 License: ISC
  Permission to use, copy, modify, and distribute this software for any
