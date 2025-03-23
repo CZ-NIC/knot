@@ -9,7 +9,7 @@ Summary:	High-performance authoritative DNS server
 Name:		knot
 Version:	{{ version }}
 Release:	cznic.{{ release }}%{?dist}
-License:	GPL-3.0-or-later
+License:	GPL-2.0-or-later
 URL:		https://www.knot-dns.cz
 Source0:	%{name}-%{version}.tar.xz
 
