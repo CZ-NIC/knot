@@ -10,6 +10,7 @@
 
 #define REDISMODULE_MAIN // Fixes loading error undefined symbol: RedisModule_ReplySetArrayLength.
 #include "contrib/redis/redismodule.h"
+#include "redis/knot.h"
 
 #define KNOT_ZONE_RRSET_ENCODING_VERSION 0
 
@@ -32,11 +33,6 @@ typedef enum {
 	ZONE_INDEX,
 	RRSET
 } knot_type_id;
-
-typedef enum {
-	CREATED,
-	PURGED
-} knot_event_id;
 
 typedef struct {
 	uint32_t ttl;
@@ -263,13 +259,23 @@ static int knot_commit_event(RedisModuleCtx *ctx, const int event, RedisModuleSt
 	}
 
 	RedisModuleString *_event[] = {
-		RedisModule_CreateString(ctx, "event", sizeof("event")),
+		RedisModule_CreateString(ctx, "event", sizeof("event") - 1),
 		RedisModule_CreateStringFromLongLong(ctx, event),
-		RedisModule_CreateString(ctx, "origin", sizeof("origin")),
+		RedisModule_CreateString(ctx, "origin", sizeof("origin") - 1),
 		origin_str
 	};
 
-	RedisModule_StreamAdd(stream_key, REDISMODULE_STREAM_ADD_AUTOID, NULL, _event, 2UL);
+	RedisModuleStreamID ts;
+	RedisModule_StreamAdd(stream_key, REDISMODULE_STREAM_ADD_AUTOID, &ts, _event, 2UL);
+
+	// TODO choose right time, no older events will be available
+	ts.ms = ts.ms - 60000; // 1 minute
+	ts.seq = 0;
+	// NOTE Trimming with REDISMODULE_STREAM_TRIM_APPROX improves preformance
+	long long removed_cnt = RedisModule_StreamTrimByID(stream_key, REDISMODULE_STREAM_TRIM_APPROX, &ts);
+	if (removed_cnt) {
+		RedisModule_Log(ctx, REDISMODULE_LOGLEVEL_NOTICE, "stream trimmed %lld old events", removed_cnt);
+	}
 	RedisModule_CloseKey(stream_key);
 
 	RedisModule_FreeString(ctx, _event[0]);
