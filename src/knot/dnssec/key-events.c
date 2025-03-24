@@ -903,6 +903,12 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flags,
 
 int knot_dnssec_ksk_sbm_confirm(kdnssec_ctx_t *ctx, uint32_t retire_delay)
 {
+	if (ctx->policy->manual) {
+		log_zone_warning(ctx->zone->dname, "DNSSEC, ignoring KSK submission "
+		                                   "due to manual policy");
+		return KNOT_NO_READY_KEY;
+	}
+
 	for (size_t i = 0; i < ctx->zone->num_keys; i++) {
 		knot_kasp_key_t *key = &ctx->zone->keys[i];
 		if (key->is_ksk && !key->is_pub_only &&
