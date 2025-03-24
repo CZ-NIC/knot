@@ -22,7 +22,7 @@
 
 #define ALIGNED_CPU_CACHE _Alignas(64)
 
-// An unsigned integral type used for prices, blocking occurs when sum of prices overflows.
+// An unsigned integral type used for prices, limiting occurs when sum of prices overflows.
 // Greater than 16-bit type enables randomized fractional incrementing as the internal counters are still 16-bit.
 // Exponential decay always uses randomized rounding on 32 bits.
 typedef uint32_t kru_price_t;
@@ -49,6 +49,12 @@ struct kru_api {
 	/// Note that the _multi variants increase these totals
 	/// by tracking multiple keys in a single query.
 	///
+	/// The max_decay parameter sets maximal decrease of a counter per a time_now tick,
+	/// which occurs when the original value was just under the limit.
+	/// I.e. the value KRU_LIMIT will be lowered to (KRU_LIMIT - max_decay);
+	/// in general, the value is multiplied by (KRU_LIMIT - max_decay)/KRU_LIMIT each time_now tick
+	/// (typically time_now counts milliseconds).
+	///
 	/// Returns false if kru is NULL or other failure occurs.
 	bool (*initialize)(struct kru *kru, int capacity_log, kru_price_t max_decay);
 
@@ -69,7 +75,9 @@ struct kru_api {
 	/// Returns a prefix (value in prefixes) on which the key is blocked, or zero if all queries passed.
 	/// Updates KRU only if no query is blocked, unless a race condition occurs --
 	/// in such a case all longer prefixes might have been updated.
-	/// The key of i-th query consists of prefixes[i] bits of key, prefixes[i], and namespace.
+	/// The key of i-th query consists of prefixes[i] bits of key, prefixes[i], and namespace;
+	/// the specific namespace values may be arbitrary,
+	/// they just extend the keys to allow storing different noncolliding sets of them in the same table (such as IPv4 and IPv6).
 	/// If zero is returned, *max_load_out (unless NULL) is set to
 	/// the maximum of final values of the involved counters normalized to the limit 2^16.
 	uint8_t (*limited_multi_prefix_or)(struct kru *kru, uint32_t time_now,
@@ -82,6 +90,13 @@ struct kru_api {
 	/// The key of i-th query consists of prefixes[i] bits of key, prefixes[i], and namespace.
 	uint16_t (*load_multi_prefix_max)(struct kru *kru, uint32_t time_now,
 			uint8_t namespace, uint8_t key[static 16], uint8_t *prefixes, kru_price_t *prices, size_t queries_cnt, uint8_t *prefix_out);
+
+	/// Multiple queries based on different prefixes of a single key.
+	/// Stores the final values of the involved counters normalized to the limit 2^16 to *loads_out (unless NULL).
+	/// Set prices to NULL to skip updating; otherwise, KRU is always updated, using maximal allowed value on overflow.
+	/// The key of i-th query consists of prefixes[i] bits of key, prefixes[i], and namespace; as above.
+	void (*load_multi_prefix)(struct kru *kru, uint32_t time_now,
+			uint8_t namespace, uint8_t key[static 16], uint8_t *prefixes, kru_price_t *prices, size_t queries_cnt, uint16_t *loads_out);
 };
 
 // The functions are stored this way to make it easier to switch
