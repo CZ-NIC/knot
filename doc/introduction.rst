@@ -82,6 +82,7 @@ Remarkable supported networking features:
 License
 =======
 
-Knot DNS is licensed under the `GNU General Public License <https://www.gnu.org/copyleft/gpl.html>`_
-version 3 or (at your option) any later version. The full text of the license
-is available in the ``COPYING`` file distributed with source code.
+Knot DNS is licensed under the
+`GNU General Public License v2.0 or later <https://spdx.org/licenses/GPL-2.0-or-later.html>`_.
+The full text of the license is available in the ``COPYING`` file distributed
+with the source code.
