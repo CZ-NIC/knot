@@ -8,7 +8,7 @@ version = "@PACKAGE_VERSION@"
 description = "Prometheus exporter for Knot DNS"
 readme = "README.md"
 requires-python = ">=3.5"
-license = { text = "GPL-3.0" }
+license = { text = "GPL-2.0-or-later" }
 authors = [
     { name = "CZ.NIC, z.s.p.o.", email = "knot-dns@labs.nic.cz" },
     { name = "Alessandro Ghedini", email = "alessandro@ghedini.me" },
@@ -16,7 +16,7 @@ authors = [
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: System Administrators",
-    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "License :: OSI Approved :: GNU General Public License v2 or later (GPLv2+)",
     "Programming Language :: Python :: 3",
     "Topic :: Internet :: Name Service (DNS)",
     "Topic :: System :: Systems Administration",

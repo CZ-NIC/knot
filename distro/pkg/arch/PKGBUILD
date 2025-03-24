@@ -11,7 +11,7 @@ pkgrel=1
 pkgdesc="High-performance authoritative-only DNS server"
 arch=('x86_64')
 url="https://www.knot-dns.cz/"
-license=('GPL3')
+license=('GPL-2.0-or-later')
 depends=('fstrm'
          'gnutls'
          'libcap-ng'

@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
+# Copyright (C) CZ.NIC, z.s.p.o. and contributors
+# SPDX-License-Identifier: GPL-2.0-or-later
+# For more information, see <https://www.knot-dns.cz/>
 
-"""Simple program for exporting statistics from Knot DNS to influxdb."""
+"""A simple program for exporting statistics from Knot DNS to influxdb."""
 
 import libknot.control
 import io

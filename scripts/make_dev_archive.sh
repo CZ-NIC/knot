@@ -1,6 +1,12 @@
 #!/bin/bash
-# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) CZ.NIC, z.s.p.o. and contributors
+# SPDX-License-Identifier: GPL-2.0-or-later
+# For more information, see <https://www.knot-dns.cz/>
+
+#
 # Create a development tarball
+#
+
 set -o errexit -o nounset -o xtrace
 
 cd "$(dirname ${0})/.."
