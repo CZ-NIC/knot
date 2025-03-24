@@ -3,6 +3,7 @@
  *  For more information, see <https://www.knot-dns.cz/>
  */
 
+#include "knot/common/hiredis.h"
 #include "knot/common/log.h"
 #include "knot/journal/journal_metadata.h"
 #include "knot/journal/journal_read.h"
@@ -46,7 +47,7 @@ int zone_load_contents(conf_t *conf, const knot_dname_t *zone_name,
 		free(zonefile);
 	} else {
 #ifdef ENABLE_REDIS
-		redisContext *rdb = zone_rdb_connect(conf);
+		redisContext *rdb = rdb_connect(conf);
 		if (rdb == NULL) {
 			zone_skip_free(&skip);
 			return KNOT_ECONN;

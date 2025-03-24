@@ -137,6 +137,8 @@ libknotd_la_SOURCES = \
 	knot/common/evsched.h			\
 	knot/common/fdset.c			\
 	knot/common/fdset.h			\
+	knot/common/hiredis.c			\
+	knot/common/hiredis.h			\
 	knot/common/log.c			\
 	knot/common/log.h			\
 	knot/common/process.c			\
@@ -231,12 +233,6 @@ libknotd_la_SOURCES = \
 	knot/zone/zonedb.h			\
 	knot/zone/zonefile.c			\
 	knot/zone/zonefile.h
-
-if ENABLE_REDIS
-libknotd_la_SOURCES += \
-	knot/common/hiredis.c	\
-	knot/common/hiredis.h
-endif ENABLE_REDIS
 
 if ENABLE_QUIC
 libknotd_la_SOURCES += \

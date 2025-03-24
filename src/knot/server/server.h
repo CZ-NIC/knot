@@ -106,6 +106,7 @@ typedef struct server {
 
 	/*! \brief Background jobs. */
 	worker_pool_t *workers;
+	dt_unit_t *rdb_events;
 
 	/*! \brief Event scheduler. */
 	evsched_t sched;

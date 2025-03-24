@@ -814,6 +814,103 @@ static int configure_sockets(conf_t *conf, server_t *s)
 	return KNOT_EOK;
 }
 
+
+#include "knot/common/hiredis.h"
+#include "redis/knot.h"
+
+#ifdef ENABLE_REDIS
+
+#define RDB_TIMESTAMP_SIZE 42
+
+static void rdb_process_event(char *since, redisReply *reply, knot_zonedb_t *zone_db)
+{
+	redisReply *ev_timestamp = reply->element[0];
+	redisReply *ev_data = reply->element[1];
+	if (ev_data->type != REDIS_REPLY_ARRAY ||
+	    ev_data->elements != 4) {
+		log_error("Redis: unexpected response");
+		return;
+	}
+
+	if (ev_timestamp->len > RDB_TIMESTAMP_SIZE) {
+		log_error("Redis: wrong timestamp");
+		return;
+	}
+	strncpy(since, ev_timestamp->str, RDB_TIMESTAMP_SIZE);
+	knot_dname_t *dname = (knot_dname_t *)ev_data->element[3]->str;
+	int ev_type = atoi(ev_data->element[1]->str);
+	switch (ev_type) {
+	case CREATED:
+		zone_t *zone = knot_zonedb_find(zone_db, dname);
+		if (zone == NULL) {
+			break;
+		}
+		zone_events_schedule_now(zone, ZONE_EVENT_LOAD);
+		break;
+	default:
+		break;
+	}
+}
+
+static void rdb_process_events(char *since, redisReply *reply, knot_zonedb_t *zone_db)
+{
+	if(reply->type != REDIS_REPLY_ARRAY) {
+		log_error("Redis: unexpected response");
+		return;
+	}
+
+	for (int idx = 0; idx < reply->elements; ++idx) {
+		if (reply->element[idx]->type != REDIS_REPLY_ARRAY ||
+		    reply->element[idx]->elements != 2) {
+			log_error("Redis: unexpected response");
+			continue;
+		}
+		redisReply *events = reply->element[idx]->element[1];
+		for (int event_idx = 0; event_idx < events->elements; ++event_idx) {
+			rdb_process_event(since, events->element[event_idx], zone_db);
+		}
+	}
+}
+#endif
+
+static int rdb_listener_run(struct dthread *thread)
+{
+#ifdef ENABLE_REDIS
+	server_t *s = thread->data;
+	knot_zonedb_t *zone_db = s->zone_db;
+	if (zone_db == NULL) {
+		return -1;
+	}
+	redisContext *ctx = rdb_connect(conf());
+	if (ctx == NULL) {
+		return KNOT_ECONN;
+	}
+
+	static const uint8_t STREAM_KEY = '\x00';
+	char since[RDB_TIMESTAMP_SIZE] = "$"; // NOTE size computed as 2 times unsigned 64bit number as string (2x20) plus zero byte and dash between
+
+	// TODO Need blocking time (eg. 1s), otherwice TLS connection timeout
+	// NOTE: BLOCK 0 means block indefinetly, use time in ms (milliseconds)
+	while(thread->state == ThreadActive) {
+		redisReply *reply = redisCommand(ctx,"XREAD BLOCK %d STREAMS %b %s", 1000, &STREAM_KEY, sizeof(STREAM_KEY), since);
+		if (reply == NULL) {
+			log_error("Redis: connection lost");
+			return -1;
+		}
+		if(reply->type == REDIS_REPLY_NIL) {
+			continue;
+		}
+
+		rdb_process_events(since, reply, zone_db);
+
+		freeReplyObject(reply);
+	}
+
+	return KNOT_EOK;
+#endif
+	return KNOT_ENOTSUP;
+}
+
 int server_init(server_t *server, int bg_workers)
 {
 	if (server == NULL) {
@@ -834,8 +931,17 @@ int server_init(server_t *server, int bg_workers)
 		return KNOT_ENOMEM;
 	}
 
+	server->rdb_events = dt_create(1, rdb_listener_run, NULL, server);
+	if (server->rdb_events == NULL) {
+		worker_pool_destroy(server->workers);
+		evsched_deinit(&server->sched);
+		return KNOT_ENOMEM;
+	}
+
 	int ret = catalog_update_init(&server->catalog_upd);
 	if (ret != KNOT_EOK) {
+		dt_stop(server->rdb_events);
+		dt_delete(&server->rdb_events);
 		worker_pool_destroy(server->workers);
 		evsched_deinit(&server->sched);
 		return ret;
@@ -996,6 +1102,9 @@ int server_start(server_t *server, bool async)
 
 	/* Start workers. */
 	worker_pool_start(server->workers);
+
+	/* Start RDB event listening */
+	dt_start(server->rdb_events);
 
 	/* Wait for enqueued events if not asynchronous. */
 	if (!async) {

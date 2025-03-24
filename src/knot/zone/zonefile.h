@@ -54,7 +54,6 @@ int zonefile_open(zloader_t *loader, const char *source, const knot_dname_t *ori
                   sem_handler_t *sem_err_handler, time_t time, zone_skip_t *skip);
 
 #ifdef ENABLE_REDIS
-redisContext *zone_rdb_connect(conf_t *conf);
 
 int zone_rdb_exists(conf_t *conf, const knot_dname_t *zone, uint32_t *serial);
 
