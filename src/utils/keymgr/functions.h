@@ -27,6 +27,8 @@ typedef struct {
 	bool json;
 } keymgr_list_params_t;
 
+bool same_command(const char *arg, const char *cmd, bool prefix);
+
 int parse_timestamp(char *arg, knot_time_t *stamp);
 
 int keymgr_generate_key(kdnssec_ctx_t *ctx, int argc, char *argv[]);

@@ -43,6 +43,29 @@
 #include "knot/dnssec/zone-sign.h"
 #include "libzscanner/scanner.h"
 
+inline static bool both_dash_undersc(const char a, const char b)
+{
+	return (a == '-' || a == '_') && (b == '-' || b == '_');
+}
+
+bool same_command(const char *arg, const char *cmd, bool prefix)
+{
+	unsigned cmd_len = strlen(cmd);
+	unsigned arg_len = strnlen(arg, cmd_len + 1);
+	if (arg_len != cmd_len && (!prefix || arg_len < cmd_len)) {
+		return false;
+	}
+
+	for (unsigned i = 0; i < cmd_len; i++) {
+		if (knot_tolower(arg[i]) != knot_tolower(cmd[i]) &&
+		    !both_dash_undersc(arg[i], cmd[i])) {
+			return false;
+		}
+	}
+
+	return true;
+}
+
 int parse_timestamp(char *arg, knot_time_t *stamp)
 {
 	int ret = knot_time_parse("YMDhms|'now'+-#u|'t'+-#u|+-#u|'t'+-#|+-#|#",
@@ -58,25 +81,25 @@ static bool init_timestamps(char *arg, knot_kasp_key_timing_t *timing)
 {
 	knot_time_t *dst = NULL;
 
-	if (strncasecmp(arg, "created=", 8) == 0) {
+	if (same_command(arg, "created=", true)) {
 		dst = &timing->created;
-	} else if (strncasecmp(arg, "publish=", 8) == 0) {
+	} else if (same_command(arg, "publish=", true)) {
 		dst = &timing->publish;
-	} else if (strncasecmp(arg, "ready=", 6) == 0) {
+	} else if (same_command(arg, "ready=", true)) {
 		dst = &timing->ready;
-	} else if (strncasecmp(arg, "active=", 7) == 0) {
+	} else if (same_command(arg, "active=", true)) {
 		dst = &timing->active;
-	} else if (strncasecmp(arg, "retire=", 7) == 0) {
+	} else if (same_command(arg, "retire=", true)) {
 		dst = &timing->retire;
-	} else if (strncasecmp(arg, "remove=", 7) == 0) {
+	} else if (same_command(arg, "remove=", true)) {
 		dst = &timing->remove;
-	} else if (strncasecmp(arg, "pre_active=", 11) == 0) {
+	} else if (same_command(arg, "pre_active=", true)) {
 		dst = &timing->pre_active;
-	} else if (strncasecmp(arg, "post_active=", 12) == 0) {
+	} else if (same_command(arg, "post_active=", true)) {
 		dst = &timing->post_active;
-	} else if (strncasecmp(arg, "retire_active=", 14) == 0) {
+	} else if (same_command(arg, "retire_active=", true)) {
 		dst = &timing->retire_active;
-	} else if (strncasecmp(arg, "revoke=", 7) == 0) {
+	} else if (same_command(arg, "revoke=", true)) {
 		dst = &timing->revoke;
 	} else {
 		return false;
@@ -132,12 +155,12 @@ static bool genkeyargs(int argc, char *argv[], bool just_timing,
 
 	// parse args
 	for (int i = 0; i < argc; i++) {
-		if (!just_timing && strncasecmp(argv[i], "algorithm=", 10) == 0) {
+		if (!just_timing && same_command(argv[i], "algorithm=", true)) {
 			int alg = 256; // invalid value
 			(void)str_to_int(argv[i] + 10, &alg, 0, 255);
 			for (int al = 0; al < 256 && alg > 255; al++) {
 				if (algnames[al] != NULL &&
-				    strcasecmp(argv[i] + 10, algnames[al]) == 0) {
+				    same_command(argv[i] + 10, algnames[al], false)) {
 					alg = al;
 				}
 			}
@@ -146,19 +169,19 @@ static bool genkeyargs(int argc, char *argv[], bool just_timing,
 				return false;
 			}
 			*algorithm = alg;
-		} else if (strncasecmp(argv[i], "ksk=", 4) == 0) {
+		} else if (same_command(argv[i], "ksk=", true)) {
 			bitmap_set(flags, DNSKEY_GENERATE_KSK, str2bool(argv[i] + 4));
-		} else if (strncasecmp(argv[i], "zsk=", 4) == 0) {
+		} else if (same_command(argv[i], "zsk=", true)) {
 			bitmap_set(flags, DNSKEY_GENERATE_ZSK, str2bool(argv[i] + 4));
-		} else if (strncasecmp(argv[i], "sep=", 4) == 0) {
+		} else if (same_command(argv[i], "sep=", true)) {
 			bitmap_set(flags, DNSKEY_GENERATE_SEP_SPEC, true);
 			bitmap_set(flags, DNSKEY_GENERATE_SEP_ON, str2bool(argv[i] + 4));
-		} else if (!just_timing && strncasecmp(argv[i], "size=", 5) == 0) {
+		} else if (!just_timing && same_command(argv[i], "size=", true)) {
 			if (str_to_u16(argv[i] + 5, keysize) != KNOT_EOK) {
 				ERR2("invalid size: '%s'", argv[i] + 5);
 				return false;
 			}
-		} else if (!just_timing && strncasecmp(argv[i], "addtopolicy=", 12) == 0) {
+		} else if (!just_timing && same_command(argv[i], "addtopolicy=", true)) {
 			*addtopolicy = argv[i] + 12;
 		} else if (!init_timestamps(argv[i], timing)) {
 			ERR2("invalid parameter: %s", argv[i]);
@@ -756,10 +779,10 @@ int keymgr_get_key(kdnssec_ctx_t *ctx, const char *key_spec, knot_kasp_key_t **k
 {
 	// Check if type of key spec is prescribed.
 	bool is_keytag = false, is_id = false;
-	if (strncasecmp(key_spec, "keytag=", 7) == 0) {
+	if (same_command(key_spec, "keytag=", true)) {
 		key_spec += 7;
 		is_keytag = true;
-	} else if (strncasecmp(key_spec, "id=", 3) == 0) {
+	} else if (same_command(key_spec, "id=", true)) {
 		key_spec += 3;
 		is_id = true;
 	}
