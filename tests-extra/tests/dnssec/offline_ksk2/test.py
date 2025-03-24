@@ -94,19 +94,19 @@ key_zsk1 = knot.key_gen(ZONE, ksk="false", created="+0", publish="+0", active="+
 KSR = knot.keydir + "/ksr"
 SKR = knot.keydir + "/skr"
 SKR_BROKEN = SKR + "_broken"
-Keymgr.run_check(knot.confile, ZONE, "pregenerate", "+20", "+" + str(FUTURE))
+Keymgr.run_check(knot.confile, ZONE, "prEgenerate", "+20", "+" + str(FUTURE))
 t.sleep(1)
-Keymgr.run_check(knot.confile, ZONE, "pregenerate", "+20", "+" + str(FUTURE))
+Keymgr.run_check(knot.confile, ZONE, "pregeNerate", "+20", "+" + str(FUTURE))
 _, out, _ = Keymgr.run_check(knot.confile, ZONE, "list")
 if out.count("created") != 2:
     detail_log(out)
     set_err("Pregenerated ZSKs: %d" % out.count("created"))
-_, out, _ = Keymgr.run_check(knot.confile, ZONE, "generate-ksr", "+0", "+" + str(FUTURE))
+_, out, _ = Keymgr.run_check(knot.confile, ZONE, "generAte_ksr", "+0", "+" + str(FUTURE))
 writef(KSR, out)
-_, out, _ = Keymgr.run_check(signer.confile, ZONE, "sign-ksr", KSR)
+_, out, _ = Keymgr.run_check(signer.confile, ZONE, "siGn_ksr", KSR)
 writef(SKR, out)
 
-Keymgr.run_check(knot.confile, ZONE, "import-skr", SKR)
+Keymgr.run_check(knot.confile, ZONE, "import_sKr", SKR)
 
 # run it and see if the signing works well
 t.start()
