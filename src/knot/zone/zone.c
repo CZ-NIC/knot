@@ -9,6 +9,7 @@
 #include <time.h>
 #include <urcu.h>
 
+#include "knot/common/hiredis.h"
 #include "knot/common/log.h"
 #include "knot/conf/module.h"
 #include "knot/dnssec/kasp/kasp_db.h"
@@ -129,7 +130,7 @@ static int flush_journal(conf_t *conf, zone_t *zone, bool allow_empty_zone, bool
 		free(zonefile);
 	} else {
 #ifdef ENABLE_REDIS
-		redisContext *rdb = zone_rdb_connect(conf);
+		redisContext *rdb = rdb_connect(conf);
 		if (rdb == NULL) {
 			ret = KNOT_ECONN;
 			rcu_read_unlock();
