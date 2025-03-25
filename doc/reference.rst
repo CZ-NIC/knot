@@ -2399,6 +2399,11 @@ cds-digest-type
 
 Specify digest type for published CDS records.
 
+Possible values:
+
+- ``sha256``
+- ``sha384``
+
 *Default:* ``sha256``
 
 .. _policy_dnskey-management:
