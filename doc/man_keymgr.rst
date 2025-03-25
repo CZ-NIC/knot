@@ -203,7 +203,7 @@ Arguments are separated by space, each of them is in format 'name=value'.
 
 **algorithm**
   Either an algorithm number (e.g. 14) or :ref:`algorithm name<policy_algorithm>`
-  without dashes (e.g. ECDSAP384SHA384).
+  (e.g. ecdsap256sha256).
 
 **size**
   Key length in bits.
