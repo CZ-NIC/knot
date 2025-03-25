@@ -656,6 +656,10 @@ Possible values:
 .. NOTE::
    This function requires systemd version at least 221 or libdbus.
 
+.. TIP::
+   A few sample script templates can be found in
+   `the project repository <https://gitlab.nic.cz/knot/knot-dns/-/tree/master/samples>`_.
+
 Change of this parameter requires restart of the Knot server to take effect.
 
 *Default:* ``none``
