@@ -362,9 +362,8 @@ int conf_activate_modules(
 	case KNOT_EOK:
 		break;
 	case KNOT_ENOENT: // Check if a module is configured at all.
-		return KNOT_EOK;
 	case KNOT_YP_EINVAL_ID:
-		return KNOT_EZONEINVAL;
+		return KNOT_EOK;
 	default:
 		ret = val.code;
 		goto activate_error;
@@ -394,6 +393,7 @@ int conf_activate_modules(
 		if (mod == NULL) {
 			MOD_ID_LOG(zone_name, error, mod_id, "failed to open");
 			conf_free_mod_id(mod_id);
+			ret = KNOT_EZONEINVAL;
 			goto activate_error;
 		}
 
@@ -402,6 +402,7 @@ int conf_activate_modules(
 		    (zone_name != NULL && !(mod->api->flags & KNOTD_MOD_FLAG_SCOPE_ZONE))) {
 			MOD_ID_LOG(zone_name, error, mod_id, "out of scope");
 			query_module_close(mod);
+			ret = KNOT_EZONEINVAL;
 			goto activate_error;
 		}
 
@@ -409,6 +410,7 @@ int conf_activate_modules(
 		if (mod->api->load == NULL) {
 			MOD_ID_LOG(zone_name, debug, mod_id, "empty module, not loaded");
 			query_module_close(mod);
+			ret = KNOT_EZONEINVAL;
 			goto activate_error;
 		}
 
@@ -418,6 +420,7 @@ int conf_activate_modules(
 			MOD_ID_LOG(zone_name, error, mod_id, "failed to load (%s)",
 			        knot_strerror(ret));
 			query_module_close(mod);
+			ret = KNOT_EZONEINVAL;
 			goto activate_error;
 		}
 		mod->config = NULL; // Invalidate the current config.
@@ -430,7 +433,7 @@ int conf_activate_modules(
 activate_error:
 	CONF_LOG(LOG_ERR, "failed to activate modules (%s)", knot_strerror(ret));
 	conf_deactivate_modules(query_modules, query_plan);
-	return KNOT_EZONEINVAL;
+	return ret;
 }
 
 void conf_deactivate_modules(

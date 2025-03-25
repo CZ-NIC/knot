@@ -1320,7 +1320,7 @@ int server_reload(server_t *server, reload_t mode)
 
 		ret = conf_activate_modules(new_conf, server, NULL, new_conf->query_modules,
 		                      &new_conf->query_plan);
-		if (ret!= KNOT_EOK) {
+		if (ret != KNOT_EOK) {
 			conf_free(new_conf);
 			systemd_ready_notify();
 			return ret;
