@@ -160,29 +160,29 @@ static int key_command(int argc, char *argv[], int opt_ind, knot_lmdb_db_t *kasp
 	}
 
 	bool print_ok_on_succes = true;
-	if (strcmp(argv[1], "generate") == 0) {
+	if (same_command(argv[1], "generate", false)) {
 		ret = keymgr_generate_key(&kctx, argc - 2, argv + 2);
 		print_ok_on_succes = false;
-	} else if (strcmp(argv[1], "import-bind") == 0) {
+	} else if (same_command(argv[1], "import-bind", false)) {
 		CHECK_MISSING_ARG("BIND-style key to import not specified");
 		ret = keymgr_import_bind(&kctx, argv[2], false);
-	} else if (strcmp(argv[1], "import-pub") == 0) {
+	} else if (same_command(argv[1], "import-pub", false)) {
 		CHECK_MISSING_ARG("BIND-style key to import not specified");
 		ret = keymgr_import_bind(&kctx, argv[2], true);
-	} else if (strcmp(argv[1], "import-pem") == 0) {
+	} else if (same_command(argv[1], "import-pem", false)) {
 		CHECK_MISSING_ARG("PEM file to import not specified");
 		ret = keymgr_import_pem(&kctx, argv[2], argc - 3, argv + 3);
-	} else if (strcmp(argv[1], "import-pkcs11") == 0) {
+	} else if (same_command(argv[1], "import-pkcs11", false)) {
 		CHECK_MISSING_ARG("Key ID to import not specified");
 		ret = keymgr_import_pkcs11(&kctx, argv[2], argc - 3, argv + 3);
-	} else if (strcmp(argv[1], "nsec3-salt") == 0) {
+	} else if (same_command(argv[1], "nsec3-salt", false)) {
 		if (argc > 2) {
 			ret = keymgr_nsec3_salt_set(&kctx, argv[2]);
 		} else {
 			ret = keymgr_nsec3_salt_print(&kctx);
 			print_ok_on_succes = false;
 		}
-	} else if (strcmp(argv[1], "local-serial") == 0 || strcmp(argv[1], "master-serial") == 0 ) {
+	} else if (same_command(argv[1], "local-serial", false) || same_command(argv[1], "master-serial", false)) {
 		kaspdb_serial_t type = (argv[1][0] == 'm' ? KASPDB_SERIAL_MASTER : KASPDB_SERIAL_LASTSIGNED);
 		if (argc > 2) {
 			uint32_t new_serial = 0;
@@ -193,7 +193,7 @@ static int key_command(int argc, char *argv[], int opt_ind, knot_lmdb_db_t *kasp
 			ret = keymgr_serial_print(&kctx, type);
 			print_ok_on_succes = false;
 		}
-	} else if (strcmp(argv[1], "set") == 0) {
+	} else if (same_command(argv[1], "set", false)) {
 		CHECK_MISSING_ARG("Key is not specified");
 		knot_kasp_key_t *key2set;
 		ret = keymgr_get_key(&kctx, argv[2], &key2set);
@@ -203,18 +203,18 @@ static int key_command(int argc, char *argv[], int opt_ind, knot_lmdb_db_t *kasp
 				ret = kdnssec_ctx_commit(&kctx);
 			}
 		}
-	} else if (strcmp(argv[1], "list") == 0) {
+	} else if (same_command(argv[1], "list", false)) {
 		list_params->format = TIME_PRINT_UNIX;
-		if (argc > 2 && strcmp(argv[2], "human") == 0) {
+		if (argc > 2 && same_command(argv[2], "human", false)) {
 			list_params->format = TIME_PRINT_HUMAN_MIXED;
-		} else if (argc > 2 && strcmp(argv[2], "iso") == 0) {
+		} else if (argc > 2 && same_command(argv[2], "iso", false)) {
 			list_params->format = TIME_PRINT_ISO8601;
 		}
 		ret = keymgr_list_keys(&kctx, list_params);
 		print_ok_on_succes = false;
-	} else if (strcmp(argv[1], "ds") == 0 || strcmp(argv[1], "dnskey") == 0) {
+	} else if (same_command(argv[1], "ds", false) || same_command(argv[1], "dnskey", false)) {
 		int (*generate_rr)(const knot_dname_t *, const knot_kasp_key_t *) = keymgr_generate_dnskey;
-		if (strcmp(argv[1], "ds") == 0) {
+		if (same_command(argv[1], "ds", false)) {
 			generate_rr = keymgr_generate_ds;
 		}
 		if (argc < 3) {
@@ -231,7 +231,7 @@ static int key_command(int argc, char *argv[], int opt_ind, knot_lmdb_db_t *kasp
 			}
 		}
 		print_ok_on_succes = false;
-	} else if (strcmp(argv[1], "share") == 0) {
+	} else if (same_command(argv[1], "share", false)) {
 		CHECK_MISSING_ARG("Key to be shared is not specified");
 		CHECK_MISSING_ARG2("Zone to be shared from not specified");
 		knot_dname_t *other_zone = NULL;
@@ -242,45 +242,45 @@ static int key_command(int argc, char *argv[], int opt_ind, knot_lmdb_db_t *kasp
 		}
 		free(other_zone);
 		free(key_to_share);
-	} else if (strcmp(argv[1], "delete") == 0) {
+	} else if (same_command(argv[1], "delete", false)) {
 		CHECK_MISSING_ARG("Key is not specified");
 		knot_kasp_key_t *key2del;
 		ret = keymgr_get_key(&kctx, argv[2], &key2del);
 		if (ret == KNOT_EOK) {
 			ret = kdnssec_delete_key(&kctx, key2del);
 		}
-	} else if (strcmp(argv[1], "pregenerate") == 0) {
+	} else if (same_command(argv[1], "pregenerate", false)) {
 		CHECK_MISSING_ARG("Timestamp to not specified");
 		ret = keymgr_pregenerate_zsks(&kctx, argc > 3 ? argv[2] : NULL,
 		                                     argc > 3 ? argv[3] : argv[2]);
-	} else if (strcmp(argv[1], "show-offline") == 0) {
+	} else if (same_command(argv[1], "show-offline", false)) {
 		ret = keymgr_print_offline_records(&kctx, argc > 2 ? argv[2] : NULL,
 		                                          argc > 3 ? argv[3] : NULL);
 		print_ok_on_succes = false;
-	} else if (strcmp(argv[1], "del-offline") == 0) {
+	} else if (same_command(argv[1], "del-offline", false)) {
 		CHECK_MISSING_ARG2("Timestamps from-to not specified");
 		ret = keymgr_delete_offline_records(&kctx, argv[2], argv[3]);
-	} else if (strcmp(argv[1], "del-all-old") == 0) {
+	} else if (same_command(argv[1], "del-all-old", false)) {
 		ret = keymgr_del_all_old(&kctx);
-	} else if (strcmp(argv[1], "generate-ksr") == 0) {
+	} else if (same_command(argv[1], "generate-ksr", false)) {
 		CHECK_MISSING_ARG("Timestamps to not specified");
 		ret = keymgr_print_ksr(&kctx, argc > 3 ? argv[2] : NULL,
 		                              argc > 3 ? argv[3] : argv[2]);
 		print_ok_on_succes = false;
-	} else if (strcmp(argv[1], "sign-ksr") == 0) {
+	} else if (same_command(argv[1], "sign-ksr", false)) {
 		CHECK_MISSING_ARG("Input file not specified");
 		ret = keymgr_sign_ksr(&kctx, argv[2]);
 		print_ok_on_succes = false;
-	} else if (strcmp(argv[1], "validate-skr") == 0) {
+	} else if (same_command(argv[1], "validate-skr", false)) {
 		CHECK_MISSING_ARG("Input file not specified");
 		ret = keymgr_validate_skr(&kctx, argv[2]);
-	} else if (strcmp(argv[1], "import-skr") == 0) {
+	} else if (same_command(argv[1], "import-skr", false)) {
 		CHECK_MISSING_ARG("Input file not specified");
 		ret = keymgr_import_skr(&kctx, argv[2]);
-	} else if (strcmp(argv[1], "keystore-test") == 0) {
+	} else if (same_command(argv[1], "keystore-test", false)) {
 		ret = keymgr_keystore_test(id_str, list_params);
 		print_ok_on_succes = false;
-	} else if (strcmp(argv[1], "keystore-bench") == 0) {
+	} else if (same_command(argv[1], "keystore-bench", false)) {
 		uint16_t threads = 1;
 		if (argc > 2) {
 			ret = str_to_u16(argv[2], &threads);

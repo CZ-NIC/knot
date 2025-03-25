@@ -99,7 +99,7 @@ def wait_for_cds_change(t, server, min_time, timeout, msg):
             break
     check_min_time(min_time, msg)
 
-def watch_ksk_rollover(t, server, zone, before_keys, after_keys, total_keys, desc, set_stss, set_ksk_lifetime, submission_cb):
+def watch_ksk_rollover(t, server, zone, before_keys, after_keys, total_keys, desc, set_stss, set_ksk_lifetime, submission_cb, manualize_mode):
     msg = desc + ": initial keys"
     check_zone(server, zone, server, before_keys, 1, 0, 1, msg)
 
@@ -114,7 +114,21 @@ def watch_ksk_rollover(t, server, zone, before_keys, after_keys, total_keys, des
     wait_for_cds_change(t, server, 15, 26, msg) # propagation-delay + dnskey_ttl
     check_zone(server, zone, server, total_keys, 2, 1, 1, msg)
 
+    if manualize_mode:
+        server.stop()
+        server.dnssec(zone).manual = True
+        server.gen_confile()
+        server.start()
+        server.zone_wait(zone)
+
     submission_cb()
+
+    if manualize_mode:
+        t.sleep(4 + 20)
+        msg = desc + ": submission has no effect"
+        check_zone(server, zone, server, total_keys, 2, 1, 1, msg)
+        return
+
     msg = desc + ": both still active"
     wait_for_cds_change(t, server, 0, 10, msg)
     check_zone(server, zone, server, total_keys, 2, 0, 1, msg)
@@ -155,6 +169,7 @@ child.zone_wait(child_zone)
 cds_submission()
 t.sleep(5)
 
-watch_ksk_rollover(t, child, child_zone, 2, 2, 3, "KSK rollover", None, 27, cds_submission)
+watch_ksk_rollover(t, child, child_zone, 2, 2, 3, "KSK rollover", None, 27, cds_submission, False)
+watch_ksk_rollover(t, child, child_zone, 2, 2, 3, "Manualize check", None, 27, cds_submission, True)
 
 t.end()
