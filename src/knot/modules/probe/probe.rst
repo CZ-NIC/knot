@@ -10,8 +10,8 @@ part can be empty. The receiver can be an arbitrary program using *libknot* inte
 (C or Python). In case of high traffic, more channels (sockets) can be configured
 to allow parallel processing.
 
-.. NOTE::
-  A simple `probe client <https://gitlab.nic.cz/knot/knot-dns/-/blob/master/scripts/probe_dump.py>`_ in Python.
+.. TIP::
+  A simple `probe client <https://gitlab.nic.cz/knot/knot-dns/-/blob/master/samples/probe_dump.py>`_ in Python.
 
 Example
 -------
