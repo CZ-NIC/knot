@@ -335,7 +335,7 @@ void conf_mod_unload_shared(
 	else \
 		log_##level(LOG_ARGS(mod_id, msg), ##__VA_ARGS__);
 
-void conf_activate_modules(
+int conf_activate_modules(
 	conf_t *conf,
 	struct server *server,
 	const knot_dname_t *zone_name,
@@ -357,13 +357,14 @@ void conf_activate_modules(
 	} else {
 		val = conf_default_get(conf, C_GLOBAL_MODULE);
 	}
-
+	
 	switch (val.code) {
 	case KNOT_EOK:
 		break;
 	case KNOT_ENOENT: // Check if a module is configured at all.
+		return KNOT_EOK;
 	case KNOT_YP_EINVAL_ID:
-		return;
+		return KNOT_EZONEINVAL;
 	default:
 		ret = val.code;
 		goto activate_error;
@@ -393,7 +394,7 @@ void conf_activate_modules(
 		if (mod == NULL) {
 			MOD_ID_LOG(zone_name, error, mod_id, "failed to open");
 			conf_free_mod_id(mod_id);
-			goto skip_module;
+			goto activate_error;
 		}
 
 		// Check the module scope.
@@ -401,14 +402,14 @@ void conf_activate_modules(
 		    (zone_name != NULL && !(mod->api->flags & KNOTD_MOD_FLAG_SCOPE_ZONE))) {
 			MOD_ID_LOG(zone_name, error, mod_id, "out of scope");
 			query_module_close(mod);
-			goto skip_module;
+			goto activate_error;
 		}
 
 		// Check if the module is loadable.
 		if (mod->api->load == NULL) {
 			MOD_ID_LOG(zone_name, debug, mod_id, "empty module, not loaded");
 			query_module_close(mod);
-			goto skip_module;
+			goto activate_error;
 		}
 
 		// Load the module.
@@ -417,18 +418,19 @@ void conf_activate_modules(
 			MOD_ID_LOG(zone_name, error, mod_id, "failed to load (%s)",
 			        knot_strerror(ret));
 			query_module_close(mod);
-			goto skip_module;
+			goto activate_error;
 		}
 		mod->config = NULL; // Invalidate the current config.
 
 		add_tail(query_modules, &mod->node);
-skip_module:
 		conf_val_next(&val);
 	}
 
-	return;
+	return KNOT_EOK;
 activate_error:
 	CONF_LOG(LOG_ERR, "failed to activate modules (%s)", knot_strerror(ret));
+	conf_deactivate_modules(query_modules, query_plan);
+	return KNOT_EZONEINVAL;
 }
 
 void conf_deactivate_modules(
