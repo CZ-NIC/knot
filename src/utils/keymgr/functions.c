@@ -134,7 +134,7 @@ static bool genkeyargs(int argc, char *argv[], bool just_timing,
 	// generate algorithms field
 	char *algnames[256] = { 0 };
 	algnames[DNSSEC_KEY_ALGORITHM_RSA_SHA1] = "rsasha1";
-	algnames[DNSSEC_KEY_ALGORITHM_RSA_SHA1_NSEC3] = "rsasha1nsec3sha1";
+	algnames[DNSSEC_KEY_ALGORITHM_RSA_SHA1_NSEC3] = "rsasha1-nsec3-sha1";
 	algnames[DNSSEC_KEY_ALGORITHM_RSA_SHA256] = "rsasha256";
 	algnames[DNSSEC_KEY_ALGORITHM_RSA_SHA512] = "rsasha512";
 	algnames[DNSSEC_KEY_ALGORITHM_ECDSA_P256_SHA256] = "ecdsap256sha256";
