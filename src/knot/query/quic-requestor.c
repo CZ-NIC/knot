@@ -125,13 +125,18 @@ int qr_send_reply(struct knot_quic_reply *r)
 		.msg_controllen = sizeof(tos),
 	};
 	if (r->ip_rem->ss_family == AF_INET6) {
+#if defined(__linux__) ||  defined(__FreeBSD__)
 		tos.cmsg.cmsg_level = IPPROTO_IPV6;
 		tos.cmsg.cmsg_type = IPV6_TCLASS;
+#else
+		msg.msg_control = NULL;
+		msg.msg_controllen = 0;
+#endif
 	} else {
-#ifdef IP_RECVTOS
+#if defined(__linux__)
 		tos.cmsg.cmsg_level = IPPROTO_IP;
 		tos.cmsg.cmsg_type = IP_TOS;
-#else /* Disallow setting TOS if RECVTOS isn't supported (OpenBSD). */
+#else
 		msg.msg_control = NULL;
 		msg.msg_controllen = 0;
 #endif

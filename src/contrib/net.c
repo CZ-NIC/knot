@@ -328,13 +328,17 @@ int net_cmsg_ecn_enable(int sock, int family)
 {
 	switch (family) {
 	case AF_INET:
-#ifdef IP_RECVTOS
+#if defined(__linux__)
 		return sockopt_enable(sock, IPPROTO_IP, IP_RECVTOS);
 #else
 		return KNOT_ENOTSUP;
 #endif
 	case AF_INET6:
+#if defined(__linux__) ||  defined(__FreeBSD__)
 		return sockopt_enable(sock, IPPROTO_IPV6, IPV6_RECVTCLASS);
+#else
+		return KNOT_ENOTSUP;
+#endif
 	default:
 		return KNOT_EINVAL;
 	}
@@ -343,28 +347,18 @@ int net_cmsg_ecn_enable(int sock, int family)
 int *net_cmsg_ecn_ptr(struct cmsghdr *cmsg)
 {
 #if defined(__linux__)
-	const int type_v4 = IP_TOS;
-	const int type_v6 = IPV6_TCLASS;
-#else
-#ifdef IP_RECVTOS
-	const int type_v4 = IP_RECVTOS;
-#endif
-	const int type_v6 = IPV6_RECVTCLASS;
-#endif
-
-	if (cmsg->cmsg_level == IPPROTO_IPV6 && cmsg->cmsg_type == type_v6) {
+	if (cmsg->cmsg_level == IPPROTO_IP && cmsg->cmsg_type == IP_TOS) {
+		return (int *)CMSG_DATA(cmsg);
+	} else if (cmsg->cmsg_level == IPPROTO_IPV6 && cmsg->cmsg_type == IPV6_TCLASS) {
+		return (int *)CMSG_DATA(cmsg);
+	}
+#elif defined(__FreeBSD__)
+	if (cmsg->cmsg_level == IPPROTO_IPV6 && cmsg->cmsg_type == IPV6_RECVTCLASS) {
 		cmsg->cmsg_type = IPV6_TCLASS; // Update the type for outgoing use.
 		return (int *)CMSG_DATA(cmsg);
 	}
-#ifdef IP_RECVTOS
-	else if (cmsg->cmsg_level == IPPROTO_IP && cmsg->cmsg_type == type_v4) {
-		cmsg->cmsg_type = IP_TOS; // Update the type for outgoing use.
-		return (int *)CMSG_DATA(cmsg);
-	}
 #endif
-	else {
-		return NULL;
-	}
+	return NULL;
 }
 
 uint8_t net_cmsg_ecn(struct msghdr *msg)
@@ -383,19 +377,23 @@ int net_ecn_set(int sock, int family, uint8_t ecn)
 	int val = ecn;
 	switch (family) {
 	case AF_INET:
-#ifdef IP_RECVTOS /* Disallow setting TOS if RECVTOS isn't supported (OpenBSD). */
+#if defined(__linux__)
 		if (setsockopt(sock, IPPROTO_IP, IP_TOS, &val, sizeof(val)) != 0) {
 			return knot_map_errno();
 		}
+		break;
 #else
 		return KNOT_ENOTSUP;
 #endif
-		break;
 	case AF_INET6:
+#if defined(__linux__) ||  defined(__FreeBSD__)
 		if (setsockopt(sock, IPPROTO_IPV6, IPV6_TCLASS, &val, sizeof(val)) != 0) {
 			return knot_map_errno();
 		}
 		break;
+#else
+		return KNOT_ENOTSUP;
+#endif
 	default:
 		return KNOT_ENOTSUP;
 	}
