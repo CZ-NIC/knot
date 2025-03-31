@@ -12,6 +12,8 @@
 #include "contrib/redis/redismodule.h"
 #include "redis/knot.h"
 
+#include "libknot/rdataset.c"
+
 #define KNOT_ZONE_RRSET_ENCODING_VERSION 0
 
 #define KNOT_DNAME_MAXLEN 255
@@ -36,11 +38,7 @@ typedef enum {
 
 typedef struct {
 	uint32_t ttl;
-	struct {
-		uint16_t count;
-		uint32_t size;
-		uint8_t *rdata;
-	} rrs;
+	knot_rdataset_t rrs;
 } knot_zone_rrset_v;
 
 static RedisModuleType *knot_zone_rrset_t;
@@ -71,7 +69,7 @@ static void *knot_zone_rrset_load(RedisModuleIO *rdb, int encver)
 	size_t len = 0;
 	rrset->ttl = RedisModule_LoadUnsigned(rdb);
 	rrset->rrs.count = RedisModule_LoadUnsigned(rdb);
-	rrset->rrs.rdata = (uint8_t *)RedisModule_LoadStringBuffer(rdb, &len);
+	rrset->rrs.rdata = (knot_rdata_t *)RedisModule_LoadStringBuffer(rdb, &len);
 	if (len > UINT32_MAX) {
 		RedisModule_Free(rrset->rrs.rdata);
 		RedisModule_Free(rrset);
@@ -165,7 +163,7 @@ static int knot_zone_exists(RedisModuleCtx *ctx, RedisModuleString **argv, int a
 		}
 		knot_zone_rrset_v *rrset = RedisModule_ModuleTypeGetValue(rrset_key);
 
-		uint8_t *soa = rrset->rrs.rdata + sizeof(uint16_t);
+		uint8_t *soa = (uint8_t *)rrset->rrs.rdata + sizeof(uint16_t);
 		soa += dname_size(soa);
 		soa += dname_size(soa);
 		uint32_t serial = 0;
