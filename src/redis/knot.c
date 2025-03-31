@@ -25,9 +25,9 @@
 #define KNOT_SCORE_DEFAULT 1.
 
 #define foreach_in_zset_subset(key, min, max) \
-		for (RedisModule_ZsetFirstInScoreRange(key, min, max, 0, 0); \
-		     RedisModule_ZsetRangeEndReached(key) == 0; \
-		     RedisModule_ZsetRangeNext(key))
+	for (RedisModule_ZsetFirstInScoreRange(key, min, max, 0, 0); \
+	     RedisModule_ZsetRangeEndReached(key) == 0; \
+	     RedisModule_ZsetRangeNext(key))
 #define foreach_in_zset(key) foreach_in_zset_subset(key, REDISMODULE_NEGATIVE_INFINITE, REDISMODULE_POSITIVE_INFINITE)
 
 typedef enum {
@@ -354,7 +354,7 @@ static int knot_rrset_store(RedisModuleCtx *ctx, RedisModuleString **argv, int a
 		return RedisModule_ReplyWithError(ctx, "ERR Value out of range");
 	}
 	uint16_t rtype = rtype_val;
-	
+
 	RedisModuleKey *zone_key = find_zone_index(ctx, origin_str, origin_len, REDISMODULE_READ | REDISMODULE_WRITE);
 	int zone_keytype = RedisModule_KeyType(zone_key);
 	if (zone_keytype == REDISMODULE_KEYTYPE_EMPTY) {
@@ -372,7 +372,7 @@ static int knot_rrset_store(RedisModuleCtx *ctx, RedisModuleString **argv, int a
 	key_ptr = memcpy(key_ptr + owner_strlen, &rtype, sizeof(rtype));
 	key_ptr += sizeof(rtype);
 	RedisModuleString *rrset_keystr = RedisModule_CreateString(ctx, (const char *)key_data, key_ptr - key_data);
-	
+
 	RedisModule_ZsetAdd(zone_key, evaluate_score(rtype), rrset_keystr, NULL);
 	RedisModule_CloseKey(zone_key);
 
