@@ -338,7 +338,7 @@ static const yp_item_t desc_keystore[] = {
 
 static const yp_item_t desc_key[] = {
 	{ C_ID,      YP_TDNAME, YP_VNONE },
-	{ C_ALG,     YP_TOPT,   YP_VOPT = { tsig_key_algs, DNSSEC_TSIG_UNKNOWN } },
+	{ C_ALG,     YP_TOPT,   YP_VOPT = { tsig_key_algs, DNSSEC_TSIG_HMAC_SHA256 } },
 	{ C_SECRET,  YP_TB64,   YP_VNONE },
 	{ C_COMMENT, YP_TSTR,   YP_VNONE },
 	{ NULL }

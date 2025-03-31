@@ -845,13 +845,6 @@ int check_policy(
 int check_key(
 	knotd_conf_check_args_t *args)
 {
-	conf_val_t alg = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_KEY,
-	                                    C_ALG, args->id, args->id_len);
-	if (conf_val_count(&alg) == 0) {
-		args->err_str = "no key algorithm defined";
-		return KNOT_EINVAL;
-	}
-
 	conf_val_t secret = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_KEY,
 	                                       C_SECRET, args->id, args->id_len);
 	if (conf_val_count(&secret) == 0) {
