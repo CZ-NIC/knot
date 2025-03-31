@@ -15,6 +15,7 @@
  */
 
 #include <string.h>
+#include <urcu.h>
 
 #include "knot/zone/reverse.h"
 
@@ -134,4 +135,27 @@ int zone_reverse(zone_contents_t *from, zone_contents_t *to_conts,
 	};
 
 	return zone_contents_apply(from, reverse_from_node, &ctx);
+}
+
+int zones_reverse(list_t *zones, zone_contents_t *to_conts, const knot_dname_t **fail_fwd)
+{
+	int ret = KNOT_EOK;
+	ptrnode_t *n;
+	WALK_LIST(n, *zones) {
+		zone_t *z = n->d;
+		rcu_read_lock();
+		if (z->contents == NULL) {
+			ret = KNOT_EAGAIN;
+		} else {
+			ret = zone_reverse(z->contents, to_conts, NULL, false);
+		}
+		rcu_read_unlock();
+		if (ret != KNOT_EOK) {
+			if (fail_fwd != NULL) {
+				*fail_fwd = z->name;
+			}
+			break;
+		}
+	}
+	return ret;
 }

@@ -133,7 +133,7 @@ typedef struct zone
 	const char *catalog_group;
 
 	/*! \brief Auto-generated reverse zones... */
-	struct zone *reverse_from;
+	list_t reverse_from;
 	list_t internal_notify;
 
 	/*! \brief Preferred master lock. Also used for flags access. */

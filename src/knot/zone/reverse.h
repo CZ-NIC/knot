@@ -39,3 +39,15 @@ inline static int changeset_reverse(changeset_t *from, zone_update_t *to)
 	}
 	return ret;
 }
+
+/*!
+ * \brief Reverse based on multiple forward zones.
+ *
+ * \param zones      Ptrlist with zones to be reversed.
+ * \param to_conts   Out: resulting reverse zone.
+ * \param fail_fwd   Out/optional: name of a forward zone that failed.
+ *
+ * \retval KNOT_EAGAIN   Some of the zones are not yet loaded, try again completely later.
+ * \return KNOT_E*
+ */
+int zones_reverse(list_t *zones, zone_contents_t *to_conts, const knot_dname_t **fail_fwd);

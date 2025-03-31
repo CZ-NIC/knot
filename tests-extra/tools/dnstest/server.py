@@ -1852,7 +1852,7 @@ class Knot(Server):
             self._bool(s, "provide-ixfr", self.provide_ixfr)
 
             if z.reverse_from:
-                s.item_str("reverse-generate", z.reverse_from.name)
+                s.item("reverse-generate", "[ " + ", ".join([ x.name for x in z.reverse_from ]) + " ]")
 
             self._str(s, "refresh-min-interval", z.refresh_min)
             self._str(s, "refresh-max-interval", z.refresh_max)

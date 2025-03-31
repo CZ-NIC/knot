@@ -489,7 +489,7 @@ static const yp_item_t desc_policy[] = {
 	{ C_DNSSEC_POLICY,       YP_TREF,  YP_VREF = { C_POLICY }, FLAGS, { check_ref_dflt } }, \
 	{ C_DS_PUSH,             YP_TREF,  YP_VREF = { C_RMT, C_RMTS }, YP_FMULTI | CONF_REF_EMPTY | FLAGS, \
 	                                   { check_ref } }, \
-	{ C_REVERSE_GEN,         YP_TDNAME,YP_VNONE, FLAGS | CONF_IO_FRLD_ZONES }, \
+	{ C_REVERSE_GEN,         YP_TDNAME,YP_VNONE, YP_FMULTI | FLAGS | CONF_IO_FRLD_ZONES }, \
 	{ C_SERIAL_POLICY,       YP_TOPT,  YP_VOPT = { serial_policies, SERIAL_POLICY_INCREMENT } }, \
 	{ C_SERIAL_MODULO,       YP_TSTR,  YP_VSTR = { "0/1" }, YP_FNONE, { check_modulo_shift } }, \
 	{ C_ZONEMD_GENERATE,     YP_TOPT,  YP_VOPT = { zone_digest, ZONE_DIGEST_NONE }, FLAGS }, \

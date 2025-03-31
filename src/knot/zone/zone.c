@@ -192,6 +192,7 @@ zone_t* zone_new(const knot_dname_t *name)
 	// Initialize query modules list.
 	init_list(&zone->query_modules);
 
+	init_list(&zone->reverse_from);
 	init_list(&zone->internal_notify);
 
 	return zone;
@@ -241,6 +242,7 @@ void zone_free(zone_t **zone_ptr)
 
 	conf_deactivate_modules(&zone->query_modules, &zone->query_plan);
 
+	ptrlist_free(&zone->reverse_from, NULL);
 	ptrlist_free(&zone->internal_notify, NULL);
 
 	free(zone);

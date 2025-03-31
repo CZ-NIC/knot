@@ -2556,7 +2556,7 @@ Definition of zones served by the server.
      zonemd-generate: none | zonemd-sha384 | zonemd-sha512 | remove
      serial-policy: increment | unixtime | dateserial
      serial-modulo: INT/INT | +INT | -INT | INT/INT+INT | INT/INT-INT
-     reverse-generate: DNAME
+     reverse-generate: DNAME ...
      refresh-min-interval: TIME
      refresh-max-interval: TIME
      retry-min-interval: TIME
@@ -3077,13 +3077,13 @@ reverse-generate
 ----------------
 
 This option triggers the automatic generation of reverse PTR records based on
-A/AAAA records in the specified zone. The entire generated zone is automatically
+A/AAAA records in the specified zones. The entire generated zone is automatically
 stored in the journal.
 
 Current limitations:
 
-- Only one zone to be reversed can be specified.
 - Is slow for large zones (even when changing a little).
+- Recomputes all reverse records upon any change in any of the reversed zones.
 
 *Default:* none
 

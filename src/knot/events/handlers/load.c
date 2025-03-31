@@ -140,25 +140,16 @@ int event_load(conf_t *conf, zone_t *zone)
 		zone->zonefile.mtime = mtime;
 
 		// If configured, add reverse records to zone contents
-		if (zone->reverse_from != NULL) {
-			rcu_read_lock();
-			zone_contents_t *rev_from = zone->reverse_from->contents;
-			if (rev_from != NULL) {
-				ret = zone_reverse(rev_from, zf_conts, NULL, false);
-				if (ret != KNOT_EOK) {
-					log_zone_error(zone->name, "failed to generate reverse records");
-					rcu_read_unlock();
-					goto cleanup;
-				}
-				rcu_read_unlock();
-			} else {
-				ret = KNOT_EOK;
-				knot_dname_txt_storage_t forw_str;
-				(void)knot_dname_to_str(forw_str, zone->reverse_from->name, sizeof(forw_str));
-				log_zone_debug(zone->name, "waiting for source forward zone '%s'", forw_str);
-				rcu_read_unlock();
-				goto cleanup;
-			}
+		const knot_dname_t *fail_fwd = NULL;
+		ret = zones_reverse(&zone->reverse_from, zf_conts, &fail_fwd);
+		if (ret == KNOT_EAGAIN) {
+			knot_dname_txt_storage_t forw_str;
+			(void)knot_dname_to_str(forw_str, fail_fwd, sizeof(forw_str));
+			log_zone_debug(zone->name, "waiting for source forward zone '%s'", forw_str);
+			goto cleanup;
+		} else if (ret != KNOT_EOK) {
+			log_zone_error(zone->name, "failed to generate reverse records");
+			goto cleanup;
 		}
 
 		// If configured and possible, fix the SOA serial of zonefile.
