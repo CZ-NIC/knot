@@ -1417,7 +1417,7 @@ Possible values:
 - ``hmac-sha384``
 - ``hmac-sha512``
 
-*Default:* not set
+*Default:* ``hmac-sha256``
 
 .. _key_secret:
 
