@@ -255,6 +255,7 @@ static void check_loaded(server_t *server)
 		zone_t *zone = (zone_t *)knot_zonedb_iter_val(it);
 		if (zone->contents == NULL) {
 			knot_zonedb_iter_free(it);
+			rcu_read_unlock();
 			return;
 		}
 		knot_zonedb_iter_next(it);
