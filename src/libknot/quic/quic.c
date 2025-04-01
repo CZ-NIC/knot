@@ -589,7 +589,9 @@ _public_
 int knot_quic_handle(knot_quic_table_t *table, knot_quic_reply_t *reply,
                      uint64_t idle_timeout, knot_quic_conn_t **out_conn)
 {
-	*out_conn = NULL;
+	if (out_conn != NULL) {
+		*out_conn = NULL;
+	}
 	if (table == NULL || reply == NULL || out_conn == NULL) {
 		return KNOT_EINVAL;
 	}
