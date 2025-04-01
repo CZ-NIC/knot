@@ -826,8 +826,7 @@ static void rdb_process_event(char *since, redisReply *reply, knot_zonedb_t *zon
 {
 	redisReply *ev_timestamp = reply->element[0];
 	redisReply *ev_data = reply->element[1];
-	if (ev_data->type != REDIS_REPLY_ARRAY ||
-	    ev_data->elements != 4) {
+	if (ev_data->type != REDIS_REPLY_ARRAY) {
 		log_error("Redis: unexpected response");
 		return;
 	}
@@ -840,7 +839,7 @@ static void rdb_process_event(char *since, redisReply *reply, knot_zonedb_t *zon
 	knot_dname_t *dname = (knot_dname_t *)ev_data->element[3]->str;
 	int ev_type = atoi(ev_data->element[1]->str);
 	switch (ev_type) {
-	case CREATED:
+	case ZONE_CREATED:
 		zone_t *zone = knot_zonedb_find(zone_db, dname);
 		if (zone == NULL) {
 			break;

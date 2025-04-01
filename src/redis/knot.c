@@ -4,6 +4,7 @@
  */
 
 #include <arpa/inet.h>
+#include <stdarg.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
@@ -24,6 +25,7 @@
 
 #define KNOT_DNAME_MAXLEN 255
 #define KNOT_RRSET_KEY_MAXLEN (1 + KNOT_DNAME_MAXLEN + KNOT_DNAME_MAXLEN + sizeof(uint16_t))
+#define KNOT_EVENT_MAX_SIZE 10
 
 #define RRTYPE_SOA 6
 
@@ -231,7 +233,7 @@ static int knot_zone_load(RedisModuleCtx *ctx, RedisModuleString **argv, int arg
 	return REDISMODULE_OK;
 }
 
-static int knot_commit_event(RedisModuleCtx *ctx, const int event, RedisModuleString *origin_str)
+static int knot_commit_event(RedisModuleCtx *ctx, const int event, ...)
 {
 	RedisModule_Assert(ctx != NULL);
 
@@ -243,18 +245,32 @@ static int knot_commit_event(RedisModuleCtx *ctx, const int event, RedisModuleSt
 	int zone_stream_type = RedisModule_KeyType(stream_key);
 	if (zone_stream_type != REDISMODULE_KEYTYPE_EMPTY && zone_stream_type != REDISMODULE_KEYTYPE_STREAM) {
 		RedisModule_CloseKey(stream_key);
-		return RedisModule_ReplyWithError(ctx, "ERR ERR Bad data");
+		return RedisModule_ReplyWithError(ctx, "ERR Bad data");
 	}
 
-	RedisModuleString *_event[] = {
+	RedisModuleString *_event[KNOT_EVENT_MAX_SIZE] = {
 		RedisModule_CreateString(ctx, "event", sizeof("event") - 1),
 		RedisModule_CreateStringFromLongLong(ctx, event),
-		RedisModule_CreateString(ctx, "origin", sizeof("origin") - 1),
-		origin_str
 	};
 
+	va_list args;
+	va_start(args, event);
+	RedisModuleString **_event_it = _event + 2;
+	while (_event_it != _event + KNOT_EVENT_MAX_SIZE) {
+		*_event_it = va_arg(args, RedisModuleString *);
+		if (*_event_it == NULL) {
+			break;
+		}
+		_event_it += 1;
+	}
+	int64_t size = _event_it - _event;
+	if (size % 2) {
+		return RedisModule_ReplyWithError(ctx, "ERR Wrong number of arguments");
+	}
+	va_end(args);
+
 	RedisModuleStreamID ts;
-	RedisModule_StreamAdd(stream_key, REDISMODULE_STREAM_ADD_AUTOID, &ts, _event, 2UL);
+	RedisModule_StreamAdd(stream_key, REDISMODULE_STREAM_ADD_AUTOID, &ts, _event, size / 2);
 
 	// TODO choose right time, no older events will be available
 	ts.ms = ts.ms - 60000; // 1 minute
@@ -268,7 +284,6 @@ static int knot_commit_event(RedisModuleCtx *ctx, const int event, RedisModuleSt
 
 	RedisModule_FreeString(ctx, _event[0]);
 	RedisModule_FreeString(ctx, _event[1]);
-	RedisModule_FreeString(ctx, _event[2]);
 
 	return REDISMODULE_OK;
 }
@@ -307,7 +322,9 @@ static int knot_zone_purge(RedisModuleCtx *ctx, RedisModuleString **argv, int ar
 	RedisModule_DeleteKey(zone_key);
 	RedisModule_CloseKey(zone_key);
 
-	(void)knot_commit_event(ctx, PURGED, argv[1]);
+	RedisModuleString *origin_k = RedisModule_CreateString(ctx, "origin", sizeof("origin") - 1);
+	(void)knot_commit_event(ctx, ZONE_PURGED, origin_k, argv[1], NULL);
+	RedisModule_FreeString(ctx, origin_k);
 
 	RedisModule_ReplyWithEmptyString(ctx);
 
@@ -359,6 +376,14 @@ static int knot_zone_increment(RedisModuleCtx *ctx, RedisModuleString **argv, in
 		RedisModule_CloseKey(rrset_key);
 		RedisModule_ZsetRangeStop(zone_key);
 		RedisModule_CloseKey(zone_key);
+
+		RedisModuleString *origin_k = RedisModule_CreateString(ctx, "origin", sizeof("origin") - 1);
+		RedisModuleString *serial_k = RedisModule_CreateString(ctx, "serial", sizeof("serial") - 1);
+		RedisModuleString *serial_v = RedisModule_CreateStringFromLongLong(ctx, serial);
+		(void)knot_commit_event(ctx, ZONE_UPDATED, origin_k, argv[1], serial_k, serial_v, NULL);
+		RedisModule_FreeString(ctx, origin_k);
+		RedisModule_FreeString(ctx, serial_k);
+		RedisModule_FreeString(ctx, serial_v);
 
 		return RedisModule_ReplyWithLongLong(ctx, serial);
 	}
@@ -413,7 +438,9 @@ static int knot_rrset_store(RedisModuleCtx *ctx, RedisModuleString **argv, int a
 	RedisModuleKey *zone_key = find_zone_index(ctx, origin_str, origin_len, REDISMODULE_READ | REDISMODULE_WRITE);
 	int zone_keytype = RedisModule_KeyType(zone_key);
 	if (zone_keytype == REDISMODULE_KEYTYPE_EMPTY) {
-		(void)knot_commit_event(ctx, CREATED, argv[1]);
+		RedisModuleString *origin_k = RedisModule_CreateString(ctx, "origin", sizeof("origin") - 1);
+		(void)knot_commit_event(ctx, ZONE_CREATED, origin_k, argv[1], NULL);
+		RedisModule_FreeString(ctx, origin_k);
 	} else if (zone_keytype != REDISMODULE_KEYTYPE_ZSET) {
 		RedisModule_CloseKey(zone_key);
 		return RedisModule_ReplyWithError(ctx, "ERR Bad data");
@@ -555,7 +582,9 @@ static int knot_rrset_add(RedisModuleCtx *ctx, RedisModuleString **argv, int arg
 	}
 
 	if (old_count != rrset->rrs.count) {
-		knot_commit_event(ctx, UPDATED, argv[1]);
+		RedisModuleString *origin_k = RedisModule_CreateString(ctx, "origin", sizeof("origin") - 1);
+		(void)knot_commit_event(ctx, RRSET_UPDATED, origin_k, argv[1], NULL);
+		RedisModule_FreeString(ctx, origin_k);
 	}
 	RedisModule_CloseKey(rrset_key);
 
@@ -628,7 +657,9 @@ static int knot_rrset_remove(RedisModuleCtx *ctx, RedisModuleString **argv, int 
 	}
 
 	if (old_count != rrset->rrs.count) {
-		knot_commit_event(ctx, UPDATED, argv[1]);
+		RedisModuleString *origin_k = RedisModule_CreateString(ctx, "origin", sizeof("origin") - 1);
+		(void)knot_commit_event(ctx, RRSET_UPDATED, origin_k, argv[1], NULL);
+		RedisModule_FreeString(ctx, origin_k);
 	}
 	RedisModule_CloseKey(rrset_key);
 

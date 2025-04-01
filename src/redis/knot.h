@@ -1,7 +1,8 @@
 #pragma once
 
 enum redis_event {
-        CREATED,
-        UPDATED,
-        PURGED
+        ZONE_CREATED,
+        ZONE_UPDATED,
+        ZONE_PURGED,
+        RRSET_UPDATED
 };
