@@ -836,15 +836,18 @@ static void rdb_process_event(char *since, redisReply *reply, knot_zonedb_t *zon
 		return;
 	}
 	strncpy(since, ev_timestamp->str, RDB_TIMESTAMP_SIZE);
-	knot_dname_t *dname = (knot_dname_t *)ev_data->element[3]->str;
 	int ev_type = atoi(ev_data->element[1]->str);
+	knot_dname_t *dname = (knot_dname_t *)ev_data->element[3]->str;
 	switch (ev_type) {
-	case ZONE_CREATED:
+	case ZONE_UPDATED:
+		uint32_t serial = atoi(ev_data->element[5]->str);
 		zone_t *zone = knot_zonedb_find(zone_db, dname);
 		if (zone == NULL) {
 			break;
 		}
-		zone_events_schedule_now(zone, ZONE_EVENT_LOAD);
+		if (serial > zone_contents_serial(zone->contents)) {
+			zone_events_schedule_now(zone, ZONE_EVENT_LOAD);
+		}
 		break;
 	default:
 		break;
