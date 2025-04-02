@@ -314,6 +314,14 @@ int zone_dump_rdb(zone_contents_t *zone, redisContext *rdb)
 		return ret;
 	}
 
+	reply = redisCommand(params.rdb, "KNOT.ZONE.EMIT_UPDATE %b", params.origin, params.origin_len);
+	if (reply == NULL) {
+		return KNOT_ECONN;
+	} else if (reply->type == REDIS_REPLY_ERROR) {
+		freeReplyObject(reply);
+		return KNOT_EACCES;
+	}
+
 	reply = redisCommand(params.rdb, "EXEC");
 	if (reply == NULL) {
 		return KNOT_ECONN;

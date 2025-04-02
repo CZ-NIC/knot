@@ -331,7 +331,6 @@ static int knot_zone_purge(RedisModuleCtx *ctx, RedisModuleString **argv, int ar
 	return REDISMODULE_OK;
 }
 
-
 static int knot_zone_increment(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 {
 	if (argc != 2) {
@@ -372,6 +371,66 @@ static int knot_zone_increment(RedisModuleCtx *ctx, RedisModuleString **argv, in
 
 		uint32_t serial = knot_soa_serial(rrset->rrs.rdata) + 1;
 		knot_soa_serial_set(rrset->rrs.rdata, serial);
+
+		RedisModule_CloseKey(rrset_key);
+		RedisModule_ZsetRangeStop(zone_key);
+		RedisModule_CloseKey(zone_key);
+
+		RedisModuleString *origin_k = RedisModule_CreateString(ctx, "origin", sizeof("origin") - 1);
+		RedisModuleString *serial_k = RedisModule_CreateString(ctx, "serial", sizeof("serial") - 1);
+		RedisModuleString *serial_v = RedisModule_CreateStringFromLongLong(ctx, serial);
+		(void)knot_commit_event(ctx, ZONE_UPDATED, origin_k, argv[1], serial_k, serial_v, NULL);
+		RedisModule_FreeString(ctx, origin_k);
+		RedisModule_FreeString(ctx, serial_k);
+		RedisModule_FreeString(ctx, serial_v);
+
+		return RedisModule_ReplyWithLongLong(ctx, serial);
+	}
+	RedisModule_ZsetRangeStop(zone_key);
+	RedisModule_CloseKey(zone_key);
+
+	return RedisModule_ReplyWithLongLong(ctx, -1);
+}
+
+static int knot_zone_emit_update(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
+{
+	if (argc != 2) {
+		return RedisModule_WrongArity(ctx);
+	}
+
+	size_t origin_len = 0;
+	const uint8_t *origin_str = (const uint8_t *)RedisModule_StringPtrLen(argv[1], &origin_len);
+
+	RedisModuleKey *zone_key = find_zone_index(ctx, origin_str, origin_len, REDISMODULE_READ);
+	if (zone_key == NULL) {
+		return RedisModule_ReplyWithLongLong(ctx, -1);
+	}
+	int zone_keytype = RedisModule_KeyType(zone_key);
+	if (zone_keytype == REDISMODULE_KEYTYPE_EMPTY) {
+		RedisModule_CloseKey(zone_key);
+		return RedisModule_ReplyWithError(ctx, "ERR Does not exist");
+	} else if (zone_keytype != REDISMODULE_KEYTYPE_ZSET) {
+		RedisModule_CloseKey(zone_key);
+		return RedisModule_ReplyWithError(ctx, "ERR Bad data");
+	}
+
+	foreach_in_zset_subset(zone_key, KNOT_SCORE_SOA, KNOT_SCORE_SOA) {
+		double score = 0.0;
+		RedisModuleString *el = RedisModule_ZsetRangeCurrentElement(zone_key, &score);
+		if (el == NULL) {
+			break;
+		}
+
+		RedisModuleKey *rrset_key = RedisModule_OpenKey(ctx, el, REDISMODULE_READ | REDISMODULE_WRITE);
+		if (rrset_key == NULL) {
+			continue;
+		}
+		knot_zone_rrset_v *rrset = RedisModule_ModuleTypeGetValue(rrset_key);
+		if (rrset == NULL) {
+			continue;
+		}
+
+		uint32_t serial = knot_soa_serial(rrset->rrs.rdata);
 
 		RedisModule_CloseKey(rrset_key);
 		RedisModule_ZsetRangeStop(zone_key);
@@ -748,6 +807,7 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx)
 		RedisModule_CreateCommand(ctx, "knot.zone.load",         knot_zone_load,         "readonly", 1, 1, 1) == REDISMODULE_ERR ||
 		RedisModule_CreateCommand(ctx, "knot.zone.purge",        knot_zone_purge,        "write",    1, 1, 1) == REDISMODULE_ERR ||
 		RedisModule_CreateCommand(ctx, "knot.zone.increment",    knot_zone_increment,    "write",    1, 1, 1) == REDISMODULE_ERR ||
+		RedisModule_CreateCommand(ctx, "knot.zone.emit_update",  knot_zone_emit_update,  "write",    1, 1, 1) == REDISMODULE_ERR ||
 		RedisModule_CreateCommand(ctx, "knot.rrset.store",       knot_rrset_store,       "write",    1, 1, 1) == REDISMODULE_ERR ||
 		RedisModule_CreateCommand(ctx, "knot.rrset.add",         knot_rrset_add,         "write",    1, 1, 1) == REDISMODULE_ERR ||
 		RedisModule_CreateCommand(ctx, "knot.rrset.remove",      knot_rrset_remove,      "write",    1, 1, 1) == REDISMODULE_ERR ||
