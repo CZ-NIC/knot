@@ -244,7 +244,7 @@ static void finalize_timers_noexpire(struct refresh_data *data)
 static void fill_expires_in(char *expires_in, size_t size, const struct refresh_data *data)
 {
 	assert(!data->zone->is_catalog_flag || data->zone->timers.next_expire == 0);
-	if (data->zone->timers.next_expire > 0) {
+	if (data->zone->timers.next_expire > 0 && data->expire_timer > 0) {
 		(void)snprintf(expires_in, size,
 		               ", expires in %u seconds", data->expire_timer);
 	}
@@ -1456,7 +1456,8 @@ int event_refresh(conf_t *conf, zone_t *zone)
 
 		limit_timer(conf, zone->name, &next, "retry",
 		            C_RETRY_MIN_INTERVAL, C_RETRY_MAX_INTERVAL);
-		zone->timers.next_refresh = time(NULL) + next;
+		time_t now = time(NULL);
+		zone->timers.next_refresh = now + next;
 		zone->timers.last_refresh_ok = false;
 
 		char time_str[64] = { 0 };
@@ -1464,8 +1465,15 @@ int event_refresh(conf_t *conf, zone_t *zone)
 		localtime_r(&zone->timers.next_refresh, &time_gm);
 		strftime(time_str, sizeof(time_str), KNOT_LOG_TIME_FORMAT, &time_gm);
 
-		log_zone_error(zone->name, "refresh, failed (%s), next retry at %s",
-		               knot_strerror(ret), time_str);
+		char expires_in[32] = "";
+		struct refresh_data data = {
+			.zone = zone,
+			.expire_timer = zone->timers.next_expire - now,
+		};
+		fill_expires_in(expires_in, sizeof(expires_in), &data);
+
+		log_zone_error(zone->name, "refresh, failed (%s), next retry at %s%s",
+		               knot_strerror(ret), time_str, expires_in);
 	} else {
 		zone->zonefile.bootstrap_cnt = 0;
 	}
