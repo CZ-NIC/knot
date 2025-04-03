@@ -396,6 +396,9 @@ time-consuming requests (e.g. zone transfers of a TLD zone), enabled reuseport
 may result in delayed or not being responded client requests. So it is
 advisable to use this option on secondary servers.
 
+.. NOTE::
+   This option is ignored for UNIX sockets.
+
 Change of this parameter requires restart of the Knot server to take effect.
 
 *Default:* ``off``
