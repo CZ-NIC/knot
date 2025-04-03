@@ -383,12 +383,14 @@ static iface_t *server_init_iface(struct sockaddr_storage *addr, bool tls,
 	int tcp_bind_flags = 0;
 
 #ifdef ENABLE_REUSEPORT
-	udp_socket_count = udp_thread_count;
-	udp_bind_flags |= NET_BIND_MULTIPLE;
+	if (addr->ss_family != AF_UNIX) {
+		udp_socket_count = udp_thread_count;
+		udp_bind_flags |= NET_BIND_MULTIPLE;
 
-	if (tcp_reuseport) {
-		tcp_socket_count = tcp_thread_count;
-		tcp_bind_flags |= NET_BIND_MULTIPLE;
+		if (tcp_reuseport) {
+			tcp_socket_count = tcp_thread_count;
+			tcp_bind_flags |= NET_BIND_MULTIPLE;
+		}
 	}
 #endif
 
@@ -428,8 +430,8 @@ static iface_t *server_init_iface(struct sockaddr_storage *addr, bool tls,
 			return NULL;
 		}
 
-		if ((udp_bind_flags & NET_BIND_MULTIPLE) && socket_affinity &&
-		    addr->ss_family != AF_UNIX) {
+		if ((udp_bind_flags & NET_BIND_MULTIPLE) && socket_affinity) {
+			assert(addr->ss_family != AF_UNIX);
 			if (!server_attach_reuseport_bpf(sock, udp_socket_count) &&
 			    warn_cbpf) {
 				log_warning("cannot ensure optimal CPU locality for UDP");
@@ -511,8 +513,8 @@ static iface_t *server_init_iface(struct sockaddr_storage *addr, bool tls,
 			return NULL;
 		}
 
-		if ((tcp_bind_flags & NET_BIND_MULTIPLE) && socket_affinity &&
-		    addr->ss_family != AF_UNIX) {
+		if ((tcp_bind_flags & NET_BIND_MULTIPLE) && socket_affinity) {
+			assert(addr->ss_family != AF_UNIX);
 			if (!server_attach_reuseport_bpf(sock, tcp_socket_count) &&
 			    warn_cbpf) {
 				log_warning("cannot ensure optimal CPU locality for TCP");

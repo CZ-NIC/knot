@@ -149,7 +149,7 @@ static unsigned tcp_set_ifaces(const iface_t *ifaces, size_t n_ifaces,
 
 		int tcp_id = 0;
 #ifdef ENABLE_REUSEPORT
-		if (conf()->cache.srv_tcp_reuseport) {
+		if (conf()->cache.srv_tcp_reuseport && i->addr.ss_family != AF_UNIX) {
 			/* Note: thread_ids start with UDP threads, TCP threads follow. */
 			assert((i->fd_udp_count <= thread_id) &&
 			       (thread_id < i->fd_tcp_count + i->fd_udp_count));

@@ -491,11 +491,12 @@ static int iface_udp_fd(const iface_t *iface, int thread_id, bool xdp_thread,
 			return -1;
 		}
 #ifdef ENABLE_REUSEPORT
-		assert(thread_id < iface->fd_udp_count);
-		return iface->fd_udp[thread_id];
-#else
-		return iface->fd_udp[0];
+		if (iface->addr.ss_family != AF_UNIX) {
+			assert(thread_id < iface->fd_udp_count);
+			return iface->fd_udp[thread_id];
+		}
 #endif
+		return iface->fd_udp[0];
 	}
 }
 
