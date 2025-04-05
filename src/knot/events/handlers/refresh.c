@@ -1466,11 +1466,13 @@ int event_refresh(conf_t *conf, zone_t *zone)
 		strftime(time_str, sizeof(time_str), KNOT_LOG_TIME_FORMAT, &time_gm);
 
 		char expires_in[32] = "";
-		struct refresh_data data = {
-			.zone = zone,
-			.expire_timer = zone->timers.next_expire - now,
-		};
-		fill_expires_in(expires_in, sizeof(expires_in), &data);
+		if (!zone->is_catalog_flag) {
+			struct refresh_data data = {
+				.zone = zone,
+				.expire_timer = zone->timers.next_expire - now,
+			};
+			fill_expires_in(expires_in, sizeof(expires_in), &data);
+		}
 
 		log_zone_error(zone->name, "refresh, failed (%s), next retry at %s%s",
 		               knot_strerror(ret), time_str, expires_in);
