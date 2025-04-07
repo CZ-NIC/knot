@@ -34,13 +34,7 @@ int main() {
         gnutls_handshake_set_timeout(session, 1000);
         gnutls_record_set_timeout(session, 1000);
 
-        struct pollfd pfd = {
-            .fd = client,
-            .events = POLLOUT | POLLIN
-        };
-        int ret = poll(&pfd, 1, 10000);
-
-        ret = gnutls_handshake(session);
+        int ret = gnutls_handshake(session);
         if (ret < 0) {
             fprintf(stderr, "❌ Handshake failed: %s\n", gnutls_strerror(ret));
         } else {
