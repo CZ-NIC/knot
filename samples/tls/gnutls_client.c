@@ -22,7 +22,7 @@ int main() {
         gnutls_credentials_set(session, GNUTLS_CRD_CERTIFICATE, xcred);
         gnutls_handshake_set_timeout(session, GNUTLS_DEFAULT_HANDSHAKE_TIMEOUT);
 
-        if (i) {
+        if (session_data.size > 0) {
             gnutls_session_set_data(session, session_data.data, session_data.size);
             gnutls_free(session_data.data);
         }
