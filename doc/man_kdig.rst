@@ -142,6 +142,7 @@ Options
 
 **+**\ [\ **no**\ ]\ **crypto**
   Display the DNSSEC keys and signatures values in base64, instead of omitting them.
+  Enabled by default.
 
 **+**\ [\ **no**\ ]\ **aaflag**
   Set the AA flag.
@@ -150,7 +151,7 @@ Options
   Set the TC flag.
 
 **+**\ [\ **no**\ ]\ **rdflag**
-  Set the RD flag.
+  Set the RD flag. Enabled by default.
 
 **+**\ [\ **no**\ ]\ **recurse**
   Same as **+**\ [\ **no**\ ]\ **rdflag**
@@ -162,7 +163,7 @@ Options
   Set the zero flag bit.
 
 **+**\ [\ **no**\ ]\ **adflag**
-  Set the AD flag.
+  Set the AD flag. Enabled by default.
 
 **+**\ [\ **no**\ ]\ **cdflag**
   Set the CD flag.
@@ -180,13 +181,13 @@ Options
   Show the query packet.
 
 **+**\ [\ **no**\ ]\ **header**
-  Show the packet header.
+  Show the packet header. Enabled by default.
 
 **+**\ [\ **no**\ ]\ **comments**
-  Show commented section names.
+  Show commented section names. Enabled by default.
 
 **+**\ [\ **no**\ ]\ **opt**
-  Show the EDNS pseudosection.
+  Show the EDNS pseudosection. Enabled by default.
 
 **+**\ [\ **no**\ ]\ **opttext**
   Try to show unknown EDNS options as text.
@@ -196,28 +197,28 @@ Options
   `draft-peltan-edns-presentation-format-01 <https://www.ietf.org/archive/id/draft-peltan-edns-presentation-format-01.html>`_.
 
 **+**\ [\ **no**\ ]\ **question**
-  Show the question section.
+  Show the question section. Enabled by default.
 
 **+**\ [\ **no**\ ]\ **answer**
-  Show the answer section.
+  Show the answer section. Enabled by default.
 
 **+**\ [\ **no**\ ]\ **authority**
-  Show the authority section.
+  Show the authority section. Enabled by default.
 
 **+**\ [\ **no**\ ]\ **additional**
-  Show the additional section.
+  Show the additional section. Enabled by default.
 
 **+**\ [\ **no**\ ]\ **tsig**
-  Show the TSIG pseudosection.
+  Show the TSIG pseudosection. Enabled by default.
 
 **+**\ [\ **no**\ ]\ **stats**
-  Show trailing packet statistics.
+  Show trailing packet statistics. Enabled by default.
 
 **+**\ [\ **no**\ ]\ **class**
-  Show the DNS class.
+  Show the DNS class. Enabled by default.
 
 **+**\ [\ **no**\ ]\ **ttl**
-  Show the TTL value.
+  Show the TTL value. Enabled by default.
 
 **+**\ [\ **no**\ ]\ **tcp**
   Use the TCP protocol (default is UDP for standard query and TCP for AXFR/IXFR).
@@ -305,7 +306,7 @@ Options
   Set EDNS(0) client subnet SUBN=addr/prefix.
 
 **+**\ [\ **no**\ ]\ **edns**\[\ =\ *N*\]
-  Use EDNS version (default is 0). EDNS(0) is enabled by default.
+  Use EDNS version (default is 0).
 
 **+**\ [\ **no**\ ]\ **timeout**\ =\ *T*
   Set the wait-for-reply interval in seconds (default is 5 seconds). This timeout
@@ -347,6 +348,8 @@ Options
 
 Notes
 -----
+
+Every option is disabled by default if not mentioned otherwise.
 
 Options **-k** and **-y** can not be used simultaneously.
 
