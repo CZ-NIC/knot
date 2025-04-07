@@ -167,8 +167,11 @@ Options
 **+**\ [\ **no**\ ]\ **cdflag**
   Set the CD flag.
 
-**+**\ [\ **no**\ ]\ **dnssec**
+**+**\ [\ **no**\ ]\ **doflag**
   Set the DO flag.
+
+**+**\ [\ **no**\ ]\ **dnssec**
+  Same as **+**\ [\ **no**\ ]\ **doflag**
 
 **+**\ [\ **no**\ ]\ **all**
   Show all packet sections.

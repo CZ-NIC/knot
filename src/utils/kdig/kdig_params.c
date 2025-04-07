@@ -1503,7 +1503,7 @@ static const param_t kdig_opts2[] = {
 	{ "rdflag",         ARG_NONE,     opt_rdflag },
 	{ "nordflag",       ARG_NONE,     opt_nordflag },
 
-	{ "recurse",        ARG_NONE,     opt_rdflag },
+	{ "recurse",        ARG_NONE,     opt_rdflag },   // Alias.
 	{ "norecurse",      ARG_NONE,     opt_nordflag },
 
 	{ "raflag",         ARG_NONE,     opt_raflag },
@@ -1518,7 +1518,10 @@ static const param_t kdig_opts2[] = {
 	{ "cdflag",         ARG_NONE,     opt_cdflag },
 	{ "nocdflag",       ARG_NONE,     opt_nocdflag },
 
-	{ "dnssec",         ARG_NONE,     opt_doflag },
+	{ "doflag",         ARG_NONE,     opt_doflag },
+	{ "nodoflag",       ARG_NONE,     opt_nodoflag },
+
+	{ "dnssec",         ARG_NONE,     opt_doflag },   // Alias.
 	{ "nodnssec",       ARG_NONE,     opt_nodoflag },
 
 	{ "all",            ARG_NONE,     opt_all },
@@ -2350,7 +2353,8 @@ static void print_help(void)
 	       "       +[no]zflag                 Set zero flag bit.\n"
 	       "       +[no]adflag                Set AD flag.\n"
 	       "       +[no]cdflag                Set CD flag.\n"
-	       "       +[no]dnssec                Set DO flag.\n"
+	       "       +[no]doflag                Set DO flag.\n"
+	       "       +[no]dnssec                Same as +[no]doflag.\n"
 	       "       +[no]all                   Show all packet sections.\n"
 	       "       +[no]qr                    Show query packet.\n"
 	       "       +[no]header                Show packet header.\n"
