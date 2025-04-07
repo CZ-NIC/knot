@@ -1,9 +1,11 @@
 #include <openssl/ssl.h>
 #include <openssl/err.h>
-#include <netinet/in.h>
 #include <unistd.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 
 #define PORT 5557
 

@@ -5,6 +5,9 @@
 #include <unistd.h>
 #include <netdb.h>
 #include <stdlib.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 
 #define HOST "localhost"
 #define PORT "5557"
