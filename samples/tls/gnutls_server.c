@@ -8,7 +8,12 @@
 
 #define PORT 5557
 
-int main() {
+#define LOOP_CHECK(rval, cmd) \
+	do {                  \
+		rval = cmd;   \
+	} while (rval == GNUTLS_E_AGAIN || rval == GNUTLS_E_INTERRUPTED)
+
+    int main() {
     gnutls_global_init();
     gnutls_certificate_credentials_t x509_cred;
     gnutls_certificate_allocate_credentials(&x509_cred);
@@ -27,26 +32,24 @@ int main() {
         int client = accept(sock, NULL, NULL);
         gnutls_session_t session;
         gnutls_init(&session, GNUTLS_SERVER);
-        gnutls_priority_set_direct(session, "NORMAL:+VERS-TLS1.3", NULL);
+        gnutls_priority_set_direct(session, "NORMAL:-VERS-ALL:+VERS-TLS1.3", NULL);
         gnutls_credentials_set(session, GNUTLS_CRD_CERTIFICATE, x509_cred);
         gnutls_session_ticket_enable_server(session, &session_ticket_key);
         gnutls_transport_set_int(session, client);
-        gnutls_handshake_set_timeout(session, 1000);
-        gnutls_record_set_timeout(session, 1000);
-
-        struct pollfd pfd = {
-            .fd = client,
-            .events = POLLOUT | POLLIN
-        };
-        int ret = poll(&pfd, 1, 10000);
-
-        ret = gnutls_handshake(session);
+        
+        int ret;
+        LOOP_CHECK(ret, gnutls_handshake(session));
         if (ret < 0) {
-            fprintf(stderr, "❌ Handshake failed: %s\n", gnutls_strerror(ret));
+            fprintf(stderr, "❌ Handshake failed [a]: %s\n", gnutls_strerror(ret));
         } else {
             printf("🔐 GnuTLS session resumed: %s\n", gnutls_session_is_resumed(session) ? "yes" : "no");
             const char msg[] = "Hello from GnuTLS!\n";
+            gnutls_record_cork(session);
             gnutls_record_send(session, msg, sizeof(msg));
+            int ret = gnutls_record_uncork(session, GNUTLS_RECORD_WAIT);
+            if (ret < 0) {
+                fprintf(stderr, "❌ Handshake failed [b]: %s\n", gnutls_strerror(ret));
+            }
         }
 
         gnutls_bye(session, GNUTLS_SHUT_RDWR);

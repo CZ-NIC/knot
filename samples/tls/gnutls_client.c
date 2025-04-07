@@ -1,74 +1,183 @@
-#include <gnutls/gnutls.h>
-#include <poll.h>
-#include <stdio.h>
+/* This example code is placed in the public domain. */
+
 #include <string.h>
-#include <unistd.h>
-#include <netdb.h>
+#include <stdio.h>
 #include <stdlib.h>
+#include <assert.h>
+#include <unistd.h>
+#include <gnutls/gnutls.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 
-#define HOST "localhost"
-#define PORT "5557"
+static void check_alert(gnutls_session_t session, int ret)
+{
+	int last_alert;
 
-int main() {
-    gnutls_global_init();
-    gnutls_certificate_credentials_t xcred;
-    gnutls_certificate_allocate_credentials(&xcred);
-    gnutls_datum_t session_data = {0};
+	if (ret == GNUTLS_E_WARNING_ALERT_RECEIVED ||
+	    ret == GNUTLS_E_FATAL_ALERT_RECEIVED) {
+		last_alert = gnutls_alert_get(session);
 
-    for (int i = 0; i < 2; i++) {
-        gnutls_session_t session;
-        gnutls_init(&session, GNUTLS_CLIENT);
-        gnutls_priority_set_direct(session, "NORMAL:+VERS-TLS1.3", NULL);
-        gnutls_credentials_set(session, GNUTLS_CRD_CERTIFICATE, xcred);
+		/* The check for renegotiation is only useful if we are 
+		 * a server, and we had requested a rehandshake.
+		 */
+		if (last_alert == GNUTLS_A_NO_RENEGOTIATION &&
+		    ret == GNUTLS_E_WARNING_ALERT_RECEIVED)
+			printf("* Received NO_RENEGOTIATION alert. "
+			       "Client Does not support renegotiation.\n");
+		else
+			printf("* Received alert '%d': %s.\n", last_alert,
+			       gnutls_alert_get_name(last_alert));
+	}
+}
 
-        if (session_data.data)
-            gnutls_session_set_data(session, session_data.data, session_data.size);
+static int tcp_connect(const char *addr, unsigned port)
+{
+	int sock;
+	struct sockaddr_storage ss;
+	memset(&ss, 0, sizeof(ss));
+	sock = socket(AF_INET, SOCK_STREAM, 0);
+	if (sock == -1) {
+		return -1;
+	}
 
-        int sock = socket(AF_INET, SOCK_STREAM, 0);
-        struct hostent *h = gethostbyname(HOST);
-        struct sockaddr_in sa;
-        sa.sin_family = AF_INET;
-        sa.sin_port = htons(atoi(PORT));
-        memcpy(&sa.sin_addr, h->h_addr, h->h_length);
-        connect(sock, (struct sockaddr *)&sa, sizeof(sa));
+	struct sockaddr_in *sa = (struct sockaddr_in *)&ss;
+	sa->sin_family = AF_INET;
+	sa->sin_port = htons(port);
+	if (inet_pton(AF_INET, addr, &sa->sin_addr) != 1) {
+		close(sock);
+		return -1;
+	}
+	if (connect(sock, (struct sockaddr *)sa, sizeof(ss)) != 0) {
+		close(sock);
+		return -1;
+	}
+	return sock;
+}
 
-        gnutls_transport_set_int(session, sock);
-        gnutls_handshake_set_timeout(session, 1000);
-        gnutls_record_set_timeout(session, 1000);
+static void tcp_close(int sd)
+{
+	shutdown(sd, SHUT_RDWR); /* no more receptions */
+	close(sd);
+}
 
-        struct pollfd pfd = {
-            .fd = sock,
-            .events = POLLOUT | POLLIN
-        };
-        int ret = poll(&pfd, 1, 10000);
+/* A very basic TLS client, with X.509 authentication and server certificate
+ * verification as well as session resumption.
+ *
+ * Note that error recovery is minimal for simplicity.
+ */
 
-        ret = gnutls_handshake(session);
-        if (ret < 0) {
-            fprintf(stderr, "❌ GnuTLS handshake failed: %s\n", gnutls_strerror(ret));
-            gnutls_deinit(session);
-            close(sock);
-            continue;
-        }
+#define CHECK(x) assert((x) >= 0)
+#define LOOP_CHECK(rval, cmd)                                             \
+	do {                                                              \
+		rval = cmd;                                               \
+	} while (rval == GNUTLS_E_AGAIN || rval == GNUTLS_E_INTERRUPTED); \
+	assert(rval >= 0)
 
-        printf("🟡 GnuTLS Session %d: %s\n", i + 1,
-               gnutls_session_is_resumed(session) ? "resumed" : "new");
+#define MAX_BUF 1024
 
-        char buf[128] = {0};
-        gnutls_record_recv(session, buf, sizeof(buf));
-        printf("📩 GnuTLS Received: %s\n", buf);
+int main(void)
+{
+	int ret;
+	int sd, ii;
+	gnutls_session_t session;
+	char buffer[MAX_BUF + 1];
+	gnutls_certificate_credentials_t xcred;
 
-        if (session_data.data)
-            gnutls_free(session_data.data);
+	/* variables used in session resuming 
+	 */
+	int t;
+	gnutls_datum_t sdata;
 
-        gnutls_session_get_data2(session, &session_data);
+	/* for backwards compatibility with gnutls < 3.3.0 */
+	CHECK(gnutls_global_init());
 
-        gnutls_bye(session, GNUTLS_SHUT_RDWR);
-        gnutls_deinit(session);
-        close(sock);
-    }
+	CHECK(gnutls_certificate_allocate_credentials(&xcred));
+	// CHECK(gnutls_certificate_set_x509_system_trust(xcred));
 
-    gnutls_free(session_data.data);
-    gnutls_certificate_free_credentials(xcred);
-    gnutls_global_deinit();
-    return 0;
+	for (t = 0; t < 2; t++) { /* connect 2 times to the server */
+
+		sd = tcp_connect("127.0.0.1", 5557);
+
+		CHECK(gnutls_init(&session, GNUTLS_CLIENT));
+        gnutls_priority_set_direct(session, "NORMAL:-VERS-ALL:+VERS-TLS1.3", NULL);
+
+		gnutls_transport_set_int(session, sd);
+		gnutls_handshake_set_timeout(session,
+					     GNUTLS_DEFAULT_HANDSHAKE_TIMEOUT);
+
+		gnutls_credentials_set(session, GNUTLS_CRD_CERTIFICATE, xcred);
+
+		if (t > 0) {
+			/* if this is not the first time we connect */
+			CHECK(gnutls_session_set_data(session, sdata.data,
+						      sdata.size));
+			gnutls_free(sdata.data);
+		}
+
+		/* Perform the TLS handshake
+		 */
+		do {
+			ret = gnutls_handshake(session);
+		} while (ret < 0 && gnutls_error_is_fatal(ret) == 0);
+
+		if (ret < 0) {
+			fprintf(stderr, "*** Handshake failed\n");
+			gnutls_perror(ret);
+			goto end;
+		} else {
+			printf("- Handshake was completed\n");
+		}
+
+		if (t == 0) { /* the first time we connect */
+			/* get the session data */
+			CHECK(gnutls_session_get_data2(session, &sdata));
+		} else { /* the second time we connect */
+
+			/* check if we actually resumed the previous session */
+			if (gnutls_session_is_resumed(session) != 0) {
+				printf("- Previous session was resumed\n");
+			} else {
+				fprintf(stderr,
+					"*** Previous session was NOT resumed\n");
+			}
+		}
+
+		LOOP_CHECK(ret, gnutls_record_recv(session, buffer, MAX_BUF));
+		if (ret == 0) {
+			printf("- Peer has closed the TLS connection\n");
+			goto end;
+		} else if (ret < 0 && gnutls_error_is_fatal(ret) == 0) {
+			fprintf(stderr, "*** Warning: %s\n",
+				gnutls_strerror(ret));
+		} else if (ret < 0) {
+			fprintf(stderr, "*** Error: %s\n",
+				gnutls_strerror(ret));
+			goto end;
+		}
+
+		if (ret > 0) {
+			printf("- Received %d bytes: ", ret);
+			for (ii = 0; ii < ret; ii++) {
+				fputc(buffer[ii], stdout);
+			}
+			fputs("\n", stdout);
+		}
+
+		gnutls_bye(session, GNUTLS_SHUT_RDWR);
+
+	end:
+
+		tcp_close(sd);
+
+		gnutls_deinit(session);
+
+	} /* for() */
+
+	gnutls_certificate_free_credentials(xcred);
+
+	gnutls_global_deinit();
+
+	return 0;
 }
