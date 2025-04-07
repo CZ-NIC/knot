@@ -1529,6 +1529,9 @@ static const param_t kdig_opts2[] = {
 	{ "cdflag",         ARG_NONE,     opt_cdflag },
 	{ "nocdflag",       ARG_NONE,     opt_nocdflag },
 
+	{ "doflag",         ARG_NONE,     opt_doflag },
+	{ "nodoflag",       ARG_NONE,     opt_nodoflag },
+
 	{ "dnssec",         ARG_NONE,     opt_doflag },
 	{ "nodnssec",       ARG_NONE,     opt_nodoflag },
 
@@ -2361,7 +2364,8 @@ static void print_help(void)
 	       "       +[no]zflag                 Set zero flag bit.\n"
 	       "       +[no]adflag                Set AD flag.\n"
 	       "       +[no]cdflag                Set CD flag.\n"
-	       "       +[no]dnssec                Set DO flag.\n"
+	       "       +[no]doflag                Set DO flag.\n"
+	       "       +[no]dnssec                Same as +[no]doflag.\n"
 	       "       +[no]all                   Show all packet sections.\n"
 	       "       +[no]qr                    Show query packet.\n"
 	       "       +[no]header                Show packet header.\n"
