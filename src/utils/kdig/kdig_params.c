@@ -1514,7 +1514,7 @@ static const param_t kdig_opts2[] = {
 	{ "rdflag",         ARG_NONE,     opt_rdflag },
 	{ "nordflag",       ARG_NONE,     opt_nordflag },
 
-	{ "recurse",        ARG_NONE,     opt_rdflag },
+	{ "recurse",        ARG_NONE,     opt_rdflag },   // Alias.
 	{ "norecurse",      ARG_NONE,     opt_nordflag },
 
 	{ "raflag",         ARG_NONE,     opt_raflag },
@@ -1532,7 +1532,7 @@ static const param_t kdig_opts2[] = {
 	{ "doflag",         ARG_NONE,     opt_doflag },
 	{ "nodoflag",       ARG_NONE,     opt_nodoflag },
 
-	{ "dnssec",         ARG_NONE,     opt_doflag },
+	{ "dnssec",         ARG_NONE,     opt_doflag },   // Alias.
 	{ "nodnssec",       ARG_NONE,     opt_nodoflag },
 
 	{ "all",            ARG_NONE,     opt_all },
