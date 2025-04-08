@@ -352,19 +352,22 @@ _public_
 int knot_tls_session(struct gnutls_session_int **session,
                      struct knot_creds *creds,
                      struct gnutls_priority_st *priority,
-                     const char *alpn,
+                     bool quic,
                      bool early_data,
                      bool server)
 {
-	if (session == NULL || creds == NULL || priority == NULL || alpn == NULL) {
+	if (session == NULL || creds == NULL || priority == NULL) {
 		return KNOT_EINVAL;
 	}
 
+	const char *alpn = quic ? "\x03""doq" : "\x03""dot";
 	gnutls_init_flags_t flags = GNUTLS_NO_SIGNAL;
 	if (early_data) {
 		flags |= GNUTLS_ENABLE_EARLY_DATA;
 #ifdef ENABLE_QUIC // Next flags aren't available in older GnuTLS versions.
-		flags |= GNUTLS_NO_END_OF_EARLY_DATA;
+		if (quic) {
+			flags |= GNUTLS_NO_END_OF_EARLY_DATA;
+		}
 #endif
 	}
 
