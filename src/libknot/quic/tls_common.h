@@ -101,7 +101,7 @@ void knot_creds_free(struct knot_creds *creds);
  * \param session      Out: initialized GnuTLS session struct.
  * \param creds        Certificate credentials.
  * \param priority     Session priority configuration.
- * \param alpn         ALPN string, first byte is the string length.
+ * \param quic         Session is for ngtcp2/QUIC (otherwise TLS).
  * \param early_data   Allow early data.
  * \param server       Should be server session (otherwise client).
  *
@@ -110,7 +110,7 @@ void knot_creds_free(struct knot_creds *creds);
 int knot_tls_session(struct gnutls_session_int **session,
                      struct knot_creds *creds,
                      struct gnutls_priority_st *priority,
-                     const char *alpn,
+                     bool quic,
                      bool early_data,
                      bool server);
 
