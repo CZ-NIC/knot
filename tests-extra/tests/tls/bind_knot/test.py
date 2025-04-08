@@ -49,4 +49,7 @@ try:
 finally:
     tcpdump_proc.terminate()
 
+if not slave.log_search("TLS/0-RTT"):
+    set_err("0-RTT NOT WORKING")
+
 t.end()
