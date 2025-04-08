@@ -30,7 +30,7 @@ int main() {
             gnutls_free(session_data.data);
         }
 
-        int sock = socket(AF_INET, SOCK_STREAM, 0);
+        int sock = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
         struct hostent *h = gethostbyname(HOST);
         struct sockaddr_in sa;
         sa.sin_family = AF_INET;
@@ -39,6 +39,12 @@ int main() {
         connect(sock, (struct sockaddr *)&sa, sizeof(sa));
 
         gnutls_transport_set_int(session, sock);
+
+        struct pollfd pfd = {
+            .fd = sock,
+            .events = POLLOUT
+        };
+        poll(&pfd, 1, 1000);
 
         int ret;
         do {

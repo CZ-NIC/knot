@@ -18,7 +18,7 @@ int main() {
     gnutls_datum_t session_ticket_key = {NULL, 0};
     gnutls_session_ticket_key_generate(&session_ticket_key);
 
-    int sock = socket(AF_INET, SOCK_STREAM, 0);
+    int sock = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
     struct sockaddr_in addr = {.sin_family = AF_INET, .sin_port = htons(PORT), .sin_addr.s_addr = INADDR_ANY};
     bind(sock, (struct sockaddr *)&addr, sizeof(addr));
     listen(sock, 1);
@@ -26,7 +26,14 @@ int main() {
     printf("🟢 GnuTLS server listening on port %d\n", PORT);
 
     while (1) {
+        struct pollfd pfd = {
+            .fd = sock,
+            .events = POLLIN
+        };
+        poll(&pfd, 1, -1);
+
         int client = accept(sock, NULL, NULL);
+
         gnutls_session_t session;
         gnutls_init(&session, GNUTLS_SERVER);
         gnutls_priority_set_direct(session, "NORMAL:+VERS-TLS1.3", NULL);
@@ -35,6 +42,10 @@ int main() {
         gnutls_transport_set_int(session, client);
         gnutls_handshake_set_timeout(session, 1000);
         gnutls_record_set_timeout(session, 1000);
+
+        pfd.events = POLLOUT;
+        pfd.fd = client;
+        poll(&pfd, 1, 1000);
 
         int ret;
         do {
