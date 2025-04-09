@@ -116,14 +116,17 @@ int conf_io_commit(
 	return ret;
 }
 
-void conf_io_abort(
+int conf_io_abort(
 	bool child)
 {
 	assert(conf() != NULL);
 
 	if (conf()->io.txn == NULL ||
-	    (child && conf()->io.txn == conf()->io.txn_stack) || !same_thread()) {
-		return;
+	    (child && conf()->io.txn == conf()->io.txn_stack)) {
+		return KNOT_EOK;
+	}
+	if (!same_thread()) {
+		return KNOT_TXN_ETHREAD;
 	}
 
 	knot_db_txn_t *txn = child ? conf()->io.txn : conf()->io.txn_stack;
@@ -139,6 +142,8 @@ void conf_io_abort(
 			trie_clear(conf()->io.zones);
 		}
 	}
+
+	return KNOT_EOK;
 }
 
 static int list_section(

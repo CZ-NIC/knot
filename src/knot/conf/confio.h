@@ -97,8 +97,9 @@ int conf_io_commit(
  * Aborts the current writing transaction.
  *
  * \param[in] child  Nested transaction indicator.
+ * \return    KNOT_TXN_ETHREAD if called from a wrong thread, KNOT_EOK otherwise.
  */
-void conf_io_abort(
+int conf_io_abort(
 	bool child
 );
 
