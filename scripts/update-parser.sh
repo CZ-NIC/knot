@@ -6,6 +6,8 @@ IN="./scanner.rl"
 OUT_T0="./scanner.c.t0"
 OUT_G2="./scanner.c.g2"
 
+pushd $(dirname "$0")
+
 pushd ../src/libzscanner/
 
 # Generate slower/small zone parser.
@@ -46,5 +48,7 @@ sed -i '/static\ const\ int\ yparser_/d' $OUT_Y
 
 # Remove trailing white spaces.
 sed -i 's/\s*$//g' $OUT_Y
+
+popd
 
 popd
