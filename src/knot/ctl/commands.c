@@ -2169,8 +2169,7 @@ static int ctl_conf_txn(ctl_args_t *args, ctl_cmd_t cmd)
 		}
 		break;
 	case CTL_CONF_ABORT:
-		conf_io_abort(false);
-		ret = KNOT_EOK;
+		ret = conf_io_abort(false);
 		break;
 	case CTL_CONF_COMMIT:
 		// First check the database.
@@ -2186,7 +2185,7 @@ static int ctl_conf_txn(ctl_args_t *args, ctl_cmd_t cmd)
 
 		ret = conf_io_commit(false);
 		if (ret != KNOT_EOK) {
-			conf_io_abort(false);
+			(void)conf_io_abort(false);
 			break;
 		}
 
@@ -2357,7 +2356,7 @@ static int ctl_conf_modify(ctl_args_t *args, ctl_cmd_t cmd)
 			ctl_send_error(args, knot_strerror(ret));
 		}
 	} else {
-		conf_io_abort(true);
+		(void)conf_io_abort(true);
 	}
 
 	return ret;
