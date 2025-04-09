@@ -238,8 +238,12 @@ static char *read_file_to_buf(
 	char *buf = malloc(bufs + newbufs);
 	int ret = 0;
 
-	while (buf != NULL && (ret = read(fd, buf + bufs, newbufs)) == newbufs) {
-		bufs += newbufs;
+	while (buf != NULL && (ret = read(fd, buf + bufs, newbufs)) > 0) {
+		bufs += ret;
+		if (ret < newbufs) {
+			newbufs -= ret;
+			continue;
+		}
 		newbufs = bufs;
 		char *newbuf = realloc(buf, bufs + newbufs);
 		if (newbuf == NULL) {
