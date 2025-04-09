@@ -1,3 +1,28 @@
+Knot DNS 3.4.6 (2025-04-10)
+===========================
+
+Improvements:
+-------------
+ - knotd: default TSIG algorithm is now 'hmac-sha256'
+ - knotd: added zone expiration info to the failed zone refresh log
+ - knotd: reverse record generation now accepts multiple forward zones to be reversed
+ - keymgr: underscores are now tolerated instead of dashes in command names
+ - keymgr: correct mnemonic 'rsasha1-nsec3-sha1' is used instead of 'rsasha1nsec3sha1'
+ - kdig: new '+[no]doflag' alias for '+[no]dnssec' #952
+ - kdig: documented default option values #951
+ - kxdpgun: extended JSON output with some packet statistics
+ - doc: various updates and improvements
+
+Bugfixes:
+---------
+ - knotd: failed to stop the server if 'dbus-event: running` is set
+ - knotd: TLS 0-RTT not working if compiled with the QUIC support
+ - knotd: TLS handshake fails on FreeBSD
+ - knotd: outbound QUIC communication fails on FreeBSD
+ - knotd: KSK submission not ignored in the manual key management mode
+ - knotd: failed to bind to a UNIX socket on recent Linux kernels
+ - kzonecheck: failed to check non-trivial zones through standard input
+
 Knot DNS 3.4.5 (2025-03-18)
 ===========================
 
