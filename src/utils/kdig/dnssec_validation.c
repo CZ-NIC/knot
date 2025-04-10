@@ -204,10 +204,17 @@ static bool has_nodata(zone_contents_t *conts, const knot_dname_t *name, uint16_
                        const zone_node_t *from_node, const knot_dname_t **where)
 {
 	if (!has_nsec3(conts)) {
-		const zone_node_t *node = zone_contents_find_node(conts, name);
-		knot_rrset_t nsec = node_rrset(node, KNOT_RRTYPE_NSEC);
+		const zone_node_t *node = zone_contents_find_node(conts, name), *prev = node;
+		while (prev->rrset_count == 0) {
+			prev = node_prev(prev);
+		}
+		knot_rrset_t nsec = node_rrset(prev, KNOT_RRTYPE_NSEC);
 		if (where != NULL) {
 			*where = nsec.owner;
+		}
+		if (prev != node) { // seeking empty non-terminal proof
+			return !knot_rrset_empty(&nsec)
+			       && nsec_covers_name(prev->owner, nsec.rrs.rdata, name);
 		}
 		return !knot_rrset_empty(&nsec)
 		       && bitmap_covers(knot_nsec_bitmap(nsec.rrs.rdata),
@@ -331,7 +338,7 @@ static int check_existing_with_nsecs(zone_node_t *node, void *data)
 			}
 			return 1;
 		}
-	} else if (!(node->flags & NODE_FLAGS_NONAUTH)) {
+	} else if (!(node->flags & NODE_FLAGS_NONAUTH) && node->rrset_count > 0) {
 		if (has_nodata(ctx->conts, node->owner, 0, node, NULL)) {
 			LOG_ERROR(ctx->level, node->owner, "NSEC(3) wrongly proves NODATA");
 			return 1;
@@ -366,6 +373,11 @@ int remove_cnames(zone_node_t *node, void *data)
 		return zone_contents_remove_rr(data, &cname, &unused);
 	}
 	return KNOT_EOK;
+}
+
+static zone_node_t *new_node_cb(const knot_dname_t *dname, void *ctx)
+{
+	return node_new_for_tree(dname, ctx, NULL);
 }
 
 static int rrsets_pkt2conts(knot_pkt_t *pkt, zone_contents_t *conts,
@@ -407,6 +419,11 @@ static int rrsets_pkt2conts(knot_pkt_t *pkt, zone_contents_t *conts,
 				knot_rrtype_to_string(rr->type, rrtype, sizeof(rrtype));
 				LOG_INF(level, rr->owner, "mismatched TTLs for type %s", rrtype);
 				ret = KNOT_EOK;
+			}
+
+			if (rrcpy.type == KNOT_RRTYPE_NSEC && ret == KNOT_EOK) {
+				ret = zone_tree_add_node(conts->nodes, conts->apex, knot_nsec_next(rrcpy.rrs.rdata),
+				                         new_node_cb, conts->nodes, &inserted);
 			}
 		}
 	}
