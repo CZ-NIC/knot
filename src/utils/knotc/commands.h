@@ -33,6 +33,7 @@ typedef enum {
 	CMD_FOPT_MOD     = 1 << 8,  /*!< Optional configured modules dependency. */
 	CMD_FREQ_MOD     = 1 << 9,  /*!< Required configured modules dependency. */
 	CMD_FLIST_SCHEMA = 1 << 10, /*!< List schema or possible option values. */
+	CMD_FLOG_MORE    = 1 << 12, /*!< Execute command with increased log level. */
 } cmd_flag_t;
 
 struct cmd_desc;

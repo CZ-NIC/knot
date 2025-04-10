@@ -159,8 +159,7 @@ int main(int argc, char **argv)
 
 	/* Set up simplified logging just to stdout/stderr. */
 	log_init();
-	log_levels_set(LOG_TARGET_STDOUT, LOG_SOURCE_ANY,
-	               LOG_MASK(LOG_INFO) | LOG_MASK(LOG_NOTICE));
+	log_levels_set(LOG_TARGET_STDOUT, LOG_SOURCE_ANY, 0);
 	log_levels_set(LOG_TARGET_STDERR, LOG_SOURCE_ANY, LOG_UPTO(LOG_WARNING));
 	log_levels_set(LOG_TARGET_SYSLOG, LOG_SOURCE_ANY, 0);
 	log_flag_set(LOG_FLAG_NOTIMESTAMP | LOG_FLAG_NOINFO);
