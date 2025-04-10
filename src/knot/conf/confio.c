@@ -50,7 +50,7 @@ static bool same_thread(void)
 	return conf()->io.txn == NULL ||
 	       pthread_equal(conf()->io.thread_id, pthread_self()) != 0;
 }
-#define CHECK_SAME_THREAD if (!same_thread()) { return KNOT_TXN_ETHREAD; }
+#define CHECK_SAME_THREAD if (!same_thread()) return KNOT_TXN_ETHREAD;
 
 int conf_io_begin(
 	bool child)
@@ -62,7 +62,7 @@ int conf_io_begin(
 	} else if (conf()->io.txn == NULL && child) {
 		return KNOT_TXN_ENOTEXISTS;
 	}
-	CHECK_SAME_THREAD
+	CHECK_SAME_THREAD;
 
 	knot_db_txn_t *parent = conf()->io.txn;
 	knot_db_txn_t *txn = (parent == NULL) ? conf()->io.txn_stack : parent + 1;
@@ -104,7 +104,7 @@ int conf_io_commit(
 	    (child && conf()->io.txn == conf()->io.txn_stack)) {
 		return KNOT_TXN_ENOTEXISTS;
 	}
-	CHECK_SAME_THREAD
+	CHECK_SAME_THREAD;
 
 	knot_db_txn_t *txn = child ? conf()->io.txn : conf()->io.txn_stack;
 
@@ -178,7 +178,7 @@ int conf_io_list(
 	if (conf()->io.txn == NULL && !get_current) {
 		return KNOT_TXN_ENOTEXISTS;
 	}
-	CHECK_SAME_THREAD
+	CHECK_SAME_THREAD;
 
 	// List schema sections by default.
 	if (key0 == NULL) {
@@ -580,7 +580,7 @@ int conf_io_diff(
 	if (conf()->io.txn == NULL) {
 		return KNOT_TXN_ENOTEXISTS;
 	}
-	CHECK_SAME_THREAD
+	CHECK_SAME_THREAD;
 
 	// Compare all sections by default.
 	if (key0 == NULL) {
@@ -781,7 +781,7 @@ int conf_io_get(
 	if (conf()->io.txn == NULL && !get_current) {
 		return KNOT_TXN_ENOTEXISTS;
 	}
-	CHECK_SAME_THREAD
+	CHECK_SAME_THREAD;
 
 	// List all sections by default.
 	if (key0 == NULL) {
@@ -1024,7 +1024,7 @@ int conf_io_set(
 	if (conf()->io.txn == NULL) {
 		return KNOT_TXN_ENOTEXISTS;
 	}
-	CHECK_SAME_THREAD
+	CHECK_SAME_THREAD;
 
 	// At least key0 must be specified.
 	if (key0 == NULL) {
@@ -1220,7 +1220,7 @@ int conf_io_unset(
 	if (conf()->io.txn == NULL) {
 		return KNOT_TXN_ENOTEXISTS;
 	}
-	CHECK_SAME_THREAD
+	CHECK_SAME_THREAD;
 
 	// Unset all sections by default.
 	if (key0 == NULL) {
@@ -1574,7 +1574,7 @@ int conf_io_check(
 	if (conf()->io.txn == NULL) {
 		return KNOT_TXN_ENOTEXISTS;
 	}
-	CHECK_SAME_THREAD
+	CHECK_SAME_THREAD;
 
 	int ret;
 
