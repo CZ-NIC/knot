@@ -52,6 +52,13 @@ int set_config(const cmd_desc_t *desc, params_t *params)
 	params->config = params->orig_config;
 	params->confdb = params->orig_confdb;
 
+	if (desc->flags & CMD_FLOG_MORE) {
+		log_levels_set(LOG_TARGET_STDOUT, LOG_SOURCE_ANY,
+			       LOG_MASK(LOG_INFO) | LOG_MASK(LOG_NOTICE));
+	} else {
+		log_levels_set(LOG_TARGET_STDOUT, LOG_SOURCE_ANY, 0);
+	}
+
 	if (params->config != NULL && params->confdb != NULL) {
 		log_error("ambiguous configuration source");
 		return KNOT_EINVAL;
