@@ -396,6 +396,10 @@ static int rrsets_pkt2conts(knot_pkt_t *pkt, zone_contents_t *conts,
 				continue;
 			}
 
+			if (i > KNOT_ANSWER && knot_dname_in_bailiwick(rr->owner, conts->apex->owner) < 0) {
+				continue;
+			}
+
 			uint16_t rr_pos = knot_pkt_rr_offset(&pkt->sections[i], j);
 			knot_dname_storage_t owner;
 			knot_dname_unpack(owner, pkt->wire + rr_pos, sizeof(owner), pkt->wire);
