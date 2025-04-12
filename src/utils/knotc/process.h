@@ -42,10 +42,11 @@ typedef struct {
  *
  * \param[in] desc    Utility command descriptor.
  * \param[in] params  Utility parameters.
+ * \param[in] compl   Whether function is called from a tab-completion context.
  *
  * \return Error code, KNOT_EOK if successful.
  */
-int set_config(const cmd_desc_t *desc, params_t *params);
+int set_config(const cmd_desc_t *desc, params_t *params, bool compl);
 
 /*!
  * Establishes a control interface if necessary.

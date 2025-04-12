@@ -318,7 +318,7 @@ static unsigned char complete(EditLine *el, int ch)
 		goto complete_exit;
 	}
 
-	ret = set_config(desc, &params);
+	ret = set_config(desc, &params, true);
 	if (ret != KNOT_EOK) {
 		goto complete_exit;
 	}
