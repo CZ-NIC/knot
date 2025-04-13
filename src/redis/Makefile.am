@@ -7,6 +7,6 @@ knot_la_SOURCES = \
         knot.c \
         knot.h
 
-knot_la_CPPFLAGS = $(AM_CPPFLAGS)
+knot_la_CPPFLAGS = $(AM_CPPFLAGS) $(CFLAG_VISIBILITY)
 knot_la_LDFLAGS  = $(AM_LDFLAGS) -module -shared -avoid-version
 endif
