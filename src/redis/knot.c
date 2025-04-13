@@ -13,13 +13,22 @@
 #include "contrib/redis/redismodule.h"
 #include "redis/knot.h"
 
-#include "libknot/rdataset.c"
-#include "libknot/mm_ctx.h"
+#include "libknot/attribute.h"
+#undef _public_
+#define _public_ _hidden_
+
 #include "libknot/rrtype/soa.h"
+#include "libknot/rrtype/naptr.c"
+#include "libknot/rdataset.c"
+#include "libknot/rrset.c"
+#include "libknot/mm_ctx.h"
 #include "libknot/dname.c"
+#include "libknot/descriptor.c"
 #include "contrib/mempattern.c"
 #include "contrib/string.c"
 #include "contrib/ucw/mempool.c"
+#include "libzscanner/functions.c"
+#include "libzscanner/scanner.c.t0"
 
 #define KNOT_ZONE_RRSET_ENCODING_VERSION 0
 
@@ -779,6 +788,7 @@ static int knot_rrset_aof_rewrite(RedisModuleCtx *ctx, RedisModuleString **argv,
 	return REDISMODULE_OK;
 }
 
+__attribute__((visibility("default")))
 int RedisModule_OnLoad(RedisModuleCtx *ctx)
 {
 	RedisModuleTypeMethods tm = {
