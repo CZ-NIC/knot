@@ -232,7 +232,7 @@ isset(("node." + ZONE_NAME) not in resp[ZONE_NAME], "node absence")
 ctl.send_block(cmd="zone-begin")
 resp = ctl.receive_block()
 
-ctl.send_block(cmd="zone-set", zone=ZONE_NAME, owner="lETter", ttl="3600", rtype="TXT", data="text")
+ctl.send_block(cmd="zone-set", zone=ZONE_NAME, owner="lETter", ttl="3600", rtype="DNAME", data="tEXt.")
 resp = ctl.receive_block()
 
 ctl.send_block(cmd="zone-commit")
@@ -240,7 +240,9 @@ resp = ctl.receive_block()
 
 ctl.send_block(cmd="zone-read", zone=ZONE_NAME, owner="letter")
 resp = ctl.receive_block()
-isset("letter." + ZONE_NAME in resp[ZONE_NAME], "lower-cased and inserted node lETter")
+record = resp[ZONE_NAME]["letter." + ZONE_NAME]
+isset(record["DNAME"], "lower-cased and inserted node lETter")
+isset(record["DNAME"]["data"][0] == "text.", "lower-cased rdata tEXt.")
 
 ctl.send_block(cmd="zone-begin")
 resp = ctl.receive_block()

@@ -1410,7 +1410,6 @@ static int create_rrset(knot_rrset_t **rrset, zone_t *zone, ctl_args_t *args,
 		ret = KNOT_EPARSEFAIL;
 		goto parser_failed;
 	}
-	knot_dname_to_lower(scanner->r_owner);
 
 	// Create output rrset.
 	*rrset = knot_rrset_new(scanner->r_owner, scanner->r_type,
@@ -1422,6 +1421,11 @@ static int create_rrset(knot_rrset_t **rrset, zone_t *zone, ctl_args_t *args,
 
 	ret = knot_rrset_add_rdata(*rrset, scanner->r_data, scanner->r_data_length,
 	                           NULL);
+	if (ret != KNOT_EOK) {
+		goto parser_failed;
+	}
+
+	ret = knot_rrset_rr_to_canonical(*rrset);
 parser_failed:
 	zs_deinit(scanner);
 
