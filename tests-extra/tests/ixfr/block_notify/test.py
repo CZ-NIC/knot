@@ -29,9 +29,10 @@ slave.zones_wait(zone, serials_init)
 req = slave.dig("suppnot1.example.com.", "A")
 req.check(rcode="NOERROR")
 
-tested.ctl("conf-begin")
-tested.ctl("conf-set remote[knot1].block-notify-after-transfer on")
-tested.ctl("conf-commit")
+confsock = tested.ctl_sock_rnd()
+tested.ctl("conf-begin", custom_parm=confsock)
+tested.ctl("conf-set remote[knot1].block-notify-after-transfer on", custom_parm=confsock)
+tested.ctl("conf-commit", custom_parm=confsock)
 
 up = master.update(zone)
 up.add("suppnot2", 3600, "A", "1.2.3.4")

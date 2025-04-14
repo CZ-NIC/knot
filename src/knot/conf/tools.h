@@ -83,6 +83,10 @@ int check_modulo_shift(
 	knotd_conf_check_args_t *args
 );
 
+int check_ctl_listen(
+	knotd_conf_check_args_t *args
+);
+
 int check_database(
 	knotd_conf_check_args_t *args
 );
