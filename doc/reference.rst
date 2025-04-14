@@ -1554,7 +1554,7 @@ cert-key
 --------
 
 An ordered list of remote certificate public key PINs. If the list is non-empty,
-communication with the remote is possible only via QUIC protocol and
+communication with the remote is possible only via QUIC or TLS protocols and
 a peer certificate is required. The peer certificate key must match one of the
 specified PINs.
 
@@ -1701,7 +1701,7 @@ cert-key
 --------
 
 An ordered list of remote certificate public key PINs. If the list is non-empty,
-communication with the remote is possible only via QUIC protocol and
+communication with the remote is possible only via QUIC or TLS protocols and
 a peer certificate is required. The peer certificate key must match one of the
 specified PINs.
 
