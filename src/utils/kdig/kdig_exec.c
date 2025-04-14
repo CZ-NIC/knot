@@ -1036,6 +1036,8 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 	while (true) {
 		reply = NULL;
 
+		usleep(query_ctx->msgdelay * 1000LU);
+
 		// Receive a reply message.
 		in_len = net_receive(net, in, sizeof(in));
 		t_end = time_now();
