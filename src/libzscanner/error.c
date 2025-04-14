@@ -6,6 +6,7 @@
 #include <stdlib.h>
 
 #include "libzscanner/error.h"
+#include "libknot/attribute.h"
 
 typedef struct {
 	int        code;
@@ -164,7 +165,7 @@ static const err_table_t err_msgs[] = {
 	ERR_ITEM( 0, NULL ) // Terminator
 };
 
-__attribute__((visibility("default")))
+_public_
 const char* zs_strerror(const int code)
 {
 	const err_table_t *err = err_msgs;
@@ -179,7 +180,7 @@ const char* zs_strerror(const int code)
 	return NULL;
 }
 
-__attribute__((visibility("default")))
+_public_
 const char* zs_errorname(const int code)
 {
 	const err_table_t *err = err_msgs;

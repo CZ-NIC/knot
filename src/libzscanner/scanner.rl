@@ -22,6 +22,7 @@
 
 #include "libzscanner/scanner.h"
 #include "libzscanner/functions.h"
+#include "libknot/attribute.h"
 #include "libknot/descriptor.h"
 
 /*! \brief Maximal length of rdata item. */
@@ -85,7 +86,7 @@ static inline void window_add_bit(const uint16_t type, zs_scanner_t *s) {
 	write data;
 }%%
 
-__attribute__((visibility("default")))
+_public_
 int zs_init(
 	zs_scanner_t *s,
 	const char *origin,
@@ -182,7 +183,7 @@ static void input_deinit(
 	s->input.eof     = false;
 }
 
-__attribute__((visibility("default")))
+_public_
 void zs_deinit(
 	zs_scanner_t *s)
 {
@@ -280,7 +281,7 @@ static int parse_origin(zs_scanner_t *s)
 	return s->zone_origin_length != ZS_NO_ORIGIN_LEN ? 0 : -1;
 }
 
-__attribute__((visibility("default")))
+_public_
 int zs_set_input_string(
 	zs_scanner_t *s,
 	const char *input,
@@ -296,7 +297,7 @@ int zs_set_input_string(
 	return set_input_string(s, input, size, false);
 }
 
-__attribute__((visibility("default")))
+_public_
 int zs_set_input_file(
 	zs_scanner_t *s,
 	const char *file_name)
@@ -401,7 +402,7 @@ int zs_set_input_file(
 	return 0;
 }
 
-__attribute__((visibility("default")))
+_public_
 int zs_set_processing(
 	zs_scanner_t *s,
 	void (*process_record)(zs_scanner_t *),
@@ -419,7 +420,7 @@ int zs_set_processing(
 	return 0;
 }
 
-__attribute__((visibility("default")))
+_public_
 int zs_set_processing_comment(
 	zs_scanner_t *s,
 	void (*process_comment)(zs_scanner_t *))
@@ -518,7 +519,7 @@ static void parse(
 	}
 }
 
-__attribute__((visibility("default")))
+_public_
 int zs_parse_record(
 	zs_scanner_t *s)
 {
@@ -567,7 +568,7 @@ int zs_parse_record(
 	return 0;
 }
 
-__attribute__((visibility("default")))
+_public_
 int zs_parse_all(
 	zs_scanner_t *s)
 {
