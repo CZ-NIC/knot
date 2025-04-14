@@ -248,9 +248,8 @@ static void event_loop(server_t *server, const char *socket, bool daemonize,
 		log_info("server started in the foreground, PID %lu", pid);
 	}
 
-	/* Run event loop. */
+	/* Run interrupt processing loop. */
 	for (;;) {
-		/* Interrupts. */
 		if (signals_req_reload && !signals_req_stop) {
 			signals_req_reload = false;
 			pthread_rwlock_wrlock(&server->ctl_lock);
