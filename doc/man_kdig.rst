@@ -308,6 +308,10 @@ Options
 **+**\ [\ **no**\ ]\ **edns**\[\ =\ *N*\]
   Use EDNS version (default is 0).
 
+**+**\ [\ **no**\ ]\ **msgdelay**\ =\ *T*
+  For AXFR/IXFR only: wait for specified number of milliseconds before receiving
+  each zone transfer message. This is useful for debugging slow zone transfers.
+
 **+**\ [\ **no**\ ]\ **timeout**\ =\ *T*
   Set the wait-for-reply interval in seconds (default is 5 seconds). This timeout
   applies to each query attempt. Zero value or *notimeout* is interpreted as

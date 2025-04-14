@@ -79,6 +79,8 @@ struct query {
 	int32_t		udp_size;
 	/*!< Number of UDP retries. */
 	uint32_t	retries;
+	/*!< AXFR/IXFR only: wait milliseconds before receiving each message. */
+	uint32_t	msgdelay;
 	/*!< Wait for network response in seconds (-1 means forever). */
 	int32_t		wait;
 	/*!< Ignore truncated response. */
