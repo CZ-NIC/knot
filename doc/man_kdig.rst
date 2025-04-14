@@ -308,6 +308,9 @@ Options
 **+**\ [\ **no**\ ]\ **edns**\[\ =\ *N*\]
   Use EDNS version (default is 0).
 
+**+**\ [\ **no**\ ]\ **msgdelay**\ =\ *T*
+  Wait the specified number of milliseconds before receiving each AXFR/IXFR message.
+
 **+**\ [\ **no**\ ]\ **timeout**\ =\ *T*
   Set the wait-for-reply interval in seconds (default is 5 seconds). This timeout
   applies to each query attempt. Zero value or *notimeout* is interpreted as
