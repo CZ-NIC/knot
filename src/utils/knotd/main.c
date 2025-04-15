@@ -204,7 +204,9 @@ static knot_ctl_t **init_ctls(const char *socket)
 			}
 			free(listen);
 		}
-		conf_val_next(&listen_val);
+		if (cnt > 1) {
+			conf_val_next(&listen_val);
+		}
 	}
 	if (ret != KNOT_EOK) {
 		deinit_ctls(res, cnt);
