@@ -800,6 +800,7 @@ static bool counter_reach(counter_reach_t *counter, size_t increment, size_t lim
  */
 typedef struct {
 	struct rcu_head rcuhead;
+	pthread_t *retry_thread;
 
 	zone_contents_t *free_contents;
 	void (*free_method)(zone_contents_t *);
@@ -809,11 +810,26 @@ typedef struct {
 	size_t new_cont_size;
 } update_clear_ctx_t;
 
+static void *update_clear_retry(void *arg);
+
 static void update_clear(struct rcu_head *param)
 {
 	static counter_reach_t counter = { PTHREAD_MUTEX_INITIALIZER, 0 };
 
 	update_clear_ctx_t *ctx = (update_clear_ctx_t *)param;
+
+	if (ctx->free_contents != NULL) {
+		if (pthread_rwlock_trywrlock(&ctx->free_contents->xfrout_lock) != 0) {
+			if (*ctx->retry_thread == 0 &&
+			    pthread_create(ctx->retry_thread, NULL, update_clear_retry, ctx) == 0) {
+				return;
+			}
+			log_zone_debug(ctx->free_contents->apex->owner,
+			               "disposal of old contents blocked by outstanding zone transfer");
+			pthread_rwlock_wrlock(&ctx->free_contents->xfrout_lock);
+		}
+		pthread_rwlock_unlock(&ctx->free_contents->xfrout_lock);
+	}
 
 	ctx->free_method(ctx->free_contents);
 	apply_cleanup(ctx->cleanup_apply);
@@ -824,6 +840,12 @@ static void update_clear(struct rcu_head *param)
 	}
 
 	free(ctx);
+}
+
+static void *update_clear_retry(void *arg)
+{
+	update_clear(arg);
+	return NULL;
 }
 
 static void discard_adds_tree(zone_update_t *update)
@@ -975,6 +997,7 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 
 	update_clear_ctx_t *clear_ctx = calloc(1, sizeof(*clear_ctx));
 	if (clear_ctx != NULL) {
+		clear_ctx->retry_thread = &update->zone->update_clear_thr;
 		clear_ctx->free_contents = old_contents;
 		clear_ctx->free_method = (
 			(update->flags & (UPDATE_FULL | UPDATE_HYBRID)) ?

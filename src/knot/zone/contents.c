@@ -182,6 +182,7 @@ zone_contents_t *zone_contents_new(const knot_dname_t *apex_name, bool use_binod
 	contents->apex->flags |= NODE_FLAGS_APEX;
 	contents->max_ttl = UINT32_MAX;
 	ATOMIC_INIT(contents->dnssec_expire, 0);
+	pthread_rwlock_init(&contents->xfrout_lock, NULL);
 
 	return contents;
 
@@ -513,6 +514,7 @@ void zone_contents_free(zone_contents_t *contents)
 	additionals_tree_free(contents->adds_tree);
 
 	ATOMIC_DEINIT(contents->dnssec_expire);
+	pthread_rwlock_destroy(&contents->xfrout_lock);
 
 	free(contents);
 }
@@ -523,6 +525,8 @@ void zone_contents_deep_free(zone_contents_t *contents)
 		return;
 	}
 
+	pthread_rwlock_wrlock(&contents->xfrout_lock);
+
 	if (contents != NULL) {
 		// Delete NSEC3 tree.
 		(void)zone_tree_apply(contents->nsec3_nodes,
@@ -532,6 +536,8 @@ void zone_contents_deep_free(zone_contents_t *contents)
 		(void)zone_tree_apply(contents->nodes,
 		                      destroy_node_rrsets_from_tree, NULL);
 	}
+
+	pthread_rwlock_unlock(&contents->xfrout_lock);
 
 	zone_contents_free(contents);
 }
