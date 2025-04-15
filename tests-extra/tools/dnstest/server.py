@@ -835,7 +835,7 @@ class Server(object):
         for t in range(attempts):
             try:
                 if use_ctl:
-                    sockname = self.ctl_sock_rnd(self, name_only=True)
+                    sockname = self.ctl_sock_rnd(name_only=True)
                     ctl.connect(os.path.join(self.dir, sockname))
                     ctl.send_block(cmd="zone-read", zone=zone_name,
                                    owner="@", rtype="SOA")
