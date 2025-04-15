@@ -210,6 +210,10 @@ void zone_free(zone_t **zone_ptr)
 
 	zone_events_deinit(zone);
 
+	if (zone->update_clear_thr) {
+		pthread_join(zone->update_clear_thr, NULL);
+	}
+
 	knot_dname_free(zone->name, NULL);
 
 	free_ddns_queue(zone);

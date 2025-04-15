@@ -54,7 +54,7 @@ for i in range(5):
     ups.add("abc" + str(i), 3600, "A", "1.2.3.4")
     send_up_bg(ups)
 
-    t.sleep(1)
+    t.sleep(1.4 if master.valgrind else 1)
     q = master.dig("abc" + str(i) + "." + name_freq, "A")
     q.check(rcode="NOERROR", rdata="1.2.3.4")
 

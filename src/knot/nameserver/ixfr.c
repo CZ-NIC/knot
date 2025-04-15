@@ -148,7 +148,6 @@ static void ixfr_answer_cleanup(knotd_qdata_t *qdata)
 	mm_free(qdata->mm, qdata->extra->ext);
 
 	/* Allow zone changes (finished). */
-	//rcu_read_unlock();
 	pthread_rwlock_unlock(&qdata->extra->contents->xfrout_lock);
 }
 
@@ -230,7 +229,6 @@ static int ixfr_answer_init(knotd_qdata_t *qdata, uint32_t *serial_from)
 	qdata->extra->ext_finished = &ixfr_answer_finished;
 
 	/* No zone changes during multipacket answer (unlocked in ixfr_answer_cleanup) */
-	//rcu_read_lock();
 	pthread_rwlock_rdlock(&qdata->extra->contents->xfrout_lock);
 
 	return KNOT_EOK;
