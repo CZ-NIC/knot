@@ -626,6 +626,8 @@ static int process_query_out(knot_layer_t *ctx, knot_pkt_t *pkt)
 	PROCESS_BEGIN(plan, step, next_state, qdata);
 	PROCESS_BEGIN(zone_plan, step, next_state, qdata);
 
+	printf("lock %s\n", qdata->extra->zone ? (*qdata->extra->zone->name == 0 ? "." : (const char *)qdata->extra->zone->name) : "null");
+
 	/* Answer based on qclass. */
 	if (next_state == KNOT_STATE_PRODUCE) {
 		switch (knot_pkt_qclass(pkt)) {
@@ -690,6 +692,7 @@ finish:
 	PROCESS_END(zone_plan, step, next_state, qdata);
 
 	rcu_read_unlock();
+	printf("unlock %s\n", qdata->extra->zone ? (*qdata->extra->zone->name == 0 ? "." : (const char *)qdata->extra->zone->name) : "null");
 
 	return next_state;
 }

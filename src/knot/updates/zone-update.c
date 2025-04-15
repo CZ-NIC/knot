@@ -815,6 +815,15 @@ static void update_clear(struct rcu_head *param)
 
 	update_clear_ctx_t *ctx = (update_clear_ctx_t *)param;
 
+	if (ctx->free_contents != NULL) {
+		printf("dispose %s\n", *ctx->free_contents->apex->owner == 0 ? "." : (const char *)ctx->free_contents->apex->owner);
+		if (pthread_rwlock_trywrlock(&ctx->free_contents->xfrout_lock) != 0) {
+			log_zone_debug(ctx->free_contents->apex->owner, "disposal of old contents blocked by outstanding zone transfer");
+			pthread_rwlock_wrlock(&ctx->free_contents->xfrout_lock);
+		}
+		pthread_rwlock_unlock(&ctx->free_contents->xfrout_lock);
+	}
+
 	ctx->free_method(ctx->free_contents);
 	apply_cleanup(ctx->cleanup_apply);
 	free(ctx->cleanup_apply);
