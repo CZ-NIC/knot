@@ -80,6 +80,7 @@ master.zones_wait(zones)
 for z in zones:
     check_nsec(master, z, "Initial")
 master.ctl("zone-flush")
+slave.zones_wait(zones)  # Make sure that all zones are loaded -> ctl is up.
 slave.ctl("zone-refresh")
 slave.zones_wait(zones)
 
