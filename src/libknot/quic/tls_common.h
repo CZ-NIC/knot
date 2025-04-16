@@ -31,6 +31,7 @@
 
 #define KNOT_TLS_PIN_LEN    32
 #define KNOT_TLS_PRIORITIES "-VERS-ALL:+VERS-TLS1.3:" \
+                            "%DISABLE_TLS13_COMPAT_MODE:" \
                             "-GROUP-ALL:+GROUP-X25519:+GROUP-SECP256R1:" \
                                        "+GROUP-SECP384R1:+GROUP-SECP521R1"
 
