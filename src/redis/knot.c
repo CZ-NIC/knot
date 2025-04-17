@@ -50,24 +50,34 @@
 typedef enum {
 	EVENTS,
 	ZONE_INDEX,
-	RRSET
+	RRSET,
+	DIFF_META,
+	DIFF_INDEX,
+	DIFF
 } knot_type_id;
 
 typedef struct {
 	uint32_t ttl;
 	knot_rdataset_t rrs;
-} knot_zone_rrset_v;
+} knot_rrset_v;
+
+typedef struct {
+	knot_rdataset_t add_rrs;
+	knot_rdataset_t remove_rrs;
+	uint32_t dest_ttl;
+} knot_diff_v;
 
 static RedisModuleType *knot_zone_rrset_t;
+static RedisModuleType *knot_diff_t;
 
-static void *knot_zone_rrset_load(RedisModuleIO *rdb, int encver)
+static void *knot_rrset_load(RedisModuleIO *rdb, int encver)
 {
 	if (encver != KNOT_ZONE_RRSET_ENCODING_VERSION) {
 		// TODO ignore or version compatibility layers
 		return NULL;
 	}
 
-	knot_zone_rrset_v *rrset = RedisModule_Alloc(sizeof(knot_zone_rrset_v));
+	knot_rrset_v *rrset = RedisModule_Alloc(sizeof(knot_rrset_v));
 	if (rrset == NULL) {
 		return NULL;
 	}
@@ -84,27 +94,27 @@ static void *knot_zone_rrset_load(RedisModuleIO *rdb, int encver)
 	return rrset;
 }
 
-static void knot_zone_rrset_save(RedisModuleIO *rdb, void *value)
+static void knot_rrset_save(RedisModuleIO *rdb, void *value)
 {
-	knot_zone_rrset_v *rrset = (knot_zone_rrset_v *)value;
+	knot_rrset_v *rrset = (knot_rrset_v *)value;
 	RedisModule_SaveUnsigned(rdb, rrset->ttl);
 	RedisModule_SaveUnsigned(rdb, rrset->rrs.count);
 	RedisModule_SaveStringBuffer(rdb, (const char *)rrset->rrs.rdata, rrset->rrs.size);
 }
 
-static size_t knot_zone_rrset_mem_usage(const void *value)
+static size_t knot_rrset_mem_usage(const void *value)
 {
-	const knot_zone_rrset_v *rrset = (const knot_zone_rrset_v *)value;
+	const knot_rrset_v *rrset = (const knot_rrset_v *)value;
 	if (value == NULL) {
 		return 0UL;
 	}
 	return sizeof(*rrset) + rrset->rrs.size;
 }
 
-static void knot_zone_rrset_rewrite(RedisModuleIO *aof, RedisModuleString *key, void *value)
+static void knot_rrset_rewrite(RedisModuleIO *aof, RedisModuleString *key, void *value)
 {
 	size_t key_strlen = 0;
-	const knot_zone_rrset_v *rrset = (const knot_zone_rrset_v *)value;
+	const knot_rrset_v *rrset = (const knot_rrset_v *)value;
 	const uint8_t *key_str = (const uint8_t *)RedisModule_StringPtrLen(key, &key_strlen);
 	RedisModule_EmitAOF(aof, "KNOT.RRSET.AOF_REWRITE", "bllb",
 	                    key_str, key_strlen,
@@ -115,9 +125,90 @@ static void knot_zone_rrset_rewrite(RedisModuleIO *aof, RedisModuleString *key, 
 
 static void knot_zone_rrset_free(void *value)
 {
-	knot_zone_rrset_v *rrset = (knot_zone_rrset_v *)value;
+	knot_rrset_v *rrset = (knot_rrset_v *)value;
 	RedisModule_Free(rrset->rrs.rdata);
 	RedisModule_Free(rrset);
+}
+
+static void *knot_diff_load(RedisModuleIO *rdb, int encver)
+{
+	if (encver != KNOT_ZONE_RRSET_ENCODING_VERSION) {
+		// TODO ignore or version compatibility layers
+		return NULL;
+	}
+
+	knot_diff_v *diff = RedisModule_Alloc(sizeof(knot_diff_v));
+	if (diff == NULL) {
+		return NULL;
+	}
+	size_t len = 0;
+	diff->add_rrs.count = RedisModule_LoadUnsigned(rdb);
+	diff->add_rrs.rdata = (knot_rdata_t *)RedisModule_LoadStringBuffer(rdb, &len);
+	if (len > UINT32_MAX) {
+		RedisModule_Free(diff->add_rrs.rdata);
+		RedisModule_Free(diff);
+		return NULL;
+	}
+	diff->add_rrs.size = len;
+
+	diff->remove_rrs.count = RedisModule_LoadUnsigned(rdb);
+	diff->remove_rrs.rdata = (knot_rdata_t *)RedisModule_LoadStringBuffer(rdb, &len);
+	if (len > UINT32_MAX) {
+		RedisModule_Free(diff->add_rrs.rdata);
+		RedisModule_Free(diff->remove_rrs.rdata);
+		RedisModule_Free(diff);
+		return NULL;
+	}
+	diff->remove_rrs.size = len;
+
+	diff->dest_ttl = RedisModule_LoadUnsigned(rdb);
+
+	return diff;
+}
+
+static void knot_diff_save(RedisModuleIO *rdb, void *value)
+{
+	knot_diff_v *diff = (knot_diff_v *)value;
+
+	RedisModule_SaveUnsigned(rdb, diff->add_rrs.count);
+	RedisModule_SaveStringBuffer(rdb, (const char *)diff->add_rrs.rdata, diff->add_rrs.size);
+
+	RedisModule_SaveUnsigned(rdb, diff->remove_rrs.count);
+	RedisModule_SaveStringBuffer(rdb, (const char *)diff->remove_rrs.rdata, diff->remove_rrs.size);
+
+	RedisModule_SaveUnsigned(rdb, diff->dest_ttl);
+}
+
+static size_t knot_diff_mem_usage(const void *value)
+{
+	const knot_diff_v *diff = (const knot_diff_v *)value;
+	if (value == NULL) {
+		return 0UL;
+	}
+	return sizeof(*diff) + diff->add_rrs.size + diff->remove_rrs.size;
+}
+
+static void knot_diff_rewrite(RedisModuleIO *aof, RedisModuleString *key, void *value)
+{
+	// size_t key_strlen = 0;
+	// const knot_diff_v *diff = (const knot_diff_v *)value;
+
+	// TODO custom command to easy/fast store
+
+	// const uint8_t *key_str = (const uint8_t *)RedisModule_StringPtrLen(key, &key_strlen);
+	// RedisModule_EmitAOF(aof, "KNOT.RRSET.AOF_REWRITE", "bllb",
+	//                     key_str, key_strlen,
+	//                     (long long)diff->ttl,
+	//                     (long long)diff->rrs.count,
+	//                     diff->rrs.rdata, diff->rrs.size);
+}
+
+static void knot_diff_free(void *value)
+{
+	knot_diff_v *diff = (knot_diff_v *)value;
+	RedisModule_Free(diff->add_rrs.rdata);
+	RedisModule_Free(diff->remove_rrs.rdata);
+	RedisModule_Free(diff);
 }
 
 static RedisModuleKey *find_zone_index(RedisModuleCtx *ctx, const uint8_t *origin, size_t origin_len, int rights)
@@ -167,7 +258,7 @@ static int knot_zone_exists(RedisModuleCtx *ctx, RedisModuleString **argv, int a
 			continue;
 		}
 
-		knot_zone_rrset_v *rrset = RedisModule_ModuleTypeGetValue(rrset_key);
+		knot_rrset_v *rrset = RedisModule_ModuleTypeGetValue(rrset_key);
 		uint32_t serial = knot_soa_serial(rrset->rrs.rdata);
 
 		RedisModule_CloseKey(rrset_key);
@@ -223,7 +314,7 @@ static int knot_zone_load(RedisModuleCtx *ctx, RedisModuleString **argv, int arg
 		if (rrset_key == NULL) {
 			continue;
 		}
-		knot_zone_rrset_v *rrset = RedisModule_ModuleTypeGetValue(rrset_key);
+		knot_rrset_v *rrset = RedisModule_ModuleTypeGetValue(rrset_key);
 		RedisModule_CloseKey(rrset_key);
 
 		RedisModule_ReplyWithArray(ctx, 5);
@@ -373,7 +464,7 @@ static int knot_zone_increment(RedisModuleCtx *ctx, RedisModuleString **argv, in
 		if (rrset_key == NULL) {
 			continue;
 		}
-		knot_zone_rrset_v *rrset = RedisModule_ModuleTypeGetValue(rrset_key);
+		knot_rrset_v *rrset = RedisModule_ModuleTypeGetValue(rrset_key);
 		if (rrset == NULL) {
 			continue;
 		}
@@ -434,7 +525,7 @@ static int knot_zone_emit_update(RedisModuleCtx *ctx, RedisModuleString **argv, 
 		if (rrset_key == NULL) {
 			continue;
 		}
-		knot_zone_rrset_v *rrset = RedisModule_ModuleTypeGetValue(rrset_key);
+		knot_rrset_v *rrset = RedisModule_ModuleTypeGetValue(rrset_key);
 		if (rrset == NULL) {
 			continue;
 		}
@@ -470,6 +561,7 @@ static double evaluate_score(uint16_t rtype)
 		return KNOT_SCORE_DEFAULT;
 	}
 }
+
 static RedisModuleString *construct_rrset_key(RedisModuleCtx *ctx, const uint8_t *origin, size_t origin_len, const uint8_t *owner, size_t owner_len, uint16_t rtype)
 {
 	uint8_t key_data[KNOT_RRSET_KEY_MAXLEN];
@@ -522,7 +614,7 @@ static int knot_rrset_store(RedisModuleCtx *ctx, RedisModuleString **argv, int a
 	RedisModuleKey *rrset_key = RedisModule_OpenKey(ctx, rrset_keystr, REDISMODULE_READ | REDISMODULE_WRITE);
 	RedisModule_FreeString(ctx, rrset_keystr);
 
-	knot_zone_rrset_v *rrset = RedisModule_Calloc(1, sizeof(knot_zone_rrset_v));
+	knot_rrset_v *rrset = RedisModule_Calloc(1, sizeof(knot_rrset_v));
 	if (rrset == NULL) {
 		return RedisModule_ReplyWithError(ctx, "ERR Cannot allocate memory");
 	}
@@ -571,6 +663,7 @@ static int knot_rrset_store(RedisModuleCtx *ctx, RedisModuleString **argv, int a
 
 	return REDISMODULE_OK;
 }
+
 static void *redismodule_alloc(void *ptr, size_t bytes)
 {
 	return RedisModule_Alloc(bytes);
@@ -629,7 +722,7 @@ static int knot_rrset_add(RedisModuleCtx *ctx, RedisModuleString **argv, int arg
 		RedisModule_CloseKey(rrset_key);
 		return RedisModule_ReplyWithError(ctx, "ERR Bad data");
 	}
-	knot_zone_rrset_v *rrset = RedisModule_ModuleTypeGetValue(rrset_key);
+	knot_rrset_v *rrset = RedisModule_ModuleTypeGetValue(rrset_key);
 	if (rrset == NULL) {
 		RedisModule_CloseKey(rrset_key);
 		return RedisModule_ReplyWithError(ctx, "ERR Bad data");
@@ -704,7 +797,7 @@ static int knot_rrset_remove(RedisModuleCtx *ctx, RedisModuleString **argv, int 
 		RedisModule_CloseKey(rrset_key);
 		return RedisModule_ReplyWithError(ctx, "ERR Bad data");
 	}
-	knot_zone_rrset_v *rrset = RedisModule_ModuleTypeGetValue(rrset_key);
+	knot_rrset_v *rrset = RedisModule_ModuleTypeGetValue(rrset_key);
 	if (rrset == NULL) {
 		RedisModule_CloseKey(rrset_key);
 		return RedisModule_ReplyWithError(ctx, "ERR Bad data");
@@ -742,7 +835,7 @@ static int knot_rrset_aof_rewrite(RedisModuleCtx *ctx, RedisModuleString **argv,
 		return RedisModule_WrongArity(ctx);
 	}
 
-	knot_zone_rrset_v *rrset = RedisModule_Calloc(1, sizeof(knot_zone_rrset_v));
+	knot_rrset_v *rrset = RedisModule_Calloc(1, sizeof(knot_rrset_v));
 	if (rrset == NULL) {
 		return RedisModule_ReplyWithError(ctx, "ERR Cannot allocate memory");
 	}
@@ -788,16 +881,317 @@ static int knot_rrset_aof_rewrite(RedisModuleCtx *ctx, RedisModuleString **argv,
 	return REDISMODULE_OK;
 }
 
+static int get_serial(uint32_t *serial, RedisModuleCtx *ctx, RedisModuleKey *zone_index_key) {
+	*serial = 0;
+	if (zone_index_key == NULL) {
+		return KNOT_EINVAL;
+	}
+	RedisModule_Log(ctx, REDISMODULE_LOGLEVEL_WARNING, "Breakpoint 1");
+	int zone_keytype = RedisModule_KeyType(zone_index_key);
+	RedisModule_Log(ctx, REDISMODULE_LOGLEVEL_WARNING, "Breakpoint 2");
+	if (zone_keytype == REDISMODULE_KEYTYPE_EMPTY) {
+		RedisModule_CloseKey(zone_index_key);
+		return KNOT_EOK;
+	} else if (zone_keytype != REDISMODULE_KEYTYPE_ZSET) {
+		RedisModule_CloseKey(zone_index_key);
+		return KNOT_EINVAL;
+	}
+	RedisModule_Log(ctx, REDISMODULE_LOGLEVEL_WARNING, "Breakpoint 3");
+
+
+	foreach_in_zset_subset(zone_index_key, KNOT_SCORE_SOA, KNOT_SCORE_SOA) {
+		double score = 0.0;
+		RedisModuleString *el = RedisModule_ZsetRangeCurrentElement(zone_index_key, &score);
+		if (el == NULL) {
+			break;
+		}
+
+		RedisModuleKey *rrset_key = RedisModule_OpenKey(ctx, el, REDISMODULE_READ);
+		if (rrset_key == NULL) {
+			continue;
+		}
+
+		knot_rrset_v *rrset = RedisModule_ModuleTypeGetValue(rrset_key);
+		*serial = knot_soa_serial(rrset->rrs.rdata);
+
+		RedisModule_CloseKey(rrset_key);
+		RedisModule_ZsetRangeStop(zone_index_key);
+		RedisModule_Log(ctx, REDISMODULE_LOGLEVEL_WARNING, "Breakpoint 4a");
+
+		return KNOT_EOK;
+	}
+	RedisModule_ZsetRangeStop(zone_index_key);
+	RedisModule_Log(ctx, REDISMODULE_LOGLEVEL_WARNING, "Breakpoint 4b");
+
+	return KNOT_EOK;
+}
+
+static RedisModuleString *construct_diff_key(RedisModuleCtx *ctx, const uint8_t *origin, size_t origin_len, const uint8_t *owner, size_t owner_len, uint16_t rtype, uint32_t serial)
+{
+	uint8_t key_data[KNOT_RRSET_KEY_MAXLEN + sizeof(uint32_t)];
+	uint8_t *key_ptr = key_data;
+	key_ptr[0] = DIFF;
+	key_ptr = memcpy(key_ptr + 1, origin, origin_len);
+	key_ptr = memcpy(key_ptr + origin_len, owner, owner_len);
+	key_ptr = memcpy(key_ptr + owner_len, &rtype, sizeof(rtype));
+	key_ptr = memcpy(key_ptr + sizeof(rtype), &serial, sizeof(serial));
+	key_ptr += sizeof(serial);
+	return RedisModule_CreateString(ctx, (const char *)key_data, key_ptr - key_data);
+}
+
+static int knot_diff_add(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
+{
+	if (argc != 5) {
+		return RedisModule_WrongArity(ctx);
+	}
+
+	size_t origin_len = 0;
+	const uint8_t *origin_str = (const uint8_t *)RedisModule_StringPtrLen(argv[1], &origin_len);
+
+	size_t owner_strlen = 0;
+	const uint8_t *owner_str = (const uint8_t *)RedisModule_StringPtrLen(argv[2], &owner_strlen);
+
+	long long rtype_val = 0;
+	int ret = RedisModule_StringToLongLong(argv[3], &rtype_val);
+	if (ret != REDISMODULE_OK) {
+		return RedisModule_ReplyWithError(ctx, "ERR Not a number");
+	} else if (rtype_val < 0 || rtype_val > UINT16_MAX) {
+		return RedisModule_ReplyWithError(ctx, "ERR Value out of range");
+	}
+	uint16_t rtype = rtype_val;
+
+	RedisModuleKey *zone_index_key = find_zone_index(ctx, origin_str, origin_len, REDISMODULE_READ);
+	int zone_keytype = RedisModule_KeyType(zone_index_key);
+	if (zone_keytype == REDISMODULE_KEYTYPE_EMPTY) {
+		RedisModule_CloseKey(zone_index_key);
+		return RedisModule_ReplyWithError(ctx, "ERR Zone doesn't exist");
+	} else if (zone_keytype != REDISMODULE_KEYTYPE_ZSET) {
+		RedisModule_CloseKey(zone_index_key);
+		return RedisModule_ReplyWithError(ctx, "ERR Bad data");
+	}
+
+	uint32_t serial = 0;
+	ret = get_serial(&serial, ctx, zone_index_key);
+	if (ret != KNOT_EOK) {
+		RedisModule_CloseKey(zone_index_key);
+		return RedisModule_ReplyWithError(ctx, "ERR Bad data");
+	}
+	RedisModule_CloseKey(zone_index_key);
+
+	RedisModuleString *diff_keystr = construct_diff_key(ctx, origin_str, origin_len, owner_str, owner_strlen, rtype, 0);
+	RedisModuleKey *diff_key = RedisModule_OpenKey(ctx, diff_keystr, REDISMODULE_READ | REDISMODULE_WRITE);
+
+	knot_diff_v *diff = NULL;
+	int diff_keytype = RedisModule_KeyType(diff_key);
+	if (diff_keytype == REDISMODULE_KEYTYPE_EMPTY) {
+		diff = RedisModule_Calloc(1, sizeof(knot_diff_v));
+		if (diff == NULL) {
+			RedisModule_CloseKey(diff_key);
+			return RedisModule_ReplyWithError(ctx, "ERR Cannot allocate memory");
+		}
+		RedisModule_ModuleTypeSetValue(diff_key, knot_diff_t, diff);
+	} else if (diff_keytype == REDISMODULE_KEYTYPE_MODULE &&
+	           RedisModule_ModuleTypeGetType(diff_key) == knot_diff_t) {
+		diff = RedisModule_ModuleTypeGetValue(diff_key);
+	} else {
+		RedisModule_CloseKey(diff_key);
+		return RedisModule_ReplyWithError(ctx, "ERR Bad data");
+	}
+
+	size_t rdataset_strlen;
+	const char *rdataset_str = RedisModule_StringPtrLen(argv[4], &rdataset_strlen);
+	if (rdataset_strlen == 0) {
+		RedisModule_CloseKey(diff_key);
+		return RedisModule_ReplyWithError(ctx, "ERR Invalid argument");
+	}
+	const knot_rdata_t *rdataset = (const knot_rdata_t *)rdataset_str;
+
+	knot_rdataset_remove(&diff->remove_rrs, rdataset, &mm);
+	knot_rdataset_add(&diff->add_rrs, rdataset, &mm);
+
+	RedisModule_CloseKey(diff_key);
+	RedisModule_FreeString(ctx, diff_keystr);
+
+	RedisModule_ReplyWithNull(ctx);
+
+	return REDISMODULE_OK;
+}
+
+static int knot_diff_remove(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
+{
+	if (argc != 5) {
+		return RedisModule_WrongArity(ctx);
+	}
+
+	size_t origin_len = 0;
+	const uint8_t *origin_str = (const uint8_t *)RedisModule_StringPtrLen(argv[1], &origin_len);
+
+	size_t owner_strlen = 0;
+	const uint8_t *owner_str = (const uint8_t *)RedisModule_StringPtrLen(argv[2], &owner_strlen);
+
+	long long rtype_val = 0;
+	int ret = RedisModule_StringToLongLong(argv[3], &rtype_val);
+	if (ret != REDISMODULE_OK) {
+		return RedisModule_ReplyWithError(ctx, "ERR Not a number");
+	} else if (rtype_val < 0 || rtype_val > UINT16_MAX) {
+		return RedisModule_ReplyWithError(ctx, "ERR Value out of range");
+	}
+	uint16_t rtype = rtype_val;
+
+	RedisModuleKey *zone_index_key = find_zone_index(ctx, origin_str, origin_len, REDISMODULE_READ);
+	int zone_keytype = RedisModule_KeyType(zone_index_key);
+	if (zone_keytype == REDISMODULE_KEYTYPE_EMPTY) {
+		RedisModule_CloseKey(zone_index_key);
+		return RedisModule_ReplyWithError(ctx, "ERR Zone doesn't exist");
+	} else if (zone_keytype != REDISMODULE_KEYTYPE_ZSET) {
+		RedisModule_CloseKey(zone_index_key);
+		return RedisModule_ReplyWithError(ctx, "ERR Bad data");
+	}
+
+	uint32_t serial = 0;
+	ret = get_serial(&serial, ctx, zone_index_key);
+	if (ret != KNOT_EOK) {
+		RedisModule_CloseKey(zone_index_key);
+		return RedisModule_ReplyWithError(ctx, "ERR Bad data");
+	}
+	RedisModule_CloseKey(zone_index_key);
+
+	RedisModuleString *diff_keystr = construct_diff_key(ctx, origin_str, origin_len, owner_str, owner_strlen, rtype, 0);
+	RedisModuleKey *diff_key = RedisModule_OpenKey(ctx, diff_keystr, REDISMODULE_READ | REDISMODULE_WRITE);
+
+	knot_diff_v *diff = NULL;
+	int diff_keytype = RedisModule_KeyType(diff_key);
+	if (diff_keytype == REDISMODULE_KEYTYPE_EMPTY) {
+		diff = RedisModule_Calloc(1, sizeof(knot_diff_v));
+		if (diff == NULL) {
+			RedisModule_CloseKey(diff_key);
+			return RedisModule_ReplyWithError(ctx, "ERR Cannot allocate memory");
+		}
+		RedisModule_ModuleTypeSetValue(diff_key, knot_diff_t, diff);
+	} else if (diff_keytype == REDISMODULE_KEYTYPE_MODULE &&
+	           RedisModule_ModuleTypeGetType(diff_key) == knot_diff_t) {
+		diff = RedisModule_ModuleTypeGetValue(diff_key);
+	} else {
+		RedisModule_CloseKey(diff_key);
+		return RedisModule_ReplyWithError(ctx, "ERR Bad data");
+	}
+
+	size_t rdataset_strlen;
+	const char *rdataset_str = RedisModule_StringPtrLen(argv[4], &rdataset_strlen);
+	if (rdataset_strlen == 0) {
+		RedisModule_CloseKey(diff_key);
+		return RedisModule_ReplyWithError(ctx, "ERR Invalid argument");
+	}
+	const knot_rdata_t *rdataset = (const knot_rdata_t *)rdataset_str;
+
+	knot_rdataset_remove(&diff->add_rrs, rdataset, &mm);
+	knot_rdataset_add(&diff->remove_rrs, rdataset, &mm);
+
+	RedisModule_CloseKey(diff_key);
+	RedisModule_FreeString(ctx, diff_keystr);
+
+	RedisModule_ReplyWithNull(ctx);
+
+	return REDISMODULE_OK;
+}
+
+static int knot_diff_change_ttl(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
+{
+	if (argc != 5) {
+		return RedisModule_WrongArity(ctx);
+	}
+
+	size_t origin_len = 0;
+	const uint8_t *origin_str = (const uint8_t *)RedisModule_StringPtrLen(argv[1], &origin_len);
+
+	size_t owner_strlen = 0;
+	const uint8_t *owner_str = (const uint8_t *)RedisModule_StringPtrLen(argv[2], &owner_strlen);
+
+	long long rtype_val = 0;
+	int ret = RedisModule_StringToLongLong(argv[3], &rtype_val);
+	if (ret != REDISMODULE_OK) {
+		return RedisModule_ReplyWithError(ctx, "ERR Not a number");
+	} else if (rtype_val < 0 || rtype_val > UINT16_MAX) {
+		return RedisModule_ReplyWithError(ctx, "ERR Value out of range");
+	}
+	uint16_t rtype = rtype_val;
+
+	RedisModuleKey *zone_index_key = find_zone_index(ctx, origin_str, origin_len, REDISMODULE_READ);
+	int zone_keytype = RedisModule_KeyType(zone_index_key);
+	if (zone_keytype == REDISMODULE_KEYTYPE_EMPTY) {
+		RedisModule_CloseKey(zone_index_key);
+		return RedisModule_ReplyWithError(ctx, "ERR Zone doesn't exist");
+	} else if (zone_keytype != REDISMODULE_KEYTYPE_ZSET) {
+		RedisModule_CloseKey(zone_index_key);
+		return RedisModule_ReplyWithError(ctx, "ERR Bad data");
+	}
+
+	uint32_t serial = 0;
+	ret = get_serial(&serial, ctx, zone_index_key);
+	if (ret != KNOT_EOK) {
+		RedisModule_CloseKey(zone_index_key);
+		return RedisModule_ReplyWithError(ctx, "ERR Bad data");
+	}
+	RedisModule_CloseKey(zone_index_key);
+
+	RedisModuleString *diff_keystr = construct_diff_key(ctx, origin_str, origin_len, owner_str, owner_strlen, rtype, 0);
+	RedisModuleKey *diff_key = RedisModule_OpenKey(ctx, diff_keystr, REDISMODULE_READ | REDISMODULE_WRITE);
+
+	knot_diff_v *diff = NULL;
+	int diff_keytype = RedisModule_KeyType(diff_key);
+	if (diff_keytype == REDISMODULE_KEYTYPE_EMPTY) {
+		diff = RedisModule_Calloc(1, sizeof(knot_diff_v));
+		if (diff == NULL) {
+			RedisModule_CloseKey(diff_key);
+			return RedisModule_ReplyWithError(ctx, "ERR Cannot allocate memory");
+		}
+		RedisModule_ModuleTypeSetValue(diff_key, knot_diff_t, diff);
+	} else if (diff_keytype == REDISMODULE_KEYTYPE_MODULE &&
+	           RedisModule_ModuleTypeGetType(diff_key) == knot_diff_t) {
+		diff = RedisModule_ModuleTypeGetValue(diff_key);
+	} else {
+		RedisModule_CloseKey(diff_key);
+		return RedisModule_ReplyWithError(ctx, "ERR Bad data");
+	}
+
+	long long ttl_val = 0;
+	ret = RedisModule_StringToLongLong(argv[4], &ttl_val);
+	if (ret != REDISMODULE_OK) {
+		RedisModule_CloseKey(diff_key);
+		return RedisModule_ReplyWithError(ctx, "ERR Not a number");
+	} else if (ttl_val < 0 || ttl_val > UINT32_MAX) {
+		RedisModule_CloseKey(diff_key);
+		return RedisModule_ReplyWithError(ctx, "ERR Value out of range");
+	}
+	diff->dest_ttl = ttl_val;
+
+	RedisModule_CloseKey(diff_key);
+	RedisModule_FreeString(ctx, diff_keystr);
+
+	RedisModule_ReplyWithNull(ctx);
+
+	return REDISMODULE_OK;
+}
+
 __attribute__((visibility("default")))
 int RedisModule_OnLoad(RedisModuleCtx *ctx)
 {
-	RedisModuleTypeMethods tm = {
+	RedisModuleTypeMethods rrset_tm = {
 		.version = REDISMODULE_TYPE_METHOD_VERSION,
-		.rdb_load = knot_zone_rrset_load,
-		.rdb_save = knot_zone_rrset_save,
-		.mem_usage = knot_zone_rrset_mem_usage,
-		.aof_rewrite = knot_zone_rrset_rewrite,
+		.rdb_load = knot_rrset_load,
+		.rdb_save = knot_rrset_save,
+		.mem_usage = knot_rrset_mem_usage,
+		.aof_rewrite = knot_rrset_rewrite,
 		.free = knot_zone_rrset_free
+	};
+
+	RedisModuleTypeMethods diff_tm = {
+		.version = REDISMODULE_TYPE_METHOD_VERSION,
+		.rdb_load = knot_diff_load,
+		.rdb_save = knot_diff_save,
+		.mem_usage = knot_diff_mem_usage,
+		.aof_rewrite = knot_diff_rewrite,
+		.free = knot_diff_free
 	};
 
 	if (RedisModule_Init(ctx, "knot", 1, REDISMODULE_APIVER_1) == REDISMODULE_ERR) {
@@ -806,8 +1200,16 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx)
 
 	knot_zone_rrset_t = RedisModule_CreateDataType(ctx, "KnotRRset", // Note: Name length has to be exactly 9
 	                                               KNOT_ZONE_RRSET_ENCODING_VERSION,
-	                                               &tm);
+	                                               &rrset_tm);
 	if (knot_zone_rrset_t == NULL) {
+		RedisModule_Log(ctx, REDISMODULE_LOGLEVEL_WARNING, "ERR 'knot' module already loaded");
+		RedisModule_ReplyWithError(ctx, "ERR 'knot' module already loaded");
+		return REDISMODULE_ERR;
+	}
+	knot_diff_t = RedisModule_CreateDataType(ctx, "KnotDiffT", // Note: Name length has to be exactly 9
+	                                         KNOT_ZONE_RRSET_ENCODING_VERSION,
+	                                         &diff_tm);
+	if (knot_diff_t == NULL) {
 		RedisModule_Log(ctx, REDISMODULE_LOGLEVEL_WARNING, "ERR 'knot' module already loaded");
 		RedisModule_ReplyWithError(ctx, "ERR 'knot' module already loaded");
 		return REDISMODULE_ERR;
@@ -821,7 +1223,10 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx)
 		RedisModule_CreateCommand(ctx, "knot.rrset.store",       knot_rrset_store,       "write",    1, 1, 1) == REDISMODULE_ERR ||
 		RedisModule_CreateCommand(ctx, "knot.rrset.add",         knot_rrset_add,         "write",    1, 1, 1) == REDISMODULE_ERR ||
 		RedisModule_CreateCommand(ctx, "knot.rrset.remove",      knot_rrset_remove,      "write",    1, 1, 1) == REDISMODULE_ERR ||
-		RedisModule_CreateCommand(ctx, "knot.rrset.aof_rewrite", knot_rrset_aof_rewrite, "write",    1, 1, 1) == REDISMODULE_ERR
+		RedisModule_CreateCommand(ctx, "knot.rrset.aof_rewrite", knot_rrset_aof_rewrite, "write",    1, 1, 1) == REDISMODULE_ERR ||
+		RedisModule_CreateCommand(ctx, "knot.diff.add",          knot_diff_add,          "write",    1, 1, 1) == REDISMODULE_ERR ||
+		RedisModule_CreateCommand(ctx, "knot.diff.remove",       knot_diff_remove,       "write",    1, 1, 1) == REDISMODULE_ERR ||
+		RedisModule_CreateCommand(ctx, "knot.diff.change_ttl",   knot_diff_change_ttl,   "write",    1, 1, 1) == REDISMODULE_ERR
 	) {
 		RedisModule_Log(ctx, REDISMODULE_LOGLEVEL_WARNING, "ERR 'knot' module already loaded");
 		RedisModule_ReplyWithError(ctx, "ERR 'knot' module already loaded");
