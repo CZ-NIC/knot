@@ -352,26 +352,28 @@ _public_
 int knot_tls_session(struct gnutls_session_int **session,
                      struct knot_creds *creds,
                      struct gnutls_priority_st *priority,
-                     bool quic,
-                     bool early_data,
-                     bool server)
+                     knot_tls_flag_t flags)
 {
 	if (session == NULL || creds == NULL || priority == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	const char *alpn = quic ? "\x03""doq" : "\x03""dot";
-	gnutls_init_flags_t flags = GNUTLS_NO_SIGNAL;
-	if (early_data) {
-		flags |= GNUTLS_ENABLE_EARLY_DATA;
-#ifdef ENABLE_QUIC // Next flags aren't available in older GnuTLS versions.
-		if (quic) {
-			flags |= GNUTLS_NO_END_OF_EARLY_DATA;
-		}
-#endif
+	bool server = flags & KNOT_TLS_SERVER;
+	bool quic = flags & KNOT_TLS_QUIC;
+
+	const char *alpn = NULL;
+	if (flags & KNOT_TLS_DNS) {
+		alpn = quic ? "\x03""doq" : "\x03""dot";
 	}
 
-	int ret = gnutls_init(session, (server ? GNUTLS_SERVER : GNUTLS_CLIENT) | flags);
+	gnutls_init_flags_t tls_flags = GNUTLS_NO_SIGNAL | GNUTLS_ENABLE_EARLY_DATA;
+#ifdef ENABLE_QUIC // Next flags aren't available in older GnuTLS versions.
+	if (quic) {
+		tls_flags |= GNUTLS_NO_END_OF_EARLY_DATA;
+	}
+#endif
+
+	int ret = gnutls_init(session, (server ? GNUTLS_SERVER : GNUTLS_CLIENT) | tls_flags);
 	if (ret == GNUTLS_E_SUCCESS) {
 		gnutls_certificate_send_x509_rdn_sequence(*session, 1);
 		gnutls_certificate_server_set_request(*session, GNUTLS_CERT_REQUEST);
@@ -385,9 +387,7 @@ int knot_tls_session(struct gnutls_session_int **session,
 			const gnutls_datum_t alpn_datum = { (void *)&alpn[1], alpn[0] };
 			gnutls_alpn_set_protocols(*session, &alpn_datum, 1, GNUTLS_ALPN_MANDATORY);
 		}
-		if (early_data) {
-			gnutls_record_set_max_early_data_size(*session, 0xffffffffu);
-		}
+		gnutls_record_set_max_early_data_size(*session, 0xffffffffu);
 		if (server) {
 			gnutls_anti_replay_enable(*session, creds->tls_anti_replay);
 		}

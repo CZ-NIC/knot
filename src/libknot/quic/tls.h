@@ -18,13 +18,9 @@
 #include <stdint.h>
 #include <sys/types.h>
 
-struct gnutls_priority_st;
+#include <libknot/quic/tls_common.h>
 
-typedef enum {
-	KNOT_TLS_CLIENT = 0,
-	KNOT_TLS_SERVER = (1 << 0),
-	KNOT_TLS_DNS    = (1 << 1),
-} knot_tls_flag_t;
+struct gnutls_priority_st;
 
 typedef enum {
 	KNOT_TLS_CONN_HANDSHAKE_DONE = (1 << 0),

@@ -132,8 +132,9 @@ static ngtcp2_conn *get_conn(ngtcp2_crypto_conn_ref *conn_ref)
 static int tls_init_conn_session(knot_quic_conn_t *conn, bool server)
 {
 	int ret = knot_tls_session(&conn->tls_session, conn->quic_table->creds,
-	                           conn->quic_table->priority, true,
-	                           true, server);
+	                           conn->quic_table->priority,
+	                           KNOT_TLS_QUIC | KNOT_TLS_DNS |
+	                           (server ? KNOT_TLS_SERVER : KNOT_TLS_CLIENT));
 	if (ret != KNOT_EOK) {
 		return TLS_CALLBACK_ERR;
 	}

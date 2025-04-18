@@ -71,9 +71,7 @@ knot_tls_conn_t *knot_tls_conn_new(knot_tls_ctx_t *ctx, int sock_fd)
 	res->fd = sock_fd;
 
 	int ret = knot_tls_session(&res->session, ctx->creds, ctx->priority,
-	                           !(ctx->flags & KNOT_TLS_DNS),
-	                           true,
-	                           ctx->flags & KNOT_TLS_SERVER);
+	                           ctx->flags);
 	if (ret != KNOT_EOK) {
 		goto fail;
 	}
