@@ -5,6 +5,7 @@ RUN dnf -y upgrade
 RUN dnf -y install \
 	'autoconf' \
 	'automake' \
+	'awk' \
 	'clang' \
 	'diffutils' \
 	'libtool' \
