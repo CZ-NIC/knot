@@ -685,20 +685,17 @@ static int rdata_add(RedisModuleCtx *ctx, size_t origin_len, const uint8_t *orig
                      size_t owner_len, const uint8_t *owner, uint16_t rtype,
                      uint32_t ttl, const knot_rdata_t *rdata)
 {
-	RedisModuleKey *zone_key = find_zone_index(ctx, origin, origin_len, REDISMODULE_READ);
-	if (RedisModule_KeyType(zone_key) != REDISMODULE_KEYTYPE_ZSET) {
+	RedisModuleKey *zone_key = find_zone_index(ctx, origin, origin_len, REDISMODULE_READ | REDISMODULE_WRITE);
+	int zone_keytype = RedisModule_KeyType(zone_key);
+	if (zone_keytype != REDISMODULE_KEYTYPE_EMPTY &&
+	    zone_keytype != REDISMODULE_KEYTYPE_ZSET) {
 		RedisModule_CloseKey(zone_key);
 		return RedisModule_ReplyWithError(ctx, "ERR Bad data");
 	}
 
 	RedisModuleString *rrset_keystr = construct_rrset_key(ctx, origin, origin_len, owner, owner_len, rtype);
 
-	double score = .0;
-	int ret = RedisModule_ZsetScore(zone_key, rrset_keystr, &score);
-	if (ret != REDISMODULE_OK) {
-		RedisModule_CloseKey(zone_key);
-		return RedisModule_ReplyWithError(ctx, "ERR Bad data");
-	}
+	RedisModule_ZsetAdd(zone_key, evaluate_score(rtype), rrset_keystr, NULL);
 	RedisModule_CloseKey(zone_key);
 
 	RedisModuleKey *rrset_key = RedisModule_OpenKey(ctx, rrset_keystr, REDISMODULE_READ | REDISMODULE_WRITE);
@@ -707,24 +704,24 @@ static int rdata_add(RedisModuleCtx *ctx, size_t origin_len, const uint8_t *orig
 		RedisModule_CloseKey(rrset_key);
 		return RedisModule_ReplyWithError(ctx, "ERR Bad data");
 	}
+
 	knot_rrset_v *rrset = RedisModule_ModuleTypeGetValue(rrset_key);
 	if (rrset == NULL) {
-		RedisModule_CloseKey(rrset_key);
-		return RedisModule_ReplyWithError(ctx, "ERR Bad data");
+		rrset = RedisModule_Calloc(1, sizeof(knot_rrset_v));
+		if (rrset == NULL) {
+			RedisModule_CloseKey(rrset_key);
+			return RedisModule_ReplyWithError(ctx, "ERR Bad data");
+		}
+		RedisModule_ModuleTypeSetValue(rrset_key, knot_zone_rrset_t, rrset);
 	}
+	rrset->ttl = ttl;
 
-	uint16_t old_count = rrset->rrs.count;
-	ret = knot_rdataset_add(&rrset->rrs, rdata, &mm);
+	int ret = knot_rdataset_add(&rrset->rrs, rdata, &mm);
 	if (ret != KNOT_EOK) {
 		RedisModule_CloseKey(rrset_key);
 		return RedisModule_ReplyWithError(ctx, "ERR Unable to add");
 	}
 
-	if (old_count != rrset->rrs.count) {
-		RedisModuleString *origin_k = RedisModule_CreateString(ctx, "origin", sizeof("origin") - 1);
-//		(void)knot_commit_event(ctx, RRSET_UPDATED, origin_k, argv[1], NULL);
-		RedisModule_FreeString(ctx, origin_k);
-	}
 	RedisModule_CloseKey(rrset_key);
 
 	RedisModule_ReplyWithNull(ctx);
