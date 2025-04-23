@@ -47,6 +47,9 @@
 	     RedisModule_ZsetRangeNext(key))
 #define foreach_in_zset(key) foreach_in_zset_subset(key, REDISMODULE_NEGATIVE_INFINITE, REDISMODULE_POSITIVE_INFINITE)
 
+#define find_zone_index(...) find_index(ZONE_INDEX, __VA_ARGS__)
+#define find_diff_index(...) find_index(DIFF_INDEX, __VA_ARGS__)
+
 typedef enum {
 	EVENTS,
 	ZONE_INDEX,
@@ -211,11 +214,10 @@ static void knot_diff_free(void *value)
 	RedisModule_Free(diff);
 }
 
-static RedisModuleKey *find_zone_index(RedisModuleCtx *ctx, const uint8_t *origin, size_t origin_len, int rights)
+static RedisModuleKey *find_index(const uint8_t prefix, RedisModuleCtx *ctx, const uint8_t *origin, size_t origin_len, int rights)
 {
 	RedisModule_Assert(ctx != NULL);
 
-	static const uint8_t prefix = ZONE_INDEX;
 	RedisModuleString *keyname = RedisModule_CreateString(ctx, (const char *)&prefix, sizeof(prefix));
 	RedisModule_StringAppendBuffer(ctx, keyname, (const char *)origin, origin_len);
 	RedisModuleKey *key = RedisModule_OpenKey(ctx, keyname, rights);
@@ -982,21 +984,81 @@ static RedisModuleString *construct_diff_key(RedisModuleCtx *ctx, const uint8_t 
 	return RedisModule_CreateString(ctx, (const char *)key_data, key_ptr - key_data);
 }
 
-
-static RedisModuleKey *find_diff_index(RedisModuleCtx *ctx, const uint8_t *origin, size_t origin_len, const uint8_t *owner, size_t owner_len, uint16_t rtype, uint32_t serial, int rights)
+static int knot_diff_since(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 {
-	RedisModule_Assert(ctx != NULL);
+	if (argc != 3) {
+		return RedisModule_WrongArity(ctx);
+	}
 
-	static const uint8_t prefix = DIFF_INDEX;
-	RedisModuleString *keyname = RedisModule_CreateString(ctx, (const char *)&prefix, sizeof(prefix));
-	RedisModule_StringAppendBuffer(ctx, keyname, (const char *)origin, origin_len);
-	RedisModule_StringAppendBuffer(ctx, keyname, (const char *)owner, owner_len);
-	RedisModule_StringAppendBuffer(ctx, keyname, (const char *)&rtype, sizeof(rtype));
-	RedisModule_StringAppendBuffer(ctx, keyname, (const char *)&serial, sizeof(serial));
-	RedisModuleKey *key = RedisModule_OpenKey(ctx, keyname, rights);
-	RedisModule_FreeString(ctx, keyname);
+	size_t origin_len = 0;
+	const uint8_t *origin_str = (const uint8_t *)RedisModule_StringPtrLen(argv[1], &origin_len);
 
-	return key;
+	long long since_val = 0;
+	int ret = RedisModule_StringToLongLong(argv[2], &since_val);
+	if (ret != REDISMODULE_OK) {
+		return RedisModule_ReplyWithError(ctx, "ERR Not a number");
+	} else if (since_val < 0 || since_val > UINT32_MAX) {
+		return RedisModule_ReplyWithError(ctx, "ERR Value out of range");
+	}
+	uint32_t since = since_val;
+
+	RedisModuleKey *diff_index_key = find_diff_index(ctx, origin_str, origin_len, REDISMODULE_READ);
+	if (diff_index_key == NULL) {
+		return RedisModule_ReplyWithError(ctx, "ERR Unable find");
+	}
+	int zone_keytype = RedisModule_KeyType(diff_index_key);
+	if (zone_keytype == REDISMODULE_KEYTYPE_EMPTY) {
+		RedisModule_CloseKey(diff_index_key);
+		return RedisModule_ReplyWithError(ctx, "ERR Does not exist");
+	} else if (zone_keytype != REDISMODULE_KEYTYPE_ZSET) {
+		RedisModule_CloseKey(diff_index_key);
+		return RedisModule_ReplyWithError(ctx, "ERR Bad data");
+	}
+
+	long count = 0;
+	RedisModule_ReplyWithArray(ctx, REDISMODULE_POSTPONED_ARRAY_LEN);
+	foreach_in_zset_subset (diff_index_key, (double)since, REDISMODULE_POSITIVE_INFINITE) {
+		double score = 0.0;
+		RedisModuleString *el = RedisModule_ZsetRangeCurrentElement(diff_index_key, &score);
+		if (el == NULL) {
+			break;
+		}
+
+		size_t rrset_strlen = 0;
+		const char *rrset_str = RedisModule_StringPtrLen(el, &rrset_strlen);
+
+		const char *tmp_ptr = rrset_str + rrset_strlen;
+		uint32_t serial = 0;
+		tmp_ptr = memcpy(&serial, tmp_ptr - sizeof(uint32_t), sizeof(uint32_t));
+
+		uint16_t rtype = 0;
+		memcpy(&rtype, tmp_ptr - sizeof(uint16_t), sizeof(uint16_t));
+
+
+		RedisModuleKey *rrset_key = RedisModule_OpenKey(ctx, el, REDISMODULE_READ);
+		if (rrset_key == NULL) {
+			continue;
+		}
+		knot_diff_v *diff = RedisModule_ModuleTypeGetValue(rrset_key);
+		RedisModule_CloseKey(rrset_key);
+
+		RedisModule_ReplyWithArray(ctx, 8);
+		RedisModule_ReplyWithStringBuffer(ctx, rrset_str + origin_len + 1, rrset_strlen - origin_len - 7); // owner
+		RedisModule_ReplyWithLongLong(ctx, rtype); // rtype
+		RedisModule_ReplyWithLongLong(ctx, serial); // serial
+		RedisModule_ReplyWithLongLong(ctx, diff->add_rrs.count); // add count
+		RedisModule_ReplyWithStringBuffer(ctx, (const char *)diff->add_rrs.rdata, diff->add_rrs.size); // add rrset
+		RedisModule_ReplyWithLongLong(ctx, diff->remove_rrs.count); // remove count
+		RedisModule_ReplyWithStringBuffer(ctx, (const char *)diff->remove_rrs.rdata, diff->remove_rrs.size); // remove count
+		RedisModule_ReplyWithLongLong(ctx, diff->dest_ttl); // destination ttl (0 is unset)
+
+		++count;
+	}
+	RedisModule_ZsetRangeStop(diff_index_key);
+	RedisModule_CloseKey(diff_index_key);
+	RedisModule_ReplySetArrayLength(ctx, count);
+
+	return REDISMODULE_OK;
 }
 
 static int knot_diff_add(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
@@ -1051,13 +1113,13 @@ static int knot_diff_add(RedisModuleCtx *ctx, RedisModuleString **argv, int argc
 		}
 		RedisModule_ModuleTypeSetValue(diff_key, knot_diff_t, diff);
 
-		RedisModuleKey *diff_index_key = find_diff_index(ctx, origin_str, origin_len, owner_str, owner_strlen, rtype, serial, REDISMODULE_READ | REDISMODULE_WRITE);
+		RedisModuleKey *diff_index_key = find_diff_index(ctx, origin_str, origin_len, REDISMODULE_READ | REDISMODULE_WRITE);
 		if (RedisModule_KeyType(diff_index_key) != REDISMODULE_KEYTYPE_EMPTY &&
 		    RedisModule_KeyType(diff_index_key) != REDISMODULE_KEYTYPE_ZSET) {
 			return RedisModule_ReplyWithError(ctx, "ERR Bad data");
 		}
 		//TODO decide, if we need score for SOA record (probably not needed)
-		ret = RedisModule_ZsetAdd(diff_index_key, evaluate_score(rtype), diff_keystr, NULL);
+		ret = RedisModule_ZsetAdd(diff_index_key, (double)serial, diff_keystr, NULL);
 		if (ret != REDISMODULE_OK) {
 			return RedisModule_ReplyWithError(ctx, "ERR Unable to add to zset");
 		}
@@ -1296,6 +1358,7 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx)
 		RedisModule_CreateCommand(ctx, "knot.record.add",        knot_record_add,        "write",    1, 1, 1) == REDISMODULE_ERR ||
 		RedisModule_CreateCommand(ctx, "knot.rrset.remove",      knot_rrset_remove,      "write",    1, 1, 1) == REDISMODULE_ERR ||
 		RedisModule_CreateCommand(ctx, "knot.rrset.aof_rewrite", knot_rrset_aof_rewrite, "write",    1, 1, 1) == REDISMODULE_ERR ||
+		RedisModule_CreateCommand(ctx, "knot.diff.load",         knot_diff_since,        "readonly", 1, 1, 1) == REDISMODULE_ERR ||
 		RedisModule_CreateCommand(ctx, "knot.diff.add",          knot_diff_add,          "write",    1, 1, 1) == REDISMODULE_ERR ||
 		RedisModule_CreateCommand(ctx, "knot.diff.remove",       knot_diff_remove,       "write",    1, 1, 1) == REDISMODULE_ERR ||
 		RedisModule_CreateCommand(ctx, "knot.diff.change_ttl",   knot_diff_change_ttl,   "write",    1, 1, 1) == REDISMODULE_ERR
