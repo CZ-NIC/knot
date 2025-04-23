@@ -24,7 +24,11 @@
 
   knotc> `conf-commit`
 
+  knotc> `stop`
+
   knotc> `exit`
+
+ `docker run --rm -v /tmp/storage:/storage -v /tmp/rundir:/rundir --network host -d cznic/knot knotd`
 
  `kdig @127.0.0.1 -p5300 ch txt version.server`
 
