@@ -982,6 +982,23 @@ static RedisModuleString *construct_diff_key(RedisModuleCtx *ctx, const uint8_t 
 	return RedisModule_CreateString(ctx, (const char *)key_data, key_ptr - key_data);
 }
 
+
+static RedisModuleKey *find_diff_index(RedisModuleCtx *ctx, const uint8_t *origin, size_t origin_len, const uint8_t *owner, size_t owner_len, uint16_t rtype, uint32_t serial, int rights)
+{
+	RedisModule_Assert(ctx != NULL);
+
+	static const uint8_t prefix = DIFF_INDEX;
+	RedisModuleString *keyname = RedisModule_CreateString(ctx, (const char *)&prefix, sizeof(prefix));
+	RedisModule_StringAppendBuffer(ctx, keyname, (const char *)origin, origin_len);
+	RedisModule_StringAppendBuffer(ctx, keyname, (const char *)owner, owner_len);
+	RedisModule_StringAppendBuffer(ctx, keyname, (const char *)&rtype, sizeof(rtype));
+	RedisModule_StringAppendBuffer(ctx, keyname, (const char *)&serial, sizeof(serial));
+	RedisModuleKey *key = RedisModule_OpenKey(ctx, keyname, rights);
+	RedisModule_FreeString(ctx, keyname);
+
+	return key;
+}
+
 static int knot_diff_add(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 {
 	if (argc != 5) {
@@ -1021,7 +1038,7 @@ static int knot_diff_add(RedisModuleCtx *ctx, RedisModuleString **argv, int argc
 	}
 	RedisModule_CloseKey(zone_index_key);
 
-	RedisModuleString *diff_keystr = construct_diff_key(ctx, origin_str, origin_len, owner_str, owner_strlen, rtype, 0);
+	RedisModuleString *diff_keystr = construct_diff_key(ctx, origin_str, origin_len, owner_str, owner_strlen, rtype, serial);
 	RedisModuleKey *diff_key = RedisModule_OpenKey(ctx, diff_keystr, REDISMODULE_READ | REDISMODULE_WRITE);
 
 	knot_diff_v *diff = NULL;
@@ -1033,6 +1050,17 @@ static int knot_diff_add(RedisModuleCtx *ctx, RedisModuleString **argv, int argc
 			return RedisModule_ReplyWithError(ctx, "ERR Cannot allocate memory");
 		}
 		RedisModule_ModuleTypeSetValue(diff_key, knot_diff_t, diff);
+
+		RedisModuleKey *diff_index_key = find_diff_index(ctx, origin_str, origin_len, owner_str, owner_strlen, rtype, serial, REDISMODULE_READ | REDISMODULE_WRITE);
+		if (RedisModule_KeyType(diff_index_key) != REDISMODULE_KEYTYPE_EMPTY &&
+		    RedisModule_KeyType(diff_index_key) != REDISMODULE_KEYTYPE_ZSET) {
+			return RedisModule_ReplyWithError(ctx, "ERR Bad data");
+		}
+		//TODO decide, if we need score for SOA record (probably not needed)
+		ret = RedisModule_ZsetAdd(diff_index_key, evaluate_score(rtype), diff_keystr, NULL);
+		if (ret != REDISMODULE_OK) {
+			return RedisModule_ReplyWithError(ctx, "ERR Unable to add to zset");
+		}
 	} else if (diff_keytype == REDISMODULE_KEYTYPE_MODULE &&
 	           RedisModule_ModuleTypeGetType(diff_key) == knot_diff_t) {
 		diff = RedisModule_ModuleTypeGetValue(diff_key);
