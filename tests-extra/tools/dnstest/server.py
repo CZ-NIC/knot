@@ -582,12 +582,7 @@ class Server(object):
             raise Failed("Can't get certificate key, server='%s', ret='%i'" %
                          (self.name, e.returncode))
 
-    def use_default_cert_key(self, key_name="key.pem", cert_name="cert.pem"):
-        for f in [key_name, cert_name]:
-            shutil.copy(os.path.join(params.common_data_dir, "cert", f), self.dir)
-        keyfile = os.path.join(self.dir, key_name)
-        certfile = os.path.join(self.dir, cert_name)
-
+    def use_cert_key(self, keyfile, certfile):
         try:
             out = check_output(["certtool", "--infile=" + keyfile, "-k"]).rstrip().decode('ascii')
             pin = ssearch(out, r'pin-sha256:([^\n]*)')
@@ -596,7 +591,14 @@ class Server(object):
             self.cert_key_file = (keyfile, certfile, hostname, pin)
             return pin
         except CalledProcessError as e:
-            raise Failed("Can't use default certificate and key")
+            raise Failed("Can't use given certificate and key")
+
+    def use_default_cert_key(self, key_name="key.pem", cert_name="cert.pem"):
+        for f in [key_name, cert_name]:
+            shutil.copy(os.path.join(params.common_data_dir, "cert", f), self.dir)
+        keyfile = os.path.join(self.dir, key_name)
+        certfile = os.path.join(self.dir, cert_name)
+        self.use_cert_key(keyfile, certfile)
 
     def download_cert_file(self, dest_dir):
         try:
