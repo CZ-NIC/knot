@@ -22,7 +22,7 @@ classifiers = [
     "Topic :: System :: Systems Administration",
 ]
 dependencies = [
-    "libknot",
+    "libknot<@KNOT_VERSION_MAJOR@.@KNOT_VERSION_MINOR@.99",
     "prometheus-client",
     "psutil",
 ]

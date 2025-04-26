@@ -26,7 +26,7 @@ setuptools.setup(
     ],
     python_requires='>=3.5',
     install_requires=[
-        'libknot',
+        'libknot<@KNOT_VERSION_MAJOR@.@KNOT_VERSION_MINOR@.99',
         'prometheus-client',
         'psutil',
     ],
