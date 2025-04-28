@@ -49,6 +49,9 @@ BuildRequires:	pkgconfig(libprotobuf-c)
 BuildRequires:	pkgconfig(libmaxminddb)
 # XDP dependencies
 BuildRequires:	pkgconfig(libbpf)
+# Python modules (python3-libknot, knot-exporter) dependencies
+BuildRequires:  python3-devel
+BuildRequires:  python3-setuptools
 
 # Distro-dependent dependencies
 %if 0%{?suse_version}
@@ -131,6 +134,23 @@ Requires:	%{name} = %{version}-%{release}
 %description module-geoip
 The package contains geoip Knot DNS module for geography-based responses.
 
+%package exporter
+Summary:	Prometheus exporter for Knot DNS
+BuildArch:	noarch
+Requires:	%{name}-libs%{?_isa} = %{version}-%{release}
+
+%description exporter
+The package provides Python Prometheus exporter for Knot DNS.
+
+%package -n python3-libknot
+Summary:	Python bindings for libknot
+BuildArch:	noarch
+Requires:	%{name}-libs%{?_isa} = %{version}-%{release}
+%{?python_provide:%python_provide python3-libknot}
+
+%description -n python3-libknot
+The package provides Python bindings for the libknot shared library.
+
 %package doc
 Summary:	Documentation for the Knot DNS server
 BuildArch:	noarch
@@ -176,8 +196,26 @@ CFLAGS="%{optflags} -DNDEBUG -Wno-unused"
 make %{?_smp_mflags}
 make html
 
+# build python3-libknot
+pushd python/libknot
+%py3_build
+popd
+# build knot-exporter
+pushd python/knot_exporter
+%py3_build
+popd
+
 %install
 make install DESTDIR=%{buildroot}
+
+# install python3-libknot
+pushd python/libknot
+%py3_install
+popd
+# install knot-exporter
+pushd python/knot_exporter
+%py3_install
+popd
 
 # install documentation
 install -d -m 0755 %{buildroot}%{_pkgdocdir}/samples
@@ -299,6 +337,15 @@ getent passwd knot >/dev/null || \
 
 %files module-geoip
 %{_libdir}/knot/modules-*/geoip.so
+
+%files exporter
+%{_bindir}/knot-exporter
+%{python3_sitelib}/knot_exporter
+%{python3_sitelib}/knot_exporter-*.egg-info
+
+%files -n python3-libknot
+%{python3_sitelib}/libknot
+%{python3_sitelib}/libknot-*.egg-info
 
 %files libs
 %license COPYING
