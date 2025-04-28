@@ -524,8 +524,18 @@ int main(int argc, char **argv)
 	drop_capabilities();
 
 	/* Activate global query modules. */
-	conf_activate_modules(conf(), &server, NULL, conf()->query_modules,
-	                      &conf()->query_plan);
+	ret = conf_activate_modules(conf(), &server, NULL, conf()->query_modules,
+	                            &conf()->query_plan);
+	if (ret != KNOT_EOK) {
+		log_fatal("failed to activate query modules (%s)", knot_strerror(ret));
+		server_wait(&server);
+		server_deinit(&server);
+		conf_free(conf());
+		dbus_close();
+		log_close();
+		dnssec_crypto_cleanup();
+		return EXIT_FAILURE;
+	}
 
 	/* Check and create PID file. */
 	unsigned long pid = pid_check_and_create();
