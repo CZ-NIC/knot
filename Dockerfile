@@ -63,7 +63,7 @@ ENV RUNTIME_PKGS \
     libbpf1 \
     libedit2 \
     libfstrm0 \
-    libgnutls30 \
+    libgnutls30t64 \
     libidn2-0 \
     liblmdb0 \
     libmaxminddb0 \
@@ -72,7 +72,7 @@ ENV RUNTIME_PKGS \
     libngtcp2-crypto-gnutls8 \
     libngtcp2-16 \
     libprotobuf-c1 \
-    liburcu8 \
+    liburcu8t64 \
     libxdp1
 
 # Install dependencies and create knot user and group
