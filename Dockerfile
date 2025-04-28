@@ -1,5 +1,5 @@
 ## Intermediate stage ##
-FROM debian:bookworm-slim AS builder
+FROM debian:trixie-slim AS builder
 
 # Environment
 ENV BUILD_PKGS \
@@ -54,7 +54,7 @@ RUN if [ "$CHECK" = "enable" ]; then make -j$(grep -c ^processor /proc/cpuinfo) 
     make install DESTDIR=/tmp/knot-install
 
 ## Final stage ##
-FROM debian:bookworm-slim
+FROM debian:trixie-slim
 LABEL maintainer="Knot DNS <knot-dns@labs.nic.cz>"
 
 # Environment
@@ -69,8 +69,8 @@ ENV RUNTIME_PKGS \
     libmaxminddb0 \
     libmnl0 \
     libnghttp2-14 \
-    libngtcp2-crypto-gnutls2 \
-    libngtcp2-9 \
+    libngtcp2-crypto-gnutls8 \
+    libngtcp2-16 \
     libprotobuf-c1 \
     liburcu8 \
     libxdp1
