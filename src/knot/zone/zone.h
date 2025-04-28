@@ -110,6 +110,9 @@ typedef struct zone
 	/*! \brief Ensue one COW transaction on zone's trees at a time. */
 	knot_sem_t cow_lock;
 
+	/*! \brief Special thread that performs update_clear if delayed by outstanding XFR. */
+	pthread_t update_clear_thr;
+
 	/*! \brief Pointer on running server with e.g. KASP db, journal DB, catalog... */
 	struct server *server;
 

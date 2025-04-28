@@ -5,6 +5,8 @@
 
 #pragma once
 
+#include <pthread.h>
+
 #include "contrib/atomic.h"
 #include "libdnssec/nsec.h"
 #include "libknot/rrtype/nsec3param.h"
@@ -23,6 +25,10 @@ typedef struct zone_contents {
 	zone_tree_t *nsec3_nodes;
 
 	trie_t *adds_tree; // "additionals tree" for reverse lookup of nodes affected by additionals
+
+	// Responding normal queries is protected by rcu_read_lock, but for long
+	// outgoing XFRs, zone-specific lock is better.
+	pthread_rwlock_t xfrout_lock;
 
 	dnssec_nsec3_params_t nsec3_params;
 	knot_atomic_uint64_t dnssec_expire;

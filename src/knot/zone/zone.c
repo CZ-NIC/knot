@@ -210,6 +210,13 @@ void zone_free(zone_t **zone_ptr)
 
 	zone_events_deinit(zone);
 
+	if (zone->update_clear_thr) {
+		pthread_join(zone->update_clear_thr, NULL);
+	}
+
+	/* Free zone contents. Possible wait for XFRout lock. */
+	zone_contents_deep_free(zone->contents);
+
 	knot_dname_free(zone->name, NULL);
 
 	free_ddns_queue(zone);
@@ -227,9 +234,6 @@ void zone_free(zone_t **zone_ptr)
 	/* Free preferred master. */
 	pthread_mutex_destroy(&zone->preferred_lock);
 	free(zone->preferred_master);
-
-	/* Free zone contents. */
-	zone_contents_deep_free(zone->contents);
 
 	conf_deactivate_modules(&zone->query_modules, &zone->query_plan);
 
