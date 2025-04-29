@@ -81,6 +81,8 @@ Architecture: any
 Depends:
  ${misc:Depends},
  ${shlibs:Depends},
+Conflicts: libzscanner4t64
+Replaces: libzscanner4t64
 Section: libs
 Description: DNS zone-parsing shared library from Knot DNS
  Knot DNS is a fast, authoritative only, high performance, feature
@@ -98,6 +100,8 @@ Architecture: any
 Depends:
  ${misc:Depends},
  ${shlibs:Depends},
+Conflicts: libdnssec9t64
+Replaces: libdnssec9t64
 Section: libs
 Description: DNSSEC shared library from Knot DNS
  Knot DNS is a fast, authoritative only, high performance, feature
