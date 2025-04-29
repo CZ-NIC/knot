@@ -126,8 +126,7 @@ static int self_signed_cert(gnutls_certificate_credentials_t tls_cert,
 	CHK(gnutls_x509_crt_set_serial(cert, serial, sizeof(serial)));
 	CHK(gnutls_x509_crt_set_activation_time(cert, NOW_DAYS(-1)));
 	CHK(gnutls_x509_crt_set_expiration_time(cert, NOW_DAYS(10 * 365)));
-	CHK(gnutls_x509_crt_set_dn_by_oid(cert, GNUTLS_OID_X520_COMMON_NAME, 0,
-	                                  hostname, strlen(hostname)));
+	// CHK(gnutls_x509_crt_set_dn_by_oid(cert, GNUTLS_OID_X520_COMMON_NAME, 0, hostname, strlen(hostname)));
 	CHK(gnutls_x509_crt_set_subject_alt_name(cert, GNUTLS_SAN_DNSNAME, hostname, strlen(hostname), GNUTLS_FSAN_SET));
 	CHK(gnutls_x509_crt_set_key(cert, privkey));
 	CHK(gnutls_x509_crt_sign2(cert, cert, privkey, GNUTLS_DIG_SHA512, 0));
