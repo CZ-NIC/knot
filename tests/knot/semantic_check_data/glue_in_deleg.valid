@@ -13,4 +13,6 @@ $TTL 3600
 d	NS	ns1.d
 ns1.d	A	1.2.3.4
 
-; glue below another delegation is not mandatory
+x	NS	d
+
+; glue below or at another delegation is not mandatory
