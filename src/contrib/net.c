@@ -21,6 +21,10 @@
 #include "contrib/sockaddr.h"
 #include "contrib/time.h"
 
+#ifdef __APPLE__
+#include <AvailabilityMacros.h>
+#endif
+
 /*!
  * \brief Enable socket option.
  */
@@ -238,7 +242,7 @@ static int tfo_connect(int sock, const struct sockaddr_storage *addr)
 	return KNOT_EOK;
 #elif defined(__FreeBSD__)
 	return sockopt_enable(sock, IPPROTO_TCP, TCP_FASTOPEN);
-#elif defined(__APPLE__)
+#elif defined(__APPLE__) && (MAC_OS_X_VERSION_MIN_REQUIRED >= 101100)
 	/* Connection is performed lazily when first data is sent. */
 	sa_endpoints_t ep = {
 		.sae_dstaddr = (const struct sockaddr *)addr,
