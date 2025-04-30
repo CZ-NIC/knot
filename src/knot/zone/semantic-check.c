@@ -191,6 +191,10 @@ static int check_delegation(const zone_node_t *node, semchecks_data_t *data)
 			glue_node = zone_contents_find_node(data->zone, wildcard);
 			break; // continue in checking glue existence
 		case ZONE_NAME_FOUND:
+			if (glue_node != node &&
+			    glue_node->flags & (NODE_FLAGS_DELEG | NODE_FLAGS_NONAUTH)) {
+				continue; // NS is at another delegation
+			}
 			break; // continue in checking glue existence
 		default:
 			return ret;
