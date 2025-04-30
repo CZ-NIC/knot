@@ -6,12 +6,12 @@
 #include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <sys/socket.h>
 #include <sys/types.h>   // OpenBSD
 #include <netinet/tcp.h> // TCP_FASTOPEN
 #include <netinet/in.h>
 #include <poll.h>
 #include <stdbool.h>
-#include <sys/socket.h>
 #include <sys/uio.h>
 #include <unistd.h>
 
