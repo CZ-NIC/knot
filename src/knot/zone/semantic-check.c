@@ -509,10 +509,16 @@ static sem_error_t err_dnssec2sem(int ret, uint16_t rrtype, char *info, size_t l
 	}
 }
 
-static int verify_dnssec(zone_contents_t *zone, sem_handler_t *handler, time_t time)
+static int verify_dnssec(zone_contents_t *zone, sem_handler_t *handler, time_t time,
+                         uint16_t threads)
 {
 	zone_update_t fake_up = { .new_cont = zone, };
-	int ret = knot_dnssec_validate_zone(&fake_up, NULL, time, false, false);
+	validation_conf_t val_conf = {
+		.threads = threads,
+		.now = time,
+		.incremental = false,
+	};
+	int ret = knot_dnssec_validate_zone(&fake_up, &val_conf);
 	if (fake_up.validation_hint.node != NULL) { // validation found an issue
 		char info[64] = "";
 		sem_error_t err = err_dnssec2sem(ret, fake_up.validation_hint.rrtype, info, sizeof(info));
@@ -527,7 +533,7 @@ static int verify_dnssec(zone_contents_t *zone, sem_handler_t *handler, time_t t
 }
 
 int sem_checks_process(zone_contents_t *zone, semcheck_optional_t optional, sem_handler_t *handler,
-                       time_t time)
+                       time_t time, uint16_t threads)
 {
 	if (handler == NULL) {
 		return KNOT_EINVAL;
@@ -575,7 +581,7 @@ int sem_checks_process(zone_contents_t *zone, semcheck_optional_t optional, sem_
 	}
 
 	if (data.level & DNSSEC) {
-		ret = verify_dnssec(zone, handler, time);
+		ret = verify_dnssec(zone, handler, time, threads);
 	}
 
 	return ret;

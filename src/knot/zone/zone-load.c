@@ -48,7 +48,7 @@ int zone_load_contents(conf_t *conf, const knot_dname_t *zone_name,
 	zl.err_handler = &handler;
 	zl.creator->skip = &skip;
 
-	*contents = zonefile_load(&zl);
+	*contents = zonefile_load(&zl, 0);
 	zonefile_close(&zl);
 	zone_skip_free(&skip);
 	if (*contents == NULL) {

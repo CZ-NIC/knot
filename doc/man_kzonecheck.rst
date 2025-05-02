@@ -44,6 +44,10 @@ Options
   format, or [+/-]\ *time*\ [unit] format, where unit can be **Y**, **M**,
   **D**, **h**, **m**, or **s**. Default is current UNIX timestamp.
 
+**-j**, **--jobs** *jobs*
+  The number of threads used for DNSSEC validation. Default is all CPU threads
+  available.
+
 **-p**, **--print**
   Print the zone on stdout.
 
