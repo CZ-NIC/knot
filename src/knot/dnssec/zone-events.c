@@ -483,38 +483,42 @@ static void log_validation_error(zone_update_t *update, const char *msg_valid,
 	}
 }
 
-int knot_dnssec_validate_zone(zone_update_t *update, conf_t *conf,
-                              knot_time_t now, bool incremental, bool log_plan)
+int knot_dnssec_validate_zone(zone_update_t *update, validation_conf_t *val_conf)
 {
+	if (val_conf == NULL || (val_conf->conf == NULL && val_conf->log_plan)) {
+		return KNOT_EINVAL;
+	}
+
 	kdnssec_ctx_t ctx = { 0 };
-	int ret = kdnssec_validation_ctx(conf, &ctx, update->new_cont);
+	int ret = kdnssec_validation_ctx(val_conf->conf, &ctx, update->new_cont,
+	                                 val_conf->threads);
 	if (ret != KNOT_EOK) {
 		goto end;
 	}
-	if (now != 0) {
-		ctx.now = now;
+	if (val_conf->now != 0) {
+		ctx.now = val_conf->now;
 	}
 
-	ret = knot_zone_check_nsec_chain(update, &ctx, incremental);
+	ret = knot_zone_check_nsec_chain(update, &ctx, val_conf->incremental);
 	if (ret == KNOT_EOK) {
 		assert(ctx.validation_mode);
-		if (incremental) {
+		if (val_conf->incremental) {
 			ret = knot_zone_sign_update(update, NULL, &ctx);
 		} else {
 			ret = knot_zone_sign(update, NULL, &ctx);
 		}
 	}
 end:
-	if (log_plan) {
-		const char *msg_valid = incremental ? "incremental " : "";
+	if (val_conf->log_plan) {
+		const char *msg_valid = val_conf->incremental ? "incremental " : "";
 		if (ret != KNOT_EOK) {
 			log_validation_error(update, msg_valid, ret, false);
-			if (conf->cache.srv_dbus_event & DBUS_EVENT_ZONE_INVALID) {
+			if (val_conf->conf->cache.srv_dbus_event & DBUS_EVENT_ZONE_INVALID) {
 				dbus_emit_zone_invalid(update->zone->name, 0);
 			}
 		} else if (update->validation_hint.warning != KNOT_EOK) {
 			log_validation_error(update, msg_valid, update->validation_hint.warning, true);
-			if (conf->cache.srv_dbus_event & DBUS_EVENT_ZONE_INVALID) {
+			if (val_conf->conf->cache.srv_dbus_event & DBUS_EVENT_ZONE_INVALID) {
 				dbus_emit_zone_invalid(update->zone->name, update->validation_hint.remaining_secs);
 			}
 		} else {
@@ -522,11 +526,11 @@ end:
 			              msg_valid, ctx.stats->rrsig_count);
 		}
 
-		conf_val_t val = conf_zone_get(conf, C_DNSSEC_VALIDATION, update->zone->name);
+		conf_val_t val = conf_zone_get(val_conf->conf, C_DNSSEC_VALIDATION, update->zone->name);
 		bool configured = conf_bool(&val);
 		bool bogus = (ret != KNOT_EOK);
 		bool running = (update->zone->contents == update->new_cont);
-		bool may_expire = zone_is_slave(conf, update->zone);
+		bool may_expire = zone_is_slave(val_conf->conf, update->zone);
 		knot_time_t expire = (ctx.stats != NULL ? ctx.stats->expire : 0);
 		assert(bogus || knot_time_geq(expire, ctx.now));
 
@@ -534,7 +538,7 @@ end:
 			zone_events_schedule_now(update->zone, ZONE_EVENT_EXPIRE);
 		}
 		if (configured && !bogus) {
-			if (!incremental) {
+			if (!val_conf->incremental) {
 				zone_events_schedule_at(update->zone, ZONE_EVENT_VALIDATE, 0); // cancel previously planned re-check when fully re-checked
 			}
 			zone_events_schedule_at(update->zone, ZONE_EVENT_VALIDATE, // this works for incremental verify as well, re-planning on later
