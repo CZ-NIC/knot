@@ -184,7 +184,7 @@ int zonefile_open(zloader_t *loader, const char *source, const knot_dname_t *ori
 	return KNOT_EOK;
 }
 
-zone_contents_t *zonefile_load(zloader_t *loader)
+zone_contents_t *zonefile_load(zloader_t *loader, uint16_t threads)
 {
 	if (!loader) {
 		return NULL;
@@ -230,7 +230,7 @@ zone_contents_t *zonefile_load(zloader_t *loader)
 	}
 
 	ret = sem_checks_process(zc->z, loader->semantic_checks,
-	                         loader->err_handler, loader->time);
+	                         loader->err_handler, loader->time, threads);
 
 	if (ret != KNOT_EOK) {
 		ERROR(zname, "failed to load zone, file '%s' (%s)",

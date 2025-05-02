@@ -111,6 +111,7 @@ struct sem_handler {
  * \param optional  To do also optional check.
  * \param handler   Semantic error handler.
  * \param time      Check zone at given time (rrsig expiration).
+ * \param threads   The number of threads used for DNSSEC validation.
  *
  * \retval KNOT_EOK         no error found
  * \retval KNOT_ESEMCHECK   found semantic error
@@ -118,4 +119,4 @@ struct sem_handler {
  * \retval KNOT_EINVAL      another error
  */
 int sem_checks_process(zone_contents_t *zone, semcheck_optional_t optional, sem_handler_t *handler,
-                       time_t time);
+                       time_t time, uint16_t threads);

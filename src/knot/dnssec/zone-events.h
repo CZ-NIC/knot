@@ -50,6 +50,14 @@ typedef struct {
 	bool plan_dnskey_sync;
 } zone_sign_reschedule_t;
 
+typedef struct {
+	conf_t *conf;
+	uint16_t threads;
+	knot_time_t now;   // If not zero: adjust "now" to this timestamp.
+	bool incremental;
+	bool log_plan;
+} validation_conf_t;
+
 /*!
  * \brief DNSSEC re-sign zone, store new records into changeset. Valid signatures
  *        and NSEC(3) records will not be changed.
@@ -113,12 +121,8 @@ knot_time_t knot_dnssec_failover_delay(const kdnssec_ctx_t *ctx);
  * \brief Validate zone DNSSEC based on its contents.
  *
  * \param update         Zone update with contents.
- * \param conf           Knot configuration.
- * \param now            If not zero: adjust "now" to this timestamp.
- * \param incremental    Try to validate incrementally.
- * \param log_plan       Log the result and plan subsequent validation event.
+ * \param val_conf       Validation configuration.
  *
  * \return KNOT_E*
  */
-int knot_dnssec_validate_zone(zone_update_t *update, conf_t *conf,
-                              knot_time_t now, bool incremental, bool log_plan);
+int knot_dnssec_validate_zone(zone_update_t *update, validation_conf_t *val_conf);

@@ -867,7 +867,7 @@ int zone_update_semcheck(conf_t *conf, zone_update_t *update)
 	semcheck_optional_t mode = (conf_opt(&val) == SEMCHECKS_SOFT) ?
 	                           SEMCHECK_MANDATORY_SOFT : SEMCHECK_MANDATORY_ONLY;
 
-	ret = sem_checks_process(update->new_cont, mode, &handler, time(NULL));
+	ret = sem_checks_process(update->new_cont, mode, &handler, time(NULL), 0);
 	if (ret != KNOT_EOK) {
 		// error is logged by the error handler
 		return ret;
@@ -944,8 +944,12 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 
 	val = conf_zone_get(conf, C_DNSSEC_VALIDATION, update->zone->name);
 	if (conf_bool(&val)) {
-		bool incr_valid = update->flags & UPDATE_INCREMENTAL;
-		ret = knot_dnssec_validate_zone(update, conf, 0, incr_valid, true);
+		validation_conf_t val_conf = {
+			.conf = conf,
+			.incremental = update->flags & UPDATE_INCREMENTAL,
+			.log_plan = true,
+		};
+		ret = knot_dnssec_validate_zone(update, &val_conf);
 		if (ret != KNOT_EOK) {
 			discard_adds_tree(update);
 			return ret;

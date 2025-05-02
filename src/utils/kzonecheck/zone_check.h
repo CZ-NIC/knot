@@ -20,4 +20,5 @@
 #include "libknot/libknot.h"
 
 int zone_check(const char *zone_file, const knot_dname_t *zone_name, bool zonemd,
-               uint32_t dflt_ttl, semcheck_optional_t optional, time_t time, bool print);
+               uint32_t dflt_ttl, semcheck_optional_t optional, time_t time,
+               bool print, uint16_t threads);

@@ -21,14 +21,19 @@
 
 int event_validate(conf_t *conf, zone_t *zone)
 {
-	knot_time_t now = knot_time();
 	zone_update_t fake_upd = {
 		.zone = zone,
 		.new_cont = zone->contents,
 		// .validation_hint is zeroed
 	};
+	validation_conf_t val_conf = {
+		.conf = conf,
+		.now = knot_time(),
+		.incremental = false,
+		.log_plan = true,
+	};
 
 	log_zone_info(zone->name, "DNSSEC, re-validating zone fully");
 
-	return knot_dnssec_validate_zone(&fake_upd, conf, now, false, true);
+	return knot_dnssec_validate_zone(&fake_upd, &val_conf);
 }

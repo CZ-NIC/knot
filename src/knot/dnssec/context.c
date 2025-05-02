@@ -322,7 +322,8 @@ static void policy_from_zone(knot_kasp_policy_t *policy, const zone_contents_t *
 	policy->signing_threads = 1;
 }
 
-int kdnssec_validation_ctx(conf_t *conf, kdnssec_ctx_t *ctx, const zone_contents_t *zone)
+int kdnssec_validation_ctx(conf_t *conf, kdnssec_ctx_t *ctx, const zone_contents_t *zone,
+                           uint16_t threads)
 {
 	if (ctx == NULL || zone == NULL) {
 		return KNOT_EINVAL;
@@ -351,6 +352,8 @@ int kdnssec_validation_ctx(conf_t *conf, kdnssec_ctx_t *ctx, const zone_contents
 		ctx->policy->signing_threads = conf_int(&val);
 		val = conf_id_get(conf, C_POLICY, C_RRSIG_REFRESH, &policy_id);
 		ctx->policy->rrsig_refresh_before = conf_int_alt(&val, true);
+	} else if (threads > 0) {
+		ctx->policy->signing_threads = threads;
 	} else {
 		ctx->policy->signing_threads = MAX(dt_optimal_size(), 1);
 	}

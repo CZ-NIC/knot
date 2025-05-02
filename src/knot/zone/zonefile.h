@@ -67,11 +67,12 @@ int zonefile_open(zloader_t *loader, const char *source, const knot_dname_t *ori
  * \brief Loads zone from a zone file.
  *
  * \param loader Zone loader instance.
+ * \param threads The number of threads to use for semantic checks (0 for auto).
  *
  * \retval Loaded zone contents on success.
  * \retval NULL otherwise.
  */
-zone_contents_t *zonefile_load(zloader_t *loader);
+zone_contents_t *zonefile_load(zloader_t *loader, uint16_t threads);
 
 /*!
  * \brief Checks if zonefile exists.

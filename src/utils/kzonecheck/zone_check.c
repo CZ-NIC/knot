@@ -64,7 +64,8 @@ static void print_statistics(err_handler_stats_t *stats)
 }
 
 int zone_check(const char *zone_file, const knot_dname_t *zone_name, bool zonemd,
-               uint32_t dflt_ttl, semcheck_optional_t optional, time_t time, bool print)
+               uint32_t dflt_ttl, semcheck_optional_t optional, time_t time,
+               bool print, uint16_t threads)
 {
 	err_handler_stats_t stats = {
 		.handler = { .cb = err_callback },
@@ -86,7 +87,7 @@ int zone_check(const char *zone_file, const knot_dname_t *zone_name, bool zonemd
 	zl.err_handler = (sem_handler_t *)&stats;
 	zl.creator->master = true;
 
-	zone_contents_t *contents = zonefile_load(&zl);
+	zone_contents_t *contents = zonefile_load(&zl, threads);
 	zonefile_close(&zl);
 	if (contents == NULL && !stats.handler.error) {
 		ERR2("failed to run semantic checks");

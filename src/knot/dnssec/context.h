@@ -72,13 +72,15 @@ int kdnssec_ctx_init(conf_t *conf, kdnssec_ctx_t *ctx, const knot_dname_t *zone_
 /*!
  * \brief Initialize DNSSEC validating context.
  *
- * \param conf   Configuration.
- * \param ctx    Signing context to be initialized.
- * \param zone   Zone contents to be validated.
+ * \param conf    Configuration.
+ * \param ctx     Signing context to be initialized.
+ * \param zone    Zone contents to be validated.
+ * \param threads The number of threads when conf is not available (0 for default).
  *
  * \return KNOT_E*
  */
-int kdnssec_validation_ctx(conf_t *conf, kdnssec_ctx_t *ctx, const zone_contents_t *zone);
+int kdnssec_validation_ctx(conf_t *conf, kdnssec_ctx_t *ctx, const zone_contents_t *zone,
+                           uint16_t threads);
 
 /*!
  * \brief Save the changes in ctx (in kasp zone).

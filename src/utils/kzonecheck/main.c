@@ -18,6 +18,7 @@
 #include <libgen.h>
 #include <stdio.h>
 
+#include "contrib/strtonum.h"
 #include "contrib/time.h"
 #include "contrib/tolower.h"
 #include "libknot/libknot.h"
@@ -40,7 +41,10 @@ static void print_help(void)
 	       "Options:\n"
 	       " -o, --origin <zone_origin>  Zone name.\n"
 	       "                              (default filename without .zone)\n"
-	       " -d, --dnssec <on|off>       Also check DNSSEC-related records.\n"
+	       " -d, --dnssec <on|off>       Enforce check of DNSSEC records.\n"
+	       "                              (default autodetection)\n"
+	       " -j, --jobs <num>            Number of threads.\n"
+	       "                              (default all CPU threads available)\n"
 	       " -z, --zonemd                Also check ZONEMD.\n"
 	       " -t, --time <timestamp>      Current time specification.\n"
 	       "                              (default current UNIX time)\n"
@@ -69,6 +73,7 @@ int main(int argc, char *argv[])
 {
 	const char *origin = NULL;
 	bool zonemd = false, verbose = false, print = false;
+	uint16_t threads = 0;
 	semcheck_optional_t optional = SEMCHECK_DNSSEC_AUTO; // default value for --dnssec
 	knot_time_t check_time = (knot_time_t)time(NULL);
 
@@ -77,6 +82,7 @@ int main(int argc, char *argv[])
 		{ "origin",  required_argument, NULL, 'o' },
 		{ "time",    required_argument, NULL, 't' },
 		{ "dnssec",  required_argument, NULL, 'd' },
+		{ "jobs",    required_argument, NULL, 'j' },
 		{ "zonemd",  no_argument,       NULL, 'z' },
 		{ "print",   no_argument,       NULL, 'p' },
 		{ "verbose", no_argument,       NULL, 'v' },
@@ -90,13 +96,19 @@ int main(int argc, char *argv[])
 
 	/* Parse command line arguments */
 	int opt = 0;
-	while ((opt = getopt_long(argc, argv, "o:t:d:zpvV::h", opts, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "o:t:d:j:zpvV::h", opts, NULL)) != -1) {
 		switch (opt) {
 		case 'o':
 			origin = optarg;
 			break;
 		case 'p':
 			print = true;
+			break;
+		case 'j':
+			if (str_to_u16(optarg, &threads) != KNOT_EOK) {
+				ERR2("invalid number of threads '%s'", optarg);
+				return EXIT_FAILURE;
+			}
 			break;
 		case 'v':
 			verbose = true;
@@ -171,7 +183,7 @@ int main(int argc, char *argv[])
 	}
 
 	int ret = zone_check(filename, zone, zonemd, DEFAULT_TTL, optional,
-	                     (time_t)check_time, print);
+	                     (time_t)check_time, print, threads);
 	log_close();
 	if (ret == KNOT_EOK) {
 		if (verbose && !print) {
