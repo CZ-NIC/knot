@@ -345,7 +345,7 @@ static int check_ds(const zone_node_t *node, semchecks_data_t *data)
 		uint16_t digest_size = knot_ds_digest_len(ds);
 
 		// Sizes of known digest algorithms.
-		const uint16_t digest_sizes[] = { 0, 20, 32, 32, 48 };
+		const uint16_t digest_sizes[] = { 0, 20, 32, 32, 48, 32, 32 };
 
 		sem_error_t err;
 		if (digest_type == 0 ||
