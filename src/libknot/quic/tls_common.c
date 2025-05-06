@@ -42,6 +42,24 @@ typedef struct knot_creds {
 	uint8_t peer_pin[];
 } knot_creds_t;
 
+_public_
+const char *knot_tls_priority(bool tls12)
+{
+#if GNUTLS_VERSION_NUMBER >= 0x030702
+#define TLS_COMPAT      "%DISABLE_TLS13_COMPAT_MODE:"
+#else
+#define TLS_COMPAT      ""
+#endif
+
+#define COMMON_PRIORITY "-VERS-ALL:+VERS-TLS1.3:" \
+                        TLS_COMPAT \
+                        "-GROUP-ALL:+GROUP-X25519:+GROUP-SECP256R1:" \
+                                   "+GROUP-SECP384R1:+GROUP-SECP521R1"
+#define TLS12           ":+VERS-TLS1.2"
+
+	return tls12 ? COMMON_PRIORITY TLS12 : COMMON_PRIORITY;
+}
+
 static int tls_anti_replay_db_add_func(void *dbf, time_t exp_time,
                                        const gnutls_datum_t *key,
                                        const gnutls_datum_t *data)
