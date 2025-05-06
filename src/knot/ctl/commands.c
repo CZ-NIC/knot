@@ -899,12 +899,12 @@ static int zone_txn_begin_l(zone_t *zone, _unused_ ctl_args_t *args)
 	struct zone_backup_ctx *backup_ctx = ATOMIC_GET(zone->backup_ctx);
 	if (backup_ctx != NULL && backup_ctx->restore_mode) {
 		log_zone_warning(zone->name, "zone restore pending, try opening control transaction later");
-		return KNOT_EAGAIN;
+		return KNOT_ETRYAGAIN;
 	}
 
 	if (zone->events.running && zone->events.type >= 0 && zone->events.blocking[zone->events.type] != NULL) {
 		log_zone_warning(zone->name, "some blocking event running, try opening control transaction later");
-		return KNOT_EAGAIN;
+		return KNOT_ETRYAGAIN;
 	}
 
 	zone->control_update = malloc(sizeof(zone_update_t));

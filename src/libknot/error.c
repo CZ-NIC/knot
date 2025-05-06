@@ -171,6 +171,10 @@ static const struct error errors[] = {
 	{ KNOT_DNSSEC_EKEYTAG_LIMIT,  "many keys with equal keytag" },
 	{ KNOT_DNSSEC_EXTRA_NSEC,     "superfluous NSEC(3)" },
 
+	/* Added errors, TODO refactor in next major version. */
+	{ KNOT_NET_EAGAIN,   "try network operation again" },
+	{ KNOT_ETRYAGAIN,     "try again later" },
+
 	/* Terminator */
 	{ KNOT_ERROR, NULL }
 };
