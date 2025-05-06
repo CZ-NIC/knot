@@ -6,12 +6,12 @@
 #include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <sys/socket.h>
 #include <sys/types.h>   // OpenBSD
 #include <netinet/tcp.h> // TCP_FASTOPEN
 #include <netinet/in.h>
 #include <poll.h>
 #include <stdbool.h>
-#include <sys/socket.h>
 #include <sys/uio.h>
 #include <unistd.h>
 
@@ -20,6 +20,10 @@
 #include "contrib/net.h"
 #include "contrib/sockaddr.h"
 #include "contrib/time.h"
+
+#ifdef __APPLE__
+#include <AvailabilityMacros.h>
+#endif
 
 /*!
  * \brief Enable socket option.
@@ -238,7 +242,7 @@ static int tfo_connect(int sock, const struct sockaddr_storage *addr)
 	return KNOT_EOK;
 #elif defined(__FreeBSD__)
 	return sockopt_enable(sock, IPPROTO_TCP, TCP_FASTOPEN);
-#elif defined(__APPLE__)
+#elif defined(__APPLE__) && (MAC_OS_X_VERSION_MIN_REQUIRED >= 101100)
 	/* Connection is performed lazily when first data is sent. */
 	sa_endpoints_t ep = {
 		.sae_dstaddr = (const struct sockaddr *)addr,
