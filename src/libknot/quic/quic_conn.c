@@ -52,7 +52,7 @@ knot_quic_table_t *knot_quic_table_new(size_t max_conns, size_t max_ibufs, size_
 	ATOMIC_INIT(res->obufs_size, 0);
 	res->udp_payload_limit = udp_payload;
 
-	int ret = gnutls_priority_init2(&res->priority, KNOT_TLS_PRIORITIES, NULL,
+	int ret = gnutls_priority_init2(&res->priority, knot_tls_priority(false), NULL,
 	                                GNUTLS_PRIORITY_INIT_DEF_APPEND);
 	if (ret != GNUTLS_E_SUCCESS) {
 		free(res);
