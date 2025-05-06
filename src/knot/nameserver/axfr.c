@@ -153,7 +153,7 @@ static int axfr_query_init(knotd_qdata_t *qdata)
 	if (zone_get_flag(qdata->extra->zone, ZONE_XFR_FROZEN, false)) {
 		qdata->rcode = KNOT_RCODE_REFUSED;
 		qdata->rcode_ede = KNOT_EDNS_EDE_NOT_READY;
-		return KNOT_EAGAIN;
+		return KNOT_ETRYAGAIN;
 	}
 
 	/* Create transfer processing context. */
@@ -204,16 +204,16 @@ knot_layer_state_t axfr_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 	if (axfr == NULL) {
 		int ret = axfr_query_init(qdata);
 		switch (ret) {
-		case KNOT_EOK:      /* OK */
+		case KNOT_EOK:         /* OK */
 			AXFROUT_LOG(LOG_INFO, qdata, "started, serial %u",
 			            zone_contents_serial(qdata->extra->contents));
 			break;
-		case KNOT_EDENIED:  /* Not authorized, already logged. */
+		case KNOT_EDENIED:     /* Not authorized, already logged. */
 			return KNOT_STATE_FAIL;
-		case KNOT_EMALF:    /* Malformed query. */
+		case KNOT_EMALF:       /* Malformed query. */
 			AXFROUT_LOG(LOG_DEBUG, qdata, "malformed query");
 			return KNOT_STATE_FAIL;
-		case KNOT_EAGAIN:   /* Outgoing AXFR temporarily disabled. */
+		case KNOT_ETRYAGAIN:   /* Outgoing AXFR temporarily disabled. */
 			AXFROUT_LOG(LOG_INFO, qdata, "outgoing AXFR frozen");
 			return KNOT_STATE_FAIL;
 		default:

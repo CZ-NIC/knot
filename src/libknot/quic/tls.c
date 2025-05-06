@@ -170,7 +170,7 @@ int knot_tls_handshake(knot_tls_conn_t *conn, bool oneshot)
 	};
 	int ret = poll(&pfd, 1, conn->ctx->io_timeout);
 	if (ret != 1) {
-		return ret == 0 ? KNOT_NET_ECONNECT : KNOT_EAGAIN;
+		return ret == 0 ? KNOT_NET_ECONNECT : KNOT_NET_EAGAIN;
 	}
 
 	gnutls_record_set_timeout(conn->session, conn->ctx->io_timeout);
@@ -186,7 +186,7 @@ int knot_tls_handshake(knot_tls_conn_t *conn, bool oneshot)
 		return KNOT_NET_ETIMEOUT;
 	default:
 		if (gnutls_error_is_fatal(ret) == 0) {
-			return KNOT_EAGAIN;
+			return KNOT_NET_EAGAIN;
 		} else {
 			return KNOT_NET_EHSHAKE;
 		}

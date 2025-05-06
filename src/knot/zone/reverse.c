@@ -145,7 +145,7 @@ int zones_reverse(list_t *zones, zone_contents_t *to_conts, const knot_dname_t *
 		zone_t *z = n->d;
 		rcu_read_lock();
 		if (z->contents == NULL) {
-			ret = KNOT_EAGAIN;
+			ret = KNOT_ETRYAGAIN;
 		} else {
 			ret = zone_reverse(z->contents, to_conts, NULL, false);
 		}

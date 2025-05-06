@@ -71,7 +71,7 @@ static int ddnsq_send_reply(knot_quic_reply_t *r)
 	} else if (ret == r->out_payload->iov_len) {
 		return KNOT_EOK;
 	} else {
-		return KNOT_EAGAIN;
+		return KNOT_NET_EAGAIN;
 	}
 }
 

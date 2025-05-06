@@ -196,7 +196,7 @@ static int ixfr_answer_init(knotd_qdata_t *qdata, uint32_t *serial_from)
 	if (zone_get_flag(qdata->extra->zone, ZONE_XFR_FROZEN, false)) {
 		qdata->rcode = KNOT_RCODE_REFUSED;
 		qdata->rcode_ede = KNOT_EDNS_EDE_NOT_READY;
-		return KNOT_EAGAIN;
+		return KNOT_ETRYAGAIN;
 	}
 
 	conf_val_t provide = conf_zone_get(conf(), C_PROVIDE_IXFR,
@@ -295,31 +295,31 @@ knot_layer_state_t ixfr_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 		int ret = ixfr_answer_init(qdata, &soa_from);
 		ixfr = qdata->extra->ext;
 		switch (ret) {
-		case KNOT_EOK:       /* OK */
+		case KNOT_EOK:          /* OK */
 			IXFROUT_LOG(LOG_INFO, qdata, "started, serial %u -> %u",
 				    ixfr->soa_from, ixfr->soa_to);
 			break;
-		case KNOT_EUPTODATE: /* Our zone is same age/older, send SOA. */
+		case KNOT_EUPTODATE:    /* Our zone is same age/older, send SOA. */
 			IXFROUT_LOG(LOG_INFO, qdata, "zone is up-to-date, serial %u", soa_from);
 			return ixfr_answer_soa(pkt, qdata);
 		case KNOT_ENOTSUP:
 			IXFROUT_LOG(LOG_INFO, qdata, "cannot provide, fallback to AXFR");
 			qdata->type = KNOTD_QUERY_TYPE_AXFR; /* Solve as AXFR. */
 			return axfr_process_query(pkt, qdata);
-		case KNOT_ERANGE:    /* No history -> AXFR. */
+		case KNOT_ERANGE:       /* No history -> AXFR. */
 		case KNOT_ENOENT:
 			IXFROUT_LOG(LOG_INFO, qdata, "incomplete history, serial %u, fallback to AXFR", soa_from);
 			qdata->type = KNOTD_QUERY_TYPE_AXFR; /* Solve as AXFR. */
 			return axfr_process_query(pkt, qdata);
-		case KNOT_EDENIED:  /* Not authorized, already logged. */
+		case KNOT_EDENIED:     /* Not authorized, already logged. */
 			return KNOT_STATE_FAIL;
-		case KNOT_EMALF:    /* Malformed query. */
+		case KNOT_EMALF:       /* Malformed query. */
 			IXFROUT_LOG(LOG_DEBUG, qdata, "malformed query");
 			return KNOT_STATE_FAIL;
-		case KNOT_EAGAIN:   /* Outgoing IXFR temporarily disabled. */
+		case KNOT_ETRYAGAIN:   /* Outgoing IXFR temporarily disabled. */
 			IXFROUT_LOG(LOG_INFO, qdata, "outgoing IXFR frozen");
 			return KNOT_STATE_FAIL;
-		default:             /* Server errors. */
+		default:               /* Server errors. */
 			IXFROUT_LOG(LOG_ERR, qdata, "failed to start (%s)",
 			            knot_strerror(ret));
 			return KNOT_STATE_FAIL;

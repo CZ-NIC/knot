@@ -182,6 +182,10 @@ enum knot_error {
 	KNOT_DNSSEC_EKEYTAG_LIMIT,
 	KNOT_DNSSEC_EXTRA_NSEC,
 
+	/* Added errors, TODO refactor in next major version. */
+	KNOT_NET_EAGAIN,
+	KNOT_ETRYAGAIN,
+
 	KNOT_ERROR_MAX = -501
 };
 

@@ -180,12 +180,12 @@ static int tcp_handle(tcp_context_t *tcp, knotd_qdata_params_t *params,
 	if (params->tls_conn != NULL) {
 		int ret = knot_tls_handshake(params->tls_conn, true);
 		switch (ret) {
-		case KNOT_EAGAIN: // Unfinished handshake, continue later.
+		case KNOT_NET_EAGAIN: // Unfinished handshake, continue later.
 			return KNOT_EOK;
-		case KNOT_EOK: // Finished handshake, continue with receiving message.
+		case KNOT_EOK:        // Finished handshake, continue with receiving message.
 			recv = knot_tls_recv_dns(params->tls_conn, rx->iov_base, rx->iov_len);
 			break;
-		default: // E.g. handshake timeout.
+		default:              // E.g. handshake timeout.
 			assert(ret < 0);
 			recv = ret;
 			break;

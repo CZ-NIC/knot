@@ -497,7 +497,7 @@ int knot_xdp_send_finish(knot_xdp_socket_t *socket)
 		return KNOT_EOK;
 	} else if (errno == ENOBUFS || errno == EAGAIN || errno == EBUSY ||
 	           errno == ENETDOWN) {
-		return KNOT_EAGAIN;
+		return KNOT_NET_EAGAIN;
 	} else {
 		return -errno;
 	}
