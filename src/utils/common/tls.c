@@ -733,5 +733,8 @@ void print_tls(const tls_ctx_t *ctx)
 
 	char *msg = gnutls_session_get_desc(ctx->session);
 	printf(";; TLS session %s\n", msg);
+	if (strstr(msg, "TLS1.2") != NULL) {
+		WARN("TLS 1.2 not supported by Knot DNS server");
+	}
 	gnutls_free(msg);
 }
