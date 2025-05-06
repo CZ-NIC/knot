@@ -19,16 +19,21 @@
 #include <stdint.h>
 
 #define KNOT_TLS_PIN_LEN    32
-#define KNOT_TLS_PRIORITIES "-VERS-ALL:+VERS-TLS1.3:" \
-                            "%DISABLE_TLS13_COMPAT_MODE:" \
-                            "-GROUP-ALL:+GROUP-X25519:+GROUP-SECP256R1:" \
-                                       "+GROUP-SECP384R1:+GROUP-SECP521R1"
 
 struct gnutls_priority_st;
 struct gnutls_session_int;
 struct gnutls_x509_crt_int;
 struct knot_creds;
 struct knot_tls_session;
+
+/*!
+ * \brief Get priority string for GnuTLS priority initialization.
+ *
+ * \param tls12         Allow TLS 1.2.
+ *
+ * \return Priority string.
+ */
+const char *knot_tls_priority(bool tls12);
 
 /*!
  * \brief Init server TLS key and certificate for DoQ.

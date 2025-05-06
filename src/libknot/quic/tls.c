@@ -41,7 +41,7 @@ knot_tls_ctx_t *knot_tls_ctx_new(struct knot_creds *creds, unsigned io_timeout,
 	res->io_timeout = io_timeout;
 	res->server = server;
 
-	int ret = gnutls_priority_init2(&res->priority, KNOT_TLS_PRIORITIES, NULL,
+	int ret = gnutls_priority_init2(&res->priority, knot_tls_priority(false), NULL,
 	                                GNUTLS_PRIORITY_INIT_DEF_APPEND);
 	if (ret != GNUTLS_E_SUCCESS) {
 		free(res);
