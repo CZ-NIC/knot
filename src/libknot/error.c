@@ -26,7 +26,7 @@ static const struct error errors[] = {
 	{ KNOT_EINVAL,        "invalid parameter" },
 	{ KNOT_ENOTSUP,       "operation not supported" },
 	{ KNOT_EBUSY,         "requested resource is busy" },
-	{ KNOT_EAGAIN,        "OS lacked necessary resources" },
+	{ KNOT_EAGAIN,        "temporarily out of resources" },
 	{ KNOT_ENOBUFS,       "no buffers" },
 	{ KNOT_EMFILE,        "too many open files" },
 	{ KNOT_ENFILE,        "too many open files in system" },
@@ -60,8 +60,7 @@ static const struct error errors[] = {
 	{ KNOT_EFEWDATA,     "not enough data to parse" },
 	{ KNOT_ESPACE,       "not enough space provided" },
 	{ KNOT_EMALF,        "malformed data" },
-	{ KNOT_ENSEC3PAR,    "missing or wrong NSEC3PARAM record" },
-	{ KNOT_ENSEC3CHAIN,  "missing or wrong NSEC3 chain in the zone" },
+	{ KNOT_ETRYAGAIN,    "try again later" },
 	{ KNOT_EOUTOFZONE,   "name does not belong to the zone" },
 	{ KNOT_EZONEINVAL,   "invalid zone file" },
 	{ KNOT_ENOZONE,      "no such zone found" },
@@ -114,6 +113,7 @@ static const struct error errors[] = {
 	{ KNOT_NET_ESEND,    "can't send data" },
 	{ KNOT_NET_ERECV,    "can't receive data" },
 	{ KNOT_NET_ETIMEOUT, "network timeout" },
+	{ KNOT_NET_EAGAIN,   "try network operation again" },
 
 	/* Encoding errors. */
 	{ KNOT_BASE64_ESIZE,    "invalid base64 string length" },
@@ -126,15 +126,6 @@ static const struct error errors[] = {
 	{ KNOT_TSIG_EBADKEY,   "TSIG key not recognized or invalid" },
 	{ KNOT_TSIG_EBADTIME,  "TSIG out of time window" },
 	{ KNOT_TSIG_EBADTRUNC, "TSIG bad truncation" },
-
-	/* DNSSEC errors. */
-	{ KNOT_DNSSEC_ENOKEY,          "no keys for signing" },
-	{ KNOT_DNSSEC_EMISSINGKEYTYPE, "missing active KSK or ZSK" },
-	{ KNOT_DNSSEC_ENOSIG,          "no valid signature for a record" },
-	{ KNOT_DNSSEC_ENONSEC,         "missing NSEC(3) record" },
-	{ KNOT_DNSSEC_ENSEC_BITMAP,    "wrong NSEC(3) bitmap" },
-	{ KNOT_DNSSEC_ENSEC_CHAIN,     "inconsistent NSEC(3) chain" },
-	{ KNOT_DNSSEC_ENSEC3_OPTOUT,   "wrong NSEC3 opt-out" },
 
 	/* Yparser errors. */
 	{ KNOT_YP_ECHAR_TAB,     "tabulator character is not allowed" },
@@ -158,18 +149,27 @@ static const struct error errors[] = {
 	{ KNOT_TXN_ETHREAD,    "transaction thread mismatch" },
 
 	/* DNSSEC errors. */
-	{ KNOT_INVALID_PUBLIC_KEY,    "invalid public key" },
-	{ KNOT_INVALID_PRIVATE_KEY,   "invalid private key" },
-	{ KNOT_INVALID_KEY_ALGORITHM, "invalid key algorithm" },
-	{ KNOT_INVALID_KEY_SIZE,      "invalid key size" },
-	{ KNOT_INVALID_KEY_ID,        "invalid key ID" },
-	{ KNOT_INVALID_KEY_NAME,      "invalid key name" },
-	{ KNOT_NO_PUBLIC_KEY,         "no public key" },
-	{ KNOT_NO_PRIVATE_KEY,        "no private key" },
-	{ KNOT_NO_READY_KEY,          "no key ready for submission" },
-	{ KNOT_ESOON_EXPIRE,          "oncoming RRSIG expiration" },
-	{ KNOT_DNSSEC_EKEYTAG_LIMIT,  "many keys with equal keytag" },
-	{ KNOT_DNSSEC_EXTRA_NSEC,     "superfluous NSEC(3)" },
+	{ KNOT_ENSEC3PAR,              "missing or wrong NSEC3PARAM record" },
+	{ KNOT_ENSEC3CHAIN,            "missing or wrong NSEC3 chain in the zone" },
+	{ KNOT_INVALID_PUBLIC_KEY,     "invalid public key" },
+	{ KNOT_INVALID_PRIVATE_KEY,    "invalid private key" },
+	{ KNOT_INVALID_KEY_ALGORITHM,  "invalid key algorithm" },
+	{ KNOT_INVALID_KEY_SIZE,       "invalid key size" },
+	{ KNOT_INVALID_KEY_ID,         "invalid key ID" },
+	{ KNOT_INVALID_KEY_NAME,       "invalid key name" },
+	{ KNOT_NO_PUBLIC_KEY,          "no public key" },
+	{ KNOT_NO_PRIVATE_KEY,         "no private key" },
+	{ KNOT_NO_READY_KEY,           "no key ready for submission" },
+	{ KNOT_ESOON_EXPIRE,           "oncoming RRSIG expiration" },
+	{ KNOT_DNSSEC_ENOKEY,          "no keys for signing" },
+	{ KNOT_DNSSEC_EMISSINGKEYTYPE, "missing active KSK or ZSK" },
+	{ KNOT_DNSSEC_ENOSIG,          "no valid signature for a record" },
+	{ KNOT_DNSSEC_ENONSEC,         "missing NSEC(3) record" },
+	{ KNOT_DNSSEC_ENSEC_BITMAP,    "wrong NSEC(3) bitmap" },
+	{ KNOT_DNSSEC_ENSEC_CHAIN,     "inconsistent NSEC(3) chain" },
+	{ KNOT_DNSSEC_ENSEC3_OPTOUT,   "wrong NSEC3 opt-out" },
+	{ KNOT_DNSSEC_EKEYTAG_LIMIT,   "many keys with equal keytag" },
+	{ KNOT_DNSSEC_EXTRA_NSEC,      "superfluous NSEC(3)" },
 
 	/* Terminator */
 	{ KNOT_ERROR, NULL }

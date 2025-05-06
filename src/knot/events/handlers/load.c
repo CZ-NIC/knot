@@ -138,10 +138,10 @@ int event_load(conf_t *conf, zone_t *zone)
 		// If configured, add reverse records to zone contents
 		const knot_dname_t *fail_fwd = NULL;
 		ret = zones_reverse(&zone->reverse_from, zf_conts, &fail_fwd);
-		if (ret == KNOT_EAGAIN) {
+		if (ret == KNOT_ETRYAGAIN) {
 			knot_dname_txt_storage_t forw_str;
 			(void)knot_dname_to_str(forw_str, fail_fwd, sizeof(forw_str));
-			log_zone_debug(zone->name, "waiting for source forward zone '%s'", forw_str);
+			log_zone_warning(zone->name, "waiting for source forward zone '%s'", forw_str);
 			goto cleanup;
 		} else if (ret != KNOT_EOK) {
 			log_zone_error(zone->name, "failed to generate reverse records");
