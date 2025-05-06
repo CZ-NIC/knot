@@ -37,7 +37,7 @@ static const struct error errors[] = {
 	{ KNOT_EINVAL,        "invalid parameter" },
 	{ KNOT_ENOTSUP,       "operation not supported" },
 	{ KNOT_EBUSY,         "requested resource is busy" },
-	{ KNOT_EAGAIN,        "OS lacked necessary resources" },
+	{ KNOT_EAGAIN,        "temporarily out of resources" },
 	{ KNOT_ENOBUFS,       "no buffers" },
 	{ KNOT_EMFILE,        "too many open files" },
 	{ KNOT_ENFILE,        "too many open files in system" },
