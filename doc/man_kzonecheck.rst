@@ -29,8 +29,8 @@ Options
 .......
 
 **-o**, **--origin** *origin*
-  Zone origin. If not specified, the origin is determined from the file name
-  (possibly removing the ``.zone`` suffix).
+  Zone origin. If not specified, the origin is determined from the SOA record
+  in the zone file.
 
 **-d**, **--dnssec** **on**\|\ **off**
   Also check DNSSEC-related records. The default is to decide based on the

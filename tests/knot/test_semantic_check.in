@@ -11,39 +11,60 @@ DATA="@top_srcdir@/tests/knot/semantic_check_data"
 TMPDIR=$(test_tmpdir)
 LOG="$TMPDIR/log"
 
-# Params: zonefile fatal_error expected_erros_count semcheck_err_msg
+# Params: zonefile fatal_error expected_erros_count semcheck_err_msg [AUTO]
 expect_error()
 {
-	if [ ! -r "$DATA/$1" ]; then
+	local zonefile="$1"
+	local fatals_exp="$2"
+	local errors_exp="$3"
+	local msg="$4"
+	local auto="$5"
+	local origin=""
+
+	if [ ! -r "$DATA/$zonefile" ]; then
 		skip_block 4 "missing zone file for test"
 		return
 	fi
 
-	"$KZONECHECK" -o example.com "$DATA/$1" > "$LOG" 2>&1
-	ok "$1 - check program return" test $? -eq 1
+	if [ "$auto" != "AUTO" ]; then
+		origin="-o example.com"
+	fi
+
+	"$KZONECHECK" $origin "$DATA/$zonefile" > "$LOG" 2>&1
+	ok "$zonefile - check program return" test $? -eq 1
 
 	fatal=$(grep -E "^error: serious semantic error detected" $LOG | wc -l)
-	ok "$1 - check fatal" test $fatal -eq $2
+	ok "$zonefile - check fatal" test $fatal -eq $fatals_exp
 
-	errors=$(grep -E "^\[.+\] $4" $LOG | wc -l)
-	ok "$1 - check errors" test $errors -eq $3
-	if [ $errors != $3 ]; then
-		diag "expected errors $3 but found $errors"
+	errors=$(grep -E "^\[.+\] $msg" $LOG | wc -l)
+	ok "$zonefile - check errors" test $errors -eq $errors_exp
+	if [ $errors != $errors_exp ]; then
+		diag "expected errors $errors_exp but found $errors"
 	fi
 }
 
-#param zonefile
+#param zonefile [AUTO]
 test_correct()
 {
-	$KZONECHECK -o example.com "$DATA/$1" > /dev/null 2>&1
-	ok "$1 - correct zone, without error" test $? -eq 0
+	local zonefile="$1"
+	local auto="$2"
+	local origin=""
+
+	if [ "$auto" != "AUTO" ]; then
+		origin="-o example.com"
+	fi
+
+	$KZONECHECK $origin "$DATA/$zonefile" > /dev/null 2>&1
+	ok "$zonefile - correct zone, without error" test $? -eq 0
 }
 
 #param zonefile
 test_correct_no_dnssec()
 {
-	$KZONECHECK -o example.com -d off "$DATA/$1" > /dev/null 2>&1
-	ok "$1 - correct zone, without error" test $? -eq 0
+	local zonefile="$1"
+
+	$KZONECHECK -o example.com -d off "$DATA/$zonefile" > /dev/null 2>&1
+	ok "$zonefile - correct zone, without error" test $? -eq 0
 }
 
 if [ ! -x $KZONECHECK ]; then
@@ -78,6 +99,10 @@ NS_GLUE="missing glue record"
 RRSIG_UNVERIFIABLE="no valid signature for a record"
 
 plan_lazy
+
+expect_error "soa.missing"           0 0 "" "AUTO"
+test_correct "soa.duplicate"                "AUTO"
+test_correct "soa.nonfirst"                 "AUTO"
 
 expect_error "soa.missing"           1 1 "$SOA_MISSING"
 expect_error "soa.multiple"          1 1 "$SOA_MULTIPLE"
