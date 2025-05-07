@@ -11,6 +11,7 @@
 #include "contrib/time.h"
 #include "contrib/tolower.h"
 #include "libknot/libknot.h"
+#include "libzscanner/scanner.h"
 #include "knot/common/log.h"
 #include "knot/zone/semantic-check.h"
 #include "knot/zone/zone-load.h"
@@ -139,28 +140,16 @@ int main(int argc, char *argv[])
 		filename = STDIN_REPL;
 	}
 
-	char *zonename;
-	if (origin == NULL) {
-		/* Get zone name from file name. */
-		const char *ext = ".zone";
-		zonename = basename(filename);
-		if (strcmp(zonename + strlen(zonename) - strlen(ext), ext) == 0) {
-			zonename = strndup(zonename, strlen(zonename) - strlen(ext));
-		} else {
-			zonename = strdup(zonename);
-		}
-	} else {
-		zonename = strdup(origin);
-	}
-
 	knot_dname_storage_t zone;
-	if (knot_dname_from_str(zone, zonename, sizeof(zone)) == NULL) {
-		ERR2("invalid zone name");
-		free(zonename);
-		return EXIT_FAILURE;
+	knot_dname_t *zonename = NULL;
+	if (origin != NULL) {
+		if (knot_dname_from_str(zone, origin, sizeof(zone)) == NULL) {
+			ERR2("invalid zone name");
+			return EXIT_FAILURE;
+		}
+		knot_dname_to_lower(zone);
+		zonename = zone;
 	}
-	free(zonename);
-	knot_dname_to_lower(zone);
 
 	log_init();
 	log_levels_set(LOG_TARGET_STDOUT, LOG_SOURCE_ANY, 0);
@@ -171,7 +160,7 @@ int main(int argc, char *argv[])
 		log_levels_add(LOG_TARGET_STDOUT, LOG_SOURCE_ANY, LOG_UPTO(LOG_DEBUG));
 	}
 
-	int ret = zone_check(filename, zone, zonemd, DEFAULT_TTL, optional,
+	int ret = zone_check(filename, zonename, zonemd, DEFAULT_TTL, optional,
 	                     (time_t)check_time, print, threads);
 	log_close();
 	if (ret == KNOT_EOK) {

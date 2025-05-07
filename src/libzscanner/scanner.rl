@@ -104,31 +104,32 @@ int zs_init(
 	// Reset the file descriptor.
 	s->file.descriptor = -1;
 
-	// Use the root zone as origin if not specified.
-	if (origin == NULL || strlen(origin) == 0) {
-		origin = ".";
-	}
-	size_t origin_len = strlen(origin);
+	// Use non-empty origin if specified.
+	if (origin != NULL && strlen(origin) > 0) {
+		size_t origin_len = strlen(origin);
 
-	// Prepare a zone settings header.
-	const char *format;
-	if (origin[origin_len - 1] != '.') {
-		format = "$ORIGIN %s.\n";
+		// Prepare a zone settings header.
+		const char *format;
+		if (origin[origin_len - 1] != '.') {
+			format = "$ORIGIN %s.\n";
+		} else {
+			format = "$ORIGIN %s\n";
+		}
+
+		char settings[1024];
+		int ret = snprintf(settings, sizeof(settings), format, origin);
+		if (ret <= 0 || ret >= sizeof(settings)) {
+			ERR(ZS_ENOMEM);
+			return -1;
+		}
+
+		// Parse the settings to set up the scanner origin.
+		if (zs_set_input_string(s, settings, ret) != 0 ||
+		    zs_parse_all(s) != 0) {
+			return -1;
+		}
 	} else {
-		format = "$ORIGIN %s\n";
-	}
-
-	char settings[1024];
-	int ret = snprintf(settings, sizeof(settings), format, origin);
-	if (ret <= 0 || ret >= sizeof(settings)) {
-		ERR(ZS_ENOMEM);
-		return -1;
-	}
-
-	// Parse the settings to set up the scanner origin.
-	if (zs_set_input_string(s, settings, ret) != 0 ||
-	    zs_parse_all(s) != 0) {
-		return -1;
+		s->zone_origin_length = ZS_NO_ORIGIN_LEN;
 	}
 
 	// Set scanner defaults.
@@ -250,12 +251,46 @@ static char *read_file_to_buf(
 	return buf;
 }
 
+static void check_origin(zs_scanner_t *ss)
+{
+	if (ss->r_type == KNOT_RRTYPE_SOA) {
+		zs_scanner_t *s = ss->process.data;
+		memcpy(s->zone_origin, ss->r_owner, ss->r_owner_length);
+		s->zone_origin_length = ss->r_owner_length;
+		ss->state = ZS_STATE_STOP;
+	}
+}
+
+static int parse_origin(zs_scanner_t *s)
+{
+	if (s->zone_origin_length != ZS_NO_ORIGIN_LEN) {
+		return 0;
+	}
+
+	zs_scanner_t ss;
+	if (zs_init(&ss, ".", KNOT_CLASS_IN, 0) != 0 ||
+	    zs_set_input_string(&ss, s->input.start, s->input.end - s->input.start) != 0 ||
+	    zs_set_processing(&ss, check_origin, NULL, s) != 0 ||
+	    zs_parse_all(&ss) != 0) {
+		zs_deinit(&ss);
+		return -1;
+	}
+	zs_deinit(&ss);
+
+	return s->zone_origin_length != ZS_NO_ORIGIN_LEN ? 0 : -1;
+}
+
 __attribute__((visibility("default")))
 int zs_set_input_string(
 	zs_scanner_t *s,
 	const char *input,
 	size_t size)
 {
+	if (parse_origin(s) != 0) {
+		ERR(ZS_NO_SOA);
+		return -1;
+	}
+
 	s->state = ZS_STATE_NONE;
 
 	return set_input_string(s, input, size, false);
@@ -351,6 +386,12 @@ int zs_set_input_file(
 	s->file.name = strdup(file_name);
 	if (s->file.name == NULL) {
 		ERR(ZS_ENOMEM);
+		input_deinit(s, false);
+		return -1;
+	}
+
+	if (parse_origin(s) != 0) {
+		ERR(ZS_NO_SOA);
 		input_deinit(s, false);
 		return -1;
 	}

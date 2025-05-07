@@ -141,30 +141,33 @@ int zonefile_open(zloader_t *loader, const char *source, const knot_dname_t *ori
 	}
 	memset(zc, 0, sizeof(zcreator_t));
 
-	zc->z = zone_contents_new(origin, true);
-	if (zc->z == NULL) {
-		free(zc);
-		return KNOT_ENOMEM;
-	}
-
-	/* Prepare textual owner for zone scanner. */
-	char *origin_str = knot_dname_to_str_alloc(origin);
-	if (origin_str == NULL) {
-		zone_contents_deep_free(zc->z);
-		free(zc);
-		return KNOT_ENOMEM;
+	/* Prepare textual owner for zone scanner (NULL for autodetection). */
+	char *origin_str = NULL;
+	if (origin != NULL) {
+		origin_str = knot_dname_to_str_alloc(origin);
+		if (origin_str == NULL) {
+			free(zc);
+			return KNOT_ENOMEM;
+		}
 	}
 
 	if (zs_init(&loader->scanner, origin_str, KNOT_CLASS_IN, dflt_ttl) != 0 ||
 	    zs_set_input_file(&loader->scanner, source) != 0 ||
 	    zs_set_processing(&loader->scanner, process_data, process_error, zc) != 0) {
+		bool missing_origin = loader->scanner.error.code == ZS_NO_SOA;
 		zs_deinit(&loader->scanner);
 		free(origin_str);
-		zone_contents_deep_free(zc->z);
 		free(zc);
-		return KNOT_EFILE;
+		return missing_origin ? KNOT_ESOAINVAL : KNOT_EFILE;
 	}
 	free(origin_str);
+
+	zc->z = zone_contents_new(loader->scanner.zone_origin, true);
+	if (zc->z == NULL) {
+		zs_deinit(&loader->scanner);
+		free(zc);
+		return KNOT_ENOMEM;
+	}
 
 	loader->source = strdup(source);
 	loader->creator = zc;

@@ -8,6 +8,7 @@
 
 #include "utils/kzonecheck/zone_check.h"
 
+#include "knot/common/log.h"
 #include "knot/zone/contents.h"
 #include "knot/zone/digest.h"
 #include "knot/zone/zonefile.h"
@@ -69,11 +70,21 @@ int zone_check(const char *zone_file, const knot_dname_t *zone_name, bool zonemd
 	case KNOT_EFILE:
 		ERR2("failed to load the zone file");
 		return ret;
+	case KNOT_ESOAINVAL:
+		ERR2("failed to detect zone origin (missing SOA)");
+		return ret;
 	default:
 		ERR2("failed to run semantic checks (%s)", knot_strerror(ret));
 		return ret;
 	}
 	zl.err_handler = (sem_handler_t *)&stats;
+
+	if (zone_name == NULL) {
+		knot_dname_txt_storage_t origin;
+		if (knot_dname_to_str(origin,zl.scanner.zone_origin , sizeof(origin)) != NULL) {
+			log_debug("detected zone origin %s", origin);
+		}
+	}
 
 	zone_contents_t *contents = zonefile_load(&zl, threads);
 	zonefile_close(&zl);
