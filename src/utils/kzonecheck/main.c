@@ -63,7 +63,7 @@ int main(int argc, char *argv[])
 	const char *origin = NULL;
 	bool zonemd = false, verbose = false, print = false;
 	uint16_t threads = 0;
-	semcheck_optional_t optional = SEMCHECK_DNSSEC_AUTO; // default value for --dnssec
+	sem_options_t options = { .dnssec = DNSSEC_AUTO };
 	knot_time_t check_time = (knot_time_t)time(NULL);
 
 	/* Long options. */
@@ -109,7 +109,7 @@ int main(int argc, char *argv[])
 			print_version(PROGRAM_NAME, optarg != NULL);
 			return EXIT_SUCCESS;
 		case 'd':
-			optional = str2bool(optarg) ? SEMCHECK_DNSSEC_ON : SEMCHECK_DNSSEC_OFF;
+			options.dnssec = str2bool(optarg) ? DNSSEC_ON : DNSSEC_OFF;
 			break;
 		case 'z':
 			zonemd = true;
@@ -171,7 +171,7 @@ int main(int argc, char *argv[])
 		log_levels_add(LOG_TARGET_STDOUT, LOG_SOURCE_ANY, LOG_UPTO(LOG_DEBUG));
 	}
 
-	int ret = zone_check(filename, zone, zonemd, DEFAULT_TTL, optional,
+	int ret = zone_check(filename, zone, zonemd, DEFAULT_TTL, options,
 	                     (time_t)check_time, print, threads);
 	log_close();
 	if (ret == KNOT_EOK) {

@@ -83,8 +83,11 @@ static int zonesign(sign_params_t *params)
 		goto fail;
 	}
 
+	sem_options_t options = {
+		.soft = true
+	};
 	ret = zone_load_contents(conf(), params->zone_name, &unsigned_conts,
-	                         SEMCHECK_MANDATORY_SOFT, false);
+	                         options, false);
 	if (ret != KNOT_EOK) {
 		ERR2("failed to load zone contents (%s)", knot_strerror(ret));
 		goto fail;

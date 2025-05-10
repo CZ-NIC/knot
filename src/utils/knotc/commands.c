@@ -554,8 +554,14 @@ static int zone_check(const knot_dname_t *dname, void *data)
 	}
 
 	zone_contents_t *contents = NULL;
-	conf_val_t mode = conf_zone_get(conf(), C_SEM_CHECKS, dname);
-	int ret = zone_load_contents(conf(), dname, &contents, conf_opt(&mode), args->force);
+	conf_val_t val = conf_zone_get(conf(), C_SEM_CHECKS, dname);
+	unsigned mode = conf_opt(&val);
+	sem_options_t options = {
+		.soft = (mode == SEMCHECKS_SOFT),
+		.optional = (mode == SEMCHECKS_ON),
+		.dnssec = (mode == SEMCHECKS_ON ? DNSSEC_AUTO : DNSSEC_OFF),
+	};
+	int ret = zone_load_contents(conf(), dname, &contents, options, args->force);
 	zone_contents_deep_free(contents);
 	if (ret != KNOT_EOK && ret != KNOT_ESEMCHECK) {
 		knot_dname_txt_storage_t name;

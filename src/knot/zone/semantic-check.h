@@ -10,14 +10,6 @@
 #include "knot/conf/schema.h"
 #include "knot/zone/contents.h"
 
-typedef enum {
-	SEMCHECK_MANDATORY_ONLY = SEMCHECKS_OFF,
-	SEMCHECK_DNSSEC_AUTO    = SEMCHECKS_ON,
-	SEMCHECK_MANDATORY_SOFT = SEMCHECKS_SOFT,
-	SEMCHECK_DNSSEC_OFF,
-	SEMCHECK_DNSSEC_ON,
-} semcheck_optional_t;
-
 /*!
  *\brief Internal error constants.
  */
@@ -91,13 +83,36 @@ struct sem_handler {
 	bool warning;     /* The checks detected at least one warning. */
 };
 
+/*
+typedef enum {
+	SEMCHECK_MANDATORY_ONLY = SEMCHECKS_OFF,
+	SEMCHECK_DNSSEC_AUTO    = SEMCHECKS_ON,
+	SEMCHECK_MANDATORY_SOFT = SEMCHECKS_SOFT,
+	SEMCHECK_DNSSEC_OFF,
+	SEMCHECK_DNSSEC_ON,
+} semcheck_optional_t;
+*/
+
+/*!
+ * \brief Semantic checks options.
+ */
+typedef struct {
+	bool soft;
+	bool optional;
+	enum {
+		DNSSEC_AUTO,
+		DNSSEC_OFF,
+		DNSSEC_ON,
+	} dnssec;
+} sem_options_t;
+
 /*!
  * \brief Check zone for semantic errors.
  *
  * Errors are logged in error handler.
  *
  * \param zone      Zone to be searched / checked.
- * \param optional  To do also optional check.
+ * \param options   Semantic checks options.
  * \param handler   Semantic error handler.
  * \param time      Check zone at given time (rrsig expiration).
  * \param threads   The number of threads used for DNSSEC validation.
@@ -107,5 +122,5 @@ struct sem_handler {
  * \retval KNOT_EEMPTYZONE  the zone is empty
  * \retval KNOT_EINVAL      another error
  */
-int sem_checks_process(zone_contents_t *zone, semcheck_optional_t optional, sem_handler_t *handler,
+int sem_checks_process(zone_contents_t *zone, sem_options_t options, sem_handler_t *handler,
                        time_t time, uint16_t threads);

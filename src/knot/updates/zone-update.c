@@ -875,10 +875,13 @@ int zone_update_semcheck(conf_t *conf, zone_update_t *update)
 	};
 
 	conf_val_t val = conf_zone_get(conf, C_SEM_CHECKS, update->zone->name);
-	semcheck_optional_t mode = (conf_opt(&val) == SEMCHECKS_SOFT) ?
-	                           SEMCHECK_MANDATORY_SOFT : SEMCHECK_MANDATORY_ONLY;
+	sem_options_t options = {
+		.soft = (conf_opt(&val) == SEMCHECKS_SOFT),
+		.optional = false,
+		.dnssec = false,
+	};
 
-	ret = sem_checks_process(update->new_cont, mode, &handler, time(NULL), 0);
+	ret = sem_checks_process(update->new_cont, options, &handler, time(NULL), 0);
 	if (ret != KNOT_EOK) {
 		// error is logged by the error handler
 		return ret;

@@ -121,7 +121,7 @@ static void process_data(zs_scanner_t *scanner)
 }
 
 int zonefile_open(zloader_t *loader, const char *source, const knot_dname_t *origin,
-                  uint32_t dflt_ttl, semcheck_optional_t semantic_checks, time_t time)
+                  uint32_t dflt_ttl, sem_options_t sem_options, time_t time)
 {
 	if (!loader) {
 		return KNOT_EINVAL;
@@ -168,7 +168,7 @@ int zonefile_open(zloader_t *loader, const char *source, const knot_dname_t *ori
 
 	loader->source = strdup(source);
 	loader->creator = zc;
-	loader->semantic_checks = semantic_checks;
+	loader->sem_options = sem_options;
 	loader->time = time;
 
 	return KNOT_EOK;
@@ -219,7 +219,7 @@ zone_contents_t *zonefile_load(zloader_t *loader, uint16_t threads)
 		goto fail;
 	}
 
-	ret = sem_checks_process(zc->z, loader->semantic_checks,
+	ret = sem_checks_process(zc->z, loader->sem_options,
 	                         loader->err_handler, loader->time, threads);
 
 	if (ret != KNOT_EOK) {

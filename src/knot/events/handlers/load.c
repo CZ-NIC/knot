@@ -103,18 +103,23 @@ int event_load(conf_t *conf, zone_t *zone)
 		char *filename = conf_zonefile(conf, zone->name);
 		ret = zonefile_exists(filename, &mtime);
 		if (ret == KNOT_EOK) {
-			conf_val_t semchecks = conf_zone_get(conf, C_SEM_CHECKS, zone->name);
-			semcheck_optional_t mode = conf_opt(&semchecks);
-			if (mode == SEMCHECK_DNSSEC_AUTO) {
+			val = conf_zone_get(conf, C_SEM_CHECKS, zone->name);
+			unsigned mode = conf_opt(&val);
+			sem_options_t options = {
+				.soft = (mode == SEMCHECKS_SOFT)
+			};
+			if (mode == SEMCHECKS_ON) {
+				options.optional = true;
+				options.dnssec = DNSSEC_AUTO;
 				conf_val_t validation = conf_zone_get(conf, C_DNSSEC_VALIDATION, zone->name);
 				if (conf_bool(&validation)) {
 					/* Disable duplicate DNSSEC checks, which are the
 					   same as DNSSEC validation in zone update commit. */
-					mode = SEMCHECK_DNSSEC_OFF;
+					options.dnssec = DNSSEC_OFF;
 				}
 			}
 
-			ret = zone_load_contents(conf, zone->name, &zf_conts, mode, false);
+			ret = zone_load_contents(conf, zone->name, &zf_conts, options, false);
 		}
 		if (ret != KNOT_EOK) {
 			assert(!zf_conts);

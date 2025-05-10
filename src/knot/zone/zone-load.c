@@ -14,7 +14,7 @@
 #include "libknot/libknot.h"
 
 int zone_load_contents(conf_t *conf, const knot_dname_t *zone_name,
-                       zone_contents_t **contents, semcheck_optional_t semcheck_mode,
+                       zone_contents_t **contents, sem_options_t sem_options,
                        bool fail_on_warning)
 {
 	if (conf == NULL || zone_name == NULL || contents == NULL) {
@@ -34,7 +34,7 @@ int zone_load_contents(conf_t *conf, const knot_dname_t *zone_name,
 
 	zloader_t zl;
 	ret = zonefile_open(&zl, zonefile, zone_name, dflt_ttl,
-	                    semcheck_mode, time(NULL));
+	                    sem_options, time(NULL));
 	free(zonefile);
 	if (ret != KNOT_EOK) {
 		zone_skip_free(&skip);

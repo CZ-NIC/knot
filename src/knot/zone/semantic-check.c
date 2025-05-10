@@ -130,8 +130,8 @@ static const struct check_function CHECK_FUNCTIONS[] = {
 	{ check_dname,          MANDATORY | SOFT },
 	{ check_delegation,     MANDATORY | SOFT }, // mandatory for apex, optional for others
 	{ check_ds,             MANDATORY | SOFT }, // mandatory for apex, optional for others
-	{ check_nsec3param,     DNSSEC },
-	{ check_submission,     DNSSEC },
+	{ check_nsec3param,     DNSSEC    | SOFT },
+	{ check_submission,     DNSSEC    | SOFT },
 };
 
 static const int CHECK_FUNCTIONS_LEN = sizeof(CHECK_FUNCTIONS)
@@ -532,7 +532,7 @@ static int verify_dnssec(zone_contents_t *zone, sem_handler_t *handler, time_t t
 	}
 }
 
-int sem_checks_process(zone_contents_t *zone, semcheck_optional_t optional, sem_handler_t *handler,
+int sem_checks_process(zone_contents_t *zone, sem_options_t options, sem_handler_t *handler,
                        time_t time, uint16_t threads)
 {
 	if (handler == NULL) {
@@ -550,26 +550,15 @@ int sem_checks_process(zone_contents_t *zone, semcheck_optional_t optional, sem_
 		.time = time,
 	};
 
-	switch (optional) {
-	case SEMCHECK_MANDATORY_SOFT:
+	if (options.soft) {
 		data.level |= SOFT;
-		data.handler->soft_check = true;
-		break;
-	case SEMCHECK_DNSSEC_AUTO:
+	}
+	if (options.optional) {
 		data.level |= OPTIONAL;
-		if (zone->dnssec) {
-			data.level |= DNSSEC;
-		}
-		break;
-	case SEMCHECK_DNSSEC_ON:
-		data.level |= OPTIONAL;
+	}
+	if ((options.dnssec == DNSSEC_ON) ||
+	    (options.dnssec == DNSSEC_AUTO && zone->dnssec)) {
 		data.level |= DNSSEC;
-		break;
-	case SEMCHECK_DNSSEC_OFF:
-		data.level |= OPTIONAL;
-		break;
-	default:
-		break;
 	}
 
 	int ret = zone_contents_apply(zone, do_checks_in_tree, &data);

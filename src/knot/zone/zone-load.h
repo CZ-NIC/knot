@@ -17,7 +17,7 @@
  * \param conf
  * \param zone_name
  * \param contents
- * \param semcheck_mode
+ * \param sem_options
  * \param fail_on_warning
  *
  * \retval KNOT_EOK        if success.
@@ -25,7 +25,7 @@
  * \retval KNOT_E*         if error.
  */
 int zone_load_contents(conf_t *conf, const knot_dname_t *zone_name,
-                       zone_contents_t **contents, semcheck_optional_t semcheck_mode,
+                       zone_contents_t **contents, sem_options_t sem_options,
                        bool fail_on_warning);
 
 /*!
