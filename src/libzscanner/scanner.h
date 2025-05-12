@@ -38,6 +38,9 @@
 /*! \brief Ragel call stack size (see Ragel internals). */
 #define ZS_RAGEL_STACK_SIZE		16
 
+/*! \brief Indication of automatic origin detection. */
+#define ZS_NO_ORIGIN_LEN		UINT32_MAX
+
 /*! \brief Auxiliary structure for storing bitmap window items (see RFC4034). */
 typedef struct {
 	uint8_t bitmap[32];
@@ -265,7 +268,7 @@ struct zs_scanner {
  * \note Error code is stored in the scanner context.
  *
  * \param scanner  Scanner context.
- * \param origin   Initial zone origin.
+ * \param origin   Initial zone origin. Autodetected if empty.
  * \param rclass   Zone class value.
  * \param ttl      Initial ttl value.
  *
