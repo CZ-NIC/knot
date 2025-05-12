@@ -2,6 +2,13 @@
 %{!?_pkgdocdir: %global _pkgdocdir %{_docdir}/%{name}}
 
 %define GPG_CHECK 0
+%if 0%{?fedora} >= 40 || 0%{?rhel} >= 9
+# use modern %pyproject_* macros on distros which support them
+%define PYPROJECT 1
+%else
+# use older %py3_* macros on older/other distros
+%define PYPROJECT 0
+%endif
 %define BASE_VERSION %(echo "%{version}" | sed 's/^\\([^.]\\+\\.[^.]\\+\\).*/\\1/')
 %define repodir %{_builddir}/%{name}-%{version}
 
@@ -51,7 +58,13 @@ BuildRequires:	pkgconfig(libmaxminddb)
 BuildRequires:	pkgconfig(libbpf)
 # Python modules (python3-libknot, knot-exporter) dependencies
 BuildRequires:  python3-devel
+%if 0%{?PYPROJECT}
+BuildRequires:  pyproject-rpm-macros
+BuildRequires:  python3-pip
+BuildRequires:  python3-hatchling
+%else
 BuildRequires:  python3-setuptools
+%endif
 
 # Distro-dependent dependencies
 %if 0%{?suse_version}
@@ -198,11 +211,19 @@ make html
 
 # build python3-libknot
 pushd python/libknot
+%if %{PYPROJECT}
+%pyproject_wheel
+%else
 %py3_build
+%endif
 popd
 # build knot-exporter
 pushd python/knot_exporter
+%if %{PYPROJECT}
+%pyproject_wheel
+%else
 %py3_build
+%endif
 popd
 
 %install
@@ -210,11 +231,19 @@ make install DESTDIR=%{buildroot}
 
 # install python3-libknot
 pushd python/libknot
+%if %{PYPROJECT}
+%pyproject_install
+%else
 %py3_install
+%endif
 popd
 # install knot-exporter
 pushd python/knot_exporter
+%if %{PYPROJECT}
+%pyproject_install
+%else
 %py3_install
+%endif
 popd
 
 # install documentation
@@ -341,11 +370,11 @@ getent passwd knot >/dev/null || \
 %files exporter
 %{_bindir}/knot-exporter
 %{python3_sitelib}/knot_exporter
-%{python3_sitelib}/knot_exporter-*.egg-info
+%{python3_sitelib}/knot_exporter-*-info
 
 %files -n python3-libknot
 %{python3_sitelib}/libknot
-%{python3_sitelib}/libknot-*.egg-info
+%{python3_sitelib}/libknot-*-info
 
 %files libs
 %license COPYING
