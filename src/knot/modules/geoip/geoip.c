@@ -591,7 +591,7 @@ static int geo_conf_yparse(check_ctx_t *check, geoip_ctx_t *ctx)
 		ret = KNOT_ENOMEM;
 		goto cleanup;
 	}
-	if (zs_init(scanner, NULL, KNOT_CLASS_IN, ctx->ttl) != 0) {
+	if (zs_init(scanner, ".", KNOT_CLASS_IN, ctx->ttl) != 0) {
 		ret = KNOT_EPARSEFAIL;
 		goto cleanup;
 	}

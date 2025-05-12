@@ -507,7 +507,7 @@ static int read_ksr_skr(kdnssec_ctx_t *ctx, const char *infile,
                         void (*cb_header)(zs_scanner_t *), void (*cb_record)(zs_scanner_t *))
 {
 	zs_scanner_t sc = { 0 };
-	int ret = zs_init(&sc, "", KNOT_CLASS_IN, 0);
+	int ret = zs_init(&sc, ".", KNOT_CLASS_IN, 0);
 	if (ret < 0) {
 		return KNOT_ERROR;
 	}
