@@ -81,8 +81,10 @@ void conf_mod_unload_shared(
  * \param[in] zone_name      Zone name, NULL for all zones.
  * \param[in] query_modules  Destination query modules list.
  * \param[in] query_plan     Destination query plan.
+ * 
+ * \return Error code, KNOT_EOK if success.
  */
-void conf_activate_modules(
+int conf_activate_modules(
 	conf_t *conf,
 	struct server *server,
 	const knot_dname_t *zone_name,
