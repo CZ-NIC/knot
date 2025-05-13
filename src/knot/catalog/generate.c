@@ -120,7 +120,9 @@ void catalogs_generate(struct knot_zonedb *db_new, struct knot_zonedb *db_old)
 		knot_dname_t *owner = catalog_member_owner(zone->name, cg, zone->timers.catalog_member);
 		size_t cgroup_size = zone->catalog_group == NULL ? 0 : strlen(zone->catalog_group);
 		if (catz == NULL) {
-			log_zone_warning(zone->name, "member zone belongs to non-existing catalog zone");
+			log_zone_error(zone->name, "member zone belongs to non-existing catalog zone");
+		} else if (catz->cat_members == NULL) {
+			log_zone_error(zone->name, "member zone belongs to non-generated catalog zone");
 		} else if (catz->contents == NULL || old == NULL) {
 			assert(catz->cat_members != NULL);
 			if (owner == NULL) {
