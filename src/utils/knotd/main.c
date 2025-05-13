@@ -116,42 +116,75 @@ static void drop_capabilities(void)
 #endif /* ENABLE_CAP_NG */
 }
 
-static void check_loaded(server_t *server)
+static int check_loaded(server_t *server, bool async)
 {
-	static bool finished = false;
-	if (finished) {
-		return;
+	/*
+	 * Started: all zones loaded or at least tried to do so at least once.
+	 *          the server is already running and accepting queries.
+	 * Loaded:  all zones successfully loaded, it implies 'started'.
+	 *          KNOT_BUS_EVENT_STARTED already emitted over DBus,
+	 */
+	static bool started = false;
+	static bool loaded = false;
+	if (loaded) {
+		assert(server->state & ServerRunning);
+		return KNOT_EOK;
 	}
 
 	/* Avoid traversing the zonedb too frequently. */
 	static struct timespec last = { 0 };
 	struct timespec now = time_now();
 	if (last.tv_sec == now.tv_sec) {
-		return;
+		return KNOT_EOK;
 	}
 	last = now;
 
-	if (!(conf()->cache.srv_dbus_event & DBUS_EVENT_RUNNING)) {
-		finished = true;
-		return;
-	}
-
+	started = started || async;
+	bool start = true;
+	bool load = true;
 	rcu_read_lock();
 	knot_zonedb_iter_t *it = knot_zonedb_iter_begin(server->zone_db);
 	while (!knot_zonedb_iter_finished(it)) {
 		zone_t *zone = (zone_t *)knot_zonedb_iter_val(it);
-		if (zone->contents == NULL) {
-			knot_zonedb_iter_free(it);
-			rcu_read_unlock();
-			return;
+		if (zone->contents != NULL) {
+			knot_zonedb_iter_next(it);
+			continue;
 		}
+		load = false;
+		if (started) {
+			break;
+		} else if (zone_get_flag(zone, ZONE_STARTED, false) != ZONE_STARTED) {
+			start = false;
+			break;
+		}
+
 		knot_zonedb_iter_next(it);
 	}
 	knot_zonedb_iter_free(it);
 	rcu_read_unlock();
 
-	finished = true;
-	dbus_emit_running(true);
+	if (!start) {
+		return KNOT_EOK;
+	}
+	if (!started) {
+		int ret = server_start(server);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+		started = true;
+	}
+
+	assert(server->state & ServerRunning);
+	if (conf()->cache.srv_dbus_event & DBUS_EVENT_RUNNING) {
+		if (load) {   /* Not 'loaded' yet. */
+			dbus_emit_running(true);
+			loaded = true;
+		}
+	} else {
+		loaded = true;
+	}
+
+	return KNOT_EOK;
 }
 
 static void deinit_ctls(knot_ctl_t **ctls, unsigned count)
@@ -218,12 +251,13 @@ static knot_ctl_t **init_ctls(const char *socket)
 }
 
 /*! \brief Event loop listening for signals and remote commands. */
-static void event_loop(server_t *server, const char *socket, bool daemonize,
-                       unsigned long pid)
+static int event_loop(server_t *server, const char *socket, bool daemonize,
+                       unsigned long pid, bool async)
 {
 	knot_ctl_t **ctls = init_ctls(socket);
 	if (ctls == NULL) {
-		return;
+// XXX Select suitable error codes in this function.
+		return KNOT_ERROR;
 	}
 
 	conf_val_t listen_val = conf_get(conf(), C_CTL, C_LISTEN);
@@ -238,7 +272,7 @@ static void event_loop(server_t *server, const char *socket, bool daemonize,
 	if (ret != KNOT_EOK) {
 		log_fatal("control, failed to launch socket threads (%s)",
 		          knot_strerror(ret));
-		return;
+		return KNOT_ERROR;
 	}
 
 	signals_enable();
@@ -276,7 +310,10 @@ static void event_loop(server_t *server, const char *socket, bool daemonize,
 			continue;
 		}
 
-		check_loaded(server);
+		ret = check_loaded(server, async);
+		if (ret != KNOT_EOK) {
+			goto done;
+		}
 
 		sleep(5); // wait for signals to arrive
 	}
@@ -285,8 +322,10 @@ static void event_loop(server_t *server, const char *socket, bool daemonize,
 		dbus_emit_running(false);
 	}
 
+done:
 	ctl_socket_thr_end(&sctx);
 	deinit_ctls(ctls, sock_count);
+	return ret;
 }
 
 static void print_help(void)
@@ -562,29 +601,42 @@ int main(int argc, char **argv)
 
 	stats_reconfigure(conf(), &server);
 
+	/* Start workers. */
+	worker_pool_start(server.workers);
+
+	/* Start evsched handler. */
+	evsched_start(&server.sched);
+
 	/* Start it up. */
 	log_info("starting server");
 	conf_val_t async_val = conf_get(conf(), C_SRV, C_ASYNC_START);
-	ret = server_start(&server, conf_bool(&async_val));
-	if (ret != KNOT_EOK) {
-		log_fatal("failed to start server (%s)", knot_strerror(ret));
-		server_wait(&server);
-		stats_deinit();
-		server_deinit(&server);
-		rcu_unregister_thread();
-		pid_cleanup();
-		conf_free(conf());
-		dbus_close();
-		log_close();
-		dnssec_crypto_cleanup();
-		return EXIT_FAILURE;
+	bool async = conf_bool(&async_val);
+	if (async) {
+		ret = server_start(&server);
+		if (ret != KNOT_EOK) {
+// XXX use rather goto done;
+			log_fatal("failed to start server (%s)", knot_strerror(ret));
+			server_wait(&server);
+			stats_deinit();
+			server_deinit(&server);
+			rcu_unregister_thread();
+			pid_cleanup();
+			conf_free(conf());
+			dbus_close();
+			log_close();
+			dnssec_crypto_cleanup();
+			return EXIT_FAILURE;
+		}
 	}
 
 	/* Start the event loop. */
-	event_loop(&server, socket, daemonize, pid);
+ret = KNOT_EOK;
+	ret = event_loop(&server, socket, daemonize, pid, async);
 
-	/* Teardown server. */
 	server_stop(&server);
+
+done:
+	/* Teardown server. */
 	server_wait(&server);
 	stats_deinit();
 
@@ -600,10 +652,11 @@ int main(int argc, char **argv)
 
 	dbus_close();
 
+// XXX
 	log_info("shutting down");
 	log_close();
 
 	dnssec_crypto_cleanup();
 
-	return EXIT_SUCCESS;
+	return (ret == KNOT_EOK) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
