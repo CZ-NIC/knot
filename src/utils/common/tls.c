@@ -320,14 +320,56 @@ static int check_certificates(gnutls_session_t session, const list_t *pins)
 			gnutls_x509_crt_deinit(cert);
 			return ret;
 		}
+
+		char dnsname[cert_name.size]; dnsname[0] = 0;
+		char ipaddress[cert_name.size]; ipaddress[0] = 0;
+
 		char *altname = strstr((char *)cert_name.data, "Subject Alternative Name");
 		if (altname) {
-			char *newline = strstr(altname, "\n");
-			while (!strncmp("\n\t\t\t", newline, 4)) {
-				newline = strstr(newline + 1, "\n");
+			char *input_ptr = altname;
+			char *dnsname_ptr = dnsname;
+			char *ipaddress_ptr = ipaddress;
+			while (*input_ptr != '\0') {
+				switch (*input_ptr) {
+				case 'D':
+					if (strncmp(input_ptr, "DNSname: ", sizeof("DNSname: ") - 1) != 0) {
+						++input_ptr;
+						break;
+					}
+					input_ptr += sizeof("DNSname: ") - 1;
+					while (*input_ptr != '\0' && *input_ptr != '\n') {
+						*(dnsname_ptr++) = *(input_ptr++);
+					}
+					*(dnsname_ptr++) = ',';
+					*(dnsname_ptr++) = ' ';
+					break;
+				case 'I':
+					if (strncmp(input_ptr, "IPAddress: ", sizeof("IPAddress: ") - 1) != 0) {
+						++input_ptr;
+						break;
+					}
+					input_ptr += sizeof("IPAddress: ") - 1;
+					while (*input_ptr != '\0' && *input_ptr != '\n') {
+						*(ipaddress_ptr++) = *(input_ptr++);
+					}
+					*(ipaddress_ptr++) = ',';
+					*(ipaddress_ptr++) = ' ';
+					break;
+
+				default:
+					++input_ptr;
+					break;
+				}
 			}
-			newline[0] = '\0';
-			DBG("     %s", altname);
+			if (dnsname_ptr > dnsname + 2) {
+				*(dnsname_ptr - 2) = '\0';
+			}
+			if (ipaddress_ptr > ipaddress + 2) {
+				*(ipaddress_ptr - 2) = '\0';
+			}
+			DBG("     %s", "Subject Alternative Name");
+			DBG("       %s: %s", "DNSname", dnsname);
+			DBG("       %s: %s", "IPAddress", ipaddress);
 		}
 		gnutls_free(cert_name.data);
 
