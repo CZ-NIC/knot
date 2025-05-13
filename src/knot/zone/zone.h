@@ -29,16 +29,17 @@ struct zone_backup_ctx;
  * When updating check create_zone_reload() if the flag mask is ok.
  */
 typedef enum {
-	ZONE_FORCE_AXFR     = 1 << 0, /*!< Force AXFR as next transfer. */
-	ZONE_FORCE_RESIGN   = 1 << 1, /*!< Force zone re-sign. */
-	ZONE_FORCE_FLUSH    = 1 << 2, /*!< Force zone flush. */
-	ZONE_FORCE_KSK_ROLL = 1 << 3, /*!< Force KSK/CSK rollover. */
-	ZONE_FORCE_ZSK_ROLL = 1 << 4, /*!< Force ZSK rollover. */
-	ZONE_IS_CATALOG     = 1 << 5, /*!< This is a catalog. */
-	ZONE_IS_CAT_MEMBER  = 1 << 6, /*!< This zone exists according to a catalog. */
-	ZONE_XFR_FROZEN     = 1 << 7, /*!< Outgoing AXFR/IXFR temporarily disabled. */
-	ZONE_USER_FLUSH     = 1 << 8, /*!< User-triggered flush. */
-	ZONE_LAST_SIGN_OK   = 1 << 9, /*!< Last full-sign event finished OK. */
+	ZONE_FORCE_AXFR     = 1 <<  0, /*!< Force AXFR as next transfer. */
+	ZONE_FORCE_RESIGN   = 1 <<  1, /*!< Force zone re-sign. */
+	ZONE_FORCE_FLUSH    = 1 <<  2, /*!< Force zone flush. */
+	ZONE_FORCE_KSK_ROLL = 1 <<  3, /*!< Force KSK/CSK rollover. */
+	ZONE_FORCE_ZSK_ROLL = 1 <<  4, /*!< Force ZSK rollover. */
+	ZONE_IS_CATALOG     = 1 <<  5, /*!< This is a catalog. */
+	ZONE_IS_CAT_MEMBER  = 1 <<  6, /*!< This zone exists according to a catalog. */
+	ZONE_XFR_FROZEN     = 1 <<  7, /*!< Outgoing AXFR/IXFR temporarily disabled. */
+	ZONE_USER_FLUSH     = 1 <<  8, /*!< User-triggered flush. */
+	ZONE_LAST_SIGN_OK   = 1 <<  9, /*!< Last full-sign event finished OK. */
+	ZONE_STARTED        = 1 << 10, /*!< Zone load has been attempted. */
 } zone_flag_t;
 
 /*!
