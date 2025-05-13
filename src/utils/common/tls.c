@@ -327,7 +327,7 @@ static int check_certificates(gnutls_session_t session, const list_t *pins)
 				newline = strstr(newline + 1, "\n");
 			}
 			newline[0] = '\0';
-			DBG("     %s", altname);
+			DBG2("     %s", altname);
 		}
 		gnutls_free(cert_name.data);
 
