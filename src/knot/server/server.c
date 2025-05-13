@@ -988,23 +988,11 @@ static void worker_wait_cb(worker_pool_t *pool)
 	}
 }
 
-int server_start(server_t *server, bool async)
+int server_start(server_t *server)
 {
 	if (server == NULL) {
 		return KNOT_EINVAL;
 	}
-
-	/* Start workers. */
-	worker_pool_start(server->workers);
-
-	/* Wait for enqueued events if not asynchronous. */
-	if (!async) {
-		worker_pool_wait_cb(server->workers, worker_wait_cb);
-		systemd_tasks_status_notify(0);
-	}
-
-	/* Start evsched handler. */
-	evsched_start(&server->sched);
 
 	/* Start I/O handlers. */
 	server->state |= ServerRunning;

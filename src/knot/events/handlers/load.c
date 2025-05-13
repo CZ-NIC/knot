@@ -46,6 +46,10 @@ static bool allowed_xfr(conf_t *conf, const zone_t *zone)
 
 int event_load(conf_t *conf, zone_t *zone)
 {
+// XXX Carefully select a place (places) where to set it in this function
+// XXX and possibly where not.
+	zone_set_flag(zone, ZONE_STARTED);
+
 	zone_update_t up = { 0 };
 	zone_contents_t *journal_conts = NULL, *zf_conts = NULL;
 	bool old_contents_exist = (zone->contents != NULL), zone_in_journal_exists = false;

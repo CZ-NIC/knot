@@ -40,7 +40,7 @@ int main(int argc, char *argv[])
 	}
 
 	/* Test server startup */
-	ret = server_start(&server, false);
+	ret = server_start(&server);
 	is_int(KNOT_EOK, ret, "server: started ok");
 	if (ret != KNOT_EOK) {
 	        return 1;
