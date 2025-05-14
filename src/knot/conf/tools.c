@@ -359,19 +359,6 @@ int check_modulo(
 	return KNOT_EOK;
 }
 
-int check_ctl_listen(
-	knotd_conf_check_args_t *args)
-{
-	conf_val_t val = conf_get_txn(args->extra->conf, args->extra->txn,
-	                              C_CTL, C_LISTEN);
-	if (conf_val_count(&val) > CTL_MAX_CONCURRENT / 2) {
-		args->err_str = "too many control sockets configured";
-		return KNOT_EINVAL;
-	}
-
-	return KNOT_EOK;
-}
-
 int check_modulo_shift(
 	knotd_conf_check_args_t *args)
 {
@@ -380,6 +367,31 @@ int check_modulo_shift(
 	if (serial_modulo_parse((const char *)args->data, &rem, &mod, &add) != KNOT_EOK ||
 	    mod > 256 || rem >= mod || add > 2000000000 || add < -2000000000) {
 		args->err_str = "invalid value, expected format '[R/M][+-A]', where R < M <= 256 and |A| < 2e9";
+		return KNOT_EINVAL;
+	}
+
+	return KNOT_EOK;
+}
+
+int check_zonefile_skip(
+	knotd_conf_check_args_t *args)
+{
+	zone_skip_t skip = { 0 };
+	if (zone_skip_add(&skip, (const char *)args->data) != KNOT_EOK) {
+		args->err_str = "invalid type";
+		return KNOT_EINVAL;
+	}
+	zone_skip_free(&skip);
+	return KNOT_EOK;
+}
+
+int check_ctl_listen(
+	knotd_conf_check_args_t *args)
+{
+	conf_val_t val = conf_get_txn(args->extra->conf, args->extra->txn,
+	                              C_CTL, C_LISTEN);
+	if (conf_val_count(&val) > CTL_MAX_CONCURRENT / 2) {
+		args->err_str = "too many control sockets configured";
 		return KNOT_EINVAL;
 	}
 
@@ -1031,18 +1043,6 @@ static int sub_check_catalog_tpl(
 		CHECK_CATZ_TPL(C_CATALOG_GROUP, "catalog-group");
 		return KNOT_EOK;
 	}
-}
-
-int check_zonefile_skip(
-	knotd_conf_check_args_t *args)
-{
-	zone_skip_t skip = { 0 };
-	if (zone_skip_add(&skip, (const char *)args->data) != KNOT_EOK) {
-		args->err_str = "invalid type";
-		return KNOT_EINVAL;
-	}
-	zone_skip_free(&skip);
-	return KNOT_EOK;
 }
 
 int check_zone(

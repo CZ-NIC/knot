@@ -83,6 +83,10 @@ int check_modulo_shift(
 	knotd_conf_check_args_t *args
 );
 
+int check_zonefile_skip(
+	knotd_conf_check_args_t *args
+);
+
 int check_ctl_listen(
 	knotd_conf_check_args_t *args
 );
@@ -140,10 +144,6 @@ int check_catalog_group(
 );
 
 int check_template(
-	knotd_conf_check_args_t *args
-);
-
-int check_zonefile_skip(
 	knotd_conf_check_args_t *args
 );
 
