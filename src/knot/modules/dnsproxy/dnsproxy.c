@@ -103,8 +103,8 @@ static int fwd(dnsproxy_t *proxy, knot_pkt_t *pkt, knotd_qdata_t *qdata, int add
 	if (addr_pos < proxy->via.count) { // Simplified via address selection!
 		src = &proxy->via.multi[addr_pos].addr;
 	}
-	knot_request_t *req = knot_request_make_generic(re.mm, dst, src, query,
-	                                                NULL, NULL, NULL, NULL, 0, flags);
+	knot_request_t *req = knot_request_make_generic(re.mm, dst, src, query, NULL, NULL, NULL,
+	                                                NULL, NULL, NULL, flags);
 	if (req == NULL) {
 		knot_requestor_clear(&re);
 		knot_pkt_free(query);

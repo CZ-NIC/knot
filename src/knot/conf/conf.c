@@ -1415,8 +1415,15 @@ conf_remote_t conf_remote_txn(
 		conf_val_next(&val);
 	}
 
+	memset(out.pin, 0, sizeof(out.pin));
+	memset(out.pin_len, 0, sizeof(out.pin_len));
 	val = conf_id_get_txn(conf, txn, C_RMT, C_CERT_KEY, id);
-	out.pin = (uint8_t *)conf_bin(&val, &out.pin_len);
+	for (uint i = 0; val.code == KNOT_EOK; ++i) {
+		size_t len;
+		out.pin[i] = (uint8_t *)conf_bin(&val, &len);
+		out.pin_len[i] = (uint8_t)len;
+		conf_val_next(&val);
+	}
 
 	// Get TSIG key (optional).
 	conf_val_t key_id = conf_id_get_txn(conf, txn, C_RMT, C_KEY, id);
@@ -1437,6 +1444,13 @@ conf_remote_t conf_remote_txn(
 
 	val = conf_id_get_txn(conf, txn, C_RMT, C_NO_EDNS, id);
 	out.no_edns = conf_bool(&val);
+
+	memset(out.hostname, 0, sizeof(out.hostname));
+	val = conf_id_get_txn(conf, txn, C_RMT, C_CERT_HOSTNAME, id);
+	for (uint i = 0; val.code == KNOT_EOK; ++i) {
+		out.hostname[i] = conf_str(&val);
+		conf_val_next(&val);
+	}
 
 	return out;
 }

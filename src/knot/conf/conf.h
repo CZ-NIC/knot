@@ -41,10 +41,12 @@ typedef struct {
 	bool block_notify_after_xfr;
 	/*! Disable EDNS on XFR queries. */
 	bool no_edns;
-	/*! Possible remote certificate PIN. */
-	const uint8_t *pin;
-	/*! Length of the remote certificate PIN. Zero if PIN not specified. */
-	size_t pin_len;
+	/*! Remote certificate permittable hostnames. Either zero terminated or 4 members. */
+	const char *hostname[4];
+	/*! Remote certificate permittable PINs. */
+	const uint8_t *pin[4];
+	/*! Lengths of the remote certificate PINs. [0] == zero if PIN not specified. */
+	uint8_t pin_len[4];
 } conf_remote_t;
 
 /*! Configuration section iterator. */

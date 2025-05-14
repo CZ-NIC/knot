@@ -210,6 +210,7 @@ General options related to the server.
      udp-max-payload-ipv6: SIZE
      key-file: STR
      cert-file: STR
+     ca-file: STR ...
      edns-client-subnet: BOOL
      answer-rotation: BOOL
      automatic-acl: BOOL
@@ -581,6 +582,17 @@ Path to a server certificate PEM file which is used for DNS over QUIC/TLS commun
 A non-absolute path is relative to the :file:`@config_dir@` directory.
 
 *Default:* one-time in-memory certificate
+
+.. _server_ca-file:
+
+ca-file
+-------
+
+Specifies one or more paths to load trusted Certificate Authorities (CAs) from.
+An empty string ("") means the system’s default trusted CAs. The loaded CAs are used 
+for remote certificate validation (:ref:`acl_cert-hostname` and :ref:`remote_cert-hostname`).
+
+*Default:* not set
 
 .. _server_edns-client-subnet:
 
@@ -1457,6 +1469,7 @@ transfer, target for a notification, etc.).
      tls: BOOL
      key: key_id
      cert-key: BASE64 ...
+     cert-hostname: STR ...
      block-notify-after-transfer: BOOL
      no-edns: BOOL
      automatic-acl: BOOL
@@ -1572,6 +1585,16 @@ remains the same on a certificate renewal.
 
 *Default:* not set
 
+.. _remote_cert-hostname:
+
+cert-hostname
+-------------
+
+An ordered list of up to 4 hostnames to match against peer's certificate. At least
+one must match for successful certificate validation (see :ref:`server_ca-file`).
+
+*Default:* not set
+
 .. _remote_block-notify-after-transfer:
 
 block-notify-after-transfer
@@ -1665,6 +1688,7 @@ which don't require authorization are always allowed.
      address: ADDR[/INT] | ADDR-ADDR | STR ...
      key: key_id ...
      cert-key: BASE64 ...
+     cert-hostname: STR ...
      remote: remote_id | remotes_id ...
      action: query | notify | transfer | update ...
      protocol: udp | tcp | tls | quic ...
@@ -1716,6 +1740,16 @@ specified PINs.
 A PIN is a unique identifier that represents the public key of the peer certificate.
 It's a base64-encoded SHA-256 hash of the public key. This identifier
 remains the same on a certificate renewal.
+
+*Default:* not set
+
+.. _acl_cert-hostname:
+
+cert-hostname
+-------------
+
+An ordered list of hostnames to match against peer's certificate. At least one
+must match for successful certificate validation (see :ref:`server_ca-file`).
 
 *Default:* not set
 

@@ -3,6 +3,7 @@
  *  For more information, see <https://www.knot-dns.cz/>
  */
 
+#include <assert.h>
 #include <fcntl.h>
 #include <gnutls/crypto.h>
 #include <gnutls/gnutls.h>
@@ -22,14 +23,17 @@
 #include "libknot/attribute.h"
 #include "libknot/error.h"
 
+#define ARR_LEN(arr) (sizeof((arr)) / sizeof((arr[0])))
+
 typedef struct knot_creds {
 	knot_atomic_ptr_t cert_creds; // Current credentials.
 	gnutls_certificate_credentials_t cert_creds_prev; // Previous credentials (for pending connections).
 	gnutls_anti_replay_t tls_anti_replay;
 	gnutls_datum_t tls_ticket_key;
 	bool peer;
-	uint8_t peer_pin_len;
-	uint8_t peer_pin[];
+	const char *peer_hostname[4];
+	const uint8_t *peer_pin[4];
+	uint8_t peer_pin_len[4];
 } knot_creds_t;
 
 _public_
@@ -175,16 +179,24 @@ finish:
 }
 
 _public_
-struct knot_creds *knot_creds_init(const char *key_file, const char *cert_file,
-                                   int uid, int gid)
+struct knot_creds *knot_creds_init(const char *key_file,
+                                   const char *cert_file,
+                                   const char **ca_files,
+                                   bool system_ca,
+                                   int uid,
+                                   int gid,
+                                   int *err)
 {
+	*err = KNOT_EOK;
+
 	knot_creds_t *creds = calloc(1, sizeof(*creds));
 	if (creds == NULL) {
 		return NULL;
 	}
 
-	int ret = knot_creds_update(creds, key_file, cert_file, uid, gid);
+	int ret = knot_creds_update(creds, key_file, cert_file, ca_files, system_ca, uid, gid);
 	if (ret != KNOT_EOK) {
+		*err = ret;
 		goto fail;
 	}
 
@@ -208,10 +220,11 @@ fail:
 
 _public_
 struct knot_creds *knot_creds_init_peer(const struct knot_creds *local_creds,
-                                        const uint8_t *peer_pin,
-                                        uint8_t peer_pin_len)
+                                        const char *const peer_hostname[4],
+                                        const uint8_t *const peer_pin[4],
+                                        const uint8_t peer_pin_len[4])
 {
-	knot_creds_t *creds = calloc(1, sizeof(*creds) + peer_pin_len);
+	knot_creds_t *creds = calloc(1, sizeof(*creds));
 	if (creds == NULL) {
 		return NULL;
 	}
@@ -229,9 +242,16 @@ struct knot_creds *knot_creds_init_peer(const struct knot_creds *local_creds,
 		ATOMIC_INIT(creds->cert_creds, new_creds);
 	}
 
-	if (peer_pin_len > 0 && peer_pin != NULL) {
-		memcpy(creds->peer_pin, peer_pin, peer_pin_len);
-		creds->peer_pin_len = peer_pin_len;
+	_Static_assert(sizeof(creds->peer_pin) == sizeof(peer_pin[0]) * 4, "");
+	_Static_assert(sizeof(creds->peer_pin_len) == sizeof(peer_pin_len[0]) * 4, "");
+	_Static_assert(sizeof(creds->peer_hostname) == sizeof(peer_hostname[0]) * 4, "");
+	if (peer_pin != NULL) {
+		assert(peer_pin_len != NULL);
+		memcpy(creds->peer_pin, peer_pin, sizeof(creds->peer_pin));
+		memcpy(creds->peer_pin_len, peer_pin_len, sizeof(creds->peer_pin_len));
+	}
+	if (peer_hostname != NULL) {
+		memcpy(creds->peer_hostname, peer_hostname, sizeof(creds->peer_hostname));
 	}
 
 	return creds;
@@ -305,8 +325,13 @@ failed:
 }
 
 _public_
-int knot_creds_update(struct knot_creds *creds, const char *key_file, const char *cert_file,
-                      int uid, int gid)
+int knot_creds_update(struct knot_creds *creds,
+                      const char *key_file,
+                      const char *cert_file,
+                      const char **ca_files,
+                      bool system_ca,
+                      int uid,
+                      int gid)
 {
 	if (creds == NULL || key_file == NULL) {
 		return KNOT_EINVAL;
@@ -347,7 +372,16 @@ int knot_creds_update(struct knot_creds *creds, const char *key_file, const char
 		gnutls_certificate_free_credentials(new_creds);
 	}
 
-	return KNOT_EOK;
+	bool cert_err = false;
+	if (system_ca) {
+		cert_err |= gnutls_certificate_set_x509_system_trust(creds->cert_creds) < 0;
+	}
+	for (const char **i = ca_files; *i != NULL; ++i) {
+		cert_err |= gnutls_certificate_set_x509_trust_file(creds->cert_creds, *i,
+		                                                   GNUTLS_X509_FMT_PEM) < 0;
+	}
+
+	return cert_err ? KNOT_EBADCERT : KNOT_EOK;
 }
 
 _public_
@@ -493,17 +527,96 @@ _public_
 int knot_tls_pin_check(struct gnutls_session_int *session,
                        struct knot_creds *creds)
 {
-	if (creds->peer_pin_len == 0) {
+	uint8_t lpin[KNOT_TLS_PIN_LEN];
+	size_t lpin_size = sizeof(lpin);
+	knot_tls_pin(session, lpin, &lpin_size, false);
+
+	// if no pin set -> opportunistic mode
+	if (creds->peer_pin_len[0] == 0) {
 		return KNOT_EOK;
 	}
 
-	uint8_t pin[KNOT_TLS_PIN_LEN];
-	size_t pin_size = sizeof(pin);
-	knot_tls_pin(session, pin, &pin_size, false);
-	if (pin_size != creds->peer_pin_len ||
-	    const_time_memcmp(pin, creds->peer_pin, pin_size) != 0) {
-		return KNOT_EBADCERTKEY;
+	for (uint i = 0; i < 4 && creds->peer_pin[i] != NULL; ++i) {
+		const uint8_t *pin = creds->peer_pin[i];
+		size_t pin_size = creds->peer_pin_len[i];
+
+		if (lpin_size == pin_size
+		    && const_time_memcmp(lpin, pin, lpin_size) == 0) {
+			return KNOT_EOK;
+		}
 	}
 
-	return KNOT_EOK;
+	return KNOT_EBADCERT;
+}
+
+_public_
+int knot_tls_cert_check(struct gnutls_session_int *session,
+                        unsigned nhostnames,
+                        const char *hostnames[static nhostnames])
+{
+	assert(session != NULL);
+	assert(nhostnames > 0);
+	assert(hostnames != NULL);
+
+	int ret = gnutls_certificate_type_get(session);
+	if (ret != GNUTLS_CRT_X509) {
+		return KNOT_EBADCERT;
+	}
+
+	unsigned status = 0;
+	ret = gnutls_certificate_verify_peers2(session, &status);
+	if (ret != GNUTLS_E_SUCCESS || status) {
+		return KNOT_EBADCERT;
+	}
+
+	unsigned ncerts;
+	const gnutls_datum_t *cert_list = gnutls_certificate_get_peers(session, &ncerts);
+	if (cert_list == NULL || ncerts <= 0) {
+		return KNOT_EBADCERT;
+	}
+
+	gnutls_x509_crt_t cert;
+	ret = gnutls_x509_crt_init(&cert);
+	if (ret < 0) {
+		return KNOT_EBADCERT;
+	}
+
+	// standard compliant servers send an ordered cert list, so the 0th cert is peer's
+	// non-compliant servers will present someone else's cert and that's really not our problem
+	ret = gnutls_x509_crt_import(cert, &cert_list[0], GNUTLS_X509_FMT_DER);
+	if (ret < 0) {
+		ret = KNOT_EBADCERT;
+		goto end;
+	}
+
+	// using gnutls_x509_crt_check_hostname() to enforce SAN-only hostname checking
+	// see https://datatracker.ietf.org/doc/html/rfc8310#section-8.1
+	ret = KNOT_EBADCERT;
+	for (size_t i = 0; i < nhostnames; ++i) {
+		if (gnutls_x509_crt_check_hostname(cert, hostnames[i])) {
+			ret = KNOT_EOK;
+			break;
+		}
+	}
+
+end:
+	gnutls_x509_crt_deinit(cert);
+	return ret;
+}
+
+_public_
+int knot_tls_cert_check_creds(struct gnutls_session_int *session,
+                              struct knot_creds *creds)
+{
+	assert(session != NULL);
+	assert(creds != NULL);
+
+	unsigned nnames = 0;
+	for (const char **i = creds->peer_hostname;
+	     nnames < ARR_LEN(creds->peer_hostname) && *i != NULL; ++i) {
+		++nnames;
+	}
+
+	return (nnames == 0) ? KNOT_EOK // no cert-hostname -> opportunistic
+	                     : knot_tls_cert_check(session, nnames, creds->peer_hostname);
 }
