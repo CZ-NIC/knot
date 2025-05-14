@@ -219,6 +219,7 @@ General options related to the server.
      listen: ADDR[@INT] | STR ...
      listen-quic: ADDR[@INT] ...
      listen-tls: ADDR[@INT] ...
+     tls-ca: STR ...
 
 .. CAUTION::
    When you change configuration parameters dynamically or via configuration file
@@ -719,6 +720,16 @@ One or more IP addresses (and optionally ports) where the server listens
 for incoming queries over TLS protocol (DoT).
 
 Change of this parameter requires restart of the Knot server to take effect.
+
+*Default:* not set
+
+.. _server_tls-ca:
+
+tls-ca
+------
+
+One or more paths to TLS certificate files to import trust from. An empty value
+("") instructs Knot to import system-trusted certificates. Also see :ref:`remote_cert-validate`.
 
 *Default:* not set
 
@@ -1457,6 +1468,7 @@ transfer, target for a notification, etc.).
      tls: BOOL
      key: key_id
      cert-key: BASE64 ...
+     cert-validate: BOOL
      block-notify-after-transfer: BOOL
      no-edns: BOOL
      automatic-acl: BOOL
@@ -1572,6 +1584,18 @@ remains the same on a certificate renewal.
 
 *Default:* not set
 
+.. _remote_cert-validate:
+
+cert-validate
+-------------
+
+Whether to verify remotes' certificate when estabilishing a TLS/QUIC
+connection. Remote's `id` is compared against the hostname stated in peer's
+certificate, so enabling this requires setting `id` accordingly. Verification
+is based on trusted certificates set with :ref:`server_tls-ca`.
+
+*Default:* ``off``
+
 .. _remote_block-notify-after-transfer:
 
 block-notify-after-transfer
@@ -1665,6 +1689,8 @@ which don't require authorization are always allowed.
      address: ADDR[/INT] | ADDR-ADDR | STR ...
      key: key_id ...
      cert-key: BASE64 ...
+     cert-validate: BOOL
+     tls-hostname: STR ...
      remote: remote_id | remotes_id ...
      action: query | notify | transfer | update ...
      protocol: udp | tcp | tls | quic ...
@@ -1716,6 +1742,30 @@ specified PINs.
 A PIN is a unique identifier that represents the public key of the peer certificate.
 It's a base64-encoded SHA-256 hash of the public key. This identifier
 remains the same on a certificate renewal.
+
+*Default:* not set
+
+.. _acl_cert-validate:
+
+cert-validate
+-------------
+
+Whether to verify remotes' certificate when estabilishing a TLS/QUIC
+connection. Values of :ref:`acl_tls-hostname` are matched against peer's
+certificate. Verification is based on trusted certificates set with
+:ref:`server_tls-ca`.
+
+*Default:* ``off``
+
+.. _acl_tls-hostname:
+
+tls-hostname
+------------
+
+A list of hostnames to match against peer's TLS certificate. At least one must
+match for successful certificate validation.
+
+See :ref:`acl_cert-validate`.
 
 *Default:* not set
 

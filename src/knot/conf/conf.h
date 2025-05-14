@@ -41,6 +41,8 @@ typedef struct {
 	bool block_notify_after_xfr;
 	/*! Disable EDNS on XFR queries. */
 	bool no_edns;
+	/*! Remote certificate hostname. */
+	const char *hostname;
 	/*! Possible remote certificate PIN. */
 	const uint8_t *pin;
 	/*! Length of the remote certificate PIN. Zero if PIN not specified. */
