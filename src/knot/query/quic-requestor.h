@@ -6,6 +6,7 @@
 #pragma once
 
 #include "contrib/sockaddr.h"
+#include "knot/conf/conf.h"
 #include "libknot/quic/quic.h"
 
 int knot_qreq_connect(struct knot_quic_reply **out,
@@ -13,8 +14,8 @@ int knot_qreq_connect(struct knot_quic_reply **out,
                       struct sockaddr_storage *remote,
                       struct sockaddr_storage *local,
                       const struct knot_creds *local_creds,
-                      const uint8_t *peer_pin,
-                      uint8_t peer_pin_len,
+                      const char *const peer_hostnames[RMT_MAX_PINS],
+                      const uint8_t *const peer_pins[RMT_MAX_PINS],
                       bool *reused_fd,
                       int timeout_ms);
 

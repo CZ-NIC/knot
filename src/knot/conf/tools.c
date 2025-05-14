@@ -873,11 +873,14 @@ int check_acl(
 	                                    C_KEY, args->id, args->id_len);
 	conf_val_t proto = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_ACL,
 	                                      C_PROTOCOL, args->id, args->id_len);
+	conf_val_t hostname = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_ACL,
+	                                         C_CERT_HOSTNAME, args->id, args->id_len);
 	conf_val_t remote = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_ACL,
 	                                       C_RMT, args->id, args->id_len);
 	if (remote.code != KNOT_ENOENT &&
-	    (addr.code != KNOT_ENOENT || key.code != KNOT_ENOENT || proto.code != KNOT_ENOENT)) {
-		args->err_str = "specified ACL/remote together with address, key, or protocol";
+	    (addr.code != KNOT_ENOENT || key.code != KNOT_ENOENT ||
+	     proto.code != KNOT_ENOENT || hostname.code != KNOT_ENOENT)) {
+		args->err_str = "specified ACL/remote together with address, key, protocol, or hostname";
 		return KNOT_EINVAL;
 	}
 
@@ -926,6 +929,19 @@ int check_remote(
 		args->err_str = "QUIC not available";
 		return KNOT_EINVAL;
 #endif
+	}
+
+	conf_val_t pin = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_RMT,
+	                                    C_CERT_KEY, args->id, args->id_len);
+	if (conf_val_count(&pin) > RMT_MAX_PINS) {
+		args->err_str = "too many cert-keys";
+		return KNOT_EINVAL;
+	}
+	conf_val_t cert_host = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_RMT,
+	                                          C_CERT_HOSTNAME, args->id, args->id_len);
+	if (conf_val_count(&cert_host) > RMT_MAX_PINS) {
+		args->err_str = "too many cert-hosts";
+		return KNOT_EINVAL;
 	}
 
 	return KNOT_EOK;

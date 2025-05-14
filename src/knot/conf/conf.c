@@ -1380,6 +1380,10 @@ conf_remote_t conf_remote_txn(
 	out.quic = conf_bool(&val);
 	val = conf_id_get_txn(conf, txn, C_RMT, C_TLS, id);
 	out.tls = conf_bool(&val);
+	val = conf_id_get_txn(conf, txn, C_RMT, C_NO_EDNS, id);
+	out.no_edns = conf_bool(&val);
+	val = conf_id_get_txn(conf, txn, C_RMT, C_BLOCK_NOTIFY_XFR, id);
+	out.block_notify_after_xfr = conf_bool(&val);
 
 	conf_val_t rundir_val = conf_get_txn(conf, txn, C_SRV, C_RUNDIR);
 	char *rundir = conf_abs_path(&rundir_val, NULL);
@@ -1415,8 +1419,7 @@ conf_remote_t conf_remote_txn(
 		conf_val_next(&val);
 	}
 
-	val = conf_id_get_txn(conf, txn, C_RMT, C_CERT_KEY, id);
-	out.pin = (uint8_t *)conf_bin(&val, &out.pin_len);
+	free(rundir);
 
 	// Get TSIG key (optional).
 	conf_val_t key_id = conf_id_get_txn(conf, txn, C_RMT, C_KEY, id);
@@ -1430,13 +1433,21 @@ conf_remote_t conf_remote_txn(
 		out.key.secret.data = (uint8_t *)conf_bin(&val, &out.key.secret.size);
 	}
 
-	free(rundir);
+	memset(out.hostnames, 0, sizeof(out.hostnames));
+	val = conf_id_get_txn(conf, txn, C_RMT, C_CERT_HOSTNAME, id);
+	for (size_t i = 0; val.code == KNOT_EOK; i++) {
+		out.hostnames[i] = conf_str(&val);
+		conf_val_next(&val);
+	}
 
-	val = conf_id_get_txn(conf, txn, C_RMT, C_BLOCK_NOTIFY_XFR, id);
-	out.block_notify_after_xfr = conf_bool(&val);
-
-	val = conf_id_get_txn(conf, txn, C_RMT, C_NO_EDNS, id);
-	out.no_edns = conf_bool(&val);
+	memset(out.pins, 0, sizeof(out.pins));
+	val = conf_id_get_txn(conf, txn, C_RMT, C_CERT_KEY, id);
+	for (size_t i = 0; val.code == KNOT_EOK; i++) {
+		size_t len;
+		out.pins[i] = (uint8_t *)conf_bin(&val, &len);
+		assert(len == KNOT_TLS_PIN_LEN);
+		conf_val_next(&val);
+	}
 
 	return out;
 }
