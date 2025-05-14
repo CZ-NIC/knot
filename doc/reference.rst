@@ -210,6 +210,7 @@ General options related to the server.
      udp-max-payload-ipv6: SIZE
      key-file: STR
      cert-file: STR
+     ca-file: STR ...
      edns-client-subnet: BOOL
      answer-rotation: BOOL
      automatic-acl: BOOL
@@ -581,6 +582,17 @@ Path to a server certificate PEM file which is used for DNS over QUIC/TLS commun
 A non-absolute path is relative to the :file:`@config_dir@` directory.
 
 *Default:* one-time in-memory certificate
+
+.. _server_ca-file:
+
+ca-file
+-------
+
+Specifies one or more paths to load trusted Certificate Authorities (CAs) from.
+An empty string ("") means the system’s default trusted CAs. The loaded CAs are used 
+for remote certificate validation (:ref:`acl_cert-hostname` and :ref:`remote_cert-hostname`).
+
+*Default:* not set
 
 .. _server_edns-client-subnet:
 
@@ -1457,6 +1469,7 @@ transfer, target for a notification, etc.).
      tls: BOOL
      key: key_id
      cert-key: BASE64 ...
+     cert-hostname: STR ...
      block-notify-after-transfer: BOOL
      no-edns: BOOL
      automatic-acl: BOOL
@@ -1561,14 +1574,26 @@ the communication with the remote server.
 cert-key
 --------
 
-An ordered list of remote certificate public key PINs. If the list is non-empty,
-communication with the remote is possible only via QUIC or TLS protocols and
+An ordered list of up to 4 remote certificate public key PINs. If the list is non-empty,
+communication with the remote is only possible via QUIC or TLS protocols, and
 a peer certificate is required. The peer certificate key must match one of the
 specified PINs.
 
 A PIN is a unique identifier that represents the public key of the peer certificate.
-It's a base64-encoded SHA-256 hash of the public key. This identifier
+It's a base64-encoded SHA-256 hash of the public key. This identifier usually
 remains the same on a certificate renewal.
+
+*Default:* not set
+
+.. _remote_cert-hostname:
+
+cert-hostname
+-------------
+
+An ordered list of up to 4 hostnames to match against peer's certificate. At least
+one must match for successful certificate validation (see :ref:`server_ca-file`).
+If the list is non-empty, communication with the remote is only possible via
+QUIC or TLS protocols, and a peer certificate is required.
 
 *Default:* not set
 
@@ -1665,6 +1690,7 @@ which don't require authorization are always allowed.
      address: ADDR[/INT] | ADDR-ADDR | STR ...
      key: key_id ...
      cert-key: BASE64 ...
+     cert-hostname: STR ...
      remote: remote_id | remotes_id ...
      action: query | notify | transfer | update ...
      protocol: udp | tcp | tls | quic ...
@@ -1709,13 +1735,25 @@ cert-key
 --------
 
 An ordered list of remote certificate public key PINs. If the list is non-empty,
-communication with the remote is possible only via QUIC or TLS protocols and
+communication with the remote is only possible via QUIC or TLS protocols, and
 a peer certificate is required. The peer certificate key must match one of the
 specified PINs.
 
 A PIN is a unique identifier that represents the public key of the peer certificate.
-It's a base64-encoded SHA-256 hash of the public key. This identifier
+It's a base64-encoded SHA-256 hash of the public key. This identifier usually
 remains the same on a certificate renewal.
+
+*Default:* not set
+
+.. _acl_cert-hostname:
+
+cert-hostname
+-------------
+
+An ordered list of hostnames to match against peer's certificate. At least one
+must match for successful certificate validation (see :ref:`server_ca-file`).
+If the list is non-empty, communication with the remote is only possible via
+QUIC or TLS protocols, and a peer certificate is required.
 
 *Default:* not set
 

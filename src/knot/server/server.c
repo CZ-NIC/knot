@@ -551,7 +551,7 @@ static void log_sock_conf(conf_t *conf)
 	}
 }
 
-static int check_file(char *path, char *role)
+static int check_file(const char *path, char *role)
 {
 	if (path == NULL) {
 		return KNOT_EOK;
@@ -579,6 +579,10 @@ static int init_creds(conf_t *conf, server_t *server)
 {
 	char *cert_file = conf_tls(conf, C_CERT_FILE);
 	char *key_file = conf_tls(conf, C_KEY_FILE);
+	conf_val_t cafiles_val = conf_get(conf, C_SERVER, C_CA_FILE);
+	size_t nfiles = conf_val_count(&cafiles_val);
+	const char *ca_files[nfiles + 1];
+	bool system_ca = false;
 
 	int ret = check_file(cert_file, "certificate");
 	if (ret != KNOT_EOK) {
@@ -615,16 +619,32 @@ static int init_creds(conf_t *conf, server_t *server)
 		goto failed;
 	}
 
+	memset(ca_files, 0, sizeof(ca_files));
+	for (size_t i = 0; cafiles_val.code == KNOT_EOK; conf_val_next(&cafiles_val)) {
+		const char *file = conf_str(&cafiles_val);
+		if (*file == '\0') {
+			system_ca = true;
+		} else if ((ret = check_file(file, "ca")) != KNOT_EOK) {
+			goto failed;
+		} else {
+			ca_files[i++] = file;
+		}
+	}
+
 	if (server->quic_creds == NULL) {
-		server->quic_creds = knot_creds_init(key_file, cert_file, uid, gid);
-		if (server->quic_creds == NULL) {
-			log_error(QUIC_LOG "failed to initialize server credentials");
-			ret = KNOT_ERROR;
+		ret = knot_creds_init(&server->quic_creds, key_file, cert_file, ca_files,
+		                      system_ca, uid, gid);
+		if (ret != KNOT_EOK) {
+			log_error(QUIC_LOG "failed to initialize credentials or to load certificates (%s)",
+			          knot_strerror(ret));
 			goto failed;
 		}
 	} else {
-		ret = knot_creds_update(server->quic_creds, key_file, cert_file, uid, gid);
+		ret = knot_creds_update(server->quic_creds, key_file, cert_file, ca_files,
+		                        system_ca, uid, gid);
 		if (ret != KNOT_EOK) {
+			log_error(QUIC_LOG "failed to initialize credentials or to load certificates (%s)",
+			          knot_strerror(ret));
 			goto failed;
 		}
 	}

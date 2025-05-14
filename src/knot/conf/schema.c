@@ -236,6 +236,7 @@ static const yp_item_t desc_server[] = {
 	                                                1232, YP_SSIZE } },
 	{ C_CERT_FILE,            YP_TSTR,  YP_VNONE, YP_FNONE },
 	{ C_KEY_FILE,             YP_TSTR,  YP_VNONE, YP_FNONE },
+	{ C_CA_FILE,              YP_TSTR,  YP_VNONE, YP_FMULTI },
 	{ C_ECS,                  YP_TBOOL, YP_VNONE },
 	{ C_ANS_ROTATION,         YP_TBOOL, YP_VNONE },
 	{ C_AUTO_ACL,             YP_TBOOL, YP_VNONE },
@@ -341,6 +342,7 @@ static const yp_item_t desc_remote[] = {
 	{ C_TLS,              YP_TBOOL, YP_VNONE },
 	{ C_KEY,              YP_TREF,  YP_VREF = { C_KEY }, YP_FNONE, { check_ref } },
 	{ C_CERT_KEY,         YP_TB64,  YP_VNONE, YP_FMULTI, { check_cert_pin } },
+	{ C_CERT_HOSTNAME,    YP_TSTR,  YP_VNONE, YP_FMULTI },
 	{ C_BLOCK_NOTIFY_XFR, YP_TBOOL, YP_VNONE },
 	{ C_NO_EDNS,          YP_TBOOL, YP_VNONE },
 	{ C_AUTO_ACL,         YP_TBOOL, YP_VBOOL = { true } },
@@ -370,6 +372,7 @@ static const yp_item_t desc_acl[] = {
 	{ C_UPDATE_OWNER_NAME,  YP_TDATA,  YP_VDATA = { 0, NULL, rdname_to_bin, rdname_to_txt },
 	                                   YP_FMULTI, },
 	{ C_CERT_KEY,           YP_TB64,   YP_VNONE, YP_FMULTI, { check_cert_pin } },
+	{ C_CERT_HOSTNAME,      YP_TSTR,   YP_VNONE, YP_FMULTI },
 	{ C_COMMENT,            YP_TSTR,   YP_VNONE },
 	{ NULL }
 };

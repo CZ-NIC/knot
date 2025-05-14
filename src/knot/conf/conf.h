@@ -9,6 +9,7 @@
 
 #include "knot/conf/base.h"
 #include "knot/conf/schema.h"
+#include "libknot/quic/tls_common.h"
 
 /*! Configuration schema additional flags. */
 #define CONF_IO_FACTIVE		YP_FUSR1  /*!< Active confio transaction indicator. */
@@ -25,6 +26,8 @@
 #define CONF_IO_FRLD_ALL	(CONF_IO_FRLD_SRV | CONF_IO_FRLD_LOG | \
 				 CONF_IO_FRLD_MOD | CONF_IO_FRLD_ZONES)
 
+#define RMT_MAX_PINS		KNOT_TLS_MAX_PINS
+
 /*! Configuration remote getter output. */
 typedef struct {
 	/*! Target socket address. */
@@ -35,16 +38,16 @@ typedef struct {
 	bool quic;
 	/*! TLS context. */
 	bool tls;
-	/*! TSIG key. */
-	knot_tsig_key_t key;
-	/*! Suppress sending NOTIFY after zone transfer from this master. */
-	bool block_notify_after_xfr;
 	/*! Disable EDNS on XFR queries. */
 	bool no_edns;
-	/*! Possible remote certificate PIN. */
-	const uint8_t *pin;
-	/*! Length of the remote certificate PIN. Zero if PIN not specified. */
-	size_t pin_len;
+	/*! Suppress sending NOTIFY after zone transfer from this master. */
+	bool block_notify_after_xfr;
+	/*! TSIG key. */
+	knot_tsig_key_t key;
+	/*! Remote certificate permittable hostnames. */
+	const char *hostnames[RMT_MAX_PINS];
+	/*! Remote certificate permittable PINs. */
+	const uint8_t *pins[RMT_MAX_PINS];
 } conf_remote_t;
 
 /*! Configuration section iterator. */

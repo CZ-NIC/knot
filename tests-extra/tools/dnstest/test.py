@@ -11,6 +11,7 @@ import time
 import dns.name
 import dns.zone
 import zone_generate
+from subprocess import Popen, PIPE, check_call, CalledProcessError, check_output, run, DEVNULL
 from dnstest.utils import *
 from dnstest.context import Context
 import dnstest.params as params
@@ -628,3 +629,17 @@ class Test(object):
 
         resp_ixfr.check_axfr_style_ixfr(resp_axfr)
 
+    def gen_ca(self):
+        try:
+            ca_key = os.path.join(self.out_dir, "ca-key.pem")
+            ca_cert = os.path.join(self.out_dir, "ca-cert.pem")
+            ca_tpl = os.path.join(self.out_dir, "ca-tpl.info")
+            check_call(["certtool", "--generate-privkey", "--key-type", "ed25519",
+                        "--outfile", ca_key], stdout=DEVNULL, stderr=DEVNULL)
+            with open(ca_tpl, "w") as tpl:
+                print(f"cn = \"CA\"\nca\ncert_signing_key\nexpiration_days = 3650", file=tpl)
+            check_call(["certtool", "--generate-self-signed", "--load-privkey",
+                        ca_key, "--template", ca_tpl, "--outfile", ca_cert],
+                       stdout=DEVNULL, stderr=DEVNULL)
+        except CalledProcessError as e:
+            raise Failed("Failed to generate CA")

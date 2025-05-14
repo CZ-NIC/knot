@@ -168,6 +168,8 @@ class Server(object):
         self.quic_port = None
         self.tls_port = None
         self.cert_key = str()
+        self.cert_hostname = list()
+        self.ca_file = str()
         self.cert_key_file = None # quadruple (key_file, cert_file, hostname, pin)
         self.udp_workers = None
         self.tcp_workers = None
@@ -616,6 +618,28 @@ class Server(object):
         hostname2 = ssearch(gcli_s, r'Subject:.*CN=([^,\n]*)')
         hostname3 = socket.gethostname()
         return ("", certfile, hostname1 or hostname2 or hostname3, ssearch(gcli_s, r'pin-sha256:([^\n]*)'))
+
+    def gen_cert(self):
+        try:
+            ca_key = os.path.join(Context().test.out_dir, "ca-key.pem")
+            ca_cert = os.path.join(Context().test.out_dir, "ca-cert.pem")
+            srv_key = os.path.join(self.dir, f"{self.name}-key.pem")
+            srv_cert = os.path.join(self.dir, f"{self.name}-cert.pem")
+            srv_tpl = os.path.join(self.dir, f"{self.name}-tpl.info")
+            check_call(["certtool", "--generate-privkey", "--key-type", "ed25519",
+                        "--outfile", srv_key], stdout=DEVNULL, stderr=DEVNULL)
+            with open(srv_tpl, "w") as tpl:
+                print(f"dns_name = \"{self.name}\"\nexpiration_days = 365", file=tpl)
+            check_call(["certtool", "--generate-certificate", "--load-privkey", srv_key,
+                        "--load-ca-certificate", ca_cert, "--load-ca-privkey", ca_key,
+                        "--template", srv_tpl, "--outfile", srv_cert],
+                       stdout=DEVNULL, stderr=DEVNULL)
+            self.cert_key_file = (srv_key, srv_cert, self.name, fsearch(srv_key, r'pin-sha256:([^\n]*)'))
+        except CalledProcessError as e:
+            raise Failed("Failed to generate server certificate")
+
+    def set_ca(self):
+        self.ca_file = os.path.join(Context().test.out_dir, "ca-cert.pem")
 
     def kdig(self, rname, rtype, rclass="IN", dnssec=None, validate=None, msgdelay=None):
         cmd = [ params.kdig_bin, "@" + self.addr, "-p", str(self.port), "-q", rname, "-t", rtype, "-c", rclass ]
@@ -1267,9 +1291,8 @@ class Bind(Server):
                                   % (slave.addr, slave.port, self.tsig.name)
                     else:
                         slaves += "%s port %s" % (slave.addr, slave.port)
-                    #if slave.tls_port:
-                    #    slaves += " tls %s" % (slave.name if slave.cert_key_file else "ephemeral")
-                    # TODO Bind9 fails to send NOTIFYoverTLS, until fixed https://gitlab.isc.org/isc-projects/bind9/-/issues/4821
+                    if slave.tls_port:
+                        slaves += " tls %s" % (slave.name if slave.cert_key_file else "ephemeral")
                     slaves += "; "
                 if slaves:
                     s.item("also-notify", "{ %s}" % slaves)
@@ -1522,6 +1545,8 @@ class Knot(Server):
         if self.cert_key_file:
             s.item_str("key-file", self.cert_key_file[0])
             s.item_str("cert-file", self.cert_key_file[1])
+        if self.ca_file:
+            s.item_str("ca-file", self.ca_file)
         s.end()
 
         if self.xdp_port is not None and self.xdp_port > 0:
@@ -1569,6 +1594,8 @@ class Knot(Server):
                         s.item_str("tls" if master.tls_port else "quic", "on")
                         if master.cert_key:
                             s.item_str("cert-key", master.cert_key)
+                        elif master.cert_hostname:
+                            s.item_list("cert-hostname", master.cert_hostname)
                         elif master.cert_key_file:
                             s.item_str("cert-key", master.cert_key_file[3])
                     else:
@@ -1594,6 +1621,8 @@ class Knot(Server):
                         s.item_str("tls" if slave.tls_port else "quic", "on")
                         if slave.cert_key:
                             s.item_str("cert-key", slave.cert_key)
+                        elif slave.cert_hostname:
+                            s.item_list("cert-hostname", slave.cert_hostname)
                         elif slave.cert_key_file:
                             s.item_str("cert-key", slave.cert_key_file[3])
                     else:
@@ -1630,6 +1659,8 @@ class Knot(Server):
                         s.item_str("tls" if remote.tls_port else "quic", "on")
                         if remote.cert_key:
                             s.item_str("cert-key", remote.cert_key)
+                        elif remote.cert_hostname:
+                            s.item_list("cert-hostname", remote.cert_hostname)
                         elif remote.cert_key_file:
                             s.item_str("cert-key", remote.cert_key_file[3])
                     else:
@@ -1665,8 +1696,10 @@ class Knot(Server):
                         s.item_str("address", master.addr)
                     if master.tsig:
                         s.item_str("key", master.tsig.name)
-                    if master.cert_key and not isinstance(master, Bind): # TODO until fixed https://gitlab.isc.org/isc-projects/bind9/-/issues/4821
+                    if master.cert_key:
                         s.item_str("cert-key", master.cert_key)
+                    if master.cert_hostname:
+                        s.item_list("cert-hostname", master.cert_hostname)
                     s.item("action", "notify")
                     servers.add(master.name)
             for slave in z.slaves:
@@ -1681,6 +1714,8 @@ class Knot(Server):
                     s.item_str("key", slave.tsig.name)
                 if slave.cert_key:
                     s.item_str("cert-key", slave.cert_key)
+                if slave.cert_hostname:
+                    s.item_list("cert-hostname", slave.cert_hostname)
                 s.item("action", "[transfer" + (", update" if z.ddns else "") + "]")
                 servers.add(slave.name)
             for remote in z.dnssec.dnskey_sync if z.dnssec.dnskey_sync else []:

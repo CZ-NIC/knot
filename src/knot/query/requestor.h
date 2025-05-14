@@ -64,8 +64,9 @@ typedef struct knot_request {
 	knot_sign_context_t sign; /*!< Required for async. DDNS processing. */
 
 	const struct knot_creds *creds;
-	size_t pin_len;
-	uint8_t pin[];
+
+	const char *hostnames[RMT_MAX_PINS];
+	const uint8_t *pins[RMT_MAX_PINS];
 } knot_request_t;
 
 static inline knotd_query_proto_t flags2proto(unsigned layer_flags)
@@ -89,8 +90,8 @@ static inline knotd_query_proto_t flags2proto(unsigned layer_flags)
  * \param creds     Local (server) credentials.
  * \param edns      EDNS parameters.
  * \param tsig_key  TSIG key for authentication.
- * \param pin       Possible remote certificate PIN.
- * \param pin_len   Length of the remote certificate PIN.
+ * \param hostnames Permittable remote certificate hostnames.
+ * \param pins      Permittable remote certificate PINs.
  * \param flags     Request flags.
  *
  * \return Prepared request or NULL in case of error.
@@ -102,8 +103,8 @@ knot_request_t *knot_request_make_generic(knot_mm_t *mm,
                                           const struct knot_creds *creds,
                                           const query_edns_data_t *edns,
                                           const knot_tsig_key_t *tsig_key,
-                                          const uint8_t *pin,
-                                          size_t pin_len,
+                                          const char *const hostnames[RMT_MAX_PINS],
+                                          const uint8_t *const pins[RMT_MAX_PINS],
                                           knot_request_flag_t flags);
 
 /*!

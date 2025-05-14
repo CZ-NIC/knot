@@ -7,6 +7,8 @@ from dnstest.utils import *
 import random
 import subprocess
 
+use_hostname = random.choice([True, False])
+
 t = Test(tls=True, tsig=True, # TSIG needed to skip weaker ACL rules
          quic=random.choice([False, True])) # QUIC should have no effect
 
@@ -34,7 +36,7 @@ if slave.valgrind:
 MSG_DENIED_NOTIFY = "ACL, denied, action notify"
 MSG_DENIED_TRANSFER = "ACL, denied, action transfer"
 MSG_RMT_NOTAUTH = "server responded with error 'NOTAUTH'"
-MSG_RMT_BADCERT = "failed (unknown certificate key)"
+MSG_RMT_BADCERT = "failed (invalid certificate)"
 MSG_TSIG_ERROR = "failed (failed to verify TSIG)"
 
 def check_error(server, msg):
@@ -53,6 +55,8 @@ def upd_check_zones(master, slave, zones, prev_serials):
     return serials
 
 master.check_quic()
+
+t.gen_ca()
 
 t.start()
 
@@ -73,7 +77,10 @@ try:
     t.xfr_diff(master, slave, zones)
 
     # Check master not authenticated due to bad cert-key
-    master.cert_key = "YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXoxMjM0NTY="
+    if use_hostname:
+        master.cert_hostname = ["unknown"]
+    else:
+        master.cert_key = "YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXoxMjM0NTY="
     slave.gen_confile()
     slave.reload()
     master.ctl("zone-notify")
@@ -83,13 +90,25 @@ try:
     check_error(slave, MSG_RMT_BADCERT)
 
     # Check IXFR with cert-key-based authenticated master
-    master.fill_cert_key()
+    if use_hostname:
+        master.gen_cert()
+        master.cert_hostname = [master.name, "bad2"]
+        slave.set_ca()
+        master.gen_confile()
+        master.reload()
+    else:
+        master.fill_cert_key()
     slave.gen_confile()
-    slave.reload()
+    #slave.reload() doesn't work for hostname, restart instead till fixed
+    slave.stop()
+    slave.start()
     serials = upd_check_zones(master, slave, rnd_zones, serials)
 
     # Check slave not authenticated due to bad cert-key
-    slave.cert_key = "YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXoxMjM0NTY="
+    if use_hostname:
+        slave.cert_hostname = ["unknown"]
+    else:
+        slave.cert_key = "YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXoxMjM0NTY="
     master.gen_confile()
     master.reload()
     master.ctl("zone-notify")
@@ -99,9 +118,18 @@ try:
     check_error(master, MSG_DENIED_TRANSFER)
 
     # Check IXFR with cert-key-based authenticated slave
-    slave.fill_cert_key()
+    if use_hostname:
+        slave.gen_cert()
+        slave.cert_hostname = ["bad1", "bad2", "bad3", slave.name]
+        master.set_ca()
+        slave.gen_confile()
+        slave.reload()
+    else:
+        slave.fill_cert_key()
     master.gen_confile()
-    master.reload()
+    #master.reload() doesn't work for hostname, restart instead till fixed
+    master.stop()
+    master.start()
     serials = upd_check_zones(master, slave, rnd_zones, serials)
 
 finally:
