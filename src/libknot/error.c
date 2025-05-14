@@ -94,7 +94,7 @@ static const struct error errors[] = {
 	{ KNOT_EEMPTYZONE,   "zone is empty" },
 	{ KNOT_ENODB,        "database does not exist" },
 	{ KNOT_EUNREACH,     "remote known to be unreachable" },
-	{ KNOT_EBADCERTKEY,  "unknown certificate key" },
+	{ KNOT_EBADCERT,     "unknown certificate key/untrusted certificate" },
 	{ KNOT_EFACCES,      "file permission denied" },
 	{ KNOT_EBACKUPDATA,  "requested data not in backup" },
 	{ KNOT_ECPUCOMPAT,   "incompatible CPU architecture" },

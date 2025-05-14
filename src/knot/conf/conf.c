@@ -1438,6 +1438,11 @@ conf_remote_t conf_remote_txn(
 	val = conf_id_get_txn(conf, txn, C_RMT, C_NO_EDNS, id);
 	out.no_edns = conf_bool(&val);
 
+	val = conf_id_get_txn(conf, txn, C_RMT, C_CERT_VALIDATE, id);
+	out.cert_verify = conf_bool(&val);
+
+	out.hostname = conf_str(id);
+
 	return out;
 }
 

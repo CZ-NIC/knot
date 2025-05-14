@@ -170,7 +170,10 @@ int knot_tls_handshake(knot_tls_conn_t *conn, bool oneshot)
 	switch (ret) {
 	case GNUTLS_E_SUCCESS:
 		conn->flags |= KNOT_TLS_CONN_HANDSHAKE_DONE;
-		return knot_tls_pin_check(conn->session, conn->ctx->creds);
+		return knot_tls_pin_check(conn->session, conn->ctx->creds) == KNOT_EOK
+		       && knot_tls_cert_check_creds(conn->session, conn->ctx->creds) == KNOT_EOK
+			       ? KNOT_EOK
+			       : KNOT_EBADCERT;
 	case GNUTLS_E_TIMEDOUT:
 		return KNOT_NET_ETIMEOUT;
 	default:

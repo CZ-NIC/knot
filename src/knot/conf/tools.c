@@ -331,6 +331,19 @@ int check_xdp_listen(
 #endif
 }
 
+int check_cert_validate(
+	knotd_conf_check_args_t *args)
+{
+	conf_val_t val = conf_get_txn(args->extra->conf, args->extra->txn,
+	                              C_SERVER, C_CA_FILE);
+	if (val.code != KNOT_EOK) {
+		args->err_str = "'cert-validate: on' requires 'ca-file' set";
+		return KNOT_EINVAL;
+	}
+
+	return KNOT_EOK;
+}
+
 int check_cert_pin(
 	knotd_conf_check_args_t *args)
 {

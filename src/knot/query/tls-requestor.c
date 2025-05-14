@@ -11,14 +11,19 @@
 #include "libknot/quic/tls.h"
 #include "contrib/conn_pool.h"
 
-int knot_tls_req_ctx_init(knot_tls_req_ctx_t *ctx, int fd,
-                          const struct sockaddr_storage *remote,
-                          const struct sockaddr_storage *local,
-                          const struct knot_creds *local_creds,
-                          const uint8_t *peer_pin, uint8_t peer_pin_len,
-                          bool *reused_fd, int io_timeout_ms)
+int knot_tls_req_ctx_init(knot_tls_req_ctx_t *ctx,
+			  int fd,
+			  const struct sockaddr_storage *remote,
+			  const struct sockaddr_storage *local,
+			  const struct knot_creds *local_creds,
+			  const char *peer_hostname,
+			  const uint8_t *peer_pin,
+			  uint8_t peer_pin_len,
+			  bool *reused_fd,
+			  int io_timeout_ms)
 {
-	struct knot_creds *creds = knot_creds_init_peer(local_creds, peer_pin, peer_pin_len);
+	struct knot_creds *creds =
+		knot_creds_init_peer(local_creds, peer_hostname, peer_pin, peer_pin_len);
 	if (creds == NULL) {
 		return KNOT_ENOMEM;
 	}
