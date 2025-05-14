@@ -979,12 +979,25 @@ int check_template(
 	return KNOT_EOK;
 }
 
+static conf_val_t conf_get_wrap(
+	knotd_conf_check_args_t *args,
+	const yp_name_t *item_name)
+{
+	if (args->item->type == YP_TGRP) {
+		return conf_zone_get_txn(args->extra->conf, args->extra->txn,
+		                         item_name, yp_dname(args->id));
+	} else {
+		assert(args->item->type == YP_TREF);
+		return conf_rawid_get_txn(args->extra->conf, args->extra->txn,
+		                          C_TPL, item_name, args->data,
+		                          args->data_len);
+	}
+}
+
 #define CHECK_ZONE_INTERVALS(low_item, high_item) { \
-	conf_val_t high = conf_zone_get_txn(args->extra->conf, args->extra->txn, \
-	                                    high_item, yp_dname(args->id)); \
+	conf_val_t high = conf_get_wrap(args, high_item); \
 	if (high.code == KNOT_EOK) { \
-		conf_val_t low = conf_zone_get_txn(args->extra->conf, args->extra->txn, \
-		                                   low_item, yp_dname(args->id)); \
+		conf_val_t low = conf_get_wrap(args, low_item); \
 		if (low.code == KNOT_EOK && conf_int(&low) > conf_int(&high)) { \
 			if (snprintf(check_str, sizeof(check_str), "'%s' is higher than '%s'", \
 			    &low_item[1], &high_item[1]) < 0) { \
@@ -1036,17 +1049,15 @@ static int sub_check_catalog_tpl(
 	}
 }
 
-int check_zone(
+static int check_zone_or_tpl(
 	knotd_conf_check_args_t *args)
 {
 	CHECK_ZONE_INTERVALS(C_REFRESH_MIN_INTERVAL, C_REFRESH_MAX_INTERVAL);
 	CHECK_ZONE_INTERVALS(C_RETRY_MIN_INTERVAL, C_RETRY_MAX_INTERVAL);
 	CHECK_ZONE_INTERVALS(C_EXPIRE_MIN_INTERVAL, C_EXPIRE_MAX_INTERVAL);
 
-	conf_val_t zf_load = conf_zone_get_txn(args->extra->conf, args->extra->txn,
-	                                       C_ZONEFILE_LOAD, yp_dname(args->id));
-	conf_val_t journal = conf_zone_get_txn(args->extra->conf, args->extra->txn,
-	                                       C_JOURNAL_CONTENT, yp_dname(args->id));
+	conf_val_t zf_load = conf_get_wrap(args, C_ZONEFILE_LOAD);
+	conf_val_t journal = conf_get_wrap(args, C_JOURNAL_CONTENT);
 	int zf_load_val = conf_opt(&zf_load);
 	if (zf_load_val == ZONEFILE_LOAD_DIFSE) {
 		if (conf_opt(&journal) != JOURNAL_CONTENT_ALL) {
@@ -1059,26 +1070,22 @@ int check_zone(
 		}
 	}
 
-	conf_val_t signing = conf_zone_get_txn(args->extra->conf, args->extra->txn,
-	                                       C_DNSSEC_SIGNING, yp_dname(args->id));
+	conf_val_t signing = conf_get_wrap(args, C_DNSSEC_SIGNING);
 	if (conf_bool(&signing)) {
-		conf_val_t validation = conf_zone_get_txn(args->extra->conf, args->extra->txn,
-		                                          C_DNSSEC_VALIDATION, yp_dname(args->id));
+		conf_val_t validation = conf_get_wrap(args, C_DNSSEC_VALIDATION);
 		if (conf_bool(&validation)) {
 			args->err_str = "'dnssec-validation' is not compatible with 'dnssec-signing'";
 			return KNOT_EINVAL;
 		}
 	} else {
-		conf_val_t ddnsmaster = conf_zone_get_txn(args->extra->conf, args->extra->txn,
-		                                          C_DDNS_MASTER, yp_dname(args->id));
+		conf_val_t ddnsmaster = conf_get_wrap(args, C_DDNS_MASTER);
 		if (ddnsmaster.code == KNOT_EOK && *conf_str(&ddnsmaster) == '\0') {
 			args->err_str = "empty 'ddns-master' requires 'dnssec-signing' enabled";
 			return KNOT_EINVAL;
 		}
 	}
 
-	conf_val_t serial_modulo = conf_zone_get_txn(args->extra->conf, args->extra->txn,
-	                                             C_SERIAL_MODULO, yp_dname(args->id));
+	conf_val_t serial_modulo = conf_get_wrap(args, C_SERIAL_MODULO);
 	if (serial_modulo.code == KNOT_EOK) {
 		int add;
 		uint32_t rem, mod;
@@ -1095,14 +1102,10 @@ int check_zone(
 		}
 	}
 
-	conf_val_t catalog_role = conf_zone_get_txn(args->extra->conf, args->extra->txn,
-	                                            C_CATALOG_ROLE, yp_dname(args->id));
-	conf_val_t catalog_tpl = conf_zone_get_txn(args->extra->conf, args->extra->txn,
-	                                           C_CATALOG_TPL, yp_dname(args->id));
-	conf_val_t catalog_zone = conf_zone_get_txn(args->extra->conf, args->extra->txn,
-	                                            C_CATALOG_ZONE, yp_dname(args->id));
-	conf_val_t catalog_serial = conf_zone_get_txn(args->extra->conf, args->extra->txn,
-	                                              C_SERIAL_POLICY, yp_dname(args->id));
+	conf_val_t catalog_role = conf_get_wrap(args, C_CATALOG_ROLE);
+	conf_val_t catalog_tpl = conf_get_wrap(args, C_CATALOG_TPL);
+	conf_val_t catalog_zone = conf_get_wrap(args, C_CATALOG_ZONE);
+	conf_val_t catalog_serial = conf_get_wrap(args, C_SERIAL_POLICY);
 
 	unsigned role = conf_opt(&catalog_role);
 	if ((bool)(role == CATALOG_ROLE_INTERPRET) != (bool)(catalog_tpl.code == KNOT_EOK)) {
@@ -1129,11 +1132,9 @@ int check_zone(
 		}
 	}
 
-	conf_val_t ds_push = conf_zone_get_txn(args->extra->conf, args->extra->txn,
-	                                       C_DS_PUSH, yp_dname(args->id));
+	conf_val_t ds_push = conf_get_wrap(args, C_DS_PUSH);
 	if (ds_push.code == KNOT_EOK) {
-		conf_val_t policy_id = conf_zone_get_txn(args->extra->conf, args->extra->txn,
-		                                         C_DNSSEC_POLICY, yp_dname(args->id));
+		conf_val_t policy_id = conf_get_wrap(args, C_DNSSEC_POLICY);
 		if (policy_id.code == KNOT_EOK) {
 			conf_val_t cds_cdnskey = conf_id_get_txn(args->extra->conf, args->extra->txn,
 			                                         C_POLICY, C_CDS_CDNSKEY,
@@ -1146,6 +1147,18 @@ int check_zone(
 	}
 
 	return KNOT_EOK;
+}
+
+int check_zone(
+	knotd_conf_check_args_t *args)
+{
+	return check_zone_or_tpl(args);
+}
+
+int check_catalog_tpl(
+	knotd_conf_check_args_t *args)
+{
+	return check_zone_or_tpl(args);
 }
 
 static int glob_error(

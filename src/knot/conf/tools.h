@@ -154,6 +154,10 @@ int check_zone(
 	knotd_conf_check_args_t *args
 );
 
+int check_catalog_tpl(
+	knotd_conf_check_args_t *args
+);
+
 int include_file(
 	knotd_conf_check_args_t *args
 );
