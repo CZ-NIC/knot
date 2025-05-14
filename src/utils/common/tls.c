@@ -361,15 +361,18 @@ static int check_certificates(gnutls_session_t session, const list_t *pins)
 					break;
 				}
 			}
-			if (dnsname_ptr > dnsname + 2) {
+			if (dnsname_ptr >= dnsname + 2) {
 				*(dnsname_ptr - 2) = '\0';
 			}
-			if (ipaddress_ptr > ipaddress + 2) {
+			if (ipaddress_ptr >= ipaddress + 2) {
 				*(ipaddress_ptr - 2) = '\0';
 			}
-			DBG("     %s", "Subject Alternative Name");
-			DBG("       %s: %s", "DNSname", dnsname);
-			DBG("       %s: %s", "IPAddress", ipaddress);
+
+			if (dnsname[0] | ipaddress[0]) {
+				DBG("     %s", "Subject Alternative Name");
+				if (dnsname[0]) DBG("       %s: %s", "DNSname", dnsname);
+				if (ipaddress[0]) DBG("       %s: %s", "IPAddress", ipaddress);
+			}
 		}
 		gnutls_free(cert_name.data);
 
