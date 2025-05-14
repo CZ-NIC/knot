@@ -289,8 +289,10 @@ static int handshake_completed_cb(ngtcp2_conn *conn, void *user_data)
 	ctx->flags |= KNOT_QUIC_CONN_HANDSHAKE_DONE;
 
 	if (!ngtcp2_conn_is_server(conn)) {
-		return knot_tls_pin_check(ctx->tls_session, ctx->quic_table->creds)
-		       == KNOT_EOK ? 0 : NGTCP2_ERR_CALLBACK_FAILURE;
+		return knot_tls_pin_check(ctx->tls_session, ctx->quic_table->creds) == KNOT_EOK
+		       && knot_tls_cert_check_creds(ctx->tls_session, ctx->quic_table->creds) == KNOT_EOK
+			       ? 0
+			       : NGTCP2_ERR_CALLBACK_FAILURE;
 	}
 
 	if (gnutls_session_ticket_send(ctx->tls_session, 1, 0) != GNUTLS_E_SUCCESS) {
@@ -723,7 +725,7 @@ int knot_quic_handle(knot_quic_table_t *table, knot_quic_reply_t *reply,
 		goto finish;
 	} else if (ngtcp2_err_is_fatal(ret)) { // connection doomed
 		if (ret == NGTCP2_ERR_CALLBACK_FAILURE) {
-			ret = KNOT_EBADCERTKEY;
+			ret = KNOT_EBADCERT;
 		} else {
 			ret = KNOT_ECONN;
 		}

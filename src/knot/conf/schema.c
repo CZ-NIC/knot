@@ -236,6 +236,7 @@ static const yp_item_t desc_server[] = {
 	                                                1232, YP_SSIZE } },
 	{ C_CERT_FILE,            YP_TSTR,  YP_VNONE, YP_FNONE },
 	{ C_KEY_FILE,             YP_TSTR,  YP_VNONE, YP_FNONE },
+	{ C_TLS_CA,               YP_TSTR,  YP_VNONE, YP_FMULTI },
 	{ C_ECS,                  YP_TBOOL, YP_VNONE },
 	{ C_ANS_ROTATION,         YP_TBOOL, YP_VNONE },
 	{ C_AUTO_ACL,             YP_TBOOL, YP_VNONE },
@@ -344,6 +345,7 @@ static const yp_item_t desc_remote[] = {
 	{ C_BLOCK_NOTIFY_XFR, YP_TBOOL, YP_VNONE },
 	{ C_NO_EDNS,          YP_TBOOL, YP_VNONE },
 	{ C_AUTO_ACL,         YP_TBOOL, YP_VBOOL = { true } },
+	{ C_CERT_VALIDATE,    YP_TBOOL, YP_VBOOL = { false }, .misc = { check_cert_validate } },
 	{ C_COMMENT,          YP_TSTR,  YP_VNONE },
 	{ NULL }
 };
