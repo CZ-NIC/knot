@@ -34,6 +34,8 @@
 #define C_CDS_DIGESTTYPE	"\x0F""cds-digest-type"
 #define C_CERT_FILE		"\x09""cert-file"
 #define C_CERT_KEY		"\x08""cert-key"
+#define C_TLS_CA   		"\x06""tls-ca"
+#define C_CERT_VALIDATE		"\x0D""cert-validate"
 #define C_CHK_INTERVAL		"\x0E""check-interval"
 #define C_CLEAR			"\x05""clear"
 #define C_COMMENT		"\x07""comment"

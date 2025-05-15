@@ -551,7 +551,7 @@ static void log_sock_conf(conf_t *conf)
 	}
 }
 
-static int check_file(char *path, char *role)
+static int check_file(const char *path, char *role)
 {
 	if (path == NULL) {
 		return KNOT_EOK;
@@ -579,6 +579,8 @@ static int init_creds(conf_t *conf, server_t *server)
 {
 	char *cert_file = conf_tls(conf, C_CERT_FILE);
 	char *key_file = conf_tls(conf, C_KEY_FILE);
+	list_t ca_files;
+	init_list(&ca_files);
 
 	int ret = check_file(cert_file, "certificate");
 	if (ret != KNOT_EOK) {
@@ -615,16 +617,43 @@ static int init_creds(conf_t *conf, server_t *server)
 		goto failed;
 	}
 
+	bool system_ca = false;
+	conf_val_t val = conf_get(conf, C_SERVER, C_TLS_CA);
+	while (val.code == KNOT_EOK) {
+		const char *cert_auth = conf_str(&val);
+		assert(cert_auth != NULL);
+		if (*cert_auth == '\0') {
+			system_ca = true;
+		} else if ((ret = check_file(cert_auth, "certificate")) != KNOT_EOK) {
+			goto failed;
+		} else {
+			if (ptrlist_add(&ca_files, (char *)cert_auth, NULL) == NULL) {
+				ret = KNOT_ENOMEM;
+				goto failed;
+			}
+		}
+		conf_val_next(&val);
+	}
+
 	if (server->quic_creds == NULL) {
-		server->quic_creds = knot_creds_init(key_file, cert_file, uid, gid);
+		int err;
+		server->quic_creds =
+			knot_creds_init(key_file, cert_file, &ca_files, system_ca, uid, gid, &err);
 		if (server->quic_creds == NULL) {
+			if (err == KNOT_EBADCERT) {
+				log_error(QUIC_LOG "failed to import one or more certificates");
+			}
 			log_error(QUIC_LOG "failed to initialize server credentials");
 			ret = KNOT_ERROR;
 			goto failed;
 		}
 	} else {
-		ret = knot_creds_update(server->quic_creds, key_file, cert_file, uid, gid);
+		ret = knot_creds_update(server->quic_creds, key_file, cert_file, &ca_files,
+					system_ca, uid, gid);
 		if (ret != KNOT_EOK) {
+			if (ret == KNOT_EBADCERT) {
+				log_error(QUIC_LOG "failed to import one or more certificates");
+			}
 			goto failed;
 		}
 	}
@@ -637,6 +666,7 @@ static int init_creds(conf_t *conf, server_t *server)
 
 	ret = KNOT_EOK;
 failed:
+	ptrlist_free(&ca_files, NULL);
 	free(key_file);
 	free(cert_file);
 

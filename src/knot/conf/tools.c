@@ -331,6 +331,22 @@ int check_xdp_listen(
 #endif
 }
 
+int check_cert_validate(
+	knotd_conf_check_args_t *args
+)
+{
+	conf_val_t val = conf_get_txn(args->extra->conf, args->extra->txn, C_SERVER, C_TLS_CA);
+
+	if (val.code != KNOT_EOK) {
+		snprintf(check_str, sizeof(check_str),
+			 "'cert-validate: on' in a remote, but 'tls-ca' not set in the server section");
+		args->err_str = check_str;
+		return KNOT_EINVAL;
+	}
+
+	return KNOT_EOK;
+}
+
 int check_cert_pin(
 	knotd_conf_check_args_t *args)
 {
