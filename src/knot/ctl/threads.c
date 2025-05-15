@@ -156,9 +156,12 @@ static concurrent_ctl_ctx_t *find_free_ctx(concurrent_ctl_ctx_t *concurrent_ctxs
 			(void)thread_create_nosignal(&cctx->thread, ctl_process_thread, cctx);
 			break;
 		case CONCURRENT_IDLE:
-			knot_ctl_free(cctx->ctl);
-			pthread_cond_broadcast(&cctx->cond);
-			break;
+			if (cctx->ret != KNOT_CTL_ESTOP) {
+				knot_ctl_free(cctx->ctl);
+				pthread_cond_broadcast(&cctx->cond);
+				break;
+			}
+			// FALLTHROUGH
 		default:
 			pthread_mutex_unlock(&cctx->mutex);
 			continue;
