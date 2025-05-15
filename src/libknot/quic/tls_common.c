@@ -27,6 +27,7 @@ typedef struct knot_creds {
 	gnutls_anti_replay_t tls_anti_replay;
 	gnutls_datum_t tls_ticket_key;
 	bool peer;
+	const char *peer_hostname;
 	uint8_t peer_pin_len;
 	uint8_t peer_pin[];
 } knot_creds_t;
@@ -160,15 +161,19 @@ finish:
 }
 
 _public_
-struct knot_creds *knot_creds_init(const char *key_file, const char *cert_file,
-                                   int uid, int gid)
+struct knot_creds *knot_creds_init(const char *key_file,
+				  const char *cert_file,
+				  const list_t *ca_files,
+				  bool system_ca,
+				  int uid,
+				  int gid)
 {
 	knot_creds_t *creds = calloc(1, sizeof(*creds));
 	if (creds == NULL) {
 		return NULL;
 	}
 
-	int ret = knot_creds_update(creds, key_file, cert_file, uid, gid);
+	int ret = knot_creds_update(creds, key_file, cert_file, ca_files, system_ca, uid, gid);
 	if (ret != KNOT_EOK) {
 		goto fail;
 	}
@@ -193,8 +198,9 @@ fail:
 
 _public_
 struct knot_creds *knot_creds_init_peer(const struct knot_creds *local_creds,
-                                        const uint8_t *peer_pin,
-                                        uint8_t peer_pin_len)
+					const char *peer_hostname,
+					const uint8_t *peer_pin,
+					uint8_t peer_pin_len)
 {
 	knot_creds_t *creds = calloc(1, sizeof(*creds) + peer_pin_len);
 	if (creds == NULL) {
@@ -218,6 +224,8 @@ struct knot_creds *knot_creds_init_peer(const struct knot_creds *local_creds,
 		memcpy(creds->peer_pin, peer_pin, peer_pin_len);
 		creds->peer_pin_len = peer_pin_len;
 	}
+
+	creds->peer_hostname = peer_hostname;
 
 	return creds;
 }
@@ -290,8 +298,13 @@ failed:
 }
 
 _public_
-int knot_creds_update(struct knot_creds *creds, const char *key_file, const char *cert_file,
-                      int uid, int gid)
+int knot_creds_update(struct knot_creds *creds,
+		      const char *key_file,
+		      const char *cert_file,
+		      const list_t *ca_files,
+		      bool system_ca,
+		      int uid,
+		      int gid)
 {
 	if (creds == NULL || key_file == NULL) {
 		return KNOT_EINVAL;
@@ -330,6 +343,15 @@ int knot_creds_update(struct knot_creds *creds, const char *key_file, const char
 		creds->cert_creds_prev = ATOMIC_XCHG(creds->cert_creds, new_creds);
 	} else {
 		gnutls_certificate_free_credentials(new_creds);
+	}
+
+	if (system_ca) {
+		gnutls_certificate_set_x509_system_trust(creds->cert_creds);
+	}
+	ptrnode_t *n;
+	WALK_LIST(n, *ca_files) {
+		gnutls_certificate_set_x509_trust_file(creds->cert_creds, n->d,
+						       GNUTLS_X509_FMT_PEM);
 	}
 
 	return KNOT_EOK;
@@ -483,4 +505,22 @@ int knot_tls_pin_check(struct gnutls_session_int *session,
 	}
 
 	return KNOT_EOK;
+}
+
+_public_
+int knot_tls_cert_check(struct gnutls_session_int *session,
+                        struct knot_creds *creds)
+{
+	// cert verification wasn't requested
+	if (creds->peer_hostname == NULL) {
+		return KNOT_EOK;
+	}
+
+	if (gnutls_certificate_type_get(session) != GNUTLS_CRT_X509) {
+		return KNOT_EBADCERT;
+	}
+
+	int ret = gnutls_certificate_verify_peers3(session, creds->peer_hostname, NULL);
+
+	return (ret == GNUTLS_E_SUCCESS) ? KNOT_EOK : KNOT_EBADCERT;
 }

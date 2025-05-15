@@ -27,6 +27,7 @@ typedef struct knot_tls_req_ctx {
  * \param fd                Opened TCP connection file descriptor.
  * \param remote            Remote socket for purpouses of TLS session resumption.
  * \param local             Local socket for purpouses of TLS session resumption.
+ * \param peer_hostname     TODO dsajfalksjfklsadfl
  * \param local_creds       Local TLS credentials.
  * \param peer_pin          TLS peer pin.
  * \param peer_pin_len      TLS peer pin length.
@@ -40,6 +41,7 @@ int knot_tls_req_ctx_init(knot_tls_req_ctx_t *ctx,
 			  const struct sockaddr_storage *remote,
 			  const struct sockaddr_storage *local,
 			  const struct knot_creds *local_creds,
+			  const char *peer_hostname,
 			  const uint8_t *peer_pin,
 			  uint8_t peer_pin_len,
 			  bool *reused_fd,

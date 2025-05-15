@@ -84,11 +84,9 @@ static int request_ensure_connected(knot_request_t *request, bool *reused_fd, in
 			                  &local_len);
 		}
 #ifdef ENABLE_QUIC
-		int ret = knot_qreq_connect(&request->quic_ctx,
-		                            request->fd, &request->remote,
-		                            &request->source, request->creds,
-		                            request->pin, request->pin_len,
-		                            reused_fd, timeout_ms);
+		int ret = knot_qreq_connect(&request->quic_ctx, request->fd, &request->remote,
+					    &request->source, request->creds, request->hostname,
+					    request->pin, request->pin_len, reused_fd, timeout_ms);
 		if (ret != KNOT_EOK) {
 			close(request->fd);
 			request->fd = -1;
@@ -103,9 +101,9 @@ static int request_ensure_connected(knot_request_t *request, bool *reused_fd, in
 		assert(!use_quic(request));
 
 		int ret = knot_tls_req_ctx_init(&request->tls_req_ctx, request->fd,
-		                                &request->remote, &request->source,
-		                                request->creds, request->pin,
-		                                request->pin_len, reused_fd, timeout_ms);
+						&request->remote, &request->source, request->creds,
+						request->hostname, request->pin, request->pin_len,
+						reused_fd, timeout_ms);
 		if (ret != KNOT_EOK) {
 			close(request->fd);
 			request->fd = -1;
@@ -210,6 +208,7 @@ knot_request_t *knot_request_make_generic(knot_mm_t *mm,
                                           const struct knot_creds *creds,
                                           const query_edns_data_t *edns,
                                           const knot_tsig_key_t *tsig_key,
+                                          const char *hostname,
                                           const uint8_t *pin,
                                           size_t pin_len,
                                           knot_request_flag_t flags)
@@ -252,6 +251,8 @@ knot_request_t *knot_request_make_generic(knot_mm_t *mm,
 		memcpy(request->pin, pin, pin_len);
 	}
 
+	request->hostname = hostname;
+
 	return request;
 }
 
@@ -269,9 +270,12 @@ knot_request_t *knot_request_make(knot_mm_t *mm,
 		flags |= KNOT_REQUEST_TLS;
 	}
 
-	return knot_request_make_generic(mm, &remote->addr, &remote->via,
-	                                 query, creds, edns, &remote->key, remote->pin,
-	                                 remote->pin_len, flags);
+	// NULL hostname in request signifies no certificate verification (except possibly by PIN)
+	const char *hostname = remote->cert_verify ? remote->hostname : NULL;
+
+	return knot_request_make_generic(mm, &remote->addr, &remote->via, query, creds, edns,
+					 &remote->key, hostname, remote->pin, remote->pin_len,
+					 flags);
 }
 
 void knot_request_free(knot_request_t *request, knot_mm_t *mm)

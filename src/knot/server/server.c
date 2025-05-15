@@ -615,19 +615,38 @@ static int init_creds(conf_t *conf, server_t *server)
 		goto failed;
 	}
 
+	bool system_ca = false;
+	list_t ca_files;
+	init_list(&ca_files);
+	conf_val_t val = conf_get(conf, C_SERVER, C_CERT_AUTH);
+	while (val.code == KNOT_EOK) {
+		const char *cert_auth = conf_str(&val);
+		assert(cert_auth != NULL);
+		if (*cert_auth == '\0') {
+			system_ca = true;
+		} else {
+			ptrlist_add(&ca_files, (char *)cert_auth, NULL);
+		}
+		conf_val_next(&val);
+	}
+
 	if (server->quic_creds == NULL) {
-		server->quic_creds = knot_creds_init(key_file, cert_file, uid, gid);
+		server->quic_creds =
+			knot_creds_init(key_file, cert_file, &ca_files, system_ca, uid, gid);
 		if (server->quic_creds == NULL) {
 			log_error(QUIC_LOG "failed to initialize server credentials");
 			ret = KNOT_ERROR;
 			goto failed;
 		}
 	} else {
-		ret = knot_creds_update(server->quic_creds, key_file, cert_file, uid, gid);
+		ret = knot_creds_update(server->quic_creds, key_file, cert_file, &ca_files,
+					system_ca, uid, gid);
 		if (ret != KNOT_EOK) {
 			goto failed;
 		}
 	}
+
+	ptrlist_free(&ca_files, NULL);
 
 	uint8_t pin[128];
 	size_t pin_len = server_cert_pin(server, pin, sizeof(pin));
