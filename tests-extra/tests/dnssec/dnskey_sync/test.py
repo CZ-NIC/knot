@@ -17,8 +17,9 @@ SIGNER1ROLL = (SCENARIO // 4) % 3
 SIGNER2ROLL = (SCENARIO // 12) % 3
 DNSKEY_MASTER = (SCENARIO // 36) % 2
 ROLL_LOG = [ "ZSK", "KSK", "CSK" ]
-check_log("SCENARIO %d, SIGNERS3 enabled %s, SIGNER1ROLL %s, SIGNER2ROLL %s, CDS enabled %s, DNSKEY master %d" % \
-          (SCENARIO, SIGNERS3, ROLL_LOG[SIGNER1ROLL], ROLL_LOG[SIGNER2ROLL], str(CDS), DNSKEY_MASTER))
+KEYTAG_MODULO = random.choice([True, False])
+check_log("SCENARIO %d, SIGNERS3 enabled %s, SIGNER1ROLL %s, SIGNER2ROLL %s, CDS enabled %s, DNSKEY master %d, KEYTAG modulo %u" % \
+          (SCENARIO, SIGNERS3, ROLL_LOG[SIGNER1ROLL], ROLL_LOG[SIGNER2ROLL], str(CDS), DNSKEY_MASTER, KEYTAG_MODULO))
 
 def now_hms(shift):
     t = datetime.datetime.now()
@@ -79,6 +80,8 @@ def configure_dnssec(server1, master, server2, server3, roll):
         server1.dnssec(zone).dnskey_sync = [ master ]
     else:
         server1.dnssec(zone).dnskey_sync = [ server2, server3 ] if SIGNERS3 else [ server2 ]
+    if KEYTAG_MODULO:
+        server1.dnssec(zone).keytag_modulo = "%d/3" % ((int)(server1.name[-1]) - 2)
 
 t = Test()
 
@@ -109,10 +112,10 @@ if SIGNERS3:
     t.sleep(0.5)
     signer3.ctl("zone-key-rollover %s %s" % (zone[0].name, "zsk" if SIGNER2ROLL == 0 else "ksk"))
 
-t.sleep(6)
+t.sleep(8)
 check_same_dnskey(signer1, signer2, signer3, t)
 
-t.sleep(6)
+t.sleep(8)
 check_same_dnskey(signer1, signer2, signer3, t)
 
 t.end()

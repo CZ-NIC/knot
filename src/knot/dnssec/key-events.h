@@ -67,3 +67,16 @@ int knot_dnssec_ksk_sbm_confirm(kdnssec_ctx_t *ctx, uint32_t retire_delay);
  * \return False if there is no submitted key or if error; True otherwise
  */
 bool zone_has_key_sbm(const kdnssec_ctx_t *ctx);
+
+/*!
+ * \brief Returns jitter for dnskey-sync event schedulling
+ *
+ * The purpose of the jitter is to minimize a race condition during mutual
+ * synchronization.
+ *
+ * \param conf    Configuration.
+ * \param zon     Zone to compute jitter for.
+ *
+ * \return Jitter value.
+ */
+unsigned dnskey_sync_jitter(conf_t *conf, zone_t *zone);
