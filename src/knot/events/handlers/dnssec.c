@@ -18,6 +18,7 @@
 
 #include "knot/common/log.h"
 #include "knot/conf/conf.h"
+#include "knot/dnssec/key-events.h"
 #include "knot/dnssec/zone-events.h"
 #include "knot/updates/apply.h"
 #include "knot/zone/zone.h"
@@ -53,10 +54,11 @@ void event_dnssec_reschedule(conf_t *conf, zone_t *zone,
 		zone->timers.next_ds_check = now;
 	}
 
+	unsigned jitter = dnskey_sync_jitter(conf, zone);
 	zone_events_schedule_at(zone,
 		ZONE_EVENT_DNSSEC, refresh_at ? (time_t)refresh_at : ignore,
 		ZONE_EVENT_DS_CHECK, refresh->plan_ds_check ? now : ignore,
-		ZONE_EVENT_DNSKEY_SYNC, refresh->plan_dnskey_sync ? now : ignore
+		ZONE_EVENT_DNSKEY_SYNC, refresh->plan_dnskey_sync ? now + jitter : ignore
 	);
 	if (zone_changed) {
 		zone_schedule_notify(zone, 0);
