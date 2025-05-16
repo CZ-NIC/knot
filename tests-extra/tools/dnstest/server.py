@@ -372,23 +372,19 @@ class Server(object):
     def start(self, clean=False):
         '''Start the server with all bindings successful'''
 
-        errors = 0 if clean else self.binding_errors
         for attempt in range(Server.START_MAX_ATTEMPTS):
-            self.binding_errors = errors
             self.wait_for_pidfile()
             self.start_server(clean)
             errors = self.log_search_count(self.binding_fail)
-            if errors == self.binding_errors:
-                break
-            self.stop()
+            if errors == (0 if clean else self.binding_errors):
+                return
+            self.binding_errors = errors  # Store it for future attempts.
             if attempt < (Server.START_MAX_ATTEMPTS - 1):
+                self.stop()
                 time.sleep(Server.START_WAIT_ATTEMPTS)
                 check_log("STARTING %s AGAIN" % self.name)
 
-        if errors > self.binding_errors:
-            raise Failed("Couldn't bind all addresses or ports")
-
-        self.binding_errors = errors
+        raise Failed("Couldn't bind all addresses or ports")
 
     def ctl(self, cmd, wait=False, availability=True, read_result=False, custom_parm=None):
         if custom_parm is None:
