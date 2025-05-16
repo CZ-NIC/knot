@@ -444,7 +444,9 @@ done:
 		// NOTE: this is usually NOOP since signing planned earlier
 		zone_events_schedule_at(update->zone, ZONE_EVENT_DNSSEC, (time_t)(next ? next : -1));
 		if (ctx.policy->has_dnskey_sync) {
-			zone_events_schedule_now(update->zone, ZONE_EVENT_DNSKEY_SYNC);
+			unsigned jitter = dnskey_sync_jitter(conf, update->zone);
+			zone_events_schedule_at(update->zone, ZONE_EVENT_DNSKEY_SYNC,
+			                        time(NULL) + jitter);
 		}
 		ATOMIC_SET(update->new_cont->dnssec_expire,
 		           (uint64_t)knot_time_min(ATOMIC_GET(update->zone->contents->dnssec_expire),

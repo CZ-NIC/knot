@@ -112,10 +112,10 @@ if SIGNERS3:
     t.sleep(0.5)
     signer3.ctl("zone-key-rollover %s %s" % (zone[0].name, "zsk" if SIGNER2ROLL == 0 else "ksk"))
 
-t.sleep(6)
+t.sleep(8)
 check_same_dnskey(signer1, signer2, signer3, t)
 
-t.sleep(6)
+t.sleep(8)
 check_same_dnskey(signer1, signer2, signer3, t)
 
 t.end()

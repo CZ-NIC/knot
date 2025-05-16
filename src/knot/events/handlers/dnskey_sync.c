@@ -338,7 +338,7 @@ static int send_dnskey_sync(conf_t *conf, zone_t *zone, bool *uptodate,
 	}
 
 	if (data.ddns_sent && ret == KNOT_ETIMEOUT) {
-		DNSKEY_SYNC_LOG(LOG_WARNING, zone->name, remote, requestor.layer.flags,
+		DNSKEY_SYNC_LOG(LOG_NOTICE, zone->name, remote, requestor.layer.flags,
 		                "timed out, may be caused by parallel mutual DNSKEY sync, "
 		                "may settle down after check-interval");
 		ret = KNOT_EOK;
