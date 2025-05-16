@@ -12,6 +12,8 @@
 #include "knot/dnssec/key-events.h"
 #include "knot/dnssec/policy.h"
 #include "knot/dnssec/zone-keys.h"
+#include "knot/zone/serial.h"
+#include "libdnssec/random.h"
 
 static bool key_present(const kdnssec_ctx_t *ctx, bool ksk, bool zsk)
 {
@@ -925,4 +927,20 @@ bool zone_has_key_sbm(const kdnssec_ctx_t *ctx)
 		}
 	}
 	return false;
+}
+
+unsigned dnskey_sync_jitter(conf_t *conf, zone_t *zone)
+{
+	conf_val_t id = conf_zone_get(conf, C_DNSSEC_POLICY, zone->name);
+	conf_id_fix_default(&id);
+	conf_val_t val = conf_id_get(conf, C_POLICY, C_KEYTAG_MODULO, &id);
+	if (val.code == KNOT_EOK) {
+		int zero;
+		uint32_t rem, mod;
+		int ret = serial_modulo_parse(conf_str(&val), &rem, &mod, &zero);
+		if (ret == KNOT_EOK && mod > 1) {
+			return 2 * rem;
+		}
+	}
+	return dnssec_random_uint16_t() % 5;
 }
