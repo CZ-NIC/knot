@@ -138,7 +138,8 @@ class Server(object):
     START_WAIT = 2
     START_WAIT_VALGRIND = 5
     START_WAIT_ATTEMPTS = 60
-    START_MAX_ATTEMPTS = 10
+    START_MAX_ATTEMPTS = 10  # During the test, fatal.
+    START_INIT_ATTEMPTS = 3  # When starting a test, non-fatal.
     STOP_TIMEOUT = 30
     COMPILE_TIMEOUT = 60
     DIG_TIMEOUT = 5
@@ -372,14 +373,15 @@ class Server(object):
     def start(self, clean=False, fatal=True):
         '''Start the server with all bindings successful'''
 
-        for attempt in range(Server.START_MAX_ATTEMPTS):
+        max = Server.START_MAX_ATTEMPTS if fatal else Server.START_INIT_ATTEMPTS
+        for attempt in range(max):
             self.wait_for_pidfile()
             self.start_server(clean)
             errors = self.log_search_count(self.binding_fail)
             if errors == (0 if clean else self.binding_errors):
                 return
             self.binding_errors = errors  # Store it for future attempts.
-            if attempt < (Server.START_MAX_ATTEMPTS - 1):
+            if attempt < (max - 1):
                 self.stop()
                 time.sleep(Server.START_WAIT_ATTEMPTS)
                 check_log("STARTING %s AGAIN" % self.name)
