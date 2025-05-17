@@ -369,7 +369,7 @@ class Server(object):
         if Context().test.stress and self.inquirer:
             self.inquirer.start(self)
 
-    def start(self, clean=False):
+    def start(self, clean=False, fatal=True):
         '''Start the server with all bindings successful'''
 
         for attempt in range(Server.START_MAX_ATTEMPTS):
@@ -378,13 +378,16 @@ class Server(object):
             errors = self.log_search_count(self.binding_fail)
             if errors == (0 if clean else self.binding_errors):
                 return
-            self.stop()
             self.binding_errors = errors
             if attempt < (Server.START_MAX_ATTEMPTS - 1):
+                self.stop()
                 time.sleep(Server.START_WAIT_ATTEMPTS)
                 check_log("STARTING %s AGAIN" % self.name)
 
-        raise Failed("Couldn't bind all addresses or ports")
+        if fatal:
+            raise Failed("Couldn't bind all addresses or ports")
+        else:
+            check_log("BUSY PORTS, START OF %s FAILED" % self.name)
 
     def ctl(self, cmd, wait=False, availability=True, read_result=False, custom_parm=None):
         if custom_parm is None:

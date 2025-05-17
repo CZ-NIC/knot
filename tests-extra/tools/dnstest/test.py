@@ -276,7 +276,7 @@ class Test(object):
             if server.external:
                 continue
 
-            server.start(clean=True)
+            server.start(clean=True, fatal=False)
 
             if not server.running():
                 raise Failed("Server '%s' not running" % server.name)
