@@ -277,7 +277,7 @@ class Test(object):
             if server.external:
                 continue
 
-            server.start(clean=True)
+            server.start(clean=True, fatal=False)
 
             # When address/port is busy, Knot exits, BIND doesn't.
             if not server.running() or not server.listening():
