@@ -321,13 +321,13 @@ static int check_certificates(gnutls_session_t session, const list_t *pins)
 			return ret;
 		}
 		char *altname = strstr((char *)cert_name.data, "Subject Alternative Name");
-		if (altname) {
+		if (altname != NULL) {
+			DBG2("     Subject Alternative Name");
 			char *newline = strstr(altname, "\n");
 			while (!strncmp("\n\t\t\t", newline, 4)) {
+				DBG2("       %s", newline + 1);
 				newline = strstr(newline + 1, "\n");
 			}
-			newline[0] = '\0';
-			DBG2("     %s", altname);
 		}
 		gnutls_free(cert_name.data);
 
