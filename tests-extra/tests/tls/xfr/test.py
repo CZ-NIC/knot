@@ -34,7 +34,7 @@ if slave.valgrind:
 MSG_DENIED_NOTIFY = "ACL, denied, action notify"
 MSG_DENIED_TRANSFER = "ACL, denied, action transfer"
 MSG_RMT_NOTAUTH = "server responded with error 'NOTAUTH'"
-MSG_RMT_BADCERT = "failed (unknown certificate key)"
+MSG_RMT_BADCERT = "failed (unknown certificate key/untrusted certificate)"
 MSG_TSIG_ERROR = "failed (failed to verify TSIG)"
 
 def check_error(server, msg):
