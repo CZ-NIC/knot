@@ -91,7 +91,7 @@ master.zone_verify(zone)
 zf = master.zones[zone_name].zfile
 zf_prev = zf.path + ".back" + str(zf.backup_num - 2)
 zf_post = zf.path + ".back" + str(zf.backup_num - 1)
-p = subprocess.run("diff %s %s  | egrep -v 'RRSIG|SOA|;;|---|^[0-9]' | wc -c | grep -q '^[0-2]$'" % (zf_prev, zf_post), shell=True)
+p = subprocess.run("diff %s %s  | grep -Ev 'RRSIG|SOA|;;|---|^[0-9]' | wc -c | grep -q '^[0-2]$'" % (zf_prev, zf_post), shell=True)
 if p.returncode > 0:
     set_err("NSEC3 changed upon re-sign")
 
