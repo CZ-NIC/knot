@@ -939,8 +939,8 @@ unsigned dnskey_sync_jitter(conf_t *conf, zone_t *zone)
 		uint32_t rem, mod;
 		int ret = serial_modulo_parse(conf_str(&val), &rem, &mod, &zero);
 		if (ret == KNOT_EOK && mod > 1) {
-			return 2 * rem;
+			return 3.5 * rem;
 		}
 	}
-	return dnssec_random_uint16_t() % 5;
+	return dnssec_random_uint16_t() % 8;
 }

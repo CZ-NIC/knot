@@ -11,11 +11,11 @@ from dnstest.keys import Keymgr
 from dnstest.test import Test
 
 SCENARIO = random.choice(range(72))
-CDS = bool(SCENARIO % 2)
+CDS = bool(SCENARIO % 2) # affects the number of rrsets to synchronize
 SIGNERS3 = bool((SCENARIO // 2) % 2)
 SIGNER1ROLL = (SCENARIO // 4) % 3
 SIGNER2ROLL = (SCENARIO // 12) % 3
-DNSKEY_MASTER = (SCENARIO // 36) % 2
+DNSKEY_MASTER = (SCENARIO // 36) % 2 # 0 - synchronize signers, 1 - synchronize with master
 ROLL_LOG = [ "ZSK", "KSK", "CSK" ]
 KEYTAG_MODULO = random.choice([True, False])
 check_log("SCENARIO %d, SIGNERS3 enabled %s, SIGNER1ROLL %s, SIGNER2ROLL %s, CDS enabled %s, DNSKEY master %d, KEYTAG modulo %u" % \
@@ -71,10 +71,10 @@ def configure_dnssec(server1, master, server2, server3, roll):
 
     server1.dnssec(zone).enable = True
     server1.dnssec(zone).single_type_signing = (roll == 2)
-    server1.dnssec(zone).propagation_delay = 4
-    server1.dnssec(zone).ksk_sbm_timeout = 4
+    server1.dnssec(zone).propagation_delay = 20
+    server1.dnssec(zone).ksk_sbm_timeout = 11
     server1.dnssec(zone).dnskey_mgmt = "incremental"
-    server1.dnssec(zone).delete_delay = 4
+    server1.dnssec(zone).delete_delay = 11
     server1.dnssec(zone).cds_publish = ("always" if CDS else "none")
     if DNSKEY_MASTER == 1:
         server1.dnssec(zone).dnskey_sync = [ master ]
@@ -102,7 +102,7 @@ signer2.zone_wait(zone)
 if SIGNERS3:
     signer3.zone_wait(zone)
 
-t.sleep(4)
+t.sleep(20)
 check_same_dnskey(signer1, signer2, signer3, t)
 
 signer1.ctl("zone-key-rollover %s %s" % (zone[0].name, "zsk" if SIGNER1ROLL == 0 else "ksk"))
@@ -112,10 +112,10 @@ if SIGNERS3:
     t.sleep(0.5)
     signer3.ctl("zone-key-rollover %s %s" % (zone[0].name, "zsk" if SIGNER2ROLL == 0 else "ksk"))
 
-t.sleep(8)
+t.sleep(20)
 check_same_dnskey(signer1, signer2, signer3, t)
 
-t.sleep(8)
+t.sleep(40)
 check_same_dnskey(signer1, signer2, signer3, t)
 
 t.end()
