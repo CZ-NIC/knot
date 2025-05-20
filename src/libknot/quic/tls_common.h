@@ -137,4 +137,6 @@ void knot_tls_pin(struct gnutls_session_int *session, uint8_t *pin,
 int knot_tls_pin_check(struct gnutls_session_int *session,
                        struct knot_creds *creds);
 
+bool knot_tls_early(struct gnutls_session_int *session);
+
 /*! @} */

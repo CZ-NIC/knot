@@ -101,6 +101,8 @@ knot_layer_state_t update_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 		return KNOT_STATE_FAIL;
 	}
 
+	NS_NEED_NO_EARLY(qdata, KNOT_RCODE_REFUSED);
+
 	/* RFC1996 require SOA question. */
 	NS_NEED_QTYPE(qdata, KNOT_RRTYPE_SOA, KNOT_RCODE_FORMERR);
 

@@ -492,3 +492,11 @@ int knot_tls_pin_check(struct gnutls_session_int *session,
 
 	return KNOT_EOK;
 }
+
+_public_
+bool knot_tls_early(struct gnutls_session_int *session)
+{
+	uint8_t buffer[1];
+	ssize_t ret = gnutls_record_recv_early_data(session, buffer, sizeof(buffer));
+	return ret != GNUTLS_E_REQUESTED_DATA_NOT_AVAILABLE;
+}
