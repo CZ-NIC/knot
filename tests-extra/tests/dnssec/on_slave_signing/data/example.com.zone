@@ -1,7 +1,0 @@
-example.com. 3600 SOA dns1.example.com. hostmaster.example.com. 1000000000 6h 1h 1w 1d
-
-example.com.	NS	dns1
-example.com.	MX	10 mail
-
-dns1.example.com.	3600 A	192.0.2.1
-mail.example.com.	3600 A	192.0.2.3

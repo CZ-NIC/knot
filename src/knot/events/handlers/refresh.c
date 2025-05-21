@@ -309,17 +309,23 @@ static void axfr_slave_sign_serial(zone_contents_t *new_contents, zone_t *zone,
 
 	*master_serial = zone_contents_serial(new_contents);
 
+	conf_val_t val = conf_zone_get(conf, C_SERIAL_POLICY, zone->name);
+	unsigned policy = conf_opt(&val);
+
 	uint32_t new_serial, lastsigned_serial;
 	if (zone->contents != NULL) {
 		// Retransfer or AXFR-fallback - increment current serial.
 		uint32_t cont_serial = zone_contents_serial(zone->contents);
-		new_serial = serial_next(cont_serial, conf, zone->name, SERIAL_POLICY_AUTO, 1);
+		new_serial = serial_next(cont_serial, conf, zone->name, policy, 1);
 	} else if (zone_get_lastsigned_serial(zone, &lastsigned_serial) == KNOT_EOK) {
 		// Bootstrap - increment stored serial.
-		new_serial = serial_next(lastsigned_serial, conf, zone->name, SERIAL_POLICY_AUTO, 1);
+		new_serial = serial_next(lastsigned_serial, conf, zone->name, policy, 1);
+	} else if (policy != SERIAL_POLICY_INCREMENT) {
+		// Independent slave-side serial possibly lower or higher than master-side.
+		new_serial = serial_next(1700000000, conf, zone->name, policy, 0);
 	} else {
 		// Bootstrap - try to reuse master serial, considering policy.
-		new_serial = serial_next(*master_serial, conf, zone->name, SERIAL_POLICY_AUTO, 0);
+		new_serial = serial_next(*master_serial, conf, zone->name, policy, 0);
 	}
 	zone_contents_set_soa_serial(new_contents, new_serial);
 }
