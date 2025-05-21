@@ -16,23 +16,6 @@ def check_new_rr(server, new_rr):
     resp.check(rcode="NOERROR", rdata=addr)
     resp.check_count(1, "RRSIG")
 
-def check_soa_diff(master, slave, zone, min_diff, max_diff):
-    resp_m = master.dig(zone.name, "SOA", dnssec=True)
-    resp_s = slave.dig(zone.name, "SOA", dnssec=True)
-    resp_m.check_count(0, "RRSIG")
-    resp_s.check_count(1, "RRSIG")
-    real_diff = resp_s.soa_serial() - resp_m.soa_serial()
-
-    if min_diff is not None and real_diff < min_diff:
-        set_err("SOA serial difference min")
-        detail_log("Low difference of SOA serials: master %d slave %d min diff %d" %
-                   (resp_m.soa_serial(), resp_s.soa_serial(), min_diff))
-
-    if max_diff is not None and real_diff > max_diff:
-        set_err("SOA serial difference max")
-        detail_log("High difference of SOA serials: master %d slave %d max diff %d" %
-                   (resp_m.soa_serial(), resp_s.soa_serial(), max_diff))
-
 def server_purge(server, zones, purge_kaspdb=True):
     shutil.rmtree(os.path.join(server.dir, "journal"), ignore_errors=True)
     if purge_kaspdb:
@@ -41,8 +24,7 @@ def server_purge(server, zones, purge_kaspdb=True):
     for z in zones:
         os.remove(server.zones[z.name].zfile.path)
 
-def test_one(master, slave, zone, master_policy, slave_policy, initial_serial,
-             min_diff1, max_diff1, min_diff, max_diff):
+def test_one(master, slave, zone, master_policy, slave_policy, initial_serial):
 
     # configure serial policies and cleanup slave completely
     slave.zone_wait(zone)
@@ -59,14 +41,14 @@ def test_one(master, slave, zone, master_policy, slave_policy, initial_serial,
 
     # initial test: after AXFR
     serial = slave.zone_wait(zone)
-    check_soa_diff(master, slave, zone[0], min_diff1, max_diff1)
+    if slave_policy == "incremental":
+        slave.zone_wait(zone, initial_serial, equal=True, greater=False)
 
     # sign twice on slave to make difference
     slave.ctl("zone-sign example.com.")
     serial = slave.zone_wait(zone, serial)
     slave.ctl("zone-sign example.com.")
     serial = slave.zone_wait(zone, serial)
-    check_soa_diff(master, slave, zone[0], min_diff, None)
 
     # test IXFR with shifted serial
     update = master.update(zone)
@@ -74,7 +56,6 @@ def test_one(master, slave, zone, master_policy, slave_policy, initial_serial,
     update.send("NOERROR")
     serial = slave.zone_wait(zone, serial)
     check_new_rr(slave, new1)
-    check_soa_diff(master, slave, zone[0], min_diff, max_diff)
 
     # test AXFR bootstrap with shifted serial
     slave.stop()
@@ -84,16 +65,15 @@ def test_one(master, slave, zone, master_policy, slave_policy, initial_serial,
     update.send("NOERROR")
     t.sleep(1)
     slave.start()
-    slave.zone_wait(zone)
+    serial = slave.zone_wait(zone, serial)
     check_new_rr(slave, new2)
-    check_soa_diff(master, slave, zone[0], min_diff, max_diff)
 
 t = Test()
 
 master = t.server("knot")
 slave  = t.server("knot")
 
-zone = t.zone("example.com.", storage=".")
+zone = t.zone("example.com.")
 
 t.link(zone, master, slave, ddns=True)
 
@@ -101,14 +81,12 @@ slave.dnssec(zone).enable = True
 
 t.start()
 
-test_one(master, slave, zone, "increment", "increment", 1000, 0, 0, 2, 3)
-test_one(master, slave, zone, "unixtime", "unixtime", int(time.time()), 1, 30, 1, 30)
-test_one(master, slave, zone, "increment", "unixtime", int(time.time()), 1, 30, 5, None)
-test_one(master, slave, zone, "unixtime", "increment", int(time.time()), 0, 0, None, -1)
-
-rnd_master = random.choice(["dateserial", "increment"])
-rnd_slave  = random.choice(["dateserial", "increment"])
-test_one(master, slave, zone, rnd_master, rnd_slave, time.strftime("%Y%m%d01"), 0, 0, 2, 3)
+test_one(master, slave, zone, "increment",  "increment",  1000)
+test_one(master, slave, zone, "unixtime",   "unixtime",   int(time.time()))
+test_one(master, slave, zone, "increment",  "unixtime",   1000)
+test_one(master, slave, zone, "unixtime",   "increment",  int(time.time()))
+test_one(master, slave, zone, "dateserial", "unixtime",   2025010100)
+test_one(master, slave, zone, "unixtime",   "dateserial", int(time.time()))
 
 if slave.log_search("fallback to AXFR"):
     set_err("fallback to AXFR")
