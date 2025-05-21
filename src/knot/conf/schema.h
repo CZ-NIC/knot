@@ -103,6 +103,7 @@
 #define C_MODULE		"\x06""module"
 #define C_NO_EDNS		"\x07""no-edns"
 #define C_NOTIFY		"\x06""notify"
+#define C_NOTIFY_DELAY		"\x0C""notify-delay"
 #define C_NSEC3			"\x05""nsec3"
 #define C_NSEC3_ITER		"\x10""nsec3-iterations"
 #define C_NSEC3_OPT_OUT		"\x0D""nsec3-opt-out"
