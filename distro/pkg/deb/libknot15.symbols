@@ -153,6 +153,7 @@ libknot.so.15 libknot15 #MINVER#
  knot_rdataset_intersect2@Base 3.4.0
  knot_rdataset_member@Base 3.4.0
  knot_rdataset_merge@Base 3.4.0
+ knot_rdataset_remove_at@Base 3.4.7
  knot_rdataset_subset@Base 3.4.0
  knot_rdataset_subtract@Base 3.4.0
  knot_rrclass_from_string@Base 3.4.0

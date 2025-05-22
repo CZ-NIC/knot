@@ -10,6 +10,7 @@
 #include "knot/query/query.h"
 #include "knot/query/requestor.h"
 #include "knot/server/server.h"
+#include "knot/zone/serial.h"
 #include "knot/zone/zone.h"
 #include "libdnssec/keytag.h"
 #include "libknot/errcode.h"
@@ -30,6 +31,8 @@ struct dnskey_sync_data {
 	query_edns_data_t edns;
 	bool uptodate;
 	bool ddns_sent;
+	uint32_t keytag_remain;
+	uint32_t keytag_modulo;
 };
 
 static void log_upd(struct dnskey_sync_data *data)
@@ -71,6 +74,32 @@ static void log_upd(struct dnskey_sync_data *data)
 	if (w.error == KNOT_EOK) {
 		// intentionally not DNSKEY_SYNC_LOG to save space on log line
 		log_zone_info(data->zone->name, "DNSKEY sync%s", buf);
+	}
+}
+
+static uint16_t dnskey_keytag(knot_rdata_t *rd)
+{
+	uint16_t res = 0;
+	const dnssec_binary_t bin = {
+		.size = rd->len,
+		.data = rd->data
+	};
+	return dnssec_keytag(&bin, &res) == 0 ? res : 0;
+}
+
+static void filter_keytag(knot_rrset_t *rr, uint32_t keytag_remain, uint32_t keytag_modulo)
+{
+	for (int i = 0; i < rr->rrs.count; i++) { // NOTE: count may decrease during iteration
+		knot_rdata_t *rd = knot_rdataset_at(&rr->rrs, i);
+		uint16_t rd_keytag = (rr->type == KNOT_RRTYPE_CDS) ?
+		                     knot_ds_key_tag(rd) : dnskey_keytag(rd);
+		if (keytag_modulo < 2 // keytag-modulo not configured
+		    || rd_keytag == 0 // error in dnskey_keytag()
+		    || rd_keytag % keytag_modulo == keytag_remain) {
+		} else {
+			(void)knot_rdataset_remove_at(&rr->rrs, i, NULL);
+			i--;
+		}
 	}
 }
 
@@ -150,6 +179,8 @@ static int compute_rem_add(struct dnskey_sync_data *data, int idx)
 	if (data->add_rr[idx] == NULL) {
 		return KNOT_ENOMEM;
 	}
+
+	filter_keytag(data->add_rr[idx], data->keytag_remain, data->keytag_modulo);
 
 	knot_rdataset_t tmp = { 0 };
 	int ret = knot_rdataset_intersect(&data->add_rr[idx]->rrs, &data->rem_rr[idx]->rrs, &tmp, NULL);
@@ -233,6 +264,8 @@ static int dnskey_sync_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 		}
 	}
 
+	filter_keytag(data->rem_rr[idx], data->keytag_remain, data->keytag_modulo);
+
 	int state = queries_evaluate(data, layer->flags);
 	return (state == KNOT_STATE_PRODUCE ? KNOT_STATE_RESET : state);
 }
@@ -264,13 +297,21 @@ static const knot_layer_api_t DNSKEY_SYNC_API = {
 };
 
 static int send_dnskey_sync(conf_t *conf, zone_t *zone, bool *uptodate,
-                            const conf_remote_t *remote, int timeout)
+                            const conf_remote_t *remote, int timeout,
+                            conf_val_t *dnssec_policy)
 {
 	struct dnskey_sync_data data = {
 		.zone = zone,
 		.remote = remote,
 		.edns = query_edns_data_init(conf, remote, 0)
 	};
+
+	int zero;
+	conf_val_t val = conf_id_get(conf, C_POLICY, C_KEYTAG_MODULO, dnssec_policy);
+	int ret = serial_modulo_parse(conf_str(&val), &data.keytag_remain, &data.keytag_modulo, &zero);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
 
 	knot_requestor_t requestor;
 	knot_requestor_init(&requestor, &DNSKEY_SYNC_API, &data, NULL);
@@ -290,7 +331,7 @@ static int send_dnskey_sync(conf_t *conf, zone_t *zone, bool *uptodate,
 		return KNOT_ENOMEM;
 	}
 
-	int ret = knot_requestor_exec(&requestor, req, timeout);
+	ret = knot_requestor_exec(&requestor, req, timeout);
 
 	if (!data.uptodate || ret != KNOT_EOK) {
 		*uptodate = false;
@@ -341,7 +382,8 @@ int event_dnskey_sync(conf_t *conf, zone_t *zone)
 
 		for (int i = 0; i < addr_count; i++) {
 			conf_remote_t parent = conf_remote(conf, iter.id, i);
-			int ret = send_dnskey_sync(conf, zone, &uptodate, &parent, timeout);
+			int ret = send_dnskey_sync(conf, zone, &uptodate, &parent,
+			                           timeout, &policy_id);
 			if (ret == KNOT_EOK) {
 				break;
 			}
