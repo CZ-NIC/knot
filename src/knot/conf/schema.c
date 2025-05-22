@@ -372,6 +372,8 @@ static const yp_item_t desc_acl[] = {
 	{ C_UPDATE_OWNER_NAME,  YP_TDATA,  YP_VDATA = { 0, NULL, rdname_to_bin, rdname_to_txt },
 	                                   YP_FMULTI, },
 	{ C_CERT_KEY,           YP_TB64,   YP_VNONE, YP_FMULTI, { check_cert_pin } },
+	{ C_CERT_VALIDATE,      YP_TBOOL,  YP_VBOOL = { false }, .misc = { check_cert_validate } },
+	{ C_TLS_HOSTNAME,       YP_TSTR,   YP_VNONE, YP_FMULTI },
 	{ C_COMMENT,            YP_TSTR,   YP_VNONE },
 	{ NULL }
 };

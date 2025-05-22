@@ -35,6 +35,7 @@
 #define C_CERT_FILE		"\x09""cert-file"
 #define C_CERT_KEY		"\x08""cert-key"
 #define C_TLS_CA   		"\x06""tls-ca"
+#define C_TLS_HOSTNAME   	"\x0C""tls-hostname"
 #define C_CERT_VALIDATE		"\x0D""cert-validate"
 #define C_CHK_INTERVAL		"\x0E""check-interval"
 #define C_CLEAR			"\x05""clear"
