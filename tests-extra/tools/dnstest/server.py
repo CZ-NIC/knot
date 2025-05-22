@@ -138,7 +138,8 @@ class Server(object):
     START_WAIT = 2
     START_WAIT_VALGRIND = 5
     START_WAIT_ATTEMPTS = 60
-    START_MAX_ATTEMPTS = 10
+    START_MAX_ATTEMPTS = 10  # During the test, fatal.
+    START_INIT_ATTEMPTS = 3  # When starting a test, non-fatal.
     STOP_TIMEOUT = 30
     COMPILE_TIMEOUT = 60
     DIG_TIMEOUT = 5
@@ -370,26 +371,26 @@ class Server(object):
         if Context().test.stress and self.inquirer:
             self.inquirer.start(self)
 
-    def start(self, clean=False):
+    def start(self, clean=False, fatal=True):
         '''Start the server with all bindings successful'''
 
-        errors = 0 if clean else self.binding_errors
-        for attempt in range(Server.START_MAX_ATTEMPTS):
-            self.binding_errors = errors
+        max = Server.START_MAX_ATTEMPTS if fatal else Server.START_INIT_ATTEMPTS
+        for attempt in range(max):
             self.wait_for_pidfile()
             self.start_server(clean)
             errors = self.log_search_count(self.binding_fail)
-            if errors == self.binding_errors:
-                break
-            self.stop()
-            if attempt < (Server.START_MAX_ATTEMPTS - 1):
+            if errors == (0 if clean else self.binding_errors):
+                return
+            self.binding_errors = errors  # Store it for future attempts.
+            if attempt < (max - 1):
+                self.stop()
                 time.sleep(Server.START_WAIT_ATTEMPTS)
                 check_log("STARTING %s AGAIN" % self.name)
 
-        if errors > self.binding_errors:
-            raise Failed("Couldn't bind all addresses or ports")
-
-        self.binding_errors = errors
+        if fatal:
+            raise Failed("Server %s couldn't bind all addresses or ports" % self.name)
+        else:
+            check_log("BUSY PORTS, START OF %s FAILED" % self.name)
 
     def ctl(self, cmd, wait=False, availability=True, read_result=False, custom_parm=None):
         if custom_parm is None:
@@ -1313,7 +1314,7 @@ class Bind(Server):
     def ctl_sock_rnd(self):
         return []
 
-    def start(self, clean=False):
+    def start(self, clean=False, fatal=True):
         for zname in self.zones:
             z = self.zones[zname]
             if z.dnssec.enable != True:
@@ -1345,7 +1346,7 @@ class Bind(Server):
                     #n3iters = z.dnssec.nsec3_iters or 0
                     #outf.write("%s NSEC3PARAM 1 %d %d -\n" % (z.name, n3flag, n3iters)) # this does not work!
 
-        super().start(clean)
+        super().start(clean, fatal)
 
         for zname in self.zones:
             z = self.zones[zname]
@@ -1989,7 +1990,7 @@ class Dummy(Server):
     def get_config(self):
         return ''
 
-    def start(self, clean=None):
+    def start(self, clean=None, fatal=None):
         return True
 
     def listening(self):

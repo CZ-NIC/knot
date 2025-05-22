@@ -258,6 +258,7 @@ class Test(object):
         '''Start all test servers'''
 
         if self.start_tries > Test.MAX_START_TRIES:
+            self.start_tries = 0  # Some tests make repeated test startup attempts.
             raise Failed("Can't start all servers")
 
         self.start_time = time.monotonic()
@@ -276,12 +277,10 @@ class Test(object):
             if server.external:
                 continue
 
-            server.start(clean=True)
+            server.start(clean=True, fatal=False)
 
-            if not server.running():
-                raise Failed("Server '%s' not running" % server.name)
-
-            if not server.listening():
+            # When address/port is busy, Knot exits, BIND doesn't.
+            if not server.running() or not server.listening():
                 self.stop(kill=True)
                 self.start()
                 break
