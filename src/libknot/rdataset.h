@@ -73,6 +73,17 @@ static inline knot_rdata_t *knot_rdataset_next(knot_rdata_t *rr)
 }
 
 /*!
+ * \brief Removes single RR from RRS structure.
+ *
+ * \param rrs   RRS structure to remove RR from.
+ * \param pos   Position of rdata to remove.
+ * \param mm    Memory context.
+ *
+ * \return KNOT_E*
+ */
+int knot_rdataset_remove_at(knot_rdataset_t *rrs, uint16_t pos, knot_mm_t *mm);
+
+/*!
  * \brief Frees data initialized by RRS structure, but not the structure itself.
  *
  * \param rrs  Structure to be cleared.
@@ -197,6 +208,9 @@ int knot_rdataset_subtract(knot_rdataset_t *from, const knot_rdataset_t *what,
 
 /*!
  * \brief Removes single RR from RRS structure.
+ *
+ * \warning It is VERY unsafe to call when rr points directly inside
+ *          rrs -- it might delete everything.
  *
  * \param rrs  RRS structure to remove RR from.
  * \param rr   RR to remove.

@@ -1087,15 +1087,6 @@ With careful configuration, all signers automatically synchronize their DNSKEY (
 CDNSKEY and CDS) RRSets, keeping them synchronized during roll-overs. Nevertheless,
 it is recommended to monitor their logs.
 
-.. NOTE::
-   It is highly recommended to use this mode with only two signers. With three or more signers,
-   it often happens that they continuously overwrite each other's DNSKEYs for a long time before
-   settling down. This can be mitigated by configuring :ref:`policy_dnskey-sync` in a cyclic maner,
-   such that they form a cycle (i.e. signer1 synchronizes only to signer2, signer2 to signer3 and so on).
-   However, this in turn leads to a breakage in DNSKEY synchronization whenever any signer goes offline.
-   A practical compromise is carefully configuring the order of each signer's :ref:`policy_dnskey-sync`
-   values in the way that the "cycling" signer is at the first position and the remaining signers follow.
-
 An illustrative example of the second of three signers::
 
    remote:
@@ -1112,7 +1103,7 @@ An illustrative example of the second of three signers::
 
    dnskey-sync:
        - id: sync
-         remote: [ signer3, signer1 ] # the order matters here!
+         remote: [ signer3, signer1 ]
 
    policy:
        - id: multisigner
