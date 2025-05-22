@@ -454,6 +454,12 @@ int zone_update_add(zone_update_t *update, const knot_rrset_t *rrset)
 		return KNOT_EOK;
 	}
 
+	// apply_add_rr might modify given rrset to what was really added (in non-strict mode)
+	knot_rrset_t *rrset_copy = knot_rrset_copy(rrset, NULL);
+	if (rrset_copy == NULL) {
+		return KNOT_ENOMEM;
+	}
+
 	int ret = KNOT_EOK;
 
 	if (update->flags & UPDATE_INCREMENTAL) {
@@ -461,7 +467,7 @@ int zone_update_add(zone_update_t *update, const knot_rrset_t *rrset)
 			// replace previous SOA
 			ret = apply_replace_soa(update->a_ctx, rrset);
 		} else {
-			ret = apply_add_rr(update->a_ctx, rrset);
+			ret = apply_add_rr(update->a_ctx, rrset_copy);
 			if (ret == KNOT_EOK) {
 				update_affected_rrtype(update, rrset->type);
 			}
@@ -489,21 +495,22 @@ int zone_update_add(zone_update_t *update, const knot_rrset_t *rrset)
 			ret = KNOT_EOK;
 		}
 	} else {
-		return KNOT_EINVAL;
+		ret = KNOT_EINVAL;
 	}
 
 chset_add:
 	if ((update->flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) && ret == KNOT_EOK) {
-		ret = solve_add_different_ttl(update, rrset);
+		ret = solve_add_different_ttl(update, rrset_copy);
 		if (ret == KNOT_EOK && !(update->flags & UPDATE_NO_CHSET)) {
-			ret = changeset_add_addition(&update->change, rrset, CHANGESET_CHECK);
+			ret = changeset_add_addition(&update->change, rrset_copy, CHANGESET_CHECK);
 		}
 		if (ret == KNOT_EOK && (update->flags & UPDATE_EXTRA_CHSET)) {
 			assert(!(update->flags & UPDATE_NO_CHSET));
-			ret = changeset_add_addition(&update->extra_ch, rrset, CHANGESET_CHECK);
+			ret = changeset_add_addition(&update->extra_ch, rrset_copy, CHANGESET_CHECK);
 		}
 	}
 
+	knot_rrset_free(rrset_copy, NULL);
 	return ret;
 }
 
@@ -529,7 +536,7 @@ int zone_update_remove(zone_update_t *update, const knot_rrset_t *rrset)
 		if (rrset->type == KNOT_RRTYPE_SOA) {
 			/* SOA is replaced with addition */
 		} else {
-			ret = apply_remove_rr(update->a_ctx, rrset);
+			ret = apply_remove_rr(update->a_ctx, rrset_copy);
 			if (ret == KNOT_EOK) {
 				update_affected_rrtype(update, rrset->type);
 			}
