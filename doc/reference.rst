@@ -2541,6 +2541,7 @@ Definition of zones served by the server.
      master: remote_id | remotes_id ...
      ddns-master: remote_id
      notify: remote_id | remotes_id ...
+     notify-delay: TIME
      acl: acl_id ...
      master-pin-tolerance: TIME
      provide-ixfr: BOOL
@@ -2664,11 +2665,22 @@ notify
 ------
 
 An ordered list of references :ref:`remote<remote_id>` and
-:ref:`remotes<remotes_id>` to secondary servers to which notify
+:ref:`remotes<remotes_id>` to secondary servers to which NOTIFY
 message is sent if the zone changes.
 Empty value is allowed for template value overriding.
 
 *Default:* not set
+
+.. _zone_notify-delay:
+
+notify-delay
+------------
+
+The time delay in seconds before an outgoing NOTIFY message is sent upon loading
+a new zone (e.g. to ensure that secondaries have enough time to adjust their catalogues).
+Set to -1 to prevent sending NOTIFY messages in this context.
+
+*Default:* ``0``
 
 .. _zone_acl:
 

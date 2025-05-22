@@ -195,6 +195,7 @@ class Server(object):
         self.ddns_master = None
         self.semantic_check = True
         self.zonefile_sync = "1d"
+        self.notify_delay = None
         self.zonefile_load = None
         self.zonefile_skip = None
         self.zonemd_verify = None
@@ -1812,6 +1813,9 @@ class Knot(Server):
         s.id_item("id", "default")
         s.item_str("storage", self.dir)
         s.item_str("zonefile-sync", self.zonefile_sync)
+        if self.notify_delay is None:
+            self.notify_delay = random.randint(0, 2)
+        s.item_str("notify-delay", self.notify_delay)
         if self.zonemd_verify:
             s.item_str("zonemd-verify", "on")
         if self.zonemd_generate is not None:
