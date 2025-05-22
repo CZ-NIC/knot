@@ -30,6 +30,30 @@ static bool cert_pin_check(const uint8_t *session_pin, size_t session_pin_size,
 	return false;
 }
 
+static bool cert_check(struct gnutls_session_int *tls_session, conf_val_t *hostname_val, bool single)
+{
+	// cert verification wasn't requested
+	if (hostname_val == NULL) {
+		return true;
+	}
+
+	// at least one item must be present
+	assert(hostname_val->code == KNOT_EOK);
+
+	size_t nhostnames = conf_val_count(hostname_val);
+	const char *hostnames[nhostnames];
+
+	for (size_t i = 0; i < nhostnames && hostname_val->code == KNOT_EOK; ++i) {
+		hostnames[i] = conf_str(hostname_val);
+		if (single) {
+			break;
+		}
+		conf_val_next(hostname_val);
+	}
+
+	return knot_tls_cert_check(tls_session, nhostnames, hostnames) == KNOT_EOK;
+}
+
 static bool match_type(uint16_t type, conf_val_t *types)
 {
 	if (types == NULL) {
@@ -342,18 +366,19 @@ bool acl_allowed(conf_t *conf, conf_val_t *acl, acl_action_t action,
 		conf_val_t deny_val = conf_id_get(conf, C_ACL, C_DENY, acl);
 		bool deny = conf_bool(&deny_val);
 
-		/* Check if a remote matches given address and key. */
-		conf_val_t addr_val, key_val, pin_val;
+		/* Check if a remote matches given params. */
+		conf_val_t addr_val, key_val, pin_val, hostname_val, cert_check_val;
 		conf_mix_iter_t iter;
 		conf_mix_iter_init(conf, &rmt_val, &iter);
 		while (iter.id->code == KNOT_EOK) {
 			addr_val = conf_id_get(conf, C_RMT, C_ADDR, iter.id);
 			key_val = conf_id_get(conf, C_RMT, C_KEY, iter.id);
 			pin_val = conf_id_get(conf, C_RMT, C_CERT_KEY, iter.id);
-			if (check_addr_key(conf, &addr_val, &key_val, remote, addr,
-			                   tsig, &pin_val, session_pin, session_pin_size,
-			                   deny, forward)
-			    && check_proto_rmt(conf, proto, iter.id)) {
+			cert_check_val = conf_id_get(conf, C_RMT, C_CERT_VALIDATE, iter.id);
+			if (check_addr_key(conf, &addr_val, &key_val, remote, addr, tsig, &pin_val,
+					   session_pin, session_pin_size, deny, forward)
+			    && check_proto_rmt(conf, proto, iter.id)
+			    && cert_check(tls_session, conf_bool(&cert_check_val) ? iter.id : NULL, true)) {
 				break;
 			}
 			conf_mix_iter_next(&iter);
@@ -361,14 +386,16 @@ bool acl_allowed(conf_t *conf, conf_val_t *acl, acl_action_t action,
 		if (iter.id->code == KNOT_EOF) {
 			goto next_acl;
 		}
-		/* Or check if acl address/key matches given address and key. */
+		/* Or check if acl matches given params. */
 		if (!remote) {
 			addr_val = conf_id_get(conf, C_ACL, C_ADDR, acl);
 			key_val = conf_id_get(conf, C_ACL, C_KEY, acl);
 			pin_val = conf_id_get(conf, C_ACL, C_CERT_KEY, acl);
-			if (!check_addr_key(conf, &addr_val, &key_val, remote, addr,
-			                    tsig, &pin_val, session_pin, session_pin_size,
-			                    deny, forward)) {
+			hostname_val = conf_id_get(conf, C_ACL, C_TLS_HOSTNAME, acl);
+			cert_check_val = conf_id_get(conf, C_ACL, C_CERT_VALIDATE, acl);
+			if (!check_addr_key(conf, &addr_val, &key_val, remote, addr, tsig, &pin_val,
+					    session_pin, session_pin_size, deny, forward)
+			    || !cert_check(tls_session, conf_bool(&cert_check_val) ? &hostname_val : NULL, false)) {
 				goto next_acl;
 			}
 
@@ -451,6 +478,11 @@ bool rmt_allowed(conf_t *conf, conf_val_t *rmts, const struct sockaddr_storage *
 
 		conf_val_t pin_val = conf_id_get(conf, C_RMT, C_CERT_KEY, iter.id);
 		if (!cert_pin_check(session_pin, session_pin_size, &pin_val)) {
+			goto next_remote;
+		}
+
+		val = conf_id_get(conf, C_RMT, C_CERT_VALIDATE, iter.id);
+		if (!cert_check(tls_session, conf_bool(&val) ? iter.id : NULL, true)) {
 			goto next_remote;
 		}
 

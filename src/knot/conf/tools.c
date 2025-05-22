@@ -911,6 +911,15 @@ int check_acl(
 		break;
 	}
 
+	conf_val_t tls_host = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_ACL,
+	                                         C_CERT_HOSTNAME, args->id, args->id_len);
+	conf_val_t cert_validate = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_ACL,
+	                                              C_CERT_VALIDATE, args->id, args->id_len);
+	if (cert_validate.code == KNOT_EOK && tls_host.code != KNOT_EOK) {
+		args->err_str = "'cert-validate: on', but 'cert-hostname' not set";
+		return KNOT_EINVAL;
+	}
+
 	return KNOT_EOK;
 }
 
