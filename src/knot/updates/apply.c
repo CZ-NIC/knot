@@ -188,7 +188,7 @@ static zone_node_t *add_node_cb(const knot_dname_t *owner, void *ctx)
 	return node;
 }
 
-int apply_add_rr(apply_ctx_t *ctx, const knot_rrset_t *rr)
+int apply_add_rr(apply_ctx_t *ctx, knot_rrset_t *rr)
 {
 	zone_contents_t *contents = ctx->contents;
 	bool nsec3rel = knot_rrset_is_nsec3rel(rr);
@@ -206,7 +206,16 @@ int apply_add_rr(apply_ctx_t *ctx, const knot_rrset_t *rr)
 	}
 
 	if (!can_add(node, rr, ctx)) {
-		return (ctx->flags & APPLY_STRICT) ? KNOT_EISRECORD : KNOT_EOK;
+		if (ctx->flags & APPLY_STRICT) {
+			return KNOT_EISRECORD;
+		} else {
+			knot_rdataset_t *node_rrs = node_rdataset(node, rr->type);
+			assert(node_rrs != NULL); // can_add wouldn't have failed as you can always add to _nothing_
+			ret = knot_rdataset_subtract(&rr->rrs, node_rrs, NULL);
+			if (ret != KNOT_EOK || knot_rrset_empty(rr)) {
+				return ret;
+			}
+		}
 	}
 
 	ret = zone_tree_insert_with_parents(ptrs, node, nsec3rel);
@@ -231,7 +240,7 @@ int apply_add_rr(apply_ctx_t *ctx, const knot_rrset_t *rr)
 	return ret;
 }
 
-int apply_remove_rr(apply_ctx_t *ctx, const knot_rrset_t *rr)
+int apply_remove_rr(apply_ctx_t *ctx, knot_rrset_t *rr)
 {
 	zone_contents_t *contents = ctx->contents;
 	bool nsec3rel = knot_rrset_is_nsec3rel(rr);
@@ -244,7 +253,19 @@ int apply_remove_rr(apply_ctx_t *ctx, const knot_rrset_t *rr)
 	// Find node for this owner
 	zone_node_t *node = zone_contents_find_node_for_rr(contents, rr);
 	if (!can_remove(node, rr, ctx)) {
-		return (ctx->flags & APPLY_STRICT) ? KNOT_ENORECORD : KNOT_EOK;
+		if (ctx->flags & APPLY_STRICT) {
+			return KNOT_ENORECORD;
+		} else {
+			knot_rdataset_t empty = { 0 };
+			knot_rdataset_t *node_rrs = node_rdataset(node, rr->type);
+			if (node_rrs == NULL) {
+				node_rrs = &empty;
+			}
+			int ret = knot_rdataset_intersect2(&rr->rrs, node_rrs, NULL);
+			if (ret != KNOT_EOK || knot_rrset_empty(rr)) {
+				return ret;
+			}
+		}
 	}
 
 	int ret = zone_tree_insert_with_parents(ptrs, node, nsec3rel);
@@ -292,7 +313,7 @@ int apply_replace_soa(apply_ctx_t *ctx, const knot_rrset_t *rr)
 		return KNOT_ESOAINVAL;
 	}
 
-	return apply_add_rr(ctx, rr);
+	return apply_add_rr(ctx, (knot_rrset_t *)rr);
 }
 
 void apply_cleanup(apply_ctx_t *ctx)

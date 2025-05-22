@@ -51,22 +51,26 @@ int apply_init_ctx(apply_ctx_t *ctx, zone_contents_t *contents, uint32_t flags);
 /*!
  * \brief Adds a single RR into zone contents.
  *
+ * \warning In non-strict mode, rr might me modified in place to what was really added.
+ *
  * \param ctx  Apply context.
  * \param rr   RRSet to add.
  *
  * \return KNOT_E*
  */
-int apply_add_rr(apply_ctx_t *ctx, const knot_rrset_t *rr);
+int apply_add_rr(apply_ctx_t *ctx, knot_rrset_t *rr);
 
 /*!
  * \brief Removes single RR from zone contents.
+ *
+ * \warning In non-strict mode, rr might me modified in place to what was really removed.
  *
  * \param ctx  Apply context.
  * \param rr   RRSet to remove.
  *
  * \return KNOT_E*
  */
-int apply_remove_rr(apply_ctx_t *ctx, const knot_rrset_t *rr);
+int apply_remove_rr(apply_ctx_t *ctx, knot_rrset_t *rr);
 
 /*!
  * \brief Remove SOA and add a new SOA.
