@@ -336,10 +336,8 @@ int check_cert_validate(
 )
 {
 	conf_val_t val = conf_get_txn(args->extra->conf, args->extra->txn, C_SERVER, C_TLS_CA);
-
-	if (val.code != KNOT_EOK) {
-		snprintf(check_str, sizeof(check_str),
-			 "'cert-validate: on' in a remote, but 'tls-ca' not set in the server section");
+	if (*args->data && val.code != KNOT_EOK) {
+		snprintf(check_str, sizeof(check_str), "'cert-validate: on' requires 'tls-ca'");
 		args->err_str = check_str;
 		return KNOT_EINVAL;
 	}
@@ -900,6 +898,17 @@ int check_acl(
 			CONF_LOG(LOG_NOTICE, "'update-owner-name' requires 'update-owner: name'");
 		}
 		break;
+	}
+
+	conf_val_t tls_host = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_ACL,
+						C_TLS_HOSTNAME, args->id, args->id_len);
+	conf_val_t cert_validate = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_ACL,
+						      C_CERT_VALIDATE, args->id, args->id_len);
+	if (cert_validate.code == KNOT_EOK && tls_host.code != KNOT_EOK) {
+		snprintf(check_str, sizeof(check_str),
+			 "'cert-validate: on', but 'tls-hostname' not set");
+		args->err_str = check_str;
+		return KNOT_EINVAL;
 	}
 
 	return KNOT_EOK;
