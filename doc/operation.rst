@@ -705,6 +705,7 @@ operator must confirm it manually (using ``knotc zone-ksk-submitted``)
   2024-02-14T15:20:16+0100 info: [example.com.] DS check, outgoing, remote 127.0.0.1@5300 TCP/pool, KSK submission check: positive
   2024-02-14T15:20:16+0100 notice: [example.com.] DNSSEC, KSK submission, confirmed
   2024-02-14T15:20:16+0100 info: [example.com.] DNSSEC, signing zone
+  2024-02-14T15:20:16+0100 info: [example.com.] DNSSEC, next key action, KSK tag 53594, remove at 2024-02-14T15:20:23+0100
   2024-02-14T15:20:16+0100 info: [example.com.] DNSSEC, key, tag 53594, algorithm ECDSAP256SHA256, KSK, public, active+
   2024-02-14T15:20:16+0100 info: [example.com.] DNSSEC, key, tag 36185, algorithm ECDSAP256SHA256, public, active
   2024-02-14T15:20:16+0100 info: [example.com.] DNSSEC, key, tag  3375, algorithm ECDSAP256SHA256, KSK, public, active
