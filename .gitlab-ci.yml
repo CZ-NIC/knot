@@ -403,13 +403,17 @@ pkg:fedora-41:
   <<: *pkg_test
   image: $CI_REGISTRY/packaging/apkg/test/fedora-41
 
-pkg:fedora-40:
+pkg:fedora-42:
   <<: *pkg_test
-  image: $CI_REGISTRY/packaging/apkg/test/fedora-40
+  image: $CI_REGISTRY/packaging/apkg/test/fedora-42
 
 pkg:alma-9:
   <<: *pkg_test
   image: $CI_REGISTRY/packaging/apkg/test/alma-9
+
+pkg:alma-10:
+  <<: *pkg_test
+  image: $CI_REGISTRY/packaging/apkg/test/alma-10
 
 pkg:rocky-8:
   <<: *pkg_test
