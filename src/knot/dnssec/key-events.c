@@ -576,6 +576,8 @@ static knot_kasp_key_t *zsk2retire(kdnssec_ctx_t *ctx, knot_kasp_key_t *newksk)
 	return NULL;
 }
 
+static void log_next_event(kdnssec_ctx_t *ctx, roll_action_t *next);
+
 static int exec_new_signatures(kdnssec_ctx_t *ctx, knot_kasp_key_t *newkey, uint32_t active_retire_delay)
 {
 	if (newkey->is_ksk) {
@@ -586,18 +588,22 @@ static int exec_new_signatures(kdnssec_ctx_t *ctx, knot_kasp_key_t *newkey, uint
 	if (oldkey != NULL) {
 		uint8_t keyalg = dnssec_key_get_algorithm(oldkey->key);
 		bool algdiff = (keyalg != dnssec_key_get_algorithm(newkey->key));
+		roll_action_t log_action = { .key = oldkey, .ksk = oldkey->is_ksk, .zsk = oldkey->is_zsk, .time = ctx->now + active_retire_delay };
 
 		if (algdiff) {
 			oldkey->timing.retire_active = ctx->now;
 			if (oldkey->is_ksk) {
 				oldkey->timing.post_active = ctx->now + active_retire_delay;
+				log_action.type = RETIRE;
 			}
 		} else if (oldkey->is_ksk) {
 			oldkey->timing.retire_active = ctx->now;
 			if (oldkey->is_zsk) { // CSK
 				oldkey->timing.retire = ctx->now + active_retire_delay;
+				log_action.type = RETIRE;
 			} else {
 				oldkey->timing.remove = ctx->now + active_retire_delay;
+				log_action.type = REMOVE;
 			}
 		} else {
 			oldkey->timing.retire = ctx->now;
@@ -609,6 +615,10 @@ static int exec_new_signatures(kdnssec_ctx_t *ctx, knot_kasp_key_t *newkey, uint
 			} else {
 				oldzsk->timing.retire = ctx->now;
 			}
+		}
+
+		if (log_action.type != INVALID) {
+			log_next_event(ctx, &log_action);
 		}
 	}
 
