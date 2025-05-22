@@ -68,6 +68,8 @@ def configure_dnssec(server1, master, server2, server3, roll):
     if DNSKEY_MASTER > 0:
         server1.ixfr_benevolent = True
 
+    server_mod = int(server1.name[-1]) - 2
+
     server1.dnssec(zone).enable = True
     server1.dnssec(zone).single_type_signing = (roll == 2)
     server1.dnssec(zone).propagation_delay = 4
@@ -75,6 +77,7 @@ def configure_dnssec(server1, master, server2, server3, roll):
     server1.dnssec(zone).dnskey_mgmt = "incremental"
     server1.dnssec(zone).delete_delay = 4
     server1.dnssec(zone).cds_publish = ("always" if CDS else "none")
+    server1.dnssec(zone).keytag_modulo = "%d/3" % server_mod
     if DNSKEY_MASTER == 1:
         server1.dnssec(zone).dnskey_sync = [ master ]
     else:

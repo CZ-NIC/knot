@@ -75,7 +75,8 @@ static int add_rr_at(knot_rdataset_t *rrs, const knot_rdata_t *rr, knot_rdata_t 
 	return KNOT_EOK;
 }
 
-static int remove_rr_at(knot_rdataset_t *rrs, uint16_t pos, knot_mm_t *mm)
+_public_
+int knot_rdataset_remove_at(knot_rdataset_t *rrs, uint16_t pos, knot_mm_t *mm)
 {
 	assert(rrs);
 	assert(0 < rrs->count);
@@ -313,7 +314,7 @@ int knot_rdataset_intersect2(knot_rdataset_t *from, const knot_rdataset_t *what,
 	knot_rdata_t *rr1 = from->rdata;
 	for (uint16_t i = 0; i < from->count; ) {
 		if (!knot_rdataset_member(what, rr1)) {
-			int ret = remove_rr_at(from, i, mm);
+			int ret = knot_rdataset_remove_at(from, i, mm);
 			if (ret != KNOT_EOK) {
 				return ret;
 			}
@@ -348,7 +349,7 @@ int knot_rdataset_subtract(knot_rdataset_t *from, const knot_rdataset_t *what,
 	for (uint16_t i = 0; i < what->count; ++i) {
 		int pos_to_remove = find_rr_pos(from, to_remove);
 		if (pos_to_remove >= 0) {
-			int ret = remove_rr_at(from, pos_to_remove, mm);
+			int ret = knot_rdataset_remove_at(from, pos_to_remove, mm);
 			if (ret != KNOT_EOK) {
 				return ret;
 			}
