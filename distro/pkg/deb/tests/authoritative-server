@@ -68,6 +68,7 @@ zone:
 EOF
 
 cat > "$d/example.net.zone" <<EOF
+\$ORIGIN example.net.
 @ 1D IN SOA a.ns hostmaster 2018103100 3h 15m 1w 1d
 @ 1D IN NS a.ns.example.net.
 @ 1D IN NS b.ns.example.net.
