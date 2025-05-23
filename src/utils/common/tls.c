@@ -308,11 +308,8 @@ static int check_certificates(gnutls_session_t session, const list_t *pins)
 
 		gnutls_datum_t cert_name = { 0 };
 		ret = gnutls_x509_crt_get_dn2(cert, &cert_name);
-		if (ret != GNUTLS_E_SUCCESS) {
-			gnutls_x509_crt_deinit(cert);
-			return ret;
-		}
-		DBG(" #%i, %s", i + 1, cert_name.data);
+		bool dn_err = (ret != GNUTLS_E_SUCCESS);
+		DBG(" #%i, %s", i + 1, (char *)cert_name.data ?: "<TLS SUBJECT NOT PRESENT>");
 		gnutls_free(cert_name.data);
 
 		ret = gnutls_x509_crt_print(cert, GNUTLS_CRT_PRINT_UNSIGNED_FULL, &cert_name);
@@ -325,12 +322,17 @@ static int check_certificates(gnutls_session_t session, const list_t *pins)
 			DBG2("     Subject Alternative Name:");
 			const char *line = strstr(altname, "\n") + 1;
 			while (!strncmp("\t\t\t", line, 3)) {
+				dn_err = false;
 				const char *end = strstr((line += 3), "\n");
 				DBG2("       %.*s", (int)(end - line), line);
 				line = end + 1;
 			}
 		}
 		gnutls_free(cert_name.data);
+		if (altname == NULL && dn_err) {
+			gnutls_x509_crt_deinit(cert);
+			return GNUTLS_E_REQUESTED_DATA_NOT_AVAILABLE;
+		}
 
 		uint8_t cert_pin[CERT_PIN_LEN] = { 0 };
 		size_t cert_pin_size = sizeof(cert_pin);
