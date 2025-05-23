@@ -318,12 +318,8 @@ static int check_certificates(gnutls_session_t session, const list_t *pins)
 		}
 
 		gnutls_datum_t cert_name = { 0 };
-		ret = gnutls_x509_crt_get_dn2(cert, &cert_name);
-		if (ret != GNUTLS_E_SUCCESS) {
-			gnutls_x509_crt_deinit(cert);
-			return ret;
-		}
-		DBG(" #%i, %s", i + 1, cert_name.data);
+		(void)gnutls_x509_crt_get_dn3(cert, &cert_name, 0);
+		DBG(" #%i, %s", i + 1, (char *)cert_name.data ?: "<SUBJECT NOT PRESENT>");
 		gnutls_free(cert_name.data);
 
 		ret = gnutls_x509_crt_print(cert, GNUTLS_CRT_PRINT_UNSIGNED_FULL, &cert_name);
