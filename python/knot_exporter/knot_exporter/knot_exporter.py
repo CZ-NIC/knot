@@ -23,8 +23,9 @@ def memory_usage():
         pids = subprocess.check_output(['pidof', 'knotd']).decode().split()
         for pid in pids:
             out[pid] = psutil.Process(int(pid)).memory_info()._asdict()['rss']
-    finally:
-        return out
+    except:
+        pass
+    return out
 
 
 class KnotCollector(object):
