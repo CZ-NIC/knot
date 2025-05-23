@@ -243,8 +243,11 @@ except libknot.control.KnotCtlError as exc:
     print(exc)
 finally:
     # Deinitialization
-    ctl.send(libknot.control.KnotCtlType.END)
-    ctl.close()
+    try:
+        ctl.send(libknot.control.KnotCtlType.END)
+        ctl.close()
+    except:
+        pass
 ```
 
 ```python3
