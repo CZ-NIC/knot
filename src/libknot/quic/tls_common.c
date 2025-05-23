@@ -136,6 +136,7 @@ static int self_signed_cert(gnutls_certificate_credentials_t tls_cert,
 
 #define CHK(cmd) if ((ret = (cmd)) != GNUTLS_E_SUCCESS) { goto finish; }
 #define NOW_DAYS(days) (time(NULL) + 24 * 3600 * (days))
+#define OID_SUBJECT_ALT_NAME "2.5.29.17"
 
 	CHK(self_key(&privkey, key_file, uid, gid));
 
@@ -144,8 +145,21 @@ static int self_signed_cert(gnutls_certificate_credentials_t tls_cert,
 	CHK(gnutls_x509_crt_set_serial(cert, serial, sizeof(serial)));
 	CHK(gnutls_x509_crt_set_activation_time(cert, NOW_DAYS(-1)));
 	CHK(gnutls_x509_crt_set_expiration_time(cert, NOW_DAYS(10 * 365)));
-	CHK(gnutls_x509_crt_set_dn_by_oid(cert, GNUTLS_OID_X520_COMMON_NAME, 0,
-	                                  hostname, strlen(hostname)));
+	CHK(gnutls_x509_crt_set_issuer_dn_by_oid(cert, GNUTLS_OID_X520_COMMON_NAME, 0, hostname,
+						 strlen(hostname)));
+
+	char san_data[255];
+	size_t san_size = sizeof(san_data);
+	CHK(gnutls_x509_crt_set_subject_alt_name(cert, GNUTLS_SAN_DNSNAME, hostname,
+						 strlen(hostname), GNUTLS_FSAN_SET));
+	CHK(gnutls_x509_crt_get_extension_by_oid(cert, OID_SUBJECT_ALT_NAME, 0, san_data, &san_size, NULL));
+	if (san_size > sizeof(san_data)) {
+		ret = KNOT_EINVAL;
+		goto finish;
+	}
+	// "critical" flag is required; see rfc5280 section 4.1.2.6
+	CHK(gnutls_x509_crt_set_extension_by_oid(cert, OID_SUBJECT_ALT_NAME, san_data, san_size, 1));
+
 	CHK(gnutls_x509_crt_set_key(cert, privkey));
 	CHK(gnutls_x509_crt_sign2(cert, cert, privkey, GNUTLS_DIG_SHA512, 0));
 
