@@ -1689,6 +1689,8 @@ which don't require authorization are always allowed.
      address: ADDR[/INT] | ADDR-ADDR | STR ...
      key: key_id ...
      cert-key: BASE64 ...
+     cert-validate: BOOL
+     tls-hostname: STR ...
      remote: remote_id | remotes_id ...
      action: query | notify | transfer | update ...
      protocol: udp | tcp | tls | quic ...
@@ -1740,6 +1742,30 @@ specified PINs.
 A PIN is a unique identifier that represents the public key of the peer certificate.
 It's a base64-encoded SHA-256 hash of the public key. This identifier
 remains the same on a certificate renewal.
+
+*Default:* not set
+
+.. _acl_cert-validate:
+
+cert-validate
+-------------
+
+Whether to verify remotes' certificate when estabilishing a TLS/QUIC
+connection. Values of :ref:`acl_tls-hostname` are matched against peer's
+certificate. Verification is based on trusted certificates set with
+:ref:`server_tls-ca`.
+
+*Default:* ``off``
+
+.. _acl_tls-hostname:
+
+tls-hostname
+------------
+
+A list of hostnames to match against peer's TLS certificate. At least one must
+match for successful certificate validation.
+
+See :ref:`acl_cert-validate`.
 
 *Default:* not set
 
