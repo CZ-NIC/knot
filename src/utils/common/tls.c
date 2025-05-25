@@ -326,7 +326,7 @@ static int check_certificates(gnutls_session_t session, const list_t *pins)
 			const char *line = strstr(altname, "\n") + 1;
 			while (!strncmp("\t\t\t", line, 3)) {
 				const char *end = strstr((line += 3), "\n");
-				DBG2("       %.*s", end - line, line);
+				DBG2("       %.*s", (int)(end - line), line);
 				line = end + 1;
 			}
 		}
