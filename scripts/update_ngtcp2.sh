@@ -18,9 +18,14 @@ cur_version=v"$(sed -En 's/^.*NGTCP2_VERSION[^"]*"([0-9.]+)"/\1/p' "${ROOT_PATH}
 git clone --branch="$1" "$NGTCP2_GIT" "${clonedir}/ngtcp2" 2>/dev/null
 
 cd "${clonedir}/ngtcp2"
-git diff --name-only --diff-filter=A "$cur_version" "$1"  | xargs -r realpath >../added
-git diff --name-only --diff-filter=D "$cur_version" "$1"  | xargs -r realpath >../deleted
-git diff --name-only --diff-filter=ad "$cur_version" "$1" | xargs -r realpath >../changed
+function getfiles() {
+	git diff --name-only --diff-filter="$1" "$2" "$3" \
+		| grep -E '(crypto|lib|third-party)/' \
+		| xargs -r realpath >"$4" || true
+}
+getfiles "A" "$cur_version" "$1" "../added"
+getfiles "D" "$cur_version" "$1" "../deleted"
+getfiles "ad" "$cur_version" "$1" "../changed"
 
 # generate new version.h
 autoreconf -if >/dev/null 2>&1
@@ -31,7 +36,7 @@ cd "$ROOT_PATH"
 
 # delete files deleted in new version
 while IFS=$'\n' read -r line; do
-	find . -type f -name "$(basename "$line")" | xargs -r rm
+	find . -type f -name "$(basename "$line")" | xargs -r rm -f
 done <"${clonedir}/deleted"
 
 # update changed files
