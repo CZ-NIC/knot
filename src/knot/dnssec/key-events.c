@@ -12,6 +12,8 @@
 #include "knot/dnssec/key-events.h"
 #include "knot/dnssec/policy.h"
 #include "knot/dnssec/zone-keys.h"
+#include "knot/zone/serial.h"
+#include "libdnssec/random.h"
 
 static bool key_present(const kdnssec_ctx_t *ctx, bool ksk, bool zsk)
 {
@@ -576,6 +578,29 @@ static knot_kasp_key_t *zsk2retire(kdnssec_ctx_t *ctx, knot_kasp_key_t *newksk)
 	return NULL;
 }
 
+static void log_next_event(kdnssec_ctx_t *ctx, roll_action_t *next)
+{
+	char time_str[64] = "";
+	struct tm time_gm = { 0 };
+	time_t nt = next->time;
+	localtime_r(&nt, &time_gm);
+	strftime(time_str, sizeof(time_str), KNOT_LOG_TIME_FORMAT, &time_gm);
+
+	if (next->type == GENERATE) {
+		const char *key_type = ctx->policy->single_type_signing ?
+			"CSK" : (next->ksk ? "KSK" : "ZSK");
+		log_zone_info(ctx->zone->dname, "DNSSEC, next key action, %s, generate at %s",
+		              key_type, time_str);
+	} else {
+		const char *key_type = next->ksk ?
+			(next->zsk ? "CSK" : "KSK") : "ZSK";
+		log_zone_info(ctx->zone->dname, "DNSSEC, next key action, %s tag %hu, %s at %s",
+		              key_type, dnssec_key_get_keytag(next->key->key),
+		              roll_action_name(next->type), time_str);
+	}
+}
+
+
 static int exec_new_signatures(kdnssec_ctx_t *ctx, knot_kasp_key_t *newkey, uint32_t active_retire_delay)
 {
 	if (newkey->is_ksk) {
@@ -586,18 +611,27 @@ static int exec_new_signatures(kdnssec_ctx_t *ctx, knot_kasp_key_t *newkey, uint
 	if (oldkey != NULL) {
 		uint8_t keyalg = dnssec_key_get_algorithm(oldkey->key);
 		bool algdiff = (keyalg != dnssec_key_get_algorithm(newkey->key));
+		roll_action_t log_action = {
+			.key = oldkey,
+			.ksk = oldkey->is_ksk,
+			.zsk = oldkey->is_zsk,
+			.time = ctx->now + active_retire_delay
+		};
 
 		if (algdiff) {
 			oldkey->timing.retire_active = ctx->now;
 			if (oldkey->is_ksk) {
 				oldkey->timing.post_active = ctx->now + active_retire_delay;
+				log_action.type = RETIRE;
 			}
 		} else if (oldkey->is_ksk) {
 			oldkey->timing.retire_active = ctx->now;
 			if (oldkey->is_zsk) { // CSK
 				oldkey->timing.retire = ctx->now + active_retire_delay;
+				log_action.type = RETIRE;
 			} else {
 				oldkey->timing.remove = ctx->now + active_retire_delay;
+				log_action.type = REMOVE;
 			}
 		} else {
 			oldkey->timing.retire = ctx->now;
@@ -609,6 +643,10 @@ static int exec_new_signatures(kdnssec_ctx_t *ctx, knot_kasp_key_t *newkey, uint
 			} else {
 				oldzsk->timing.retire = ctx->now;
 			}
+		}
+
+		if (log_action.type != INVALID) {
+			log_next_event(ctx, &log_action);
 		}
 	}
 
@@ -671,28 +709,6 @@ static int exec_really_remove(kdnssec_ctx_t *ctx, knot_kasp_key_t *key)
 	assert(get_key_state(key, ctx->now) == DNSSEC_KEY_STATE_REMOVED);
 	assert(!ctx->keep_deleted_keys);
 	return kdnssec_delete_key(ctx, key);
-}
-
-static void log_next_event(kdnssec_ctx_t *ctx, roll_action_t *next)
-{
-	char time_str[64] = "";
-	struct tm time_gm = { 0 };
-	time_t nt = next->time;
-	localtime_r(&nt, &time_gm);
-	strftime(time_str, sizeof(time_str), KNOT_LOG_TIME_FORMAT, &time_gm);
-
-	if (next->type == GENERATE) {
-		const char *key_type = ctx->policy->single_type_signing ?
-			"CSK" : (next->ksk ? "KSK" : "ZSK");
-		log_zone_info(ctx->zone->dname, "DNSSEC, next key action, %s, generate at %s",
-		              key_type, time_str);
-	} else {
-		const char *key_type = next->ksk ?
-			(next->zsk ? "CSK" : "KSK") : "ZSK";
-		log_zone_info(ctx->zone->dname, "DNSSEC, next key action, %s tag %hu, %s at %s",
-		              key_type, dnssec_key_get_keytag(next->key->key),
-		              roll_action_name(next->type), time_str);
-	}
 }
 
 int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flags,
@@ -925,4 +941,20 @@ bool zone_has_key_sbm(const kdnssec_ctx_t *ctx)
 		}
 	}
 	return false;
+}
+
+unsigned dnskey_sync_jitter(conf_t *conf, zone_t *zone)
+{
+	conf_val_t id = conf_zone_get(conf, C_DNSSEC_POLICY, zone->name);
+	conf_id_fix_default(&id);
+	conf_val_t val = conf_id_get(conf, C_POLICY, C_KEYTAG_MODULO, &id);
+	if (val.code == KNOT_EOK) {
+		int zero;
+		uint32_t rem, mod;
+		int ret = serial_modulo_parse(conf_str(&val), &rem, &mod, &zero);
+		if (ret == KNOT_EOK && mod > 1) {
+			return 2 * rem;
+		}
+	}
+	return dnssec_random_uint16_t() % 5;
 }

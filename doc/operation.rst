@@ -721,6 +721,7 @@ operator must confirm it manually (using ``knotc zone-ksk-submitted``)
   2024-02-14T15:20:16+0100 info: [example.com.] DS check, outgoing, remote 127.0.0.1@5300 TCP/pool, KSK submission check: positive
   2024-02-14T15:20:16+0100 notice: [example.com.] DNSSEC, KSK submission, confirmed
   2024-02-14T15:20:16+0100 info: [example.com.] DNSSEC, signing zone
+  2024-02-14T15:20:16+0100 info: [example.com.] DNSSEC, next key action, KSK tag 53594, remove at 2024-02-14T15:20:23+0100
   2024-02-14T15:20:16+0100 info: [example.com.] DNSSEC, key, tag 53594, algorithm ECDSAP256SHA256, KSK, public, active+
   2024-02-14T15:20:16+0100 info: [example.com.] DNSSEC, key, tag 36185, algorithm ECDSAP256SHA256, public, active
   2024-02-14T15:20:16+0100 info: [example.com.] DNSSEC, key, tag  3375, algorithm ECDSAP256SHA256, KSK, public, active
@@ -1103,15 +1104,6 @@ With careful configuration, all signers automatically synchronize their DNSKEY (
 CDNSKEY and CDS) RRSets, keeping them synchronized during roll-overs. Nevertheless,
 it is recommended to monitor their logs.
 
-.. NOTE::
-   It is highly recommended to use this mode with only two signers. With three or more signers,
-   it often happens that they continuously overwrite each other's DNSKEYs for a long time before
-   settling down. This can be mitigated by configuring :ref:`policy_dnskey-sync` in a cyclic maner,
-   such that they form a cycle (i.e. signer1 synchronizes only to signer2, signer2 to signer3 and so on).
-   However, this in turn leads to a breakage in DNSKEY synchronization whenever any signer goes offline.
-   A practical compromise is carefully configuring the order of each signer's :ref:`policy_dnskey-sync`
-   values in the way that the "cycling" signer is at the first position and the remaining signers follow.
-
 An illustrative example of the second of three signers::
 
    remote:
@@ -1128,7 +1120,7 @@ An illustrative example of the second of three signers::
 
    dnskey-sync:
        - id: sync
-         remote: [ signer3, signer1 ] # the order matters here!
+         remote: [ signer3, signer1 ]
 
    policy:
        - id: multisigner

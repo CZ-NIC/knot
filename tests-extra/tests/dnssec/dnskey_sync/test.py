@@ -10,12 +10,12 @@ from dnstest.utils import *
 from dnstest.keys import Keymgr
 from dnstest.test import Test
 
-SCENARIO = random.choice(range(72))
+SCENARIO = random.choice(range(108))
 CDS = bool(SCENARIO % 2)
 SIGNERS3 = bool((SCENARIO // 2) % 2)
 SIGNER1ROLL = (SCENARIO // 4) % 3
 SIGNER2ROLL = (SCENARIO // 12) % 3
-DNSKEY_MASTER = (SCENARIO // 36) % 2
+DNSKEY_MASTER = (SCENARIO // 36) % 3
 ROLL_LOG = [ "ZSK", "KSK", "CSK" ]
 check_log("SCENARIO %d, SIGNERS3 enabled %s, SIGNER1ROLL %s, SIGNER2ROLL %s, CDS enabled %s, DNSKEY master %d" % \
           (SCENARIO, SIGNERS3, ROLL_LOG[SIGNER1ROLL], ROLL_LOG[SIGNER2ROLL], str(CDS), DNSKEY_MASTER))
@@ -63,10 +63,12 @@ def check_same_dnskey(server1, server2, server3, tst):
 def configure_dnssec(server1, master, server2, server3, roll):
     t.link(zone, master, server1, ddns=True)
     server1.tcp_remote_io_timeout = 1500
-    if DNSKEY_MASTER < 2: # NOTE DNSKEY_MASTER==2 unused so far due to instability
+    if DNSKEY_MASTER < 2:
         server1.ddns_master = ""
     if DNSKEY_MASTER > 0:
         server1.ixfr_benevolent = True
+
+    server_mod = int(server1.name[-1]) - 2
 
     server1.dnssec(zone).enable = True
     server1.dnssec(zone).single_type_signing = (roll == 2)
@@ -75,6 +77,7 @@ def configure_dnssec(server1, master, server2, server3, roll):
     server1.dnssec(zone).dnskey_mgmt = "incremental"
     server1.dnssec(zone).delete_delay = 4
     server1.dnssec(zone).cds_publish = ("always" if CDS else "none")
+    server1.dnssec(zone).keytag_modulo = "%d/3" % server_mod
     if DNSKEY_MASTER == 1:
         server1.dnssec(zone).dnskey_sync = [ master ]
     else:
@@ -109,10 +112,10 @@ if SIGNERS3:
     t.sleep(0.5)
     signer3.ctl("zone-key-rollover %s %s" % (zone[0].name, "zsk" if SIGNER2ROLL == 0 else "ksk"))
 
-t.sleep(6)
+t.sleep(8)
 check_same_dnskey(signer1, signer2, signer3, t)
 
-t.sleep(6)
+t.sleep(8)
 check_same_dnskey(signer1, signer2, signer3, t)
 
 t.end()
