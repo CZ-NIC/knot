@@ -429,6 +429,10 @@ size_t conf_val_count(
 		return 1;
 	}
 
+	if (val->blob_len == 0) { // Default value.
+		return 1;
+	}
+
 	size_t count = 0;
 	conf_val(val);
 	while (val->code == KNOT_EOK) {
@@ -451,26 +455,24 @@ void conf_val(
 	assert(val != NULL);
 	assert(val->code == KNOT_EOK || val->code == KNOT_EOF);
 
-	if (val->item->flags & YP_FMULTI) {
-		// Check if already called and not at the end.
-		if (val->data != NULL && val->code != KNOT_EOF) {
-			return;
-		}
-		// Otherwise set to the first value.
-		conf_val_reset(val);
-	} else {
-		// Check for empty data.
-		if (val->blob_len == 0) {
-			val->data = NULL;
-			val->len = 0;
-			val->code = KNOT_EOK;
-			return;
+	if (val->blob_len != 0) {
+		if (val->item->flags & YP_FMULTI) {
+			// Check if already called and not at the end.
+			if (val->data != NULL && val->code != KNOT_EOF) {
+				return;
+			}
+			// Otherwise set to the first value.
+			conf_val_reset(val);
 		} else {
-			assert(val->blob != NULL);
 			val->data = val->blob;
 			val->len = val->blob_len;
 			val->code = KNOT_EOK;
 		}
+	} else {
+		// Empty data.
+		val->data = NULL;
+		val->len = 0;
+		val->code = KNOT_EOK;
 	}
 }
 
