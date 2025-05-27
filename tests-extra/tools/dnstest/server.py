@@ -45,6 +45,7 @@ class ZoneDnssec(object):
         self.validate = None
         self.disable = None # create the policy in config, but set dnssec-signing: off
         self.manual = None
+        self.keystores = []
         self.single_type_signing = None
         self.alg = None
         self.ksk_size = None
@@ -1786,6 +1787,20 @@ class Knot(Server):
         if have_dnskeysync:
             s.end()
 
+        have_keystore = False
+        for zone in sorted(self.zones):
+            z = self.zones[zone]
+            if not z.dnssec.keystores:
+                continue
+            if not have_keystore:
+                s.begin("keystore")
+                have_keystore = True
+            for ks in z.dnssec.keystores:
+                s.id_item("id", ks)
+                s.item("config", ks)
+        if have_keystore:
+            s.end()
+
         have_policy = False
         for zone in sorted(self.zones):
             z = self.zones[zone]
@@ -1801,6 +1816,8 @@ class Knot(Server):
             s.id_item("id", z.name)
             self._bool(s, "manual", z.dnssec.manual)
             self._bool(s, "single-type-signing", z.dnssec.single_type_signing)
+            if z.dnssec.keystores:
+                s.item("keystore", "[ %s ]" % ", ".join(z.dnssec.keystores))
             self._str(s, "algorithm", z.dnssec.alg)
             self._str(s, "ksk-size", z.dnssec.ksk_size)
             self._str(s, "zsk-size", z.dnssec.zsk_size)

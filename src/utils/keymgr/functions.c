@@ -416,7 +416,7 @@ int keymgr_import_bind(kdnssec_ctx_t *ctx, const char *import_file, bool pub_onl
 
 		bind_privkey_free(&bpriv);
 
-		ret = dnssec_keystore_import(ctx->keystore, &pem, &keyid);
+		ret = dnssec_keystore_import(ctx->keystores[0].keystore, &pem, &keyid);
 		dnssec_binary_free(&pem);
 		if (ret != DNSSEC_EOK) {
 			goto fail;
@@ -536,7 +536,7 @@ static int import_key(kdnssec_ctx_t *ctx, unsigned backend, const char *param,
 		}
 
 		// put pem to keystore
-		ret = dnssec_keystore_import(ctx->keystore, &pem, &keyid);
+		ret = dnssec_keystore_import(ctx->keystores[0].keystore, &pem, &keyid);
 		dnssec_binary_free(&pem);
 		if (ret != DNSSEC_EOK) {
 			err_import_key(keyid, param);
@@ -560,7 +560,7 @@ static int import_key(kdnssec_ctx_t *ctx, unsigned backend, const char *param,
 	dnssec_key_set_algorithm(key, ctx->policy->algorithm);
 
 	// fill key structure from keystore (incl. pubkey from privkey computation)
-	ret = dnssec_keystore_get_private(ctx->keystore, keyid, key);
+	ret = kdnssec_load_private(ctx->keystores, keyid, key, NULL);
 	if (ret != DNSSEC_EOK) {
 		err_import_key(keyid, "");
 		goto fail;
@@ -606,7 +606,7 @@ int keymgr_import_pkcs11(kdnssec_ctx_t *ctx, char *key_id, int argc, char *argv[
 		return DNSSEC_INVALID_KEY_ID;
 	}
 
-	if (ctx->keystore_type != KEYSTORE_BACKEND_PKCS11) {
+	if (ctx->keystores[0].backend != KEYSTORE_BACKEND_PKCS11) {
 		knot_dname_txt_storage_t dname_str;
 		(void)knot_dname_to_str(dname_str, ctx->zone->dname, sizeof(dname_str));
 		ERR2("not a PKCS #11 keystore for zone %s", dname_str);
@@ -1007,7 +1007,7 @@ static int key_sort(const void *a, const void *b)
 static bool key_missing(kdnssec_ctx_t *ctx, const knot_kasp_key_t *key)
 {
 	return !key->is_pub_only && DNSSEC_EOK !=
-	       dnssec_keystore_get_private(ctx->keystore, key->id, key->key);
+	       kdnssec_load_private(ctx->keystores, key->id, key->key, NULL);
 }
 
 int keymgr_list_keys(kdnssec_ctx_t *ctx, keymgr_list_params_t *params)
