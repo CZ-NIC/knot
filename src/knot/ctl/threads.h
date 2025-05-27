@@ -7,7 +7,7 @@
 
 #include "knot/ctl/process.h"
 
-typedef struct {
+typedef struct ctl_socket_ctx {
 	knot_ctl_t **ctls;
 	server_t *server;
 	dt_unit_t *unit;
