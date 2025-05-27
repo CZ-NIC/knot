@@ -224,6 +224,10 @@
 	}
 	action _origin_dname_exit {
 		// Copy already verified zone origin.
+		if (s->zone_origin_length == ZS_NO_ORIGIN_LEN) {
+			ERR(ZS_MISSING_ORIGIN);
+			fhold; fgoto err_line;
+		}
 		memcpy(s->dname,
 		       s->zone_origin,
 		       s->zone_origin_length);

@@ -176,6 +176,7 @@ int zonefile_open(zloader_t *loader, const char *source, const knot_dname_t *ori
 
 	return KNOT_EOK;
 }
+#include <libgen.h>
 
 zone_contents_t *zonefile_load(zloader_t *loader, uint16_t threads)
 {
@@ -187,11 +188,39 @@ zone_contents_t *zonefile_load(zloader_t *loader, uint16_t threads)
 	const knot_dname_t *zname = zc->z->apex->owner;
 
 	assert(zc);
-	int ret = zs_parse_all(&loader->scanner);
-	if (ret != 0 && loader->scanner.error.counter == 0) {
-		ERROR(zname, "failed to load zone, file '%s' (%s)",
-		      loader->source, zs_strerror(loader->scanner.error.code));
-		goto fail;
+	retry: int ret = zs_parse_all(&loader->scanner);
+	if (ret != 0) {
+		if (loader->scanner.error.code == ZS_MISSING_ORIGIN) {
+			const char *ext = ".zone";
+			char *zonename = basename(loader->source);
+			if (strcmp(zonename + strlen(zonename) - strlen(ext), ext) == 0) {
+				zonename = strndup(zonename, strlen(zonename) - strlen(ext));
+			} else {
+				zonename = strdup(zonename);
+			}
+
+			knot_dname_storage_t zone;
+			if (knot_dname_from_str(zone, zonename, sizeof(zone)) == NULL) {
+				// ERR2("invalid zone name");
+				free(zonename);
+				ERROR(zname, "failed to load zone, file '%s' (%s)",
+				      loader->source, zs_strerror(loader->scanner.error.code));
+				goto fail;
+			}
+			// knot_dname_to_lower(zone);
+			// knot_dname_to_wire(loader->scanner.zone_origin, zone, sizeof(loader->scanner.zone_origin));
+			// loader->scanner.zone_origin_length = knot_dname_size(zone);
+
+			zs_init(&loader->scanner, zonename, KNOT_CLASS_IN, loader->scanner.default_ttl);
+			free(zonename);
+
+			goto retry;
+		}
+		if (loader->scanner.error.counter == 0) {
+			ERROR(zname, "failed to load zone, file '%s' (%s)",
+			      loader->source, zs_strerror(loader->scanner.error.code));
+			goto fail;
+		}
 	}
 
 	if (zc->ret != KNOT_EOK) {

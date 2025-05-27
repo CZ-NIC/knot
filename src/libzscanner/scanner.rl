@@ -269,7 +269,7 @@ static int parse_origin(zs_scanner_t *s)
 	}
 
 	zs_scanner_t ss;
-	if (zs_init(&ss, ".", KNOT_CLASS_IN, 0) != 0 ||
+	if (zs_init(&ss, NULL, KNOT_CLASS_IN, 0) != 0 ||
 	    zs_set_input_string(&ss, s->input.start, s->input.end - s->input.start) != 0 ||
 	    zs_set_processing(&ss, check_origin, NULL, s) != 0 ||
 	    zs_parse_all(&ss) != 0) {
@@ -391,8 +391,8 @@ int zs_set_input_file(
 		return -1;
 	}
 
-	if (parse_origin(s) != 0) {
-		ERR(ZS_NO_SOA);
+	if (s->zone_origin_length != ZS_NO_ORIGIN_LEN && parse_origin(s) != 0) {
+		ERR(ZS_MISSING_ORIGIN);
 		input_deinit(s, false);
 		return -1;
 	}
