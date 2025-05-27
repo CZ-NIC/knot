@@ -303,9 +303,25 @@ void free_key_params(key_params_t *parm)
 	}
 }
 
-int zone_init_keystore(conf_t *conf, conf_val_t *policy_id, conf_val_t *keystore_id,
-                       dnssec_keystore_t **keystore, unsigned *backend, bool *key_label)
+void zone_deinit_keystore(knot_kasp_keystore_t **keystores)
 {
+	if (keystores != NULL && *keystores != NULL) {
+		for (size_t i = 0; i < (*keystores)[0].count; i++) {
+			dnssec_keystore_deinit((*keystores)[i].keystore);
+		}
+		free(*keystores);
+		*keystores = NULL;
+	}
+}
+
+int zone_init_keystore(conf_t *conf, conf_val_t *policy_id, conf_val_t *keystore_id,
+                       knot_kasp_keystore_t **keystores)
+{
+	if (keystores == NULL || *keystores != NULL ||
+	    (bool)(policy_id == NULL) == (bool)(keystore_id == NULL)) {
+		return KNOT_EINVAL;
+	}
+
 	char *zone_path = conf_db(conf, C_KASP_DB);
 	if (zone_path == NULL) {
 		return KNOT_ENOMEM;
@@ -322,21 +338,34 @@ int zone_init_keystore(conf_t *conf, conf_val_t *policy_id, conf_val_t *keystore
 		conf_id_fix_default(keystore_id);
 	}
 
-	conf_val_t val = conf_id_get(conf, C_KEYSTORE, C_BACKEND, keystore_id);
-	unsigned _backend = conf_opt(&val);
-
-	val = conf_id_get(conf, C_KEYSTORE, C_CONFIG, keystore_id);
-	const char *config = conf_str(&val);
-
-	if (key_label != NULL) {
-		val = conf_id_get(conf, C_KEYSTORE, C_KEY_LABEL, keystore_id);
-		*key_label = conf_bool(&val);
+	size_t ks_count = conf_val_count(keystore_id);
+	*keystores = calloc(ks_count, sizeof(**keystores));
+	if (*keystores == NULL) {
+		free(zone_path);
+		return KNOT_ENOMEM;
 	}
 
-	int ret = keystore_load(config, _backend, zone_path, keystore);
+	int ret = KNOT_EOK;
+	for (size_t i = 0; i < ks_count && ret == KNOT_EOK; i++) {
+		knot_kasp_keystore_t *ks = *keystores + i;
 
-	if (backend != NULL) {
-		*backend = _backend;
+		conf_val_t val = conf_id_get(conf, C_KEYSTORE, C_BACKEND, keystore_id);
+		ks->backend = conf_opt(&val);
+		val = conf_id_get(conf, C_KEYSTORE, C_KEY_LABEL, keystore_id);
+		ks->key_label = conf_bool(&val);
+		ks->count = ks_count;
+
+		val = conf_id_get(conf, C_KEYSTORE, C_CONFIG, keystore_id);
+		const char *config = conf_str(&val);
+		ret = keystore_load(config, ks->backend, zone_path, &ks->keystore);
+
+		if (ks_count > 1) { // Don't try to iterate if not multivalued.
+			conf_val_next(keystore_id);
+		}
+	}
+
+	if (ret != KNOT_EOK) {
+		zone_deinit_keystore(keystores);
 	}
 
 	free(zone_path);

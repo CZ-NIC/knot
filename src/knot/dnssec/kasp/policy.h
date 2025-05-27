@@ -9,6 +9,7 @@
 
 #include "contrib/time.h"
 #include "libdnssec/key.h"
+#include "libdnssec/keystore.h"
 #include "knot/conf/conf.h"
 
 /*!
@@ -52,6 +53,13 @@ typedef struct {
 	bool is_ksk;
 	bool is_zsk;
 } knot_kasp_key_t;
+
+typedef struct {
+	dnssec_keystore_t *keystore;
+	unsigned backend;
+	bool key_label;
+	size_t count;			/*!< Number of keystores configured. */
+} knot_kasp_keystore_t;
 
 /*!
  * Parent for DS checks.
@@ -119,7 +127,6 @@ typedef struct {
 	bool has_dnskey_sync;
 	bool offline_ksk;
 	bool incremental;
-	bool key_label;
 	unsigned unsafe;
 	uint32_t keytag_remain;
 	uint32_t keytag_modulo;
