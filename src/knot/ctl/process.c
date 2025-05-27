@@ -6,6 +6,7 @@
 #include "knot/common/log.h"
 #include "knot/ctl/commands.h"
 #include "knot/ctl/process.h"
+#include "knot/ctl/threads.h"
 #include "libknot/error.h"
 #include "contrib/openbsd/strlcat.h"
 #include "contrib/string.h"

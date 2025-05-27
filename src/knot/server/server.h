@@ -6,10 +6,10 @@
 #pragma once
 
 #include "contrib/atomic.h"
-#include "knot/conf/conf.h"
 #include "knot/catalog/catalog_update.h"
 #include "knot/common/evsched.h"
 #include "knot/common/fdset.h"
+#include "knot/conf/conf.h"
 #include "knot/journal/knot_lmdb.h"
 #include "knot/server/dthreads.h"
 #include "knot/worker/pool.h"

@@ -111,6 +111,10 @@ static void *ctl_process_thread(void *arg)
 
 		pthread_mutex_lock(&ctx->mutex);
 		ctx->ret = ret;
+		if (ret == KNOT_CTL_ESTOP) {
+			// Interrupt main ctl socket thread possibly waiting in a syscall.
+			dt_signalize(ctx->socket_dt, SIGALRM);
+		}
 		ctx->exclusive = exclusive;
 		if (ctx->state == CONCURRENT_RUNNING) { // not KILLED
 			ctx->state = CONCURRENT_IDLE;
