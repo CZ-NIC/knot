@@ -504,6 +504,27 @@ int dt_signalize(dthread_t *thread, int signum)
 	return KNOT_EOK;
 }
 
+int dt_unit_signalize(dt_unit_t *unit, int signum)
+{
+	if (unit == 0) {
+		return KNOT_EINVAL;
+	}
+
+	// Lock unit.
+	dt_unit_lock(unit);
+
+	// Signalize all threads.
+	for (int i = 0; i < unit->size; i++) {
+		dthread_t *thread = unit->threads[i];
+		dt_signalize(thread, signum);
+	}
+
+	// Unlock unit.
+	dt_unit_unlock(unit);
+
+	return KNOT_EOK;
+}
+
 int dt_join(dt_unit_t *unit)
 {
 	if (unit == 0) {

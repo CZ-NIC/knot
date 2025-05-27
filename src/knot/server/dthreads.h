@@ -142,6 +142,21 @@ int dt_start(dt_unit_t *unit);
 int dt_signalize(dthread_t *thread, int signum);
 
 /*!
+ * \brief Send given signal to all threads in the unit.
+ *
+ * \note This is useful to interrupt some blocking I/O as well, for example
+ *       with SIGALRM, which is handled by default.
+ * \note Signal handler may be overridden in runnable.
+ *
+ * \param unit   Unit to be addressed.
+ * \param signum Signal code.
+ *
+ * \retval KNOT_EOK on success.
+ * \retval KNOT_EINVAL on invalid parameters.
+ */
+int dt_unit_signalize(dt_unit_t *unit, int signum);
+
+/*!
  * \brief Wait for all thread in unit to finish.
  *
  * \param unit Unit to be joined.

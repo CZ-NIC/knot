@@ -3,9 +3,14 @@
  *  For more information, see <https://www.knot-dns.cz/>
  */
 
+#include <signal.h>
+
+#include "knot/ctl/process.h"
+
 #include "knot/common/log.h"
 #include "knot/ctl/commands.h"
-#include "knot/ctl/process.h"
+#include "knot/ctl/threads.h"
+#include "knot/server/dthreads.h"
 #include "libknot/error.h"
 #include "contrib/openbsd/strlcat.h"
 #include "contrib/string.h"
@@ -145,6 +150,12 @@ int ctl_process(knot_ctl_t *ctl, server_t *server, unsigned thread_idx, bool *ex
 				log_ctl_debug("control, failed to reply (%s)",
 				              knot_strerror(ret));
 			}
+
+			// Interrupt other ctl socket threads possibly waiting in
+			// a syscall. However, it would be better to do it after
+			// concurrent_ctl_ctx_t->ret is updated with KNOT_CTL_ESTOP.
+			assert(server->ctl_ctxs->unit != NULL);
+			dt_unit_signalize(server->ctl_ctxs->unit, SIGALRM);
 
 			return cmd_ret;
 		}
