@@ -36,8 +36,10 @@ void kasp_zone_free(knot_kasp_zone_t **zone);
 
 void free_key_params(key_params_t *parm);
 
+void zone_deinit_keystore(knot_kasp_keystore_t **keystores);
+
 int zone_init_keystore(conf_t *conf, conf_val_t *policy_id, conf_val_t *keystore_id,
-                       dnssec_keystore_t **keystore, unsigned *backend, bool *key_label);
+                       knot_kasp_keystore_t **keystores);
 
 int kasp_zone_keys_from_rr(knot_kasp_zone_t *zone,
                            const knot_rdataset_t *zone_dnskey,

@@ -1966,7 +1966,7 @@ DNSSEC policy configuration.
 
  policy:
    - id: STR
-     keystore: keystore_id
+     keystore: keystore_id ...
      manual: BOOL
      single-type-signing: BOOL
      algorithm: rsasha1 | rsasha1-nsec3-sha1 | rsasha256 | rsasha512 | ecdsap256sha256 | ecdsap384sha384 | ed25519 | ed448
@@ -2012,6 +2012,14 @@ keystore
 
 A :ref:`reference<keystore_id>` to a keystore holding private key material
 for zones.
+
+If multiple are specified, private keys for signing are looked for in all of them,
+but newly generated keys are stored in the first one in the specified order.
+
+.. NOTE::
+   If multiple keystores are configured and a zone is being restored
+   with the :ref:`back up<Data and metadata backup>` feature, all restored
+   private keys are stored into the first referenced keystore.
 
 *Default:* an imaginary keystore with all default values
 
