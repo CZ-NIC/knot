@@ -96,6 +96,7 @@ static bool keytag_in_use(kdnssec_ctx_t *ctx, uint16_t keytag)
 #define GENERATE_KEYTAG_ATTEMPTS (40)
 
 static int generate_keytag_unconflict(kdnssec_ctx_t *ctx,
+                                      knot_kasp_keystore_t *keystore,
                                       kdnssec_generate_flags_t flags,
                                       char **id,
                                       dnssec_key_t **key)
@@ -105,18 +106,18 @@ static int generate_keytag_unconflict(kdnssec_ctx_t *ctx,
 
 	const char *label = NULL;
 
+
+
 	char label_buf[sizeof(knot_dname_txt_storage_t) + 16];
-	if (ctx->keystores[0].key_label &&
+	if (keystore->key_label &&
 	    knot_dname_to_str(label_buf, ctx->zone->dname, sizeof(label_buf)) != NULL) {
 		const char *key_type = (flags & DNSKEY_GENERATE_KSK) ? " KSK" : " ZSK" ;
 		strlcat(label_buf, key_type, sizeof(label_buf));
 		label = label_buf;
 	}
 
-	assert(ctx->keystores != NULL && ctx->keystores[0].count > 0 && ctx->keystores[0].keystore != NULL);
-
 	for (size_t i = 0; i < GENERATE_KEYTAG_ATTEMPTS; i++) {
-		int ret = generate_dnssec_key(ctx->keystores[0].keystore, ctx->zone->dname, label,
+		int ret = generate_dnssec_key(keystore->keystore, ctx->zone->dname, label,
 		                              ctx->policy->algorithm, size, flags,
 		                              id, key);
 		if (ret != KNOT_EOK) {
@@ -128,7 +129,7 @@ static int generate_keytag_unconflict(kdnssec_ctx_t *ctx,
 			return KNOT_EOK;
 		}
 
-		(void)dnssec_keystore_remove(ctx->keystores[0].keystore, *id);
+		(void)dnssec_keystore_remove(keystore->keystore, *id);
 		dnssec_key_free(*key);
 		free(*id);
 	}
@@ -153,7 +154,14 @@ int kdnssec_generate_key(kdnssec_ctx_t *ctx, kdnssec_generate_flags_t flags,
 	char *id = NULL;
 	dnssec_key_t *dnskey = NULL;
 
-	int r = generate_keytag_unconflict(ctx, flags, &id, &dnskey);
+	assert(ctx->keystores != NULL && ctx->keystores[0].count > 0 && ctx->keystores[0].keystore != NULL);
+
+	knot_kasp_keystore_t *keystore = knot_store_for_key(ctx->keystores, (flags & DNSKEY_GENERATE_KSK));
+	if (keystore == NULL) {
+		return KNOT_DNSSEC_ENOKEYSTORE;
+	}
+
+	int r = generate_keytag_unconflict(ctx, keystore, flags, &id, &dnskey);
 	if (r != KNOT_EOK) {
 		return r;
 	}
@@ -174,7 +182,7 @@ int kdnssec_generate_key(kdnssec_ctx_t *ctx, kdnssec_generate_flags_t flags,
 	r = kasp_zone_append(ctx->zone, key);
 	free(key);
 	if (r != KNOT_EOK) {
-		(void)dnssec_keystore_remove(ctx->keystores[0].keystore, id);
+		(void)dnssec_keystore_remove(keystore->keystore, id);
 		dnssec_key_free(dnskey);
 		free(id);
 		return r;
@@ -464,6 +472,16 @@ int kdnssec_load_private(knot_kasp_keystore_t *keystores, const char *id,
 		ret = dnssec_keystore_get_private(keystores[i].keystore, id, key);
 	}
 	return ret;
+}
+
+knot_kasp_keystore_t *knot_store_for_key(knot_kasp_keystore_t *keystores, bool ksk)
+{
+	for (size_t i = 0; i < keystores[0].count; i++) {
+		if (ksk || !keystores[i].ksk_only) {
+			return &keystores[i];
+		}
+	}
+	return NULL;
 }
 
 /*!

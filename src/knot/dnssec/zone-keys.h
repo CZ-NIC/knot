@@ -126,6 +126,16 @@ int kdnssec_load_private(knot_kasp_keystore_t *keystores, const char *id,
                          dnssec_key_t *key, unsigned *backend);
 
 /*!
+ * \brief Find configured keystore for newly generated key.
+ *
+ * \param keystores    Array of keystores.
+ * \param ksk          If the generated key is a KSK or CSK.
+ *
+ * \return Suitable keystore or NULL.
+ */
+knot_kasp_keystore_t *knot_store_for_key(knot_kasp_keystore_t *keystores, bool ksk);
+
+/*!
  * \brief Load zone keys and init cryptographic context.
  *
  * \param ctx            Zone signing context.
