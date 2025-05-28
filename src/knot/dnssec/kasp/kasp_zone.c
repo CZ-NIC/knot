@@ -351,6 +351,8 @@ int zone_init_keystore(conf_t *conf, conf_val_t *policy_id, conf_val_t *keystore
 
 		conf_val_t val = conf_id_get(conf, C_KEYSTORE, C_BACKEND, keystore_id);
 		ks->backend = conf_opt(&val);
+		val = conf_id_get(conf, C_KEYSTORE, C_KSK_ONLY, keystore_id);
+		ks->ksk_only = conf_bool(&val);
 		val = conf_id_get(conf, C_KEYSTORE, C_KEY_LABEL, keystore_id);
 		ks->key_label = conf_bool(&val);
 		ks->count = ks_count;

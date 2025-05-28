@@ -1798,6 +1798,8 @@ class Knot(Server):
             for ks in z.dnssec.keystores:
                 s.id_item("id", ks)
                 s.item("config", ks)
+                if ks.endswith("ksk"):
+                    s.item("ksk-only", "on")
         if have_keystore:
             s.end()
 

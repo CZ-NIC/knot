@@ -81,6 +81,7 @@
 #define C_KEY_FILE		"\x08""key-file"
 #define C_KEY_LABEL		"\x09""key-label"
 #define C_KSK_LIFETIME		"\x0C""ksk-lifetime"
+#define C_KSK_ONLY		"\x08""ksk-only"
 #define C_KSK_SBM		"\x0E""ksk-submission"
 #define C_KSK_SHARED		"\x0a""ksk-shared"
 #define C_KSK_SIZE		"\x08""ksk-size"

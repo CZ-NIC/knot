@@ -163,6 +163,7 @@ static const struct error errors[] = {
 	{ KNOT_NO_READY_KEY,           "no key ready for submission" },
 	{ KNOT_ESOON_EXPIRE,           "oncoming RRSIG expiration" },
 	{ KNOT_DNSSEC_ENOKEY,          "no keys for signing" },
+	{ KNOT_DNSSEC_ENOKEYSTORE,     "no suitable keystore" },
 	{ KNOT_DNSSEC_EMISSINGKEYTYPE, "missing active KSK or ZSK" },
 	{ KNOT_DNSSEC_ENOSIG,          "no valid signature for a record" },
 	{ KNOT_DNSSEC_ENONSEC,         "missing NSEC(3) record" },
