@@ -57,6 +57,7 @@ typedef struct {
 typedef struct {
 	dnssec_keystore_t *keystore;
 	unsigned backend;
+	bool ksk_only;
 	bool key_label;
 	size_t count;
 } knot_kasp_keystore_t;

@@ -61,4 +61,52 @@ serial = server.zone_wait(zone, serial)
 server.flush(zone[0], wait=True)
 server.zone_verify(zone[0])
 
+server.dnssec(zone).keystores = [ "keys0ksk", "keys1", "keys2" ]
+server.gen_confile()
+server.reload()
+
+server.ctl("zone-key-rollover %s ksk" % zone[0].name)
+serial = server.zone_wait(zone, serial)
+check_key_count(server, "keys0ksk", 1)
+check_key_count(server, "keys1", 0)
+check_key_count(server, "keys2", 2)
+
+server.ctl("zone-ksk-submitted %s" % zone[0].name)
+serial = server.zone_wait(zone, serial)
+check_key_count(server, "keys0ksk", 1)
+check_key_count(server, "keys1", 0)
+check_key_count(server, "keys2", 1)
+
+server.ctl("zone-key-rollover %s zsk" % zone[0].name)
+serial += 2 # wait for three increments which is whole ZSK rollover
+serial = server.zone_wait(zone, serial)
+check_key_count(server, "keys0ksk", 1)
+check_key_count(server, "keys1", 1)
+check_key_count(server, "keys2", 0)
+
+Keymgr.run_check(server.confile, zone[0].name, "generate", "ksk=yes")
+check_key_count(server, "keys0ksk", 2)
+check_key_count(server, "keys1", 1)
+
+Keymgr.run_check(server.confile, zone[0].name, "generate", "ksk=no")
+check_key_count(server, "keys0ksk", 2)
+check_key_count(server, "keys1", 2)
+
+Keymgr.run_check(server.confile, zone[0].name, "import-bind", os.path.join(t.data_dir, "Kcatalog.+013+07147.key"))
+check_key_count(server, "keys0ksk", 2)
+check_key_count(server, "keys1", 3)
+
+Keymgr.run_check(server.confile, zone[0].name, "import-bind", os.path.join(t.data_dir, "Kcatalog.+013+18635.key"))
+check_key_count(server, "keys0ksk", 3)
+check_key_count(server, "keys1", 3)
+
+Keymgr.run_check(server.confile, zone[0].name, "import-pem", os.path.join(t.data_dir, "8329a00d5dceefdcbbf7b8a3cdf61fe944c51d6f.pem"), "ksk=yes")
+check_key_count(server, "keys0ksk", 4)
+check_key_count(server, "keys1", 3)
+
+Keymgr.run_check(server.confile, zone[0].name, "import-pem", os.path.join(t.data_dir, "894d4240398f459f59f4a99cd4c5b658c9a62d54.pem"), "ksk=no")
+check_key_count(server, "keys0ksk", 4)
+check_key_count(server, "keys1", 4)
+check_key_count(server, "keys2", 0)
+
 t.end()

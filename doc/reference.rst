@@ -1376,6 +1376,16 @@ The PKCS #11 URI Scheme is defined in :rfc:`7512`.
 
 *Default:* :ref:`kasp-db<database_kasp-db>`\ ``/keys``
 
+.. _keystore_ksk-only:
+
+ksk-only
+--------
+
+Newly generated keys sre stored in this keystore only if they are KSKs or CSKs.
+Zone singing keys will be stored in subsequent keystore with this option off.
+
+*Default:* ``off``
+
 .. _keystore_key-label:
 
 key-label
@@ -2014,7 +2024,8 @@ A :ref:`reference<keystore_id>` to a keystore holding private key material
 for zones.
 
 If multiple are specified, private keys for signing are looked for in all of them,
-but newly generated keys are stored in the first one in the specified order.
+but newly generated keys are stored in the first one (or the first one with
+:ref:`keystore_ksk-only` off in case of a new ZSK) in the specified order.
 
 .. NOTE::
    If multiple keystores are configured and a zone is being restored

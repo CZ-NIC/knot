@@ -181,6 +181,17 @@ static bool genkeyargs(int argc, char *argv[], bool just_timing,
 	return true;
 }
 
+static bool genkeyargs_ksk(int argc, char *argv[])
+{
+	for (int i = 0; i < argc; i++) {
+		if (same_command(argv[i], "ksk=", true) && str2bool(argv[i] + 4)) {
+			return true;
+		}
+	}
+	return false;
+}
+
+
 static bool _check_lower(knot_time_t a, knot_time_t b,
 			 const char *a_name, const char *b_name)
 {
@@ -399,6 +410,12 @@ int keymgr_import_bind(kdnssec_ctx_t *ctx, const char *import_file, bool pub_onl
 			goto fail;
 		}
 
+		knot_kasp_keystore_t *keystore = knot_store_for_key(ctx->keystores, (dnssec_key_get_flags(key) == DNSKEY_FLAGS_KSK));
+		if (keystore == NULL) {
+			ret = KNOT_DNSSEC_ENOKEYSTORE;
+			goto fail;
+		}
+
 		ret = bind_privkey_parse(privname, &bpriv);
 		free(privname);
 		if (ret != DNSSEC_EOK) {
@@ -416,7 +433,7 @@ int keymgr_import_bind(kdnssec_ctx_t *ctx, const char *import_file, bool pub_onl
 
 		bind_privkey_free(&bpriv);
 
-		ret = dnssec_keystore_import(ctx->keystores[0].keystore, &pem, &keyid);
+		ret = dnssec_keystore_import(keystore->keystore, &pem, &keyid);
 		dnssec_binary_free(&pem);
 		if (ret != DNSSEC_EOK) {
 			goto fail;
@@ -485,6 +502,11 @@ static int import_key(kdnssec_ctx_t *ctx, unsigned backend, const char *param,
 		return KNOT_EINVAL;
 	}
 
+	knot_kasp_keystore_t *keystore = knot_store_for_key(ctx->keystores, (flags & DNSKEY_GENERATE_KSK));
+	if (keystore == NULL) {
+		return KNOT_DNSSEC_ENOKEYSTORE;
+	}
+
 	int ret = check_timers(&timing);
 	if (ret != KNOT_EOK) {
 		return ret;
@@ -536,7 +558,7 @@ static int import_key(kdnssec_ctx_t *ctx, unsigned backend, const char *param,
 		}
 
 		// put pem to keystore
-		ret = dnssec_keystore_import(ctx->keystores[0].keystore, &pem, &keyid);
+		ret = dnssec_keystore_import(keystore->keystore, &pem, &keyid);
 		dnssec_binary_free(&pem);
 		if (ret != DNSSEC_EOK) {
 			err_import_key(keyid, param);
@@ -606,7 +628,9 @@ int keymgr_import_pkcs11(kdnssec_ctx_t *ctx, char *key_id, int argc, char *argv[
 		return DNSSEC_INVALID_KEY_ID;
 	}
 
-	if (ctx->keystores[0].backend != KEYSTORE_BACKEND_PKCS11) {
+	knot_kasp_keystore_t *keystore = knot_store_for_key(ctx->keystores, genkeyargs_ksk(argc, argv));
+
+	if (keystore == NULL || keystore->backend != KEYSTORE_BACKEND_PKCS11) {
 		knot_dname_txt_storage_t dname_str;
 		(void)knot_dname_to_str(dname_str, ctx->zone->dname, sizeof(dname_str));
 		ERR2("not a PKCS #11 keystore for zone %s", dname_str);
