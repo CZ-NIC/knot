@@ -81,7 +81,7 @@ int zone_check(const char *zone_file, const knot_dname_t *zone_name, bool zonemd
 
 	if (zone_name == NULL) {
 		knot_dname_txt_storage_t origin;
-		if (knot_dname_to_str(origin,zl.scanner.zone_origin , sizeof(origin)) != NULL) {
+		if (knot_dname_to_str(origin, zl.scanner.zone_origin, sizeof(origin)) != NULL) {
 			log_debug("detected zone origin %s", origin);
 		}
 	}

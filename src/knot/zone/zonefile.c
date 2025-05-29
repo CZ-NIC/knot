@@ -120,49 +120,89 @@ static void process_data(zs_scanner_t *scanner)
 	knot_rrset_clear(&rr, NULL);
 }
 
+static void check_origin(zs_scanner_t *s)
+{
+	if (s->r_type == KNOT_RRTYPE_SOA) {
+		uint8_t *origin_buf = s->process.data;
+		assert(s->r_owner_length <= KNOT_DNAME_MAXLEN);
+		origin_buf[0] = s->r_owner_length;
+		memcpy(origin_buf + 1, s->r_owner, s->r_owner_length);
+		s->state = ZS_STATE_STOP;
+	}
+}
+
+static void error_origin(zs_scanner_t *s)
+{
+	log_error("failed to detect zone origin, file '%s', line %"PRIu64" (%s)",
+	          s->file.name, s->line_counter, zs_strerror(s->error.code));
+}
+
 int zonefile_open(zloader_t *loader, const char *source, const knot_dname_t *origin,
                   uint32_t dflt_ttl, semcheck_optional_t semantic_checks, time_t time)
 {
-	if (!loader) {
+	if (loader == NULL || source == NULL) {
 		return KNOT_EINVAL;
 	}
 
 	memset(loader, 0, sizeof(zloader_t));
 
-	/* Check zone file. */
 	if (access(source, F_OK | R_OK) != 0) {
 		return knot_map_errno();
 	}
 
-	/* Create context. */
 	zcreator_t *zc = malloc(sizeof(zcreator_t));
 	if (zc == NULL) {
 		return KNOT_ENOMEM;
 	}
 	memset(zc, 0, sizeof(zcreator_t));
 
-	/* Prepare textual owner for zone scanner (NULL for autodetection). */
-	char *origin_str = NULL;
-	if (origin != NULL) {
-		origin_str = knot_dname_to_str_alloc(origin);
-		if (origin_str == NULL) {
-			free(zc);
-			return KNOT_ENOMEM;
+	uint8_t origin_buf[1 + KNOT_DNAME_MAXLEN];
+	if (origin == NULL) { // Origin autodetection based on SOA owner and source.
+		const char *ext = ".zone";
+		char *origin_str = basename(source);
+		if (strcmp(origin_str + strlen(origin_str) - strlen(ext), ext) == 0) {
+			origin_str = strndup(origin_str, strlen(origin_str) - strlen(ext));
+		} else {
+			origin_str = strdup(origin_str);
 		}
+
+		origin_buf[0] = 0;
+
+		zs_scanner_t s;
+		if (zs_init(&s, origin_str, KNOT_CLASS_IN, 0) != 0 ||
+		    zs_set_input_file(&s, source) != 0 ||
+		    zs_set_processing(&s, check_origin, error_origin, &origin_buf) != 0) {
+			free(origin_str);
+			zs_deinit(&s);
+			return KNOT_EFILE;
+		}
+		free(origin_str);
+		if (zs_parse_all(&s) != 0 && s.error.fatal) {
+			zs_deinit(&s);
+			return KNOT_EPARSEFAIL;
+		}
+		zs_deinit(&s);
+
+		if (origin_buf[0] == 0) {
+			return KNOT_ESOAINVAL;
+		}
+		origin = origin_buf + 1;
+	}
+
+	knot_dname_txt_storage_t origin_str;
+	if (knot_dname_to_str(origin_str, origin, sizeof(origin_str)) == NULL) {
+		return KNOT_EINVAL;
 	}
 
 	if (zs_init(&loader->scanner, origin_str, KNOT_CLASS_IN, dflt_ttl) != 0 ||
 	    zs_set_input_file(&loader->scanner, source) != 0 ||
 	    zs_set_processing(&loader->scanner, process_data, process_error, zc) != 0) {
-		bool missing_origin = loader->scanner.error.code == ZS_NO_SOA;
 		zs_deinit(&loader->scanner);
-		free(origin_str);
 		free(zc);
-		return missing_origin ? KNOT_ESOAINVAL : KNOT_EFILE;
+		return KNOT_EFILE;
 	}
-	free(origin_str);
 
-	zc->z = zone_contents_new(loader->scanner.zone_origin, true);
+	zc->z = zone_contents_new(origin, true);
 	if (zc->z == NULL) {
 		zs_deinit(&loader->scanner);
 		free(zc);

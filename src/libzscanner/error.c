@@ -159,8 +159,6 @@ static const err_table_t err_msgs[] = {
 	          "permission denied" ),
 	ERR_ITEM( ZS_BAD_ALPN_BACKSLASH,
 	          "unscaped backslash character" ),
-	ERR_ITEM( ZS_NO_SOA,
-	          "missing SOA record" ),
 
 	ERR_ITEM( 0, NULL ) // Terminator
 };

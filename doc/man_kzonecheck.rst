@@ -29,8 +29,9 @@ Options
 .......
 
 **-o**, **--origin** *origin*
-  Zone origin. If not specified, the origin is determined from the SOA record
-  in the zone file.
+  Zone origin. If not specified, the SOA record owner in the zone file is used
+  and the zone file name (without possible **.zone** suffix) is considered as
+  the initial zone origin in case the owner isn't FQDN.
 
 **-d**, **--dnssec** **on**\|\ **off**
   Also check DNSSEC-related records. The default is to decide based on the

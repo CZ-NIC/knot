@@ -1,0 +1,2 @@
+soa.relative.   NS example.net.
+@       SOA     dns1 hostmaster 1 1000 360 10000 7200
