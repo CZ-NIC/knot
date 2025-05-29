@@ -86,7 +86,6 @@ enum err_codes {
 	ZS_EMPTY_LIST_ITEM,
 	ZS_FILE_ACCESS,
 	ZS_BAD_ALPN_BACKSLASH,
-	ZS_NO_SOA,
 };
 
 /*!

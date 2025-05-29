@@ -103,6 +103,7 @@ plan_lazy
 expect_error "soa.missing"           0 0 "" "AUTO"
 test_correct "soa.duplicate"                "AUTO"
 test_correct "soa.nonfirst"                 "AUTO"
+test_correct "soa.relative"                 "AUTO"
 
 expect_error "soa.missing"           1 1 "$SOA_MISSING"
 expect_error "soa.multiple"          1 1 "$SOA_MULTIPLE"

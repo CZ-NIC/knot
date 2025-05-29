@@ -30,7 +30,7 @@ static void print_help(void)
 	       "\n"
 	       "Options:\n"
 	       " -o, --origin <zone_origin>  Zone name.\n"
-	       "                              (default filename without .zone)\n"
+	       "                              (default SOA owner)\n"
 	       " -d, --dnssec <on|off>       Enforce check of DNSSEC records.\n"
 	       "                              (default autodetection)\n"
 	       " -j, --jobs <num>            Number of threads.\n"
