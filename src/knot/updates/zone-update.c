@@ -894,6 +894,9 @@ int zone_update_verify_digest(conf_t *conf, zone_update_t *update)
 	if (ret != KNOT_EOK) {
 		log_zone_error(update->zone->name, "ZONEMD, verification failed (%s)",
 		               knot_strerror(ret));
+		if (conf->cache.srv_dbus_event & DBUS_EVENT_ZONE_INVALID) {
+			dbus_emit_zone_invalid(update->zone->name, 0);
+		}
 	} else {
 		log_zone_info(update->zone->name, "ZONEMD, verification successful");
 	}

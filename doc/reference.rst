@@ -653,8 +653,8 @@ Possible values:
   a ready KSK present when the zone is signed; the signal parameters are
   `zone name`, `KSK keytag`, and `KSK KASP id`.
 - ``dnssec-invalid`` – The signal ``zone_dnssec_invalid`` is emitted when DNSSEC
-  validation fails; the signal parameters are `zone name`, and `remaining seconds`
-  until an RRSIG expires.
+  validation fails, or when ZONEMD verification fails; the signal parameters
+  are `zone name`, and `remaining seconds` until an RRSIG expires.
 
 .. NOTE::
    This function requires systemd version at least 221 or libdbus.
@@ -2970,6 +2970,10 @@ logged).
 
    This mode is not compatible with :ref:`zone_dnssec-signing`.
 
+.. TIP::
+   If :ref:`server_dbus-event` is set to ``dnssec-invalid``, a corresponding
+   signal is emitted when the validation fails.
+
 *Default:* not set
 
 .. _zone_dnssec-policy:
@@ -3003,6 +3007,10 @@ On each zone load/update, verify that ZONEMD is present in the zone and valid.
 
 .. NOTE::
    Zone digest calculation may take much time and CPU on large zones.
+
+.. TIP::
+   If :ref:`server_dbus-event` is set to ``dnssec-invalid``, a corresponding
+   signal is emitted when the verification fails.
 
 *Default:* ``off``
 
