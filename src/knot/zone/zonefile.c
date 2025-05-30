@@ -165,13 +165,16 @@ int zonefile_open(zloader_t *loader, const char *source, const knot_dname_t *ori
 		zs_scanner_t s;
 		if (zs_init(&s, origin_str, KNOT_CLASS_IN, 0) != 0 ||
 		    zs_set_input_file(&s, source) != 0 ||
-		    zs_set_processing(&s, check_origin, NULL, &origin_buf) != 0 ||
-		    (zs_parse_all(&s) != 0 && s.error.fatal)) {
+		    zs_set_processing(&s, check_origin, NULL, &origin_buf) != 0) {
 			free(origin_str);
 			zs_deinit(&s);
 			return KNOT_EFILE;
 		}
 		free(origin_str);
+		if (zs_parse_all(&s) != 0 && s.error.fatal) {
+			zs_deinit(&s);
+			return KNOT_EPARSEFAIL;
+		}
 		zs_deinit(&s);
 
 		if (origin_buf[0] == 0) {
