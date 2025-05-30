@@ -681,10 +681,12 @@ static knot_mm_t mm = {
 	.ctx = NULL,
 	.free = redismodule_free
 };
+
 static int rdata_add(RedisModuleCtx *ctx, size_t origin_len, const uint8_t *origin,
                      size_t owner_len, const uint8_t *owner, uint16_t rtype,
                      uint32_t ttl, const knot_rdata_t *rdata)
 {
+
 	RedisModuleKey *zone_key = find_zone_index(ctx, origin, origin_len, REDISMODULE_READ | REDISMODULE_WRITE);
 	int zone_keytype = RedisModule_KeyType(zone_key);
 	if (zone_keytype != REDISMODULE_KEYTYPE_EMPTY &&
@@ -692,7 +694,7 @@ static int rdata_add(RedisModuleCtx *ctx, size_t origin_len, const uint8_t *orig
 		RedisModule_CloseKey(zone_key);
 		return RedisModule_ReplyWithError(ctx, "ERR Bad data");
 	}
-
+	
 	RedisModuleString *rrset_keystr = construct_rrset_key(ctx, origin, origin_len, owner, owner_len, rtype);
 
 	RedisModule_ZsetAdd(zone_key, evaluate_score(rtype), rrset_keystr, NULL);
@@ -700,20 +702,25 @@ static int rdata_add(RedisModuleCtx *ctx, size_t origin_len, const uint8_t *orig
 
 	RedisModuleKey *rrset_key = RedisModule_OpenKey(ctx, rrset_keystr, REDISMODULE_READ | REDISMODULE_WRITE);
 	RedisModule_FreeString(ctx, rrset_keystr);
-	if (RedisModule_ModuleTypeGetType(rrset_key) != knot_zone_rrset_t) {
+
+	knot_rrset_v *rrset = NULL;
+	if (RedisModule_KeyType(rrset_key) == REDISMODULE_KEYTYPE_EMPTY) {
+		rrset = RedisModule_Calloc(1, sizeof(*rrset));
+		if (rrset == NULL) {
+			return RedisModule_ReplyWithError(ctx, "ERR Cannot allocate memory");
+		}
+		int ret = RedisModule_ModuleTypeSetValue(rrset_key, knot_zone_rrset_t, NULL);
+		if (ret != REDISMODULE_OK) {
+			return RedisModule_ReplyWithError(ctx, "ERR Unable to store module value");
+		}
+	} else if (RedisModule_ModuleTypeGetType(rrset_key) == knot_zone_rrset_t) {
+		rrset = RedisModule_ModuleTypeGetValue(rrset_key);
+	} else {
 		RedisModule_CloseKey(rrset_key);
 		return RedisModule_ReplyWithError(ctx, "ERR Bad data");
 	}
+	assert(rrset != NULL);
 
-	knot_rrset_v *rrset = RedisModule_ModuleTypeGetValue(rrset_key);
-	if (rrset == NULL) {
-		rrset = RedisModule_Calloc(1, sizeof(knot_rrset_v));
-		if (rrset == NULL) {
-			RedisModule_CloseKey(rrset_key);
-			return RedisModule_ReplyWithError(ctx, "ERR Bad data");
-		}
-		RedisModule_ModuleTypeSetValue(rrset_key, knot_zone_rrset_t, rrset);
-	}
 	rrset->ttl = ttl;
 
 	int ret = knot_rdataset_add(&rrset->rrs, rdata, &mm);
@@ -1320,11 +1327,12 @@ typedef enum {
 	DIFF      = 7,
 } knot_rdb_type;
 
+#define get_txn_keyname(ctx, origin, origin_len, namespace) RedisModule_CreateStringPrintf((ctx), KNOT_RDB_PREFIX "%c%.*s%c", ZONE_TXN, (origin_len), (origin), (namespace))
+
 // [active_txn][1-9]
 static uint8_t get_txn(RedisModuleCtx *ctx, uint8_t instance, const uint8_t *zone, uint8_t zone_len)
 {
-	RedisModuleString *keyname = RedisModule_CreateStringPrintf(ctx,
-		KNOT_RDB_PREFIX "%c%.*s%c", ZONE_TXN, zone_len, zone, instance);
+	RedisModuleString *keyname = get_txn_keyname(ctx, zone, zone_len, instance);
 	if (keyname == NULL) {
 		RedisModule_ReplyWithError(ctx, "ERR failed to initialize transaction");
 		return 0;
@@ -1380,10 +1388,7 @@ static knot_dname_t *parse_dname(RedisModuleCtx *ctx, RedisModuleString *arg, kn
 {
 	size_t len;
 	const char *data = RedisModule_StringPtrLen(arg, &len);
-	char *buf = RedisModule_PoolAlloc(ctx, len + 1);
-	memcpy(buf, data, len);
-	buf[len] = '\0';
-	return knot_dname_from_str(*out, buf, sizeof(*out));
+	return knot_dname_from_str(*out, data, sizeof(*out));
 }
 
 // <zone_name> [<instance_id=0>]
@@ -1395,7 +1400,7 @@ static int knot_zone_begin(RedisModuleCtx *ctx, RedisModuleString **argv, int ar
 	switch (argc) {
 	case 3:
 		if ((out[0] = parse_instance(argv[2])) == 0) {
-			return RedisModule_ReplyWithError(ctx, "ERR invalid zone index");
+			return RedisModule_ReplyWithError(ctx, "ERR invalid zone instance");
 		}
 	case 2: // FALLTHROUGH
 		if (parse_dname(ctx, argv[1], &zone) == NULL) {
@@ -1406,6 +1411,7 @@ static int knot_zone_begin(RedisModuleCtx *ctx, RedisModuleString **argv, int ar
 		return RedisModule_WrongArity(ctx);
 	}
 
+	// TODO in keyname string, zero-byte behind 'origin' is missing. Need fix in the future..
 	uint8_t zone_len = knot_dname_size(zone);
 	assert(zone_len > 0);
 
@@ -1426,9 +1432,71 @@ static int knot_zone_begin(RedisModuleCtx *ctx, RedisModuleString **argv, int ar
 	return RedisModule_ReplyWithStringBuffer(ctx, (const char *)out, sizeof(out));
 }
 
+typedef struct {
+	uint8_t namespace;
+	uint8_t transaction_id;
+} transaction_t;
+
 static int knot_zone_store(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 {
+	if (argc != 4) {
+		return RedisModule_WrongArity(ctx);
+	}
 
+	size_t origin_len = 0, txn_len = 0, record_len = 0;
+	const char *origin_str = RedisModule_StringPtrLen(argv[1], &origin_len);
+	const transaction_t *txn = (const transaction_t *)RedisModule_StringPtrLen(argv[2], &txn_len);
+	const char *record_str = RedisModule_StringPtrLen(argv[3], &record_len);
+
+	/* Convert origin to dname */
+	knot_dname_storage_t origin_dname;
+	parse_dname(ctx, argv[1], &origin_dname);
+	// TODO in keyname string, zero-byte behind 'origin' is missing. Need fix in the future..
+	int origin_dname_len = knot_dname_size(origin_dname);
+
+	/* Testing existing transaction */
+	if (txn_len != 2) {
+		return RedisModule_ReplyWithError(ctx, "Failed to parse transaction");
+	}
+	RedisModuleString *txn_keyname = get_txn_keyname(ctx, origin_dname, origin_dname_len, txn->namespace);
+	RedisModuleKey *key = RedisModule_OpenKey(ctx, txn_keyname, REDISMODULE_READ);
+	RedisModule_FreeString(ctx, txn_keyname);
+	for(char *it = RedisModule_StringPtrLen(txn_keyname, NULL); *it != '\0'; ++it)
+		RedisModule_Log(ctx, REDISMODULE_LOGLEVEL_WARNING, "TEST %02x", *it);
+	if (key == NULL || RedisModule_KeyType(key) != REDISMODULE_KEYTYPE_STRING) {
+		return RedisModule_ReplyWithError(ctx, "Non-existent transaction");
+	}
+	size_t len;
+	const char *transaction = RedisModule_StringDMA(key, &len, REDISMODULE_WRITE);
+	if (transaction[txn->transaction_id] == 0) {
+		return RedisModule_ReplyWithError(ctx, "Closed transaction");
+	}
+
+	zs_scanner_t s;
+	if (zs_init(&s, origin_str, KNOT_CLASS_IN, 0) != 0 ||
+	    zs_set_input_string(&s, record_str, record_len) != 0 ||
+	    zs_parse_record(&s) != 0 ||
+	    s.state != ZS_STATE_DATA) {
+		zs_deinit(&s);
+		return RedisModule_ReplyWithError(ctx, "Failed to parse the record");
+	}
+
+	knot_rrset_t rrset;
+	knot_rrset_init(&rrset, s.r_owner, s.r_type, s.r_class, s.r_ttl);
+	if (knot_rrset_add_rdata(&rrset, s.r_data, s.r_data_length, &mm) != KNOT_EOK ||
+	    knot_rrset_rr_to_canonical(&rrset) != KNOT_EOK) {
+		knot_rdataset_clear(&rrset.rrs, &mm);
+		zs_deinit(&s);
+		return RedisModule_ReplyWithError(ctx, "Failed to store the record");
+	}
+
+	int ret = rdata_add(ctx, s.zone_origin_length, s.zone_origin,
+			    s.r_owner_length, s.r_owner, s.r_type, s.r_ttl,
+			    rrset.rrs.rdata);
+	knot_rdataset_clear(&rrset.rrs, &mm);
+	zs_deinit(&s);
+
+	return ret;
 	return REDISMODULE_OK;
 }
 
