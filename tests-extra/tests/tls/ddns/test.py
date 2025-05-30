@@ -26,6 +26,7 @@ for z in zones:
     sender.dnssec(z).enable = True
     sender.dnssec(z).propagation_delay = 4
     sender.dnssec(z).dnskey_sync = [ recver ]
+    sender.dnssec(z).keytag_modulo = "0/1"
 
 t.start()
 

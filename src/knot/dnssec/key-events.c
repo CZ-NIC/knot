@@ -952,7 +952,7 @@ unsigned dnskey_sync_jitter(conf_t *conf, zone_t *zone)
 		int zero;
 		uint32_t rem, mod;
 		int ret = serial_modulo_parse(conf_str(&val), &rem, &mod, &zero);
-		if (ret == KNOT_EOK && mod > 1) {
+		if (ret == KNOT_EOK) {
 			return 2 * rem;
 		}
 	}
