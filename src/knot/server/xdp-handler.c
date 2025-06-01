@@ -322,7 +322,9 @@ static void handle_quic(xdp_handle_ctx_t *ctx, knot_layer_t *layer,
 		                       &ctx->quic_relays[i]);
 		knot_quic_conn_t *conn = ctx->quic_relays[i];
 
-		handle_quic_streams(conn, params, layer);
+		if (conn != NULL) {
+			handle_quic_streams(conn, params, layer);
+		}
 
 		(void)process_query_proto(params, KNOTD_STAGE_PROTO_END);
 	}
