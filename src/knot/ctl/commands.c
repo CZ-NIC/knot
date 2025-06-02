@@ -186,7 +186,7 @@ static int get_zone(ctl_args_t *args, zone_t **zone)
 
 static int zones_apply(ctl_args_t *args, int (*fcn)(zone_t *, ctl_args_t *))
 {
-	int ret;
+	int ret = KNOT_EOK;
 
 	// Process all configured zones if none is specified.
 	if (args->data[KNOT_CTL_IDX_ZONE] == NULL) {
@@ -202,7 +202,7 @@ static int zones_apply(ctl_args_t *args, int (*fcn)(zone_t *, ctl_args_t *))
 		}
 		knot_zonedb_iter_free(it);
 
-		if (failed) {
+		if (failed && ret != KNOT_EPARSEFAIL) {
 			ret = KNOT_CTL_EZONE;
 			log_ctl_error("control, error (%s)", knot_strerror(ret));
 			ctl_send_error(args, knot_strerror(ret));
@@ -217,7 +217,7 @@ static int zones_apply(ctl_args_t *args, int (*fcn)(zone_t *, ctl_args_t *))
 		if (ret == KNOT_EOK) {
 			ret = fcn(zone, args);
 		}
-		if (ret != KNOT_EOK) {
+		if (ret != KNOT_EOK && ret != KNOT_EPARSEFAIL) {
 			log_ctl_zone_str_error(args->data[KNOT_CTL_IDX_ZONE],
 			                       "control, error (%s)", knot_strerror(ret));
 			ctl_send_error(args, knot_strerror(ret));
@@ -1407,6 +1407,12 @@ static int create_rrset(knot_rrset_t **rrset, zone_t *zone, ctl_args_t *args,
 	    zs_set_input_string(scanner, buff, rdata_len) != 0 ||
 	    zs_parse_record(scanner) != 0 ||
 	    scanner->state != ZS_STATE_DATA) {
+		args->data[KNOT_CTL_IDX_ZONE] = origin;
+		if (scanner->error.code == ZS_OK) {
+			scanner->error.code = ZS_EINVAL;
+		}
+		// Send this user mistake directly to the client (don't log it).
+		ctl_send_error(args, zs_strerror(scanner->error.code));
 		ret = KNOT_EPARSEFAIL;
 		goto parser_failed;
 	}
