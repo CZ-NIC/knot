@@ -7,6 +7,7 @@
 #include <gnutls/crypto.h>
 #include <gnutls/gnutls.h>
 #include <gnutls/x509.h>
+#include <gnutls/x509-ext.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
@@ -122,9 +123,14 @@ static int self_signed_cert(gnutls_certificate_credentials_t tls_cert,
 {
 	gnutls_x509_privkey_t privkey = NULL;
 	gnutls_x509_crt_t cert = NULL;
+	gnutls_subject_alt_names_t san = NULL;
+	gnutls_datum_t san_der = { 0 };
 
-	char *hostname = sockaddr_hostname();
-	if (hostname == NULL) {
+	gnutls_datum_t hostname = {
+		.data = (unsigned char *)sockaddr_hostname(),
+		.size = strlen((char *)hostname.data)
+	};
+	if (hostname.data == NULL) {
 		return GNUTLS_E_MEMORY_ERROR;
 	}
 
@@ -144,17 +150,26 @@ static int self_signed_cert(gnutls_certificate_credentials_t tls_cert,
 	CHK(gnutls_x509_crt_set_serial(cert, serial, sizeof(serial)));
 	CHK(gnutls_x509_crt_set_activation_time(cert, NOW_DAYS(-1)));
 	CHK(gnutls_x509_crt_set_expiration_time(cert, NOW_DAYS(10 * 365)));
-	CHK(gnutls_x509_crt_set_dn_by_oid(cert, GNUTLS_OID_X520_COMMON_NAME, 0,
-	                                  hostname, strlen(hostname)));
+	CHK(gnutls_x509_crt_set_issuer_dn_by_oid(cert, GNUTLS_OID_X520_COMMON_NAME,
+	                                         0, hostname.data, hostname.size));
+
+	CHK(gnutls_subject_alt_names_init(&san));
+	CHK(gnutls_subject_alt_names_set(san, GNUTLS_SAN_DNSNAME, &hostname, 0));
+	CHK(gnutls_x509_ext_export_subject_alt_names(san, &san_der));
+	CHK(gnutls_x509_crt_set_extension_by_oid(cert, GNUTLS_X509EXT_OID_SAN,
+	                                         san_der.data, san_der.size, 1));
+
 	CHK(gnutls_x509_crt_set_key(cert, privkey));
 	CHK(gnutls_x509_crt_sign2(cert, cert, privkey, GNUTLS_DIG_SHA512, 0));
 
 	ret = gnutls_certificate_set_x509_key(tls_cert, &cert, 1, privkey);
 
 finish:
-	free(hostname);
+	free(hostname.data);
+	gnutls_free(san_der.data);
 	gnutls_x509_crt_deinit(cert);
 	gnutls_x509_privkey_deinit(privkey);
+	gnutls_subject_alt_names_deinit(san);
 
 	return ret;
 }
