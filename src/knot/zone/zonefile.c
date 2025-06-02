@@ -4,15 +4,16 @@
  */
 
 #include <assert.h>
+#include <errno.h>
+#include <inttypes.h>
+#include <libgen.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <errno.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
-#include <inttypes.h>
 
 #include "libknot/libknot.h"
 #include "contrib/files.h"
@@ -159,7 +160,7 @@ int zonefile_open(zloader_t *loader, const char *source, const knot_dname_t *ori
 	uint8_t origin_buf[1 + KNOT_DNAME_MAXLEN];
 	if (origin == NULL) { // Origin autodetection based on SOA owner and source.
 		const char *ext = ".zone";
-		char *origin_str = basename(source);
+		char *origin_str = basename((char *)source);
 		if (strcmp(origin_str + strlen(origin_str) - strlen(ext), ext) == 0) {
 			origin_str = strndup(origin_str, strlen(origin_str) - strlen(ext));
 		} else {
