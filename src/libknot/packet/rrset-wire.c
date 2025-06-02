@@ -686,11 +686,10 @@ static int parse_rdata(const uint8_t *pkt_wire, size_t *pos, size_t pkt_size,
 	}
 
 	// Check for trailing data.
-	size_t real_len = max_rdata_len - dst_avail;
-	if (real_len < rdlength) {
+	if (src_avail > 0) {
 		return KNOT_EMALF;
 	}
-	rdata->len = real_len;
+	rdata->len = max_rdata_len - dst_avail;
 
 	ret = knot_rdataset_add(&rrset->rrs, rdata, mm);
 	if (ret != KNOT_EOK) {
