@@ -127,12 +127,12 @@ static int self_signed_cert(gnutls_certificate_credentials_t tls_cert,
 	gnutls_datum_t san_der = { 0 };
 
 	gnutls_datum_t hostname = {
-		.data = (unsigned char *)sockaddr_hostname(),
-		.size = strlen((char *)hostname.data)
+		.data = (unsigned char *)sockaddr_hostname()
 	};
 	if (hostname.data == NULL) {
 		return GNUTLS_E_MEMORY_ERROR;
 	}
+	hostname.size = strlen((char *)hostname.data);
 
 	int ret;
 	uint8_t serial[16];
