@@ -1407,12 +1407,14 @@ static int create_rrset(knot_rrset_t **rrset, zone_t *zone, ctl_args_t *args,
 	    zs_set_input_string(scanner, buff, rdata_len) != 0 ||
 	    zs_parse_record(scanner) != 0 ||
 	    scanner->state != ZS_STATE_DATA) {
-		args->data[KNOT_CTL_IDX_ZONE] = origin;
-		if (scanner->error.code == ZS_OK) {
+		args->data[KNOT_CTL_IDX_ZONE] = origin; // Needed if called for all zones.
+		if (scanner->error.code == ZS_OK) { // If not ZS_STATE_DATA.
 			scanner->error.code = ZS_EINVAL;
 		}
+		char msg[128] = "parser failed, ";
+		knot_strlcat(msg, zs_strerror(scanner->error.code), sizeof(msg));
 		// Send this user mistake directly to the client (don't log it).
-		ctl_send_error(args, zs_strerror(scanner->error.code));
+		ctl_send_error(args, msg);
 		ret = KNOT_EPARSEFAIL;
 		goto parser_failed;
 	}
