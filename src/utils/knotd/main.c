@@ -612,7 +612,6 @@ int main(int argc, char **argv)
 	stats_reconfigure(conf(), &server);
 
 	/* Start it up. */
-	log_info("starting server");
 	conf_val_t async_val = conf_get(conf(), C_SRV, C_ASYNC_START);
 	bool async = conf_bool(&async_val);
 	/* In async-start mode, start answering early. */
