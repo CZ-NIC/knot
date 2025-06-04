@@ -278,8 +278,6 @@ static int event_loop(server_t *server, const char *socket, bool daemonize,
 
 	signals_enable();
 
-	/* Notify systemd about successful start. */
-	systemd_ready_notify();
 	if (daemonize) {
 		log_info("server started as a daemon, PID %lu", pid);
 	} else {
