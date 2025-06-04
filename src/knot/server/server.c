@@ -1012,6 +1012,7 @@ int server_start_answering(server_t *server)
 			}
 		}
 	}
+	systemd_ready_notify();
 
 	return KNOT_EOK;
 }
