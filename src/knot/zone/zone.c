@@ -501,8 +501,10 @@ void zone_set_preferred_master(zone_t *zone, const struct sockaddr_storage *addr
 	}
 
 	pthread_mutex_lock(&zone->preferred_lock);
-	free(zone->preferred_master);
-	zone->preferred_master = malloc(sizeof(*zone->preferred_master));
+	if (zone->preferred_master == NULL) {
+		zone->preferred_master = malloc(sizeof(*zone->preferred_master));
+		assert(zone->preferred_master != NULL);
+	}
 	memcpy(zone->preferred_master, addr, sockaddr_len(addr));
 	pthread_mutex_unlock(&zone->preferred_lock);
 }
