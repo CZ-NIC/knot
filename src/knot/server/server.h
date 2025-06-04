@@ -146,16 +146,27 @@ int server_init(server_t *server, int bg_workers);
 void server_deinit(server_t *server);
 
 /*!
+ * \brief Starts anwering to request alone
+ *        (if not already started by server_start()),
+ *
+ * \param server     Server structure to be used for operation.
+ *
+ * \retval Error code, KNOT_EOK on success.
+ *
+ */
+int server_start_answering(server_t *server);
+
+/*!
  * \brief Starts the server.
  *
- * \param server Server structure to be used for operation.
- * \param async  Don't wait for zones to load if true.
+ * \param server     Server structure to be used for operation.
+ * \param answering  Start anwering to requests if true.
  *
  * \retval KNOT_EOK on success.
  * \retval KNOT_EINVAL on invalid parameters.
  *
  */
-int server_start(server_t *server, bool async);
+int server_start(server_t *server, bool answering);
 
 /*!
  * \brief Waits for the server to finish.
