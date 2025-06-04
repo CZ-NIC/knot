@@ -992,23 +992,32 @@ static void server_free_handler(iohandler_t *h)
 	free(h->thread_id);
 }
 
-static void worker_wait_cb(worker_pool_t *pool)
+int server_start_answering(server_t *server)
 {
-	systemd_zone_load_timeout_notify();
-
-	static uint64_t last_ns = 0;
-	struct timespec now = time_now();
-	uint64_t now_ns = 1000000000 * now.tv_sec + now.tv_nsec;
-	/* Too frequent worker_pool_status() call with many zones is expensive. */
-	if (now_ns - last_ns > 1000000000) {
-		int running, queued;
-		worker_pool_status(pool, true, &running, &queued);
-		systemd_tasks_status_notify(running + queued);
-		last_ns = now_ns;
+	if (server == NULL) {
+		return KNOT_EINVAL;
 	}
+
+	assert(server->state & ServerRunning);
+	if (server->state & ServerAnswering) {
+		return KNOT_EOK;
+	}
+
+	log_info("server started");
+	server->state |= ServerAnswering;
+	for (int proto = IO_UDP; proto <= IO_XDP; ++proto) {
+		if (server->handlers[proto].size > 0) {
+			int ret = dt_start(server->handlers[proto].handler.unit);
+			if (ret != KNOT_EOK) {
+				return ret;
+			}
+		}
+	}
+
+	return KNOT_EOK;
 }
 
-int server_start(server_t *server, bool async)
+int server_start(server_t *server, bool answering)
 {
 	if (server == NULL) {
 		return KNOT_EINVAL;
@@ -1017,24 +1026,14 @@ int server_start(server_t *server, bool async)
 	/* Start workers. */
 	worker_pool_start(server->workers);
 
-	/* Wait for enqueued events if not asynchronous. */
-	if (!async) {
-		worker_pool_wait_cb(server->workers, worker_wait_cb);
-		systemd_tasks_status_notify(0);
-	}
-
 	/* Start evsched handler. */
 	evsched_start(&server->sched);
 
+	server->state |= ServerRunning;
+
 	/* Start I/O handlers. */
-	server->state |= ServerRunning | ServerAnswering;
-	for (int proto = IO_UDP; proto <= IO_XDP; ++proto) {
-		if (server->handlers[proto].size > 0) {
-			int ret = dt_start(server->handlers[proto].handler.unit);
-			if (ret != KNOT_EOK) {
-				return ret;
-			}
-		}
+	if (answering) {
+		return server_start_answering(server);
 	}
 
 	return KNOT_EOK;
