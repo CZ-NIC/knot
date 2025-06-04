@@ -1,3 +1,45 @@
+Knot DNS 3.4.7 (2025-06-04)
+===========================
+
+Features:
+---------
+ - knotd: implemented optional NOTIFY delay upon zone loading (see 'zone.notify-delay')
+ - knotd: failed ZONEMD validation emits 'dnssec-invalid' D-Bus event
+ - kdig: added option for delayed reading of next transfer message (see '+msgdelay')
+ - kzonecheck: new parameter for job count (see '-j')
+
+Improvements:
+-------------
+ - knotd: semantic checks support DS algorithms 5 and 6
+ - knotd: pending generation of reverse records is logged as warning
+ - knotd: DNSKEY synchronization considers keytag modulo for better reliability
+ - knotd: zone-(un)set parser errors no longer logged by the server
+ - knotd: more verbose zone-(un)set parser errors are returned to the client
+ - knotc: configuration warnings are printed only with the conf-check command
+ - kdig: enabled TLS 1.2 support (with warning)
+ - kdig: more verbose TLS/QUIC certificate information - SAN (see '-dd')
+ - mod-rrl: disabled optimized KRU version on macOS to fix CPU issues
+ - libknot: added two specific variants of KNOT_EAGAIN error (KNOT_NET_EAGAIN, KNOT_ETRYAGAIN)
+ - libs: upgraded embedded libngtcp2 to 1.13.0
+ - knot-exporter: added maximum libknot version dependency #956
+ - knot-exporter: removed return statement from a finally block #957
+ - packaging: new knot-exporter and python3-libknot RPM subpackages
+ - doc: simplified highlighting of options enabled by default
+ - doc: various improvements
+
+Bugfixes:
+---------
+ - knotd: false warning for missing glue if NS is at other delegation
+ - knotd: missing rdata canonicalization in zone-(un)set operations
+ - knotd: missing check for member zone configured with a non-generated catalog
+ - knotd: benevolent IXFR skips whole rrset when ignoring a record
+ - knotd: missing next remove key action log during KSK/algorithm rollover
+ - knotd: missing catalog template configuration checks
+ - knotd: missing check for empty QUIC connection in XDP mode
+ - libknot: incorrect trailing rdata check in packet parser
+ - kdig: ignored DoQ response from dnsdist #954
+ - packaging: uninstalling lib*t64 packages removes files from upstream packages
+
 Knot DNS 3.4.6 (2025-04-10)
 ===========================
 
