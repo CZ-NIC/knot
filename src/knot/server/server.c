@@ -1395,6 +1395,10 @@ int server_reload(server_t *server, reload_t mode)
 
 void server_stop(server_t *server)
 {
+	if (server == NULL || !(server->state & ServerRunning)) {
+		return;
+	}
+
 	log_info("stopping server");
 	systemd_stopping_notify();
 
