@@ -423,6 +423,7 @@ load_end:
 		}
 	}
 	zone_skip_free(&skip);
+	zone_set_flag(zone, ZONE_STARTED);
 
 	return KNOT_EOK;
 
@@ -434,6 +435,7 @@ cleanup:
 	zone_contents_deep_free(zf_conts);
 	zone_contents_deep_free(journal_conts);
 	zone_skip_free(&skip);
+	zone_set_flag(zone, ZONE_STARTED);
 
 	return (dontcare_load_error(conf, zone) ? KNOT_EOK : ret);
 }
