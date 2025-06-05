@@ -2023,19 +2023,20 @@ keystore
 A :ref:`reference<keystore_id>` to a keystore holding private key material
 for zones.
 
-If multiple are specified, private keys for signing are looked for in all of them,
-but newly generated keys are stored in the first one (or the first one with
-:ref:`keystore_ksk-only` off in case of a new ZSK) in the specified order.
+If multiple keystores are specified, private keys for signing are looked up in
+all of them. But newly generated keys are stored in the first one (or in the
+first one without enabled :ref:`keystore_ksk-only` in the case of a new ZSK)
+in the specified order.
 
 .. NOTE::
    If multiple keystores are configured and a zone is being restored
    with the :ref:`back up<Data and metadata backup>` feature, all restored
    private keys are stored into the first referenced keystore.
 
-*Default:* an imaginary keystore with all default values
-
 .. NOTE::
    A configured keystore called "default" won't be used unless explicitly referenced.
+
+*Default:* an imaginary keystore with all default values
 
 .. _policy_manual:
 
