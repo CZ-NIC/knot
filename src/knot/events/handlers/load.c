@@ -46,8 +46,6 @@ static bool allowed_xfr(conf_t *conf, const zone_t *zone)
 
 int event_load(conf_t *conf, zone_t *zone)
 {
-	zone_set_flag(zone, ZONE_STARTED);
-
 	zone_update_t up = { 0 };
 	zone_contents_t *journal_conts = NULL, *zf_conts = NULL;
 	bool old_contents_exist = (zone->contents != NULL), zone_in_journal_exists = false;
@@ -425,6 +423,7 @@ load_end:
 		}
 	}
 	zone_skip_free(&skip);
+	zone_set_flag(zone, ZONE_STARTED);
 
 	return KNOT_EOK;
 
@@ -436,6 +435,7 @@ cleanup:
 	zone_contents_deep_free(zf_conts);
 	zone_contents_deep_free(journal_conts);
 	zone_skip_free(&skip);
+	zone_set_flag(zone, ZONE_STARTED);
 
 	return (dontcare_load_error(conf, zone) ? KNOT_EOK : ret);
 }
