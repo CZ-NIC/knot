@@ -157,19 +157,15 @@ inline static bool knot_rrset_empty(const knot_rrset_t *rrset)
 bool knot_rrset_is_nsec3rel(const knot_rrset_t *rr);
 
 /*!
- * \brief Convert one RR into canonical format.
+ * \brief Converts RRSet with one RR into canonical format.
  *
- * Owner is always converted to lowercase. RDATA domain names are converted only
- * for types listed in RFC 4034, Section 6.2, except for NSEC (updated by
- * RFC 6840, Section 5.1) and A6 (not supported).
+ * The RRSet owner is always converted to lowercase.
  *
- * \note If RRSet with more RRs is given to this function, only the first RR
- *       will be converted.
- * \warning This function expects either empty RDATA or full, not malformed
- *          RDATA. If malformed RRSet is passed to this function, memory errors
- *          may occur.
+ * \note See knot_rdata_to_canonical() for more details.
  *
- * \param rrset  RR to convert.
+ * \param rrset  RRSet to convert.
+ *
+ * \return Error code, KNOT_EOK if successful.
  */
 int knot_rrset_rr_to_canonical(knot_rrset_t *rrset);
 
