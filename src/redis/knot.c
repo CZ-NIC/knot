@@ -4,6 +4,7 @@
  */
 
 #include <arpa/inet.h>
+#include <inttypes.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdlib.h>
@@ -27,6 +28,7 @@
 #include "contrib/mempattern.c"
 #include "contrib/string.c"
 #include "contrib/ucw/mempool.c"
+#include "libzscanner/error.c"
 #include "libzscanner/functions.c"
 #include "libzscanner/scanner.c.t0"
 
@@ -224,7 +226,8 @@ static int rdata_add(RedisModuleCtx *ctx, const transaction_t *txn,
 	if (zone_keytype != REDISMODULE_KEYTYPE_EMPTY &&
 	    zone_keytype != REDISMODULE_KEYTYPE_ZSET) {
 		RedisModule_CloseKey(zone_key);
-		return RedisModule_ReplyWithError(ctx, "ERR Bad data");
+		RedisModule_ReplyWithError(ctx, "ERR Bad data");
+		return -1;
 	}
 
 	RedisModuleString *rrset_keystr = construct_rrset_key(ctx, txn, origin, origin_len, owner, owner_len, rtype);
@@ -239,17 +242,20 @@ static int rdata_add(RedisModuleCtx *ctx, const transaction_t *txn,
 	if (RedisModule_KeyType(rrset_key) == REDISMODULE_KEYTYPE_EMPTY) {
 		rrset = RedisModule_Calloc(1, sizeof(*rrset));
 		if (rrset == NULL) {
-			return RedisModule_ReplyWithError(ctx, "ERR Cannot allocate memory");
+			RedisModule_ReplyWithError(ctx, "ERR Cannot allocate memory");
+			return -1;
 		}
 		int ret = RedisModule_ModuleTypeSetValue(rrset_key, knot_zone_rrset_t, NULL);
 		if (ret != REDISMODULE_OK) {
-			return RedisModule_ReplyWithError(ctx, "ERR Unable to store module value");
+			RedisModule_ReplyWithError(ctx, "ERR Unable to store module value");
+			return -1;
 		}
 	} else if (RedisModule_ModuleTypeGetType(rrset_key) == knot_zone_rrset_t) {
 		rrset = RedisModule_ModuleTypeGetValue(rrset_key);
 	} else {
 		RedisModule_CloseKey(rrset_key);
-		return RedisModule_ReplyWithError(ctx, "ERR Bad data");
+		RedisModule_ReplyWithError(ctx, "ERR Bad data");
+		return -1;
 	}
 	assert(rrset != NULL);
 
@@ -261,12 +267,13 @@ static int rdata_add(RedisModuleCtx *ctx, const transaction_t *txn,
 	RedisModule_Log(ctx, REDISMODULE_LOGLEVEL_WARNING, "RDATA %p -> %p", tmp, rrset->rrs.rdata);
 	if (ret != KNOT_EOK) {
 		RedisModule_CloseKey(rrset_key);
-		return RedisModule_ReplyWithError(ctx, "ERR Unable to add");
+		RedisModule_ReplyWithError(ctx, "ERR Unable to add");
+		return -1;
 	}
 
 	RedisModule_CloseKey(rrset_key);
 
-	return REDISMODULE_OK;
+	return 0;
 }
 
 RedisModuleString *txn_keyname(RedisModuleCtx *ctx, const knot_dname_storage_t *origin, unsigned origin_len, uint8_t namespace)
@@ -529,6 +536,50 @@ static int knot_zone_begin(RedisModuleCtx *ctx, RedisModuleString **argv, int ar
 	return RedisModule_ReplyWithLongLong(ctx, serialize_transaction(&txn));
 }
 
+typedef struct {
+	RedisModuleCtx *ctx;
+	transaction_t *txn;
+	bool replied;
+} scanner_ctx_t;
+
+static void scanner_data(zs_scanner_t *s)
+{
+	scanner_ctx_t *s_ctx = s->process.data;
+
+	uint8_t buf[knot_rdata_size(s->r_data_length)];
+	knot_rdata_t *rdata = (knot_rdata_t *)buf;
+	knot_rdata_init(rdata, s->r_data_length, s->r_data);
+
+	if (knot_rdata_to_canonical(rdata, s->r_type) != KNOT_EOK) {
+		RedisModule_ReplyWithError(s_ctx->ctx, "Malformed record data");
+		s_ctx->replied = true;
+		s->state = ZS_STATE_STOP;
+		return;
+	}
+
+	int ret = rdata_add(s_ctx->ctx, s_ctx->txn, s->zone_origin_length,
+	                    s->zone_origin, s->r_owner_length, s->r_owner,
+	                    s->r_type, s->r_ttl, rdata);
+	if (ret != 0) {
+		s_ctx->replied = true;
+		s->state = ZS_STATE_STOP;
+		return;
+	}
+}
+
+static void scanner_error(zs_scanner_t *s)
+{
+	scanner_ctx_t *s_ctx = s->process.data;
+
+	char msg[128];
+	(void)snprintf(msg, sizeof(msg), "Parser failed (%s), line %"PRIu64,
+	               zs_strerror(s->error.code), s->line_counter);
+	RedisModule_ReplyWithError(s_ctx->ctx, msg);
+
+	s_ctx->replied = true;
+	s->state = ZS_STATE_STOP;
+}
+
 static int knot_zone_store(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 {
 	if (argc != 4) {
@@ -554,25 +605,17 @@ static int knot_zone_store(RedisModuleCtx *ctx, RedisModuleString **argv, int ar
 	}
 
 	zs_scanner_t s;
+	scanner_ctx_t s_ctx = { ctx, &txn };
 	if (zs_init(&s, origin_str, KNOT_CLASS_IN, 0) != 0 ||
 	    zs_set_input_string(&s, record_str, record_len) != 0 ||
-	    zs_parse_record(&s) != 0 ||
-	    s.state != ZS_STATE_DATA) {
+	    zs_set_processing(&s, scanner_data, scanner_error, &s_ctx) != 0 ||
+	    zs_parse_all(&s) != 0) {
 		zs_deinit(&s);
-		return RedisModule_ReplyWithError(ctx, "Failed to parse the record");
+		if (!s_ctx.replied) {
+			RedisModule_ReplyWithError(ctx, "Parser failed");
+		}
+		return REDISMODULE_OK;
 	}
-
-	uint8_t buf[knot_rdata_size(s.r_data_length)];
-	knot_rdata_t *rdata = (knot_rdata_t *)buf;
-	knot_rdata_init(rdata, s.r_data_length, s.r_data);
-
-	if (knot_rdata_to_canonical(rdata, s.r_type) != KNOT_EOK) {
-		zs_deinit(&s);
-		return RedisModule_ReplyWithError(ctx, "Malformed record");
-	}
-
-	ret = rdata_add(ctx, &txn, s.zone_origin_length, s.zone_origin,
-	                s.r_owner_length, s.r_owner, s.r_type, s.r_ttl, rdata);
 	zs_deinit(&s);
 
 	return RedisModule_ReplyWithSimpleString(ctx, "OK");
