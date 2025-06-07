@@ -145,6 +145,7 @@ libknot.so.16 libknot16 #MINVER#
  knot_quic_table_rem@Base 3.5.0
  knot_quic_table_sweep@Base 3.5.0
  knot_rcode_names@Base 3.5.0
+ knot_rdata_to_canonical@Base 3.5.0
  knot_rdataset_add@Base 3.5.0
  knot_rdataset_at@Base 3.5.0
  knot_rdataset_clear@Base 3.5.0
