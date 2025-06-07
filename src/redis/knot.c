@@ -562,21 +562,18 @@ static int knot_zone_store(RedisModuleCtx *ctx, RedisModuleString **argv, int ar
 		return RedisModule_ReplyWithError(ctx, "Failed to parse the record");
 	}
 
-	knot_rrset_t rrset;
-	knot_rrset_init(&rrset, s.r_owner, s.r_type, s.r_class, s.r_ttl);
-	if (knot_rrset_add_rdata(&rrset, s.r_data, s.r_data_length, &mm) != KNOT_EOK ||
-	    knot_rrset_rr_to_canonical(&rrset) != KNOT_EOK) {
-		knot_rdataset_clear(&rrset.rrs, &mm);
+	uint8_t buf[knot_rdata_size(s.r_data_length)];
+	knot_rdata_t *rdata = (knot_rdata_t *)buf;
+	knot_rdata_init(rdata, s.r_data_length, s.r_data);
+
+	if (knot_rdata_to_canonical(rdata, s.r_type) != KNOT_EOK) {
 		zs_deinit(&s);
-		return RedisModule_ReplyWithError(ctx, "Failed to store the record");
+		return RedisModule_ReplyWithError(ctx, "Malformed record");
 	}
 
 	ret = rdata_add(ctx, &txn, s.zone_origin_length, s.zone_origin,
-			    s.r_owner_length, s.r_owner, s.r_type, s.r_ttl,
-			    rrset.rrs.rdata);
-	knot_rdataset_clear(&rrset.rrs, &mm);
+	                s.r_owner_length, s.r_owner, s.r_type, s.r_ttl, rdata);
 	zs_deinit(&s);
-
 
 	return RedisModule_ReplyWithSimpleString(ctx, "OK");
 }
@@ -610,7 +607,7 @@ static int knot_zone_commit(RedisModuleCtx *ctx, RedisModuleString **argv, int a
 	// NOTE need to keep current transaction locked while active
 
 	RedisModule_CloseKey(meta_key);
-	
+
 	return RedisModule_ReplyWithSimpleString(ctx, "OK");
 }
 
@@ -642,7 +639,7 @@ static int knot_zone_abort(RedisModuleCtx *ctx, RedisModuleString **argv, int ar
 	RedisModule_CloseKey(meta_key);
 
 	delete_index(ctx, &txn, origin, knot_dname_size(origin));
-	
+
 	return RedisModule_ReplyWithSimpleString(ctx, "OK");
 }
 
