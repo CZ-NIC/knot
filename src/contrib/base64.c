@@ -10,7 +10,7 @@
 #include <stdint.h>
 
 /*! \brief Maximal length of binary input to Base64 encoding. */
-#define MAX_BIN_DATA_LEN	((INT32_MAX / 4) * 3)
+#define MAX_B64_BIN_DATA_LEN	((INT32_MAX / 4) * 3)
 
 /*! \brief Base64 padding character. */
 static const uint8_t base64_pad = '=';
@@ -21,7 +21,7 @@ static const uint8_t base64_enc[] =
 /*! \brief Indicates bad Base64 character. */
 #define KO	255
 /*! \brief Indicates Base64 padding character. */
-#define PD	 64
+#define PA	 64
 
 /*! \brief Transformation and validation table for decoding Base64. */
 static const uint8_t base64_dec[256] = {
@@ -43,7 +43,7 @@ static const uint8_t base64_dec[256] = {
 	[ 15] = KO, [ 58] = KO, ['e'] = 30, [144] = KO, [187] = KO, [230] = KO,
 	[ 16] = KO, [ 59] = KO, ['f'] = 31, [145] = KO, [188] = KO, [231] = KO,
 	[ 17] = KO, [ 60] = KO, ['g'] = 32, [146] = KO, [189] = KO, [232] = KO,
-	[ 18] = KO, ['='] = PD, ['h'] = 33, [147] = KO, [190] = KO, [233] = KO,
+	[ 18] = KO, ['='] = PA, ['h'] = 33, [147] = KO, [190] = KO, [233] = KO,
 	[ 19] = KO, [ 62] = KO, ['i'] = 34, [148] = KO, [191] = KO, [234] = KO,
 	[ 20] = KO, [ 63] = KO, ['j'] = 35, [149] = KO, [192] = KO, [235] = KO,
 	[ 21] = KO, [ 64] = KO, ['k'] = 36, [150] = KO, [193] = KO, [236] = KO,
@@ -79,7 +79,7 @@ int32_t knot_base64_encode(const uint8_t  *in,
 	if (in == NULL || out == NULL) {
 		return KNOT_EINVAL;
 	}
-	if (in_len > MAX_BIN_DATA_LEN || out_len < ((in_len + 2) / 3) * 4) {
+	if (in_len > MAX_B64_BIN_DATA_LEN || out_len < ((in_len + 2) / 3) * 4) {
 		return KNOT_ERANGE;
 	}
 
@@ -126,7 +126,7 @@ int32_t knot_base64_encode_alloc(const uint8_t  *in,
 	if (out == NULL) {
 		return KNOT_EINVAL;
 	}
-	if (in_len > MAX_BIN_DATA_LEN) {
+	if (in_len > MAX_B64_BIN_DATA_LEN) {
 		return KNOT_ERANGE;
 	}
 
@@ -179,8 +179,8 @@ int32_t knot_base64_decode(const uint8_t  *in,
 		c4 = base64_dec[in[3]];
 
 		// Check 4. char if is bad or padding.
-		if (c4 >= PD) {
-			if (c4 == PD && pad_len == 0) {
+		if (c4 >= PA) {
+			if (c4 == PA && pad_len == 0) {
 				pad_len = 1;
 			} else {
 				return KNOT_BASE64_ECHAR;
@@ -188,8 +188,8 @@ int32_t knot_base64_decode(const uint8_t  *in,
 		}
 
 		// Check 3. char if is bad or padding.
-		if (c3 >= PD) {
-			if (c3 == PD && pad_len == 1) {
+		if (c3 >= PA) {
+			if (c3 == PA && pad_len == 1) {
 				pad_len = 2;
 			} else {
 				return KNOT_BASE64_ECHAR;
@@ -197,7 +197,7 @@ int32_t knot_base64_decode(const uint8_t  *in,
 		}
 
 		// Check 1. and 2. chars if are not padding.
-		if (c2 >= PD || c1 >= PD) {
+		if (c2 >= PA || c1 >= PA) {
 			return KNOT_BASE64_ECHAR;
 		}
 
