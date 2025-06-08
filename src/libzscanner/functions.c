@@ -808,9 +808,9 @@ int date_to_timestamp(uint8_t *buff, uint32_t *timestamp)
 	return ZS_OK;
 }
 
-void wire_dname_to_str(const uint8_t  *data,
-                       const uint32_t data_len,
-                       char           *text)
+void dname_to_str(const uint8_t  *data,
+                  const uint32_t data_len,
+                  char           *text)
 {
 	uint32_t i = 0, text_len = 0;
 
