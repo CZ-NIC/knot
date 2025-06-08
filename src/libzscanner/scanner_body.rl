@@ -794,13 +794,11 @@
 
 		// Origin conversion from wire to text form in \DDD notation.
 		if (s->dname == NULL) { // Use current origin.
-			wire_dname_to_str(s->zone_origin,
-			                  s->zone_origin_length,
-			                  (char *)s->buffer);
+			dname_to_str(s->zone_origin, s->zone_origin_length,
+			             (char *)s->buffer);
 		} else { // Use specified origin.
-			wire_dname_to_str(s->r_data,
-			                  s->r_data_length,
-			                  (char *)s->buffer);
+			dname_to_str(s->r_data, s->r_data_length,
+			             (char *)s->buffer);
 		}
 
 		// Let the caller to solve the include.
