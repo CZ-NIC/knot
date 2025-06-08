@@ -10,7 +10,7 @@
 #include <stdint.h>
 
 /*! \brief Maximal length of binary input to Base32hex encoding. */
-#define MAX_BIN_DATA_LEN	((INT32_MAX / 8) * 5)
+#define MAX_B32_BIN_DATA_LEN	((INT32_MAX / 8) * 5)
 
 /*! \brief Base32hex padding character. */
 static const uint8_t base32hex_pad = '=';
@@ -78,7 +78,7 @@ int32_t knot_base32hex_encode(const uint8_t  *in,
 	if (in == NULL || out == NULL) {
 		return KNOT_EINVAL;
 	}
-	if (in_len > MAX_BIN_DATA_LEN || out_len < ((in_len + 4) / 5) * 8) {
+	if (in_len > MAX_B32_BIN_DATA_LEN || out_len < ((in_len + 4) / 5) * 8) {
 		return KNOT_ERANGE;
 	}
 
@@ -159,7 +159,7 @@ int32_t knot_base32hex_encode_alloc(const uint8_t  *in,
 	if (out == NULL) {
 		return KNOT_EINVAL;
 	}
-	if (in_len > MAX_BIN_DATA_LEN) {
+	if (in_len > MAX_B32_BIN_DATA_LEN) {
 		return KNOT_ERANGE;
 	}
 
