@@ -99,6 +99,7 @@ static const struct error errors[] = {
 	{ KNOT_EBACKUPDATA,  "requested data not in backup" },
 	{ KNOT_ECPUCOMPAT,   "incompatible CPU architecture" },
 	{ KNOT_EMODINVAL,    "invalid module" },
+	{ KNOT_EEXTERNAL,    "external validation failed" },
 
 	{ KNOT_GENERAL_ERROR, "unknown general error" },
 
