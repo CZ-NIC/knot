@@ -933,6 +933,12 @@ static int zone_txn_commit_l(zone_t *zone, _unused_ ctl_args_t *args)
 		return KNOT_TXN_ENOTEXISTS;
 	}
 
+	if (zone->control_update->flags & UPDATE_WFEV) {
+		zone->control_update->flags |= UPDATE_EVOK;
+		knot_sem_post(&zone->control_update->external);
+		return KNOT_EOK;
+	}
+
 	int ret = zone_update_semcheck(conf(), zone->control_update);
 	if (ret != KNOT_EOK) {
 		return ret; // Recoverable error.
@@ -1003,6 +1009,12 @@ static int zone_txn_abort(zone_t *zone, _unused_ ctl_args_t *args)
 		args->suppress = true;
 		pthread_mutex_unlock(&zone->cu_lock);
 		return KNOT_TXN_ENOTEXISTS;
+	}
+
+	if (zone->control_update->flags & UPDATE_WFEV) {
+		knot_sem_post(&zone->control_update->external);
+		pthread_mutex_unlock(&zone->cu_lock);
+		return KNOT_EOK;
 	}
 
 	zone_control_clear(zone);
@@ -1953,7 +1965,7 @@ static int ctl_zone(ctl_args_t *args, ctl_cmd_t cmd)
 
 static void check_zone_txn(zone_t *zone, const knot_dname_t **exists)
 {
-	if (zone->control_update != NULL) {
+	if (zone->control_update != NULL && !(zone->control_update->flags & UPDATE_WFEV)) {
 		*exists = zone->name;
 	}
 }

@@ -667,6 +667,10 @@ static int ixfr_finalize(struct refresh_data *data)
 	ret = zone_update_commit(data->conf, &up);
 	if (ret != KNOT_EOK) {
 		zone_update_clear(&up);
+		if (ret == KNOT_EEXTERNAL) {
+			data->fallback_axfr = false;
+			data->fallback->remote = false;
+		}
 		IXFRIN_LOG(LOG_WARNING, data,
 		           "failed to store changes (%s)", knot_strerror(ret));
 		return ret;

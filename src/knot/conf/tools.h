@@ -119,6 +119,10 @@ int check_policy(
 	knotd_conf_check_args_t *args
 );
 
+int check_external(
+	knotd_conf_check_args_t *args
+);
+
 int check_key(
 	knotd_conf_check_args_t *args
 );

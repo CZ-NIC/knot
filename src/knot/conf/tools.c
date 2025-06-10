@@ -851,6 +851,12 @@ int check_policy(
 	return KNOT_EOK;
 }
 
+int check_external(
+	knotd_conf_check_args_t *args)
+{
+	return KNOT_EOK;
+}
+
 int check_key(
 	knotd_conf_check_args_t *args)
 {

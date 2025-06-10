@@ -23,6 +23,7 @@ int event_expire(conf_t *conf, zone_t *zone)
 	synchronize_rcu();
 
 	pthread_mutex_lock(&zone->cu_lock);
+	assert(zone->control_update == NULL || !(zone->control_update->flags & UPDATE_WFEV));
 	zone_control_clear(zone);
 	pthread_mutex_unlock(&zone->cu_lock);
 
