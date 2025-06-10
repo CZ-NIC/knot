@@ -915,6 +915,42 @@ int zone_update_verify_digest(conf_t *conf, zone_update_t *update)
 	return ret;
 }
 
+int zone_update_external(conf_t *conf, zone_update_t *update)
+{
+	(void)conf;
+	pthread_mutex_lock(&update->zone->cu_lock);
+
+	if (update->zone->control_update != NULL) {
+		assert(update->zone->control_update == update);
+		assert(!(update->flags & UPDATE_WFEV));
+		pthread_mutex_unlock(&update->zone->cu_lock);
+		return KNOT_EOK; // real control update never waits for external validation
+	}
+
+	if (zone_get_flag(update->zone, ZONE_SHUT_DOWN, false)) {
+		pthread_mutex_unlock(&update->zone->cu_lock);
+		return KNOT_EEXTERNAL;
+	}
+
+	update->zone->control_update = update;
+	update->flags |= UPDATE_WFEV;
+	knot_sem_init(&update->external, 0);
+	pthread_mutex_unlock(&update->zone->cu_lock);
+
+	log_zone_error(update->zone->name, "waiting for external validation");
+
+	knot_sem_wait(&update->external);
+
+	pthread_mutex_lock(&update->zone->cu_lock);
+	update->zone->control_update = NULL;
+	pthread_mutex_unlock(&update->zone->cu_lock);
+
+	knot_sem_post(&update->external);
+	knot_sem_destroy(&update->external);
+
+	return (update->flags & UPDATE_EVOK) ? KNOT_EOK : KNOT_EEXTERNAL;
+}
+
 int zone_update_commit(conf_t *conf, zone_update_t *update)
 {
 	if (conf == NULL || update == NULL) {
@@ -923,7 +959,15 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 
 	int ret = KNOT_EOK;
 
-	conf_val_t val = conf_zone_get(conf, C_DNSSEC_SIGNING, update->zone->name);
+	conf_val_t val = conf_zone_get(conf, C_EXTERNAL_VLDT, update->zone->name);
+	if (val.code == KNOT_EOK) {
+		ret = zone_update_external(conf, update);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+	}
+
+	val = conf_zone_get(conf, C_DNSSEC_SIGNING, update->zone->name);
 	bool dnssec = conf_bool(&val);
 
 	if ((update->flags & UPDATE_INCREMENTAL) && zone_update_no_change(update)) {
