@@ -456,6 +456,9 @@ static const yp_item_t desc_policy[] = {
 
 static const yp_item_t desc_external[] = {
 	{ C_ID,                  YP_TSTR,  YP_VNONE, CONF_IO_FREF },
+	{ C_DUMP_NEW,            YP_TSTR,  YP_VSTR = { "" } },
+	{ C_DUMP_REM,            YP_TSTR,  YP_VSTR = { "" } },
+	{ C_DUMP_ADD,            YP_TSTR,  YP_VSTR = { "" } },
 	{ NULL }
 };
 

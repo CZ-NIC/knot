@@ -2546,6 +2546,57 @@ Multiple values may be specified.
 
 *Default:* ``none``
 
+.. _external section:
+
+``external`` section
+====================
+
+External zone validation configuration.
+
+::
+
+ external:
+   - id: STR
+     dump-new-zone: STR
+     dump-removals: STR
+     dump-additions: STR
+
+.. _external_id:
+
+id
+--
+
+An external section identifier.
+
+.. _external_dump-new-zone:
+
+dump-new-zone
+-------------
+
+A path to file where the new zone contents will be written before waiting for external validation.
+
+*Default:* none
+
+
+.. _external_dump-removals:
+
+dump-removals
+-------------
+
+A path to file where the records being removed will be written before waiting for external validation.
+
+*Default:* none
+
+
+.. _external_dump-additions:
+
+dump-additions
+--------------
+
+A path to file where the records being added will be written before waiting for external validation.
+
+*Default:* none
+
 .. _template section:
 
 ``template`` section
@@ -2621,6 +2672,7 @@ Definition of zones served by the server.
      ixfr-from-axfr: BOOL
      zone-max-size : SIZE
      adjust-threads: INT
+     external-validation: external_id
      dnssec-signing: BOOL
      dnssec-validation: BOOL
      dnssec-policy: policy_id
@@ -3020,6 +3072,28 @@ threads. This is useful with huge zones with NSEC3. Speedup observable at
 server startup and while processing NSEC3 re-salt.
 
 *Default:* ``1`` (no extra threads)
+
+.. _zone_external-validation:
+
+external-validation
+-------------------
+
+A :ref:`reference<external_id>` to external validation section.
+
+If configured, every change to the zone (regardless if caused by incoming
+zone transfer, dynamic update, DNSSEC re-signing etc.) is paused just before
+applying the new zone, and a validation and confirmation is awaited
+from the user (or perhaps an user-defined script).
+
+.. NOTE::
+   In the case of server shutdown or configuration reload, all outstanding
+   external validations are terminated as if they failed.
+
+In the referenced ``external`` section, it is possible to define paths to
+files where the new zone contents and/or differences are written
+(in the zone file format) just before each validation.
+
+*Default:* none
 
 .. _zone_dnssec-signing:
 
