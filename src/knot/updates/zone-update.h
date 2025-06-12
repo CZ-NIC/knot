@@ -276,12 +276,13 @@ int zone_update_verify_digest(conf_t *conf, zone_update_t *update);
  *
  * \param conf      Configuration.
  * \param update    Zone update.
+ * \param ev_id     Conf reference to 'external' section.
  *
  * \retval KNOT_EEXTERNAL   External validation failed.
  * \retval KNOT_EOK         External validation succeeded.
  * \return KNOT_E*
  */
-int zone_update_external(conf_t *conf, zone_update_t *update);
+int zone_update_external(conf_t *conf, zone_update_t *update, conf_val_t *ev_id);
 
 /*!
  * \brief Commits all changes to the zone, signs it, saves changes to journal.
