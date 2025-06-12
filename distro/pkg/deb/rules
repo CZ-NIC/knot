@@ -46,6 +46,7 @@ override_dh_auto_configure:
 	  --disable-silent-rules \
 	  --enable-xdp=yes \
 	  --enable-quic=yes \
+	  --enable-redis=auto \
 	  --disable-static \
 	  $(FASTPARSER)
 
