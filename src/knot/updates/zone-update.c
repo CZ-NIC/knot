@@ -915,9 +915,71 @@ int zone_update_verify_digest(conf_t *conf, zone_update_t *update)
 	return ret;
 }
 
-int zone_update_external(conf_t *conf, zone_update_t *update)
+typedef struct {
+	FILE *f;
+	char *buf;
+	size_t buflen;
+	knot_dump_style_t style;
+} dump_changeset_ctx_t;
+
+static int dump_rrset(const knot_rrset_t *rr, void *ctx_void)
 {
-	(void)conf;
+	dump_changeset_ctx_t *ctx = ctx_void;
+
+	int ret = knot_rrset_txt_dump(rr, &ctx->buf, &ctx->buflen, &ctx->style);
+	if (ret > 0) {
+		ret = (fprintf(ctx->f, "%s", ctx->buf) < 0 ? knot_map_errno() : 1);
+	}
+	return ret < 0 ? ret : KNOT_EOK;
+}
+
+static int dump_changeset_part(zone_update_t *up, bool additions,
+                               const char *fname, const char *mode)
+{
+	dump_changeset_ctx_t ctx;
+	ctx.f = fopen(fname, mode);
+	if (ctx.f == NULL) {
+		return knot_map_errno();
+	}
+	ctx.buflen = 1024;
+	ctx.buf = malloc(ctx.buflen);
+	if (ctx.buf == NULL) {
+		fclose(ctx.f);
+		return KNOT_ENOMEM;
+	}
+	ctx.style = KNOT_DUMP_STYLE_DEFAULT;
+	ctx.style.now = knot_time();
+
+	(void)fprintf(ctx.f, ";; %s records\n", additions ? "Added" : "Removed");
+	int ret = zone_update_foreach(up, additions, dump_rrset, &ctx);
+	fclose(ctx.f);
+	free(ctx.buf);
+	return ret;
+}
+
+int zone_update_external(conf_t *conf, zone_update_t *update, conf_val_t *ev_id)
+{
+	/* First: dump zone/diff files as/if configured. */
+	conf_val_t val = conf_id_get(conf, C_EXTERNAL, C_DUMP_NEW, ev_id);
+	const char *f_new = conf_str(&val);
+	val = conf_id_get(conf, C_EXTERNAL, C_DUMP_REM, ev_id);
+	const char *f_rem = conf_str(&val);
+	val = conf_id_get(conf, C_EXTERNAL, C_DUMP_ADD, ev_id);
+	const char *f_add = conf_str(&val);
+
+	int ret = KNOT_EOK;
+	if (*f_new != '\0' && ret == KNOT_EOK) {
+		ret = zonefile_write(f_new, update->new_cont, NULL);
+	}
+	if (*f_rem != '\0' && ret == KNOT_EOK) {
+		ret = dump_changeset_part(update, false, f_rem, "w");
+	}
+	if (*f_add != '\0' && ret == KNOT_EOK) {
+		const char *mode = (strcmp(f_rem, f_add) == 0) ? "a" : "w";
+		ret = dump_changeset_part(update, true, f_add, mode);
+	}
+
+	/* Second: wait on semaphore on user's interaction. */
 	pthread_mutex_lock(&update->zone->cu_lock);
 
 	if (update->zone->control_update != NULL) {

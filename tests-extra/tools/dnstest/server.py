@@ -1799,6 +1799,9 @@ class Knot(Server):
                 s.begin("external")
                 have_external = True
             s.id_item("id", z.name)
+            self._str(s, "dump-new-zone", z.external["new"])
+            self._str(s, "dump-removals", z.external["rem"])
+            self._str(s, "dump-additions", z.external["add"])
         if have_external:
             s.end()
 
