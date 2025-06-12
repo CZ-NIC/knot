@@ -1101,9 +1101,88 @@ bool zone_update_no_change(zone_update_t *update)
 	} else if (update->flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) {
 		return changeset_empty(&update->change);
 	} else {
-		/* This branch does not make much sense and FULL update will most likely
-		 * be a change every time anyway, just return false. */
-		return false;
+		return zone_contents_is_empty(update->new_cont);
+	}
+}
+
+static int rrset_foreach(zone_node_t *n, bool subtract_counterpart,
+                         int idx, uint16_t rrtype, // two exclusive possibilities how to define which rrset in the node
+                         rrset_cb_t cb, void *ctx)
+{
+	knot_rrset_t rr = (rrtype == KNOT_RRTYPE_ANY) ? node_rrset_at(n, idx) : node_rrset(n, rrtype);
+	knot_rrset_t rrc = subtract_counterpart ? node_rrset(binode_counterpart(n), rr.type) : (knot_rrset_t){ 0 };
+	if (rrtype == KNOT_RRTYPE_ANY && rr.type == KNOT_RRTYPE_SOA) {
+		return KNOT_EOK; // ignore SOA if rrset specified by idx
+	} else if (knot_rrset_empty(&rrc)) {
+		return cb(&rr, ctx);
+	} else if (knot_rdataset_subset(&rr.rrs, &rrc.rrs)) {
+		return KNOT_EOK;
+	} else {
+		knot_rdataset_t rd_copy = { 0 };
+		int ret = knot_rdataset_copy(&rd_copy, &rr.rrs, NULL);
+		if (ret == KNOT_EOK) {
+			ret = knot_rdataset_subtract(&rd_copy, &rrc.rrs, NULL);
+		}
+		if (ret == KNOT_EOK) {
+			rr.rrs = rd_copy;
+			ret = cb(&rr, ctx);
+		}
+		knot_rdataset_clear(&rd_copy, NULL);
+		return ret;
+	}
+}
+
+static int trees_foreach(zone_tree_t *nodes, zone_tree_t *nsec3_nodes, bool subtract_counterparts,
+                         rrset_cb_t cb, void *ctx)
+{
+	zone_tree_it_t it = { 0 };
+	int ret = zone_tree_it_double_begin(nodes, nsec3_nodes, &it);
+	while (!zone_tree_it_finished(&it) && ret == KNOT_EOK) {
+		zone_node_t *n = zone_tree_it_val(&it);
+		for (int i = 0; i < n->rrset_count && ret == KNOT_EOK; i++) {
+			ret = rrset_foreach(n, subtract_counterparts, i, KNOT_RRTYPE_ANY, cb, ctx);
+		}
+		zone_tree_it_next(&it);
+	}
+	zone_tree_it_free(&it);
+	return ret;
+}
+
+int zone_update_foreach(zone_update_t *update, bool additions, rrset_cb_t cb, void *ctx)
+{
+	if (update == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	if (update->flags & UPDATE_NO_CHSET) {
+		zone_diff_t diff;
+		get_zone_diff(&diff, update);
+		if (!additions) {
+			zone_diff_reverse(&diff);
+		}
+
+		int ret = rrset_foreach(diff.apex, true, 0, KNOT_RRTYPE_SOA, cb, ctx);
+		if (ret == KNOT_EOK) {
+			ret = trees_foreach(&diff.nodes, &diff.nsec3s, true, cb, ctx);
+		}
+		return ret;
+	} else if (update->flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) {
+		knot_rrset_t *soa = additions ? update->change.soa_to : update->change.soa_from;
+		zone_contents_t *c = additions ? update->change.add : update->change.remove;
+		int ret = (soa == NULL) ? KNOT_EOK : cb(soa, ctx);
+		if (ret == KNOT_EOK) {
+			ret = trees_foreach(c->nodes, c->nsec3_nodes, false, cb, ctx);
+		}
+		return ret;
+	} else if (additions) {
+		knot_rrset_t soa = node_rrset(update->new_cont->apex, KNOT_RRTYPE_SOA);
+		int ret = knot_rrset_empty(&soa) ? KNOT_EOK : cb(&soa, ctx);
+		if (ret == KNOT_EOK) {
+			ret = trees_foreach(update->new_cont->nodes, update->new_cont->nsec3_nodes, false, cb, ctx);
+		}
+		return ret;
+	} else {
+		return KNOT_EOK;
 	}
 }
 

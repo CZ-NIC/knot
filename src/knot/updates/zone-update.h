@@ -300,6 +300,19 @@ int zone_update_commit(conf_t *conf, zone_update_t *update);
  */
 bool zone_update_no_change(zone_update_t *update);
 
+typedef int (*rrset_cb_t)(const knot_rrset_t *, void *);
+/*!
+ * \brief Run callback for every removed/added RRset in this update.
+ *
+ * \param update       Zone update in question.
+ * \param additions    Apply on addition (removals otherwise).
+ * \param cb           Callback to call for each changed RRset.
+ * \param ctx          Arbitrary context for the callback.
+ *
+ * \return KNOT_E* emitted by the callback or error in iteration.
+ */
+int zone_update_foreach(zone_update_t *update, bool additions, rrset_cb_t cb, void *ctx);
+
 /*!
  * \brief Return whether apex DNSKEY, CDNSKEY, or CDS is updated.
  */
