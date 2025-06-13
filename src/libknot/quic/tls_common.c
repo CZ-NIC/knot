@@ -29,9 +29,9 @@ typedef struct knot_creds {
 	gnutls_anti_replay_t tls_anti_replay;
 	gnutls_datum_t tls_ticket_key;
 	bool peer;
-	const char *peer_hostname;
-	uint8_t peer_pin_len;
-	uint8_t peer_pin[];
+	const char *peer_hostname[4];
+	const uint8_t *peer_pin[4];
+	uint8_t peer_pin_len[4];
 } knot_creds_t;
 
 _public_
@@ -218,11 +218,11 @@ fail:
 
 _public_
 struct knot_creds *knot_creds_init_peer(const struct knot_creds *local_creds,
-					const char *peer_hostname,
-					const uint8_t *peer_pin,
-					uint8_t peer_pin_len)
+					const char *peer_hostname[4],
+					const uint8_t *peer_pin[4],
+					const uint8_t peer_pin_len[4])
 {
-	knot_creds_t *creds = calloc(1, sizeof(*creds) + peer_pin_len);
+	knot_creds_t *creds = calloc(1, sizeof(*creds));
 	if (creds == NULL) {
 		return NULL;
 	}
@@ -240,12 +240,11 @@ struct knot_creds *knot_creds_init_peer(const struct knot_creds *local_creds,
 		ATOMIC_INIT(creds->cert_creds, new_creds);
 	}
 
-	if (peer_pin_len > 0 && peer_pin != NULL) {
-		memcpy(creds->peer_pin, peer_pin, peer_pin_len);
-		creds->peer_pin_len = peer_pin_len;
+	for (int i = 0; i < 4; ++i) {
+		creds->peer_pin[i] = peer_pin[i];
+		creds->peer_pin_len[i] = peer_pin_len[i];
+		creds->peer_hostname[i] = peer_hostname[i];
 	}
-
-	creds->peer_hostname = peer_hostname;
 
 	return creds;
 }
@@ -521,19 +520,26 @@ _public_
 int knot_tls_pin_check(struct gnutls_session_int *session,
                        struct knot_creds *creds)
 {
-	if (creds->peer_pin_len == 0) {
+	uint8_t lpin[KNOT_TLS_PIN_LEN];
+	size_t lpin_size = sizeof(lpin);
+	knot_tls_pin(session, lpin, &lpin_size, false);
+
+	// if no pin set -> opportunistic mode
+	if (creds->peer_pin_len[0] == 0) {
 		return KNOT_EOK;
 	}
 
-	uint8_t pin[KNOT_TLS_PIN_LEN];
-	size_t pin_size = sizeof(pin);
-	knot_tls_pin(session, pin, &pin_size, false);
-	if (pin_size != creds->peer_pin_len ||
-	    const_time_memcmp(pin, creds->peer_pin, pin_size) != 0) {
-		return KNOT_EBADCERT;
+	for (uint i = 0; i < 4 && creds->peer_pin[i] != NULL; ++i) {
+		const uint8_t *pin = creds->peer_pin[i];
+		size_t pin_size = creds->peer_pin_len[i];
+
+		if (lpin_size == pin_size
+		    && const_time_memcmp(lpin, pin, lpin_size) == 0) {
+			return KNOT_EOK;
+		}
 	}
 
-	return KNOT_EOK;
+	return KNOT_EBADCERT;
 }
 
 _public_
@@ -599,9 +605,14 @@ int knot_tls_cert_check_creds(struct gnutls_session_int *session,
 	assert(creds != NULL);
 
 	// cert verification wasn't requested
-	if (creds->peer_hostname == NULL) {
+	if (creds->peer_hostname[0] == NULL) {
 		return KNOT_EOK;
 	}
 
-	return knot_tls_cert_check(session, 1, &creds->peer_hostname);
+	unsigned nnames = 0;
+	for (const char **i = creds->peer_hostname; nnames < 4 && *i != NULL; ++i) {
+		++nnames;
+	}
+
+	return knot_tls_cert_check(session, nnames, creds->peer_hostname);
 }

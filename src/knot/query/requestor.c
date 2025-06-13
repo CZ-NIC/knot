@@ -202,22 +202,22 @@ static int request_recv(knot_request_t *request, int timeout_ms)
 }
 
 knot_request_t *knot_request_make_generic(knot_mm_t *mm,
-                                          const struct sockaddr_storage *remote,
-                                          const struct sockaddr_storage *source,
-                                          knot_pkt_t *query,
-                                          const struct knot_creds *creds,
-                                          const query_edns_data_t *edns,
-                                          const knot_tsig_key_t *tsig_key,
-                                          const char *hostname,
-                                          const uint8_t *pin,
-                                          size_t pin_len,
-                                          knot_request_flag_t flags)
+					  const struct sockaddr_storage *remote,
+					  const struct sockaddr_storage *source,
+					  knot_pkt_t *query,
+					  const struct knot_creds *creds,
+					  const query_edns_data_t *edns,
+					  const knot_tsig_key_t *tsig_key,
+					  const char *const hostname[4],
+					  const uint8_t *const pin[4],
+					  const uint8_t pin_len[4],
+					  knot_request_flag_t flags)
 {
 	if (remote == NULL || query == NULL) {
 		return NULL;
 	}
 
-	knot_request_t *request = mm_calloc(mm, 1, sizeof(*request) + pin_len);
+	knot_request_t *request = mm_calloc(mm, 1, sizeof(*request));
 	if (request == NULL) {
 		return NULL;
 	}
@@ -246,12 +246,16 @@ knot_request_t *knot_request_make_generic(knot_mm_t *mm,
 
 	request->edns = edns;
 	request->creds = creds;
-	if ((flags & (KNOT_REQUEST_QUIC | KNOT_REQUEST_TLS)) && pin_len > 0) {
-		request->pin_len = pin_len;
-		memcpy(request->pin, pin, pin_len);
+	if (flags & (KNOT_REQUEST_QUIC | KNOT_REQUEST_TLS)) {
+		for (int i = 0; i < 4; ++i) {
+			request->pin[i] = pin[i];
+			request->pin_len[i] = pin_len[i];
+		}
 	}
 
-	request->hostname = hostname;
+	if (hostname != NULL) {
+		memcpy(request->hostname, hostname, sizeof(hostname[0]) * 4);
+	}
 
 	return request;
 }
