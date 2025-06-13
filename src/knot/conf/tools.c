@@ -907,6 +907,19 @@ int check_acl(
 int check_remote(
 	knotd_conf_check_args_t *args)
 {
+	conf_val_t pin = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_RMT,
+	                                    C_CERT_KEY, args->id, args->id_len);
+	if (conf_val_count(&pin) > 4) {
+		args->err_str = "too many cert-keys; max is 4";
+		return KNOT_EINVAL;
+	}
+	conf_val_t cert_host = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_RMT,
+	                                          C_CERT_HOSTNAME, args->id, args->id_len);
+	if (conf_val_count(&cert_host) > 4) {
+		args->err_str = "too many cert-hosts; max is 4";
+		return KNOT_EINVAL;
+	}
+
 	conf_val_t addr = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_RMT,
 	                                     C_ADDR, args->id, args->id_len);
 	if (conf_val_count(&addr) == 0) {

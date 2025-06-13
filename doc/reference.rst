@@ -219,7 +219,7 @@ General options related to the server.
      listen: ADDR[@INT] | STR ...
      listen-quic: ADDR[@INT] ...
      listen-tls: ADDR[@INT] ...
-     tls-ca: STR ...
+     ca-file: STR ...
 
 .. CAUTION::
    When you change configuration parameters dynamically or via configuration file
@@ -723,13 +723,14 @@ Change of this parameter requires restart of the Knot server to take effect.
 
 *Default:* not set
 
-.. _server_tls-ca:
+.. _server_ca-file:
 
-tls-ca
-------
+ca-file
+-------
 
 One or more paths to TLS certificate files to import trust from. An empty value
-("") instructs Knot to import system-trusted certificates. Also see :ref:`remote_cert-validate`.
+("") instructs Knot to import system-trusted certificates. Also see
+:ref:`acl_cert-hostname`.
 
 *Default:* not set
 
@@ -1468,7 +1469,7 @@ transfer, target for a notification, etc.).
      tls: BOOL
      key: key_id
      cert-key: BASE64 ...
-     cert-validate: BOOL
+     cert-hostname: STR ...
      block-notify-after-transfer: BOOL
      no-edns: BOOL
      automatic-acl: BOOL
@@ -1584,17 +1585,17 @@ remains the same on a certificate renewal.
 
 *Default:* not set
 
-.. _remote_cert-validate:
+.. _remote_cert-hostname:
 
-cert-validate
+cert-hostname
 -------------
 
-Whether to verify remotes' certificate when estabilishing a TLS/QUIC
-connection. Remote's `id` is compared against the hostname stated in peer's
-certificate, so enabling this requires setting `id` accordingly. Verification
-is based on trusted certificates set with :ref:`server_tls-ca`.
+A list of up to 4 hostnames to match against peer's TLS certificate. At least
+one must match for successful certificate validation.
 
-*Default:* ``off``
+See :ref:`server_ca-file`.
+
+*Default:* not set
 
 .. _remote_block-notify-after-transfer:
 
@@ -1689,8 +1690,7 @@ which don't require authorization are always allowed.
      address: ADDR[/INT] | ADDR-ADDR | STR ...
      key: key_id ...
      cert-key: BASE64 ...
-     cert-validate: BOOL
-     tls-hostname: STR ...
+     cert-hostname: STR ...
      remote: remote_id | remotes_id ...
      action: query | notify | transfer | update ...
      protocol: udp | tcp | tls | quic ...
@@ -1745,27 +1745,15 @@ remains the same on a certificate renewal.
 
 *Default:* not set
 
-.. _acl_cert-validate:
+.. _acl_cert-hostname:
 
-cert-validate
+cert-hostname
 -------------
-
-Whether to verify remotes' certificate when estabilishing a TLS/QUIC
-connection. Values of :ref:`acl_tls-hostname` are matched against peer's
-certificate. Verification is based on trusted certificates set with
-:ref:`server_tls-ca`.
-
-*Default:* ``off``
-
-.. _acl_tls-hostname:
-
-tls-hostname
-------------
 
 A list of hostnames to match against peer's TLS certificate. At least one must
 match for successful certificate validation.
 
-See :ref:`acl_cert-validate`.
+See :ref:`server_ca-file`.
 
 *Default:* not set
 

@@ -77,9 +77,9 @@ struct knot_creds *knot_creds_init(const char *key_file,
  * \return Initialized creds.
  */
 struct knot_creds *knot_creds_init_peer(const struct knot_creds *local_creds,
-					const char *peer_hostname,
-                                        const uint8_t *peer_pin,
-                                        uint8_t peer_pin_len);
+					const char *peer_hostname[4],
+					const uint8_t *peer_pin[4],
+					const uint8_t peer_pin_len[4]);
 
 /*!
  * \brief Load new server TLS key and certificate for DoQ.
