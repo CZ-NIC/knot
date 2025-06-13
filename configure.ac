@@ -273,7 +273,14 @@ AS_CASE([$enable_redis],
 AM_CONDITIONAL([ENABLE_REDIS], [test "$enable_redis" != "no"])
 
 AS_IF([test "$enable_redis" = yes],[
-   AC_DEFINE([ENABLE_REDIS], [1], [Enable Redis support.])])
+   AC_DEFINE([ENABLE_REDIS], [1], [Enable Redis support.])
+   AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <hiredis/hiredis.h>
+                                     #if HIREDIS_MAJOR < 1
+                                     #error "No TLS support in Redis"
+                                     #endif]])],
+                  [AC_DEFINE([ENABLE_REDIS_TLS], [1], [Enable Redis TLS support.])],
+                  [enable_redis="yes (no TLS)"])
+])
 
 #########################################
 # Dependencies needed for Knot DNS daemon

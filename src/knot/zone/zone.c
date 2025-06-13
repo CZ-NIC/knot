@@ -9,7 +9,9 @@
 #include <time.h>
 #include <urcu.h>
 
+#ifdef ENABLE_REDIS
 #include "knot/common/hiredis.h"
+#endif
 #include "knot/common/log.h"
 #include "knot/conf/module.h"
 #include "knot/dnssec/kasp/kasp_db.h"

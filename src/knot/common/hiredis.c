@@ -5,16 +5,16 @@
 
 #include "knot/common/hiredis.h"
 
-#ifdef ENABLE_REDIS
-
-#include <unistd.h>
-#include <hiredis/alloc.h>
-#include <hiredis/sds.h>
-
 #include "contrib/sockaddr.h"
 #include "knot/common/log.h"
 #include "libknot/errcode.h"
+
+#ifdef ENABLE_REDIS_TLS
+#include <hiredis/alloc.h>
+#include <hiredis/sds.h>
+
 #include "libknot/quic/tls.h"
+#include "libknot/quic/tls_common.h"
 
 typedef struct {
 	struct knot_tls_ctx *tls;
@@ -124,11 +124,10 @@ static int hiredis_attach_gnutls(redisContext *ctx, struct knot_creds *creds)
 
 	return KNOT_EOK;
 }
-#endif
+#endif // ENABLE_REDIS_TLS
 
 redisContext *rdb_connect(conf_t *conf)
 {
-#ifdef ENABLE_REDIS
 	conf_val_t db_listen = conf_db_param(conf, C_ZONE_DB_LISTEN);
 	struct sockaddr_storage addr = conf_addr(&db_listen, NULL);
 
@@ -155,6 +154,7 @@ redisContext *rdb_connect(conf_t *conf)
 		return NULL;
 	}
 
+#ifdef ENABLE_REDIS_TLS
 	if (conf_get_bool(conf, C_DB, C_ZONE_DB_TLS)) {
 		char *cert_file = conf_tls(conf, C_CERT_FILE);
 		char *key_file = conf_tls(conf, C_KEY_FILE);
@@ -178,9 +178,7 @@ redisContext *rdb_connect(conf_t *conf)
 			return NULL;
 		}
 	}
+#endif // ENABLE_REDIS_TLS
 
 	return rdb;
-#else
-	return NULL;
-#endif
 }

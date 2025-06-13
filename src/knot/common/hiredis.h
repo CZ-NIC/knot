@@ -9,13 +9,8 @@
 
 #pragma once
 
-#ifdef ENABLE_REDIS
 #include <hiredis/hiredis.h>
-#else
-typedef void * redisContext;
-#endif
 
 #include "knot/conf/conf.h"
-#include "libknot/quic/tls_common.h"
 
 redisContext *rdb_connect(conf_t *conf);

@@ -230,7 +230,6 @@ int zonefile_open(zloader_t *loader, const char *source, const knot_dname_t *ori
 }
 
 #ifdef ENABLE_REDIS
-
 #include "knot/common/hiredis.h"
 
 int zone_rdb_open(zloader_t *loader, redisContext *rdb, const knot_dname_t *origin,

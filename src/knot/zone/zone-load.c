@@ -3,7 +3,9 @@
  *  For more information, see <https://www.knot-dns.cz/>
  */
 
+#ifdef ENABLE_REDIS
 #include "knot/common/hiredis.h"
+#endif
 #include "knot/common/log.h"
 #include "knot/journal/journal_metadata.h"
 #include "knot/journal/journal_read.h"

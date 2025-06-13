@@ -814,11 +814,9 @@ static int configure_sockets(conf_t *conf, server_t *s)
 	return KNOT_EOK;
 }
 
-
+#ifdef ENABLE_REDIS
 #include "knot/common/hiredis.h"
 #include "redis/knot.h"
-
-#ifdef ENABLE_REDIS
 
 #define RDB_TIMESTAMP_SIZE 42
 
