@@ -11,3 +11,7 @@ Depends:
  knot,
  knot-dnsutils,
  knot-dnssecutils,
+
+Tests: python-libknot
+Depends:
+ python3-libknot,

@@ -1,0 +1,8 @@
+#!/usr/bin/env python3
+
+import libknot.control
+import libknot.dname
+import libknot.probe
+
+dname = libknot.dname.KnotDname("knot-dns.cz")
+print("%s: wire: %s size: %u" % (dname.str(), dname.wire(), dname.size()))
