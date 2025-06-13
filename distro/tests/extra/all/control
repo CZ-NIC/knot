@@ -1,8 +1,8 @@
 Tests: kdig
 Restrictions: skippable
-{%- if distro.match('deb') %}
+{%- if distro.match('debian', 'ubuntu') %}
 Depends: iputils-ping, ca-certificates
-{%- elif distro.match('rpm') %}
+{%- elif distro.match('almalinux', 'centos', 'fedora', 'opensuse', 'rhel', 'rocky') %}
 Depends: iputils
 {%- endif %}
 
