@@ -441,6 +441,15 @@ static int parse_transaction2(RedisModuleString *arg, transaction_t *txn)
 	}
 }
 
+static int parse_rtype(uint16_t *rtype, const RedisModuleString *source)
+{
+	assert(rtype != NULL);
+
+	size_t len;
+	const char *rtype_str = RedisModule_StringPtrLen(source, &len);
+	return knot_rrtype_from_string(rtype_str, rtype);
+}
+
 static int serialize_transaction(const transaction_t *txn)
 {
 	return 10 * txn->instance + txn->id;
@@ -1009,7 +1018,7 @@ static int dump_rrset(RedisModuleCtx *ctx, knot_rrset_t *rrset, char *buf,
 	return 0;
 }
 
-static int knot_zone_load(RedisModuleCtx *ctx, knot_dname_storage_t *origin, size_t origin_len, transaction_t *txn, bool txt)
+static int knot_zone_load(RedisModuleCtx *ctx, knot_dname_storage_t *origin, size_t origin_len, transaction_t *txn, knot_dname_storage_t *opt_owner, uint16_t *opt_rtype, bool txt)
 {
 	if (txn->id == TXN_ID_ACTIVE) {
 		int ret = active_transaction(ctx, *origin, txn);
@@ -1058,6 +1067,16 @@ static int knot_zone_load(RedisModuleCtx *ctx, knot_dname_storage_t *origin, siz
 		uint16_t rtype = wire_ctx_read_u16(&w);
 		RedisModule_Assert(w.error == KNOT_EOK);
 
+
+		if (opt_owner != NULL && memcmp(owner, *opt_owner, owner_len) != 0) {
+			RedisModule_CloseKey(rrset_key);
+			continue;
+		}
+		if (opt_rtype != NULL && rtype != *opt_rtype) {
+			RedisModule_CloseKey(rrset_key);
+			continue;
+		}
+
 		knot_rrset_v *rrset_v = RedisModule_ModuleTypeGetValue(rrset_key);
 
 		if (txt) {
@@ -1065,6 +1084,7 @@ static int knot_zone_load(RedisModuleCtx *ctx, knot_dname_storage_t *origin, siz
 			knot_rrset_init(&rrset, owner, rtype, KNOT_CLASS_IN, rrset_v->ttl);
 			rrset.rrs = rrset_v->rrs;
 			if (dump_rrset(ctx, &rrset, buf, sizeof(buf), &count, false) != 0) {
+				RedisModule_CloseKey(rrset_key);
 				break;
 			}
 		} else {
@@ -1092,9 +1112,19 @@ static int knot_zone_load_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int
 		.instance = 1,
 		.id = TXN_ID_ACTIVE
 	};
+	knot_dname_storage_t owner;
+	uint16_t rtype = 0;
 
 	switch (argc) {
-	case 3:;
+	case 5:
+		if (parse_rtype(&rtype, argv[4]) != KNOT_EOK) {
+			return RedisModule_ReplyWithError(ctx, "ERR invalid rtype");
+		}
+	case 4: // FALLTHROUGH
+		if (parse_dname(ctx, argv[3], &owner) == NULL) {
+			return RedisModule_ReplyWithError(ctx, "ERR invalid owner");
+		}
+	case 3:; // FALLTHROUGH
 		int ret = parse_transaction2(argv[2], &txn);
 		if (ret != KNOT_EOK) {
 			return RedisModule_ReplyWithError(ctx, "ERR invalid zone instance");
@@ -1108,7 +1138,9 @@ static int knot_zone_load_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int
 		return RedisModule_WrongArity(ctx);
 	}
 
-	knot_zone_load(ctx, &origin, knot_dname_size(origin), &txn, true);
+	knot_zone_load(ctx, &origin, knot_dname_size(origin), &txn,
+	               (argc >= 4) ? &owner : NULL, (argc >= 5) ? &rtype : NULL,
+	               true);
 
 	return REDISMODULE_OK;
 }
@@ -1120,10 +1152,23 @@ static int knot_zone_load_bin(RedisModuleCtx *ctx, RedisModuleString **argv, int
 		.id = TXN_ID_ACTIVE
 	};
 
-	size_t origin_len = 0, txn_len = 0;
-	knot_dname_storage_t *origin = NULL;
+	size_t origin_len = 0, txn_len = 0, owner_len = 0, rtype_len = 0;
+	knot_dname_storage_t *origin = NULL, *owner = NULL;
+	uint16_t rtype;
+
 	switch (argc) {
-	case 3:;
+	case 5:;
+		const char *rtype_str = RedisModule_StringPtrLen(argv[4], &rtype_len);
+		if (rtype_len != sizeof(rtype)) {
+			return RedisModule_ReplyWithError(ctx, "Malformed rtype");
+		}
+		memcpy(&rtype, rtype_str, rtype_len);
+	case 4: // FALLTHROUGH
+		owner = (knot_dname_storage_t *)RedisModule_StringPtrLen(argv[3], &owner_len);
+		if (owner_len > KNOT_DNAME_MAXLEN) {
+			return RedisModule_ReplyWithError(ctx, "Malformed owner");
+		}
+	case 3:; // FALLTHROUGH
 		const char *txn_recv = RedisModule_StringPtrLen(argv[2], &txn_len);
 		if (txn_len < 1 || txn_len > 2) {
 			return RedisModule_ReplyWithError(ctx, "Malformed transaction");
@@ -1139,7 +1184,9 @@ static int knot_zone_load_bin(RedisModuleCtx *ctx, RedisModuleString **argv, int
 		return RedisModule_WrongArity(ctx);
 	}
 
-	knot_zone_load(ctx, origin, origin_len, &txn, false);
+	knot_zone_load(ctx, origin, origin_len, &txn,
+	               (argc >= 4) ? owner : NULL, (argc >= 5) ? &rtype : NULL,
+	               false);
 
 	return REDISMODULE_OK;
 }
