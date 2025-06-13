@@ -8,3 +8,5 @@ Depends: iputils
 
 Tests: authoritative-server
 Depends: findutils
+
+Tests: python-libknot
