@@ -178,6 +178,9 @@ int main(int argc, char *argv[])
 	ret = knot_rrclass_from_string("In", &num);
 	ok(ret != -1, "get In num ret");
 	ok(num == 1, "get In num");
+	ret = knot_rrclass_from_string("Internet", &num);
+	ok(ret != -1, "get In num ret");
+	ok(num == 1, "get In num");
 
 	// 22. ANY
 	ret = knot_rrclass_from_string("ANY", &num);

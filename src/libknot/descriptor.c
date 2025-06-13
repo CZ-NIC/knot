@@ -22,13 +22,13 @@
 #include "libknot/descriptor.h"
 
 /*!
- * \brief Table with DNS classes.
+ * \brief Table with supported DNS classes.
  */
-static const char* dns_classes[] = {
-	[KNOT_CLASS_IN]   = "IN",
-	[KNOT_CLASS_CH]   = "CH",
-	[KNOT_CLASS_NONE] = "NONE",
-	[KNOT_CLASS_ANY]  = "ANY"
+static const char* dns_classes[][2] = {
+	[KNOT_CLASS_IN]   = { "IN", "INTERNET" },
+	[KNOT_CLASS_CH]   = { "CH", "CHAOS" },
+	[KNOT_CLASS_NONE] = { "NONE" },
+	[KNOT_CLASS_ANY]  = { "ANY" },
 };
 
 /*!
@@ -276,8 +276,8 @@ int knot_rrclass_to_string(const uint16_t rrclass,
 
 	int ret;
 
-	if (rrclass <= KNOT_CLASS_ANY && dns_classes[rrclass] != NULL) {
-		ret = snprintf(out, out_len, "%s", dns_classes[rrclass]);
+	if (rrclass <= KNOT_CLASS_ANY && dns_classes[rrclass][0] != NULL) {
+		ret = snprintf(out, out_len, "%s", dns_classes[rrclass][0]);
 	} else {
 		ret = snprintf(out, out_len, "CLASS%u", rrclass);
 	}
@@ -302,8 +302,9 @@ int knot_rrclass_from_string(const char *name, uint16_t *num)
 
 	// Try to find the name in classes table.
 	for (i = 0; i <= KNOT_CLASS_ANY; i++) {
-		if (dns_classes[i] != NULL &&
-		    strcasecmp(dns_classes[i], name) == 0) {
+		const char **row = dns_classes[i];
+		if ((row[0] != NULL && strcasecmp(row[0], name) == 0) ||
+		    (row[1] != NULL && strcasecmp(row[1], name) == 0)) {
 			*num = i;
 			return 0;
 		}
