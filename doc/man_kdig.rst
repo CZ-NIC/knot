@@ -401,6 +401,10 @@ Examples
 
      $ kdig @1.1.1.1 +tls +keepopen abc.example.com A mail.example.com AAAA
 
+7. Query the name server identifier and version according to :rfc:`4892`::
+
+     $ kdig @a.iana-servers.net. CH TXT id.server version.server
+
 Files
 -----
 
