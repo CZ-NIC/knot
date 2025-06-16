@@ -2496,6 +2496,7 @@ External zone validation configuration.
 
  external:
    - id: STR
+     timeout: TIME
      dump-new-zone: STR
      dump-removals: STR
      dump-additions: STR
@@ -2506,6 +2507,15 @@ id
 --
 
 An external section identifier.
+
+.. _external_timeout:
+
+timeout
+-------
+
+If the validtion is not confirmed in this time interval, it is considered failed.
+
+*Default:* 0 (infinity)
 
 .. _external_dump-new-zone:
 
@@ -3030,7 +3040,7 @@ from the user (or perhaps an user-defined script).
 
 In the referenced ``external`` section, it is possible to define paths to
 files where the new zone contents and/or differences are written
-(in the zone file format) just before each validation.
+(in the zone file format) just before each validation and other parameters.
 
 *Default:* none
 
