@@ -215,7 +215,7 @@ General options related to the server.
      answer-rotation: BOOL
      automatic-acl: BOOL
      proxy-allowlist: ADDR[/INT] | ADDR-ADDR ...
-     dbus-event: none | running | zone-updated | ksk-submission | dnssec-invalid ...
+     dbus-event: none | running | zone-updated | external-verify | ksk-submission | dnssec-invalid ...
      dbus-init-delay: TIME
      listen: ADDR[@INT] | STR ...
      listen-quic: ADDR[@INT] ...
@@ -659,6 +659,8 @@ Possible values:
   - ``stopped`` when the server shutdown sequence is initiated.
 - ``zone-updated`` – The signal ``zone_updated`` is emitted when a zone has been updated;
   the signal parameters are `zone name` and `zone SOA serial`.
+- ``external-verify`` - The signal ``external_verify`` is emitted when a zone is awaiting
+  external validation before applying the changes; the signal parameter is `zone name`.
 - ``keys-updated`` - The signal ``keys_updated`` is emitted when a DNSSEC key set
   is updated; the signal parameter is `zone name`.
 - ``ksk-submission`` – The signal ``zone_ksk_submission`` is emitted if there is
@@ -3094,6 +3096,10 @@ At that point, validation and confirmation is awaited from the user
 In the referenced ``external`` section, it is possible to define paths to
 files where the new zone contents and/or differences are written
 (in the zone file format) just before every validation.
+
+.. TIP::
+   If :ref:`server_dbus-event` is set to ``external-verify``, a corresponding
+   signal is emitted when the server is awaiting external validation.
 
 *Default:* none
 

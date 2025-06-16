@@ -1001,6 +1001,10 @@ int zone_update_external(conf_t *conf, zone_update_t *update, conf_val_t *ev_id)
 
 	log_zone_notice(update->zone->name, "waiting for external validation");
 
+	if (conf->cache.srv_dbus_event & DBUS_EVENT_EXTERNAL) {
+		dbus_emit_external_verify(update->zone->name);
+	}
+
 	knot_sem_wait(&update->external);
 
 	pthread_mutex_lock(&update->zone->cu_lock);
