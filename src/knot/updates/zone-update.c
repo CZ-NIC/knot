@@ -992,6 +992,10 @@ int zone_update_external(conf_t *conf, zone_update_t *update, conf_val_t *ev_id)
 		return KNOT_EEXTERNAL;
 	}
 
+	if (conf->cache.srv_dbus_event & DBUS_EVENT_EXTERNAL) {
+		dbus_emit_external_verify(update->zone->name);
+	}
+
 	update->zone->control_update = update;
 	update->flags |= UPDATE_WFEV;
 	knot_sem_init(&update->external, 0);
