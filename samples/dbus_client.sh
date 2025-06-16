@@ -16,6 +16,9 @@ cb() {
 	zone_updated)
 		echo "Updated zone=${2} to serial=${3}"
 		;;
+	external_verify)
+		echo "Zone ${2} awaits external validation"
+		;;
 	zone_dnssec_invalid)
 		echo "Invalid DNSSEC for zone=${2} remaining=${3} seconds"
 		;;
