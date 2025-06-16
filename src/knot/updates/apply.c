@@ -344,12 +344,16 @@ void apply_rollback(apply_ctx_t *ctx)
 		return;
 	}
 
+	if (ctx->adjust_ptrs != NULL) {
+		ctx->adjust_ptrs->flags ^= ZONE_TREE_BINO_SECOND;
+	}
 	if (ctx->node_ptrs != NULL) {
 		ctx->node_ptrs->flags ^= ZONE_TREE_BINO_SECOND;
 	}
 	if (ctx->nsec3_ptrs != NULL) {
 		ctx->nsec3_ptrs->flags ^= ZONE_TREE_BINO_SECOND;
 	}
+	zone_trees_unify_binodes(ctx->adjust_ptrs, NULL, false);
 	zone_trees_unify_binodes(ctx->node_ptrs, ctx->nsec3_ptrs, true);
 
 	zone_tree_free(&ctx->node_ptrs);
