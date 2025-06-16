@@ -40,7 +40,10 @@ ZONE = zone[0].name
 LOG = "for external validation"
 
 slave.async_start = True
-slave.zones[ZONE].external = { "new": dump_file(slave, "new"), "rem": dump_file(slave, "diff"), "add": dump_file(slave, "diff") }
+slave.zones[ZONE].external = { "timeout": "10",
+                               "new": dump_file(slave, "new"),
+                               "rem": dump_file(slave, "diff"),
+                               "add": dump_file(slave, "diff") }
 
 def check_diff_types(types):
     check_zf_types(slave.zones[ZONE].external["add"], types)
@@ -83,20 +86,33 @@ resp = ctl.receive_block()
 t.sleep(2)
 resp = slave.dig(ZONE, "SOA")
 resp.check_soa_serial(serial - 1)
+ctl.close()
+
+up = master.update(zone)
+up.add("snail", 3600, "AAAA", "1::1")
+up.send()
+serial = master.zone_wait(zone, serial)
+t.sleep(2)
+log_count_expect(slave, LOG, 3)
+t.sleep(int(slave.zones[ZONE].external["timeout"]))
+resp = slave.dig(ZONE, "SOA")
+resp.check_soa_serial(serial - 2)
 
 up = master.update(zone)
 up.add("shark", 3600, "AAAA", "1::1")
 up.send()
 serial = master.zone_wait(zone, serial)
 
+ctl.connect(os.path.join(slave.dir, sockname))
 t.sleep(2)
-log_count_expect(slave, LOG, 3)
+log_count_expect(slave, LOG, 4)
 ctl.send_block(cmd="zone-diff", zone=ZONE)
 resp = ctl.receive_block()
 isset("AAAA" in resp[ZONE]["horse."+ZONE], "ZONE-DIFF 2")
 isset("AAAA" in resp[ZONE]["shark."+ZONE], "ZONE-DIFF 3")
+isset("AAAA" in resp[ZONE]["snail."+ZONE], "ZONE-DIFF 3.5")
 isset("AAAA" in resp[ZONE]["tiger."+ZONE], "ZONE-DIFF 4")
-check_diff_types(["SOA", "SOA", "AAAA", "AAAA", "AAAA"])
+check_diff_types(["SOA", "SOA", "AAAA", "AAAA", "AAAA", "AAAA"])
 ctl.send_block(cmd="zone-commit", zone=ZONE)
 resp = ctl.receive_block()
 t.sleep(2)
