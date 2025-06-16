@@ -2559,6 +2559,7 @@ External zone validation configuration.
 
  external:
    - id: STR
+     timeout: TIME
      dump-new-zone: STR
      dump-removals: STR
      dump-additions: STR
@@ -2569,6 +2570,16 @@ id
 --
 
 An external section identifier.
+
+.. _external_timeout:
+
+timeout
+-------
+
+If the validation is not confirmed within this time interval in seconds,
+it is considered failed.
+
+*Default:* ``300``
 
 .. _external_dump-new-zone:
 

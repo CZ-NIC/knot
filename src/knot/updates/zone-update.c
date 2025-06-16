@@ -1005,7 +1005,8 @@ int zone_update_external(conf_t *conf, zone_update_t *update, conf_val_t *ev_id)
 		dbus_emit_external_verify(update->zone->name);
 	}
 
-	knot_sem_wait(&update->external);
+	val = conf_id_get(conf, C_EXTERNAL, C_TIMEOUT, ev_id);
+	knot_sem_timedwait(&update->external, conf_int(&val) * 1000);
 
 	pthread_mutex_lock(&update->zone->cu_lock);
 	update->zone->control_update = NULL;
