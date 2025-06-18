@@ -67,7 +67,6 @@ typedef struct knot_request {
 
 	const char *hostname[4];
 	const uint8_t *pin[4];
-	uint8_t pin_len[4];
 } knot_request_t;
 
 static inline knotd_query_proto_t flags2proto(unsigned layer_flags)
@@ -91,8 +90,8 @@ static inline knotd_query_proto_t flags2proto(unsigned layer_flags)
  * \param creds     Local (server) credentials.
  * \param edns      EDNS parameters.
  * \param tsig_key  TSIG key for authentication.
- * \param pin       Possible remote certificate PIN.
- * \param pin_len   Length of the remote certificate PIN.
+ * \param hostname  Permittable remote certificate hostnames.
+ * \param pin       Permittable remote certificate PINs.
  * \param flags     Request flags.
  *
  * \return Prepared request or NULL in case of error.
@@ -106,7 +105,6 @@ knot_request_t *knot_request_make_generic(knot_mm_t *mm,
                                           const knot_tsig_key_t *tsig_key,
                                           const char *const hostname[4],
                                           const uint8_t *const pin[4],
-                                          const uint8_t pin_len[4],
                                           knot_request_flag_t flags);
 
 /*!

@@ -153,7 +153,6 @@ int knot_qreq_connect(struct knot_quic_reply **out,
                       const struct knot_creds *local_creds,
                       const char *const peer_hostname[4],
                       const uint8_t *const peer_pin[4],
-                      const uint8_t peer_pin_len[4],
                       bool *reused_fd,
                       int timeout_ms)
 {
@@ -175,7 +174,7 @@ int knot_qreq_connect(struct knot_quic_reply **out,
 	r->free_reply = qr_free_reply;
 
 	struct knot_creds *creds =
-	        knot_creds_init_peer(local_creds, peer_hostname, peer_pin, peer_pin_len);
+	        knot_creds_init_peer(local_creds, peer_hostname, peer_pin);
 	if (creds == NULL) {
 		free(r);
 		return KNOT_ENOMEM;

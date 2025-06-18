@@ -1416,12 +1416,10 @@ conf_remote_t conf_remote_txn(
 	}
 
 	memset(out.pin, 0, sizeof(out.pin));
-	memset(out.pin_len, 0, sizeof(out.pin_len));
 	val = conf_id_get_txn(conf, txn, C_RMT, C_CERT_KEY, id);
 	for (uint i = 0; val.code == KNOT_EOK; ++i) {
-		size_t len;
-		out.pin[i] = (uint8_t *)conf_bin(&val, &len);
-		out.pin_len[i] = (uint8_t)len;
+		size_t tmp;
+		out.pin[i] = (uint8_t *)conf_bin(&val, &tmp);
 		conf_val_next(&val);
 	}
 

@@ -29,8 +29,8 @@ typedef struct knot_tls_req_ctx {
  * \param local             Local socket for purpouses of TLS session resumption.
  * \param peer_hostname     Peer hostname to be checked against cert. NULL to disable check.
  * \param local_creds       Local TLS credentials.
- * \param peer_pin          TLS peer pin.
- * \param peer_pin_len      TLS peer pin length.
+ * \param peer_hostname     Permittable TLS peer hostnames.
+ * \param peer_pin          Permittable TLS peer PINs.
  * \param reused_fd[out]    Indicates successful TLS session resumption.
  * \param io_timeout_ms     Configured io-timeout for TLS connection.
  *
@@ -43,7 +43,6 @@ int knot_tls_req_ctx_init(knot_tls_req_ctx_t *ctx,
                           const struct knot_creds *local_creds,
                           const char *const peer_hostname[4],
                           const uint8_t *const peer_pin[4],
-                          const uint8_t peer_pin_len[4],
                           bool *reused_fd,
                           int io_timeout_ms);
 

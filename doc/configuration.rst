@@ -981,6 +981,8 @@ Strict authentication:
 Note that the automatic ACL doesn't work in this case due to asymmetrical
 configuration. The secondary can authenticate using TSIG.
 
+With PIN checks:
+
 .. panels::
 
   Primary:
@@ -1042,12 +1044,80 @@ configuration. The secondary can authenticate using TSIG.
         master: primary
         acl: primary_notify
 
+With CA and hostname checks:
+
+.. panels::
+
+  Primary
+
+  .. code-block:: console
+
+    server:
+        listen-quic: ::1
+        cert-file: primary-cert.pem
+        key-file: primary-key.pem
+
+    key:
+      - id: secondary_key
+        algorithm: hmac-sha256
+        secret: S059OFJv1SCDdR2P6JKENgWaM409iq2X44igcJdERhc=
+
+    remote:
+      - id: secondary
+        address: ::2
+        quic: on
+
+    acl:
+      - id: secondary_xfr
+        address: ::2
+        key: secondary_key  # TSIG for secondary authentication
+        action: transfer
+
+    zone:
+      - domain: example.com
+        notify: secondary
+        acl: secondary_xfr
+
+  ---
+
+  Secondary:
+
+  .. code-block:: console
+
+    server:
+        listen-quic: ::2
+        ca-file: ca-cert.pem
+
+    key:
+      - id: secondary_key
+        algorithm: hmac-sha256
+        secret: S059OFJv1SCDdR2P6JKENgWaM409iq2X44igcJdERhc=
+
+    remote:
+      - id: primary
+        address: ::1
+        key: secondary_key  # TSIG for secondary authentication
+        quic: on
+
+    acl:
+      - id: primary_notify
+        address: ::1
+        cert-hostname: "Primary Knot"
+        action: notify
+
+    zone:
+      - domain: example.com
+        master: primary
+        acl: primary_notify
+
 Mutual authentication:
 ......................
 
 The :rfc:`mutual authentication<9103#section-9.3.3>` guarantees authentication
 for both the primary and the secondary. In this case, TSIG would be redundant.
 This mode is recommended if possible.
+
+With PIN checks:
 
 .. panels::
 
@@ -1089,11 +1159,108 @@ This mode is recommended if possible.
       - domain: example.com
         master: primary
 
+With CA and hostname checks:
+
+.. panels::
+
+  Primary:
+
+  .. code-block:: console
+
+    server:
+        listen-quic: ::1
+        ca-file: ca-cert.pem
+        cert-file: primary-cert.pem
+        key-file: primary-key.pem
+        automatic-acl: on
+
+    remote:
+      - id: secondary
+        address: ::2
+        quic: on
+        cert-hostname: "Secondary Knot"
+
+    zone:
+      - domain: example.com
+        notify: secondary
+
+  ---
+
+  Secondary:
+
+  .. code-block:: console
+
+    server:
+        listen-quic: ::2
+        ca-file: ca-cert.pem
+        cert-file: secondary-cert.pem
+        key-file: secondary-key.pem
+        automatic-acl: on
+
+    remote:
+      - id: primary
+        address: ::1
+        quic: on
+        cert-hostname: "Primary Knot"
+
+    zone:
+      - domain: example.com
+        master: primary
+
+.. TIP::
+
+  Using gnutls certtool you can generate a CA certificate file and its privkey:
+
+  .. code-block:: console
+
+    $ certtool --generate-privkey --key-type ed25519 --outfile ca-key.pem
+    $ echo -e "cn = \"My Example CA\"\nca\ncert_signing_key\nexpiration_days = 3650" >ca-template.info
+    $ certtool \
+    >   --generate-self-signed \
+    >   --load-privkey ca-key.pem \
+    >   --template ca-template.info \
+    >   --outfile ca-cert.pem
+
+  Then create certificates signed with this CA like so:
+
+  .. code-block:: console
+
+    $ certtool --generate-privkey --key-type ed25519 --outfile primary-key.pem
+    $ echo -e "dns_name = \"Primary Knot\"\nexpiration_days = 365" >primary-template.info
+    $ certtool \
+    >   --generate-certificate \
+    >   --load-privkey primary-key.pem \
+    >   --load-ca-certificate ca-cert.pem \
+    >   --load-ca-privkey ca-key.pem \
+    >   --template primary-template.info \
+    >   --outfile primary-cert.pem
+
+  If you want to use a wildcard DNSName in your certificate, beware that
+  gnutls, which is the TLS backend for Knot DNS, **will not verify** wildcard
+  names directly under TLDs (like ``*.example``).
+
+  To see a server's TLS hostnames:
+
+  .. code-block:: console
+
+    $ kdig @1.1.1.1 +tls -dd
+    ;; DEBUG: Querying for owner(.), class(1), type(2), server(1.1.1.1), port(853), protocol(TCP)
+    ;; DEBUG: TLS, received certificate hierarchy:
+    ;; DEBUG:  #1, CN=cloudflare-dns.com,O=Cloudflare\, Inc.,L=San Francisco,ST=California,C=US
+    ;; DEBUG:      Subject Alternative Name:
+    ;; DEBUG:        DNSname: cloudflare-dns.com
+    ;; DEBUG:        DNSname: *.cloudflare-dns.com
+    ;; DEBUG:        DNSname: one.one.one.one
+    [...]
+
+  Knot DNS will only verify hostnames under the *Subject Alternative Name*
+  extension in compliance with :rfc:`8310#section-8.1`.
+
 .. NOTE::
 
-  Instead of certificate verification with specified authentication domain name,
-  Knot DNS uses certificate public key pinning. This approach has much lower
-  overhead and in most cases simplifies configuration and certificate management.
+  Certificate validation by CA and hostname is more computationally expensive
+  than by PIN, but PIN checking has the disadvantage of relying on constantness
+  of the public key.
 
 .. _DNS_over_TLS:
 

@@ -18,12 +18,10 @@ int knot_tls_req_ctx_init(knot_tls_req_ctx_t *ctx,
                           const struct knot_creds *local_creds,
                           const char *const peer_hostname[4],
                           const uint8_t *const peer_pin[4],
-                          const uint8_t peer_pin_len[4],
                           bool *reused_fd,
                           int io_timeout_ms)
 {
-	struct knot_creds *creds = knot_creds_init_peer(local_creds, (const char **)peer_hostname,
-	                                                (const uint8_t **)peer_pin, peer_pin_len);
+	struct knot_creds *creds = knot_creds_init_peer(local_creds, peer_hostname, peer_pin);
 	if (creds == NULL) {
 		return KNOT_ENOMEM;
 	}

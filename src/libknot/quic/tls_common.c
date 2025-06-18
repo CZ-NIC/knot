@@ -33,7 +33,6 @@ typedef struct knot_creds {
 	bool peer;
 	const char *peer_hostname[4];
 	const uint8_t *peer_pin[4];
-	uint8_t peer_pin_len[4];
 } knot_creds_t;
 
 _public_
@@ -221,8 +220,7 @@ fail:
 _public_
 struct knot_creds *knot_creds_init_peer(const struct knot_creds *local_creds,
                                         const char *const peer_hostname[4],
-                                        const uint8_t *const peer_pin[4],
-                                        const uint8_t peer_pin_len[4])
+                                        const uint8_t *const peer_pin[4])
 {
 	knot_creds_t *creds = calloc(1, sizeof(*creds));
 	if (creds == NULL) {
@@ -243,12 +241,9 @@ struct knot_creds *knot_creds_init_peer(const struct knot_creds *local_creds,
 	}
 
 	_Static_assert(sizeof(creds->peer_pin) == sizeof(peer_pin[0]) * 4, "");
-	_Static_assert(sizeof(creds->peer_pin_len) == sizeof(peer_pin_len[0]) * 4, "");
 	_Static_assert(sizeof(creds->peer_hostname) == sizeof(peer_hostname[0]) * 4, "");
 	if (peer_pin != NULL) {
-		assert(peer_pin_len != NULL);
 		memcpy(creds->peer_pin, peer_pin, sizeof(creds->peer_pin));
-		memcpy(creds->peer_pin_len, peer_pin_len, sizeof(creds->peer_pin_len));
 	}
 	if (peer_hostname != NULL) {
 		memcpy(creds->peer_hostname, peer_hostname, sizeof(creds->peer_hostname));
@@ -527,21 +522,21 @@ _public_
 int knot_tls_pin_check(struct gnutls_session_int *session,
                        struct knot_creds *creds)
 {
+	// if no pin set -> opportunistic mode
+	if (creds->peer_pin[0] == NULL) {
+		return KNOT_EOK;
+	}
+
 	uint8_t lpin[KNOT_TLS_PIN_LEN];
 	size_t lpin_size = sizeof(lpin);
 	knot_tls_pin(session, lpin, &lpin_size, false);
 
-	// if no pin set -> opportunistic mode
-	if (creds->peer_pin_len[0] == 0) {
-		return KNOT_EOK;
+	if (lpin_size != KNOT_TLS_PIN_LEN) {
+		return KNOT_EBADCERT;
 	}
 
 	for (uint i = 0; i < 4 && creds->peer_pin[i] != NULL; ++i) {
-		const uint8_t *pin = creds->peer_pin[i];
-		size_t pin_size = creds->peer_pin_len[i];
-
-		if (lpin_size == pin_size
-		    && const_time_memcmp(lpin, pin, lpin_size) == 0) {
+		if (const_time_memcmp(lpin, creds->peer_pin[i], KNOT_TLS_PIN_LEN) == 0) {
 			return KNOT_EOK;
 		}
 	}

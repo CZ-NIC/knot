@@ -67,17 +67,15 @@ struct knot_creds *knot_creds_init(const char *key_file,
 /*!
  * \brief Init peer TLS key and certificate for DoQ.
  *
- * \param local_creds   Local credentials if server.
- * \param peer_hostname Peer hostname to be checked against cert. NULL to disable check.
- * \param peer_pin      Optional peer certificate pin to check.
- * \param peer_pin_len  Length of the peer pin. Set 0 if not specified.
+ * \param local_creds           Local credentials if server.
+ * \param peer_hostname         Optional peer certificate hostnames to check.
+ * \param peer_pin              Optional peer certificate PINs to check.
  *
  * \return Initialized creds.
  */
 struct knot_creds *knot_creds_init_peer(const struct knot_creds *local_creds,
                                         const char *const peer_hostname[4],
-                                        const uint8_t *const peer_pin[4],
-                                        const uint8_t peer_pin_len[4]);
+                                        const uint8_t *const peer_pin[4]);
 
 /*!
  * \brief Load new server TLS key and certificate for DoQ.

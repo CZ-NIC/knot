@@ -86,7 +86,7 @@ static int request_ensure_connected(knot_request_t *request, bool *reused_fd, in
 #ifdef ENABLE_QUIC
 		int ret = knot_qreq_connect(&request->quic_ctx, request->fd, &request->remote,
 		                            &request->source, request->creds, request->hostname,
-		                            request->pin, request->pin_len, reused_fd, timeout_ms);
+		                            request->pin, reused_fd, timeout_ms);
 		if (ret != KNOT_EOK) {
 			close(request->fd);
 			request->fd = -1;
@@ -100,10 +100,9 @@ static int request_ensure_connected(knot_request_t *request, bool *reused_fd, in
 	if (use_tls(request)) {
 		assert(!use_quic(request));
 
-		int ret = knot_tls_req_ctx_init(&request->tls_req_ctx, request->fd,
-		                                &request->remote, &request->source, request->creds,
-		                                request->hostname, request->pin, request->pin_len,
-		                                reused_fd, timeout_ms);
+		int ret = knot_tls_req_ctx_init(
+		        &request->tls_req_ctx, request->fd, &request->remote, &request->source,
+		        request->creds, request->hostname, request->pin, reused_fd, timeout_ms);
 		if (ret != KNOT_EOK) {
 			close(request->fd);
 			request->fd = -1;
@@ -210,7 +209,6 @@ knot_request_t *knot_request_make_generic(knot_mm_t *mm,
                                           const knot_tsig_key_t *tsig_key,
                                           const char *const hostname[4],
                                           const uint8_t *const pin[4],
-                                          const uint8_t pin_len[4],
                                           knot_request_flag_t flags)
 {
 	if (remote == NULL || query == NULL) {
@@ -248,13 +246,10 @@ knot_request_t *knot_request_make_generic(knot_mm_t *mm,
 	request->creds = creds;
 
 	_Static_assert(sizeof(request->pin) == sizeof(pin[0]) * 4, "");
-	_Static_assert(sizeof(request->pin_len) == sizeof(pin_len[0]) * 4, "");
 	_Static_assert(sizeof(request->hostname) == sizeof(hostname[0]) * 4, "");
 	if (flags & (KNOT_REQUEST_QUIC | KNOT_REQUEST_TLS)) {
 		if (pin != NULL) {
-			assert(pin_len != NULL);
 			memcpy(request->pin, pin, sizeof(request->pin));
-			memcpy(request->pin_len, pin_len, sizeof(request->pin_len));
 		}
 		if (hostname != NULL) {
 			memcpy(request->hostname, hostname, sizeof(request->hostname));
@@ -278,9 +273,8 @@ knot_request_t *knot_request_make(knot_mm_t *mm,
 		flags |= KNOT_REQUEST_TLS;
 	}
 
-	return knot_request_make_generic(mm, &remote->addr, &remote->via, query,
-	                                 creds, edns, &remote->key, remote->hostname,
-	                                 remote->pin, remote->pin_len, flags);
+	return knot_request_make_generic(mm, &remote->addr, &remote->via, query, creds, edns,
+	                                 &remote->key, remote->hostname, remote->pin, flags);
 }
 
 void knot_request_free(knot_request_t *request, knot_mm_t *mm)

@@ -15,7 +15,6 @@ int knot_qreq_connect(struct knot_quic_reply **out,
                       const struct knot_creds *local_creds,
                       const char *const peer_hostname[4],
                       const uint8_t *const peer_pin[4],
-                      const uint8_t peer_pin_len[4],
                       bool *reused_fd,
                       int timeout_ms);
 

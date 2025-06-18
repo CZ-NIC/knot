@@ -45,8 +45,6 @@ typedef struct {
 	const char *hostname[4];
 	/*! Remote certificate permittable PINs. */
 	const uint8_t *pin[4];
-	/*! Lengths of the remote certificate PINs. [0] == zero if PIN not specified. */
-	uint8_t pin_len[4];
 } conf_remote_t;
 
 /*! Configuration section iterator. */
