@@ -990,12 +990,7 @@ int zone_update_external(conf_t *conf, zone_update_t *update, conf_val_t *ev_id)
 	/* Second: wait on semaphore on user's interaction. */
 	pthread_mutex_lock(&update->zone->cu_lock);
 
-	if (update->zone->control_update != NULL) {
-		assert(update->zone->control_update == update);
-		assert(!(update->flags & UPDATE_WFEV));
-		pthread_mutex_unlock(&update->zone->cu_lock);
-		return KNOT_EOK; // real control update never waits for external validation
-	}
+	assert(update->zone->control_update == NULL);
 
 	if (zone_get_flag(update->zone, ZONE_SHUT_DOWN, false)) {
 		pthread_mutex_unlock(&update->zone->cu_lock);
@@ -1089,7 +1084,7 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 	}
 
 	val = conf_zone_get(conf, C_EXTERNAL_VLDT, update->zone->name);
-	if (val.code == KNOT_EOK) {
+	if (val.code == KNOT_EOK && (update->flags & UPDATE_EVREQ)) {
 		ret = zone_update_external(conf, update, &val);
 		if (ret != KNOT_EOK) {
 			discard_adds_tree(update);
