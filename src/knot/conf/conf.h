@@ -665,6 +665,30 @@ void conf_free_mod_id(
 );
 
 /*!
+ * Get the absolute path in zonefile-like manner for given name/template.
+ *
+ * \param[in] conf    Configuration.
+ * \param[in] txn     Configuration DB transaction.
+ * \param[in] zone    Zone name.
+ * \param[in] name    File name or template (like %s.zonediff).
+ *
+ * \return Absolute zone file path string pointer.
+ */
+char *conf_get_filename_txn(
+	conf_t *conf,
+	knot_db_txn_t *txn,
+	const knot_dname_t *zone,
+	const char *name
+);
+static inline char* conf_get_filename(
+	conf_t *conf,
+	const knot_dname_t *zone,
+	const char *name)
+{
+	return conf_get_filename_txn(conf, &conf->read_txn, zone, name);
+}
+
+/*!
  * Gets the absolute zone file path.
  *
  * \note The result must be explicitly deallocated.

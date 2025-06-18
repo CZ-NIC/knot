@@ -458,9 +458,9 @@ static const yp_item_t desc_policy[] = {
 static const yp_item_t desc_external[] = {
 	{ C_ID,                  YP_TSTR,  YP_VNONE, CONF_IO_FREF },
 	{ C_TIMEOUT,             YP_TINT,  YP_VINT = { 0, UINT32_MAX, 300, YP_STIME } },
-	{ C_DUMP_NEW,            YP_TSTR,  YP_VSTR = { "" } },
-	{ C_DUMP_REM,            YP_TSTR,  YP_VSTR = { "" } },
-	{ C_DUMP_ADD,            YP_TSTR,  YP_VSTR = { "" } },
+	{ C_DUMP_NEW,            YP_TSTR,  YP_VNONE },
+	{ C_DUMP_REM,            YP_TSTR,  YP_VNONE },
+	{ C_DUMP_ADD,            YP_TSTR,  YP_VNONE },
 	{ NULL }
 };
 

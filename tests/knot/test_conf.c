@@ -20,7 +20,7 @@ static void check_name(const char *zone, const char *name, const char *ref)
 {
 	knot_dname_t *z = knot_dname_from_str_alloc(zone);
 
-	char *file = get_filename(conf(), NULL, z, name);
+	char *file = conf_get_filename_txn(conf(), NULL, z, name);
 	ok(file != NULL, "Get zonefile path for %s", zone);
 	if (file != NULL) {
 		ok(strcmp(file, ref) == 0, "Zonefile path compare %s", name);
@@ -34,7 +34,7 @@ static void check_name_err(const char *zone, const char *name)
 {
 	knot_dname_t *z = knot_dname_from_str_alloc(zone);
 
-	char *filename = get_filename(conf(), NULL, z, name);
+	char *filename = conf_get_filename_txn(conf(), NULL, z, name);
 	ok(filename == NULL, "Invalid name %s", name);
 	free(filename);
 
