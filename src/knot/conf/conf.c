@@ -1072,13 +1072,15 @@ static int str_label(
 	return str_zone(label, buff, buff_len);
 }
 
-static char* get_filename(
+char *conf_get_filename_txn(
 	conf_t *conf,
 	knot_db_txn_t *txn,
 	const knot_dname_t *zone,
 	const char *name)
 {
-	assert(name);
+	if (name == NULL) {
+		return NULL;
+	}
 
 	const char *end = name + strlen(name);
 	char out[1024] = "";
@@ -1189,7 +1191,7 @@ char* conf_zonefile_txn(
 		file = "%s.zone";
 	}
 
-	return get_filename(conf, txn, zone, file);
+	return conf_get_filename_txn(conf, txn, zone, file);
 }
 
 char* conf_db_txn(
