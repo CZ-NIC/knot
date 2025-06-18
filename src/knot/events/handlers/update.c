@@ -164,6 +164,7 @@ static int process_normal(conf_t *conf, zone_t *zone, list_t *requests)
 	zone_update_t up;
 	zone_update_flags_t type = (zone->contents == NULL) ? UPDATE_FULL :
 	                           UPDATE_INCREMENTAL | UPDATE_NO_CHSET;
+	type |= UPDATE_EVREQ;
 	int ret = zone_update_init(&up, zone, type);
 	if (ret != KNOT_EOK) {
 		set_rcodes(requests, KNOT_RCODE_SERVFAIL);
