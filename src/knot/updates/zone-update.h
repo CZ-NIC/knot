@@ -51,8 +51,9 @@ typedef enum {
 	UPDATE_CHANGED_NSEC   = 1 << 7, /*!< This incremental update affects NSEC or NSEC3 nodes in zone. */
 	UPDATE_NO_CHSET       = 1 << 8, /*!< Avoid using changeset and serialize to journal from diff of bi-nodes. */
 	UPDATE_SIGNED_FULL    = 1 << 9, /*!< Full (non-incremental) zone sign took place during this update. */
-	UPDATE_WFEV           = 1 << 10, /*!< Update waiting for external validation. */
-	UPDATE_EVOK           = 1 << 11, /*!< External validation accepted the update. */
+	UPDATE_EVREQ          = 1 << 10, /*!< Update requires external validation (if configured). */
+	UPDATE_WFEV           = 1 << 11, /*!< Update waiting for external validation. */
+	UPDATE_EVOK           = 1 << 12, /*!< External validation accepted the update. */
 } zone_update_flags_t;
 
 /*!

@@ -220,6 +220,8 @@ int zone_flush_journal(conf_t *conf, zone_t *zone, bool verbose);
 
 bool zone_journal_has_zij(zone_t *zone);
 
+bool zone_journal_same_serial(zone_t *zone, uint32_t serial_to);
+
 /*!
  * \brief Clear failed_notify list before planning new NOTIFY.
  */

@@ -383,6 +383,13 @@ load_end:
 		(void)snprintf(new_serial_str, sizeof(new_serial_str), " -> %u", new_serial);
 	}
 
+	/* Heursitsics: this catches most of the cases when the zone load doesn'T
+	 * introduce any change to zone contents and external validation is useless.
+	 */
+	if (!zone_journal_same_serial(up.zone, new_serial)) {
+		up.flags |= UPDATE_EVREQ;
+	}
+
 	// Commit zone_update back to zone (including journal update, rcu,...).
 	ret = zone_update_commit(conf, &up);
 	if (ret != KNOT_EOK) {
