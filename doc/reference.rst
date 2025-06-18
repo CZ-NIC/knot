@@ -1574,13 +1574,13 @@ the communication with the remote server.
 cert-key
 --------
 
-An ordered list of remote certificate public key PINs. If the list is non-empty,
-communication with the remote is possible only via QUIC or TLS protocols and
+An ordered list of up to 4 remote certificate public key PINs. If the list is non-empty,
+communication with the remote is only possible via QUIC or TLS protocols, and
 a peer certificate is required. The peer certificate key must match one of the
 specified PINs.
 
 A PIN is a unique identifier that represents the public key of the peer certificate.
-It's a base64-encoded SHA-256 hash of the public key. This identifier
+It's a base64-encoded SHA-256 hash of the public key. This identifier usually
 remains the same on a certificate renewal.
 
 *Default:* not set
@@ -1592,6 +1592,8 @@ cert-hostname
 
 An ordered list of up to 4 hostnames to match against peer's certificate. At least
 one must match for successful certificate validation (see :ref:`server_ca-file`).
+If the list is non-empty, communication with the remote is only possible via
+QUIC or TLS protocols, and a peer certificate is required.
 
 *Default:* not set
 
@@ -1733,12 +1735,12 @@ cert-key
 --------
 
 An ordered list of remote certificate public key PINs. If the list is non-empty,
-communication with the remote is possible only via QUIC or TLS protocols and
+communication with the remote is only possible via QUIC or TLS protocols, and
 a peer certificate is required. The peer certificate key must match one of the
 specified PINs.
 
 A PIN is a unique identifier that represents the public key of the peer certificate.
-It's a base64-encoded SHA-256 hash of the public key. This identifier
+It's a base64-encoded SHA-256 hash of the public key. This identifier usually
 remains the same on a certificate renewal.
 
 *Default:* not set
@@ -1750,6 +1752,8 @@ cert-hostname
 
 An ordered list of hostnames to match against peer's certificate. At least one
 must match for successful certificate validation (see :ref:`server_ca-file`).
+If the list is non-empty, communication with the remote is only possible via
+QUIC or TLS protocols, and a peer certificate is required.
 
 *Default:* not set
 
