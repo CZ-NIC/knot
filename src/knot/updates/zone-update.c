@@ -961,22 +961,30 @@ int zone_update_external(conf_t *conf, zone_update_t *update, conf_val_t *ev_id)
 {
 	/* First: dump zone/diff files as/if configured. */
 	conf_val_t val = conf_id_get(conf, C_EXTERNAL, C_DUMP_NEW, ev_id);
-	const char *f_new = conf_str(&val);
+	char *f_new = conf_get_filename(conf, update->zone->name, conf_str(&val));
 	val = conf_id_get(conf, C_EXTERNAL, C_DUMP_REM, ev_id);
-	const char *f_rem = conf_str(&val);
+	char *f_rem = conf_get_filename(conf, update->zone->name, conf_str(&val));
 	val = conf_id_get(conf, C_EXTERNAL, C_DUMP_ADD, ev_id);
-	const char *f_add = conf_str(&val);
+	char *f_add = conf_get_filename(conf, update->zone->name, conf_str(&val));
 
 	int ret = KNOT_EOK;
-	if (*f_new != '\0' && ret == KNOT_EOK) {
+	if (f_new != NULL && ret == KNOT_EOK) {
 		ret = zonefile_write(f_new, update->new_cont, NULL);
 	}
-	if (*f_rem != '\0' && ret == KNOT_EOK) {
+	if (f_rem != NULL && ret == KNOT_EOK) {
 		ret = dump_changeset_part(update, false, f_rem, "w");
 	}
-	if (*f_add != '\0' && ret == KNOT_EOK) {
+	if (f_add != NULL && ret == KNOT_EOK) {
 		const char *mode = (strcmp(f_rem, f_add) == 0) ? "a" : "w";
 		ret = dump_changeset_part(update, true, f_add, mode);
+	}
+	free(f_new);
+	free(f_rem);
+	free(f_add);
+	if (ret != KNOT_EOK) {
+		log_zone_error(update->zone->name,
+		               "failed to dump new zone version or zone diff for external validation (%s)",
+		               knot_strerror(ret));
 	}
 
 	/* Second: wait on semaphore on user's interaction. */
