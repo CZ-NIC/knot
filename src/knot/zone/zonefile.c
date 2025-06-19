@@ -4,10 +4,7 @@
  */
 
 #include <assert.h>
-#include <errno.h>
 #include <inttypes.h>
-#include <libgen.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
@@ -18,7 +15,6 @@
 #include "libknot/libknot.h"
 #include "contrib/files.h"
 #include "knot/common/log.h"
-#include "knot/dnssec/zone-nsec.h"
 #include "knot/zone/semantic-check.h"
 #include "knot/zone/adjust.h"
 #include "knot/zone/contents.h"
@@ -292,8 +288,7 @@ static int rdb_load(zloader_t *loader)
 		ERROR(zname, "failed to connect to database");
 		return KNOT_ERROR;
 	} else if (reply->type == REDIS_REPLY_ERROR) {
-		ERROR(zname, "failed to load from database (%s)",
-		      reply->str);
+		ERROR(zname, "failed to load from database (%s)", reply->str);
 		freeReplyObject(reply);
 		return KNOT_ERROR;
 	} else if (reply->type != REDIS_REPLY_ARRAY) {
@@ -402,8 +397,7 @@ zone_contents_t *zonefile_load(zloader_t *loader, uint16_t threads)
 	ret = zone_adjust_contents(loader->contents, adjust_cb_flags_and_nsec3,
 	                           adjust_cb_nsec3_flags, true, true, 1, NULL);
 	if (ret != KNOT_EOK) {
-		ERROR(zname, "failed to finalize zone contents (%s)",
-		      knot_strerror(ret));
+		ERROR(zname, "failed to finalize zone contents (%s)", knot_strerror(ret));
 		goto fail;
 	}
 
@@ -411,8 +405,7 @@ zone_contents_t *zonefile_load(zloader_t *loader, uint16_t threads)
 	                         loader->err_handler, loader->time, threads);
 
 	if (ret != KNOT_EOK) {
-		ERROR(zname, "failed to load zone (%s)",
-		      knot_strerror(ret));
+		ERROR(zname, "failed to load zone (%s)", knot_strerror(ret));
 		goto fail;
 	}
 
@@ -421,8 +414,7 @@ zone_contents_t *zonefile_load(zloader_t *loader, uint16_t threads)
 	ret = zone_adjust_contents(loader->contents, unadjust_cb_point_to_nsec3,
 	                           NULL, false, false, 1, NULL);
 	if (ret != KNOT_EOK) {
-		ERROR(zname, "failed to finalize zone contents (%s)",
-		      knot_strerror(ret));
+		ERROR(zname, "failed to finalize zone contents (%s)", knot_strerror(ret));
 		goto fail;
 	}
 

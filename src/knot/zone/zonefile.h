@@ -15,7 +15,7 @@
 #endif
 
 typedef struct {
-	unsigned type;
+	unsigned type;                         /*!< Backend type. */
 	union {
 		void *rdb;                     /*!< Rdb context. */
 		struct {
@@ -29,7 +29,7 @@ typedef struct {
 	semcheck_optional_t sem_checks;  /*!< Do semantic checks. */
 	sem_handler_t *err_handler;      /*!< Semantic checks error handler. */
 	zone_skip_t *skip;               /*!< Skip configured types. */
-	time_t time;                     /*!< time for zone check. */
+	time_t time;                     /*!< Time for zone check. */
 } zloader_t;
 
 void err_handler_logger(sem_handler_t *handler, const zone_contents_t *zone,
@@ -42,7 +42,8 @@ void err_handler_logger(sem_handler_t *handler, const zone_contents_t *zone,
  * \param source Source file name.
  * \param origin Zone origin.
  * \param dflt_ttl Default TTL.
- * \param semantic_checks Perform semantic checks.
+ * \param sem_checks Perform semantic checks.
+ * \param sem_err_handler Semantic checks error handler.
  * \param time Time for semantic check.
  * \param skip RRTypes to be skipped.
  *
@@ -54,7 +55,6 @@ int zonefile_open(zloader_t *loader, const char *source, const knot_dname_t *ori
                   sem_handler_t *sem_err_handler, time_t time, zone_skip_t *skip);
 
 #ifdef ENABLE_REDIS
-
 int zone_rdb_exists(conf_t *conf, const knot_dname_t *zone, uint32_t *serial);
 
 int zone_rdb_open(zloader_t *loader, redisContext *rdb, const knot_dname_t *origin,
