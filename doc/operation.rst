@@ -1285,6 +1285,56 @@ be done by moving the current log file followed by reopening of the log file wit
 either ``knotc -b reload`` or by sending ``SIGHUP`` to the ``knotd`` process (see the
 :ref:`server_pidfile`).
 
+.. _External validation:
+
+External validation
+===================
+
+This feature enables automatic validation of each zone update by other vendors'
+zone checking tools, as well as enforcing user-specific policies on zone contents
+and updates (for example, that an update must not modify too many records of
+some RRtype).
+
+External validation can be combined, but does not depend on,
+:ref:`zone_dnssec-validation` and :ref:`zone_zonemd-verify` and behaves similarly
+in the way that when it fails, the update is discarded and Knot keeps
+answering (including outgoing zone transfers) from last good zone version.
+
+In specific, once :ref:`zone_external-validation` is configured, whenever
+a zone is being modified*, the zone updating process
+is paused just before publishing the new version, and awaits the verification
+and confirmation (or rejection) by the user (or perhaps a script).
+The user (or script) is notified by the :ref:`server_dbus-event`
+``external-verify`` about this fact, and should react by calling
+``knotc zone-commit`` to proceed with the update or ``knotc zone-abort`` to
+reject it. An alternative to calling the :doc:`knotc <man_knotc>` utility
+is sending the command to Knot's control socket directly using
+the python wrapper.
+
+\* ...by incoming Zone Transfer (AXFR/IXFR) or by
+Dynamic Update (DDNS) or by updating the Zone File, but not by Control Socket
+(``knotc zone-begin`` etc.), which is an exception.
+
+Note that the background-worker processing the update is blocked
+during the external validation and is not able to process updates to
+other zones during it. It is therefore recommended to finish the validation
+quickly and/or configure enough :ref:`server_background-workers`
+with respect to the number of configured zones.
+
+Further options can be configured in the :ref:`external section`.
+It enables to specify if the whole new zone and/or the zone differences
+should be dumped to given files in textual (zone file) format before the external
+validation takes place.
+
+Note that the external validation might be rejected automatically
+(without any call to ``knotc zone-abort``) in the cases of server shutdown,
+configuration re-load, or when configured :ref:`external_timeout` passes.
+This prevents server lock downs.
+
+See ``samples/external_validation.sh`` for a simple example of a Bash script
+providing the external validation, as a demostration of the combined
+DBus/knotc interface.
+
 .. _Data and metadata backup:
 
 Data and metadata backup
