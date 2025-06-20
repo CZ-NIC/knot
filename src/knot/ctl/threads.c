@@ -26,6 +26,7 @@ typedef struct {
 	pthread_cond_t cond;
 	knot_ctl_t *ctl;
 	server_t *server;
+	struct dthread *socket_dt;
 	pthread_t thread;
 	int ret;
 	unsigned thread_idx;
@@ -33,7 +34,7 @@ typedef struct {
 } concurrent_ctl_ctx_t;
 
 static void ctl_init_ctxs(concurrent_ctl_ctx_t *concurrent_ctxs, size_t n_ctxs,
-                          server_t *server, unsigned thr_idx_from)
+                          server_t *server, unsigned thr_idx_from, struct dthread *socket_dt)
 {
 	for (size_t i = 0; i < n_ctxs; i++) {
 		concurrent_ctl_ctx_t *cctx = &concurrent_ctxs[i];
@@ -41,6 +42,7 @@ static void ctl_init_ctxs(concurrent_ctl_ctx_t *concurrent_ctxs, size_t n_ctxs,
 		pthread_mutex_init(&cctx->mutex, NULL);
 		pthread_cond_init(&cctx->cond, NULL);
 		cctx->server = server;
+		cctx->socket_dt = socket_dt;
 		cctx->thread_idx = thr_idx_from + i + 1;
 	}
 }
@@ -192,7 +194,7 @@ static int ctl_socket_thr(struct dthread *dt)
 	bool thr_exclusive = false, stopped = false;
 
 	concurrent_ctl_ctx_t concurrent_ctxs[sock_thr_count];
-	ctl_init_ctxs(concurrent_ctxs, sock_thr_count, ctx->server, thr_idx);
+	ctl_init_ctxs(concurrent_ctxs, sock_thr_count, ctx->server, thr_idx, dt);
 
 	while (dt->unit->threads[0]->state & ThreadActive) {
 		if (ctl_cleanup_ctxs(concurrent_ctxs, sock_thr_count) == KNOT_CTL_ESTOP) {
