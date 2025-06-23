@@ -112,18 +112,23 @@ conn_pool_t *conn_pool_init(size_t capacity, knot_timediff_t timeout,
 	return pool;
 }
 
-void conn_pool_deinit(conn_pool_t *pool)
+void conn_pool_purge(conn_pool_t *pool)
 {
 	if (pool != NULL) {
-		pthread_cancel(pool->closing_thread);
-		pthread_join(pool->closing_thread, NULL);
-
 		conn_pool_fd_t fd;
 		knot_time_t unused;
 		while ((fd = get_old(pool, 0, &unused)) != CONN_POOL_FD_INVALID) {
 			pool->close_cb(fd);
 		}
+	}
+}
 
+void conn_pool_deinit(conn_pool_t *pool)
+{
+	if (pool != NULL) {
+		pthread_cancel(pool->closing_thread);
+		pthread_join(pool->closing_thread, NULL);
+		conn_pool_purge(pool);
 		pthread_mutex_destroy(&pool->mutex);
 		free(pool);
 	}
