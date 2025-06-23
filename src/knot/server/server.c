@@ -64,7 +64,7 @@
 #include <linux/filter.h>
 #endif
 
-#define SESSION_TICKET_POOL_TIMEOUT (24 * 3600)
+#define SESSION_TICKET_POOL_TIMEOUT 1200
 
 #define QUIC_LOG "QUIC/TLS, "
 
