@@ -603,3 +603,9 @@ int knot_tls_cert_check(struct gnutls_session_int *session,
 {
 	return knot_tls_cert_check_hostnames(session, creds->peer_hostnames);
 }
+
+_public_
+uint64_t knot_creds_hash(struct knot_creds *creds)
+{
+	return creds->creds_hash;
+}

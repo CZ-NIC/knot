@@ -99,9 +99,7 @@ try:
     else:
         master.fill_cert_key()
     slave.gen_confile()
-    #slave.reload() doesn't work for hostname, restart instead till fixed
-    slave.stop()
-    slave.start()
+    slave.reload()
     serials = upd_check_zones(master, slave, rnd_zones, serials)
 
     # Check slave not authenticated due to bad cert-key
@@ -127,9 +125,7 @@ try:
     else:
         slave.fill_cert_key()
     master.gen_confile()
-    #master.reload() doesn't work for hostname, restart instead till fixed
-    master.stop()
-    master.start()
+    master.reload()
     serials = upd_check_zones(master, slave, rnd_zones, serials)
 
 finally:

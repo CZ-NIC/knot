@@ -176,4 +176,13 @@ int knot_tls_cert_check_hostnames(struct gnutls_session_int *session,
 int knot_tls_cert_check(struct gnutls_session_int *session,
                         struct knot_creds *creds);
 
+/*!
+ * \brief Returns hashed creds sources for creds change detection.
+ *
+ * \param creds   TLS credentials.
+ *
+ * \return Hash of creds sources.
+ */
+uint64_t knot_creds_hash(struct knot_creds *creds);
+
 /*! @} */

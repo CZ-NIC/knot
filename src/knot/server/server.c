@@ -1509,6 +1509,13 @@ static int reconfigure_remote_pool(conf_t *conf, server_t *server)
 			}
 			global_sessticket_pool = new_pool;
 		}
+	} else if (server->quic_creds != NULL) {
+		static uint64_t hash = 0;
+		uint64_t curr_hash = knot_creds_hash(server->quic_creds);
+		if (hash != curr_hash) {
+			conn_pool_purge(global_sessticket_pool);
+		}
+		hash = curr_hash;
 	}
 
 	val = conf_get(conf, C_SRV, C_RMT_RETRY_DELAY);

@@ -53,6 +53,13 @@ conn_pool_t *conn_pool_init(size_t capacity, knot_timediff_t timeout,
                             conn_pool_invalid_cb_t invalid_cb);
 
 /*!
+ * \brief Purges the pool.
+ *
+ * \param pool  Connection pool.
+ */
+void conn_pool_purge(conn_pool_t *pool);
+
+/*!
  * \brief Deallocate the pool, close all connections, terminate closing thread.
  *
  * \param pool  Connection pool.

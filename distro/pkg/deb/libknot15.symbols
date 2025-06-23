@@ -10,6 +10,7 @@ libknot.so.15 libknot15 #MINVER#
  KNOT_DUMP_STYLE_DEFAULT@Base 3.4.0
  knot_creds_cert@Base 3.4.0
  knot_creds_free@Base 3.4.0
+ knot_creds_hash@Base 3.5.0
  knot_creds_init@Base 3.4.0
  knot_creds_init_peer@Base 3.4.0
  knot_creds_update@Base 3.4.0
