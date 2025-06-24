@@ -376,7 +376,7 @@ tcp-remote-io-timeout
 ---------------------
 
 Maximum time (in milliseconds) to receive or send one DNS message over an outbound
-TCP connection which has already been established to a configured remote server.
+TCP/QUIC/TLS connection which has already been established to a configured remote server.
 It means this limit applies to incoming zone transfers, sending NOTIFY,
 DDNS forwarding, and DS check or push. This timeout includes the time needed
 for a network round-trip and for a query processing by the remote.
