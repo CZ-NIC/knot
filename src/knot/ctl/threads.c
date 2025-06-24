@@ -26,6 +26,7 @@ typedef struct {
 	pthread_cond_t cond;
 	knot_ctl_t *ctl;
 	server_t *server;
+	pthread_t socket_thr;
 	pthread_t thread;
 	int ret;
 	unsigned thread_idx;
@@ -33,7 +34,7 @@ typedef struct {
 } concurrent_ctl_ctx_t;
 
 static void ctl_init_ctxs(concurrent_ctl_ctx_t *concurrent_ctxs, size_t n_ctxs,
-                          server_t *server, unsigned thr_idx_from)
+                          server_t *server, unsigned thr_idx_from, pthread_t socket_thr)
 {
 	for (size_t i = 0; i < n_ctxs; i++) {
 		concurrent_ctl_ctx_t *cctx = &concurrent_ctxs[i];
@@ -41,6 +42,7 @@ static void ctl_init_ctxs(concurrent_ctl_ctx_t *concurrent_ctxs, size_t n_ctxs,
 		pthread_mutex_init(&cctx->mutex, NULL);
 		pthread_cond_init(&cctx->cond, NULL);
 		cctx->server = server;
+		cctx->socket_thr = socket_thr;
 		cctx->thread_idx = thr_idx_from + i + 1;
 	}
 }
@@ -109,6 +111,10 @@ static void *ctl_process_thread(void *arg)
 
 		pthread_mutex_lock(&ctx->mutex);
 		ctx->ret = ret;
+		if (ret == KNOT_CTL_ESTOP) {
+			// Interrupt main ctl socket thread likely waiting in a syscall.
+			pthread_kill(ctx->socket_thr, SIGALRM);
+		}
 		ctx->exclusive = exclusive;
 		if (ctx->state == CONCURRENT_RUNNING) { // not KILLED
 			ctx->state = CONCURRENT_IDLE;
@@ -135,6 +141,10 @@ static concurrent_ctl_ctx_t *find_free_ctx(concurrent_ctl_ctx_t *concurrent_ctxs
 			while (cctx->state != CONCURRENT_IDLE) {
 				pthread_cond_wait(&cctx->cond, &cctx->mutex);
 			}
+			if (cctx->ret == KNOT_CTL_ESTOP) {
+				pthread_mutex_unlock(&cctx->mutex);
+				return NULL;
+			}
 			knot_ctl_free(cctx->ctl);
 			cctx->ctl = knot_ctl_clone(ctl);
 			if (cctx->ctl == NULL) {
@@ -151,6 +161,10 @@ static concurrent_ctl_ctx_t *find_free_ctx(concurrent_ctl_ctx_t *concurrent_ctxs
 	for (size_t i = 0; i < n_ctxs && res == NULL; i++) {
 		concurrent_ctl_ctx_t *cctx = &concurrent_ctxs[i];
 		pthread_mutex_lock(&cctx->mutex);
+		if (cctx->ret == KNOT_CTL_ESTOP) {
+			pthread_mutex_unlock(&cctx->mutex);
+			return NULL;
+		}
 		switch (cctx->state) {
 		case CONCURRENT_EMPTY:
 			(void)thread_create_nosignal(&cctx->thread, ctl_process_thread, cctx);
@@ -184,7 +198,7 @@ static int ctl_socket_thr(struct dthread *dt)
 	bool thr_exclusive = false, stopped = false;
 
 	concurrent_ctl_ctx_t concurrent_ctxs[sock_thr_count];
-	ctl_init_ctxs(concurrent_ctxs, sock_thr_count, ctx->server, thr_idx);
+	ctl_init_ctxs(concurrent_ctxs, sock_thr_count, ctx->server, thr_idx, dt->_thr);
 
 	while (dt->unit->threads[0]->state & ThreadActive) {
 		if (ctl_cleanup_ctxs(concurrent_ctxs, sock_thr_count) == KNOT_CTL_ESTOP) {
