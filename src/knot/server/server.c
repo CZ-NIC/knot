@@ -1003,7 +1003,7 @@ int server_start_answering(server_t *server)
 		return KNOT_EOK;
 	}
 
-	log_info("starting server");
+	log_info("server started");
 	server->state |= ServerAnswering;
 	for (int proto = IO_UDP; proto <= IO_XDP; ++proto) {
 		if (server->handlers[proto].size > 0) {
