@@ -397,6 +397,11 @@ static int request_produce(knot_requestor_t *req, knot_request_t *last,
 	}
 
 	if (req->layer.state == KNOT_STATE_CONSUME) {
+		if ((last->flags & KNOT_REQUEST_NEW) &&
+		    !(last->flags & (KNOT_REQUEST_UDP | KNOT_REQUEST_TLS))) {
+			close(last->fd);
+			last->fd = -1;
+		}
 		bool reused_fd = false;
 		ret = request_send(last, timeout_ms, &reused_fd);
 		if (ret != KNOT_EOK) {
