@@ -35,6 +35,7 @@ typedef enum {
 	KNOT_REQUEST_QUIC = 1 << 3,  /*!< Use QUIC/UDP for requests. */
 	KNOT_REQUEST_TLS  = 1 << 4,  /*!< Use DoT for requests. */
 	KNOT_REQUEST_FWD  = 1 << 5,  /*!< Forwarded message, don't modify (TSIG, PADDING). */
+	KNOT_REQUEST_NEW  = 1 << 6,  /*!< Ensure a new TCP connection is established. */
 } knot_request_flag_t;
 
 typedef enum {
