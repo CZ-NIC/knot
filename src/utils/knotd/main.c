@@ -279,9 +279,9 @@ static int event_loop(server_t *server, const char *socket, bool daemonize,
 	signals_enable();
 
 	if (daemonize) {
-		log_info("server started as a daemon, PID %lu", pid);
+		log_info("starting server as a daemon, PID %lu", pid);
 	} else {
-		log_info("server started in the foreground, PID %lu", pid);
+		log_info("starting server in the foreground, PID %lu", pid);
 	}
 
 	/* Run interrupt processing loop. */
