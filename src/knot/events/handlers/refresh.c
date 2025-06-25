@@ -1388,6 +1388,9 @@ static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master,
 	}
 
 	knot_request_flag_t flags = conf->cache.srv_tcp_fastopen ? KNOT_REQUEST_TFO : 0;
+	if (data.edns.no_edns) {
+		flags |= KNOT_REQUEST_NEW;
+	}
 	knot_request_t *req = knot_request_make(NULL, master, pkt, zone->server->quic_creds,
 	                                        &data.edns, flags);
 	if (req == NULL) {
