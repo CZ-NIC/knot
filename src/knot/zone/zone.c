@@ -468,10 +468,12 @@ void zone_notifailed_clear(zone_t *zone)
 	pthread_mutex_unlock(&zone->preferred_lock);
 }
 
-void zone_schedule_notify(zone_t *zone, time_t delay)
+void zone_schedule_notify(conf_t *conf, zone_t *zone, time_t delay)
 {
+	conf_val_t val = conf_zone_get(conf, C_NOTIFY_DELAY, zone->name);
+	int64_t conf_delay = conf_int(&val);
 	zone_notifailed_clear(zone);
-	zone_events_schedule_at(zone, ZONE_EVENT_NOTIFY, time(NULL) + delay);
+	zone_events_schedule_at(zone, ZONE_EVENT_NOTIFY, time(NULL) + conf_delay + delay);
 }
 
 zone_contents_t *zone_switch_contents(zone_t *zone, zone_contents_t *new_contents)

@@ -413,11 +413,7 @@ load_end:
 	replan_from_timers(conf, zone);
 
 	if (!zone_timers_serial_notified(&zone->timers, new_serial)) {
-		val = conf_zone_get(conf, C_NOTIFY_DELAY, zone->name);
-		int64_t delay = conf_int(&val);
-		if (delay >= 0) {
-			zone_schedule_notify(zone, delay);
-		}
+		zone_schedule_notify(conf, zone, 0);
 	}
 
 	return KNOT_EOK;

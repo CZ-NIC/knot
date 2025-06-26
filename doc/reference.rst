@@ -2671,9 +2671,8 @@ Empty value is allowed for template value overriding.
 notify-delay
 ------------
 
-The time delay in seconds before an outgoing NOTIFY message is sent upon loading
-a new zone (e.g. to ensure that secondaries have enough time to adjust their catalogues).
-Set to -1 to prevent sending NOTIFY messages in this context.
+A time delay in seconds before an outgoing NOTIFY message is sent. This delay
+also defines the time granularity at which NOTIFY messages are sent per zone.
 
 *Default:* ``0``
 
