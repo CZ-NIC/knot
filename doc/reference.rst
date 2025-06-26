@@ -1613,10 +1613,12 @@ no-edns
 -------
 
 If enabled, no OPT record (EDNS) is inserted to outgoing requests to this
-remote server. Additionally, if TCP is used for zone refresh, the SOA query
-and the subsequent AXFR/IXFR query do not share the same TCP connection.
-This mode is necessary for communication with some broken
+remote server. This mode is necessary for communication with some broken
 implementations (e.g. Windows Server 2016).
+
+Additionally, if TCP is used for zone refresh, the SOA query and the subsequent
+AXFR/IXFR query do not share the same TCP connection. This workaround
+allows transfers from some broken implementations (e.g. ixfrdist).
 
 .. NOTE::
    This option effectively disables :ref:`zone expire<Zone expiration>` timer
