@@ -47,6 +47,9 @@ def check_error(server, msg):
 def upd_check_zones(master, slave, zones, prev_serials):
     for z in rnd_zones:
         master.random_ddns(z, allow_empty=False)
+    if master.valgrind: # Should fix unstability under Valgrind
+        t.sleep(1)
+        master.ctl("zone-notify")
     serials = slave.zones_wait(zones, prev_serials)
     t.xfr_diff(master, slave, zones, prev_serials)
     return serials
