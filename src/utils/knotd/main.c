@@ -314,7 +314,7 @@ static int event_loop(server_t *server, const char *socket, bool daemonize,
 			goto done;
 		}
 
-		sleep(5); // wait for signals to arrive
+		sleep(2); // wait for signals to arrive
 	}
 
 	if (conf()->cache.srv_dbus_event & DBUS_EVENT_RUNNING) {
