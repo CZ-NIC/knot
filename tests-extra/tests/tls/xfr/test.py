@@ -85,7 +85,11 @@ try:
     # Check IXFR with cert-key-based authenticated master
     master.fill_cert_key()
     slave.gen_confile()
-    slave.reload()
+    if slave.valgrind: # For unknown reason reload is unstable with ASAN
+        slave.reload()
+    else:
+        slave.stop()
+        slave.start()
     serials = upd_check_zones(master, slave, rnd_zones, serials)
 
     # Check slave not authenticated due to bad cert-key
@@ -101,7 +105,11 @@ try:
     # Check IXFR with cert-key-based authenticated slave
     slave.fill_cert_key()
     master.gen_confile()
-    master.reload()
+    if master.valgrind: # For unknown reason reload is unstable with ASAN
+        master.reload()
+    else:
+        master.stop()
+        master.start()
     serials = upd_check_zones(master, slave, rnd_zones, serials)
 
 finally:
