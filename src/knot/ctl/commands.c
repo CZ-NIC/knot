@@ -988,7 +988,7 @@ static int zone_txn_commit_l(zone_t *zone, _unused_ ctl_args_t *args)
 	free(zone->control_update);
 	zone->control_update = NULL;
 
-	zone_schedule_notify(zone, 0);
+	zone_schedule_notify(conf(), zone, 0);
 
 	return KNOT_EOK;
 }

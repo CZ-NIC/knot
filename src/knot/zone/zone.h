@@ -215,7 +215,7 @@ bool zone_journal_has_zij(zone_t *zone);
  * \brief Clear failed_notify list before planning new NOTIFY.
  */
 void zone_notifailed_clear(zone_t *zone);
-void zone_schedule_notify(zone_t *zone, time_t delay);
+void zone_schedule_notify(conf_t *conf, zone_t *zone, time_t delay);
 
 /*!
  * \brief Atomically switch the content of the zone.

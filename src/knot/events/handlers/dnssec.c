@@ -50,7 +50,7 @@ void event_dnssec_reschedule(conf_t *conf, zone_t *zone,
 		ZONE_EVENT_DNSKEY_SYNC, refresh->plan_dnskey_sync ? now + jitter : ignore
 	);
 	if (zone_changed) {
-		zone_schedule_notify(zone, 0);
+		zone_schedule_notify(conf, zone, 0);
 	}
 }
 
