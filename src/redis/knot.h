@@ -7,7 +7,7 @@
 
 #include <inttypes.h>
 
-#define RDB_TXN_LEN	2
+#define RDB_OK	"OK"
 
 typedef struct {
 	uint8_t instance;

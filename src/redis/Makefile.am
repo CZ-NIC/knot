@@ -6,6 +6,7 @@ pkglibdir = ${libdir}/knot/redis
 if ENABLE_REDIS
 pkglib_LTLIBRARIES = knot.la
 knot_la_SOURCES = \
+        arg.h \
         knot.c \
         knot.h \
         libs.h
