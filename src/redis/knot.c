@@ -1296,6 +1296,112 @@ static int knot_zone_abort_bin(RedisModuleCtx *ctx, RedisModuleString **argv, in
 	return RedisModule_ReplyWithSimpleString(ctx, "OK");
 }
 
+static int knot_zone_exists(RedisModuleCtx *ctx, knot_dname_t *origin, size_t origin_len, transaction_t *txn)
+{
+	if (txn->id == TXN_ID_ACTIVE) {
+		int ret = active_transaction(ctx, origin, txn);
+		if (ret != KNOT_EOK) {
+			return RedisModule_ReplyWithError(ctx, "ERR unknown instance");
+		}
+	}
+
+	RedisModuleKey *zone_key = find_zone_index(ctx, origin, origin_len, txn, REDISMODULE_READ);
+	if (zone_key == NULL) {
+		return RedisModule_ReplyWithLongLong(ctx, -1);
+	}
+	int zone_keytype = RedisModule_KeyType(zone_key);
+	if (zone_keytype == REDISMODULE_KEYTYPE_EMPTY) {
+		RedisModule_CloseKey(zone_key);
+		return RedisModule_ReplyWithError(ctx, "ERR Does not exist");
+	} else if (zone_keytype != REDISMODULE_KEYTYPE_ZSET) {
+		RedisModule_CloseKey(zone_key);
+		return RedisModule_ReplyWithError(ctx, "ERR Bad data");
+	}
+
+	foreach_in_zset_subset(zone_key, KNOT_SCORE_SOA, KNOT_SCORE_SOA) {
+		double score = 0.0;
+		RedisModuleString *el = RedisModule_ZsetRangeCurrentElement(zone_key, &score);
+		if (el == NULL) {
+			break;
+		}
+
+		RedisModuleKey *rrset_key = RedisModule_OpenKey(ctx, el, REDISMODULE_READ);
+		if (rrset_key == NULL) {
+			continue;
+		}
+
+		knot_rrset_v *rrset = RedisModule_ModuleTypeGetValue(rrset_key);
+		uint32_t serial = knot_soa_serial(rrset->rrs.rdata);
+
+		RedisModule_CloseKey(rrset_key);
+		RedisModule_ZsetRangeStop(zone_key);
+		RedisModule_CloseKey(zone_key);
+
+		return RedisModule_ReplyWithLongLong(ctx, serial);
+	}
+	RedisModule_ZsetRangeStop(zone_key);
+	RedisModule_CloseKey(zone_key);
+
+	return RedisModule_ReplyWithLongLong(ctx, -1);
+}
+
+static int knot_zone_exists_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
+{
+	transaction_t txn = {
+		.instance = 1,
+		.id = TXN_ID_ACTIVE
+	};
+	knot_dname_storage_t origin;
+
+	switch (argc) {
+	case 3:
+		if ((txn.instance = parse_instance(argv[2])) == 0) {
+			return RedisModule_ReplyWithError(ctx, "ERR invalid zone instance");
+		}
+	case 2: // FALLTHROUGH
+		if (parse_dname(ctx, argv[1], origin, NULL) == NULL) {
+			return RedisModule_ReplyWithError(ctx, "ERR invalid zone name");
+		}
+		break;
+	default:
+		return RedisModule_WrongArity(ctx);
+	}
+
+	knot_zone_exists(ctx, origin, knot_dname_size(origin), &txn);
+	return REDISMODULE_OK;
+}
+
+static int knot_zone_exists_bin(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
+{
+	transaction_t txn = {
+		.instance = 1,
+		.id = TXN_ID_ACTIVE
+	};
+
+	size_t origin_len = 0, txn_len = 0;
+	knot_dname_t *origin = NULL;
+
+	switch (argc) {
+	case 3:; // FALLTHROUGH
+		const char *txn_recv = RedisModule_StringPtrLen(argv[2], &txn_len);
+		if (txn_len < 1 || txn_len > 2) {
+			return RedisModule_ReplyWithError(ctx, "Malformed transaction");
+		}
+		memcpy(&txn, txn_recv, txn_len);
+	case 2: // FALLTHROUGH
+		origin = (knot_dname_t *)RedisModule_StringPtrLen(argv[1], &origin_len);
+		if (origin_len > KNOT_DNAME_MAXLEN) {
+			return RedisModule_ReplyWithError(ctx, "Malformed origin");
+		}
+		break;
+	default:
+		return RedisModule_WrongArity(ctx);
+	}
+
+	knot_zone_exists(ctx, origin, origin_len, &txn);
+	return REDISMODULE_OK;
+}
+
 static int dump_rrset(RedisModuleCtx *ctx, knot_rrset_t *rrset, char *buf,
                       size_t buf_size, long *count, bool merge)
 {
@@ -1482,7 +1588,7 @@ static int knot_zone_load_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int
 
 static int knot_zone_load_bin(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 {
-	static transaction_t txn = {
+	transaction_t txn = {
 		.instance = 1,
 		.id = TXN_ID_ACTIVE
 	};
@@ -2037,6 +2143,8 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 	    RedisModule_CreateCommand(ctx, "knot.zone.commit.bin",   knot_zone_commit_bin,   "write",    1, 1, 1) == REDISMODULE_ERR ||
 	    RedisModule_CreateCommand(ctx, "knot.zone.abort",        knot_zone_abort_txt,    "write",    1, 1, 1) == REDISMODULE_ERR ||
 	    RedisModule_CreateCommand(ctx, "knot.zone.abort.bin",    knot_zone_abort_bin,    "write",    1, 1, 1) == REDISMODULE_ERR ||
+	    RedisModule_CreateCommand(ctx, "knot.zone.exists",       knot_zone_exists_txt,   "readonly", 1, 1, 1) == REDISMODULE_ERR ||
+	    RedisModule_CreateCommand(ctx, "knot.zone.exists.bin",   knot_zone_exists_bin,   "readonly", 1, 1, 1) == REDISMODULE_ERR ||
 	    RedisModule_CreateCommand(ctx, "knot.zone.load",         knot_zone_load_txt,     "readonly", 1, 1, 1) == REDISMODULE_ERR ||
 	    RedisModule_CreateCommand(ctx, "knot.zone.load.bin",     knot_zone_load_bin,     "readonly", 1, 1, 1) == REDISMODULE_ERR ||
 	    RedisModule_CreateCommand(ctx, "knot.upd.begin",         knot_upd_begin_txt,     "write",    1, 1, 1) == REDISMODULE_ERR ||
