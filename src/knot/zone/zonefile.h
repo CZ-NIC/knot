@@ -14,10 +14,18 @@
 #include <hiredis/hiredis.h>
 #endif
 
+typedef enum {
+	ZLOADER_BACKEND_FILE = 1,
+	ZLOADER_BACKEND_DB   = 2,
+} zloader_backend_t;
+
 typedef struct {
-	unsigned type;                         /*!< Backend type. */
+	zloader_backend_t backend;             /*!< Backend type. */
 	union {
-		void *rdb;                     /*!< Rdb context. */
+		struct {
+			void *rdb;             /*!< Rdb context. */
+			unsigned instance;     /*!< Zone instance. */
+		};
 		struct {
 			char *source;          /*!< Zone source file. */
 			zs_scanner_t scanner;  /*!< Zone scanner. */
@@ -58,10 +66,10 @@ int zonefile_open(zloader_t *loader, const char *source, const knot_dname_t *ori
 int zone_rdb_exists(conf_t *conf, const knot_dname_t *zone, uint32_t *serial);
 
 int zone_rdb_open(zloader_t *loader, redisContext *rdb, const knot_dname_t *origin,
-                  semcheck_optional_t sem_checks, sem_handler_t *sem_err_handler,
-                  time_t time, zone_skip_t *skip);
+                  unsigned instance, semcheck_optional_t sem_checks,
+                  sem_handler_t *sem_err_handler, time_t time, zone_skip_t *skip);
 
-int zone_rdb_write(redisContext *rdb, zone_contents_t *zone);
+int zone_rdb_write(redisContext *rdb, zone_contents_t *zone, uint8_t instance);
 #endif
 
 /*!

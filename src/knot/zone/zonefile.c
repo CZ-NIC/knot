@@ -219,7 +219,7 @@ int zonefile_open(zloader_t *loader, const char *source, const knot_dname_t *ori
 		return ret;
 	}
 
-	loader->type = ZONE_BACKEND_FILE;
+	loader->backend = ZLOADER_BACKEND_FILE;
 	loader->source = strdup(source);
 
 	return KNOT_EOK;
@@ -229,16 +229,17 @@ int zonefile_open(zloader_t *loader, const char *source, const knot_dname_t *ori
 #include "knot/common/hiredis.h"
 
 int zone_rdb_open(zloader_t *loader, redisContext *rdb, const knot_dname_t *origin,
-                  semcheck_optional_t sem_checks, sem_handler_t *sem_err_handler,
-                  time_t time, zone_skip_t *skip)
+                  unsigned instance, semcheck_optional_t sem_checks,
+                  sem_handler_t *sem_err_handler, time_t time, zone_skip_t *skip)
 {
 	int ret = init_common(loader, origin, time, sem_checks, sem_err_handler, skip);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
 
-	loader->type = ZONE_BACKEND_DB;
+	loader->backend = ZLOADER_BACKEND_DB;
 	loader->rdb = rdb;
+	loader->instance = instance;
 
 	return KNOT_EOK;
 }
@@ -277,7 +278,7 @@ static int process_rdb_data(zone_contents_t *contents, redisReply *data,
 static int rdb_load(zloader_t *loader)
 {
 	assert(loader);
-	assert(loader->type == ZONE_BACKEND_DB);
+	assert(loader->backend == ZLOADER_BACKEND_DB);
 
 	const knot_dname_t *zname = loader->contents->apex->owner;
 
@@ -342,7 +343,7 @@ int zone_rdb_exists(conf_t *conf, const knot_dname_t *zone, uint32_t *serial)
 static int file_load(zloader_t *loader)
 {
 	assert(loader);
-	assert(loader->type == ZONE_BACKEND_FILE);
+	assert(loader->backend == ZLOADER_BACKEND_FILE);
 
 	const knot_dname_t *zname = loader->contents->apex->owner;
 
@@ -373,7 +374,7 @@ zone_contents_t *zonefile_load(zloader_t *loader, uint16_t threads)
 	const knot_dname_t *zname = loader->contents->apex->owner;
 
 	int ret;
-	if (loader->type == ZONE_BACKEND_FILE) {
+	if (loader->backend == ZLOADER_BACKEND_FILE) {
 		ret = file_load(loader);
 	} else {
 #ifdef ENABLE_REDIS
@@ -431,7 +432,7 @@ void zonefile_close(zloader_t *loader)
 		return;
 	}
 
-	if (loader->type == ZONE_BACKEND_FILE) {
+	if (loader->backend == ZLOADER_BACKEND_FILE) {
 		zs_deinit(&loader->scanner);
 		free(loader->source);
 	} else {
@@ -506,7 +507,7 @@ int zonefile_write(const char *path, zone_contents_t *zone, zone_skip_t *skip)
 }
 
 #ifdef ENABLE_REDIS
-int zone_rdb_write(redisContext *rdb, zone_contents_t *zone)
+int zone_rdb_write(redisContext *rdb, zone_contents_t *zone, uint8_t instance)
 {
 	if (rdb == NULL) {
 		return KNOT_EINVAL;
@@ -516,7 +517,7 @@ int zone_rdb_write(redisContext *rdb, zone_contents_t *zone)
 		return KNOT_EEMPTYZONE;
 	}
 
-	return zone_dump_rdb(zone, rdb);
+	return zone_dump_rdb(zone, rdb, instance);
 }
 #endif
 

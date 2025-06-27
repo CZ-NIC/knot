@@ -85,8 +85,9 @@ static int flush_journal(conf_t *conf, zone_t *zone, bool allow_empty_zone, bool
 		return KNOT_EOK;
 	}
 
-	val = conf_zone_get(conf, C_ZONE_BACKEND, zone->name);
-	unsigned backend = conf_opt(&val);
+	val = conf_zone_get(conf, C_ZONE_DB_OUT, zone->name);
+	unsigned instance = conf_int(&val);
+	bool to_file = (instance == 0);
 
 	rcu_read_lock();
 	struct stat st = { 0 };
@@ -100,7 +101,7 @@ static int flush_journal(conf_t *conf, zone_t *zone, bool allow_empty_zone, bool
 		goto flush_journal_replan;
 	}
 
-	if (backend == ZONE_BACKEND_FILE) {
+	if (to_file) {
 		char *zonefile = conf_zonefile(conf, zone->name);
 
 		ret = zonefile_write_skip(zonefile, contents, conf);
@@ -139,7 +140,7 @@ static int flush_journal(conf_t *conf, zone_t *zone, bool allow_empty_zone, bool
 			goto flush_journal_replan;
 		}
 
-		ret = zone_rdb_write(rdb, contents);
+		ret = zone_rdb_write(rdb, contents, instance);
 		rcu_read_unlock();
 		if (ret != KNOT_EOK) {
 			log_zone_warning(zone->name, "failed to update database (%s)",

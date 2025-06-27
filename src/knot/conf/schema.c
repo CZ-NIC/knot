@@ -36,14 +36,6 @@ static const knot_lookup_t keystore_backends[] = {
 	{ 0, NULL }
 };
 
-static const knot_lookup_t zone_backends[] = {
-	{ ZONE_BACKEND_FILE, "file" },
-#ifdef ENABLE_REDIS
-	{ ZONE_BACKEND_DB,   "database" },
-#endif
-	{ 0, NULL }
-};
-
 static const knot_lookup_t tsig_key_algs[] = {
 	{ DNSSEC_TSIG_HMAC_MD5,    "hmac-md5" },
 	{ DNSSEC_TSIG_HMAC_SHA1,   "hmac-sha1" },
@@ -320,8 +312,10 @@ static const yp_item_t desc_database[] = {
 	{ C_CATALOG_DB_MAX_SIZE, YP_TINT,  YP_VINT = { MEGA(5), VIRT_MEM_LIMIT(GIGA(100)),
 	                                               VIRT_MEM_LIMIT(GIGA(20)), YP_SSIZE } },
 	{ C_ZONE_DB_LISTEN,      YP_TADDR, YP_VADDR = { 6379 }, YP_FNONE, { check_listen } },
+#ifdef ENABLE_REDIS
 	{ C_ZONE_DB_TLS,         YP_TBOOL, YP_VNONE },
 	{ C_ZONE_DB_CERT_KEY,    YP_TB64,  YP_VNONE, YP_FMULTI, { check_cert_pin } },
+#endif
 	{ C_COMMENT,             YP_TSTR,  YP_VNONE },
 	{ NULL }
 };
@@ -462,7 +456,6 @@ static const yp_item_t desc_policy[] = {
 };
 
 #define ZONE_ITEMS(FLAGS) \
-	{ C_ZONE_BACKEND,        YP_TOPT,  YP_VOPT = { zone_backends, ZONE_BACKEND_FILE }, FLAGS }, \
 	{ C_STORAGE,             YP_TSTR,  YP_VSTR = { STORAGE_DIR }, FLAGS }, \
 	{ C_FILE,                YP_TSTR,  YP_VNONE, FLAGS }, \
 	{ C_MASTER,              YP_TREF,  YP_VREF = { C_RMT, C_RMTS }, YP_FMULTI | CONF_REF_EMPTY, \
@@ -479,6 +472,8 @@ static const yp_item_t desc_policy[] = {
 	{ C_ZONEFILE_SYNC,       YP_TINT,  YP_VINT = { -1, INT32_MAX, 0, YP_STIME } }, \
 	{ C_ZONEFILE_LOAD,       YP_TOPT,  YP_VOPT = { zonefile_load, ZONEFILE_LOAD_WHOLE } }, \
 	{ C_ZONEFILE_SKIP,       YP_TSTR,  YP_VNONE, YP_FMULTI, { check_zonefile_skip } }, \
+	{ C_ZONE_DB_IN,          YP_TINT,  YP_VINT = { 1, 8, 0 }, FLAGS }, \
+	{ C_ZONE_DB_OUT,         YP_TINT,  YP_VINT = { 1, 8, 0 }, FLAGS }, \
 	{ C_JOURNAL_CONTENT,     YP_TOPT,  YP_VOPT = { journal_content, JOURNAL_CONTENT_CHANGES }, FLAGS }, \
 	{ C_JOURNAL_MAX_USAGE,   YP_TINT,  YP_VINT = { KILO(40), SSIZE_MAX, MEGA(100), YP_SSIZE } }, \
 	{ C_JOURNAL_MAX_DEPTH,   YP_TINT,  YP_VINT = { 2, SSIZE_MAX, 20 } }, \

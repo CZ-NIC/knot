@@ -100,8 +100,8 @@ int event_load(conf_t *conf, zone_t *zone)
 
 	// If configured, attempt to load zonefile.
 	if (zf_from != ZONEFILE_LOAD_NONE && zone->cat_members == NULL) {
-		val = conf_zone_get(conf, C_ZONE_BACKEND, zone->name);
-		bool from_file = (conf_opt(&val) == ZONE_BACKEND_FILE);
+		val = conf_zone_get(conf, C_ZONE_DB_IN, zone->name);
+		bool from_file = (conf_int(&val) == 0);
 
 		struct timespec mtime = { 0 };
 		char *filename = NULL;
