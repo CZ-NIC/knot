@@ -176,12 +176,13 @@ static int check_loaded(server_t *server, bool async)
 	}
 
 	assert(server->state & ServerRunning);
-	if (conf()->cache.srv_dbus_event & DBUS_EVENT_RUNNING) {
-		if (load) {   /* Not 'loaded' yet. */
-			dbus_emit_running(true);
-			loaded = true;
-		}
-	} else {
+	if (!conf()->cache.srv_dbus_event & DBUS_EVENT_RUNNING) {
+		loaded = true;
+		return KNOT_EOK;
+	}
+
+	if (load) {   /* Not 'loaded' yet. */
+		dbus_emit_running(true);
 		loaded = true;
 	}
 
