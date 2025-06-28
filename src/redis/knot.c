@@ -73,11 +73,6 @@ typedef struct {
 	uint32_t dest_ttl;
 } knot_diff_v;
 
-typedef struct {
-	uint8_t instance;
-	uint8_t id;
-} transaction_t;
-
 typedef enum {
 	EVENT     = 1,
 	ZONE_META = 2,
@@ -345,7 +340,7 @@ static int commit_event(RedisModuleCtx *ctx, knot_event_type event, ...)
 	return REDISMODULE_OK;
 }
 
-static RedisModuleKey *find_index(const uint8_t prefix, RedisModuleCtx *ctx, const uint8_t *origin, size_t origin_len, const transaction_t *txn, int rights)
+static RedisModuleKey *find_index(const uint8_t prefix, RedisModuleCtx *ctx, const uint8_t *origin, size_t origin_len, const rdb_txn_t *txn, int rights)
 {
 	RedisModule_Assert(ctx != NULL && txn != NULL);
 
@@ -367,7 +362,7 @@ static RedisModuleKey *find_index(const uint8_t prefix, RedisModuleCtx *ctx, con
 }
 
 
-static RedisModuleKey *find_upd_index(RedisModuleCtx *ctx, const uint8_t *origin, size_t origin_len, const transaction_t *txn, uint16_t id, int rights)
+static RedisModuleKey *find_upd_index(RedisModuleCtx *ctx, const uint8_t *origin, size_t origin_len, const rdb_txn_t *txn, uint16_t id, int rights)
 {
 	const uint8_t prefix = UPD_TMP;
 
@@ -445,7 +440,7 @@ static double evaluate_score(uint16_t rtype)
 	}
 }
 
-static RedisModuleString *construct_rrset_key(RedisModuleCtx *ctx, const transaction_t *txn, const knot_dname_t *origin, size_t origin_len, const knot_dname_t *owner, size_t owner_len, uint16_t rtype)
+static RedisModuleString *construct_rrset_key(RedisModuleCtx *ctx, const rdb_txn_t *txn, const knot_dname_t *origin, size_t origin_len, const knot_dname_t *owner, size_t owner_len, uint16_t rtype)
 {
 	uint8_t buf[KNOT_RRSET_KEY_MAXLEN];
 	uint8_t prefix = RRSET;
@@ -538,7 +533,7 @@ static int rdata_add(RedisModuleCtx *ctx, const rdb_txn_t *txn,
 	return 0;
 }
 
-static int rdata_remove(RedisModuleCtx *ctx, const transaction_t *txn,
+static int rdata_remove(RedisModuleCtx *ctx, const rdb_txn_t *txn,
                      size_t origin_len, const uint8_t *origin, size_t owner_len,
                      const uint8_t *owner, uint16_t rtype, uint32_t ttl,
                      const knot_rdata_t *rdata)
@@ -592,7 +587,7 @@ static int rdata_remove(RedisModuleCtx *ctx, const transaction_t *txn,
 }
 
 // [active_txn][1-9]
-static int txn_init(const uint8_t prefix, RedisModuleCtx *ctx, transaction_t *txn, const uint8_t *zone, size_t zone_len)
+static int txn_init(const uint8_t prefix, RedisModuleCtx *ctx, rdb_txn_t *txn, const uint8_t *zone, size_t zone_len)
 {
 	assert(txn->instance != 0);
 
@@ -642,7 +637,7 @@ typedef struct {
 	uint16_t lock[TXN_MAX_COUNT];
 } upd_meta_storage_t;
 
-static int upd_txn_init(RedisModuleCtx *ctx, transaction_t *txn, const uint8_t *zone, size_t zone_len)
+static int upd_txn_init(RedisModuleCtx *ctx, rdb_txn_t *txn, const uint8_t *zone, size_t zone_len)
 {
 	static const uint8_t prefix = UPD_META;
 
@@ -700,7 +695,7 @@ static uint8_t parse_instance(RedisModuleString *arg)
 	}
 }
 
-static int parse_transaction(RedisModuleString *arg, transaction_t *txn)
+static int parse_transaction(RedisModuleString *arg, rdb_txn_t *txn)
 {
 	assert(txn != NULL);
 
@@ -719,7 +714,7 @@ static int parse_transaction(RedisModuleString *arg, transaction_t *txn)
 	return KNOT_EOK;
 }
 
-static int parse_transaction2(RedisModuleString *arg, transaction_t *txn)
+static int parse_transaction2(RedisModuleString *arg, rdb_txn_t *txn)
 {
 	assert(txn != NULL);
 
@@ -753,12 +748,12 @@ static int parse_rtype(uint16_t *rtype, const RedisModuleString *source)
 	return knot_rrtype_from_string(rtype_str, rtype);
 }
 
-static int serialize_transaction(const transaction_t *txn)
+static int serialize_transaction(const rdb_txn_t *txn)
 {
 	return 10 * txn->instance + txn->id;
 }
 
-static int active_transaction(RedisModuleCtx *ctx, const uint8_t *origin, transaction_t *txn)
+static int active_transaction(RedisModuleCtx *ctx, const uint8_t *origin, rdb_txn_t *txn)
 {
 	assert(txn->instance > 0);
 
@@ -778,7 +773,7 @@ static int active_transaction(RedisModuleCtx *ctx, const uint8_t *origin, transa
 	return KNOT_EEXIST;
 }
 
-static int get_id(RedisModuleCtx *ctx, const knot_dname_t *origin, const transaction_t *txn)
+static int get_id(RedisModuleCtx *ctx, const knot_dname_t *origin, const rdb_txn_t *txn)
 {
 	RedisModuleString *txn_k = upd_meta_keyname(ctx, origin, knot_dname_size(origin), txn->instance);
 	if (txn_k == NULL) {
@@ -812,7 +807,7 @@ static int get_id(RedisModuleCtx *ctx, const knot_dname_t *origin, const transac
 	return id;
 }
 
-static void delete_index(const uint8_t prefix, RedisModuleCtx *ctx, const transaction_t *txn, const uint8_t *origin, size_t origin_len)
+static void delete_index(const uint8_t prefix, RedisModuleCtx *ctx, const rdb_txn_t *txn, const uint8_t *origin, size_t origin_len)
 {
 	RedisModule_Assert(ctx != NULL && txn != NULL);
 
@@ -856,7 +851,7 @@ static void delete_index(const uint8_t prefix, RedisModuleCtx *ctx, const transa
 	RedisModule_CloseKey(index_key);
 }
 
-static bool txn_get_when_open(RedisModuleCtx *ctx, const knot_dname_t *origin_dname, const transaction_t *txn, RedisModuleKey **key, int rights)
+static bool txn_get_when_open(RedisModuleCtx *ctx, const knot_dname_t *origin_dname, const rdb_txn_t *txn, RedisModuleKey **key, int rights)
 {
 	assert(key != NULL && *key == NULL);
 
@@ -873,7 +868,7 @@ static bool txn_get_when_open(RedisModuleCtx *ctx, const knot_dname_t *origin_dn
 }
 
 
-static bool txn_is_open(RedisModuleCtx *ctx, const knot_dname_t *origin_dname, const transaction_t *txn)
+static bool txn_is_open(RedisModuleCtx *ctx, const knot_dname_t *origin_dname, const rdb_txn_t *txn)
 {
 	RedisModuleKey *key = NULL;
 	bool out = txn_get_when_open(ctx, origin_dname, txn, &key, REDISMODULE_READ);
@@ -933,7 +928,7 @@ static int knot_rrset_aof_rewrite(RedisModuleCtx *ctx, RedisModuleString **argv,
 	return REDISMODULE_OK;
 }
 
-static int knot_begin(const uint8_t prefix, RedisModuleCtx *ctx, transaction_t *txn, const uint8_t *zone, int zone_len)
+static int knot_begin(const uint8_t prefix, RedisModuleCtx *ctx, rdb_txn_t *txn, const uint8_t *zone, int zone_len)
 {
 	int ret = KNOT_EOK;
 	switch (prefix) {
@@ -958,7 +953,7 @@ static int knot_begin(const uint8_t prefix, RedisModuleCtx *ctx, transaction_t *
 // <zone_name> [<instance_id=1>]
 static int knot_zone_begin_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 {
-	transaction_t txn = { .instance = 1 };
+	rdb_txn_t txn = { .instance = 1 };
 	knot_dname_storage_t zone;
 
 	switch (argc) {
@@ -985,7 +980,7 @@ static int knot_zone_begin_txt(RedisModuleCtx *ctx, RedisModuleString **argv, in
 
 static int knot_zone_begin_bin(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 {
-	transaction_t txn = { .instance = 1 };
+	rdb_txn_t txn = { .instance = 1 };
 	knot_dname_storage_t *zone = NULL;
 	size_t zone_len = 0;
 
@@ -1017,7 +1012,7 @@ static int knot_zone_begin_bin(RedisModuleCtx *ctx, RedisModuleString **argv, in
 
 typedef struct {
 	RedisModuleCtx *ctx;
-	transaction_t *txn;
+	rdb_txn_t *txn;
 	bool replied;
 	bool remove;
 } scanner_ctx_t;
@@ -1159,7 +1154,7 @@ static int knot_zone_store_bin(RedisModuleCtx *ctx, RedisModuleString **argv, in
 	return RedisModule_ReplyWithSimpleString(ctx, RDB_OK);
 }
 
-static int knot_zone_commit(RedisModuleCtx *ctx, knot_dname_t *origin, transaction_t *txn)
+static int knot_zone_commit(RedisModuleCtx *ctx, knot_dname_t *origin, rdb_txn_t *txn)
 {
 	RedisModuleKey *meta_key = NULL;
 	if (txn_get_when_open(ctx, origin, txn, &meta_key, REDISMODULE_READ | REDISMODULE_WRITE) == false) {
@@ -1193,7 +1188,7 @@ static int knot_zone_commit(RedisModuleCtx *ctx, knot_dname_t *origin, transacti
 	char *meta = RedisModule_StringDMA(meta_key, &len, REDISMODULE_WRITE);
 	uint8_t active_old = meta[0];
 	if (active_old) {
-		transaction_t txn_old = {
+		rdb_txn_t txn_old = {
 			.instance = txn->instance,
 			.id = active_old
 		};
@@ -1221,7 +1216,7 @@ static int knot_zone_commit_txt(RedisModuleCtx *ctx, RedisModuleString **argv, i
 	}
 
 	knot_dname_storage_t origin;
-	transaction_t txn;
+	rdb_txn_t txn;
 	parse_dname(ctx, argv[1], origin, NULL);
 	int ret = parse_transaction(argv[2], &txn);
 
@@ -1248,7 +1243,7 @@ static int knot_zone_commit_bin(RedisModuleCtx *ctx, RedisModuleString **argv, i
 
 	size_t origin_len = 0, txn_len = 0;
 	knot_dname_storage_t *origin = (knot_dname_storage_t *)RedisModule_StringPtrLen(argv[1], &origin_len);
-	transaction_t *txn = (transaction_t *)RedisModule_StringPtrLen(argv[2], &txn_len);
+	rdb_txn_t *txn = (rdb_txn_t *)RedisModule_StringPtrLen(argv[2], &txn_len);
 
 	if (origin_len > KNOT_DNAME_MAXLEN) {
 		return RedisModule_ReplyWithError(ctx, "Malformed origin");
@@ -1262,7 +1257,7 @@ static int knot_zone_commit_bin(RedisModuleCtx *ctx, RedisModuleString **argv, i
 	return RedisModule_ReplyWithSimpleString(ctx, "OK");
 }
 
-static int knot_zone_abort(RedisModuleCtx *ctx, knot_dname_t *origin, transaction_t *txn)
+static int knot_zone_abort(RedisModuleCtx *ctx, knot_dname_t *origin, rdb_txn_t *txn)
 {
 	RedisModuleKey *meta_key = NULL;
 	if (txn_get_when_open(ctx, origin, txn, &meta_key, REDISMODULE_READ | REDISMODULE_WRITE) == false) {
@@ -1289,7 +1284,7 @@ static int knot_zone_abort_txt(RedisModuleCtx *ctx, RedisModuleString **argv, in
 	}
 
 	knot_dname_storage_t origin;
-	transaction_t txn;
+	rdb_txn_t txn;
 	parse_dname(ctx, argv[1], origin, NULL);
 	int ret = parse_transaction(argv[2], &txn);
 
@@ -1312,7 +1307,7 @@ static int knot_zone_abort_bin(RedisModuleCtx *ctx, RedisModuleString **argv, in
 
 	size_t origin_len = 0, txn_len = 0;
 	knot_dname_storage_t *origin = (knot_dname_storage_t *)RedisModule_StringPtrLen(argv[1], &origin_len);
-	transaction_t *txn = (transaction_t *)RedisModule_StringPtrLen(argv[2], &txn_len);
+	rdb_txn_t *txn = (rdb_txn_t *)RedisModule_StringPtrLen(argv[2], &txn_len);
 
 	if (origin_len > KNOT_DNAME_MAXLEN) {
 		return RedisModule_ReplyWithError(ctx, "Malformed origin");
@@ -1328,7 +1323,7 @@ static int knot_zone_abort_bin(RedisModuleCtx *ctx, RedisModuleString **argv, in
 	return RedisModule_ReplyWithSimpleString(ctx, "OK");
 }
 
-static int knot_zone_exists(RedisModuleCtx *ctx, knot_dname_t *origin, size_t origin_len, transaction_t *txn)
+static int knot_zone_exists(RedisModuleCtx *ctx, knot_dname_t *origin, size_t origin_len, rdb_txn_t *txn)
 {
 	if (txn->id == TXN_ID_ACTIVE) {
 		int ret = active_transaction(ctx, origin, txn);
@@ -1379,7 +1374,7 @@ static int knot_zone_exists(RedisModuleCtx *ctx, knot_dname_t *origin, size_t or
 
 static int knot_zone_exists_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 {
-	transaction_t txn = {
+	rdb_txn_t txn = {
 		.instance = 1,
 		.id = TXN_ID_ACTIVE
 	};
@@ -1405,7 +1400,7 @@ static int knot_zone_exists_txt(RedisModuleCtx *ctx, RedisModuleString **argv, i
 
 static int knot_zone_exists_bin(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 {
-	transaction_t txn = {
+	rdb_txn_t txn = {
 		.instance = 1,
 		.id = TXN_ID_ACTIVE
 	};
@@ -1488,7 +1483,7 @@ static int dump_rrset(RedisModuleCtx *ctx, knot_rrset_t *rrset, char *buf,
 	return 0;
 }
 
-static int knot_zone_load(RedisModuleCtx *ctx, knot_dname_t *origin, size_t origin_len, transaction_t *txn, knot_dname_t *opt_owner, uint16_t *opt_rtype, bool txt)
+static int knot_zone_load(RedisModuleCtx *ctx, knot_dname_t *origin, size_t origin_len, rdb_txn_t *txn, knot_dname_t *opt_owner, uint16_t *opt_rtype, bool txt)
 {
 	if (txn->id == TXN_ID_ACTIVE) {
 		int ret = active_transaction(ctx, origin, txn);
@@ -1579,7 +1574,7 @@ static int knot_zone_load(RedisModuleCtx *ctx, knot_dname_t *origin, size_t orig
 static int knot_zone_load_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 {
 	knot_dname_storage_t origin;
-	transaction_t txn = {
+	rdb_txn_t txn = {
 		.instance = 1,
 		.id = TXN_ID_ACTIVE
 	};
@@ -1620,7 +1615,7 @@ static int knot_zone_load_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int
 
 static int knot_zone_load_bin(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 {
-	transaction_t txn = {
+	rdb_txn_t txn = {
 		.instance = 1,
 		.id = TXN_ID_ACTIVE
 	};
@@ -1666,7 +1661,7 @@ static int knot_zone_load_bin(RedisModuleCtx *ctx, RedisModuleString **argv, int
 
 static int knot_upd_begin_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 {
-	transaction_t txn = { .instance = 1 };
+	rdb_txn_t txn = { .instance = 1 };
 	knot_dname_storage_t zone;
 
 	switch (argc) {
@@ -1691,7 +1686,7 @@ static int knot_upd_begin_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int
 	return RedisModule_ReplyWithLongLong(ctx, serialize_transaction(&txn));
 }
 
-static bool upd_meta_get_when_open(RedisModuleCtx *ctx, const knot_dname_t *origin_dname, const transaction_t *txn, RedisModuleKey **key, int rights)
+static bool upd_meta_get_when_open(RedisModuleCtx *ctx, const knot_dname_t *origin_dname, const rdb_txn_t *txn, RedisModuleKey **key, int rights)
 {
 	assert(key != NULL && *key == NULL);
 
@@ -1707,7 +1702,7 @@ static bool upd_meta_get_when_open(RedisModuleCtx *ctx, const knot_dname_t *orig
 	return transaction->lock[txn->id] != 0;
 }
 
-static RedisModuleString *construct_diff_key(RedisModuleCtx *ctx, const knot_dname_t *origin, size_t origin_len, const transaction_t *txn, const knot_dname_t *owner, size_t owner_len, uint16_t rtype, uint16_t id)
+static RedisModuleString *construct_diff_key(RedisModuleCtx *ctx, const knot_dname_t *origin, size_t origin_len, const rdb_txn_t *txn, const knot_dname_t *owner, size_t owner_len, uint16_t rtype, uint16_t id)
 {
 	RedisModule_Assert(ctx != NULL && txn != NULL);
 
@@ -1728,7 +1723,7 @@ static RedisModuleString *construct_diff_key(RedisModuleCtx *ctx, const knot_dna
 	return RedisModule_CreateString(ctx, buf, wire_ctx_offset(&w));
 }
 
-static int knot_upd_add_rem(RedisModuleCtx *ctx, const knot_dname_t *origin, const size_t origin_len, const transaction_t *txn, const knot_dname_t *owner, const size_t owner_len, const uint32_t ttl, const uint16_t rtype, const knot_rdata_t *rdataset, const bool remove)
+static int knot_upd_add_rem(RedisModuleCtx *ctx, const knot_dname_t *origin, const size_t origin_len, const rdb_txn_t *txn, const knot_dname_t *owner, const size_t owner_len, const uint32_t ttl, const uint16_t rtype, const knot_rdata_t *rdataset, const bool remove)
 {
 	int ret = get_id(ctx, origin, txn);
 	if (ret < 0 || ret > UINT16_MAX) {
@@ -1820,7 +1815,7 @@ static int knot_upd_add_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int a
 		return RedisModule_WrongArity(ctx);
 	}
 
-	transaction_t txn;
+	rdb_txn_t txn;
 	knot_dname_storage_t origin;
 	size_t record_len = 0, origin_len = 0;
 	const char *origin_str = RedisModule_StringPtrLen(argv[1], &origin_len);
@@ -1862,7 +1857,7 @@ static int knot_upd_remove_txt(RedisModuleCtx *ctx, RedisModuleString **argv, in
 		return RedisModule_WrongArity(ctx);
 	}
 
-	transaction_t txn;
+	rdb_txn_t txn;
 	knot_dname_storage_t origin;
 	size_t record_len = 0, origin_len = 0;
 	const char *origin_str = RedisModule_StringPtrLen(argv[1], &origin_len);
@@ -1915,7 +1910,7 @@ static RedisModuleString *construct_commited_upd_key(RedisModuleCtx *ctx, const 
 	return RedisModule_CreateString(ctx, buf, wire_ctx_offset(&w));
 }
 
-static int knot_upd_commit(RedisModuleCtx *ctx, knot_dname_t *origin, transaction_t *txn)
+static int knot_upd_commit(RedisModuleCtx *ctx, knot_dname_t *origin, rdb_txn_t *txn)
 {
 	RedisModuleKey *meta_key = NULL;
 	if (upd_meta_get_when_open(ctx, origin, txn, &meta_key, REDISMODULE_READ | REDISMODULE_WRITE) == false) {
@@ -1933,7 +1928,7 @@ static int knot_upd_commit(RedisModuleCtx *ctx, knot_dname_t *origin, transactio
 	uint16_t id = ret;
 
 	size_t origin_len = knot_dname_size(origin);
-	transaction_t zone_txn = {
+	rdb_txn_t zone_txn = {
 		.instance = txn->instance
 	};
 	ret = active_transaction(ctx, origin, &zone_txn);
@@ -2043,7 +2038,7 @@ static int knot_upd_commit_txt(RedisModuleCtx *ctx, RedisModuleString **argv, in
 	}
 
 	knot_dname_storage_t origin;
-	transaction_t txn;
+	rdb_txn_t txn;
 	parse_dname(ctx, argv[1], origin, NULL);
 	int ret = parse_transaction(argv[2], &txn);
 
@@ -2062,7 +2057,7 @@ static int knot_upd_commit_txt(RedisModuleCtx *ctx, RedisModuleString **argv, in
 	return RedisModule_ReplyWithSimpleString(ctx, "OK");
 }
 
-static int knot_upd_abort(RedisModuleCtx *ctx, knot_dname_t *origin, transaction_t *txn)
+static int knot_upd_abort(RedisModuleCtx *ctx, knot_dname_t *origin, rdb_txn_t *txn)
 {
 	RedisModuleKey *meta_key = NULL;
 	if (upd_meta_get_when_open(ctx, origin, txn, &meta_key, REDISMODULE_READ | REDISMODULE_WRITE) == false) {
@@ -2088,7 +2083,7 @@ static int knot_upd_abort_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int
 	}
 
 	knot_dname_storage_t origin;
-	transaction_t txn;
+	rdb_txn_t txn;
 	if (parse_dname(ctx, argv[1], origin, NULL) == NULL) {
 		return RedisModule_ReplyWithError(ctx, "Malformed dname");
 	}
