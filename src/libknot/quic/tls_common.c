@@ -284,7 +284,9 @@ static void hash_file(SIPHASH_CTX *ctx, const char *file_name)
 	if (fd == -1 ||
 	    fstat(fd, &file_stat) == -1 ||
 	    (data = mmap(0, file_stat.st_size, PROT_READ, MAP_SHARED, fd, 0)) == MAP_FAILED) {
-		close(fd);
+		if (fd > -1) {
+			close(fd);
+		}
 		return;
 	}
 
