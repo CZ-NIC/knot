@@ -405,7 +405,7 @@ static int request_produce(knot_requestor_t *req, knot_request_t *last,
 	}
 
 	if (req->layer.state == KNOT_STATE_CONSUME) {
-		if ((last->flags & KNOT_REQUEST_NEW) &&
+		if ((last->flags & KNOT_REQUEST_NEW) && (last->fd >= 0) &&
 		    !(last->flags & (KNOT_REQUEST_UDP | KNOT_REQUEST_TLS))) {
 			close(last->fd);
 			last->fd = -1;
