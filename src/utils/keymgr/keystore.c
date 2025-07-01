@@ -198,26 +198,28 @@ static int init_keystore(dnssec_keystore_t **store, const char *keystore_id,
 	id.blob = (const uint8_t *)keystore_id;
 	id.blob_len = len;
 
-	unsigned backend;
-	bool key_label;
+	knot_kasp_keystore_t *keystores = NULL;
 
-	int ret = zone_init_keystore(conf(), NULL, &id, store, &backend, &key_label);
+	int ret = zone_init_keystore(conf(), NULL, &id, &keystores);
 	if (ret != KNOT_EOK) {
 		ERR2("failed to open '%s' keystore (%s)", keystore_id, knot_strerror(ret));
 		return ret;
 	}
+	assert(keystores[0].count == 1);
+	*store = keystores[0].keystore;
 
 	if (strcmp(keystore_id, DFLT_ID) == 0) {
 		printf("Keystore default");
 	} else {
 		printf("Keystore id '%s'", keystore_id);
 	};
-	printf(", type %s", (backend == KEYSTORE_BACKEND_PEM ? "PEM" : "PKCS #11"));
+	printf(", type %s", (keystores[0].backend == KEYSTORE_BACKEND_PEM ? "PEM" : "PKCS #11"));
 	if (threads > 0) {
 		printf(", threads %u", threads);
 	}
 	printf("\n\n");
 
+	free(keystores);
 	return KNOT_EOK;
 }
 

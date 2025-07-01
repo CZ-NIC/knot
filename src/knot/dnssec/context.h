@@ -28,8 +28,7 @@ typedef struct {
 	knot_lmdb_db_t *kasp_db;
 	knot_kasp_zone_t *zone;
 	knot_kasp_policy_t *policy;
-	dnssec_keystore_t *keystore;
-	unsigned keystore_type;
+	knot_kasp_keystore_t *keystores;
 
 	char *kasp_zone_path;
 

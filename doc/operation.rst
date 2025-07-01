@@ -1214,6 +1214,46 @@ or module used for communication with the HSM.
      --write-object c4eae5dea3ee8c15395680085c515f2ad41941b6.pub.der --type pubkey \
      --usage-sign --id c4eae5dea3ee8c15395680085c515f2ad41941b6
 
+.. _DNSSEC multiple keystores:
+
+DNSSEC multiple keystores
+=========================
+
+Private keys for signing a single zone can be stored in more than one keystore
+with two main use-cases:
+
+Keystore migration
+------------------
+
+Some keystores (HSMs) do not allow exporting private key material, so it is not
+possible to migrate away from them by copying the private keys to a new keystore
+(another HSM or a directory with PEM files). In such cases, the migration must
+be performed by key rollover(s), where new keys are generated in the target
+keystore, while the old keys remain in the original one and are eventually
+retired and removed.
+
+During the transition period (i.e. rollovers), both keystores must be
+configured simultaneously. This is achieved by configuring them both in the
+:ref:`keystore section` and referencing them in the :ref:`policy_keystore`
+option in :ref:`policy section`. The order matters: new keys are generated
+in the first referenced keystore, so in this case, the target keystore must be
+listed first.
+
+KSK more secured than ZSK
+-------------------------
+
+When desirable, the Key Signing Key (KSK) can be stored in an HSM, while the Zone
+Signing Key (ZSK) is kept in a simple PEM file. This enhances the security of
+the KSK while preserving zone signing performance (as HSM signing operations are
+usually much slower).
+
+To achieve this, both keystores must be configured in the
+:ref:`keystore section`, while the PKCS#11 keystore (the HSM) has the
+:ref:`keystore_ksk-only` option enabled and being listed first in the
+:ref:`policy_keystore` option in :ref:`policy section`. With this configuration,
+new KSKs are generated in the HSM, while ZSKs are generated in the second
+keystore.
+
 .. _Controlling a running daemon:
 
 Daemon controls

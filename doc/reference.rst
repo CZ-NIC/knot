@@ -1347,6 +1347,7 @@ DNSSEC keystore configuration.
    - id: STR
      backend: pem | pkcs11
      config: STR
+     ksk-only: BOOL
      key-label: BOOL
 
 .. _keystore_id:
@@ -1387,6 +1388,16 @@ The PKCS #11 URI Scheme is defined in :rfc:`7512`.
      "pkcs11:token=knot;pin-value=1234 /usr/lib64/pkcs11/libsofthsm2.so"
 
 *Default:* :ref:`kasp-db<database_kasp-db>`\ ``/keys``
+
+.. _keystore_ksk-only:
+
+ksk-only
+--------
+
+Newly generated keys sre stored in this keystore only if they are KSKs or CSKs.
+Zone signing keys will be stored in subsequent keystore without this option enabled.
+
+*Default:* ``off``
 
 .. _keystore_key-label:
 
@@ -2008,7 +2019,7 @@ DNSSEC policy configuration.
 
  policy:
    - id: STR
-     keystore: keystore_id
+     keystore: keystore_id ...
      manual: BOOL
      single-type-signing: BOOL
      algorithm: rsasha1 | rsasha1-nsec3-sha1 | rsasha256 | rsasha512 | ecdsap256sha256 | ecdsap384sha384 | ed25519 | ed448
@@ -2055,10 +2066,20 @@ keystore
 A :ref:`reference<keystore_id>` to a keystore holding private key material
 for zones.
 
-*Default:* an imaginary keystore with all default values
+If multiple keystores are specified, private keys for signing are looked up in
+all of them. But newly generated keys are stored in the first one (or in the
+first one without enabled :ref:`keystore_ksk-only` in the case of a new ZSK)
+in the specified order.
+
+.. NOTE::
+   If multiple keystores are configured and a zone is being restored
+   with the :ref:`back up<Data and metadata backup>` feature, all restored
+   private keys are stored into the first referenced keystore.
 
 .. NOTE::
    A configured keystore called "default" won't be used unless explicitly referenced.
+
+*Default:* an imaginary keystore with all default values
 
 .. _policy_manual:
 

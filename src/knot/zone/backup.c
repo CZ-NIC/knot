@@ -23,6 +23,7 @@
 #include "knot/ctl/commands.h"
 #include "knot/dnssec/kasp/kasp_zone.h"
 #include "knot/dnssec/kasp/keystore.h"
+#include "knot/dnssec/zone-keys.h"
 #include "knot/journal/journal_metadata.h"
 #include "knot/server/server.h"
 #include "knot/zone/backup_dir.h"
@@ -215,7 +216,8 @@ static char *dir_file(const char *dir_name, const char *file_name)
 	return sprintf_alloc("%s/%s", dir_name, basename);
 }
 
-static int backup_key(key_params_t *parm, dnssec_keystore_t *from, dnssec_keystore_t *to)
+static int backup_key(key_params_t *parm, const knot_dname_t *zname,
+                      knot_kasp_keystore_t *from, knot_kasp_keystore_t *to)
 {
 	dnssec_key_t *key = NULL;
 	int ret = dnssec_key_new(&key);
@@ -224,9 +226,22 @@ static int backup_key(key_params_t *parm, dnssec_keystore_t *from, dnssec_keysto
 	}
 	dnssec_key_set_algorithm(key, parm->algorithm);
 
-	ret = dnssec_keystore_get_private(from, parm->id, key);
+	dnssec_keystore_t *to_pem = NULL;
+	for (size_t i = 0; i < to[0].count; i++) {
+		if (to[i].backend == KEYSTORE_BACKEND_PEM) {
+			to_pem = to[i].keystore;
+			break;
+		}
+	}
+
+	unsigned backend;
+	ret = kdnssec_load_private(from, parm->id, key, NULL, &backend);
 	if (ret == DNSSEC_EOK) {
-		ret = dnssec_keystore_set_private(to, key);
+		if (backend == KEYSTORE_BACKEND_PKCS11 || to_pem == NULL) {
+			log_zone_notice(zname, "private keys from PKCS #11 are not subject of backup/restore, skipping them");
+		} else {
+			ret = dnssec_keystore_set_private(to[0].keystore, key);
+		}
 	}
 
 	dnssec_key_free(key);
@@ -352,29 +367,34 @@ done:
 
 static int backup_keystore(conf_t *conf, zone_t *zone, zone_backup_ctx_t *ctx)
 {
-	dnssec_keystore_t *from = NULL, *to = NULL;
+	knot_kasp_keystore_t *from = NULL, *to = NULL;
 
 	conf_val_t policy_id = get_zone_policy(conf, zone->name);
 
-	unsigned backend_type = 0;
-	int ret = zone_init_keystore(conf, &policy_id, NULL, &from, &backend_type, NULL);
+	int ret = zone_init_keystore(conf, &policy_id, NULL, &from);
 	if (ret != KNOT_EOK) {
 		LOG_FAIL("keystore init");
 		return ret;
 	}
-	if (backend_type == KEYSTORE_BACKEND_PKCS11) {
-		log_zone_notice(zone->name, "private keys from PKCS #11 are not subject of backup/restore");
-		(void)dnssec_keystore_deinit(from);
-		return KNOT_EOK;
+
+	to = calloc(1, sizeof(*to));
+	if (to == NULL) {
+		LOG_FAIL("out of memory");
+		zone_deinit_keystore(&from);
+		return KNOT_ENOMEM;
 	}
 
+	dnssec_keystore_t *to_ks;
 	char kasp_dir[strlen(ctx->backup_dir) + 6];
 	(void)snprintf(kasp_dir, sizeof(kasp_dir), "%s/keys", ctx->backup_dir);
-	ret = keystore_load("keys", KEYSTORE_BACKEND_PEM, kasp_dir, &to);
+	ret = keystore_load("keys", KEYSTORE_BACKEND_PEM, kasp_dir, &to_ks);
 	if (ret != KNOT_EOK) {
 		LOG_FAIL("keystore load");
 		goto done;
 	}
+	to->keystore = to_ks;
+	to->count = 1;
+	to->backend = KEYSTORE_BACKEND_PEM;
 
 	BACKUP_SWAP(ctx, from, to);
 
@@ -390,7 +410,7 @@ static int backup_keystore(conf_t *conf, zone_t *zone, zone_backup_ctx_t *ctx)
 	WALK_LIST(n, key_params) {
 		key_params_t *parm = n->d;
 		if (ret == KNOT_EOK && !parm->is_pub_only) {
-			ret = backup_key(parm, from, to);
+			ret = backup_key(parm, zone->name, from, to);
 		}
 		free_key_params(parm);
 	}
@@ -400,8 +420,8 @@ static int backup_keystore(conf_t *conf, zone_t *zone, zone_backup_ctx_t *ctx)
 	ptrlist_deep_free(&key_params, NULL);
 
 done:
-	(void)dnssec_keystore_deinit(to);
-	(void)dnssec_keystore_deinit(from);
+	zone_deinit_keystore(&to);
+	zone_deinit_keystore(&from);
 	return ret;
 }
 

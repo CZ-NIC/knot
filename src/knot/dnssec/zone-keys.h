@@ -113,6 +113,30 @@ int kdnssec_share_key(kdnssec_ctx_t *ctx, const knot_dname_t *from_zone, const c
 int kdnssec_delete_key(kdnssec_ctx_t *ctx, knot_kasp_key_t *key_ptr);
 
 /*!
+ * \brief Load private key for given ID by searching all configured keystores.
+ *
+ * \param keystores     Array of keystores.
+ * \param id            Key ID to search.
+ * \param key           Libdnssec key structure to be filled with private material.
+ * \param name          Optional: name of the keystore in the configuration.
+ * \param backend       Optional: backend of the keystore where found.
+ *
+ * \return DNSSEC_E*
+ */
+int kdnssec_load_private(knot_kasp_keystore_t *keystores, const char *id,
+                         dnssec_key_t *key, const char **name, unsigned *backend);
+
+/*!
+ * \brief Find configured keystore for newly generated key.
+ *
+ * \param keystores    Array of keystores.
+ * \param ksk          If the generated key is a KSK or CSK.
+ *
+ * \return Suitable keystore or NULL.
+ */
+knot_kasp_keystore_t *knot_store_for_key(knot_kasp_keystore_t *keystores, bool ksk);
+
+/*!
  * \brief Load zone keys and init cryptographic context.
  *
  * \param ctx            Zone signing context.
