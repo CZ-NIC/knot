@@ -235,7 +235,7 @@ static int backup_key(key_params_t *parm, const knot_dname_t *zname,
 	}
 
 	unsigned backend;
-	ret = kdnssec_load_private(from, parm->id, key, &backend);
+	ret = kdnssec_load_private(from, parm->id, key, NULL, &backend);
 	if (ret == DNSSEC_EOK) {
 		if (backend == KEYSTORE_BACKEND_PKCS11 || to_pem == NULL) {
 			log_zone_notice(zname, "private keys from PKCS #11 are not subject of backup/restore, skipping them");
