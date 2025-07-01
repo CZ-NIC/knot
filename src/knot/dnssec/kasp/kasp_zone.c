@@ -349,6 +349,7 @@ int zone_init_keystore(conf_t *conf, conf_val_t *policy_id, conf_val_t *keystore
 	for (size_t i = 0; i < ks_count && ret == KNOT_EOK; i++) {
 		knot_kasp_keystore_t *ks = *keystores + i;
 
+		ks->name = conf_str(keystore_id);
 		conf_val_t val = conf_id_get(conf, C_KEYSTORE, C_BACKEND, keystore_id);
 		ks->backend = conf_opt(&val);
 		val = conf_id_get(conf, C_KEYSTORE, C_KSK_ONLY, keystore_id);
