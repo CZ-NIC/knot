@@ -66,6 +66,7 @@ server.gen_confile()
 server.reload()
 
 server.ctl("zone-key-rollover %s ksk" % zone[0].name)
+serial += 1 # wait for two increments
 serial = server.zone_wait(zone, serial)
 check_key_count(server, "keys0ksk", 1)
 check_key_count(server, "keys1", 0)
