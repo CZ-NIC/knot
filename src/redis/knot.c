@@ -184,7 +184,7 @@ static void rrset_rewrite(RedisModuleIO *aof, RedisModuleString *key, void *valu
 	size_t key_strlen = 0;
 	const rrset_v *rrset = (const rrset_v *)value;
 	const uint8_t *key_str = (const uint8_t *)RedisModule_StringPtrLen(key, &key_strlen);
-	RedisModule_EmitAOF(aof, "KNOT.RRSET.AOF_REWRITE", "bllb",
+	RedisModule_EmitAOF(aof, "KNOT_BIN.AOF.RRSET", "bllb",
 	                    key_str, key_strlen,
 	                    (long long)rrset->ttl,
 	                    (long long)rrset->rrs.count,
@@ -261,7 +261,7 @@ static void diff_rewrite(RedisModuleIO *aof, RedisModuleString *key, void *value
 	size_t key_strlen = 0;
 	const diff_v *diff = (const diff_v *)value;
 	const uint8_t *key_str = (const uint8_t *)RedisModule_StringPtrLen(key, &key_strlen);
-	RedisModule_EmitAOF(aof, "KNOT.DIFF.AOF_REWRITE", "blblbl",
+	RedisModule_EmitAOF(aof, "KNOT_BIN.AOF.DIFF", "blblbl",
 	                    key_str, key_strlen,
 	                    (long long)diff->add_rrs.count,
 	                    diff->add_rrs.rdata, (long long)diff->add_rrs.size,
@@ -2122,30 +2122,30 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 		LOAD_ERROR(ctx, "failed to load");
 	}
 
-	if (RedisModule_CreateCommand(ctx, "knot.rrset.aof_rewrite", rrset_aof_rewrite, "write",    1, 1, 1) == REDISMODULE_ERR ||
-	    RedisModule_CreateCommand(ctx, "knot.diff.aof_rewrite",  diff_aof_rewrite,  "write",    1, 1, 1) == REDISMODULE_ERR ||
-	    RedisModule_CreateCommand(ctx, "knot.zone.begin",        zone_begin_txt,    "write",    1, 1, 1) == REDISMODULE_ERR ||
-	    RedisModule_CreateCommand(ctx, "knot.zone.begin.bin",    zone_begin_bin,    "write",    1, 1, 1) == REDISMODULE_ERR ||
-	    RedisModule_CreateCommand(ctx, "knot.zone.store",        zone_store_txt,    "write",    1, 1, 1) == REDISMODULE_ERR ||
-	    RedisModule_CreateCommand(ctx, "knot.zone.store.bin",    zone_store_bin,    "write",    1, 1, 1) == REDISMODULE_ERR ||
-	    RedisModule_CreateCommand(ctx, "knot.zone.commit",       zone_commit_txt,   "write",    1, 1, 1) == REDISMODULE_ERR ||
-	    RedisModule_CreateCommand(ctx, "knot.zone.commit.bin",   zone_commit_bin,   "write",    1, 1, 1) == REDISMODULE_ERR ||
-	    RedisModule_CreateCommand(ctx, "knot.zone.abort",        zone_abort_txt,    "write",    1, 1, 1) == REDISMODULE_ERR ||
-	    RedisModule_CreateCommand(ctx, "knot.zone.abort.bin",    zone_abort_bin,    "write",    1, 1, 1) == REDISMODULE_ERR ||
-	    RedisModule_CreateCommand(ctx, "knot.zone.exists.bin",   zone_exists_bin,   "readonly", 1, 1, 1) == REDISMODULE_ERR ||
-	    RedisModule_CreateCommand(ctx, "knot.zone.load",         zone_load_txt,     "readonly", 1, 1, 1) == REDISMODULE_ERR ||
-	    RedisModule_CreateCommand(ctx, "knot.zone.load.bin",     zone_load_bin,     "readonly", 1, 1, 1) == REDISMODULE_ERR ||
-	    RedisModule_CreateCommand(ctx, "knot.upd.begin",         upd_begin_txt,     "write",    1, 1, 1) == REDISMODULE_ERR ||
-	    RedisModule_CreateCommand(ctx, "knot.upd.begin.bin",     upd_begin_bin,     "write",    1, 1, 1) == REDISMODULE_ERR ||
-	    RedisModule_CreateCommand(ctx, "knot.upd.add",           upd_add_txt,       "write",    1, 1, 1) == REDISMODULE_ERR ||
-	    RedisModule_CreateCommand(ctx, "knot.upd.add.bin",       upd_add_bin,       "write",    1, 1, 1) == REDISMODULE_ERR ||
-	    RedisModule_CreateCommand(ctx, "knot.upd.remove",        upd_remove_txt,    "write",    1, 1, 1) == REDISMODULE_ERR ||
-	    RedisModule_CreateCommand(ctx, "knot.upd.remove.bin",    upd_remove_bin,    "write",    1, 1, 1) == REDISMODULE_ERR ||
-	    RedisModule_CreateCommand(ctx, "knot.upd.commit",        upd_commit_txt,    "write",    1, 1, 1) == REDISMODULE_ERR ||
-	    RedisModule_CreateCommand(ctx, "knot.upd.commit.bin",    upd_commit_bin,    "write",    1, 1, 1) == REDISMODULE_ERR ||
-	    RedisModule_CreateCommand(ctx, "knot.upd.abort",         upd_abort_txt,     "write",    1, 1, 1) == REDISMODULE_ERR ||
-	    RedisModule_CreateCommand(ctx, "knot.upd.abort.bin",     upd_abort_bin,     "write",    1, 1, 1) == REDISMODULE_ERR
-	) {
+	if (RedisModule_CreateCommand(ctx, "KNOT.ZONE.BEGIN",        zone_begin_txt,    "write",    1, 1, 1) == REDISMODULE_ERR ||
+	    RedisModule_CreateCommand(ctx, "KNOT.ZONE.STORE",        zone_store_txt,    "write",    1, 1, 1) == REDISMODULE_ERR ||
+	    RedisModule_CreateCommand(ctx, "KNOT.ZONE.COMMIT",       zone_commit_txt,   "write",    1, 1, 1) == REDISMODULE_ERR ||
+	    RedisModule_CreateCommand(ctx, "KNOT.ZONE.ABORT",        zone_abort_txt,    "write",    1, 1, 1) == REDISMODULE_ERR ||
+	    RedisModule_CreateCommand(ctx, "KNOT.ZONE.LOAD",         zone_load_txt,     "readonly", 1, 1, 1) == REDISMODULE_ERR ||
+	    RedisModule_CreateCommand(ctx, "KNOT.UPD.BEGIN",         upd_begin_txt,     "write",    1, 1, 1) == REDISMODULE_ERR ||
+	    RedisModule_CreateCommand(ctx, "KNOT.UPD.ADD",           upd_add_txt,       "write",    1, 1, 1) == REDISMODULE_ERR ||
+	    RedisModule_CreateCommand(ctx, "KNOT.UPD.REMOVE",        upd_remove_txt,    "write",    1, 1, 1) == REDISMODULE_ERR ||
+	    RedisModule_CreateCommand(ctx, "KNOT.UPD.COMMIT",        upd_commit_txt,    "write",    1, 1, 1) == REDISMODULE_ERR ||
+	    RedisModule_CreateCommand(ctx, "KNOT.UPD.ABORT",         upd_abort_txt,     "write",    1, 1, 1) == REDISMODULE_ERR ||
+	    RedisModule_CreateCommand(ctx, RDB_CMD_ZONE_EXISTS,      zone_exists_bin,   "readonly", 1, 1, 1) == REDISMODULE_ERR ||
+	    RedisModule_CreateCommand(ctx, RDB_CMD_ZONE_BEGIN,       zone_begin_bin,    "write",    1, 1, 1) == REDISMODULE_ERR ||
+	    RedisModule_CreateCommand(ctx, RDB_CMD_ZONE_STORE,       zone_store_bin,    "write",    1, 1, 1) == REDISMODULE_ERR ||
+	    RedisModule_CreateCommand(ctx, RDB_CMD_ZONE_COMMIT,      zone_commit_bin,   "write",    1, 1, 1) == REDISMODULE_ERR ||
+	    RedisModule_CreateCommand(ctx, RDB_CMD_ZONE_ABORT,       zone_abort_bin,    "write",    1, 1, 1) == REDISMODULE_ERR ||
+	    RedisModule_CreateCommand(ctx, RDB_CMD_ZONE_LOAD,        zone_load_bin,     "readonly", 1, 1, 1) == REDISMODULE_ERR ||
+	    RedisModule_CreateCommand(ctx, RDB_CMD_UPD_BEGIN,        upd_begin_bin,     "write",    1, 1, 1) == REDISMODULE_ERR ||
+	    RedisModule_CreateCommand(ctx, RDB_CMD_UPD_ADD,          upd_add_bin,       "write",    1, 1, 1) == REDISMODULE_ERR ||
+	    RedisModule_CreateCommand(ctx, RDB_CMD_UPD_REMOVE,       upd_remove_bin,    "write",    1, 1, 1) == REDISMODULE_ERR ||
+	    RedisModule_CreateCommand(ctx, RDB_CMD_UPD_COMMIT,       upd_commit_bin,    "write",    1, 1, 1) == REDISMODULE_ERR ||
+	    RedisModule_CreateCommand(ctx, RDB_CMD_UPD_ABORT,        upd_abort_bin,     "write",    1, 1, 1) == REDISMODULE_ERR ||
+	    RedisModule_CreateCommand(ctx, "KNOT_BIN.AOF.RRSET",  rrset_aof_rewrite, "write",    1, 1, 1) == REDISMODULE_ERR ||
+	    RedisModule_CreateCommand(ctx, "KNOT_BIN.AOF.DIFF",   diff_aof_rewrite,  "write",    1, 1, 1) == REDISMODULE_ERR)
+	{
 		LOAD_ERROR(ctx, "failed to load");
 	}
 
