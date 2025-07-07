@@ -1449,15 +1449,15 @@ Mode XDP
 ========
 
 Thanks to recent Linux kernel capabilities, namely eXpress Data Path and AF_XDP
-address family, Knot DNS offers a high-performance DNS over UDP packet processing
-mode. The basic idea is to filter DNS messages close to the network device and
-effectively forward them to the nameserver without touching the network stack
-of the operating system. Other messages (including DNS over TCP) are processed
-as usual.
+address family, Knot DNS offers a high-performance packet processing mode for
+UDP, TCP, and QUIC protocols. The basic idea is to filter DNS messages close to
+the network device and effectively forward them to the nameserver without touching
+the network stack of the operating system. Messages in protocols, for which XDP
+hasn't been enbled, are processed as usual.
 
-If :ref:`xdp_listen` is configured, the server creates
-additional XDP workers, listening on specified interface(s) and port(s) for DNS
-over UDP queries. Each XDP worker handles one RX and TX network queue pair.
+If :ref:`xdp_listen` is configured, the server creates additional XDP workers,
+listening on specified interface(s) and port(s) for DNS queries. Each XDP worker
+handles one RX and TX network queue pair.
 
 .. _Mode XDP_pre-requisites:
 
