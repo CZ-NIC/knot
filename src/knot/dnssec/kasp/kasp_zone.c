@@ -112,6 +112,7 @@ static int params2kaspkey(const knot_dname_t *dname, key_params_t *params,
 
 	key->timing = params->timing;
 	key->is_pub_only = params->is_pub_only;
+	key->is_for_later = params->is_for_later;
 	assert(params->is_ksk || !params->is_csk);
 	key->is_ksk = params->is_ksk;
 	key->is_zsk = (params->is_csk || !params->is_ksk);
@@ -131,6 +132,7 @@ static void kaspkey2params(knot_kasp_key_t *key, key_params_t *params)
 	params->is_csk = (key->is_ksk && key->is_zsk);
 	params->timing = key->timing;
 	params->is_pub_only = key->is_pub_only;
+	params->is_for_later = key->is_for_later;
 }
 
 static void detect_keytag_conflict(knot_kasp_zone_t *zone, bool *kt_cfl)

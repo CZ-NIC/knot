@@ -113,6 +113,7 @@ static MDB_val params_serialize(const key_params_t *params)
 	flags |= (params->is_ksk ? 0x01 : 0);
 	flags |= (params->is_pub_only ? 0x04 : 0);
 	flags |= (params->is_csk ? 0x08 : 0);
+	flags |= (params->is_for_later ? 0x10 : 0);
 
 	return knot_lmdb_make_key("LLHBBLLLLLLLLLDL", (uint64_t)params->public_key.size,
 		(uint64_t)sizeof(params->timing.revoke), params->keytag, params->algorithm, flags,
@@ -147,6 +148,7 @@ static bool params_deserialize(const MDB_val *val, key_params_t *params)
 		params->is_ksk = ((flags & 0x01) ? true : false);
 		params->is_pub_only = ((flags & 0x04) ? true : false);
 		params->is_csk = ((flags & 0x08) ? true : false);
+		params->is_for_later = ((flags & 0x10) ? true : false);
 
 		if (future > 0) {
 			if (future < sizeof(params->timing.revoke)) {

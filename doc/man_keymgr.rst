@@ -219,6 +219,10 @@ Arguments are separated by space, each of them is in format 'name=value'.
 **sep**
   Overrides the standard setting of the Secure Entry Point flag.
 
+**for-later**
+  Pre-generating a key for later use. Once a new key ought to be generated, this one will be
+  used instead if the **ksk** and **zsk** flags are matching. This argument has no parameter.
+
 The following arguments are timestamps of key lifetime (see :ref:`DNSSEC Key states`):
 
 **pre_active**
