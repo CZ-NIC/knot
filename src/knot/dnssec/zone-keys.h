@@ -67,10 +67,11 @@ inline static uint16_t dnskey_flags(bool is_ksk)
 }
 
 typedef enum {
-	DNSKEY_GENERATE_KSK      = (1 << 0), // KSK flag in metadata
-	DNSKEY_GENERATE_ZSK      = (1 << 1), // ZSK flag in metadata
-	DNSKEY_GENERATE_SEP_SPEC = (1 << 2), // not (SEP bit set iff KSK)
-	DNSKEY_GENERATE_SEP_ON   = (1 << 3), // SEP bit set on
+	DNSKEY_GENERATE_KSK       = (1 << 0), // KSK flag in metadata
+	DNSKEY_GENERATE_ZSK       = (1 << 1), // ZSK flag in metadata
+	DNSKEY_GENERATE_SEP_SPEC  = (1 << 2), // not (SEP bit set iff KSK)
+	DNSKEY_GENERATE_SEP_ON    = (1 << 3), // SEP bit set on
+	DNSKEY_GENERATE_FOR_LATER = (1 << 4), // Pregenerated key for later automatic use.
 } kdnssec_generate_flags_t;
 
 void normalize_generate_flags(kdnssec_generate_flags_t *flags);
