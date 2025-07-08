@@ -147,6 +147,15 @@ static int generate_keytag_unconflict(kdnssec_ctx_t *ctx,
 	return KNOT_EOK;
 }
 
+static bool key_corresponds(knot_kasp_key_t *key, kdnssec_ctx_t *ctx, kdnssec_generate_flags_t flags)
+{
+	return !key->is_pub_only &&
+	       key->is_ksk == (bool)(flags & DNSKEY_GENERATE_KSK) &&
+	       key->is_zsk == (bool)(flags & DNSKEY_GENERATE_ZSK) &&
+	       dnssec_key_get_algorithm(key->key) == ctx->policy->algorithm &&
+	       dnssec_key_get_size(key->key) == (key->is_ksk ? ctx->policy->ksk_size : ctx->policy->zsk_size);
+}
+
 int kdnssec_generate_key(kdnssec_ctx_t *ctx, kdnssec_generate_flags_t flags,
 			 knot_kasp_key_t **key_ptr)
 {
@@ -156,6 +165,15 @@ int kdnssec_generate_key(kdnssec_ctx_t *ctx, kdnssec_generate_flags_t flags,
 	assert(ctx->policy);
 
 	normalize_generate_flags(&flags);
+
+	for (size_t i = 0; !(flags & DNSKEY_GENERATE_FOR_LATER) && i < ctx->zone->num_keys; i++) {
+		knot_kasp_key_t *k = &ctx->zone->keys[i];
+		if (k->is_for_later && key_corresponds(k, ctx, flags)) {
+			*key_ptr = k;
+			k->is_for_later = false;
+			return KNOT_EOK;
+		}
+	}
 
 	// generate key in the keystore
 
@@ -178,6 +196,7 @@ int kdnssec_generate_key(kdnssec_ctx_t *ctx, kdnssec_generate_flags_t flags,
 	key->key = dnskey;
 	key->is_ksk = (flags & DNSKEY_GENERATE_KSK);
 	key->is_zsk = (flags & DNSKEY_GENERATE_ZSK);
+	key->is_for_later = (flags & DNSKEY_GENERATE_FOR_LATER);
 	key->timing.created = ctx->now;
 
 	r = kasp_zone_append(ctx->zone, key);

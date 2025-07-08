@@ -26,6 +26,12 @@
 #include "knot/zone/serial.h"
 #include "libdnssec/random.h"
 
+static bool not_removed(const knot_kasp_key_t *key, knot_time_t now)
+{
+	key_state_t state = get_key_state(key, now);
+	return state != DNSSEC_KEY_STATE_REMOVED && state != DNSSEC_KEY_STATE_INVALID;
+}
+
 static bool key_present(const kdnssec_ctx_t *ctx, bool ksk, bool zsk)
 {
 	assert(ctx);
@@ -33,7 +39,7 @@ static bool key_present(const kdnssec_ctx_t *ctx, bool ksk, bool zsk)
 	for (size_t i = 0; i < ctx->zone->num_keys; i++) {
 		const knot_kasp_key_t *key = &ctx->zone->keys[i];
 		if (key->is_ksk == ksk && key->is_zsk == zsk && !key->is_pub_only &&
-		    get_key_state(key, ctx->now) != DNSSEC_KEY_STATE_REMOVED) {
+		    not_removed(key, ctx->now)) {
 			return true;
 		}
 	}
@@ -47,8 +53,7 @@ static bool key_id_present(const kdnssec_ctx_t *ctx, const char *keyid, bool wan
 	for (size_t i = 0; i < ctx->zone->num_keys; i++) {
 		const knot_kasp_key_t *key = &ctx->zone->keys[i];
 		if (strcmp(keyid, key->id) == 0 &&
-		    key->is_ksk == want_ksk &&
-		    get_key_state(key, ctx->now) != DNSSEC_KEY_STATE_REMOVED) {
+		    key->is_ksk == want_ksk && not_removed(key, ctx->now)) {
 			return true;
 		}
 	}
@@ -64,7 +69,7 @@ static unsigned algorithm_present(const kdnssec_ctx_t *ctx, uint8_t alg)
 		const knot_kasp_key_t *key = &ctx->zone->keys[i];
 		knot_time_t activated = knot_time_min(key->timing.pre_active, key->timing.ready);
 		if (knot_time_cmp(knot_time_min(activated, key->timing.active), ctx->now) <= 0 &&
-		    get_key_state(key, ctx->now) != DNSSEC_KEY_STATE_REMOVED &&
+		    not_removed(key, ctx->now) &&
 		    dnssec_key_get_algorithm(key->key) == alg && !key->is_pub_only) {
 			ret++;
 		}
