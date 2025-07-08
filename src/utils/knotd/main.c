@@ -126,8 +126,9 @@ static int check_loaded(server_t *server, bool async)
 	 */
 	static bool started = false;
 	static bool loaded = false;
+	assert(server->state & ServerRunning);
 	if (loaded) {
-		assert(server->state & ServerRunning);
+		assert(server->state & ServerAnswering);
 		return KNOT_EOK;
 	}
 
@@ -175,7 +176,7 @@ static int check_loaded(server_t *server, bool async)
 		started = true;
 	}
 
-	assert(server->state & ServerRunning);
+	assert(server->state & ServerAnswering);
 	if (!conf()->cache.srv_dbus_event & DBUS_EVENT_RUNNING) {
 		loaded = true;
 		return KNOT_EOK;

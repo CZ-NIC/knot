@@ -998,12 +998,13 @@ int server_start_answering(server_t *server)
 		return KNOT_EINVAL;
 	}
 
-	if (server->state & ServerRunning) {
+	assert(server->state & ServerRunning);
+	if (server->state & ServerAnswering) {
 		return KNOT_EOK;
 	}
 
 	log_info("server started");
-	server->state |= ServerRunning;
+	server->state |= ServerAnswering;
 	for (int proto = IO_UDP; proto <= IO_XDP; ++proto) {
 		if (server->handlers[proto].size > 0) {
 			int ret = dt_start(server->handlers[proto].handler.unit);
@@ -1029,6 +1030,8 @@ int server_start(server_t *server, bool answering)
 	/* Start evsched handler. */
 	evsched_start(&server->sched);
 
+	server->state |= ServerRunning;
+
 	/* Start I/O handlers. */
 	if (answering) {
 		return server_start_answering(server);
@@ -1043,6 +1046,7 @@ void server_wait(server_t *server)
 		return;
 	}
 
+	assert(!(server->state & ServerRunning));
 	evsched_join(&server->sched);
 	worker_pool_join(server->workers);
 
@@ -1051,6 +1055,8 @@ void server_wait(server_t *server)
 			server_free_handler(&server->handlers[proto].handler);
 		}
 	}
+
+	server->state &= ~ServerAnswering;
 }
 
 static int reload_conf(conf_t *new_conf)
