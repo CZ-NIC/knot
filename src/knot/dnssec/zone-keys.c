@@ -137,6 +137,13 @@ static int generate_keytag_unconflict(kdnssec_ctx_t *ctx,
 	return KNOT_EOK;
 }
 
+static bool key_corresponds(knot_kasp_key_t *key, kdnssec_generate_flags_t flags)
+{
+	return !key->is_pub_only &&
+	       key->is_ksk == (bool)(flags & DNSKEY_GENERATE_KSK) &&
+	       key->is_zsk == (bool)(flags & DNSKEY_GENERATE_ZSK);
+}
+
 int kdnssec_generate_key(kdnssec_ctx_t *ctx, kdnssec_generate_flags_t flags,
 			 knot_kasp_key_t **key_ptr)
 {
@@ -146,6 +153,14 @@ int kdnssec_generate_key(kdnssec_ctx_t *ctx, kdnssec_generate_flags_t flags,
 	assert(ctx->policy);
 
 	normalize_generate_flags(&flags);
+
+	for (size_t i = 0; !(flags & DNSKEY_GENERATE_FOR_AUTO) && i < ctx->zone->num_keys; i++) {
+		if (ctx->zone->keys[i].is_for_auto_use && key_corresponds(&ctx->zone->keys[i], flags)) {
+			*key_ptr = &ctx->zone->keys[i];
+			(*key_ptr)->is_for_auto_use = false;
+			return KNOT_EOK;
+		}
+	}
 
 	// generate key in the keystore
 
@@ -175,6 +190,7 @@ int kdnssec_generate_key(kdnssec_ctx_t *ctx, kdnssec_generate_flags_t flags,
 	key->key = dnskey;
 	key->is_ksk = (flags & DNSKEY_GENERATE_KSK);
 	key->is_zsk = (flags & DNSKEY_GENERATE_ZSK);
+	key->is_for_auto_use = (flags & DNSKEY_GENERATE_FOR_AUTO);
 	key->timing.created = ctx->now;
 
 	r = kasp_zone_append(ctx->zone, key);

@@ -172,6 +172,9 @@ static bool genkeyargs(int argc, char *argv[], bool just_timing,
 			}
 		} else if (!just_timing && same_command(argv[i], "addtopolicy=", true)) {
 			*addtopolicy = argv[i] + 12;
+		} else if (same_command(argv[i], "for-auto-use", false)) {
+			bitmap_set(flags, DNSKEY_GENERATE_FOR_AUTO, true);
+			*timing = (knot_kasp_key_timing_t){ .created = timing->created };
 		} else if (!init_timestamps(argv[i], timing)) {
 			ERR2("invalid parameter: %s", argv[i]);
 			return false;
@@ -954,6 +957,10 @@ static void print_key_brief(const knot_kasp_key_t *key, key_info_t *info,
 		printf(" %s%spublic-only%s", COL_BOLD(c), COL_MGNT(c), COL_RST(c));
 	}
 
+	if (key->is_for_auto_use) {
+		printf(" %s%sfor-auto-use%s", COL_BOLD(c), COL_MGNT(c), COL_RST(c));
+	}
+
 	if (info->missing) {
 		printf(" %s%smissing%s", COL_BOLD(c), COL_YELW(c), COL_RST(c));
 	} else if (info->ks_count > 1 && info->ks_name != NULL) {
@@ -990,6 +997,9 @@ static void print_key_full(const knot_kasp_key_t *key, key_info_t *info,
 	       (key->is_ksk ? "yes" : "no "), (key->is_zsk ? "yes" : "no "),
 	       dnssec_key_get_keytag(key->key), (int)dnssec_key_get_algorithm(key->key),
 	       dnssec_key_get_size(key->key), (key->is_pub_only ? "yes" : "no "));
+	if (key->is_for_auto_use) {
+		printf(" for-auto-use");
+	}
 	printf(" missing=%s", info->missing ? "yes" : "no ");
 	if (info->ks_name != NULL) {
 		printf(" keystore=%s/%s", KS_TYPE(info), info->ks_name);
@@ -1015,6 +1025,7 @@ static void print_key_json(const knot_kasp_key_t *key, key_info_t *info,
 	jsonw_ulong(w, "algorithm", dnssec_key_get_algorithm(key->key));
 	jsonw_int(w,   "size", dnssec_key_get_size(key->key));
 	jsonw_bool(w,  "public-only", key->is_pub_only);
+	jsonw_bool(w,  "for-auto-use", key->is_for_auto_use);
 	jsonw_bool(w,  "missing", info->missing);
 	if (info->ks_name != NULL) {
 	jsonw_str(w,   "keystore", info->ks_name);
