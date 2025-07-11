@@ -1529,11 +1529,67 @@ static int zone_load_bin(RedisModuleCtx *ctx, RedisModuleString **argv, int argc
 	                 (argc >= 5) ? &rtype : NULL, false);
 }
 
-static int zone_purge(RedisModuleCtx *ctx, rdb_txn_t *txn, const arg_dname_t *origin)
+static int zone_purge(RedisModuleCtx *ctx, const arg_dname_t *origin, const rdb_txn_t *txn)
 {
+	RedisModule_Log(ctx, REDISMODULE_LOGLEVEL_WARNING, "TEST %d", 1);
+	RedisModuleString *soa_rrset_keyname = rrset_keyname_construct(ctx, txn, origin, origin, KNOT_RRTYPE_SOA);
+	RedisModuleKey *soa_rrset_key = RedisModule_OpenKey(ctx, soa_rrset_keyname, REDISMODULE_READ);
+	RedisModule_FreeString(ctx, soa_rrset_keyname);
+	rrset_v *rrset = RedisModule_ModuleTypeGetValue(soa_rrset_key);
+	if (rrset == NULL) {
+		RedisModule_CloseKey(soa_rrset_key);
+		RedisModule_Log(ctx, REDISMODULE_LOGLEVEL_WARNING, "ERR missing SOA rrset");
+		RedisModule_ReplyWithError(ctx, "ERR missing SOA rrset");
+		return KNOT_EACCES;
+	}
+	uint32_t serial = knot_soa_serial(rrset->rrs.rdata);
+	RedisModule_CloseKey(soa_rrset_key);
+	RedisModule_Log(ctx, REDISMODULE_LOGLEVEL_WARNING, "TEST %d", 2);
 	delete_zone_index(ctx, txn, origin);
+	RedisModule_Log(ctx, REDISMODULE_LOGLEVEL_WARNING, "TEST %d", 3);
+	RedisModuleKey *upd_index_key = find_commited_upd_index(ctx, origin, txn, serial, REDISMODULE_READ | REDISMODULE_WRITE);
+	while (RedisModule_KeyType(upd_index_key) == REDISMODULE_KEYTYPE_ZSET) {
+		size_t soa_count = 0;
+		RedisModuleString *soa_diff_keyname;
+		RedisModule_Log(ctx, REDISMODULE_LOGLEVEL_WARNING, "TEST %d", 4);
+		foreach_in_zset_subset(upd_index_key, SCORE_SOA, SCORE_SOA) {
+			double score = 0.0;
+			soa_diff_keyname = RedisModule_ZsetRangeCurrentElement(upd_index_key, &score);
+			if (soa_diff_keyname == NULL) {
+				break;
+			}
+			++soa_count;
+		}
+		if (soa_count != 1) {
 
-	return KNOT_EOK;
+		}
+		RedisModule_Log(ctx, REDISMODULE_LOGLEVEL_WARNING, "TEST %d", 5);
+		RedisModuleKey *soa_diff_key = RedisModule_OpenKey(ctx, soa_diff_keyname, REDISMODULE_READ);
+		diff_v *diff = RedisModule_ModuleTypeGetValue(soa_diff_key);
+		serial = knot_soa_serial(diff->remove_rrs.rdata);
+		RedisModule_CloseKey(soa_diff_key);
+		RedisModule_Log(ctx, REDISMODULE_LOGLEVEL_WARNING, "TEST %d", 6);
+		foreach_in_zset(upd_index_key) {
+			double score = 0.0;
+			RedisModuleString *el = RedisModule_ZsetRangeCurrentElement(upd_index_key, &score);
+			if (el == NULL) {
+				break;
+			}
+
+			RedisModuleKey *rrset_key = RedisModule_OpenKey(ctx, el, REDISMODULE_READ | REDISMODULE_WRITE);
+			if (rrset_key != NULL) {
+				RedisModule_DeleteKey(rrset_key);
+				RedisModule_CloseKey(rrset_key);
+			}
+		}
+
+		RedisModule_DeleteKey(upd_index_key);
+		RedisModule_CloseKey(upd_index_key);
+
+		upd_index_key = find_commited_upd_index(ctx, origin, txn, serial, REDISMODULE_READ | REDISMODULE_WRITE);
+	}
+
+	return RedisModule_ReplyWithSimpleString(ctx, RDB_RETURN_OK);
 }
 
 static int zone_purge_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
@@ -1549,9 +1605,9 @@ static int zone_purge_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int arg
 	arg_dname_t origin;
 
 	ARG_DNAME_TXT(argv[1], origin, NULL, "origin");
-	ARG_INST_TXN_TXT(argv[2], txn);
+	ARG_INST_TXT(argv[2], txn);
 
-	return zone_purge(ctx, &txn, &origin);
+	return zone_purge(ctx, &origin, &txn);
 }
 
 static int zone_purge_bin(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
@@ -1566,9 +1622,9 @@ static int zone_purge_bin(RedisModuleCtx *ctx, RedisModuleString **argv, int arg
 	arg_dname_t origin;
 
 	ARG_DNAME(argv[1], origin, "origin");
-	ARG_TXN(argv[2], txn);
+	ARG_INST(argv[2], txn);
 
-	return zone_purge(ctx, &txn, &origin);
+	return zone_purge(ctx, &origin, &txn);
 }
 
 static int upd_begin_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
@@ -1975,6 +2031,18 @@ static int upd_commit(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t 
 	rrset_v *rrset = RedisModule_ModuleTypeGetValue(soa_key);
 	uint32_t serial = knot_soa_serial(rrset->rrs.rdata);
 
+	RedisModuleString *soa_diff_keyname = diff_keyname_construct(ctx, origin, txn, origin, KNOT_RRTYPE_SOA, id);
+	RedisModuleKey *soa_diff_key = RedisModule_OpenKey(ctx, soa_diff_keyname, REDISMODULE_READ);
+	if (soa_diff_key == NULL) {
+		serial += 1;
+	} else {
+		diff_v *diff = RedisModule_ModuleTypeGetValue(soa_diff_key);
+		if (diff->add_rrs.count) {
+			serial = knot_soa_serial(diff->add_rrs.rdata);
+		}
+		RedisModule_CloseKey(soa_diff_key);
+	}
+
 	RedisModuleKey *upd_key = find_upd_index(ctx, origin, txn, id, REDISMODULE_READ | REDISMODULE_WRITE);
 	RedisModuleKey *new_upd_key = find_commited_upd_index(ctx, origin, txn, serial, REDISMODULE_READ | REDISMODULE_WRITE);
 	foreach_in_zset(upd_key) {
@@ -2017,13 +2085,14 @@ static int upd_commit(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t 
 
 		RedisModule_CloseKey(diff_key);
 	}
+
+	// TODO validate singleton SOA rrset
 	RedisModule_DeleteKey(upd_key);
 	RedisModule_CloseKey(upd_key);
 
 	if (knot_soa_serial(rrset->rrs.rdata) == serial) {
 		// routine for add diffs of serial change
-		RedisModuleString *soa_diff_keyname = diff_keyname_construct(ctx, origin, txn, origin, KNOT_RRTYPE_SOA, id);
-		RedisModuleKey *soa_diff_key = RedisModule_OpenKey(ctx, soa_diff_keyname, REDISMODULE_WRITE);
+		soa_diff_key = RedisModule_OpenKey(ctx, soa_diff_keyname, REDISMODULE_WRITE);
 		if (RedisModule_KeyType(soa_diff_key) != REDISMODULE_KEYTYPE_EMPTY) {
 			// TODO better error handling (Close keys, free mem, etc)
 			RedisModule_ReplyWithError(ctx, "ERR Bad data");
@@ -2038,8 +2107,8 @@ static int upd_commit(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t 
 		RedisModule_CloseKey(soa_diff_key);
 		
 		RedisModule_ZsetAdd(new_upd_key, evaluate_score(KNOT_RRTYPE_SOA), soa_diff_keyname, NULL);
-		RedisModule_FreeString(ctx, soa_diff_keyname);
 	}
+	RedisModule_FreeString(ctx, soa_diff_keyname);
 	RedisModule_CloseKey(new_upd_key);
 	RedisModule_CloseKey(soa_key);
 
