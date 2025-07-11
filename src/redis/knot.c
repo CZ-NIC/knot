@@ -88,6 +88,7 @@ typedef struct {
 } scanner_ctx_t;
 
 static uint32_t rdb_default_ttl = 600;
+static uint32_t rdb_stream_cleanup_ms = 60000;
 
 static RedisModuleType *knot_zone_rrset_t;
 static RedisModuleType *knot_diff_t;
@@ -306,7 +307,8 @@ static int commit_event(RedisModuleCtx *ctx, rdb_event_t type, const arg_dname_t
 		NULL,
 	};
 
-	int ret = RedisModule_StreamAdd(stream_key, REDISMODULE_STREAM_ADD_AUTOID, NULL, events, 4);
+	RedisModuleStreamID ts;
+	int ret = RedisModule_StreamAdd(stream_key, REDISMODULE_STREAM_ADD_AUTOID, &ts, events, 4);
 
 	RedisModule_CloseKey(stream_key);
 	for (RedisModuleString **event = events; *event != NULL; event++) {
@@ -316,6 +318,19 @@ static int commit_event(RedisModuleCtx *ctx, rdb_event_t type, const arg_dname_t
 	if (ret != REDISMODULE_OK) {
 		RedisModule_ReplyWithError(ctx, "ERR failed to emit event");
 		return KNOT_ERROR;
+	}
+
+	if (rdb_stream_cleanup_ms == 0) {
+		return KNOT_EOK;
+	}
+
+	ts.ms -= rdb_stream_cleanup_ms;
+	ts.seq = 0;
+
+	// NOTE Trimming with REDISMODULE_STREAM_TRIM_APPROX improves preformance
+	long long removed_cnt = RedisModule_StreamTrimByID(stream_key, REDISMODULE_STREAM_TRIM_APPROX, &ts);
+	if (removed_cnt) {
+		RedisModule_Log(ctx, REDISMODULE_LOGLEVEL_NOTICE, "stream cleanup %lld old events", removed_cnt);
 	}
 
 	return KNOT_EOK;
@@ -367,7 +382,7 @@ static RedisModuleKey *find_upd_index(RedisModuleCtx *ctx, const arg_dname_t *or
 	return key;
 }
 
-static RedisModuleString *commited_upd_keyname_construct(RedisModuleCtx *ctx, const arg_dname_t *origin, uint32_t serial)
+static RedisModuleString *commited_upd_keyname_construct(RedisModuleCtx *ctx, const arg_dname_t *origin, const uint8_t instance, uint32_t serial)
 {
 	RedisModule_Assert(ctx != NULL);
 
@@ -378,17 +393,18 @@ static RedisModuleString *commited_upd_keyname_construct(RedisModuleCtx *ctx, co
 	wire_ctx_write(&w, RDB_PREFIX, RDB_PREFIX_LEN);
 	wire_ctx_write(&w, &prefix, sizeof(prefix));
 	wire_ctx_write(&w, origin->data, origin->len);
+	wire_ctx_write_u8(&w, instance);
 	wire_ctx_write(&w, &serial, sizeof(serial));
 	RedisModule_Assert(w.error == KNOT_EOK);
 
 	return RedisModule_CreateString(ctx, buf, wire_ctx_offset(&w));
 }
 
-static RedisModuleKey *find_commited_upd_index(RedisModuleCtx *ctx, const arg_dname_t *origin, const uint32_t serial, int rights)
+static RedisModuleKey *find_commited_upd_index(RedisModuleCtx *ctx, const arg_dname_t *origin, const rdb_txn_t *txn, const uint32_t serial, int rights)
 {
 	RedisModule_Assert(ctx != NULL);
 
-	RedisModuleString *keyname = commited_upd_keyname_construct(ctx, origin, serial);
+	RedisModuleString *keyname = commited_upd_keyname_construct(ctx, origin, txn->instance, serial);
 
 	RedisModuleKey *key = RedisModule_OpenKey(ctx, keyname, rights);
 	RedisModule_FreeString(ctx, keyname);
@@ -538,10 +554,10 @@ static int rdata_remove(RedisModuleCtx *ctx, const rdb_txn_t *txn,
 		return -1;
 	}
 
-	if (rrset->rrs.count == 0) {
-		RedisModule_DeleteKey(rrset_key);
-		RedisModule_ZsetRem(zone_key, rrset_keystr, NULL);
-	}
+	// if (rrset->rrs.count == 0) {
+	// 	RedisModule_DeleteKey(rrset_key);
+	// 	RedisModule_ZsetRem(zone_key, rrset_keystr, NULL);
+	// }
 	RedisModule_CloseKey(zone_key);
 
 	RedisModule_CloseKey(rrset_key);
@@ -655,6 +671,7 @@ static int upd_txn_lock(RedisModuleCtx *ctx, RedisModuleKey *key, rdb_txn_t *txn
 
 	for (txn->id = TXN_MIN; txn->id <= TXN_MAX; ++txn->id) {
 		if (meta->lock[txn->id] == 0) {
+			// TODO take care of overflowing
 			meta->lock[txn->id] = ++meta->counter;
 			break;
 		}
@@ -1512,6 +1529,48 @@ static int zone_load_bin(RedisModuleCtx *ctx, RedisModuleString **argv, int argc
 	                 (argc >= 5) ? &rtype : NULL, false);
 }
 
+static int zone_purge(RedisModuleCtx *ctx, rdb_txn_t *txn, const arg_dname_t *origin)
+{
+	delete_zone_index(ctx, txn, origin);
+
+	return KNOT_EOK;
+}
+
+static int zone_purge_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
+{
+	if (argc != 3) {
+		return RedisModule_WrongArity(ctx);
+	}
+
+	rdb_txn_t txn = {
+		.instance = 1,
+		.id = TXN_ID_ACTIVE
+	};
+	arg_dname_t origin;
+
+	ARG_DNAME_TXT(argv[1], origin, NULL, "origin");
+	ARG_INST_TXN_TXT(argv[2], txn);
+
+	return zone_purge(ctx, &txn, &origin);
+}
+
+static int zone_purge_bin(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
+{
+	if (argc != 3) {
+		return RedisModule_WrongArity(ctx);
+	}
+	rdb_txn_t txn = {
+		.instance = 1,
+		.id = TXN_ID_ACTIVE
+	};
+	arg_dname_t origin;
+
+	ARG_DNAME(argv[1], origin, "origin");
+	ARG_TXN(argv[2], txn);
+
+	return zone_purge(ctx, &txn, &origin);
+}
+
 static int upd_begin_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 {
 	rdb_txn_t txn = { .instance = 1 };
@@ -1917,7 +1976,7 @@ static int upd_commit(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t 
 	uint32_t serial = knot_soa_serial(rrset->rrs.rdata);
 
 	RedisModuleKey *upd_key = find_upd_index(ctx, origin, txn, id, REDISMODULE_READ | REDISMODULE_WRITE);
-	RedisModuleKey *new_upd_key = find_commited_upd_index(ctx, origin, serial, REDISMODULE_READ | REDISMODULE_WRITE);
+	RedisModuleKey *new_upd_key = find_commited_upd_index(ctx, origin, txn, serial, REDISMODULE_READ | REDISMODULE_WRITE);
 	foreach_in_zset(upd_key) {
 		double score = 0.0;
 		RedisModuleString *el = RedisModule_ZsetRangeCurrentElement(upd_key, &score);
@@ -1929,40 +1988,59 @@ static int upd_commit(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t 
 
 		size_t el_len = 0;
 		const char *el_str = RedisModule_StringPtrLen(el, &el_len);
-		el_str += 3 + origin->len;
+		wire_ctx_t w = wire_ctx_init((uint8_t *)el_str, el_len);
+
+		wire_ctx_skip(&w, 3 + origin->len);
 		arg_dname_t owner = {
-			.data = (uint8_t *)el_str,
-			.len = knot_dname_size((const uint8_t *)el_str)
+			.data = w.position,
+			.len = knot_dname_size(w.position)
 		};
-		uint16_t rtype = 0;
-		memcpy(&rtype, el_str + owner.len, sizeof(rtype));
+		wire_ctx_skip(&w, owner.len);
+		uint16_t rtype = wire_ctx_read_u16(&w);
 
 		RedisModuleKey *diff_key = RedisModule_OpenKey(ctx, el, REDISMODULE_READ);
 		const diff_v *diff = RedisModule_ModuleTypeGetValue(diff_key);
 
-		uint16_t rr_count = diff->add_rrs.count;
-		knot_rdata_t *rr = diff->add_rrs.rdata;
+		uint16_t rr_count = diff->remove_rrs.count;
+		knot_rdata_t *rr = diff->remove_rrs.rdata;
 		for (size_t i = 0; i < rr_count; ++i) {
-			// TODO TTL
-			rdata_add(ctx, &zone_txn, origin, &owner, rtype, 3600, diff->add_rrs.rdata);
-			rr = knot_rdataset_next(rr);
-		}
-		rr_count = diff->remove_rrs.count;
-		rr = diff->remove_rrs.rdata;
-		for (size_t i = 0; i < rr_count; ++i) {
-			// TODO TTL
-			rdata_remove(ctx, &zone_txn, origin, &owner, rtype, 3600, diff->remove_rrs.rdata);
+			rdata_remove(ctx, &zone_txn, origin, &owner, rtype, 0, diff->remove_rrs.rdata);
 			rr = knot_rdataset_next(rr);
 		}
 
-		// RedisModule_CloseKey(rrset_key);
+		rr_count = diff->add_rrs.count;
+		rr = diff->add_rrs.rdata;
+		for (size_t i = 0; i < rr_count; ++i) {
+			rdata_add(ctx, &zone_txn, origin, &owner, rtype, diff->dest_ttl ? diff->dest_ttl : rdb_default_ttl, diff->add_rrs.rdata);
+			rr = knot_rdataset_next(rr);
+		}
+
 		RedisModule_CloseKey(diff_key);
 	}
 	RedisModule_DeleteKey(upd_key);
 	RedisModule_CloseKey(upd_key);
-	RedisModule_CloseKey(new_upd_key);
 
-	knot_soa_serial_set(rrset->rrs.rdata, serial + 1);
+	if (knot_soa_serial(rrset->rrs.rdata) == serial) {
+		// routine for add diffs of serial change
+		RedisModuleString *soa_diff_keyname = diff_keyname_construct(ctx, origin, txn, origin, KNOT_RRTYPE_SOA, id);
+		RedisModuleKey *soa_diff_key = RedisModule_OpenKey(ctx, soa_diff_keyname, REDISMODULE_WRITE);
+		if (RedisModule_KeyType(soa_diff_key) != REDISMODULE_KEYTYPE_EMPTY) {
+			// TODO better error handling (Close keys, free mem, etc)
+			RedisModule_ReplyWithError(ctx, "ERR Bad data");
+			return KNOT_ENOMEM;
+		}
+
+		diff_v *diff = RedisModule_Calloc(1, sizeof(diff_v));
+		knot_rdataset_add(&diff->remove_rrs, rrset->rrs.rdata, &mm);
+		knot_soa_serial_set(rrset->rrs.rdata, serial + 1);
+		knot_rdataset_add(&diff->add_rrs, rrset->rrs.rdata, &mm);
+		RedisModule_ModuleTypeSetValue(soa_diff_key, knot_diff_t, diff);
+		RedisModule_CloseKey(soa_diff_key);
+		
+		RedisModule_ZsetAdd(new_upd_key, evaluate_score(KNOT_RRTYPE_SOA), soa_diff_keyname, NULL);
+		RedisModule_FreeString(ctx, soa_diff_keyname);
+	}
+	RedisModule_CloseKey(new_upd_key);
 	RedisModule_CloseKey(soa_key);
 
 	if (upd_meta_unlock(ctx, meta_key, txn->id) != KNOT_EOK) {
@@ -2103,14 +2181,15 @@ static int upd_dump(RedisModuleCtx *ctx, RedisModuleKey *index_key, const arg_dn
 		size_t key_strlen = 0;
 		const char *key_str = RedisModule_StringPtrLen(el, &key_strlen);
 		wire_ctx_t w = wire_ctx_init((uint8_t *)key_str, key_strlen);
+
 		wire_ctx_skip(&w, RDB_PREFIX_LEN + 1);
-		RedisModule_Log(ctx, REDISMODULE_LOGLEVEL_WARNING, "TEST size origin %hhu", origin->len);
 		wire_ctx_skip(&w, origin->len);
 		knot_dname_t *owner = w.position;
 		size_t owner_len = knot_dname_size(owner);
-		RedisModule_Log(ctx, REDISMODULE_LOGLEVEL_WARNING, "TEST size owner %lu", owner_len);
+
 		wire_ctx_skip(&w, owner_len);
 		uint16_t rtype = wire_ctx_read_u16(&w);
+
 		RedisModule_Assert(w.error == KNOT_EOK);
 
 		if (opt_owner != NULL &&
@@ -2119,16 +2198,12 @@ static int upd_dump(RedisModuleCtx *ctx, RedisModuleKey *index_key, const arg_dn
 			continue;
 		}
 
-		if (opt_rtype) {
-			RedisModule_Log(ctx, REDISMODULE_LOGLEVEL_WARNING, "TEST rtype %d - %d", rtype, *opt_rtype);
-		}
 		if (opt_rtype != NULL && rtype != *opt_rtype) {
 			RedisModule_CloseKey(diff_key);
 			continue;
 		}
 
 		diff_v *diff = RedisModule_ModuleTypeGetValue(diff_key);
-
 		if (txt) {
 			RedisModule_ReplyWithArray(ctx, 2);
 			RedisModule_ReplyWithArray(ctx, REDISMODULE_POSTPONED_ARRAY_LEN);
@@ -2168,7 +2243,7 @@ static int upd_dump(RedisModuleCtx *ctx, RedisModuleKey *index_key, const arg_dn
 	return REDISMODULE_OK;
 }
 
-static int upd_diff(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t *txn, const arg_dname_t *opt_owner, uint16_t *opt_rtype, bool txt)
+static int upd_diff(RedisModuleCtx *ctx, const arg_dname_t *origin, const rdb_txn_t *txn, const arg_dname_t *opt_owner, uint16_t *opt_rtype, bool txt)
 {
 	int ret = get_id(ctx, origin, txn);
 	if (ret < 0 || ret > UINT16_MAX) {
@@ -2188,9 +2263,9 @@ static int upd_diff(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t *t
 	return REDISMODULE_OK;
 }
 
-static int upd_load(RedisModuleCtx *ctx, const arg_dname_t *origin, uint32_t serial, const arg_dname_t *opt_owner, uint16_t *opt_rtype, bool txt)
+static int upd_load(RedisModuleCtx *ctx, const arg_dname_t *origin, const rdb_txn_t *txn, uint32_t serial, const arg_dname_t *opt_owner, uint16_t *opt_rtype, bool txt)
 {
-	RedisModuleKey *index_key = find_commited_upd_index(ctx, origin, serial, REDISMODULE_READ | REDISMODULE_WRITE);
+	RedisModuleKey *index_key = find_commited_upd_index(ctx, origin, txn, serial, REDISMODULE_READ | REDISMODULE_WRITE);
 	if (index_key == NULL || RedisModule_KeyType(index_key) != REDISMODULE_KEYTYPE_ZSET) {
 		return RedisModule_ReplyWithError(ctx, "ERR Unable find");
 	}
@@ -2264,6 +2339,9 @@ static int upd_load_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 {
 	arg_dname_t origin;
 	arg_dname_t owner;
+	rdb_txn_t txn = {
+		.instance = 1
+	};
 	uint32_t serial;
 	uint16_t rtype;
 
@@ -2273,43 +2351,48 @@ static int upd_load_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 	}
 
 	switch (argc) {
-	case 5:
-		ARG_RTYPE_TXT(argv[4], rtype);
+	case 6:
+		ARG_RTYPE_TXT(argv[5], rtype);
+	case 5: // FALLTHROUGH
+		ARG_DNAME_TXT(argv[4], owner, &origin, "owner");
 	case 4: // FALLTHROUGH
-		ARG_DNAME_TXT(argv[3], owner, &origin, "owner");
-	case 3: // FALLTHROUGH
-		ARG_NUM(argv[2], serial, "serial");
+		ARG_NUM(argv[3], serial, "serial");
+		ARG_INST_TXT(argv[2], txn);
 		break;
 	default:
 		return RedisModule_WrongArity(ctx);
 	}
 
-	return upd_load(ctx, &origin, serial, (argc >= 4) ? &owner : NULL,
-	                (argc >= 5) ? &rtype : NULL, true);
+	return upd_load(ctx, &origin, &txn, serial, (argc >= 5) ? &owner : NULL,
+	                (argc >= 6) ? &rtype : NULL, true);
 }
 
 static int upd_load_bin(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 {
 	arg_dname_t origin;
 	arg_dname_t owner;
+	rdb_txn_t txn = {
+		.instance = 1
+	};
 	uint32_t serial;
 	uint16_t rtype;
 
 	switch (argc) {
-	case 5:
-		ARG_NUM(argv[4], rtype, "record type");
+	case 6:
+		ARG_NUM(argv[5], rtype, "record type");
+	case 5: // FALLTHROUGH
+		ARG_DNAME(argv[4], owner, "owner");
 	case 4: // FALLTHROUGH
-		ARG_DNAME(argv[3], owner, "owner");
-	case 3: // FALLTHROUGH
-		ARG_NUM(argv[2], serial, "serial");
+		ARG_NUM(argv[3], serial, "serial");
+		ARG_INST(argv[2], txn);
 		ARG_DNAME(argv[1], origin, "origin");
 		break;
 	default:
 		return RedisModule_WrongArity(ctx);
 	}
 
-	return upd_load(ctx, &origin, serial, (argc >= 4) ? &owner : NULL,
-	                (argc >= 5) ? &rtype : NULL, false);
+	return upd_load(ctx, &origin, &txn, serial, (argc >= 5) ? &owner : NULL,
+	                (argc >= 6) ? &rtype : NULL, false);
 }
 
 
@@ -2357,6 +2440,12 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 			} else {
 				LOAD_ERROR(ctx, "invalid configuration option value");
 			}
+		} else if (strncmp(key, "stream-cleanup-ms", key_len) == 0) {
+			if (RedisModule_StringToLongLong(argv[i + 1], &num) == REDISMODULE_OK) {
+				rdb_stream_cleanup_ms = num;
+			} else {
+				LOAD_ERROR(ctx, "invalid configuration option value");
+			}
 		} else {
 			LOAD_ERROR(ctx, "unknown configuration option");
 		}
@@ -2381,6 +2470,7 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 	    RedisModule_CreateCommand(ctx, "KNOT.ZONE.COMMIT",       zone_commit_txt,   "write",    1, 1, 1) == REDISMODULE_ERR ||
 	    RedisModule_CreateCommand(ctx, "KNOT.ZONE.ABORT",        zone_abort_txt,    "write",    1, 1, 1) == REDISMODULE_ERR ||
 	    RedisModule_CreateCommand(ctx, "KNOT.ZONE.LOAD",         zone_load_txt,     "readonly", 1, 1, 1) == REDISMODULE_ERR ||
+	    RedisModule_CreateCommand(ctx, "KNOT.ZONE.PURGE",        zone_purge_txt,    "write",    1, 1, 1) == REDISMODULE_ERR ||
 	    RedisModule_CreateCommand(ctx, "KNOT.UPD.BEGIN",         upd_begin_txt,     "write",    1, 1, 1) == REDISMODULE_ERR ||
 	    RedisModule_CreateCommand(ctx, "KNOT.UPD.ADD",           upd_add_txt,       "write",    1, 1, 1) == REDISMODULE_ERR ||
 	    RedisModule_CreateCommand(ctx, "KNOT.UPD.REMOVE",        upd_remove_txt,    "write",    1, 1, 1) == REDISMODULE_ERR ||
@@ -2394,6 +2484,7 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 	    RedisModule_CreateCommand(ctx, RDB_CMD_ZONE_COMMIT,      zone_commit_bin,   "write",    1, 1, 1) == REDISMODULE_ERR ||
 	    RedisModule_CreateCommand(ctx, RDB_CMD_ZONE_ABORT,       zone_abort_bin,    "write",    1, 1, 1) == REDISMODULE_ERR ||
 	    RedisModule_CreateCommand(ctx, RDB_CMD_ZONE_LOAD,        zone_load_bin,     "readonly", 1, 1, 1) == REDISMODULE_ERR ||
+	    RedisModule_CreateCommand(ctx, RDB_CMD_ZONE_PURGE,       zone_purge_bin,    "write",    1, 1, 1) == REDISMODULE_ERR ||
 	    RedisModule_CreateCommand(ctx, RDB_CMD_UPD_BEGIN,        upd_begin_bin,     "write",    1, 1, 1) == REDISMODULE_ERR ||
 	    RedisModule_CreateCommand(ctx, RDB_CMD_UPD_ADD,          upd_add_bin,       "write",    1, 1, 1) == REDISMODULE_ERR ||
 	    RedisModule_CreateCommand(ctx, RDB_CMD_UPD_REMOVE,       upd_remove_bin,    "write",    1, 1, 1) == REDISMODULE_ERR ||
@@ -2407,7 +2498,7 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 		LOAD_ERROR(ctx, "failed to load");
 	}
 
-	RedisModule_Log(ctx, REDISMODULE_LOGLEVEL_NOTICE, "loaded with default-ttl=%u", rdb_default_ttl);
+	RedisModule_Log(ctx, REDISMODULE_LOGLEVEL_NOTICE, "loaded with default-ttl=%u, stream-cleanup-ms=%u", rdb_default_ttl, rdb_stream_cleanup_ms);
 
 	return REDISMODULE_OK;
 }
