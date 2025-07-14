@@ -36,8 +36,9 @@ typedef struct {
  * \brief Server state flags.
  */
 typedef enum {
-	ServerIdle    = 0 << 0, /*!< Server is idle. */
-	ServerRunning = 1 << 0, /*!< Server is running. */
+	ServerIdle      = 0 << 0, /*!< Server is idle. */
+	ServerRunning   = 1 << 0, /*!< Server is running. */
+	ServerAnswering = 1 << 1, /*!< Server is answering queries. */
 } server_state_t;
 
 /*!

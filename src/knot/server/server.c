@@ -1027,7 +1027,7 @@ int server_start(server_t *server, bool async)
 	evsched_start(&server->sched);
 
 	/* Start I/O handlers. */
-	server->state |= ServerRunning;
+	server->state |= ServerRunning | ServerAnswering;
 	for (int proto = IO_UDP; proto <= IO_XDP; ++proto) {
 		if (server->handlers[proto].size > 0) {
 			int ret = dt_start(server->handlers[proto].handler.unit);
@@ -1046,6 +1046,7 @@ void server_wait(server_t *server)
 		return;
 	}
 
+	assert(!(server->state & ServerRunning));
 	evsched_join(&server->sched);
 	worker_pool_join(server->workers);
 
@@ -1054,6 +1055,8 @@ void server_wait(server_t *server)
 			server_free_handler(&server->handlers[proto].handler);
 		}
 	}
+
+	server->state &= ~ServerAnswering;
 }
 
 static int reload_conf(conf_t *new_conf)
