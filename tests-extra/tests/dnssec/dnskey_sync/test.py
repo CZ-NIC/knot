@@ -40,10 +40,16 @@ def detect_ddns_deadlock(server):
         return True
     return False
 
-def check_same_dnskey(server1, server2, server3, tst):
-    while detect_ddns_deadlock(server1) or detect_ddns_deadlock(server2) or \
-          (SIGNERS3 and detect_ddns_deadlock(server3)):
-        tst.sleep(6)
+def check_same_dnskey(server1, server2, server3, tst, tries=20):
+    for i in range(tries):
+        if not detect_ddns_deadlock(server1) and \
+           not detect_ddns_deadlock(server2) and \
+           not (SIGNERS3 and detect_ddns_deadlock(server3)):
+            break
+        if i < tries - 1:
+            tst.sleep(6)
+        else:
+            set_err("DNSKEY sync has not converged yet")
 
     dnskey1 = server1.dig(zone[0].name, "DNSKEY", udp=False)
     dnskey2 = server2.dig(zone[0].name, "DNSKEY", udp=False)
