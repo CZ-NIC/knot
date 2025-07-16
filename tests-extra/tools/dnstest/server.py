@@ -1869,7 +1869,7 @@ class Knot(Server):
         s.item_str("storage", self.dir)
         s.item_str("zonefile-sync", self.zonefile_sync)
         if self.notify_delay is None:
-            self.notify_delay = random.randint(0, 2)
+            self.notify_delay = random.randint(0, 1)
         s.item_str("notify-delay", self.notify_delay)
         if self.zonemd_verify:
             s.item_str("zonemd-verify", "on")

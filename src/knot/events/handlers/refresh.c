@@ -1492,7 +1492,7 @@ int event_refresh(conf_t *conf, zone_t *zone)
 	/* Reschedule events. */
 	replan_from_timers(conf, zone);
 	if (trctx.send_notify) {
-		zone_schedule_notify(zone, 1);
+		zone_schedule_notify(conf, zone, 1);
 	}
 	if (trctx.more_xfr && ret == KNOT_EOK) {
 		zone_events_schedule_now(zone, ZONE_EVENT_REFRESH);
