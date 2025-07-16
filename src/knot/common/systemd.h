@@ -15,14 +15,6 @@
 void systemd_zone_load_timeout_notify(void);
 
 /*!
- * \brief Update systemd service status with information about number
- *        of scheduled tasks.
- *
- * \param tasks  Number of tasks to be done.
- */
-void systemd_tasks_status_notify(int tasks);
-
-/*!
  * \brief Notify systemd about service is ready.
  */
 void systemd_ready_notify(void);

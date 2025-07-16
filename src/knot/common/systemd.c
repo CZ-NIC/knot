@@ -42,17 +42,6 @@ void systemd_zone_load_timeout_notify(void)
 #endif
 }
 
-void systemd_tasks_status_notify(int tasks)
-{
-#ifdef ENABLE_SYSTEMD
-	if (tasks > 0) {
-		sd_notifyf(0, "STATUS=Waiting for %d tasks to finish...", tasks);
-	} else {
-		sd_notify(0, "STATUS=");
-	}
-#endif
-}
-
 void systemd_ready_notify(void)
 {
 #ifdef ENABLE_SYSTEMD
