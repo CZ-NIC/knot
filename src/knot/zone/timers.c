@@ -113,8 +113,8 @@ static void txn_write_timers(knot_lmdb_txn_t *txn, const knot_dname_t *zone,
 {
 	const char *format = (timers->last_master.sin6_family == AF_INET ||
 	                      timers->last_master.sin6_family == AF_INET6) ?
-	                     "BLBLBLBLBLBLBLBLBLBLBD" :
-	                     "BLBLBLBLBLBLBLBLBL";
+	                     "TTTTTTTTTTBD" :
+	                     "TTTTTTTTT";
 
 	MDB_val k = { knot_dname_size(zone), (void *)zone };
 	MDB_val v = knot_lmdb_make_key(format,
