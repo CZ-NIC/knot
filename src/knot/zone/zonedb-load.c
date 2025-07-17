@@ -395,6 +395,29 @@ static zone_t *add_member_zone(catalog_upd_val_t *val, knot_zonedb_t *check,
 	return zone;
 }
 
+static void reg_reverse(conf_t *conf, knot_zonedb_t *db_new, zone_t *zone)
+{
+	if (zone == NULL) {
+		return;
+	}
+
+	conf_val_t val = conf_zone_get(conf, C_REVERSE_GEN, zone->name);
+	while (val.code == KNOT_EOK) {
+		const knot_dname_t *forw_name = conf_dname(&val);
+		zone_t *forw = knot_zonedb_find(db_new, forw_name);
+		if (forw == NULL) {
+			knot_dname_txt_storage_t forw_str;
+			(void)knot_dname_to_str(forw_str, forw_name, sizeof(forw_str));
+			log_zone_warning(zone->name, "zone to reverse %s does not exist",
+			                 forw_str);
+		} else {
+			ptrlist_add(&zone->reverse_from, forw, NULL);
+			zone_local_notify_subscribe(forw, zone);
+		}
+		conf_val_next(&val);
+	}
+}
+
 /*!
  * \brief Create new zone database.
  *
@@ -506,27 +529,23 @@ static knot_zonedb_t *create_zonedb(conf_t *conf, server_t *server, reload_t mod
 	}
 	catalog_it_free(it);
 
-	it = knot_zonedb_iter_begin(db_new);
-	while (!knot_zonedb_iter_finished(it)) {
-		zone_t *z = knot_zonedb_iter_val(it);
-		conf_val_t val = conf_zone_get(conf, C_REVERSE_GEN, z->name);
-		while (val.code == KNOT_EOK) {
-			const knot_dname_t *forw_name = conf_dname(&val);
-			zone_t *forw = knot_zonedb_find(db_new, forw_name);
-			if (forw == NULL) {
-				knot_dname_txt_storage_t forw_str;
-				(void)knot_dname_to_str(forw_str, forw_name, sizeof(forw_str));
-				log_zone_warning(z->name, "zone to reverse %s does not exist",
-				                 forw_str);
-			} else {
-				ptrlist_add(&z->reverse_from, forw, NULL);
-				zone_local_notify_subscribe(forw, z);
-			}
-			conf_val_next(&val);
+	if (mode == RELOAD_COMMIT && trie_weight(server->catalog_upd.upd) == 0) {
+		/* Don't iterate through all the zones if not necessary. */
+		trie_it_t *trie_it = trie_it_begin(conf->io.zones);
+		for (; !trie_it_finished(trie_it); trie_it_next(trie_it)) {
+			zone_t *zone = knot_zonedb_find(db_new,
+				(const knot_dname_t *)trie_it_key(trie_it, NULL));
+			reg_reverse(conf, db_new, zone);
 		}
-		knot_zonedb_iter_next(it);
+		trie_it_free(trie_it);
+	} else {
+		it = knot_zonedb_iter_begin(db_new);
+		for (; !knot_zonedb_iter_finished(it); knot_zonedb_iter_next(it)) {
+			zone_t *zone = knot_zonedb_iter_val(it);
+			reg_reverse(conf, db_new, zone);
+		}
+		knot_zonedb_iter_free(it);
 	}
-	knot_zonedb_iter_free(it);
 
 	return db_new;
 }
