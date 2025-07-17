@@ -398,6 +398,7 @@ size_t knot_lmdb_usage(knot_lmdb_txn_t *txn);
  * - S for zero-terminated string
  * - N for a domain name (in knot_dname_t* format)
  * - D for fixed-size data (takes two params: void* and size_t)
+ * - T for pair of byte prefix and 64bit timer (takes two params: uint8 and uint64)
  */
 MDB_val knot_lmdb_make_key(const char *format, ...);
 
