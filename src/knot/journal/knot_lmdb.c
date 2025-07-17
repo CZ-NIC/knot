@@ -597,7 +597,9 @@ static bool make_key_part(void *key_data, size_t key_len, const char *format, va
 	const char *tmp_s;
 	const knot_dname_t *tmp_d;
 	const void *tmp_v;
+	uint64_t tmp_u64;
 	size_t tmp;
+	int tmp_i;
 
 	for (const char *f = format; *f != '\0'; f++) {
 		switch (*f) {
@@ -625,6 +627,14 @@ static bool make_key_part(void *key_data, size_t key_len, const char *format, va
 			tmp_v = va_arg(arg, const void *);
 			tmp = va_arg(arg, size_t);
 			wire_ctx_write(&wire, tmp_v, tmp);
+			break;
+		case 'T':
+			tmp_i = va_arg(arg, int);
+			tmp_u64 = va_arg(arg, uint64_t);
+			if (tmp_u64 > 0) {
+				wire_ctx_write_u8(&wire, tmp_i);
+				wire_ctx_write_u64(&wire, tmp_u64);
+			}
 			break;
 		}
 	}
@@ -670,6 +680,13 @@ MDB_val knot_lmdb_make_key(const char *format, ...)
 		case 'D':
 			(void)va_arg(arg, const void *);
 			key.mv_size += va_arg(arg, size_t);
+			break;
+		case 'T':
+			(void)va_arg(arg, int); // uint8_t will be promoted to int
+			if (va_arg(arg, uint64_t) > 0) {
+				key.mv_size += sizeof(uint8_t);
+				key.mv_size += sizeof(uint64_t);
+			}
 			break;
 		}
 	}
