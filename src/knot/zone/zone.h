@@ -77,6 +77,7 @@ typedef struct zone
 	zone_contents_t *contents;
 	zone_flag_t flags;
 	bool is_catalog_flag; //!< Lock-less indication of ZONE_IS_CATALOG flag.
+	bool started;         //!< Lock-less indication of a started zone.
 
 	/*! \brief Dynamic configuration zone change type. */
 	conf_io_type_t change_type;

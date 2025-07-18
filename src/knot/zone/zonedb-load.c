@@ -176,6 +176,7 @@ static zone_t *create_zone_new(conf_t *conf, const knot_dname_t *name,
 		log_zone_info(zone->name, "zone will be bootstrapped");
 		assert(zone_is_slave(conf, zone));
 		replan_load_bootstrap(conf, zone);
+		zone->started = true;
 	} else {
 		log_zone_info(zone->name, "zone will be loaded");
 		// if load fails, fallback to bootstrap
