@@ -94,6 +94,8 @@ Requires(postun):	systemd
 
 Requires:	%{name}-libs%{?_isa} = %{version}-%{release}
 
+Recommends:	%{name}-keymgr
+
 %if 0%{?suse_version}
 Provides:	group(knot)
 %endif
@@ -132,6 +134,13 @@ Requires:	%{name}-libs%{?_isa} = %{version}-%{release}
 
 %description dnssecutils
 The package contains DNSSEC tools shipped with the Knot DNS server.
+
+%package keymgr
+Summary:	Knot DNS key management utility
+Requires:	%{name}-libs%{?_isa} = %{version}-%{release}
+
+%description keymgr
+The package contains keymgr program for Knot DNS key management.
 
 %package module-dnstap
 Summary:	dnstap module for Knot DNS
@@ -329,7 +338,6 @@ getent passwd knot >/dev/null || \
 %{_unitdir}/knot.service
 %{_sbindir}/kcatalogprint
 %{_sbindir}/kjournalprint
-%{_sbindir}/keymgr
 %{_sbindir}/knotc
 %{_sbindir}/knotd
 %if 0%{?suse_version}
@@ -338,7 +346,6 @@ getent passwd knot >/dev/null || \
 %{_mandir}/man5/knot.conf.*
 %{_mandir}/man8/kcatalogprint.*
 %{_mandir}/man8/kjournalprint.*
-%{_mandir}/man8/keymgr.*
 %{_mandir}/man8/knotc.*
 %{_mandir}/man8/knotd.*
 %ghost %attr(770,root,knot) %dir %{_rundir}/knot
@@ -360,6 +367,10 @@ getent passwd knot >/dev/null || \
 %{_mandir}/man1/knsec3hash.*
 %{_mandir}/man1/kzonecheck.*
 %{_mandir}/man1/kzonesign.*
+
+%files keymgr
+%{_sbindir}/keymgr
+%{_mandir}/man8/keymgr.*
 
 %files module-dnstap
 %{_libdir}/knot/modules-*/dnstap.so
