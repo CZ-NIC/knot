@@ -1,4 +1,4 @@
-AM_CPPFLAGS = -include $(top_builddir)/src/config.h
+AM_CPPFLAGS = -I$(top_srcdir)/src -include $(top_builddir)/src/config.h
 AM_LDFLAGS = $(LT_NO_UNDEFINED)
 
 pkglibdir = ${libdir}/knot/redis

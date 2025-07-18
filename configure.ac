@@ -832,6 +832,7 @@ AC_CONFIG_FILES([Makefile
                  doc/Makefile
                  tests/Makefile
                  tests-fuzz/Makefile
+                 tests-redis/Makefile
                  samples/Makefile
                  distro/Makefile
                  python/Makefile
