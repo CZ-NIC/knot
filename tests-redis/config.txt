@@ -1,0 +1,3 @@
+--module ../src/redis/.libs/knot.so
+--no-progress
+--use-valgrind
