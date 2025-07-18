@@ -136,10 +136,11 @@ int event_load(conf_t *conf, zone_t *zone)
 			assert(!zf_conts);
 			int level = dontcare_load_error(conf, zone) ? LOG_INFO : LOG_ERR;
 			log_fmt_zone(level, LOG_SOURCE_ZONE, zone->name, NULL,
-			             "failed to load %s%s%s%s (%s)", zone_src,
-			             (from_file ? " '" : ""),
+			             "failed to load %s%s%.0u%s%s%s (%s)", zone_src,
+			             (from_file ? ""       : ", instance "), instance,
+			             (from_file ? " '"     : ""),
 			             (from_file ? filename : ""),
-			             (from_file ? "'" : ""),
+			             (from_file ? "'"      : ""),
 			             knot_strerror(ret));
 			free(filename);
 			goto load_end;
@@ -170,12 +171,14 @@ int event_load(conf_t *conf, zone_t *zone)
 			uint32_t serial = zone_contents_serial(relevant);
 			uint32_t set = serial_next(serial, conf, zone->name, SERIAL_POLICY_AUTO, 1);
 			zone_contents_set_soa_serial(zf_conts, set);
-			log_zone_info(zone->name, "%s loaded, serial updated %u -> %u",
-			              zone_src, zone->zonefile.serial, set);
+			log_zone_info(zone->name, "%s loaded%s%.0u, serial updated %u -> %u",
+			              zone_src, (from_file ? "" : ", instance "),
+			              instance, zone->zonefile.serial, set);
 			zone->zonefile.serial = set;
 		} else {
-			log_zone_info(zone->name, "%s loaded, serial %u",
-			              zone_src, zone->zonefile.serial);
+			log_zone_info(zone->name, "%s loaded%s%.0u, serial %u",
+			              zone_src, (from_file ? "" : ", instance "),
+			              instance, zone->zonefile.serial);
 		}
 
 		// If configured and appliable to zonefile, load journal changes.
