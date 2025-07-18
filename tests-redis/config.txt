@@ -1,0 +1,2 @@
+--module ../build/lib/knot/redis/knot.so
+--clear-logs
