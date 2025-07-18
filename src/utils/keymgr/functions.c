@@ -165,6 +165,8 @@ static bool genkeyargs(int argc, char *argv[], bool just_timing,
 		} else if (same_command(argv[i], "sep=", true)) {
 			bitmap_set(flags, DNSKEY_GENERATE_SEP_SPEC, true);
 			bitmap_set(flags, DNSKEY_GENERATE_SEP_ON, str2bool(argv[i] + 4));
+		} else if (same_command(argv[i], "for-later=", true)) {
+			bitmap_set(flags, DNSKEY_GENERATE_FOR_LATER, str2bool(argv[i] + 10));
 		} else if (!just_timing && same_command(argv[i], "size=", true)) {
 			if (str_to_u16(argv[i] + 5, keysize) != KNOT_EOK) {
 				ERR2("invalid size: '%s'", argv[i] + 5);
@@ -172,13 +174,14 @@ static bool genkeyargs(int argc, char *argv[], bool just_timing,
 			}
 		} else if (!just_timing && same_command(argv[i], "addtopolicy=", true)) {
 			*addtopolicy = argv[i] + 12;
-		} else if (same_command(argv[i], "for-later", false)) {
-			bitmap_set(flags, DNSKEY_GENERATE_FOR_LATER, true);
-			*timing = (knot_kasp_key_timing_t){ .created = timing->created };
 		} else if (!init_timestamps(argv[i], timing)) {
 			ERR2("invalid parameter: %s", argv[i]);
 			return false;
 		}
+	}
+
+	if (*flags & DNSKEY_GENERATE_FOR_LATER) {
+		*timing = (knot_kasp_key_timing_t){ .created = timing->created };
 	}
 
 	return true;
@@ -603,6 +606,7 @@ static int import_key(kdnssec_ctx_t *ctx, unsigned backend, const char *param,
 	kkey->timing = timing;
 	kkey->is_ksk = (flags & DNSKEY_GENERATE_KSK);
 	kkey->is_zsk = (flags & DNSKEY_GENERATE_ZSK);
+	kkey->is_for_later = (flags & DNSKEY_GENERATE_FOR_LATER);
 
 	// append to zone
 	ret = kasp_zone_append(ctx->zone, kkey);
@@ -879,7 +883,9 @@ int keymgr_foreign_key_id(char *argv[], knot_lmdb_db_t *kaspdb, knot_dname_t **k
 int keymgr_set_timing(knot_kasp_key_t *key, int argc, char *argv[])
 {
 	knot_kasp_key_timing_t temp = key->timing;
-	kdnssec_generate_flags_t flags = ((key->is_ksk ? DNSKEY_GENERATE_KSK : 0) | (key->is_zsk ? DNSKEY_GENERATE_ZSK : 0));
+	kdnssec_generate_flags_t flags = ((key->is_ksk ? DNSKEY_GENERATE_KSK : 0) |
+	                                  (key->is_zsk ? DNSKEY_GENERATE_ZSK : 0) |
+	                                  (key->is_for_later ? DNSKEY_GENERATE_FOR_LATER : 0));
 
 	if (genkeyargs(argc, argv, true, &flags, NULL, NULL, &temp, NULL)) {
 		int ret = check_timers(&temp);
@@ -887,6 +893,7 @@ int keymgr_set_timing(knot_kasp_key_t *key, int argc, char *argv[])
 			return ret;
 		}
 		key->timing = temp;
+		key->is_for_later = (flags & DNSKEY_GENERATE_FOR_LATER);
 		if (key->is_ksk != (bool)(flags & DNSKEY_GENERATE_KSK) ||
 		    key->is_zsk != (bool)(flags & DNSKEY_GENERATE_ZSK) ||
 		    flags & DNSKEY_GENERATE_SEP_SPEC) {
@@ -993,14 +1000,11 @@ static void print_key_brief(const knot_kasp_key_t *key, key_info_t *info,
 static void print_key_full(const knot_kasp_key_t *key, key_info_t *info,
                            knot_time_print_t format)
 {
-	printf("%s ksk=%s zsk=%s tag=%05d algorithm=%-2d size=%-4u public-only=%s", key->id,
-	       (key->is_ksk ? "yes" : "no "), (key->is_zsk ? "yes" : "no "),
+	printf("%s ksk=%s zsk=%s tag=%05d algorithm=%-2d size=%-4u public-only=%s for-later=%s missing=%s",
+	       key->id, (key->is_ksk ? "yes" : "no "), (key->is_zsk ? "yes" : "no "),
 	       dnssec_key_get_keytag(key->key), (int)dnssec_key_get_algorithm(key->key),
-	       dnssec_key_get_size(key->key), (key->is_pub_only ? "yes" : "no "));
-	if (key->is_for_later) {
-		printf(" for-later");
-	}
-	printf(" missing=%s", info->missing ? "yes" : "no ");
+	       dnssec_key_get_size(key->key), (key->is_pub_only ? "yes" : "no "),
+	       (key->is_for_later ? "yes" : "no "), (info->missing ? "yes" : "no "));
 	if (info->ks_name != NULL) {
 		printf(" keystore=%s/%s", KS_TYPE(info), info->ks_name);
 	}
