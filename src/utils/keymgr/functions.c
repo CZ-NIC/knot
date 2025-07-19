@@ -130,11 +130,11 @@ static bool str2bool(const char *s)
 
 static void bitmap_set(kdnssec_generate_flags_t *bitmap, int flag, bool onoff)
 {
-        if (onoff) {
-                *bitmap |= flag;
-        } else {
-                *bitmap &= ~flag;
-        }
+	if (onoff) {
+		*bitmap |= flag;
+	} else {
+		*bitmap &= ~flag;
+	}
 }
 
 static bool same_command_bool(const char *arg, const char *cmd, bool *res)
@@ -158,15 +158,16 @@ static bool genkeyargs(int argc, char *argv[], bool just_timing,
                        const char **addtopolicy)
 {
 	// generate algorithms field
-	char *algnames[256] = { 0 };
-	algnames[DNSSEC_KEY_ALGORITHM_RSA_SHA1] = "rsasha1";
-	algnames[DNSSEC_KEY_ALGORITHM_RSA_SHA1_NSEC3] = "rsasha1-nsec3-sha1";
-	algnames[DNSSEC_KEY_ALGORITHM_RSA_SHA256] = "rsasha256";
-	algnames[DNSSEC_KEY_ALGORITHM_RSA_SHA512] = "rsasha512";
-	algnames[DNSSEC_KEY_ALGORITHM_ECDSA_P256_SHA256] = "ecdsap256sha256";
-	algnames[DNSSEC_KEY_ALGORITHM_ECDSA_P384_SHA384] = "ecdsap384sha384";
-	algnames[DNSSEC_KEY_ALGORITHM_ED25519] = "ed25519";
-	algnames[DNSSEC_KEY_ALGORITHM_ED448] = "ed448";
+	const char *algnames[256] = {
+		[DNSSEC_KEY_ALGORITHM_RSA_SHA1] = "rsasha1",
+		[DNSSEC_KEY_ALGORITHM_RSA_SHA1_NSEC3] = "rsasha1-nsec3-sha1",
+		[DNSSEC_KEY_ALGORITHM_RSA_SHA256] = "rsasha256",
+		[DNSSEC_KEY_ALGORITHM_RSA_SHA512] = "rsasha512",
+		[DNSSEC_KEY_ALGORITHM_ECDSA_P256_SHA256] = "ecdsap256sha256",
+		[DNSSEC_KEY_ALGORITHM_ECDSA_P384_SHA384] = "ecdsap384sha384",
+		[DNSSEC_KEY_ALGORITHM_ED25519] = "ed25519",
+		[DNSSEC_KEY_ALGORITHM_ED448] = "ed448",
+	};
 
 	// parse args
 	for (int i = 0; i < argc; i++) {
@@ -185,6 +186,13 @@ static bool genkeyargs(int argc, char *argv[], bool just_timing,
 				return false;
 			}
 			*algorithm = alg;
+		} else if (!just_timing && same_command(argv[i], "size=", true)) {
+			if (str_to_u16(argv[i] + 5, keysize) != KNOT_EOK) {
+				ERR2("invalid size: '%s'", argv[i] + 5);
+				return false;
+			}
+		} else if (!just_timing && same_command(argv[i], "addtopolicy=", true)) {
+			*addtopolicy = argv[i] + 12;
 		} else if (same_command_bool(argv[i], "ksk", &res)) {
 			bitmap_set(flags, DNSKEY_GENERATE_KSK, res);
 		} else if (same_command_bool(argv[i], "zsk", &res)) {
@@ -194,13 +202,6 @@ static bool genkeyargs(int argc, char *argv[], bool just_timing,
 			bitmap_set(flags, DNSKEY_GENERATE_SEP_ON, res);
 		} else if (same_command_bool(argv[i], "for-later", &res)) {
 			bitmap_set(flags, DNSKEY_GENERATE_FOR_LATER, res);
-		} else if (!just_timing && same_command(argv[i], "size=", true)) {
-			if (str_to_u16(argv[i] + 5, keysize) != KNOT_EOK) {
-				ERR2("invalid size: '%s'", argv[i] + 5);
-				return false;
-			}
-		} else if (!just_timing && same_command(argv[i], "addtopolicy=", true)) {
-			*addtopolicy = argv[i] + 12;
 		} else if (!init_timestamps(argv[i], timing)) {
 			ERR2("invalid parameter: %s", argv[i]);
 			return false;
