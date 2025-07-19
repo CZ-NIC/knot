@@ -199,7 +199,8 @@ Commands related to Offline KSK feature
 Generate arguments
 ..................
 
-Arguments are separated by space, each of them is in format 'name=value'.
+Arguments are separated by space, each of them is in format 'name=value'. A *(bool)* argument
+accepts values **yes** or **no**. If the value is omitted, it's interpreted as **yes**.
 
 **algorithm**
   Either an algorithm number (e.g. 14) or :ref:`algorithm name<policy_algorithm>`
@@ -209,19 +210,19 @@ Arguments are separated by space, each of them is in format 'name=value'.
   Key length in bits.
 
 **ksk**
-  If set to **yes**, the key will be used for signing DNSKEY rrset. The generated key will also
+  *(bool)* The key will be used for signing DNSKEY rrset. The generated key will also
   have the Secure Entry Point flag set to 1.
 
 **zsk**
-  If set to **yes**, the key will be used for signing zone (except DNSKEY rrset). This flag can
+  *(bool)* The key will be used for signing zone (except DNSKEY rrset). This flag can
   be set concurrently with the **ksk** flag (for a CSK key).
 
 **sep**
-  Overrides the standard setting of the Secure Entry Point flag.
+  *(bool)* Overrides the standard setting of the Secure Entry Point flag.
 
 **for-later**
-  Pre-generating a key for later use. Once a new key ought to be generated, this one will be
-  used instead if the **ksk** and **zsk** flags are matching. This argument has no parameter.
+  *(bool)* The key will be determined for later use. It means once a new key ought
+  to be generated, this one will be used instead if the key type and algorithm match.
 
 The following arguments are timestamps of key lifetime (see :ref:`DNSSEC Key states`):
 
