@@ -120,12 +120,14 @@ static void print_help(void)
 	       "  [id=|keytag=] prefix.\n"
 	       "\n"
 	       "Key attributes:\n"
-	       "  algorithm  The key cryptographic algorithm: either name (e.g. RSASHA256) or\n"
-	       "             number.\n"
+	       "  algorithm  The key cryptographic algorithm: either name (e.g. RSASHA256) or number.\n"
 	       "  size       The key size in bits.\n"
-	       "  ksk        Whether the generated/imported key shall be Key Signing Key.\n"
-	       "  created/publish/ready/active/retire/remove  The timestamp of the key\n"
-	       "             lifetime event (e.g. published=+1d active=1499770874)\n",
+	       "  ksk        The key is KSK.\n"
+	       "  zsk        The key is ZSK.\n"
+	       "  sep        Overrides the standard setting of SEP.\n"
+	       "  for-later  The key is for later use.\n"
+	       "  created/publish/ready/active/retire/remove/pre_active/post_active/retire_active/revoke"
+	       "             The timestamp of the key lifetime event (e.g. published=+1d active=1499770874)\n",
 	       PROGRAM_NAME, PROGRAM_NAME, PROGRAM_NAME, PROGRAM_NAME, CONF_DEFAULT_FILE,
 	       CONF_DEFAULT_DBDIR);
 }
