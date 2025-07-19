@@ -1,7 +1,6 @@
 debian/cz.nic.knotd.conf usr/share/dbus-1/system.d/
 etc/knot/knot.conf
 usr/sbin/kcatalogprint
-usr/sbin/keymgr
 usr/sbin/kjournalprint
 usr/sbin/knotc
 usr/sbin/knotd

@@ -47,6 +47,8 @@ Depends:
  libzscanner4 (= ${binary:Version}),
  ${misc:Depends},
  ${shlibs:Depends},
+Recommends:
+ knot-keymgr,
 Pre-Depends:
  ${misc:Pre-Depends},
 Suggests:
@@ -62,6 +64,7 @@ Description: Authoritative domain name server
 Package: libknot15
 Architecture: any
 Depends:
+ libdnssec9 (= ${binary:Version}),
  ${misc:Depends},
  ${shlibs:Depends},
 Section: libs
@@ -196,6 +199,24 @@ Description: Version of 'host' bundled with Knot DNS
  .
  This package provides the 'host' program from Knot DNS. This program is
  designed to be almost 1:1 compatible with BIND 9.x 'host' program.
+
+Package: knot-keymgr
+Architecture: any
+Depends:
+ libdnssec9 (= ${binary:Version}),
+ libknot15 (= ${binary:Version}),
+ libzscanner4 (= ${binary:Version}),
+ ${misc:Depends},
+ ${shlibs:Depends},
+Description: Knot DNS key management utility
+ Knot DNS is a fast, authoritative only, high performance, feature
+ full and open source name server.
+ .
+ Knot DNS is developed by CZ.NIC Labs, the R&D department of .CZ
+ registry and hence is well suited to run anything from the root
+ zone, the top-level domain, to many smaller standard domain names.
+ .
+ This package provides the 'keymgr' program for Knot DNS key management.
 
 Package: knot-module-dnstap
 Architecture: any
