@@ -66,6 +66,7 @@ Description: Authoritative domain name server
 Package: libknot15
 Architecture: any
 Depends:
+ libdnssec9 (= ${binary:Version}),
  ${misc:Depends},
  ${shlibs:Depends},
 Section: libs
