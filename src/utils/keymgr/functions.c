@@ -137,6 +137,21 @@ static void bitmap_set(kdnssec_generate_flags_t *bitmap, int flag, bool onoff)
         }
 }
 
+static bool same_command_bool(const char *arg, const char *cmd, bool *res)
+{
+	char prefix[32];
+	(void)snprintf(prefix, sizeof(prefix), "%s=", cmd);
+	if (same_command(arg, prefix, true)) {
+		*res = str2bool(arg + strlen(prefix));
+		return true;
+	} else if (same_command(arg, cmd, false)) {
+		*res = true;
+		return true;
+	} else {
+		return false;
+	}
+}
+
 static bool genkeyargs(int argc, char *argv[], bool just_timing,
                        kdnssec_generate_flags_t *flags, dnssec_key_algorithm_t *algorithm,
                        uint16_t *keysize, knot_kasp_key_timing_t *timing,
@@ -155,6 +170,7 @@ static bool genkeyargs(int argc, char *argv[], bool just_timing,
 
 	// parse args
 	for (int i = 0; i < argc; i++) {
+		bool res;
 		if (!just_timing && same_command(argv[i], "algorithm=", true)) {
 			int alg = 256; // invalid value
 			(void)str_to_int(argv[i] + 10, &alg, 0, 255);
@@ -169,15 +185,15 @@ static bool genkeyargs(int argc, char *argv[], bool just_timing,
 				return false;
 			}
 			*algorithm = alg;
-		} else if (same_command(argv[i], "ksk=", true)) {
-			bitmap_set(flags, DNSKEY_GENERATE_KSK, str2bool(argv[i] + 4));
-		} else if (same_command(argv[i], "zsk=", true)) {
-			bitmap_set(flags, DNSKEY_GENERATE_ZSK, str2bool(argv[i] + 4));
-		} else if (same_command(argv[i], "sep=", true)) {
+		} else if (same_command_bool(argv[i], "ksk", &res)) {
+			bitmap_set(flags, DNSKEY_GENERATE_KSK, res);
+		} else if (same_command_bool(argv[i], "zsk", &res)) {
+			bitmap_set(flags, DNSKEY_GENERATE_ZSK, res);
+		} else if (same_command_bool(argv[i], "sep", &res)) {
 			bitmap_set(flags, DNSKEY_GENERATE_SEP_SPEC, true);
-			bitmap_set(flags, DNSKEY_GENERATE_SEP_ON, str2bool(argv[i] + 4));
-		} else if (same_command(argv[i], "for-later=", true)) {
-			bitmap_set(flags, DNSKEY_GENERATE_FOR_LATER, str2bool(argv[i] + 10));
+			bitmap_set(flags, DNSKEY_GENERATE_SEP_ON, res);
+		} else if (same_command_bool(argv[i], "for-later", &res)) {
+			bitmap_set(flags, DNSKEY_GENERATE_FOR_LATER, res);
 		} else if (!just_timing && same_command(argv[i], "size=", true)) {
 			if (str_to_u16(argv[i] + 5, keysize) != KNOT_EOK) {
 				ERR2("invalid size: '%s'", argv[i] + 5);
