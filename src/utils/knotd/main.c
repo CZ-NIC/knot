@@ -297,7 +297,7 @@ static int event_loop(server_t *server, const char *socket, bool daemonize,
 		if (signals_req_zones_reload && !signals_req_stop) {
 			signals_req_zones_reload = false;
 			reload_t mode = ATOMIC_GET(server->catalog_upd_signal) ?
-			                RELOAD_CATALOG : RELOAD_ZONES;
+			                RELOAD_CATALOG : RELOAD_FULL;
 			pthread_rwlock_wrlock(&server->ctl_lock);
 			ATOMIC_SET(server->catalog_upd_signal, false);
 			server_update_zones(conf(), server, mode);
@@ -603,7 +603,7 @@ int main(int argc, char **argv)
 
 	/* Populate zone database. */
 	log_info("loading %zu zones", conf_id_count(conf(), C_ZONE));
-	server_update_zones(conf(), &server, RELOAD_ZONES);
+	server_update_zones(conf(), &server, RELOAD_FULL);
 
 	/* Check number of loaded zones. */
 	if (knot_zonedb_size(server.zone_db) == 0) {

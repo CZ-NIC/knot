@@ -47,10 +47,9 @@ typedef enum {
  */
 typedef enum {
 	RELOAD_NONE    = 0,
-	RELOAD_FULL    = 1 << 0, /*!< Reload the server and all zones. */
+	RELOAD_FULL    = 1 << 0, /*!< Reload all zones. */
 	RELOAD_COMMIT  = 1 << 1, /*!< Process changes from dynamic configuration. */
-	RELOAD_ZONES   = 1 << 2, /*!< Reload all zones. */
-	RELOAD_CATALOG = 1 << 3, /*!< Process catalog zone changes. */
+	RELOAD_CATALOG = 1 << 2, /*!< Process catalog zone changes. */
 } reload_t;
 
 /*!
