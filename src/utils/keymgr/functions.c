@@ -119,11 +119,26 @@ static bool str2bool(const char *s)
 
 static void bitmap_set(kdnssec_generate_flags_t *bitmap, int flag, bool onoff)
 {
-        if (onoff) {
-                *bitmap |= flag;
-        } else {
-                *bitmap &= ~flag;
-        }
+	if (onoff) {
+		*bitmap |= flag;
+	} else {
+		*bitmap &= ~flag;
+	}
+}
+
+static bool same_command_bool(const char *arg, const char *cmd, bool *res)
+{
+	char prefix[32];
+	(void)snprintf(prefix, sizeof(prefix), "%s=", cmd);
+	if (same_command(arg, prefix, true)) {
+		*res = str2bool(arg + strlen(prefix));
+		return true;
+	} else if (same_command(arg, cmd, false)) {
+		*res = true;
+		return true;
+	} else {
+		return false;
+	}
 }
 
 static bool genkeyargs(int argc, char *argv[], bool just_timing,
@@ -132,18 +147,20 @@ static bool genkeyargs(int argc, char *argv[], bool just_timing,
                        const char **addtopolicy)
 {
 	// generate algorithms field
-	char *algnames[256] = { 0 };
-	algnames[DNSSEC_KEY_ALGORITHM_RSA_SHA1] = "rsasha1";
-	algnames[DNSSEC_KEY_ALGORITHM_RSA_SHA1_NSEC3] = "rsasha1-nsec3-sha1";
-	algnames[DNSSEC_KEY_ALGORITHM_RSA_SHA256] = "rsasha256";
-	algnames[DNSSEC_KEY_ALGORITHM_RSA_SHA512] = "rsasha512";
-	algnames[DNSSEC_KEY_ALGORITHM_ECDSA_P256_SHA256] = "ecdsap256sha256";
-	algnames[DNSSEC_KEY_ALGORITHM_ECDSA_P384_SHA384] = "ecdsap384sha384";
-	algnames[DNSSEC_KEY_ALGORITHM_ED25519] = "ed25519";
-	algnames[DNSSEC_KEY_ALGORITHM_ED448] = "ed448";
+	const char *algnames[256] = {
+		[DNSSEC_KEY_ALGORITHM_RSA_SHA1] = "rsasha1",
+		[DNSSEC_KEY_ALGORITHM_RSA_SHA1_NSEC3] = "rsasha1-nsec3-sha1",
+		[DNSSEC_KEY_ALGORITHM_RSA_SHA256] = "rsasha256",
+		[DNSSEC_KEY_ALGORITHM_RSA_SHA512] = "rsasha512",
+		[DNSSEC_KEY_ALGORITHM_ECDSA_P256_SHA256] = "ecdsap256sha256",
+		[DNSSEC_KEY_ALGORITHM_ECDSA_P384_SHA384] = "ecdsap384sha384",
+		[DNSSEC_KEY_ALGORITHM_ED25519] = "ed25519",
+		[DNSSEC_KEY_ALGORITHM_ED448] = "ed448",
+	};
 
 	// parse args
 	for (int i = 0; i < argc; i++) {
+		bool res;
 		if (!just_timing && same_command(argv[i], "algorithm=", true)) {
 			int alg = 256; // invalid value
 			(void)str_to_int(argv[i] + 10, &alg, 0, 255);
@@ -158,13 +175,6 @@ static bool genkeyargs(int argc, char *argv[], bool just_timing,
 				return false;
 			}
 			*algorithm = alg;
-		} else if (same_command(argv[i], "ksk=", true)) {
-			bitmap_set(flags, DNSKEY_GENERATE_KSK, str2bool(argv[i] + 4));
-		} else if (same_command(argv[i], "zsk=", true)) {
-			bitmap_set(flags, DNSKEY_GENERATE_ZSK, str2bool(argv[i] + 4));
-		} else if (same_command(argv[i], "sep=", true)) {
-			bitmap_set(flags, DNSKEY_GENERATE_SEP_SPEC, true);
-			bitmap_set(flags, DNSKEY_GENERATE_SEP_ON, str2bool(argv[i] + 4));
 		} else if (!just_timing && same_command(argv[i], "size=", true)) {
 			if (str_to_u16(argv[i] + 5, keysize) != KNOT_EOK) {
 				ERR2("invalid size: '%s'", argv[i] + 5);
@@ -172,10 +182,23 @@ static bool genkeyargs(int argc, char *argv[], bool just_timing,
 			}
 		} else if (!just_timing && same_command(argv[i], "addtopolicy=", true)) {
 			*addtopolicy = argv[i] + 12;
+		} else if (same_command_bool(argv[i], "ksk", &res)) {
+			bitmap_set(flags, DNSKEY_GENERATE_KSK, res);
+		} else if (same_command_bool(argv[i], "zsk", &res)) {
+			bitmap_set(flags, DNSKEY_GENERATE_ZSK, res);
+		} else if (same_command_bool(argv[i], "sep", &res)) {
+			bitmap_set(flags, DNSKEY_GENERATE_SEP_SPEC, true);
+			bitmap_set(flags, DNSKEY_GENERATE_SEP_ON, res);
+		} else if (same_command_bool(argv[i], "for-later", &res)) {
+			bitmap_set(flags, DNSKEY_GENERATE_FOR_LATER, res);
 		} else if (!init_timestamps(argv[i], timing)) {
 			ERR2("invalid parameter: %s", argv[i]);
 			return false;
 		}
+	}
+
+	if (*flags & DNSKEY_GENERATE_FOR_LATER) {
+		*timing = (knot_kasp_key_timing_t){ .created = timing->created };
 	}
 
 	return true;
@@ -255,8 +278,7 @@ int keymgr_generate_key(kdnssec_ctx_t *ctx, int argc, char *argv[])
 		knot_kasp_key_t *kasp_key = &ctx->zone->keys[i];
 		if ((kasp_key->is_ksk && (flags & DNSKEY_GENERATE_KSK)) &&
 		    dnssec_key_get_algorithm(kasp_key->key) != ctx->policy->algorithm) {
-			WARN2("creating key with different algorithm than "
-			      "configured in the policy");
+			WARN2("inconsistent KSK algorithms");
 			break;
 		}
 	}
@@ -600,6 +622,7 @@ static int import_key(kdnssec_ctx_t *ctx, unsigned backend, const char *param,
 	kkey->timing = timing;
 	kkey->is_ksk = (flags & DNSKEY_GENERATE_KSK);
 	kkey->is_zsk = (flags & DNSKEY_GENERATE_ZSK);
+	kkey->is_for_later = (flags & DNSKEY_GENERATE_FOR_LATER);
 
 	// append to zone
 	ret = kasp_zone_append(ctx->zone, kkey);
@@ -876,7 +899,9 @@ int keymgr_foreign_key_id(char *argv[], knot_lmdb_db_t *kaspdb, knot_dname_t **k
 int keymgr_set_timing(knot_kasp_key_t *key, int argc, char *argv[])
 {
 	knot_kasp_key_timing_t temp = key->timing;
-	kdnssec_generate_flags_t flags = ((key->is_ksk ? DNSKEY_GENERATE_KSK : 0) | (key->is_zsk ? DNSKEY_GENERATE_ZSK : 0));
+	kdnssec_generate_flags_t flags = ((key->is_ksk ? DNSKEY_GENERATE_KSK : 0) |
+	                                  (key->is_zsk ? DNSKEY_GENERATE_ZSK : 0) |
+	                                  (key->is_for_later ? DNSKEY_GENERATE_FOR_LATER : 0));
 
 	if (genkeyargs(argc, argv, true, &flags, NULL, NULL, &temp, NULL)) {
 		int ret = check_timers(&temp);
@@ -884,6 +909,7 @@ int keymgr_set_timing(knot_kasp_key_t *key, int argc, char *argv[])
 			return ret;
 		}
 		key->timing = temp;
+		key->is_for_later = (flags & DNSKEY_GENERATE_FOR_LATER);
 		if (key->is_ksk != (bool)(flags & DNSKEY_GENERATE_KSK) ||
 		    key->is_zsk != (bool)(flags & DNSKEY_GENERATE_ZSK) ||
 		    flags & DNSKEY_GENERATE_SEP_SPEC) {
@@ -954,6 +980,10 @@ static void print_key_brief(const knot_kasp_key_t *key, key_info_t *info,
 		printf(" %s%spublic-only%s", COL_BOLD(c), COL_MGNT(c), COL_RST(c));
 	}
 
+	if (key->is_for_later) {
+		printf(" %s%sfor-later%s", COL_BOLD(c), COL_MGNT(c), COL_RST(c));
+	}
+
 	if (info->missing) {
 		printf(" %s%smissing%s", COL_BOLD(c), COL_YELW(c), COL_RST(c));
 	} else if (info->ks_count > 1 && info->ks_name != NULL) {
@@ -986,11 +1016,11 @@ static void print_key_brief(const knot_kasp_key_t *key, key_info_t *info,
 static void print_key_full(const knot_kasp_key_t *key, key_info_t *info,
                            knot_time_print_t format)
 {
-	printf("%s ksk=%s zsk=%s tag=%05d algorithm=%-2d size=%-4u public-only=%s", key->id,
-	       (key->is_ksk ? "yes" : "no "), (key->is_zsk ? "yes" : "no "),
+	printf("%s ksk=%s zsk=%s tag=%05d algorithm=%-2d size=%-4u public-only=%s for-later=%s missing=%s",
+	       key->id, (key->is_ksk ? "yes" : "no "), (key->is_zsk ? "yes" : "no "),
 	       dnssec_key_get_keytag(key->key), (int)dnssec_key_get_algorithm(key->key),
-	       dnssec_key_get_size(key->key), (key->is_pub_only ? "yes" : "no "));
-	printf(" missing=%s", info->missing ? "yes" : "no ");
+	       dnssec_key_get_size(key->key), (key->is_pub_only ? "yes" : "no "),
+	       (key->is_for_later ? "yes" : "no "), (info->missing ? "yes" : "no "));
 	if (info->ks_name != NULL) {
 		printf(" keystore=%s/%s", KS_TYPE(info), info->ks_name);
 	}
@@ -1015,6 +1045,7 @@ static void print_key_json(const knot_kasp_key_t *key, key_info_t *info,
 	jsonw_ulong(w, "algorithm", dnssec_key_get_algorithm(key->key));
 	jsonw_int(w,   "size", dnssec_key_get_size(key->key));
 	jsonw_bool(w,  "public-only", key->is_pub_only);
+	jsonw_bool(w,  "for-later", key->is_for_later);
 	jsonw_bool(w,  "missing", info->missing);
 	if (info->ks_name != NULL) {
 	jsonw_str(w,   "keystore", info->ks_name);
