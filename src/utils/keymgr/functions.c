@@ -278,8 +278,7 @@ int keymgr_generate_key(kdnssec_ctx_t *ctx, int argc, char *argv[])
 		knot_kasp_key_t *kasp_key = &ctx->zone->keys[i];
 		if ((kasp_key->is_ksk && (flags & DNSKEY_GENERATE_KSK)) &&
 		    dnssec_key_get_algorithm(kasp_key->key) != ctx->policy->algorithm) {
-			WARN2("creating key with different algorithm than "
-			      "configured in the policy");
+			WARN2("inconsistent KSK algorithms");
 			break;
 		}
 	}
