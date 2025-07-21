@@ -17,7 +17,7 @@
 
 struct knot_zonedb {
 	trie_t *trie;
-	knot_mm_t mm;
+	trie_cow_t *cow; // non-NULL only during zone update
 };
 
 /*
@@ -50,6 +50,8 @@ typedef trie_it_t knot_zonedb_iter_t;
  *         occurred.
  */
 knot_zonedb_t *knot_zonedb_new(void);
+
+knot_zonedb_t *knot_zonedb_cow(knot_zonedb_t *db);
 
 /*!
  * \brief Adds new zone to the database.
