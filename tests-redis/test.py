@@ -1,97 +1,267 @@
-#!/usr/bin/env python3
+from RLTest import Env
 
-import sys
+def test_zone_begin():
+	env = Env(moduleArgs=['max-event-age', '60', 'default-ttl', '3600'])
 
-# NOTE that ConfigParser was renamed to configparser, need to force libraries to try load configparser first
-try:
-	# Try to import new name
-	import configparser
-	sys.modules['ConfigParser'] = configparser # Map the old name to the new module
-except ImportError:
-	# Try to import old name
-	try:
-		import ConfigParser
-	except ImportError:
-		print("Error: Neither 'configparser' nor 'ConfigParser' could be imported.")
-		print("Please ensure you have the correct ConfigParser/configparser library for your Python version.")
-		sys.exit(1)
+	# implicit instance
+	txn = env.cmd('KNOT.ZONE.BEGIN', 'nu')
+	env.assertEqual(txn, 10, message="Wrong implicit instance transaction number")
 
-import unittest
-from enum import IntEnum
-from rmtest import ModuleTestCase
+	resp = env.cmd('KNOT.ZONE.ABORT', 'nu', txn)
+	env.assertEqual(resp, b'OK', message="Fail while aborting transaction")
 
-DEFAULT_TTL=b'3600'
+	# explicit instance
+	txn = env.cmd('KNOT.ZONE.BEGIN', 'nu', 2)
+	env.assertEqual(txn, 20, message="Wrong transaction number")
 
-class Idx(IntEnum):
-	OWNER  = 0
-	TTL    = 1
-	RTYPE  = 2
-	RECORD = 3
+	resp = env.cmd('KNOT.ZONE.ABORT', 'nu', txn)
+	env.assertEqual(resp, b'OK', message="Fail while aborting transaction")
 
-def get_serial_txt(input : str) -> int | None:
-	try:
-		return int(input.split()[2])
-	except:
-		return None
+	# multiple transactions
+	for i in range(0, 9):
+		txn = env.cmd('KNOT.ZONE.BEGIN', 'nu', 2)
+		env.assertEqual(txn, 20 + i, message="Wrong transaction number")
 
-class KnotModuleTestCase(ModuleTestCase('/home/jhak/Work/knot-dns/build/lib/knot/redis/knot.so', module_args=('max-event-age', '60', 'default-ttl', DEFAULT_TTL))):
-			
-	def testZoneStoreTxtBasic(self):
-		INSTANCE=1
-		txn = self.cmd('KNOT.ZONE.BEGIN', 'nu', INSTANCE)
-		self.assertOk(self.cmd('KNOT.ZONE.STORE', 'nu', txn, "@ IN SOA ns.icann.org. noc.dns.icann.org. ( 1 7200  3600 1209600 3600 )"))
-		self.assertOk(self.cmd('KNOT.ZONE.COMMIT', 'nu', txn))
+	for i in range(0, 9):
+		resp = env.cmd('KNOT.ZONE.ABORT', 'nu', 20 + i)
+		env.assertEqual(resp, b'OK', message="Fail while aborting transaction")
 
-		resp = self.cmd('KNOT.ZONE.LOAD', 'nu', INSTANCE)
-		self.assertEqual(len(resp), 1, "Wrong number of records")
+def test_zone_commit():
+	env = Env(moduleArgs=['max-event-age', '60', 'default-ttl', '3600'])
 
-		soa = resp[0]
-		self.assertEqual(soa[Idx.OWNER],  b'nu.')
-		self.assertEqual(soa[Idx.TTL],    DEFAULT_TTL)
-		self.assertEqual(soa[Idx.RTYPE],  b'SOA')
+	# non-existent SOA
+	txn = env.cmd('KNOT.ZONE.BEGIN', 'nu')
+	env.assertEqual(txn, 10, message="Wrong implicit instance transaction number")
+	
+	with env.assertResponseError(msg="Should not commit zone without SOA"):
+		env.cmd('KNOT.ZONE.COMMIT', 'nu', txn)
 
-		soa_serial = get_serial_txt(soa[Idx.RECORD])
-		self.assertEqual(soa_serial, 1)
+	# with SOA
+	resp = env.cmd('KNOT.ZONE.STORE', 'nu', txn, "@ IN SOA ns.icann.org. noc.dns.icann.org. ( 1 7200  3600 1209600 3600 )")
+	env.assertEqual(resp, b'OK', message="Failed to store SOA")
+	
+	resp = env.cmd('KNOT.ZONE.COMMIT', 'nu', txn)
+	env.assertEqual(resp, b'OK', message="Failed to commit")
 
-	def testZoneUpdateTxtBasic(self):
-		INSTANCE=2
-		txn = self.cmd('KNOT.ZONE.BEGIN', 'nu', INSTANCE)
-		self.assertOk(self.cmd('KNOT.ZONE.STORE', 'nu', txn, "@ IN SOA ns.icann.org. noc.dns.icann.org. ( 1 7200  3600 1209600 3600 )"))
-		self.assertOk(self.cmd('KNOT.ZONE.COMMIT', 'nu', txn))
+	# new transaction with active zone
+	txn = env.cmd('KNOT.ZONE.BEGIN', 'nu')
+	env.assertEqual(txn, 11, message="Wrong implicit instance transaction number")
 
-		txn = self.cmd('KNOT.UPD.BEGIN', 'nu', INSTANCE)
-		self.assertOk(self.cmd('KNOT.UPD.ADD', 'nu', txn, "example 1234 IN A 1.1.1.1"))
-		self.assertOk(self.cmd('KNOT.UPD.COMMIT', 'nu', txn))
-
-		resp = self.cmd('KNOT.ZONE.LOAD', 'nu', INSTANCE)
-		self.assertEqual(len(resp), 2, "Wrong number of records")
-
-		soa = resp[0]
-		self.assertEqual(soa[Idx.OWNER],  b'nu.')
-		self.assertEqual(soa[Idx.TTL],    DEFAULT_TTL)
-		self.assertEqual(soa[Idx.RTYPE],  b'SOA')
-		soa_serial = get_serial_txt(soa[Idx.RECORD])
-		self.assertEqual(soa_serial, 2)
-
-		a = resp[1]
-		self.assertEqual(a[Idx.OWNER],  b'example.nu.')
-		self.assertEqual(a[Idx.TTL],    DEFAULT_TTL)
-		self.assertEqual(a[Idx.RTYPE],  b'A')
-		self.assertEqual(a[Idx.RECORD], b'1.1.1.1')
+	resp = env.cmd('KNOT.ZONE.ABORT', 'nu', txn)
+	env.assertEqual(resp, b'OK', message="Fail while aborting transaction")
 
 
+def test_zone_load():
+	env = Env(moduleArgs=['max-event-age', '60', 'default-ttl', '3600'])
 
-	def testZoneUpdateTxtSoa(self):
-		INSTANCE=3
-		txn = self.cmd('KNOT.ZONE.BEGIN', 'nu', INSTANCE)
-		self.assertOk(self.cmd('KNOT.ZONE.STORE', 'nu', txn, "@ IN SOA ns.icann.org. noc.dns.icann.org. ( 1 7200  3600 1209600 3600 )"))
-		self.assertOk(self.cmd('KNOT.ZONE.COMMIT', 'nu', txn))
+	txn = env.cmd('KNOT.ZONE.BEGIN', 'nu')
+	env.assertEqual(txn, 10, message="Wrong implicit instance transaction number")
+	
+	resp = env.cmd('KNOT.ZONE.STORE', 'nu', txn, "@ IN SOA ns.icann.org. noc.dns.icann.org. ( 1 7200  3600 1209600 3600 )")
+	env.assertEqual(resp, b'OK', message="Failed to store SOA")
+	
+	ZONE = [[b'nu.', b'3600', b'SOA', b'ns.icann.org. noc.dns.icann.org. 1 7200 3600 1209600 3600']]
 
-		txn = self.cmd('KNOT.UPD.BEGIN', 'nu', INSTANCE)
-		self.assertOk(self.cmd('KNOT.UPD.ADD', 'nu', txn, "example 1234 IN A 1.1.1.1"))
-		self.assertOk(self.cmd('KNOT.UPD.COMMIT', 'nu', txn))
+	# load uncommited
+	resp = env.cmd('KNOT.ZONE.LOAD', 'nu', txn)
+	env.assertEqual(resp, ZONE, message="Failed to store SOA")
 
-		resp = self.cmd('KNOT.ZONE.LOAD', 'nu', INSTANCE)
-		self.assertEqual(len(resp), 2)
-if __name__ == '__main__':
-	unittest.main()      
+	# load commited
+	resp = env.cmd('KNOT.ZONE.COMMIT', 'nu', txn)
+	env.assertEqual(resp, b'OK', message="Failed to commit")
+
+	resp = env.cmd('KNOT.ZONE.LOAD', 'nu', 1)
+	env.assertEqual(resp, ZONE, message="Failed to store SOA")
+
+
+def test_zone_purge():
+	env = Env(moduleArgs=['max-event-age', '60', 'default-ttl', '3600'])
+
+	txn = env.cmd('KNOT.ZONE.BEGIN', 'nu')
+	env.assertEqual(txn, 10, message="Wrong implicit instance transaction number")
+
+	resp = env.cmd('KNOT.ZONE.STORE', 'nu', txn, "@ IN SOA ns.icann.org. noc.dns.icann.org. ( 1 7200  3600 1209600 3600 )")
+	env.assertEqual(resp, b'OK', message="Failed to store SOA")
+	
+	resp = env.cmd('KNOT.ZONE.COMMIT', 'nu', txn)
+	env.assertEqual(resp, b'OK', message="Failed to commit")
+
+	txn = env.cmd('KNOT.UPD.BEGIN', 'nu')
+	env.assertEqual(txn, 10, message="Wrong implicit instance transaction number")
+
+	resp = env.cmd('KNOT.UPD.ADD', 'nu', txn, "example IN A 1.1.1.1")
+	env.assertEqual(resp, b'OK', message="Failed to add record into update")
+
+
+	resp = env.cmd('KNOT.UPD.COMMIT', 'nu', txn)
+	env.assertEqual(resp, b'OK', message="Failed to commit update")
+
+	resp = env.cmd('KNOT.ZONE.PURGE', 'nu', 1)
+	env.assertEqual(resp, b'OK', message="Failed to purge zone")
+
+	with env.assertResponseError(msg="Zone has not been purged"):
+		env.cmd('KNOT.ZONE.LOAD', 'nu', txn)
+
+	with env.assertResponseError(msg="Zone has not been purged"):
+		env.cmd('KNOT.UPD.LOAD', 'nu', txn, 1)
+
+def test_upd_begin():
+	env = Env(moduleArgs=['max-event-age', '60', 'default-ttl', '3600'])
+
+	# implicit instance
+	txn = env.cmd('KNOT.UPD.BEGIN', 'nu')
+	env.assertEqual(txn, 10, message="Wrong implicit instance transaction number")
+
+	resp = env.cmd('KNOT.UPD.ABORT', 'nu', txn)
+	env.assertEqual(resp, b'OK', message="Fail while aborting transaction")
+
+	# explicit instance
+	txn = env.cmd('KNOT.UPD.BEGIN', 'nu', 2)
+	env.assertEqual(txn, 20, message="Wrong transaction number")
+
+	resp = env.cmd('KNOT.UPD.ABORT', 'nu', txn)
+	env.assertEqual(resp, b'OK', message="Fail while aborting transaction")
+
+	# multiple transactions
+	for i in range(0, 9):
+		txn = env.cmd('KNOT.UPD.BEGIN', 'nu', 2)
+		env.assertEqual(txn, 20 + i, message="Wrong transaction number")
+
+	for i in range(0, 9):
+		resp = env.cmd('KNOT.UPD.ABORT', 'nu', 20 + i)
+		env.assertEqual(resp, b'OK', message="Fail while aborting transaction")
+
+def test_upd_add_rem():
+	env = Env(moduleArgs=['max-event-age', '60', 'default-ttl', '3600'])
+
+	txn = env.cmd('KNOT.ZONE.BEGIN', 'nu')
+	env.assertEqual(txn, 10, message="Wrong implicit instance transaction number")
+	resp = env.cmd('KNOT.ZONE.STORE', 'nu', txn, "@ IN SOA ns.icann.org. noc.dns.icann.org. ( 1 7200  3600 1209600 3600 )")
+	env.assertEqual(resp, b'OK', message="Failed to store SOA")
+	resp = env.cmd('KNOT.ZONE.STORE', 'nu', txn, "example IN A 1.1.1.1")
+	env.assertEqual(resp, b'OK', message="Failed to store A")
+	resp = env.cmd('KNOT.ZONE.COMMIT', 'nu', txn)
+	env.assertEqual(resp, b'OK', message="Failed to commit")
+
+	txn = env.cmd('KNOT.UPD.BEGIN', 'nu')
+	env.assertEqual(txn, 10, message="Wrong implicit instance transaction number")
+
+	resp = env.cmd('KNOT.UPD.ADD', 'nu', txn, "example 600 IN A 2.2.2.2")
+	env.assertEqual(resp, b'OK', message="Failed to add record into update")
+
+	resp = env.cmd('KNOT.UPD.REMOVE', 'nu', txn, "example IN A 1.1.1.1")
+	env.assertEqual(resp, b'OK', message="Failed to remove record from update")
+
+	UPD = [[
+		[[b'example.nu.', b'0', b'A', b'1.1.1.1']],
+		[[b'example.nu.', b'600', b'A', b'2.2.2.2']]
+	]]
+
+	resp = env.cmd('KNOT.UPD.DIFF', 'nu', txn)
+	env.assertEqual(resp, UPD, message="Wrong update output")
+
+	resp = env.cmd('KNOT.UPD.COMMIT', 'nu', txn)
+	env.assertEqual(resp, b'OK', message="Failed to commit update")
+
+	ZONE = [
+		[b'nu.', b'3600', b'SOA', b'ns.icann.org. noc.dns.icann.org. 2 7200 3600 1209600 3600'],
+		[b'example.nu.', b'600', b'A', b'2.2.2.2']
+	]
+	resp = env.cmd('KNOT.ZONE.LOAD', 'nu', 1)
+	env.assertEqual(resp, ZONE, message="Wrong update output")
+
+def test_upd_commit():
+	env = Env(moduleArgs=['max-event-age', '60', 'default-ttl', '3600'])
+
+	txn = env.cmd('KNOT.UPD.BEGIN', 'nu')
+	env.assertEqual(txn, 10, message="Wrong implicit instance transaction number")
+
+	with env.assertResponseError(msg="Should not commit, zone doesn't exists"):
+		txn = env.cmd('KNOT.UPD.COMMIT', 'nu', txn)
+
+	txn = env.cmd('KNOT.ZONE.BEGIN', 'nu')
+	env.assertEqual(txn, 10, message="Wrong implicit instance transaction number")
+
+	resp = env.cmd('KNOT.ZONE.STORE', 'nu', txn, "@ IN SOA ns.icann.org. noc.dns.icann.org. ( 1 7200  3600 1209600 3600 )")
+	env.assertEqual(resp, b'OK', message="Failed to store SOA")
+	
+	resp = env.cmd('KNOT.ZONE.COMMIT', 'nu', txn)
+	env.assertEqual(resp, b'OK', message="Failed to commit")
+
+	resp = env.cmd('KNOT.UPD.ADD', 'nu', txn, "example IN A 1.1.1.1")
+	env.assertEqual(resp, b'OK', message="Failed to add record into update")
+
+	resp = env.cmd('KNOT.UPD.COMMIT', 'nu', txn)
+	env.assertEqual(resp, b'OK', message="Failed to commit update")
+
+def test_upd_load():
+	env = Env(moduleArgs=['max-event-age', '60', 'default-ttl', '3600'])
+
+	txn = env.cmd('KNOT.UPD.BEGIN', 'nu')
+	env.assertEqual(txn, 10, message="Wrong implicit instance transaction number")
+
+	with env.assertResponseError(msg="Should not commit, zone doesn't exists"):
+		txn = env.cmd('KNOT.UPD.COMMIT', 'nu', txn)
+	
+	resp = env.cmd('KNOT.UPD.ABORT', 'nu', txn)
+	env.assertEqual(resp, b'OK', message="Fail while aborting transaction")
+
+	txn = env.cmd('KNOT.ZONE.BEGIN', 'nu')
+	env.assertEqual(txn, 10, message="Wrong implicit instance transaction number")
+
+	resp = env.cmd('KNOT.ZONE.STORE', 'nu', txn, "@ IN SOA ns.icann.org. noc.dns.icann.org. ( 1 7200  3600 1209600 3600 )")
+	env.assertEqual(resp, b'OK', message="Failed to store SOA")
+	
+	resp = env.cmd('KNOT.ZONE.COMMIT', 'nu', txn)
+	env.assertEqual(resp, b'OK', message="Failed to commit")
+
+	txn = env.cmd('KNOT.UPD.BEGIN', 'nu')
+	env.assertEqual(txn, 10, message="Wrong implicit instance transaction number")
+
+	resp = env.cmd('KNOT.UPD.ADD', 'nu', txn, "example IN A 1.1.1.1")
+	env.assertEqual(resp, b'OK', message="Failed to add record into update")
+
+	ZONE = [
+		[b'nu.', b'3600', b'SOA', b'ns.icann.org. noc.dns.icann.org. 2 7200 3600 1209600 3600'],
+		[b'example.nu.', b'3600', b'A', b'1.1.1.1']
+	]
+
+	resp = env.cmd('KNOT.UPD.DIFF', 'nu', txn)
+	env.assertEqual(resp, [[[], [ZONE[1]]]], message="Wrong update output")
+
+	resp = env.cmd('KNOT.UPD.COMMIT', 'nu', txn)
+	env.assertEqual(resp, b'OK', message="Failed to commit update")
+
+
+	resp = env.cmd('KNOT.ZONE.LOAD', 'nu', 1)
+	env.assertEqual(resp, ZONE, message="Wrong update output")
+
+	txn = env.cmd('KNOT.UPD.BEGIN', 'nu')
+	env.assertEqual(txn, 10, message="Wrong implicit instance transaction number")
+
+	resp = env.cmd('KNOT.UPD.ADD', 'nu', txn, "dns1 IN A 2.2.2.2")
+	env.assertEqual(resp, b'OK', message="Failed to add record into update")
+
+	resp = env.cmd('KNOT.UPD.COMMIT', 'nu', txn)
+	env.assertEqual(resp, b'OK', message="Failed to commit update")
+	
+	UPD = [[
+		[
+			[[b'nu.', b'0', b'SOA', b'ns.icann.org. noc.dns.icann.org. 1 7200 3600 1209600 3600']],
+			[[b'nu.', b'3600', b'SOA', b'ns.icann.org. noc.dns.icann.org. 2 7200 3600 1209600 3600']]
+		], [
+			[],
+			[[b'example.nu.', b'3600', b'A', b'1.1.1.1']]
+		]
+	], [
+		[
+			[[b'nu.', b'0', b'SOA', b'ns.icann.org. noc.dns.icann.org. 2 7200 3600 1209600 3600']],
+			[[b'nu.', b'3600', b'SOA', b'ns.icann.org. noc.dns.icann.org. 3 7200 3600 1209600 3600']]
+		], [
+			[],
+			[[b'dns1.nu.', b'3600', b'A', b'2.2.2.2']]
+		]
+	]]
+
+	resp = env.cmd('KNOT.UPD.LOAD', 'nu', 1, 1)
+	env.assertEqual(resp, UPD, message="Wrong update output")
