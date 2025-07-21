@@ -79,9 +79,6 @@ typedef struct zone
 	bool is_catalog_flag; //!< Lock-less indication of ZONE_IS_CATALOG flag.
 	bool started;         //!< Lock-less indication of a started zone.
 
-	/*! \brief Dynamic configuration zone change type. */
-	conf_io_type_t change_type;
-
 	/*! \brief Zonefile parameters. */
 	struct {
 		struct timespec mtime;

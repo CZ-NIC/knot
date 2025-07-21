@@ -39,16 +39,29 @@ knot_zonedb_t *knot_zonedb_new(void)
 		return NULL;
 	}
 
-	mm_ctx_mempool(&db->mm, MM_DEFAULT_BLKSIZE);
-
-	db->trie = trie_create(&db->mm);
+	db->trie = trie_create(NULL);
 	if (db->trie == NULL) {
-		mp_delete(db->mm.ctx);
 		free(db);
 		return NULL;
 	}
 
 	return db;
+}
+
+knot_zonedb_t *knot_zonedb_cow(knot_zonedb_t *from)
+{
+	knot_zonedb_t *to = calloc(1, sizeof(*to));
+	if (to == NULL) {
+		return to;
+	}
+	from->cow = trie_cow(from->trie, NULL, NULL);
+	to->cow = from->cow;
+	to->trie = trie_cow_new(to->cow);
+	if (to->trie == NULL) {
+		free(to);
+		to = NULL;
+	}
+	return to;
 }
 
 int knot_zonedb_insert(knot_zonedb_t *db, zone_t *zone)
@@ -62,7 +75,11 @@ int knot_zonedb_insert(knot_zonedb_t *db, zone_t *zone)
 	uint8_t *lf = knot_dname_lf(zone->name, lf_storage);
 	assert(lf);
 
-	*trie_get_ins(db->trie, lf + 1, *lf) = zone;
+	if (db->cow != NULL) {
+		*trie_get_cow(db->cow, lf + 1, *lf) = zone;
+	} else {
+		*trie_get_ins(db->trie, lf + 1, *lf) = zone;
+	}
 
 	return KNOT_EOK;
 }
@@ -82,7 +99,11 @@ int knot_zonedb_del(knot_zonedb_t *db, const knot_dname_t *zone_name)
 		return KNOT_ENOENT;
 	}
 
-	return trie_del(db->trie, lf + 1, *lf, NULL);
+	if (db->cow != NULL) {
+		return trie_del_cow(db->cow, lf + 1, *lf, NULL);
+	} else {
+		return trie_del(db->trie, lf + 1, *lf, NULL);
+	}
 }
 
 zone_t *knot_zonedb_find(knot_zonedb_t *db, const knot_dname_t *zone_name)
@@ -158,7 +179,7 @@ void knot_zonedb_free(knot_zonedb_t **db)
 		return;
 	}
 
-	mp_delete((*db)->mm.ctx);
+	trie_free((*db)->trie);
 	free(*db);
 	*db = NULL;
 }
