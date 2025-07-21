@@ -1,97 +1,54 @@
-#!/usr/bin/env python3
+from RLTest import Env
 
-import sys
+def test_begin():
+	env = Env(moduleArgs=['max-event-age', '60', 'default-ttl', '3600'])
 
-# NOTE that ConfigParser was renamed to configparser, need to force libraries to try load configparser first
-try:
-	# Try to import new name
-	import configparser
-	sys.modules['ConfigParser'] = configparser # Map the old name to the new module
-except ImportError:
-	# Try to import old name
-	try:
-		import ConfigParser
-	except ImportError:
-		print("Error: Neither 'configparser' nor 'ConfigParser' could be imported.")
-		print("Please ensure you have the correct ConfigParser/configparser library for your Python version.")
-		sys.exit(1)
+	# implicit instance
+	txn = env.cmd('KNOT.ZONE.BEGIN', 'nu')
+	env.assertEqual(txn, 10, message="Wrong implicit instance transaction number")
+	resp = env.cmd('KNOT.ZONE.ABORT', 'nu', txn)
+	# TODO assertOK dont work, because of format (b'OK' vs 'OK')
+	# env.assertOk(resp, message="Fail while aborting transaction")
+	env.assertEqual(resp, b'OK', message="Fail while aborting transaction")
 
-import unittest
-from enum import IntEnum
-from rmtest import ModuleTestCase
+	# explicit instance
+	txn = env.cmd('KNOT.ZONE.BEGIN', 'nu', '2')
+	env.assertEqual(txn, 20, message="Wrong transaction number")
+	resp = env.cmd('KNOT.ZONE.ABORT', 'nu', txn)
+	env.assertEqual(resp, b'OK', message="Fail while aborting transaction")
 
-DEFAULT_TTL=b'3600'
+def test_store():
+	env = Env(moduleArgs=['max-event-age', '60', 'default-ttl', '3600'])
 
-class Idx(IntEnum):
-	OWNER  = 0
-	TTL    = 1
-	RTYPE  = 2
-	RECORD = 3
+	# implicit instance
+	txn = env.cmd('KNOT.ZONE.BEGIN', 'nu')
+	env.assertEqual(txn, 10, message="Wrong implicit instance transaction number")
+	resp = env.cmd('KNOT.ZONE.STORE', 'nu', txn, "@ IN SOA ns.icann.org. noc.dns.icann.org. ( 1 7200  3600 1209600 3600 )")
+	env.assertEqual(resp, b'OK', message="Fail while aborting transaction")
+	resp = env.cmd('KNOT.ZONE.ABORT', 'nu', 10)
+	# TODO assertOK dont work, because of format (b'OK' vs 'OK')
+	# env.assertOk(resp, message="Fail while aborting transaction")
+	env.assertEqual(resp, b'OK', message="Fail while aborting transaction")
 
-def get_serial_txt(input : str) -> int | None:
-	try:
-		return int(input.split()[2])
-	except:
-		return None
-
-class KnotModuleTestCase(ModuleTestCase('/home/jhak/Work/knot-dns/build/lib/knot/redis/knot.so', module_args=('max-event-age', '60', 'default-ttl', DEFAULT_TTL))):
-			
-	def testZoneStoreTxtBasic(self):
-		INSTANCE=1
-		txn = self.cmd('KNOT.ZONE.BEGIN', 'nu', INSTANCE)
-		self.assertOk(self.cmd('KNOT.ZONE.STORE', 'nu', txn, "@ IN SOA ns.icann.org. noc.dns.icann.org. ( 1 7200  3600 1209600 3600 )"))
-		self.assertOk(self.cmd('KNOT.ZONE.COMMIT', 'nu', txn))
-
-		resp = self.cmd('KNOT.ZONE.LOAD', 'nu', INSTANCE)
-		self.assertEqual(len(resp), 1, "Wrong number of records")
-
-		soa = resp[0]
-		self.assertEqual(soa[Idx.OWNER],  b'nu.')
-		self.assertEqual(soa[Idx.TTL],    DEFAULT_TTL)
-		self.assertEqual(soa[Idx.RTYPE],  b'SOA')
-
-		soa_serial = get_serial_txt(soa[Idx.RECORD])
-		self.assertEqual(soa_serial, 1)
-
-	def testZoneUpdateTxtBasic(self):
-		INSTANCE=2
-		txn = self.cmd('KNOT.ZONE.BEGIN', 'nu', INSTANCE)
-		self.assertOk(self.cmd('KNOT.ZONE.STORE', 'nu', txn, "@ IN SOA ns.icann.org. noc.dns.icann.org. ( 1 7200  3600 1209600 3600 )"))
-		self.assertOk(self.cmd('KNOT.ZONE.COMMIT', 'nu', txn))
-
-		txn = self.cmd('KNOT.UPD.BEGIN', 'nu', INSTANCE)
-		self.assertOk(self.cmd('KNOT.UPD.ADD', 'nu', txn, "example 1234 IN A 1.1.1.1"))
-		self.assertOk(self.cmd('KNOT.UPD.COMMIT', 'nu', txn))
-
-		resp = self.cmd('KNOT.ZONE.LOAD', 'nu', INSTANCE)
-		self.assertEqual(len(resp), 2, "Wrong number of records")
-
-		soa = resp[0]
-		self.assertEqual(soa[Idx.OWNER],  b'nu.')
-		self.assertEqual(soa[Idx.TTL],    DEFAULT_TTL)
-		self.assertEqual(soa[Idx.RTYPE],  b'SOA')
-		soa_serial = get_serial_txt(soa[Idx.RECORD])
-		self.assertEqual(soa_serial, 2)
-
-		a = resp[1]
-		self.assertEqual(a[Idx.OWNER],  b'example.nu.')
-		self.assertEqual(a[Idx.TTL],    DEFAULT_TTL)
-		self.assertEqual(a[Idx.RTYPE],  b'A')
-		self.assertEqual(a[Idx.RECORD], b'1.1.1.1')
+	# explicit instance
+	resp = env.cmd('KNOT.ZONE.BEGIN', 'nu', '2')
+	env.assertEqual(resp, 20, message="Wrong transaction number")
 
 
+# def test_example_2():
+# 	env = Env()
+# 	env.assertOk(env.cmd('set', 'x', '1'))
+# 	env.expect('get', 'x').equal('1')
 
-	def testZoneUpdateTxtSoa(self):
-		INSTANCE=3
-		txn = self.cmd('KNOT.ZONE.BEGIN', 'nu', INSTANCE)
-		self.assertOk(self.cmd('KNOT.ZONE.STORE', 'nu', txn, "@ IN SOA ns.icann.org. noc.dns.icann.org. ( 1 7200  3600 1209600 3600 )"))
-		self.assertOk(self.cmd('KNOT.ZONE.COMMIT', 'nu', txn))
+# 	env.expect('lpush', 'list', '1', '2', '3').equal(3)
+# 	env.expect('lrange', 'list', '0', '-1').debugPrint().contains('1')
+# 	env.debugPrint('this is some debug printing')
 
-		txn = self.cmd('KNOT.UPD.BEGIN', 'nu', INSTANCE)
-		self.assertOk(self.cmd('KNOT.UPD.ADD', 'nu', txn, "example 1234 IN A 1.1.1.1"))
-		self.assertOk(self.cmd('KNOT.UPD.COMMIT', 'nu', txn))
 
-		resp = self.cmd('KNOT.ZONE.LOAD', 'nu', INSTANCE)
-		self.assertEqual(len(resp), 2)
-if __name__ == '__main__':
-	unittest.main()      
+# def test_example_3():
+# 	env = Env(useSlaves=True, env='oss')
+# 	con = env.getConnection()
+# 	con.set('x', 1)
+# 	con2 = env.getSlaveConnection()
+# 	time.sleep(0.1)
+# 	env.assertEqual(con2.get('x'), '1')

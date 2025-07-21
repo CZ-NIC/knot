@@ -1,2 +1,2 @@
-configparser
-rmtest
+rltest
+setuptools
