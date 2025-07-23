@@ -514,6 +514,41 @@ static knot_zonedb_t *create_zonedb_catalog(conf_t *conf, server_t *server,
 	return db_new;
 }
 
+static bool same_group(zone_t *old_z, zone_t *new_z)
+{
+	if (old_z->catalog_group == NULL || new_z->catalog_group == NULL) {
+		return (old_z->catalog_group == new_z->catalog_group);
+	} else {
+		return (strcmp(old_z->catalog_group, new_z->catalog_group) == 0);
+	}
+}
+
+static void catalogs_generate(struct knot_zonedb *db_new, struct knot_zonedb *db_old)
+{
+	if (db_old != NULL) {
+		knot_zonedb_iter_t *it = knot_zonedb_iter_begin(db_old);
+		for (; !knot_zonedb_iter_finished(it); knot_zonedb_iter_next(it)) {
+			zone_t *zone = knot_zonedb_iter_val(it);
+			if (knot_zonedb_find(db_new, zone->name) == NULL) {
+				catalog_generate_rem(zone, db_new);
+			}
+		}
+		knot_zonedb_iter_free(it);
+	}
+
+	knot_zonedb_iter_t *it = knot_zonedb_iter_begin(db_new);
+	for (; !knot_zonedb_iter_finished(it); knot_zonedb_iter_next(it)) {
+		zone_t *zone = knot_zonedb_iter_val(it);
+		zone_t *old = knot_zonedb_find(db_old, zone->name);
+		if (old == NULL) {
+			catalog_generate_add(zone, db_new, false);
+		} else if (!same_group(zone, old)) {
+			catalog_generate_add(zone, db_new, true);
+		}
+	}
+	knot_zonedb_iter_free(it);
+}
+
 static knot_zonedb_t *create_zonedb_full(conf_t *conf, server_t *server,
                                          list_t *expired_contents)
 {
