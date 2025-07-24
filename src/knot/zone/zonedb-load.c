@@ -437,11 +437,15 @@ static knot_zonedb_t *create_zonedb_commit(conf_t *conf, server_t *server)
 					}
 				}
 				knot_zonedb_insert(db_new, zone);
+				catalog_generate_add(zone, db_new, false);
 				reg_reverse(conf, db_new, zone);
 			} else if (type & CONF_IO_TUNSET) {
+				zone_t *zone = knot_zonedb_find(db_new, name);
 				knot_zonedb_del(db_new, name);
+				catalog_generate_rem(zone, db_new);
 			} else {
 				zone_t *zone = knot_zonedb_find(db_new, name);
+				catalog_generate_add(zone, db_new, true);
 				reg_reverse(conf, db_new, zone);
 			}
 		}
@@ -489,10 +493,13 @@ static knot_zonedb_t *create_zonedb_catalog(conf_t *conf, server_t *server,
 		case CAT_UPD_ADD:
 			zone = add_member_zone(upd, db_new, server, conf);
 			knot_zonedb_insert(db_new, zone);
+			catalog_generate_add(zone, db_new, false);
 			reg_reverse(conf, db_new, zone);
 			break;
 		case CAT_UPD_REM:
+			zone = knot_zonedb_find(db_new, upd->member);
 			knot_zonedb_del(db_new, upd->member);
+			catalog_generate_rem(zone, db_new);
 			break;
 		case CAT_UPD_UNIQ:
 			zone = knot_zonedb_find(db_new, upd->member);
@@ -502,10 +509,12 @@ static knot_zonedb_t *create_zonedb_catalog(conf_t *conf, server_t *server,
 				ptrlist_add(expired_contents, zone_expire(zone, true), NULL);
 				knot_sem_post(&zone->cow_lock);
 			}
+			catalog_generate_add(zone, db_new, true);
 			reg_reverse(conf, db_new, zone);
 			break;
 		case CAT_UPD_PROP:
 			zone = knot_zonedb_find(db_new, upd->member);
+			catalog_generate_add(zone, db_new, true);
 			reg_reverse(conf, db_new, zone);
 			break;
 		default:
@@ -524,32 +533,6 @@ static bool same_group(zone_t *old_z, zone_t *new_z)
 	} else {
 		return (strcmp(old_z->catalog_group, new_z->catalog_group) == 0);
 	}
-}
-
-static void catalogs_generate(struct knot_zonedb *db_new, struct knot_zonedb *db_old)
-{
-	if (db_old != NULL) {
-		knot_zonedb_iter_t *it = knot_zonedb_iter_begin(db_old);
-		for (; !knot_zonedb_iter_finished(it); knot_zonedb_iter_next(it)) {
-			zone_t *zone = knot_zonedb_iter_val(it);
-			if (knot_zonedb_find(db_new, zone->name) == NULL) {
-				catalog_generate_rem(zone, db_new);
-			}
-		}
-		knot_zonedb_iter_free(it);
-	}
-
-	knot_zonedb_iter_t *it = knot_zonedb_iter_begin(db_new);
-	for (; !knot_zonedb_iter_finished(it); knot_zonedb_iter_next(it)) {
-		zone_t *zone = knot_zonedb_iter_val(it);
-		zone_t *old = knot_zonedb_find(db_old, zone->name);
-		if (old == NULL) {
-			catalog_generate_add(zone, db_new, false);
-		} else if (!same_group(zone, old)) {
-			catalog_generate_add(zone, db_new, true);
-		}
-	}
-	knot_zonedb_iter_free(it);
 }
 
 static knot_zonedb_t *create_zonedb_full(conf_t *conf, server_t *server,
@@ -634,9 +617,28 @@ static knot_zonedb_t *create_zonedb_full(conf_t *conf, server_t *server,
 	}
 	catalog_it_free(cat_it);
 
+	/* Update generated catalogs - remove members. */
+	if (db_old != NULL) {
+		knot_zonedb_iter_t *db_it = knot_zonedb_iter_begin(db_old);
+		for (; !knot_zonedb_iter_finished(db_it); knot_zonedb_iter_next(db_it)) {
+			zone_t *zone = knot_zonedb_iter_val(db_it);
+			if (knot_zonedb_find(db_new, zone->name) == NULL) {
+				catalog_generate_rem(zone, db_new);
+			}
+		}
+		knot_zonedb_iter_free(db_it);
+	}
+
+	/* Update generated catalogs - add members, updated reversed zones. */
 	knot_zonedb_iter_t *db_it = knot_zonedb_iter_begin(db_new);
 	for (; !knot_zonedb_iter_finished(db_it); knot_zonedb_iter_next(db_it)) {
 		zone_t *zone = knot_zonedb_iter_val(db_it);
+		zone_t *old = knot_zonedb_find(db_old, zone->name);
+		if (old == NULL) {
+			catalog_generate_add(zone, db_new, false);
+		} else if (!same_group(zone, old)) {
+			catalog_generate_add(zone, db_new, true);
+		}
 		reg_reverse(conf, db_new, zone);
 	}
 	knot_zonedb_iter_free(db_it);
@@ -849,9 +851,6 @@ void zonedb_reload(conf_t *conf, server_t *server, reload_t mode)
 		log_error("failed to create new zone database");
 		return;
 	}
-
-	// TODO: optimize within create_zonedb.
-	catalogs_generate(db_new, server->zone_db);
 
 	/* Switch the databases. */
 	knot_zonedb_t **db_current = &server->zone_db;
