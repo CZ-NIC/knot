@@ -479,11 +479,6 @@ static int zone_status(zone_t *zone, ctl_args_t *args)
 
 static int zone_reload(zone_t *zone, _unused_ ctl_args_t *args)
 {
-	if (zone_expired(zone)) {
-		args->suppress = true;
-		return KNOT_ENOTSUP;
-	}
-
 	if (ctl_has_flag(args->data[KNOT_CTL_IDX_FLAGS], CTL_FLAG_FORCE)) {
 		return zone_reload_modules(conf(), args->server, zone->name);
 	}
