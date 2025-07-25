@@ -222,6 +222,8 @@ libembngtcp2_la_SOURCES = \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_window_filter.h \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_dcidtr.c \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_dcidtr.h \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_callbacks.c \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_callbacks.h \
 	contrib/libngtcp2/ngtcp2/ngtcp2.h \
 	contrib/libngtcp2/ngtcp2/ngtcp2_crypto.h \
 	contrib/libngtcp2/ngtcp2/ngtcp2_crypto_gnutls.h \
