@@ -289,7 +289,11 @@ static zone_t *reuse_member_zone(zone_t *zone, server_t *server, conf_t *conf,
 			break; // reload the member zone
 		case CAT_UPD_INVALID:
 		case CAT_UPD_MINOR:
-			return zone; // reuse the member zone
+			if (mode & (RELOAD_COMMIT | RELOAD_CATALOG)) {
+				return zone; // reuse the member zone
+			} else {
+				break; // reload the member zone
+			}
 		case CAT_UPD_REM:
 			return NULL; // remove the member zone
 		case CAT_UPD_ADD: // cannot add existing member
