@@ -3099,9 +3099,8 @@ zone serial is shifted relative to the Unix time.
 reverse-generate
 ----------------
 
-This option triggers the automatic generation of reverse PTR records based on
-A/AAAA records in the specified zones. The entire generated zone is automatically
-stored in the journal.
+A list of zone names for which automatic generation of reverse PTR records based on
+A/AAAA records is enabled. The entire generated zone is automatically stored in the journal.
 
 The auto-generated reverse zone is re-generated whenever any of the specified zones
 is updated. This includes the situation when reverse generation had failed due to
