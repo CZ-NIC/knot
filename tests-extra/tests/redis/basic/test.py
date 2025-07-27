@@ -25,20 +25,14 @@ t.start()
 
 master.zones_wait(zones)
 
-master.ctl("zone-flush", wait=True)
-#slave.ctl("zone-reload")
-
 serials = slave.zones_wait(zones)
 t.xfr_diff(master, slave, zones)
 
 for z in zones:
     up = master.update(z)
     up.add("suppnot1", 3600, "A", "1.2.3.4")
+    up.delete("mail", "A", "192.0.2.3")
     up.send()
-
-t.sleep(2)
-master.ctl("zone-flush", wait=True)
-#slave.ctl("zone-reload")
 
 slave.zones_wait(zones, serials)
 t.xfr_diff(master, slave, zones)

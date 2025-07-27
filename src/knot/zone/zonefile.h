@@ -68,8 +68,6 @@ int zone_rdb_exists(conf_t *conf, const knot_dname_t *zone, uint8_t instance, ui
 int zone_rdb_open(zloader_t *loader, redisContext *rdb, const knot_dname_t *origin,
                   uint8_t instance, semcheck_optional_t sem_checks,
                   sem_handler_t *sem_err_handler, time_t time, zone_skip_t *skip);
-
-int zone_rdb_write(redisContext *rdb, zone_contents_t *zone, uint8_t instance);
 #endif
 
 /*!
