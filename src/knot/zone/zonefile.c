@@ -507,21 +507,6 @@ int zonefile_write(const char *path, zone_contents_t *zone, zone_skip_t *skip)
 	return KNOT_EOK;
 }
 
-#ifdef ENABLE_REDIS
-int zone_rdb_write(redisContext *rdb, zone_contents_t *zone, uint8_t instance)
-{
-	if (rdb == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	if (zone == NULL) {
-		return KNOT_EEMPTYZONE;
-	}
-
-	return zone_dump_rdb(zone, rdb, instance);
-}
-#endif
-
 void err_handler_logger(sem_handler_t *handler, const zone_contents_t *zone,
                         const knot_dname_t *node, sem_error_t error, const char *data)
 {
