@@ -1967,7 +1967,7 @@ static int upd_remove_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int arg
 
 static int upd_remove_bin(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 {
-	if (argc != 7) {
+	if (argc != 8) {
 		return RedisModule_WrongArity(ctx);
 	}
 
@@ -1983,12 +1983,16 @@ static int upd_remove_bin(RedisModuleCtx *ctx, RedisModuleString **argv, int arg
 	uint16_t rtype;
 	ARG_NUM(argv[4], rtype, "record type");
 
+	uint32_t ttl;
+	ARG_NUM(argv[5], ttl, "TTL");
+	// NOTICE: TLL is unused here. The parameter exists only for sake of uniformity of the number of params with upd_add_bin() and zone_store_bin().
+
 	uint16_t rcount;
-	ARG_NUM(argv[5], rcount, "record count");
+	ARG_NUM(argv[6], rcount, "record count");
 
 	uint8_t *rdataset;
 	size_t rdataset_len;
-	ARG_DATA(argv[6], rdataset_len, rdataset, "rdataset");
+	ARG_DATA(argv[7], rdataset_len, rdataset, "rdataset");
 
 	uint8_t buf[knot_rdata_size(rdataset_len)];
 	knot_rdata_init((knot_rdata_t *)buf, rdataset_len, rdataset);
