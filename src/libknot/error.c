@@ -100,6 +100,7 @@ static const struct error errors[] = {
 	{ KNOT_ECPUCOMPAT,   "incompatible CPU architecture" },
 	{ KNOT_EMODINVAL,    "invalid module" },
 	{ KNOT_EEXTERNAL,    "external validation failed" },
+	{ KNOT_ERDB,         "zone database error" },
 
 	{ KNOT_GENERAL_ERROR, "unknown general error" },
 

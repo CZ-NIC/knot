@@ -16,6 +16,7 @@
 #include "knot/zone/adds_tree.h"
 #include "knot/zone/adjust.h"
 #include "knot/zone/digest.h"
+#include "knot/zone/redis.h"
 #include "knot/zone/serial.h"
 #include "knot/zone/zone-diff.h"
 #include "knot/zone/zonefile.h"
@@ -699,6 +700,75 @@ static int commit_journal(conf_t *conf, zone_update_t *update)
 	return ret;
 }
 
+static int redis_wr_rr(const knot_rrset_t *rr, void *ctx)
+{
+	return zone_redis_write_rrset(ctx, rr);
+}
+
+static int redis_wr_node(zone_node_t *node, void *ctx)
+{
+	return zone_redis_write_node(ctx, node);
+}
+
+static int commit_redis(conf_t *conf, zone_update_t *update)
+{
+	uint8_t db_instance = 0;
+	bool db_enabled = conf_zone_rdb_enabled(conf, update->zone->name, false, &db_instance);
+	if (!db_enabled) {
+		return KNOT_EOK;
+	}
+
+	struct redisContext *db_ctx = zone_redis_connect(conf);
+	if (db_ctx == NULL) {
+		return KNOT_ECONN;
+	}
+
+	bool incremental = ((update->flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) && update->zone->contents != NULL);
+	if (incremental) {
+		zone_redis_err_t err;
+		uint32_t redis_soa = 0;
+		int soa_ret = zone_redis_serial(db_ctx, db_instance, update->zone->name, &redis_soa, err);
+		incremental = (soa_ret == KNOT_EOK && redis_soa == zone_contents_serial(update->zone->contents));
+	}
+
+	zone_redis_txn_t txn;
+	int ret = zone_redis_txn_begin(&txn, db_ctx, db_instance, update->zone->name, incremental);
+	if (ret != KNOT_EOK) {
+		zone_redis_disconnect(db_ctx);
+		return ret;
+	}
+
+	if (incremental) {
+		txn.removals = true;
+		ret = zone_update_foreach(update, false, redis_wr_rr, &txn);
+		if (ret == KNOT_EOK) {
+			txn.removals = false;
+			ret = zone_update_foreach(update, true, redis_wr_rr, &txn);
+		}
+	} else {
+		ret = zone_contents_apply(update->new_cont, redis_wr_node, &txn);
+		if (ret == KNOT_EOK) {
+			ret = zone_contents_nsec3_apply(update->new_cont, redis_wr_node, &txn);
+		}
+	}
+
+	if (ret == KNOT_EOK) {
+		ret = zone_redis_txn_commit(&txn);
+	}
+	if (ret != KNOT_EOK) {
+		if (ret == KNOT_ERDB) {
+			log_zone_error(update->zone->name, "rdb, update aborted (%s)", txn.err);
+		}
+		(void)zone_redis_txn_abort(&txn);
+	} else {
+		log_zone_info(update->zone->name, "database updated, instance %u, serial %u",
+		              db_instance, zone_contents_serial(update->new_cont));
+	}
+
+	zone_redis_disconnect(db_ctx);
+	return ret;
+}
+
 static int commit_incremental(conf_t *conf, zone_update_t *update)
 {
 	assert(update);
@@ -1099,6 +1169,13 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 	ret = update_catalog(conf, update);
 	if (ret != KNOT_EOK) {
 		log_zone_error(update->zone->name, "failed to process catalog zone (%s)", knot_strerror(ret));
+		discard_adds_tree(update);
+		return ret;
+	}
+
+	ret = commit_redis(conf, update);
+	if (ret != KNOT_EOK) {
+		log_zone_error(update->zone->name, "zone database update failed (%s)", knot_strerror(ret));
 		discard_adds_tree(update);
 		return ret;
 	}
