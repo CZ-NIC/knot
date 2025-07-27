@@ -205,6 +205,8 @@ libknotd_la_SOURCES = \
 	knot/zone/measure.c			\
 	knot/zone/node.c			\
 	knot/zone/node.h			\
+	knot/zone/redis.c			\
+	knot/zone/redis.h			\
 	knot/zone/reverse.c			\
 	knot/zone/reverse.h			\
 	knot/zone/semantic-check.c		\
