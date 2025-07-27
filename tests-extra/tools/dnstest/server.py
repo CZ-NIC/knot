@@ -96,6 +96,8 @@ class Zone(object):
         self.zfile = zone_file
         self.masters = set()
         self.slaves = set()
+        self.redis_in = None
+        self.redis_out = None
         self.serial_modulo = None
         self.ddns = ddns
         self.ixfr = ixfr
@@ -236,6 +238,8 @@ class Server(object):
         self.valgrind_log = None
         self.session_log = None
         self.confile = None
+
+        self.redis = None
 
         self.binding_errors = 0
 
@@ -1882,6 +1886,13 @@ class Knot(Server):
         s.item_str("journal-db-max-size", self.journal_db_size)
         s.item_str("timer-db-max-size", self.timer_db_size)
         s.item_str("catalog-db-max-size", self.catalog_db_size)
+        if self.redis is not None:
+            tls = random.choice([True, False])
+            port = self.redis.tls_port if tls else self.redis.port
+            s.item_str("zone-db-listen", self.redis.addr + "@" + str(port))
+            if tls:
+                s.item_str("zone-db-cert-key", self.redis.pin)
+                s.item_str("zone-db-tls", "on")
         s.end()
 
         s.begin("template")
@@ -1957,6 +1968,9 @@ class Knot(Server):
             s.item_str("file", z.zfile.path)
 
             self.config_xfr(z, s)
+
+            self._str(s, "zone-db-input", z.redis_in)
+            self._str(s, "zone-db-output", z.redis_out)
 
             self._str(s, "serial-policy", self.serial_policy)
             self._str(s, "serial-modulo", z.serial_modulo)
