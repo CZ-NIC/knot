@@ -16,8 +16,15 @@ from dnstest.utils import *
 from dnstest.context import Context
 import dnstest.params as params
 import dnstest.server
+import dnstest.redis
 import dnstest.keys
 import dnstest.zonefile
+
+def repo_file(*path):
+    module_path = os.path.dirname(os.path.realpath(__file__))
+    repo_path = os.path.realpath(os.path.join(module_path, "..", "..", ".."))
+    file_path = os.path.join(repo_path, *path)
+    return file_path if os.path.isfile(file_path) else None
 
 class Test(object):
     '''Specification of DNS test topology'''
@@ -39,7 +46,7 @@ class Test(object):
     rel_time = time.time()
     start_time = 0
 
-    def __init__(self, address=None, tsig=None, stress=True, quic=False, tls=False):
+    def __init__(self, address=None, tsig=None, stress=True, quic=False, tls=False, redis=False):
         if not os.path.exists(Context().out_dir):
             raise Exception("Output directory doesn't exist")
 
@@ -55,6 +62,16 @@ class Test(object):
             self.addr = address
         else:
             self.addr = Test.LOCAL_ADDR_MULTI[random.choice([4, 6])]
+
+        self.redis = None
+        redis_knotso = repo_file("src", "redis", ".libs", "knot.so")
+        if redis:
+            if params.redis_bin == "":
+                raise Skip("Redis server not available")
+            if redis_knotso is None:
+                raise Skip("Redis knot module not available")
+            self.redis = dnstest.redis.Redis(self.addr, os.path.join(self.out_dir, "redis"),
+                                             params.redis_bin, params.redis_cli, redis_knotso)
 
         self.tsig = None
         if tsig != None:
@@ -218,6 +235,8 @@ class Test(object):
             if os.path.isfile(suppressions_file):
                 srv.valgrind.append("--suppressions=%s" % suppressions_file)
 
+        srv.redis = self.redis
+
         self.servers.add(srv)
         return srv
 
@@ -252,6 +271,11 @@ class Test(object):
                 server.xdp_cover_sock = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
                 server.xdp_cover_sock.bind((server.addr, server.xdp_port))
 
+        if self.redis is not None:
+            self.redis.port = self._gen_port()
+            self.redis.tls_port = self._gen_port()
+            self.redis.gen_confile()
+
         for server in self.servers:
             server.gen_confile()
 
@@ -266,6 +290,9 @@ class Test(object):
         self.start_tries += 1
 
         self.generate_conf()
+
+        if self.redis:
+            self.redis.start()
 
         def srv_sort(server):
             masters = 0
@@ -299,6 +326,9 @@ class Test(object):
                 server.kill()
             else:
                 server.stop(check=check)
+
+        if self.redis:
+            self.redis.stop()
 
     def end(self):
         '''Finish testing'''
