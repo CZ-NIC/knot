@@ -589,8 +589,9 @@ ca-file
 -------
 
 Specifies one or more paths to load trusted Certificate Authorities (CAs) from.
-An empty string ("") means the system’s default trusted CAs. The loaded CAs are used 
-for remote certificate validation (:ref:`acl_cert-hostname` and :ref:`remote_cert-hostname`).
+An empty string ("") means the system’s default trusted CAs. The loaded CAs are used
+for remote certificate validation (:ref:`acl_cert-hostname`, :ref:`remote_cert-hostname`,
+and :ref:`database_zone-db-cert-hostname`).
 
 *Default:* not set
 
@@ -1211,6 +1212,10 @@ Configuration of databases for zone contents, DNSSEC metadata, or event timers.
      timer-db-max-size: SIZE
      catalog-db: str
      catalog-db-max-size: SIZE
+     zone-db-listen: ADDR[@INT]
+     zone-db-tls: BOOL
+     zone-db-cert-key: BASE64 ...
+     zone-db-cert-hostname: STR ...
 
 .. _database_storage:
 
@@ -1335,6 +1340,50 @@ The hard limit for the catalog database maximum size.
    This value also influences server's usage of virtual memory.
 
 *Default:* ``20G`` (20 GiB), or ``512M`` (512 MiB) for 32-bit
+
+.. _database_zone-db-listen:
+
+zone-db-listen
+--------------
+
+An IP address (and optionally a port) of a running instance of a Redis (or compatible)
+database to be used for reading and/or writing zone contents. See
+:ref:`zone_zone-db-input` and :ref:`zone_zone-db-output`.
+
+*Default:* not set
+
+.. _database_zone-db-tls:
+
+zone-db-tls
+-----------
+
+If enabled, TLS 1.3 will be used for communication with the zone database.
+
+*Default:* ``off``
+
+.. _database_zone-db-cert-key:
+
+zone-db-cert-key
+----------------
+
+An ordered list of up to 4 public key PINs of the zone database's certificate.
+If the list is non-empty, communication with the zone database is only possible
+over TLS, and a peer certificate is required. The peer certificate's public key
+must match one of the specified PINs.
+
+*Default:* not set
+
+.. _database_zone-db-cert-hostname:
+
+zone-db-cert-hostname
+---------------------
+
+An ordered list of up to 4 hostnames to be matched against the zone database's
+certificate. At least one hostname must match for the certificate to be considered
+valid (see :ref:`server_ca-file`). If the list is non-empty, communication with
+the zone database is only possible over TLS, and a peer certificate is required.
+
+*Default:* not set
 
 .. _keystore section:
 
@@ -2666,6 +2715,8 @@ Definition of zones served by the server.
      template: template_id
      storage: STR
      file: STR
+     zone-db-input: INT
+     zone-db-output: INT
      master: remote_id | remotes_id ...
      ddns-master: remote_id
      notify: remote_id | remotes_id ...
@@ -2760,6 +2811,36 @@ the following formatters:
   where DDD is corresponding decimal ASCII code.
 
 *Default:* :ref:`storage<zone_storage>`\ ``/%s.zone``
+
+.. _zone_zone-db-input:
+
+zone-db-input
+-------------
+
+If set, the zone is loaded from the zone database configured at
+:ref:`database_zone-db-listen`. The value of this option specifies the zone
+instance number (from 1 to 8 inclusive) within the database to read from.
+
+.. NOTE::
+   With this option enabled, the textual zone file is never loaded.
+   The :ref:`zone_zonefile-load` setting still applies to handling
+   of the zone contents loaded from the database, however,
+   ``zonefile-load: whole`` and ``journal-content: changes``
+   are recommended (both being the defaults).
+
+*Default:* ``0`` (disabled)
+
+.. _zone_zone-db-output:
+
+zone-db-output
+---------------
+
+If set, the zone is stored to the zone database configured at
+:ref:`database_zone-db-listen` and updated there with every change to the zone
+contents. The value of this option specifies the zone instance number
+(from 1 to 8 inclusive) within the database to write to.
+
+*Default:* ``0`` (disabled)
 
 .. _zone_master:
 
@@ -2952,6 +3033,11 @@ and no zone contents in the journal), it behaves the same way as ``whole``.
 .. NOTE::
    See :ref:`Handling, zone file, journal, changes, serials` for guidance on
    configuring these and related options to ensure reliable operation.
+
+.. WARNING::
+   If :ref:`zone_zone-db-input` is configured, the textual zone file is never loaded.
+   However, this option still effects on how the zone contents loaded from the
+   database are applied and handled.
 
 .. _zone_zonefile-skip:
 
