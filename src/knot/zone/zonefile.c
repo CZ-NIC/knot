@@ -225,122 +225,6 @@ int zonefile_open(zloader_t *loader, const char *source, const knot_dname_t *ori
 	return KNOT_EOK;
 }
 
-#ifdef ENABLE_REDIS
-#include "redis/knot.h"
-#include "knot/common/hiredis.h"
-
-int zone_rdb_open(zloader_t *loader, redisContext *rdb, const knot_dname_t *origin,
-                  uint8_t instance, semcheck_optional_t sem_checks,
-                  sem_handler_t *sem_err_handler, time_t time, zone_skip_t *skip)
-{
-	int ret = init_common(loader, origin, time, sem_checks, sem_err_handler, skip);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
-	loader->backend = ZLOADER_BACKEND_DB;
-	loader->rdb = rdb;
-	loader->instance = instance;
-
-	return KNOT_EOK;
-}
-
-static int process_rdb_data(zone_contents_t *contents, redisReply *data,
-                            zone_skip_t *skip)
-{
-	knot_dname_t *r_owner = (knot_dname_t *)data->element[0]->str;
-	uint16_t r_type = data->element[1]->integer;
-	uint32_t r_ttl = data->element[2]->integer;
-	knot_rdataset_t r_data = {
-		.count = data->element[3]->integer,
-		.size = data->element[4]->len,
-		.rdata = (knot_rdata_t *)data->element[4]->str
-	};
-
-	knot_dname_t *owner = knot_dname_copy(r_owner, NULL);
-	if (owner == NULL) {
-		return KNOT_ENOMEM;
-	}
-
-	knot_rrset_t rrs;
-	knot_rrset_init(&rrs, owner, r_type, KNOT_CLASS_IN, r_ttl);
-
-	int ret = knot_rdataset_copy(&rrs.rrs, &r_data, NULL);
-	if (ret != KNOT_EOK) {
-		knot_rrset_clear(&rrs, NULL);
-		return ret;
-	}
-
-	ret = zcreator_step(contents, &rrs, skip);
-	knot_rrset_clear(&rrs, NULL);
-	return ret;
-}
-
-static int rdb_load(zloader_t *loader)
-{
-	assert(loader);
-	assert(loader->backend == ZLOADER_BACKEND_DB);
-
-	const knot_dname_t *zone = loader->contents->apex->owner;
-
-	redisReply *reply = redisCommand(loader->rdb, RDB_CMD_ZONE_LOAD " %b %b",
-	                                 zone, knot_dname_size(zone),
-	                                 &loader->instance, sizeof(loader->instance));
-	if (reply == NULL) {
-		ERROR(zone, "failed to connect to database");
-		return KNOT_ERROR;
-	} else if (reply->type == REDIS_REPLY_ERROR) {
-		ERROR(zone, "failed to load from database (%s)", reply->str);
-		freeReplyObject(reply);
-		return KNOT_ERROR;
-	} else if (reply->type != REDIS_REPLY_ARRAY) {
-		ERROR(zone, "failed to load from database (bad data)");
-		freeReplyObject(reply);
-		return KNOT_ERROR;
-	}
-
-	for (size_t i = 0; i < reply->elements; i++) {
-		redisReply *data = reply->element[i];
-		int ret = process_rdb_data(loader->contents, data, loader->skip);
-		if (ret != KNOT_EOK) {
-			ERROR(zone, "failed to process database data (%s)",
-			      knot_strerror(ret));
-			freeReplyObject(reply);
-			return ret;
-		}
-	}
-
-	freeReplyObject(reply);
-
-	return KNOT_EOK;
-}
-
-int zone_rdb_exists(conf_t *conf, const knot_dname_t *zone, uint8_t instance, uint32_t *serial)
-{
-	if (zone == NULL || serial == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	redisContext *rdb = rdb_connect(conf);
-	if (rdb == NULL) {
-		return KNOT_ECONN;
-	}
-
-	int64_t val = -1;
-	redisReply *reply = redisCommand(rdb, RDB_CMD_ZONE_EXISTS " %b %b",
-	                                 zone, knot_dname_size(zone),
-	                                 &instance, sizeof(instance));
-	if (reply != NULL && reply->type == REDIS_REPLY_INTEGER) {
-		val = reply->integer;
-	}
-	freeReplyObject(reply);
-
-	redisFree(rdb);
-
-	return (val != -1) ? KNOT_EOK : KNOT_ENOENT;
-}
-#endif
-
 static int file_load(zloader_t *loader)
 {
 	assert(loader);
@@ -374,16 +258,7 @@ zone_contents_t *zonefile_load(zloader_t *loader, uint16_t threads)
 
 	const knot_dname_t *zname = loader->contents->apex->owner;
 
-	int ret;
-	if (loader->backend == ZLOADER_BACKEND_FILE) {
-		ret = file_load(loader);
-	} else {
-#ifdef ENABLE_REDIS
-		ret = rdb_load(loader);
-#else
-		ret = KNOT_ENOTSUP;
-#endif
-	}
+	int ret = file_load(loader);
 	if (ret != KNOT_EOK) {
 		goto fail;
 	}
@@ -433,14 +308,8 @@ void zonefile_close(zloader_t *loader)
 		return;
 	}
 
-	if (loader->backend == ZLOADER_BACKEND_FILE) {
-		zs_deinit(&loader->scanner);
-		free(loader->source);
-	} else {
-#ifdef ENABLE_REDIS
-		redisFree(loader->rdb);
-#endif
-	}
+	zs_deinit(&loader->scanner);
+	free(loader->source);
 }
 
 int zonefile_exists(const char *path, struct timespec *mtime)
