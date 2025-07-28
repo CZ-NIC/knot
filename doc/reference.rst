@@ -1211,6 +1211,7 @@ Configuration of databases for zone contents, DNSSEC metadata, or event timers.
      timer-db-max-size: SIZE
      catalog-db: str
      catalog-db-max-size: SIZE
+     zone-db-listen: ADDR[@INT]
 
 .. _database_storage:
 
@@ -1335,6 +1336,16 @@ The hard limit for the catalog database maximum size.
    This value also influences server's usage of virtual memory.
 
 *Default:* ``20G`` (20 GiB), or ``512M`` (512 MiB) for 32-bit
+
+.. _database_zone-db-listen:
+
+zone-db-listen
+--------------
+
+IP address (and optionally port) of a runnig instance of Redis database to be used
+for reading/writing zone contents. See :ref:`zone_zone-db-input` and :ref:`zone_zone-db-output`.
+
+*Default:* not set
 
 .. _keystore section:
 
@@ -2666,6 +2677,8 @@ Definition of zones served by the server.
      template: template_id
      storage: STR
      file: STR
+     zone-db-input: INT
+     zone-db-output: INT
      master: remote_id | remotes_id ...
      ddns-master: remote_id
      notify: remote_id | remotes_id ...
@@ -2760,6 +2773,33 @@ the following formatters:
   where DDD is corresponding decimal ASCII code.
 
 *Default:* :ref:`storage<zone_storage>`\ ``/%s.zone``
+
+.. _zone_zone-db-input:
+
+zone-db-input
+-------------
+
+If set, the zone is loaded from the Redis database configured at :ref:`database_zone-db-listen`.
+The value of this option is the zone instance number within the database to be read.
+
+.. NOTE::
+   With this option, the textual zone file is never loaded.
+   The setting of :ref:`zone_zonefile-load` option applies to handling of the zone contents
+   loaded from the database.
+
+
+*Default:* not set
+
+.. _zone_zone-db-output:
+
+zone-db-output
+---------------
+
+If set, the zone is stored to the Redis database configured at :ref:`database_zone-db-listen`
+and updated there with every change to zone contents.
+The value of this option is the zone instance number within the database to be written.
+
+*Default:* not set
 
 .. _zone_master:
 
@@ -2952,6 +2992,11 @@ and no zone contents in the journal), it behaves the same way as ``whole``.
 .. NOTE::
    See :ref:`Handling, zone file, journal, changes, serials` for guidance on
    configuring these and related options to ensure reliable operation.
+
+.. WARNING::
+   If :ref:`zone_zone-db-input` is configured, the textual zone file is never loaded.
+   However, this option still effects on how the zone contents loaded from the
+   database are applied and handled.
 
 .. _zone_zonefile-skip:
 
