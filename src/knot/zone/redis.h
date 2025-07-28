@@ -14,6 +14,7 @@
 #else // ENABLE_REDIS
 struct redisContext;
 #endif // ENABLE_REDIS
+struct zone_contents;
 
 typedef struct zone_redis_txn {
 	struct redisContext *rdb;
@@ -77,3 +78,32 @@ int zone_redis_txn_commit(struct zone_redis_txn *txn);
  * \note You might want to ignore the return code.
  */
 int zone_redis_txn_abort(struct zone_redis_txn *txn);
+
+/*!
+ * \brief Check if the zone exists in the database+instance and read out SOA serial.
+ *
+ * \param rdb         Redis context (just pass zone_redis_connect()).
+ * \param instance    Zone instance number (from configuration).
+ * \param zone        Zone name.
+ * \param serial      Output: SOA serial of stored zone.
+ *
+ * \retval KNOT_ENOENT   Zone doesn't exist in this instance.
+ * \return KNOT_E*
+ */
+int zone_redis_serial(struct redisContext *rdb, uint8_t instance,
+                      const knot_dname_t *zone, uint32_t *serial);
+
+/*!
+ * \brief Load whole zone contents from Redis.
+ *
+ * \param rdb         Redis context (just pass zone_redis_connect()).
+ * \param instance    Zone instance number (from configuration).
+ * \param zone_name   Zone name.
+ * \param out         Output: zone contents.
+ * \param log_err     Output: error message in case of failure.
+ *
+ * \return KNOT_E*
+ */
+int zone_redis_load(struct redisContext *rdb, uint8_t instance,
+                    const knot_dname_t *zone_name, struct zone_contents **out,
+                    char log_err[256]);
