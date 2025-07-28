@@ -14,6 +14,7 @@
 #include "knot/events/handlers.h"
 #include "knot/events/replan.h"
 #include "knot/zone/digest.h"
+#include "knot/zone/redis.h"
 #include "knot/zone/reverse.h"
 #include "knot/zone/serial.h"
 #include "knot/zone/zone-diff.h"
@@ -102,22 +103,22 @@ int event_load(conf_t *conf, zone_t *zone)
 	if (zf_from != ZONEFILE_LOAD_NONE && zone->cat_members == NULL) {
 		val = conf_zone_get(conf, C_ZONE_DB_IN, zone->name);
 		uint8_t instance = conf_int(&val);
-		bool from_file = (instance == 0);
+		if (val.code == KNOT_EOK) {
+			char err_log[256] = { 0 };
+			zone_src = "database";
+			ret = zone_redis_load(zone_redis_connect(conf), conf_int(&val), zone->name, &zf_conts, err_log);
+			if (ret != KNOT_EOK) {
+				log_zone_error(zone->name, "failed to load zone from DB: %s", err_log);
+				goto cleanup;
+			}
+			goto zonefile_loaded;
+		}
+
 
 		struct timespec mtime = { 0 };
-		char *filename = NULL;
-		if (from_file) {
-			filename = conf_zonefile(conf, zone->name);
-			ret = zonefile_exists(filename, &mtime);
-		} else {
-#ifdef ENABLE_REDIS
-			zone_src = "database";
-			uint32_t serial;
-			ret = zone_rdb_exists(conf, zone->name, instance, &serial);
-#else
-			ret = KNOT_ENOTSUP;
-#endif
-		}
+		char *filename = conf_zonefile(conf, zone->name);
+		ret = zonefile_exists(filename, &mtime);
+
 		if (ret == KNOT_EOK) {
 			conf_val_t semchecks = conf_zone_get(conf, C_SEM_CHECKS, zone->name);
 			semcheck_optional_t mode = conf_opt(&semchecks);
@@ -134,14 +135,13 @@ int event_load(conf_t *conf, zone_t *zone)
 		}
 		if (ret != KNOT_EOK) {
 			assert(!zf_conts);
-			int level = dontcare_load_error(conf, zone) ? LOG_INFO : LOG_ERR;
-			log_fmt_zone(level, LOG_SOURCE_ZONE, zone->name, NULL,
-			             "failed to load %s%s%.0u%s%s%s (%s)", zone_src,
-			             (from_file ? ""       : ", instance "), instance,
-			             (from_file ? " '"     : ""),
-			             (from_file ? filename : ""),
-			             (from_file ? "'"      : ""),
-			             knot_strerror(ret));
+			if (dontcare_load_error(conf, zone)) {
+				log_zone_info(zone->name, "failed to parse zone file '%s' (%s)",
+				              filename, knot_strerror(ret));
+			} else {
+				log_zone_error(zone->name, "failed to parse zone file '%s' (%s)",
+				               filename, knot_strerror(ret));
+			}
 			free(filename);
 			goto load_end;
 		}
@@ -152,6 +152,7 @@ int event_load(conf_t *conf, zone_t *zone)
 		zone->zonefile.exists = (zf_conts != NULL);
 		zone->zonefile.mtime = mtime;
 
+zonefile_loaded: ;
 		// If configured, add reverse records to zone contents
 		const knot_dname_t *fail_fwd = NULL;
 		ret = zones_reverse(&zone->reverse_from, zf_conts, &fail_fwd);
@@ -172,12 +173,12 @@ int event_load(conf_t *conf, zone_t *zone)
 			uint32_t set = serial_next(serial, conf, zone->name, SERIAL_POLICY_AUTO, 1);
 			zone_contents_set_soa_serial(zf_conts, set);
 			log_zone_info(zone->name, "%s loaded%s%.0u, serial updated %u -> %u",
-			              zone_src, (from_file ? "" : ", instance "),
+			              zone_src, (instance > 0 ? "" : ", instance "),
 			              instance, zone->zonefile.serial, set);
 			zone->zonefile.serial = set;
 		} else {
 			log_zone_info(zone->name, "%s loaded%s%.0u, serial %u",
-			              zone_src, (from_file ? "" : ", instance "),
+			              zone_src, (instance > 0 ? "" : ", instance "),
 			              instance, zone->zonefile.serial);
 		}
 
