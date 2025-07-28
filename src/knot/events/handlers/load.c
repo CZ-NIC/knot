@@ -14,6 +14,7 @@
 #include "knot/events/handlers.h"
 #include "knot/events/replan.h"
 #include "knot/zone/digest.h"
+#include "knot/zone/redis.h"
 #include "knot/zone/reverse.h"
 #include "knot/zone/serial.h"
 #include "knot/zone/zone-diff.h"
@@ -44,11 +45,18 @@ static bool allowed_xfr(conf_t *conf, const zone_t *zone)
 	return false;
 }
 
+static int upd_add_rem(const knot_rrset_t *rr, bool add, void *ctx)
+{
+	return add ? zone_update_add(ctx, rr) : zone_update_remove(ctx, rr);
+}
+
 int event_load(conf_t *conf, zone_t *zone)
 {
 	zone_update_t up = { 0 };
 	zone_contents_t *journal_conts = NULL, *zf_conts = NULL;
 	bool old_contents_exist = (zone->contents != NULL), zone_in_journal_exists = false;
+	const char *zone_src = "zone file";
+	struct redisContext *db_ctx = NULL;
 
 	conf_val_t val = conf_zone_get(conf, C_JOURNAL_CONTENT, zone->name);
 	unsigned load_from = conf_opt(&val);
@@ -97,8 +105,64 @@ int event_load(conf_t *conf, zone_t *zone)
 	unsigned digest_alg = conf_opt(&val);
 	bool update_zonemd = (digest_alg != ZONE_DIGEST_NONE);
 
+	val = conf_zone_get(conf, C_ZONE_DB_IN, zone->name);
+	uint8_t db_instance = conf_int(&val);
+	if (db_instance > 0) {
+		zone_src = "database";
+		db_ctx = zone_redis_connect(conf);
+	}
+
+	// Attempt to load changes from database. If fails, load full zone from there later.
+	if (db_instance > 0 && (old_contents_exist || journal_conts != NULL)) {
+		uint32_t db_serial = 0;
+		ret = zone_redis_serial(db_ctx, db_instance, zone->name, &db_serial);
+		if (ret == KNOT_EOK && old_contents_exist && db_serial == zone_contents_serial(zone->contents)) {
+			log_zone_info(zone->name, "database is up-to-date, serial %u", db_serial);
+			goto cleanup;
+		} else if (ret == KNOT_EOK && journal_conts != NULL && db_serial == zone_contents_serial(journal_conts)) {
+			log_zone_info(zone->name, "database is up-to-date with zone-in-journal, serial %u", db_serial);
+			// TODO what kind of handling in this case?
+		} else if (ret != KNOT_EOK) {
+			// TODO log
+			goto cleanup; // NOTE this includes the case of KNOT_ENOENT, where DB load is configured but not available
+		}
+
+		// TODO zone->cat_mebers handling???
+		if (old_contents_exist) {
+			ret = zone_update_init(&up, zone, UPDATE_INCREMENTAL);
+		} else {
+			ret = zone_update_from_contents(&up, zone, journal_conts, UPDATE_HYBRID);
+		}
+		if (ret != KNOT_EOK) {
+			// TODO log
+			goto cleanup;
+		}
+		char err_log[256] = "";
+		ret = zone_redis_load_upd(db_ctx, db_instance, zone->name, zone_contents_serial(up.new_cont), upd_add_rem, &up, err_log);
+		if (ret == KNOT_EOK) {
+			goto load_end; // all OK, take the shortcut!
+		} else if (err_log[0] != '\0') {
+			log_zone_error(zone->name, "failed to load zone from database (%s)", err_log);
+			goto cleanup; // Redis error, surrender
+		} else {
+			zone_update_clear(&up);
+			memset(&up, 0, sizeof(up));
+			ret = KNOT_EOK; // just unable to apply DB changesets atop running zone version, go ahead with full zone load from DB
+		}
+	}
+
 	// If configured, attempt to load zonefile.
 	if (zf_from != ZONEFILE_LOAD_NONE && zone->cat_members == NULL) {
+		if (db_instance > 0) {
+			char err_log[256] = "";
+			ret = zone_redis_load(db_ctx, db_instance, zone->name, &zf_conts, err_log);
+			if (ret != KNOT_EOK) {
+				log_zone_error(zone->name, "failed to load zone from database (%s)", err_log);
+				goto cleanup;
+			}
+			goto zonefile_loaded;
+		}
+
 		struct timespec mtime;
 		char *filename = conf_zonefile(conf, zone->name);
 		ret = zonefile_exists(filename, &mtime);
@@ -135,6 +199,7 @@ int event_load(conf_t *conf, zone_t *zone)
 		zone->zonefile.exists = (zf_conts != NULL);
 		zone->zonefile.mtime = mtime;
 
+zonefile_loaded: ;
 		// If configured, add reverse records to zone contents
 		const knot_dname_t *fail_fwd = NULL;
 		ret = zones_reverse(&zone->reverse_from, zf_conts, &fail_fwd);
@@ -154,12 +219,14 @@ int event_load(conf_t *conf, zone_t *zone)
 			uint32_t serial = zone_contents_serial(relevant);
 			uint32_t set = serial_next(serial, conf, zone->name, SERIAL_POLICY_AUTO, 1);
 			zone_contents_set_soa_serial(zf_conts, set);
-			log_zone_info(zone->name, "zone file parsed, serial updated %u -> %u",
-			              zone->zonefile.serial, set);
+			log_zone_info(zone->name, "%s loaded%s%.0u, serial updated %u -> %u",
+			              zone_src, (db_instance > 0 ? ", instance " : ""),
+			              db_instance, zone->zonefile.serial, set);
 			zone->zonefile.serial = set;
 		} else {
-			log_zone_info(zone->name, "zone file parsed, serial %u",
-			              zone->zonefile.serial);
+			log_zone_info(zone->name, "%s loaded%s%.0u, serial %u",
+			              zone_src, (db_instance > 0 ? ", instance " : ""),
+			              db_instance, zone->zonefile.serial);
 		}
 
 		// If configured and appliable to zonefile, load journal changes.
@@ -276,13 +343,13 @@ load_end:
 			}
 			break;
 		case KNOT_ESEMCHECK:
-			log_zone_warning(zone->name, "zone file changed without SOA serial update");
+			log_zone_warning(zone->name, "%s changed without SOA serial update", zone_src);
 			break;
 		case KNOT_ERANGE:
 			if (serial_compare(zone->zonefile.serial, zone_contents_serial(zone->contents)) == SERIAL_INCOMPARABLE) {
-				log_zone_warning(zone->name, "zone file changed with incomparable SOA serial");
+				log_zone_warning(zone->name, "%s changed with incomparable SOA serial", zone_src);
 			} else {
-				log_zone_warning(zone->name, "zone file changed with decreased SOA serial");
+				log_zone_warning(zone->name, "%s changed with decreased SOA serial", zone_src);
 			}
 			break;
 		}
@@ -321,7 +388,7 @@ load_end:
 			log_zone_warning(zone->name,
 			                 "with automatic DNSSEC signing and outgoing transfers enabled, "
 			                 "'zonefile-load: difference' should be set to avoid malformed "
-			                 "IXFR after manual zone file update");
+			                 "IXFR after manual %s update", zone_src);
 		}
 	} else if (update_zonemd) {
 		/* Don't update ZONEMD if no change and ZONEMD is up-to-date.
@@ -425,6 +492,7 @@ load_end:
 	if (!zone_timers_serial_notified(&zone->timers, new_serial)) {
 		zone_schedule_notify(conf, zone, 0);
 	}
+	zone_redis_disconnect(db_ctx);
 	zone_skip_free(&skip);
 	zone->started = true;
 
@@ -437,6 +505,7 @@ cleanup:
 	zone_update_clear(&up);
 	zone_contents_deep_free(zf_conts);
 	zone_contents_deep_free(journal_conts);
+	zone_redis_disconnect(db_ctx);
 	zone_skip_free(&skip);
 	zone->started = true;
 
