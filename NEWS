@@ -1,3 +1,29 @@
+Knot DNS 3.4.8 (2025-07-29)
+===========================
+
+Features:
+---------
+ - keymgr: implemented key pregeneration for later use (see 'for-later')
+
+Improvements:
+-------------
+ - knotd: decreased remote session ticket lifetime to 1200 seconds
+ - knotd: TCP connection is not shared between SOA and XFR if 'remote.no-edns' is set
+ - knotd: 'zone.notify-delay' now applies to every outgoing NOTIFY
+ - knotd: reduced timers database size by omitting zero timer values
+ - knotd: zone-reload can be called on an expired zone
+ - knotd: improved configuration commit performance when many zones are present
+ - keymgr: allowed boolen key flags without an explicit 'on' value
+ - keymgr: support for colon separators in keyid specification
+ - utils: added INTERNET and CHAOS aliases for IN and CH class names
+ - libs: upgraded embedded libngtcp2 to 1.14.0
+ - doc: various improvements
+
+Bugfixes:
+---------
+ - knotd: possible use after free if member zone is reused when full reload
+ - knotd: incorrect zone update revert adjustments
+
 Knot DNS 3.4.7 (2025-06-04)
 ===========================
 
