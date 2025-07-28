@@ -3,12 +3,13 @@
  *  For more information, see <https://www.knot-dns.cz/>
  */
 
-#include "knot/zone/redis.h"
-
 #include <string.h>
 
-#ifdef ENABLE_REDIS
+#include "knot/zone/redis.h"
+#include "knot/zone/contents.h"
 
+#ifdef ENABLE_REDIS
+#include "contrib/openbsd/strlcpy.h"
 #include "knot/common/hiredis.h"
 
 struct redisContext *zone_redis_connect(conf_t *conf)
@@ -168,6 +169,192 @@ int zone_redis_txn_abort(zone_redis_txn_t *txn)
 	return KNOT_EOK;
 }
 
+int zone_redis_serial(struct redisContext *rdb, uint8_t instance,
+                      const knot_dname_t *zone, uint32_t *serial,
+                      zone_redis_err_t err)
+{
+	if (rdb == NULL) {
+		return KNOT_NET_ECONNECT;
+	} else if (zone == NULL || serial == NULL || err == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	redisReply *reply = redisCommand(rdb, RDB_CMD_ZONE_EXISTS " %b %b",
+	                                 zone, knot_dname_size(zone),
+	                                 &instance, sizeof(instance));
+	int ret = check_reply(rdb, reply, REDIS_REPLY_INTEGER, err);
+	if (ret != KNOT_EOK) {
+		freeReplyObject(reply);
+		return ret;
+	}
+
+	*serial = reply->integer;
+	freeReplyObject(reply);
+
+	return KNOT_EOK;
+}
+
+static int process_rdb_rr(zone_contents_t *contents, redisReply *data)
+{
+	if (data->elements != 5) {
+		return KNOT_EMALF;
+	}
+
+	knot_dname_t *r_owner = (knot_dname_t *)data->element[0]->str;
+	uint16_t r_type = data->element[1]->integer;
+	uint32_t r_ttl = data->element[2]->integer;
+	knot_rdataset_t r_data = {
+		.count = data->element[3]->integer,
+		.size = data->element[4]->len,
+		.rdata = (knot_rdata_t *)data->element[4]->str
+	};
+
+	knot_dname_t *owner = knot_dname_copy(r_owner, NULL);
+	if (owner == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	knot_rrset_t rrs;
+	knot_rrset_init(&rrs, owner, r_type, KNOT_CLASS_IN, r_ttl);
+
+	int ret = knot_rdataset_copy(&rrs.rrs, &r_data, NULL);
+	if (ret == KNOT_EOK) {
+		zone_node_t *n = NULL;
+		ret = zone_contents_add_rr(contents, &rrs, &n);
+	}
+
+	knot_rrset_clear(&rrs, NULL);
+
+	return ret;
+}
+
+int zone_redis_load(struct redisContext *rdb, uint8_t instance,
+                    const knot_dname_t *zone_name, struct zone_contents **out,
+                    zone_redis_err_t err)
+{
+	if (rdb == NULL) {
+		return KNOT_NET_ECONNECT;
+	} else if (zone_name == NULL || out == NULL || err == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	redisReply *reply = redisCommand(rdb, RDB_CMD_ZONE_LOAD " %b %b",
+	                                 zone_name, knot_dname_size(zone_name),
+	                                 &instance, sizeof(instance));
+	int ret = check_reply(rdb, reply, REDIS_REPLY_ARRAY, err);
+	if (ret != KNOT_EOK) {
+		freeReplyObject(reply);
+		return ret;
+	}
+
+	zone_contents_t *cont = zone_contents_new(zone_name, true);
+	if (cont == NULL) {
+		freeReplyObject(reply);
+		return KNOT_ENOMEM;
+	}
+
+	for (size_t i = 0; i < reply->elements; i++) {
+		redisReply *data = reply->element[i];
+		ret = process_rdb_rr(cont, data);
+		if (ret != KNOT_EOK) {
+			break;
+		}
+	}
+
+	if (ret == KNOT_EOK) {
+		*out = cont;
+	} else {
+		zone_contents_deep_free(cont);
+	}
+
+	freeReplyObject(reply);
+
+	return ret;
+}
+
+static int process_rdb_upd(zone_redis_load_upd_cb_t cb, void *ctx, redisReply *data)
+{
+	if (data->elements != 8) {
+		return KNOT_EMALF;
+	}
+
+	knot_dname_t *r_owner = (knot_dname_t *)data->element[0]->str;
+	uint16_t r_type = data->element[1]->integer;
+	uint32_t r_ttl_rem = data->element[2]->integer;
+	uint32_t r_ttl_add = data->element[3]->integer;
+	knot_rdataset_t r_data_rem = {
+		.count = data->element[4]->integer,
+		.size = data->element[5]->len,
+		.rdata = (knot_rdata_t *)data->element[5]->str
+	};
+	knot_rdataset_t r_data_add = {
+		.count = data->element[6]->integer,
+		.size = data->element[7]->len,
+		.rdata = (knot_rdata_t *)data->element[7]->str
+	};
+
+	knot_dname_t *owner = knot_dname_copy(r_owner, NULL);
+	if (owner == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	knot_rrset_t rrs;
+	knot_rrset_init(&rrs, owner, r_type, KNOT_CLASS_IN, r_ttl_rem);
+
+	int ret = knot_rdataset_copy(&rrs.rrs, &r_data_rem, NULL);
+	if (ret == KNOT_EOK) {
+		ret = cb(&rrs, false, ctx);
+	}
+	if (ret == KNOT_EOK) {
+		knot_rdataset_clear(&rrs.rrs, NULL);
+		ret = knot_rdataset_copy(&rrs.rrs, &r_data_add, NULL);
+		rrs.ttl = r_ttl_add;
+	}
+	if (ret == KNOT_EOK) {
+		ret = cb(&rrs, true, ctx);
+	}
+
+	knot_rrset_clear(&rrs, NULL);
+
+	return ret;
+}
+
+int zone_redis_load_upd(struct redisContext *rdb, uint8_t instance,
+                        const knot_dname_t *zone_name, uint32_t soa_from,
+                        zone_redis_load_upd_cb_t cb, void *ctx,
+                        zone_redis_err_t err)
+{
+	if (rdb == NULL) {
+		return KNOT_NET_ECONNECT;
+	} else if (zone_name == NULL || cb == NULL || err == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	redisReply *reply = redisCommand(rdb, RDB_CMD_UPD_LOAD " %b %b %d",
+	                                 zone_name, knot_dname_size(zone_name),
+	                                 &instance, sizeof(instance), soa_from);
+	int ret = check_reply(rdb, reply, REDIS_REPLY_ARRAY, err);
+	if (ret != KNOT_EOK) {
+		freeReplyObject(reply);
+		return ret;
+	}
+
+	for (size_t i = 0; i < reply->elements && ret == KNOT_EOK; i++) {
+		redisReply *changeset = reply->element[i];
+		for (size_t j = 0; j < changeset->elements && ret == KNOT_EOK; j++) {
+			redisReply *data = changeset->element[j];
+			ret = process_rdb_upd(cb, ctx, data);
+			if (ret != KNOT_EOK) {
+				break;
+			}
+		}
+	}
+
+	freeReplyObject(reply);
+
+	return ret;
+}
+
 #else // ENABLE_REDIS
 
 struct redisContext *zone_redis_connect(conf_t *conf)
@@ -203,6 +390,28 @@ int zone_redis_txn_commit(zone_redis_txn_t *txn)
 }
 
 int zone_redis_txn_abort(zone_redis_txn_t *txn)
+{
+	return KNOT_ENOTSUP;
+}
+
+int zone_redis_serial(struct redisContext *rdb, uint8_t instance,
+                      const knot_dname_t *zone, uint32_t *serial,
+                      zone_redis_err_t err)
+{
+	return KNOT_ENOTSUP;
+}
+
+int zone_redis_load(struct redisContext *rdb, uint8_t instance,
+                    const knot_dname_t *zone_name, struct zone_contents **out,
+                    zone_redis_err_t err)
+{
+	return KNOT_ENOTSUP;
+}
+
+int zone_redis_load_upd(struct redisContext *rdb, uint8_t instance,
+                        const knot_dname_t *zone_name, uint32_t soa_from,
+                        zone_redis_load_upd_cb_t cb, void *ctx,
+                        zone_redis_err_t err)
 {
 	return KNOT_ENOTSUP;
 }
