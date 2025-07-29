@@ -1974,43 +1974,44 @@ static int check_no_zone_txn(server_t *server, const char *action)
 
 static int server_status(ctl_args_t *args)
 {
-	const char *type = args->data[KNOT_CTL_IDX_TYPE];
-
-	if (type == NULL || strlen(type) == 0) {
-		return KNOT_EOK;
-	}
-
 	char buff[4096] = "";
 
-	int ret;
-	if (strcasecmp(type, CMD_STATUS_VERSION) == 0) {
-		ret = snprintf(buff, sizeof(buff), "%s", PACKAGE_VERSION);
-	} else if (strcasecmp(type, CMD_STATUS_WORKERS) == 0) {
-		int running_bkg_wrk, wrk_queue;
-		worker_pool_status(args->server->workers, false, &running_bkg_wrk, &wrk_queue);
-		ret = snprintf(buff, sizeof(buff), "UDP workers: %zu, TCP workers: %zu, "
-		               "XDP workers: %zu, background workers: %zu (running: %d, pending: %d)",
-		               conf()->cache.srv_udp_threads, conf()->cache.srv_tcp_threads,
-		               conf()->cache.srv_xdp_threads, conf()->cache.srv_bg_threads,
-		               running_bkg_wrk, wrk_queue);
-	} else if (strcasecmp(type, CMD_STATUS_CONFIG) == 0) {
-		ret = snprintf(buff, sizeof(buff), "%s", configure_summary);
-	} else if (strcasecmp(type, CMD_STATUS_CERT) == 0) {
-		uint8_t pin[128];
-		size_t pin_len = server_cert_pin(args->server, pin, sizeof(pin));
-		if (pin_len > 0) {
-			ret = snprintf(buff, sizeof(buff), "%.*s", (int)pin_len, pin);
-		} else {
-			ret = snprintf(buff, sizeof(buff), STATUS_EMPTY);
+	const char *type = args->data[KNOT_CTL_IDX_TYPE];
+	if (type == NULL || strlen(type) == 0) {
+		if (!(args->server->state & ServerAnswering)) {
+			args->data[KNOT_CTL_IDX_FILTERS] = CTL_FILTER_STATUS_LOADING;
 		}
 	} else {
-		return KNOT_EINVAL;
-	}
-	if (ret <= 0 || ret >= sizeof(buff)) {
-		return KNOT_ESPACE;
-	}
+		int ret;
+		if (strcasecmp(type, CMD_STATUS_VERSION) == 0) {
+			ret = snprintf(buff, sizeof(buff), "%s", PACKAGE_VERSION);
+		} else if (strcasecmp(type, CMD_STATUS_WORKERS) == 0) {
+			int running_bkg_wrk, wrk_queue;
+			worker_pool_status(args->server->workers, false, &running_bkg_wrk, &wrk_queue);
+			ret = snprintf(buff, sizeof(buff), "UDP workers: %zu, TCP workers: %zu, "
+			               "XDP workers: %zu, background workers: %zu (running: %d, pending: %d)",
+			               conf()->cache.srv_udp_threads, conf()->cache.srv_tcp_threads,
+			               conf()->cache.srv_xdp_threads, conf()->cache.srv_bg_threads,
+			               running_bkg_wrk, wrk_queue);
+		} else if (strcasecmp(type, CMD_STATUS_CONFIG) == 0) {
+			ret = snprintf(buff, sizeof(buff), "%s", configure_summary);
+		} else if (strcasecmp(type, CMD_STATUS_CERT) == 0) {
+			uint8_t pin[128];
+			size_t pin_len = server_cert_pin(args->server, pin, sizeof(pin));
+			if (pin_len > 0) {
+				ret = snprintf(buff, sizeof(buff), "%.*s", (int)pin_len, pin);
+			} else {
+				ret = snprintf(buff, sizeof(buff), STATUS_EMPTY);
+			}
+		} else {
+			return KNOT_EINVAL;
+		}
+		if (ret <= 0 || ret >= sizeof(buff)) {
+			return KNOT_ESPACE;
+		}
 
-	args->data[KNOT_CTL_IDX_DATA] = buff;
+		args->data[KNOT_CTL_IDX_DATA] = buff;
+	}
 
 	return knot_ctl_send(args->ctl, KNOT_CTL_TYPE_DATA, &args->data);
 }

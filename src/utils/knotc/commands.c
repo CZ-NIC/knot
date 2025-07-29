@@ -175,8 +175,12 @@ static void format_data(cmd_args_t *args, knot_ctl_type_t data_type,
 			       (type != NULL) ? type : "");
 		} else if (value != NULL) {
 			printf("%s", value);
-			*empty = false;
+		} else if (ctl_has_flag(filters, CTL_FILTER_STATUS_LOADING)) {
+			printf("Loading");
+		} else {
+			printf("Running");
 		}
+		*empty = false;
 		break;
 	case CTL_STOP:
 	case CTL_RELOAD:
@@ -329,9 +333,6 @@ static void format_data(cmd_args_t *args, knot_ctl_type_t data_type,
 static void format_block(ctl_cmd_t cmd, bool failed, bool empty)
 {
 	switch (cmd) {
-	case CTL_STATUS:
-		printf("%s\n", (failed || !empty) ? "" : "Running");
-		break;
 	case CTL_STOP:
 		printf("%s\n", failed ? "" : "Stopped");
 		break;
@@ -367,6 +368,7 @@ static void format_block(ctl_cmd_t cmd, bool failed, bool empty)
 	case CTL_ZONE_PURGE:
 		printf("%s\n", failed ? "" : "OK");
 		break;
+	case CTL_STATUS:
 	case CTL_ZONE_STATUS:
 	case CTL_ZONE_READ:
 	case CTL_ZONE_DIFF:
