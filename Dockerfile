@@ -10,6 +10,7 @@ ENV BUILD_PKGS=" \
     libedit-dev \
     libfstrm-dev \
     libgnutls28-dev \
+    libhiredis-dev \
     libidn2-dev \
     liblmdb-dev \
     libmaxminddb-dev \
@@ -43,6 +44,7 @@ RUN autoreconf -if && \
                 --with-module-dnstap=yes \
                 --${FASTPARSER}-fastparser \
                 --enable-quic \
+                --enable-redis \
                 --enable-dnstap \
                 --disable-static \
                 --disable-documentation && \
@@ -64,6 +66,7 @@ ENV RUNTIME_PKGS=" \
     libedit2 \
     libfstrm0 \
     libgnutls30t64 \
+    libhiredis1.1.0 \
     libidn2-0 \
     liblmdb0 \
     libmaxminddb0 \
