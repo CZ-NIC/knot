@@ -314,7 +314,12 @@ static int zone_status(zone_t *zone, ctl_args_t *args)
 
 	if (MATCH_OR_FILTER(args, CTL_FILTER_STATUS_TRANSACTION)) {
 		data[KNOT_CTL_IDX_TYPE] = "transaction";
-		data[KNOT_CTL_IDX_DATA] = (zone->control_update != NULL) ? "open" : STATUS_EMPTY;
+		const char *value = STATUS_EMPTY;
+		if (zone->control_update != NULL) {
+			value = (zone->control_update->flags & UPDATE_WFEV) ?
+			        "open-external" : "open";
+		}
+		data[KNOT_CTL_IDX_DATA] = value;
 		ret = knot_ctl_send(args->ctl, type, &data);
 		if (ret != KNOT_EOK) {
 			return ret;
