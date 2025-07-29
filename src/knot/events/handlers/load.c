@@ -45,6 +45,11 @@ static bool allowed_xfr(conf_t *conf, const zone_t *zone)
 	return false;
 }
 
+static int upd_add_rem(const knot_rrset_t *rr, bool add, void *ctx)
+{
+	return add ? zone_update_add(ctx, rr) : zone_update_remove(ctx, rr);
+}
+
 int event_load(conf_t *conf, zone_t *zone)
 {
 	zone_update_t up = { 0 };
@@ -99,14 +104,54 @@ int event_load(conf_t *conf, zone_t *zone)
 	unsigned digest_alg = conf_opt(&val);
 	bool update_zonemd = (digest_alg != ZONE_DIGEST_NONE);
 
+	val = conf_zone_get(conf, C_ZONE_DB_IN, zone->name);
+	uint8_t db_instance = conf_int(&val);
+
+	// Attempt to load changes from database. If fails, load full zone from there later.
+	if (db_instance > 0 && (old_contents_exist || journal_conts != NULL)) {
+		uint32_t db_serial = 0;
+		ret = zone_redis_serial(db_ctx, db_instance, zone->name, &db_serial);
+		if (ret == KNOT_EOK && old_contents_exist && db_serial == zone_contents_serial(zone->contents)) {
+			log_zone_info(zone->name, "database is up-to-date, serial %u", db_serial);
+			goto cleanup;
+		} else if (ret == KNOT_EOK && journal_conts != NULL && db_serial == zone_contents_serial(journal_conts)) {
+			log_zone_info(zone->name, "database is up-to-date with zone-in-journal, serial %u", db_serial);
+			// TODO what kind of handling in this case?
+		} else if (ret != KNOT_EOK) {
+			// TODO log
+			goto cleanup; // NOTE this includes the case of KNOT_ENOENT, where DB load is configured but not available
+		}
+
+		// TODO zone->cat_mebers handling???
+		if (old_contents_exist) {
+			ret = zone_update_init(&up, zone, UPDATE_INCREMENTAL);
+		} else {
+			ret = zone_update_from_contents(&up, zone, journal_conts, UPDATE_HYBRID);
+		}
+		if (ret != KNOT_EOK) {
+			// TODO log
+			goto cleanup;
+		}
+		char err_log[256] = { 0 };
+		ret = zone_redis_load_upd(zone_redis_connect(conf), db_instance, zone->name, zone_contents_serial(up.new_cont), upd_add_rem, &up, err_log);
+		if (ret == KNOT_EOK) {
+			goto load_end; // all OK, take the shortcut!
+		} else if (err_log[0] != '\0') {
+			log_zone_error(zone->name, "failed to load zone from DB: %s", err_log);
+			goto cleanup; // Redis error, surrender
+		} else {
+			zone_update_clear(&up);
+			memset(&up, 0, sizeof(up));
+			ret = KNOT_EOK; // just unable to apply DB changesets atop running zone version, go ahead with full zone load from DB
+		}
+	}
+
 	// If configured, attempt to load zonefile.
 	if (zf_from != ZONEFILE_LOAD_NONE && zone->cat_members == NULL) {
-		val = conf_zone_get(conf, C_ZONE_DB_IN, zone->name);
-		uint8_t instance = conf_int(&val);
-		if (val.code == KNOT_EOK) {
+		if (db_instance > 0) {
 			char err_log[256] = { 0 };
 			zone_src = "database";
-			ret = zone_redis_load(zone_redis_connect(conf), conf_int(&val), zone->name, &zf_conts, err_log);
+			ret = zone_redis_load(zone_redis_connect(conf), db_instance, zone->name, &zf_conts, err_log);
 			if (ret != KNOT_EOK) {
 				log_zone_error(zone->name, "failed to load zone from DB: %s", err_log);
 				goto cleanup;
@@ -173,13 +218,13 @@ zonefile_loaded: ;
 			uint32_t set = serial_next(serial, conf, zone->name, SERIAL_POLICY_AUTO, 1);
 			zone_contents_set_soa_serial(zf_conts, set);
 			log_zone_info(zone->name, "%s loaded%s%.0u, serial updated %u -> %u",
-			              zone_src, (instance > 0 ? "" : ", instance "),
-			              instance, zone->zonefile.serial, set);
+			              zone_src, (db_instance > 0 ? ", instance " : ""),
+			              db_instance, zone->zonefile.serial, set);
 			zone->zonefile.serial = set;
 		} else {
 			log_zone_info(zone->name, "%s loaded%s%.0u, serial %u",
-			              zone_src, (instance > 0 ? "" : ", instance "),
-			              instance, zone->zonefile.serial);
+			              zone_src, (db_instance > 0 ? ", instance " : ""),
+			              db_instance, zone->zonefile.serial);
 		}
 
 		// If configured and appliable to zonefile, load journal changes.

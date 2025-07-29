@@ -183,8 +183,6 @@ int zone_redis_serial(struct redisContext *rdb, uint8_t instance,
 	}
 	freeReplyObject(reply);
 
-	redisFree(rdb);
-
 	return (val != -1) ? KNOT_EOK : KNOT_ENOENT;
 }
 
@@ -240,6 +238,90 @@ finish:
 	return ret;
 }
 
+static int process_rdb_upd(zone_redis_load_upd_cb_t cb, void *ctx, redisReply *data)
+{
+	knot_dname_t *r_owner = (knot_dname_t *)data->element[0]->str;
+	uint16_t r_type = data->element[1]->integer;
+	uint32_t r_ttl_rem = data->element[2]->integer;
+	uint32_t r_ttl_add = data->element[3]->integer;
+	knot_rdataset_t r_data_rem = {
+		.count = data->element[4]->integer,
+		.size = data->element[5]->len,
+		.rdata = (knot_rdata_t *)data->element[5]->str
+	};
+	knot_rdataset_t r_data_add = {
+		.count = data->element[6]->integer,
+		.size = data->element[7]->len,
+		.rdata = (knot_rdata_t *)data->element[7]->str
+	};
+
+	knot_dname_t *owner = knot_dname_copy(r_owner, NULL);
+	if (owner == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	knot_rrset_t rrs;
+	knot_rrset_init(&rrs, owner, r_type, KNOT_CLASS_IN, r_ttl_rem);
+
+	int ret = knot_rdataset_copy(&rrs.rrs, &r_data_rem, NULL);
+	if (ret == KNOT_EOK) {
+		ret = cb(&rrs, false, ctx);
+	}
+	if (ret == KNOT_EOK) {
+		knot_rdataset_clear(&rrs.rrs, NULL);
+		ret = knot_rdataset_copy(&rrs.rrs, &r_data_add, NULL);
+		rrs.ttl = r_ttl_add;
+	}
+	if (ret == KNOT_EOK) {
+		ret = cb(&rrs, true, ctx);
+	}
+
+	knot_rrset_clear(&rrs, NULL);
+	return ret;
+}
+
+int zone_redis_load_upd(struct redisContext *rdb, uint8_t instance,
+                        const knot_dname_t *zone_name, uint32_t soa_from,
+                        zone_redis_load_upd_cb_t cb, void *ctx,
+                        char log_err[256])
+{
+	if (rdb == NULL || zone_name == NULL || cb == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	int ret = KNOT_EOK;
+	redisReply *reply = redisCommand(rdb, RDB_CMD_UPD_LOAD " %b %b %d",
+	                                 zone_name, knot_dname_size(zone_name),
+	                                 &instance, sizeof(instance),
+	                                 soa_from);
+	if (reply == NULL) {
+		snprintf(log_err, 256, "failed to connect to database");
+		return error_from_redis(rdb->err);
+	} else if (reply->type == REDIS_REPLY_ERROR) {
+		snprintf(log_err, 256, "failed to load from database (%s)", reply->str);
+		ret = KNOT_ERROR;
+	} else if (reply->type != REDIS_REPLY_ARRAY) {
+		snprintf(log_err, 256, "failed to load from database (bad data)");
+		ret = KNOT_EMALF;
+	} else if (reply->elements == 0) {
+		ret = KNOT_ENOENT;
+	}
+
+	for (size_t i = 0; i < reply->elements && ret == KNOT_EOK; i++) {
+		redisReply *changeset = reply->element[i];
+		for (size_t j = 0; j < changeset->elements && ret == KNOT_EOK; j++) {
+			redisReply *data = changeset->element[j];
+			ret = process_rdb_upd(cb, ctx, data);
+			if (ret != KNOT_EOK) {
+				snprintf(log_err, 256, "failed to process database data (%s)", knot_strerror(ret));
+			}
+		}
+	}
+
+	freeReplyObject(reply);
+	return ret;
+}
+
 #else // ENABLE_REDIS
 
 struct redisContext *zone_redis_connect(conf_t *conf)
@@ -283,6 +365,14 @@ int zone_redis_serial(struct redisContext *rdb, uint8_t instance,
 int zone_redis_load(struct redisContext *rdb, uint8_t instance,
                     const knot_dname_t *zone_name, struct zone_contents **out,
                     char log_err[256])
+{
+	return KNOT_ENOTSUP;
+}
+
+int zone_redis_load_upd(struct redisContext *rdb, uint8_t instance,
+                        const knot_dname_t *zone_name, uint32_t soa_from,
+                        zone_redis_load_upd_cb_t cb, void *ctx,
+                        char log_err[256])
 {
 	return KNOT_ENOTSUP;
 }
