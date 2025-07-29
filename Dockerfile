@@ -2,7 +2,7 @@
 FROM debian:trixie-slim AS builder
 
 # Environment
-ENV BUILD_PKGS \
+ENV BUILD_PKGS=" \
     autoconf \
     automake \
     gcc \
@@ -24,7 +24,7 @@ ENV BUILD_PKGS \
     libxdp-dev \
     make \
     pkg-config \
-    protobuf-c-compiler
+    protobuf-c-compiler"
 
 # Install dependencies
 RUN apt-get update && \
@@ -58,7 +58,7 @@ FROM debian:trixie-slim
 LABEL maintainer="Knot DNS <knot-dns@labs.nic.cz>"
 
 # Environment
-ENV RUNTIME_PKGS \
+ENV RUNTIME_PKGS=" \
     dbus \
     libbpf1 \
     libedit2 \
@@ -73,7 +73,7 @@ ENV RUNTIME_PKGS \
     libngtcp2-16 \
     libprotobuf-c1 \
     liburcu8t64 \
-    libxdp1
+    libxdp1"
 
 # Install dependencies and create knot user and group
 ARG UID=53
