@@ -243,6 +243,20 @@ finish:
 	return ret;
 }
 
+int zone_redis_load_upd(struct redisContext *rdb, uint8_t instance,
+                        const knot_dname_t *zone_name, uint32_t soa_from,
+                        zone_redis_load_upd_cb_t cb, void *ctx,
+                        char log_err[256])
+{
+	if (rdb == NULL || zone_name == NULL || cb == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	// TODO...
+
+	return KNOT_EOK;
+}
+
 #else // ENABLE_REDIS
 
 struct redisContext *zone_redis_connect(conf_t *conf)
@@ -286,6 +300,14 @@ int zone_redis_serial(struct redisContext *rdb, uint8_t instance,
 int zone_redis_load(struct redisContext *rdb, uint8_t instance,
                     const knot_dname_t *zone_name, struct zone_contents **out,
                     char log_err[256])
+{
+	return KNOT_ENOTSUP;
+}
+
+int zone_redis_load_upd(struct redisContext *rdb, uint8_t instance,
+                        const knot_dname_t *zone_name, uint32_t soa_from,
+                        zone_redis_load_upd_cb_t cb, void *ctx,
+                        char log_err[256])
 {
 	return KNOT_ENOTSUP;
 }
