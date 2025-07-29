@@ -31,9 +31,10 @@ typedef struct zone_redis_txn {
 } zone_redis_txn_t;
 
 /*!
- * \brief Wrapper to rdb_connect not needing #ifdef ENABLE_REDIS around.
+ * \brief Wrappers to rdb_connect and rdb_disconnect not needing #ifdef ENABLE_REDIS around.
  */
 struct redisContext *zone_redis_connect(conf_t *conf);
+void zone_redis_disconnect(struct redisContext *ctx);
 
 /*!
  * \brief Start a writing stransaction into Redis zone database.
@@ -107,3 +108,34 @@ int zone_redis_serial(struct redisContext *rdb, uint8_t instance,
 int zone_redis_load(struct redisContext *rdb, uint8_t instance,
                     const knot_dname_t *zone_name, struct zone_contents **out,
                     char log_err[256]);
+
+/*!
+ * \brief Callback type for handling data read by zone_redis_load_upd().
+ *
+ * \param rr       Loaded RRset.
+ * \param add      The RRset is an addition in the changeset (removal otherwise).
+ * \param ctx      Transparent context passed to zone_redis_load_upd().
+ *
+ * \return KNOT_E*
+ */
+typedef int (*zone_redis_load_upd_cb_t)(const knot_rrset_t *rr, bool add, void *ctx);
+
+/*!
+ * \brief Load one or more changesets from Redis.
+ *
+ * \param rdb         Redis context (just pass zone_redis_connect()).
+ * \param instance    Zone instance number (from configuration).
+ * \param zone_name   Zone name.
+ * \param soa_from    SOA serial to start at.
+ * \param cb          Callback to be called for each removed/added RRset.
+ * \param ctx         Transparent context for the callback.
+ * \param log_err     Output: error message.
+ *
+ * \note In case of error, the callback might have been called several times, so that the real target structure (zone_update or whatever) might conatin partial invalid data.
+ *
+ * \return KNOT_E*
+ */
+int zone_redis_load_upd(struct redisContext *rdb, uint8_t instance,
+                        const knot_dname_t *zone_name, uint32_t soa_from,
+                        zone_redis_load_upd_cb_t cb, void *ctx,
+                        char log_err[256]);
