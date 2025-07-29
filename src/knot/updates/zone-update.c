@@ -720,9 +720,11 @@ static int commit_redis(conf_t *conf, zone_update_t *update)
 	bool incremental = (update->flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID));
 	incremental = false;// TODO && SOA stored in Redis == update->zone->contents->SOA
 
+	struct redisContext *db_ctx = zone_redis_connect(conf);
 	zone_redis_txn_t txn = { 0 };
-	int ret = zone_redis_txn_begin(&txn, zone_redis_connect(conf), conf_int(&val), update->zone->name, incremental);
+	int ret = zone_redis_txn_begin(&txn, db_ctx, conf_int(&val), update->zone->name, incremental);
 	if (ret != KNOT_EOK) {
+		zone_redis_disconnect(db_ctx);
 		return ret;
 	}
 
@@ -750,6 +752,7 @@ static int commit_redis(conf_t *conf, zone_update_t *update)
 		              (unsigned)conf_int(&val), zone_contents_serial(update->new_cont));
 	}
 
+	zone_redis_disconnect(db_ctx);
 	return ret;
 }
 
