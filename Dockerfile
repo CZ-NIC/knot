@@ -24,7 +24,9 @@ ENV BUILD_PKGS=" \
     libxdp-dev \
     make \
     pkg-config \
-    protobuf-c-compiler"
+    protobuf-c-compiler \
+    python3 \
+    python3-setuptools"
 
 # Install dependencies
 RUN apt-get update && \
@@ -46,7 +48,8 @@ RUN autoreconf -if && \
                 --enable-dnstap \
                 --disable-static \
                 --disable-documentation && \
-    make -j$(grep -c ^processor /proc/cpuinfo)
+    make -j$(grep -c ^processor /proc/cpuinfo) && \
+    make -C python dist
 
 # Run unittests if requested and install the project
 ARG CHECK=disable
@@ -73,7 +76,8 @@ ENV RUNTIME_PKGS=" \
     libngtcp2-16 \
     libprotobuf-c1 \
     liburcu8t64 \
-    libxdp1"
+    libxdp1 \
+    python3"
 
 # Install dependencies and create knot user and group
 ARG UID=53
