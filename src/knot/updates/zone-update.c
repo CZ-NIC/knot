@@ -718,7 +718,7 @@ static int commit_redis(conf_t *conf, zone_update_t *update)
 	}
 
 	bool incremental = (update->flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID));
-	incremental = false;// TODO && SOA stored in Redis == update->zone->contents->SOA
+	incremental = (update->flags & (UPDATE_INCREMENTAL));// TODO && SOA stored in Redis == update->zone->contents->SOA
 
 	zone_redis_txn_t txn = { 0 };
 	int ret = zone_redis_txn_begin(&txn, zone_redis_connect(conf), conf_int(&val), update->zone->name, incremental);

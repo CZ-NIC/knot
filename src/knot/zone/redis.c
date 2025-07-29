@@ -43,6 +43,7 @@ int zone_redis_txn_begin(struct zone_redis_txn *txn, struct redisContext *rdb,
 	if (reply == NULL) {
 		return error_from_redis(rdb->err);
 	} else if (reply->type != REDIS_REPLY_STRING || reply->len != sizeof(txn->rdb_txn)) {
+		printf("begin %s\n", reply->str);
 		freeReplyObject(reply);
 		return KNOT_EMALF;
 	}
@@ -70,6 +71,7 @@ int zone_redis_write_rrset(struct zone_redis_txn *txn, const knot_rrset_t *rr)
 		return error_from_redis(txn->rdb->err);
 	} else if (reply->type != REDIS_REPLY_STATUS ||
 	           memcmp(RDB_RETURN_OK, reply->str, reply->len) != 0) {
+		printf("wr rr %s\n", reply->str);
 		freeReplyObject(reply);
 		return KNOT_EACCES;
 	}
@@ -105,6 +107,7 @@ int zone_redis_txn_commit(struct zone_redis_txn *txn)
 		return error_from_redis(txn->rdb->err);
 	} else if (reply->type != REDIS_REPLY_STATUS ||
 	           memcmp(RDB_RETURN_OK, reply->str, reply->len) != 0) {
+		printf("commit %s\n", reply->str);
 		freeReplyObject(reply);
 		return KNOT_EACCES;
 	}
