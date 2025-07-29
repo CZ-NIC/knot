@@ -2780,7 +2780,8 @@ zone-db-input
 -------------
 
 If set, the zone is loaded from the Redis database configured at :ref:`database_zone-db-listen`.
-The value of this option is the zone instance number within the database to be read.
+The value of this option is the zone instance number within the database to be read,
+from the range 1..8.
 
 .. NOTE::
    With this option, the textual zone file is never loaded.
@@ -2797,7 +2798,8 @@ zone-db-output
 
 If set, the zone is stored to the Redis database configured at :ref:`database_zone-db-listen`
 and updated there with every change to zone contents.
-The value of this option is the zone instance number within the database to be written.
+The value of this option is the zone instance number within the database to be written,
+from the range 1..8.
 
 *Default:* not set
 

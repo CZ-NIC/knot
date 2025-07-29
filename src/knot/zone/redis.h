@@ -140,6 +140,8 @@ typedef int (*zone_redis_load_upd_cb_t)(const knot_rrset_t *rr, bool add, void *
  * \param ctx         Transparent context for the callback.
  * \param log_err     Output: error message.
  *
+ * \note In case of error, the callback might have been called several times, so that the real target structure (zone_update or whatever) might conatin partial invalid data.
+ *
  * \return KNOT_E*
  */
 int zone_redis_load_upd(struct redisContext *rdb, uint8_t instance,
