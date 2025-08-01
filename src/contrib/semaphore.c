@@ -9,6 +9,7 @@
 #include <errno.h>
 #include <limits.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <time.h>
 
 #if defined(__APPLE__)
@@ -68,14 +69,14 @@ void knot_sem_wait(knot_sem_t *sem)
 	}
 }
 
-// TODO move those functions to contrib/time
-static void timespec_now_shift(struct timespec *ts, unsigned long shift_millis)
+static void timespec_now_shift(struct timespec *ts, unsigned long shift_ms)
 {
 	clock_gettime(CLOCK_REALTIME, ts);
-	ts->tv_nsec += shift_millis * 1000000LU;
-	ts->tv_sec += ts->tv_nsec / 1000000000LU;
-	ts->tv_nsec /= 1000000000LU;
+	uint64_t nsec = ts->tv_nsec + shift_ms * 1000000LU;
+	ts->tv_sec += nsec / 1000000000LU;
+	ts->tv_nsec = nsec % 1000000000LU;
 }
+
 static bool timespec_past(const struct timespec *ts)
 {
 	struct timespec now;
@@ -83,16 +84,16 @@ static bool timespec_past(const struct timespec *ts)
 	return ts->tv_sec == now.tv_sec ? ts->tv_nsec <= now.tv_nsec : ts->tv_sec < now.tv_sec;
 }
 
-bool knot_sem_timedwait(knot_sem_t *sem, unsigned long millis)
+bool knot_sem_timedwait(knot_sem_t *sem, unsigned long ms)
 {
 	assert(sem != NULL);
-	if (millis == 0) {
+	if (ms == 0) {
 		knot_sem_wait(sem);
 		return true;
 	}
 
 	struct timespec end;
-	timespec_now_shift(&end, millis);
+	timespec_now_shift(&end, ms);
 	if (sem->status == SEM_STATUS_POSIX) {
 		int semret;
 		do {

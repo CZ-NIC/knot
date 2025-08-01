@@ -44,14 +44,14 @@ void knot_sem_reset(knot_sem_t *sem, int value);
 void knot_sem_wait(knot_sem_t *sem);
 
 /*!
- * \brief Lock the semaphore (decrement), block until it's non-negative but only for a maximum of given number of milliseconds.
+ * \brief Lock the semaphore (decrement), block until it's non-negative but only for specified timeout.
  *
- * \param sem      Semapthore.
- * \param millis   Timeout in milliseconds or 0 for infinity (same as knot_sem_wait).
+ * \param sem   Semapthore.
+ * \param ms    Timeout in milliseconds or 0 for infinity (same as knot_sem_wait).
  *
  * \return True if semaphore acquired, false if timeout passed.
  */
-bool knot_sem_timedwait(knot_sem_t *sem, unsigned long millis);
+bool knot_sem_timedwait(knot_sem_t *sem, unsigned long ms);
 
 /*!
  * \brief Block until the semaphore could decrement, but keep the value unchanged.
