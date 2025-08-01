@@ -39,6 +39,7 @@ typedef enum {
 	ServerIdle      = 0 << 0, /*!< Server is idle. */
 	ServerRunning   = 1 << 0, /*!< Server is running. */
 	ServerAnswering = 1 << 1, /*!< Server is answering queries. */
+	ServerShutting  = 1 << 2, /*!< Server is shutting down. */
 } server_state_t;
 
 /*!

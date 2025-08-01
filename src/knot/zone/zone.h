@@ -39,7 +39,6 @@ typedef enum {
 	ZONE_XFR_FROZEN     = 1 << 7, /*!< Outgoing AXFR/IXFR temporarily disabled. */
 	ZONE_USER_FLUSH     = 1 << 8, /*!< User-triggered flush. */
 	ZONE_LAST_SIGN_OK   = 1 << 9, /*!< Last full-sign event finished OK. */
-	ZONE_SHUT_DOWN      = 1 << 10, /*!< Zone events are shutting down. */
 } zone_flag_t;
 
 /*!
@@ -148,13 +147,6 @@ typedef struct zone
  * \return The initialized zone structure or NULL if an error occurred.
  */
 zone_t* zone_new(const knot_dname_t *name);
-
-/*!
- * \brief Declare that zone is shutting down.
- *
- * \param zone   Zone to be shut down.
- */
-void zone_shutdown(zone_t *zone);
 
 /*!
  * \brief Deallocates the zone structure.
