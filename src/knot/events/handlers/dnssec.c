@@ -80,7 +80,7 @@ int event_dnssec(conf_t *conf, zone_t *zone)
 	}
 
 	zone_update_t up;
-	int ret = zone_update_init(&up, zone, UPDATE_INCREMENTAL | UPDATE_NO_CHSET);
+	int ret = zone_update_init(&up, zone, UPDATE_INCREMENTAL | UPDATE_NO_CHSET | UPDATE_EVREQ);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}

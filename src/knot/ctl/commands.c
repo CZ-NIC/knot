@@ -314,7 +314,12 @@ static int zone_status(zone_t *zone, ctl_args_t *args)
 
 	if (MATCH_OR_FILTER(args, CTL_FILTER_STATUS_TRANSACTION)) {
 		data[KNOT_CTL_IDX_TYPE] = "transaction";
-		data[KNOT_CTL_IDX_DATA] = (zone->control_update != NULL) ? "open" : STATUS_EMPTY;
+		const char *value = STATUS_EMPTY;
+		if (zone->control_update != NULL) {
+			value = (zone->control_update->flags & UPDATE_WFEV) ?
+			        "open-external" : "open";
+		}
+		data[KNOT_CTL_IDX_DATA] = value;
 		ret = knot_ctl_send(args->ctl, type, &data);
 		if (ret != KNOT_EOK) {
 			return ret;
@@ -933,16 +938,19 @@ static int zone_txn_commit_l(zone_t *zone, _unused_ ctl_args_t *args)
 		return KNOT_TXN_ENOTEXISTS;
 	}
 
+	if (zone->control_update->flags & UPDATE_WFEV) {
+		zone->control_update->flags |= UPDATE_EVOK;
+		knot_sem_post(&zone->control_update->external);
+		return KNOT_EOK;
+	}
+
 	int ret = zone_update_semcheck(conf(), zone->control_update);
 	if (ret != KNOT_EOK) {
 		return ret; // Recoverable error.
 	}
 
 	// NOOP if empty changeset/contents.
-	if (((zone->control_update->flags & UPDATE_INCREMENTAL) &&
-	     changeset_empty(&zone->control_update->change)) ||
-	    ((zone->control_update->flags & UPDATE_FULL) &&
-	     zone_contents_is_empty(zone->control_update->new_cont))) {
+	if (zone_update_no_change(zone->control_update)) {
 		zone_control_clear(zone);
 		return KNOT_EOK;
 	}
@@ -1005,6 +1013,12 @@ static int zone_txn_abort(zone_t *zone, _unused_ ctl_args_t *args)
 		return KNOT_TXN_ENOTEXISTS;
 	}
 
+	if (zone->control_update->flags & UPDATE_WFEV) {
+		knot_sem_post(&zone->control_update->external);
+		pthread_mutex_unlock(&zone->cu_lock);
+		return KNOT_EOK;
+	}
+
 	zone_control_clear(zone);
 
 	pthread_mutex_unlock(&zone->cu_lock);
@@ -1049,7 +1063,7 @@ static int init_send_ctx(send_ctx_t *ctx, const knot_dname_t *zone_name,
 	return KNOT_EOK;
 }
 
-static int send_rrset(knot_rrset_t *rrset, send_ctx_t *ctx)
+static int send_rrset(const knot_rrset_t *rrset, send_ctx_t *ctx)
 {
 	if (rrset->type != KNOT_RRTYPE_RRSIG) {
 		int ret = snprintf(ctx->ttl, sizeof(ctx->ttl), "%u", rrset->ttl);
@@ -1084,6 +1098,16 @@ static int send_rrset(knot_rrset_t *rrset, send_ctx_t *ctx)
 	}
 
 	return KNOT_EOK;
+}
+
+static int send_rrset_callback(const knot_rrset_t *rrset, void *ctx_void)
+{
+	send_ctx_t *ctx = ctx_void;
+	char *owner = knot_dname_to_str(ctx->owner, rrset->owner, sizeof(ctx->owner));
+	if (owner == NULL) {
+		return KNOT_EINVAL;
+	}
+	return send_rrset(rrset, ctx);
 }
 
 static int send_node(zone_node_t *node, void *ctx_void)
@@ -1241,66 +1265,6 @@ static int zone_txn_get(zone_t *zone, ctl_args_t *args)
 	return ret;
 }
 
-static int send_changeset_part(changeset_t *ch, send_ctx_t *ctx, bool from)
-{
-	ctx->data[KNOT_CTL_IDX_FILTERS] = from ? CTL_FILTER_DIFF_REM_R : CTL_FILTER_DIFF_ADD_R;
-
-	// Send SOA only if explicitly changed.
-	if (ch->soa_to != NULL) {
-		knot_rrset_t *soa = from ? ch->soa_from : ch->soa_to;
-		assert(soa);
-
-		char *owner = knot_dname_to_str(ctx->owner, soa->owner, sizeof(ctx->owner));
-		if (owner == NULL) {
-			return KNOT_EINVAL;
-		}
-
-		int ret = send_rrset(soa, ctx);
-		if (ret != KNOT_EOK) {
-			return ret;
-		}
-	}
-
-	// Send other records.
-	changeset_iter_t it;
-	int ret = from ? changeset_iter_rem(&it, ch) : changeset_iter_add(&it, ch);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
-	knot_rrset_t rrset = changeset_iter_next(&it);
-	while (!knot_rrset_empty(&rrset)) {
-		char *owner = knot_dname_to_str(ctx->owner, rrset.owner, sizeof(ctx->owner));
-		if (owner == NULL) {
-			changeset_iter_clear(&it);
-			return KNOT_EINVAL;
-		}
-
-		ret = send_rrset(&rrset, ctx);
-		if (ret != KNOT_EOK) {
-			changeset_iter_clear(&it);
-			return ret;
-		}
-
-		rrset = changeset_iter_next(&it);
-	}
-	changeset_iter_clear(&it);
-
-	return KNOT_EOK;
-}
-
-static int send_changeset(changeset_t *ch, send_ctx_t *ctx)
-{
-	// First send 'from' changeset part.
-	int ret = send_changeset_part(ch, ctx, true);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
-	// Second send 'to' changeset part.
-	return send_changeset_part(ch, ctx, false);
-}
-
 static int zone_txn_diff_l(zone_t *zone, ctl_args_t *args)
 {
 	if (zone->control_update == NULL) {
@@ -1315,11 +1279,16 @@ static int zone_txn_diff_l(zone_t *zone, ctl_args_t *args)
 
 	send_ctx_t *ctx = &ctl_globals[args->thread_idx].send_ctx;
 	int ret = init_send_ctx(ctx, zone->name, args);
-	if (ret != KNOT_EOK) {
-		return ret;
+	if (ret == KNOT_EOK) {
+		ctx->data[KNOT_CTL_IDX_FILTERS] = CTL_FILTER_DIFF_REM_R;
+		ret = zone_update_foreach(zone->control_update, false, send_rrset_callback, ctx);
+	}
+	if (ret == KNOT_EOK) {
+		ctx->data[KNOT_CTL_IDX_FILTERS] = CTL_FILTER_DIFF_ADD_R;
+		ret = zone_update_foreach(zone->control_update, true, send_rrset_callback, ctx);
 	}
 
-	return send_changeset(&zone->control_update->change, ctx);
+	return ret;
 }
 
 static int zone_txn_diff(zone_t *zone, ctl_args_t *args)
@@ -1953,7 +1922,7 @@ static int ctl_zone(ctl_args_t *args, ctl_cmd_t cmd)
 
 static void check_zone_txn(zone_t *zone, const knot_dname_t **exists)
 {
-	if (zone->control_update != NULL) {
+	if (zone->control_update != NULL && !(zone->control_update->flags & UPDATE_WFEV)) {
 		*exists = zone->name;
 	}
 }

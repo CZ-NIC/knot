@@ -226,6 +226,7 @@ void zone_free(zone_t **zone_ptr)
 	knot_sem_destroy(&zone->cow_lock);
 
 	/* Control update. */
+	assert(zone->control_update == NULL || !(zone->control_update->flags & UPDATE_WFEV));
 	zone_control_clear(zone);
 
 	free(zone->catalog_gen);
@@ -456,6 +457,14 @@ bool zone_journal_has_zij(zone_t *zone)
 	bool exists = false, zij = false;
 	(void)journal_info(zone_journal(zone), &exists, NULL, &zij, NULL, NULL, NULL, NULL, NULL);
 	return exists && zij;
+}
+
+bool zone_journal_same_serial(zone_t *zone, uint32_t serial_to)
+{
+	bool exists = false;
+	uint32_t journal_serial;
+	int ret = journal_info(zone_journal(zone), &exists, NULL, NULL, &journal_serial, NULL, NULL, NULL, NULL);
+	return ret == KNOT_EOK && exists && journal_serial == serial_to;
 }
 
 void zone_notifailed_clear(zone_t *zone)

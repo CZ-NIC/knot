@@ -23,6 +23,10 @@ def sig_updated(sender, path, interface, signal, args):
     (zone, serial) = args
     print("Updated zone=%s to serial=%d" % (zone, serial))
 
+def sig_external(sender, path, interface, signal, args):
+    (zone) = args
+    print("Awaiting external validation for zone=%s" % (zone))
+
 def sig_keys_upd(sender, path, interface, signal, args):
     (zone) = args
     print("Keys updated for zone=%s" % (zone))
@@ -85,6 +89,7 @@ if __name__ == '__main__':
     connect_to_signal("started", sig_started)
     connect_to_signal("stopped", sig_stopped)
     connect_to_signal("zone_updated", sig_updated)
+    connect_to_signal("external_verify", sig_external)
     connect_to_signal("keys_updated", sig_keys_upd)
     connect_to_signal("zone_ksk_submission", sig_submission)
     connect_to_signal("zone_dnssec_invalid", sig_invalid)

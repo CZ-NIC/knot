@@ -350,9 +350,9 @@ static int axfr_finalize(struct refresh_data *data)
 	zone_update_t up = { 0 };
 
 	if (data->ixfr_from_axfr && data->axfr_style_ixfr) {
-		ret = zone_update_from_differences(&up, data->zone, NULL, new_zone, UPDATE_INCREMENTAL, &skip);
+		ret = zone_update_from_differences(&up, data->zone, NULL, new_zone, UPDATE_INCREMENTAL | UPDATE_EVREQ, &skip);
 	} else {
-		ret = zone_update_from_contents(&up, data->zone, new_zone, UPDATE_FULL);
+		ret = zone_update_from_contents(&up, data->zone, new_zone, UPDATE_FULL | UPDATE_EVREQ);
 	}
 	zone_skip_free(&skip);
 	if (ret != KNOT_EOK) {
@@ -613,7 +613,7 @@ static int ixfr_finalize(struct refresh_data *data)
 	zone_update_flags_t strict = conf_bool(&val) ? 0 : UPDATE_STRICT;
 
 	zone_update_t up = { 0 };
-	int ret = zone_update_init(&up, data->zone, UPDATE_INCREMENTAL | UPDATE_NO_CHSET | strict);
+	int ret = zone_update_init(&up, data->zone, UPDATE_INCREMENTAL | UPDATE_NO_CHSET | UPDATE_EVREQ | strict);
 	if (ret != KNOT_EOK) {
 		data->fallback_axfr = false;
 		data->fallback->remote = false;
@@ -667,6 +667,10 @@ static int ixfr_finalize(struct refresh_data *data)
 	ret = zone_update_commit(data->conf, &up);
 	if (ret != KNOT_EOK) {
 		zone_update_clear(&up);
+		if (ret == KNOT_EEXTERNAL) {
+			data->fallback_axfr = false;
+			data->fallback->remote = false;
+		}
 		IXFRIN_LOG(LOG_WARNING, data,
 		           "failed to store changes (%s)", knot_strerror(ret));
 		return ret;

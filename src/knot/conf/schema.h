@@ -55,9 +55,14 @@
 #define C_DNSSEC_VALIDATION	"\x11""dnssec-validation"
 #define C_DOMAIN		"\x06""domain"
 #define C_DS_PUSH		"\x07""ds-push"
+#define C_DUMP_ADD		"\x0E""dump-additions"
+#define C_DUMP_NEW		"\x0D""dump-new-zone"
+#define C_DUMP_REM		"\x0D""dump-removals"
 #define C_ECS			"\x12""edns-client-subnet"
 #define C_EXPIRE_MAX_INTERVAL	"\x13""expire-max-interval"
 #define C_EXPIRE_MIN_INTERVAL	"\x13""expire-min-interval"
+#define C_EXTERNAL		"\x08""external"
+#define C_EXTERNAL_VLDT		"\x13""external-validation"
 #define C_FILE			"\x04""file"
 #define C_GLOBAL_MODULE		"\x0D""global-module"
 #define C_ID			"\x02""id"
@@ -265,9 +270,10 @@ enum {
 	DBUS_EVENT_NONE            = 0,
 	DBUS_EVENT_RUNNING         = (1 << 0),
 	DBUS_EVENT_ZONE_UPDATED    = (1 << 1),
-	DBUS_EVENT_ZONE_SUBMISSION = (1 << 2),
-	DBUS_EVENT_ZONE_INVALID    = (1 << 3),
-	DBUS_EVENT_KEYS_UPDATED    = (1 << 4),
+	DBUS_EVENT_EXTERNAL        = (1 << 2),
+	DBUS_EVENT_ZONE_SUBMISSION = (1 << 3),
+	DBUS_EVENT_ZONE_INVALID    = (1 << 4),
+	DBUS_EVENT_KEYS_UPDATED    = (1 << 5),
 };
 
 extern const knot_lookup_t acl_actions[];

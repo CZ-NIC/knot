@@ -192,6 +192,18 @@ void dbus_emit_zone_updated(const knot_dname_t *zone_name, uint32_t serial)
 #endif // ENABLE_DBUS
 }
 
+void dbus_emit_external_verify(const knot_dname_t *zone_name)
+{
+#if ENABLE_DBUS
+	knot_dname_txt_storage_t buff;
+	char *zone_str = knot_dname_to_str(buff, zone_name, sizeof(buff));
+	if (zone_str != NULL) {
+		emit_event(KNOT_BUS_EVENT_EXTERNAL, "s",
+		           VALUE_OF(zone_str));
+	}
+#endif // ENABLE_DBUS
+}
+
 void dbus_emit_keys_updated(const knot_dname_t *zone_name)
 {
 #if ENABLE_DBUS

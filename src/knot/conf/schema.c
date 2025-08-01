@@ -188,6 +188,7 @@ static const knot_lookup_t dbus_events[] = {
 	{ DBUS_EVENT_NONE,            "none" },
 	{ DBUS_EVENT_RUNNING,         "running" },
 	{ DBUS_EVENT_ZONE_UPDATED,    "zone-updated" },
+	{ DBUS_EVENT_EXTERNAL,        "external-verify" },
 	{ DBUS_EVENT_KEYS_UPDATED,    "keys-updated" },
 	{ DBUS_EVENT_ZONE_SUBMISSION, "ksk-submission" },
 	{ DBUS_EVENT_ZONE_INVALID,    "dnssec-invalid" },
@@ -454,6 +455,15 @@ static const yp_item_t desc_policy[] = {
 	{ NULL }
 };
 
+static const yp_item_t desc_external[] = {
+	{ C_ID,                  YP_TSTR,  YP_VNONE, CONF_IO_FREF },
+	{ C_TIMEOUT,             YP_TINT,  YP_VINT = { 0, UINT32_MAX, 300, YP_STIME } },
+	{ C_DUMP_NEW,            YP_TSTR,  YP_VNONE },
+	{ C_DUMP_REM,            YP_TSTR,  YP_VNONE },
+	{ C_DUMP_ADD,            YP_TSTR,  YP_VNONE },
+	{ NULL }
+};
+
 #define ZONE_ITEMS(FLAGS) \
 	{ C_STORAGE,             YP_TSTR,  YP_VSTR = { STORAGE_DIR }, FLAGS }, \
 	{ C_FILE,                YP_TSTR,  YP_VNONE, FLAGS }, \
@@ -479,6 +489,7 @@ static const yp_item_t desc_policy[] = {
 	{ C_IXFR_FROM_AXFR,      YP_TBOOL, YP_VNONE }, \
 	{ C_ZONE_MAX_SIZE,       YP_TINT,  YP_VINT = { 0, SSIZE_MAX, SSIZE_MAX, YP_SSIZE }, FLAGS }, \
 	{ C_ADJUST_THR,          YP_TINT,  YP_VINT = { 1, UINT16_MAX, 1 } }, \
+	{ C_EXTERNAL_VLDT,       YP_TREF,  YP_VREF = { C_EXTERNAL }, FLAGS, { check_ref_dflt } }, \
 	{ C_DNSSEC_SIGNING,      YP_TBOOL, YP_VNONE, FLAGS }, \
 	{ C_DNSSEC_VALIDATION,   YP_TBOOL, YP_VNONE, FLAGS }, \
 	{ C_DNSSEC_POLICY,       YP_TREF,  YP_VREF = { C_POLICY }, FLAGS, { check_ref_dflt } }, \
@@ -535,6 +546,7 @@ const yp_item_t conf_schema[] = {
 	{ C_SBM,      YP_TGRP, YP_VGRP = { desc_submission }, YP_FMULTI },
 	{ C_DNSKEY_SYNC, YP_TGRP, YP_VGRP = { desc_dnskey_sync }, YP_FMULTI, { check_dnskey_sync } },
 	{ C_POLICY,   YP_TGRP, YP_VGRP = { desc_policy }, YP_FMULTI, { check_policy } },
+	{ C_EXTERNAL, YP_TGRP, YP_VGRP = { desc_external }, YP_FMULTI, { check_external } },
 	{ C_TPL,      YP_TGRP, YP_VGRP = { desc_template }, YP_FMULTI, { check_template } },
 	{ C_ZONE,     YP_TGRP, YP_VGRP = { desc_zone }, YP_FMULTI | CONF_IO_FZONE, { check_zone } },
 	{ C_INCL,     YP_TSTR, YP_VNONE, CONF_IO_FDIFF_ZONES | CONF_IO_FRLD_ALL, { include_file } },

@@ -102,6 +102,7 @@ class Zone(object):
         self.journal_content = journal_content # journal contents
         self.modules = []
         self.reverse_from = None
+        self.external = None
         self.dnssec = ZoneDnssec()
         self.catalog_role = ZoneCatalogRole.NONE
         self.catalog_gen_name = None # Generated catalog name for this member
@@ -216,6 +217,7 @@ class Server(object):
         self.zone_size_limit = None
         self.serial_policy = None
         self.auto_acl = None
+        self.async_start = None
         self.provide_ixfr = None
         self.master_pin_tol = None
         self.quic_log = None
@@ -1543,6 +1545,7 @@ class Knot(Server):
         self._str(s, "remote-pool-limit", str(random.randint(0,6)))
         self._str(s, "remote-retry-delay", str(random.choice([0, 1, 5])))
         self._bool(s, "automatic-acl", self.auto_acl)
+        self._bool(s, "async-start", self.async_start)
         if self.cert_key_file:
             s.item_str("key-file", self.cert_key_file[0])
             s.item_str("cert-file", self.cert_key_file[1])
@@ -1787,6 +1790,22 @@ class Knot(Server):
         if have_dnskeysync:
             s.end()
 
+        have_external = False
+        for zone in sorted(self.zones):
+            z = self.zones[zone]
+            if not z.external:
+                continue
+            if not have_external:
+                s.begin("external")
+                have_external = True
+            s.id_item("id", z.name)
+            self._str(s, "timeout", z.external["timeout"])
+            self._str(s, "dump-new-zone", z.external["new"])
+            self._str(s, "dump-removals", z.external["rem"])
+            self._str(s, "dump-additions", z.external["add"])
+        if have_external:
+            s.end()
+
         have_keystore = False
         for zone in sorted(self.zones):
             z = self.zones[zone]
@@ -1957,6 +1976,9 @@ class Knot(Server):
             self._str(s, "retry-max-interval", z.retry_max)
             self._str(s, "expire-min-interval", z.expire_min)
             self._str(s, "expire-max-interval", z.expire_max)
+
+            if z.external:
+                s.item("external-validation", z.name)
 
             if self.zonefile_load is not None:
                 s.item_str("zonefile-load", self.zonefile_load)

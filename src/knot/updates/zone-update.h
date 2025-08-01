@@ -29,6 +29,7 @@ typedef struct zone_update {
 	changeset_t extra_ch;        /*!< Extra changeset to store just diff btwn zonefile and result. */
 	apply_ctx_t *a_ctx;          /*!< Context for applying changesets. */
 	uint32_t flags;              /*!< Zone update flags. */
+	knot_sem_t external;         /*!< Lock for external validation. */
 	dnssec_validation_hint_t validation_hint;
 } zone_update_t;
 
@@ -50,6 +51,9 @@ typedef enum {
 	UPDATE_CHANGED_NSEC   = 1 << 7, /*!< This incremental update affects NSEC or NSEC3 nodes in zone. */
 	UPDATE_NO_CHSET       = 1 << 8, /*!< Avoid using changeset and serialize to journal from diff of bi-nodes. */
 	UPDATE_SIGNED_FULL    = 1 << 9, /*!< Full (non-incremental) zone sign took place during this update. */
+	UPDATE_EVREQ          = 1 << 10, /*!< Update requires external validation (if configured). */
+	UPDATE_WFEV           = 1 << 11, /*!< Update waiting for external validation. */
+	UPDATE_EVOK           = 1 << 12, /*!< External validation accepted the update. */
 } zone_update_flags_t;
 
 /*!
@@ -269,6 +273,19 @@ int zone_update_semcheck(conf_t *conf, zone_update_t *update);
 int zone_update_verify_digest(conf_t *conf, zone_update_t *update);
 
 /*!
+ * \brief Wait for external validation.
+ *
+ * \param conf      Configuration.
+ * \param update    Zone update.
+ * \param ev_id     Conf reference to 'external' section.
+ *
+ * \retval KNOT_EEXTERNAL   External validation failed.
+ * \retval KNOT_EOK         External validation succeeded.
+ * \return KNOT_E*
+ */
+int zone_update_external(conf_t *conf, zone_update_t *update, conf_val_t *ev_id);
+
+/*!
  * \brief Commits all changes to the zone, signs it, saves changes to journal.
  *
  * \param conf          Configuration.
@@ -284,6 +301,19 @@ int zone_update_commit(conf_t *conf, zone_update_t *update);
  * \param update  Zone update.
  */
 bool zone_update_no_change(zone_update_t *update);
+
+typedef int (*rrset_cb_t)(const knot_rrset_t *, void *);
+/*!
+ * \brief Run callback for every removed/added RRset in this update.
+ *
+ * \param update       Zone update in question.
+ * \param additions    Apply on addition (removals otherwise).
+ * \param cb           Callback to call for each changed RRset.
+ * \param ctx          Arbitrary context for the callback.
+ *
+ * \return KNOT_E* emitted by the callback or error in iteration.
+ */
+int zone_update_foreach(zone_update_t *update, bool additions, rrset_cb_t cb, void *ctx);
 
 /*!
  * \brief Return whether apex DNSKEY, CDNSKEY, or CDS is updated.

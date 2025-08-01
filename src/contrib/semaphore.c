@@ -6,8 +6,11 @@
 #include "semaphore.h"
 
 #include <assert.h>
+#include <errno.h>
 #include <limits.h>
 #include <stdlib.h>
+#include <stdint.h>
+#include <time.h>
 
 #if defined(__APPLE__)
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
@@ -63,6 +66,52 @@ void knot_sem_wait(knot_sem_t *sem)
 		}
 		sem->status--;
 		pthread_mutex_unlock(&sem->status_lock->mutex);
+	}
+}
+
+static void timespec_now_shift(struct timespec *ts, unsigned long shift_ms)
+{
+	clock_gettime(CLOCK_REALTIME, ts);
+	uint64_t nsec = ts->tv_nsec + shift_ms * 1000000LU;
+	ts->tv_sec += nsec / 1000000000LU;
+	ts->tv_nsec = nsec % 1000000000LU;
+}
+
+static bool timespec_past(const struct timespec *ts)
+{
+	struct timespec now;
+	clock_gettime(CLOCK_REALTIME, &now);
+	return ts->tv_sec == now.tv_sec ? ts->tv_nsec <= now.tv_nsec : ts->tv_sec < now.tv_sec;
+}
+
+bool knot_sem_timedwait(knot_sem_t *sem, unsigned long ms)
+{
+	assert(sem != NULL);
+	if (ms == 0) {
+		knot_sem_wait(sem);
+		return true;
+	}
+
+	struct timespec end;
+	timespec_now_shift(&end, ms);
+	if (sem->status == SEM_STATUS_POSIX) {
+		int semret;
+		do {
+			semret = sem_timedwait(&sem->semaphore, &end);
+		} while (semret != 0 && errno != ETIMEDOUT); // repeat wait as it might be interrupted by a signal
+		return (semret == 0);
+	} else {
+		pthread_mutex_lock(&sem->status_lock->mutex);
+		while (sem->status <= 0 && !timespec_past(&end)) {
+			pthread_cond_timedwait(&sem->status_lock->cond, &sem->status_lock->mutex, &end);
+		}
+		if (sem->status <= 0) {
+			pthread_mutex_unlock(&sem->status_lock->mutex);
+			return false;
+		}
+		sem->status--;
+		pthread_mutex_unlock(&sem->status_lock->mutex);
+		return true;
 	}
 }
 

@@ -1404,6 +1404,8 @@ void server_stop(server_t *server)
 
 	/* Stop scheduler. */
 	evsched_stop(&server->sched);
+	/* Mark the server is shutting down. */
+	server->state |= ServerShutting;
 	/* Interrupt background workers. */
 	worker_pool_stop(server->workers);
 
@@ -1621,6 +1623,7 @@ void server_update_zones(conf_t *conf, server_t *server, reload_t mode)
 	/* Suspend adding events to worker pool queue, wait for queued events. */
 	log_debug("suspending zone events");
 	evsched_pause(&server->sched);
+	server->state |= ServerShutting;
 	worker_pool_wait(server->workers);
 	log_debug("suspended zone events");
 
@@ -1635,6 +1638,7 @@ void server_update_zones(conf_t *conf, server_t *server, reload_t mode)
 	if (server->zone_db) {
 		knot_zonedb_foreach(server->zone_db, zone_events_start);
 	}
+	server->state &= ~ServerShutting;
 	log_debug("resumed zone events");
 }
 

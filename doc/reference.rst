@@ -33,10 +33,10 @@ the following symbols:
 - ``|`` – Choice
 
 The configuration consists of several fixed sections and optional module
-sections. There are 17 fixed sections (``module``, ``server``, ``xdp``, ``control``,
+sections. There are 18 fixed sections (``module``, ``server``, ``xdp``, ``control``,
 ``log``, ``statistics``, ``database``, ``keystore``, ``key``, ``remote``,
-``remotes``, ``acl``, ``submission``, ``dnskey-sync``, ``policy``, ``template``,
-``zone``).
+``remotes``, ``acl``, ``submission``, ``dnskey-sync``, ``policy``, ``external```,
+``template``, ``zone``).
 Module sections are prefixed with the ``mod-`` prefix (e.g. ``mod-stats``).
 
 Most of the sections (e.g. ``zone``) are sequences of settings blocks. Each
@@ -215,7 +215,7 @@ General options related to the server.
      answer-rotation: BOOL
      automatic-acl: BOOL
      proxy-allowlist: ADDR[/INT] | ADDR-ADDR ...
-     dbus-event: none | running | zone-updated | ksk-submission | dnssec-invalid ...
+     dbus-event: none | running | zone-updated | external-verify | ksk-submission | dnssec-invalid ...
      dbus-init-delay: TIME
      listen: ADDR[@INT] | STR ...
      listen-quic: ADDR[@INT] ...
@@ -659,6 +659,8 @@ Possible values:
   - ``stopped`` when the server shutdown sequence is initiated.
 - ``zone-updated`` – The signal ``zone_updated`` is emitted when a zone has been updated;
   the signal parameters are `zone name` and `zone SOA serial`.
+- ``external-verify`` - The signal ``external_verify`` is emitted when a zone is awaiting
+  external validation before applying the changes; the signal parameter is `zone name`.
 - ``keys-updated`` - The signal ``keys_updated`` is emitted when a DNSSEC key set
   is updated; the signal parameter is `zone name`.
 - ``ksk-submission`` – The signal ``zone_ksk_submission`` is emitted if there is
@@ -2546,6 +2548,69 @@ Multiple values may be specified.
 
 *Default:* ``none``
 
+.. _external section:
+
+``external`` section
+====================
+
+External zone validation configuration.
+
+::
+
+ external:
+   - id: STR
+     timeout: TIME
+     dump-new-zone: STR
+     dump-removals: STR
+     dump-additions: STR
+
+.. _external_id:
+
+id
+--
+
+An external section identifier.
+
+.. _external_timeout:
+
+timeout
+-------
+
+If the validation is not confirmed within this time interval in seconds,
+it is considered failed.
+
+*Default:* ``300``
+
+.. _external_dump-new-zone:
+
+dump-new-zone
+-------------
+
+A path to file where the new zone contents will be written before waiting
+for external validation.
+
+*Default:* none
+
+.. _external_dump-removals:
+
+dump-removals
+-------------
+
+A path to file where the records being removed will be written before waiting
+for external validation.
+
+*Default:* none
+
+.. _external_dump-additions:
+
+dump-additions
+--------------
+
+A path to file where the records being added will be written before waiting
+for external validation.
+
+*Default:* none
+
 .. _template section:
 
 ``template`` section
@@ -2621,6 +2686,7 @@ Definition of zones served by the server.
      ixfr-from-axfr: BOOL
      zone-max-size : SIZE
      adjust-threads: INT
+     external-validation: external_id
      dnssec-signing: BOOL
      dnssec-validation: BOOL
      dnssec-policy: policy_id
@@ -3019,6 +3085,34 @@ threads. This is useful with huge zones with NSEC3. Speedup observable at
 server startup and while processing NSEC3 re-salt.
 
 *Default:* ``1`` (no extra threads)
+
+.. _zone_external-validation:
+
+external-validation
+-------------------
+
+A :ref:`reference<external_id>` to external validation section.
+
+If configured, every change to the zone (zone file update, incoming IXFR/AXFR,
+dynamic update, and DNSSEC re-signing, but not changes over control socket –
+``knotc zone-begin``) is paused just before applying the new zone.
+At that point, validation and confirmation is awaited from the user
+(or potentially a user-defined script).
+
+.. NOTE::
+   In the case of server shutdown or configuration reload, the server waits
+   until all outstanding external validations are either committed or aborted,
+   or until the :ref:`external_timeout` elapses.
+
+In the referenced ``external`` section, it is possible to define paths to
+files where the new zone contents and/or differences are written
+(in the zone file format) just before every validation.
+
+.. TIP::
+   If :ref:`server_dbus-event` is set to ``external-verify``, a corresponding
+   signal is emitted when the server is awaiting external validation.
+
+*Default:* none
 
 .. _zone_dnssec-signing:
 

@@ -915,6 +915,113 @@ int zone_update_verify_digest(conf_t *conf, zone_update_t *update)
 	return ret;
 }
 
+typedef struct {
+	FILE *f;
+	char *buf;
+	size_t buflen;
+	knot_dump_style_t style;
+} dump_changeset_ctx_t;
+
+static int dump_rrset(const knot_rrset_t *rr, void *ctx_void)
+{
+	dump_changeset_ctx_t *ctx = ctx_void;
+
+	int ret = knot_rrset_txt_dump(rr, &ctx->buf, &ctx->buflen, &ctx->style);
+	if (ret > 0) {
+		ret = (fprintf(ctx->f, "%s", ctx->buf) < 0 ? knot_map_errno() : 1);
+	}
+	return ret < 0 ? ret : KNOT_EOK;
+}
+
+static int dump_changeset_part(zone_update_t *up, bool additions,
+                               const char *fname, const char *mode)
+{
+	dump_changeset_ctx_t ctx;
+	ctx.f = fopen(fname, mode);
+	if (ctx.f == NULL) {
+		return knot_map_errno();
+	}
+	ctx.buflen = 1024;
+	ctx.buf = malloc(ctx.buflen);
+	if (ctx.buf == NULL) {
+		fclose(ctx.f);
+		return KNOT_ENOMEM;
+	}
+	ctx.style = KNOT_DUMP_STYLE_DEFAULT;
+	ctx.style.now = knot_time();
+
+	(void)fprintf(ctx.f, ";; %s records\n", additions ? "Added" : "Removed");
+	int ret = zone_update_foreach(up, additions, dump_rrset, &ctx);
+	fclose(ctx.f);
+	free(ctx.buf);
+	return ret;
+}
+
+int zone_update_external(conf_t *conf, zone_update_t *update, conf_val_t *ev_id)
+{
+	/* First: dump zone/diff files as/if configured. */
+	conf_val_t val = conf_id_get(conf, C_EXTERNAL, C_DUMP_NEW, ev_id);
+	char *f_new = conf_get_filename(conf, update->zone->name, conf_str(&val));
+	val = conf_id_get(conf, C_EXTERNAL, C_DUMP_REM, ev_id);
+	char *f_rem = conf_get_filename(conf, update->zone->name, conf_str(&val));
+	val = conf_id_get(conf, C_EXTERNAL, C_DUMP_ADD, ev_id);
+	char *f_add = conf_get_filename(conf, update->zone->name, conf_str(&val));
+
+	int ret = KNOT_EOK;
+	if (f_new != NULL && ret == KNOT_EOK) {
+		ret = zonefile_write(f_new, update->new_cont, NULL);
+	}
+	if (f_rem != NULL && ret == KNOT_EOK) {
+		ret = dump_changeset_part(update, false, f_rem, "w");
+	}
+	if (f_add != NULL && ret == KNOT_EOK) {
+		const char *mode = (strcmp(f_rem, f_add) == 0) ? "a" : "w";
+		ret = dump_changeset_part(update, true, f_add, mode);
+	}
+	free(f_new);
+	free(f_rem);
+	free(f_add);
+	if (ret != KNOT_EOK) {
+		log_zone_error(update->zone->name,
+		               "failed to dump new zone version or zone diff for external validation (%s)",
+		               knot_strerror(ret));
+	}
+
+	/* Second: wait on semaphore on user's interaction. */
+	pthread_mutex_lock(&update->zone->cu_lock);
+
+	assert(update->zone->control_update == NULL);
+
+	/* Don't start external validation if shutting down. */
+	if (update->zone->server->state & ServerShutting) {
+		pthread_mutex_unlock(&update->zone->cu_lock);
+		return KNOT_EEXTERNAL;
+	}
+
+	update->zone->control_update = update;
+	update->flags |= UPDATE_WFEV;
+	knot_sem_init(&update->external, 0);
+	pthread_mutex_unlock(&update->zone->cu_lock);
+
+	log_zone_notice(update->zone->name, "waiting for external validation");
+
+	if (conf->cache.srv_dbus_event & DBUS_EVENT_EXTERNAL) {
+		dbus_emit_external_verify(update->zone->name);
+	}
+
+	val = conf_id_get(conf, C_EXTERNAL, C_TIMEOUT, ev_id);
+	knot_sem_timedwait(&update->external, conf_int(&val) * 1000);
+
+	pthread_mutex_lock(&update->zone->cu_lock);
+	update->zone->control_update = NULL;
+	pthread_mutex_unlock(&update->zone->cu_lock);
+
+	knot_sem_post(&update->external);
+	knot_sem_destroy(&update->external);
+
+	return (update->flags & UPDATE_EVOK) ? KNOT_EOK : KNOT_EEXTERNAL;
+}
+
 int zone_update_commit(conf_t *conf, zone_update_t *update)
 {
 	if (conf == NULL || update == NULL) {
@@ -971,6 +1078,15 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 			.log_plan = true,
 		};
 		ret = knot_dnssec_validate_zone(update, &val_conf);
+		if (ret != KNOT_EOK) {
+			discard_adds_tree(update);
+			return ret;
+		}
+	}
+
+	val = conf_zone_get(conf, C_EXTERNAL_VLDT, update->zone->name);
+	if (val.code == KNOT_EOK && (update->flags & UPDATE_EVREQ)) {
+		ret = zone_update_external(conf, update, &val);
 		if (ret != KNOT_EOK) {
 			discard_adds_tree(update);
 			return ret;
@@ -1056,9 +1172,88 @@ bool zone_update_no_change(zone_update_t *update)
 	} else if (update->flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) {
 		return changeset_empty(&update->change);
 	} else {
-		/* This branch does not make much sense and FULL update will most likely
-		 * be a change every time anyway, just return false. */
-		return false;
+		return zone_contents_is_empty(update->new_cont);
+	}
+}
+
+static int rrset_foreach(zone_node_t *n, bool subtract_counterpart,
+                         int idx, uint16_t rrtype, // two exclusive possibilities how to define which rrset in the node
+                         rrset_cb_t cb, void *ctx)
+{
+	knot_rrset_t rr = (rrtype == KNOT_RRTYPE_ANY) ? node_rrset_at(n, idx) : node_rrset(n, rrtype);
+	knot_rrset_t rrc = subtract_counterpart ? node_rrset(binode_counterpart(n), rr.type) : (knot_rrset_t){ 0 };
+	if (rrtype == KNOT_RRTYPE_ANY && rr.type == KNOT_RRTYPE_SOA) {
+		return KNOT_EOK; // ignore SOA if rrset specified by idx
+	} else if (knot_rrset_empty(&rrc)) {
+		return cb(&rr, ctx);
+	} else if (knot_rdataset_subset(&rr.rrs, &rrc.rrs)) {
+		return KNOT_EOK;
+	} else {
+		knot_rdataset_t rd_copy = { 0 };
+		int ret = knot_rdataset_copy(&rd_copy, &rr.rrs, NULL);
+		if (ret == KNOT_EOK) {
+			ret = knot_rdataset_subtract(&rd_copy, &rrc.rrs, NULL);
+		}
+		if (ret == KNOT_EOK) {
+			rr.rrs = rd_copy;
+			ret = cb(&rr, ctx);
+		}
+		knot_rdataset_clear(&rd_copy, NULL);
+		return ret;
+	}
+}
+
+static int trees_foreach(zone_tree_t *nodes, zone_tree_t *nsec3_nodes, bool subtract_counterparts,
+                         rrset_cb_t cb, void *ctx)
+{
+	zone_tree_it_t it = { 0 };
+	int ret = zone_tree_it_double_begin(nodes, nsec3_nodes, &it);
+	while (!zone_tree_it_finished(&it) && ret == KNOT_EOK) {
+		zone_node_t *n = zone_tree_it_val(&it);
+		for (int i = 0; i < n->rrset_count && ret == KNOT_EOK; i++) {
+			ret = rrset_foreach(n, subtract_counterparts, i, KNOT_RRTYPE_ANY, cb, ctx);
+		}
+		zone_tree_it_next(&it);
+	}
+	zone_tree_it_free(&it);
+	return ret;
+}
+
+int zone_update_foreach(zone_update_t *update, bool additions, rrset_cb_t cb, void *ctx)
+{
+	if (update == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	if (update->flags & UPDATE_NO_CHSET) {
+		zone_diff_t diff;
+		get_zone_diff(&diff, update);
+		if (!additions) {
+			zone_diff_reverse(&diff);
+		}
+
+		int ret = rrset_foreach(diff.apex, true, 0, KNOT_RRTYPE_SOA, cb, ctx);
+		if (ret == KNOT_EOK) {
+			ret = trees_foreach(&diff.nodes, &diff.nsec3s, true, cb, ctx);
+		}
+		return ret;
+	} else if (update->flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) {
+		knot_rrset_t *soa = additions ? update->change.soa_to : update->change.soa_from;
+		zone_contents_t *c = additions ? update->change.add : update->change.remove;
+		int ret = (soa == NULL) ? KNOT_EOK : cb(soa, ctx);
+		if (ret == KNOT_EOK) {
+			ret = trees_foreach(c->nodes, c->nsec3_nodes, false, cb, ctx);
+		}
+		return ret;
+	} else if (additions) {
+		knot_rrset_t soa = node_rrset(update->new_cont->apex, KNOT_RRTYPE_SOA);
+		int ret = knot_rrset_empty(&soa) ? KNOT_EOK : cb(&soa, ctx);
+		if (ret == KNOT_EOK) {
+			ret = trees_foreach(update->new_cont->nodes, update->new_cont->nsec3_nodes, false, cb, ctx);
+		}
+		return ret;
+	} else {
+		return KNOT_EOK;
 	}
 }
 

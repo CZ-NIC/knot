@@ -7,6 +7,7 @@
 
 #include <pthread.h>
 #include <semaphore.h>
+#include <stdbool.h>
 
 typedef struct {
 	pthread_mutex_t mutex;
@@ -41,6 +42,16 @@ void knot_sem_reset(knot_sem_t *sem, int value);
  * \brief Lock the semaphore (decrement), block until it's non-negative.
  */
 void knot_sem_wait(knot_sem_t *sem);
+
+/*!
+ * \brief Lock the semaphore (decrement), block until it's non-negative but only for specified timeout.
+ *
+ * \param sem   Semapthore.
+ * \param ms    Timeout in milliseconds or 0 for infinity (same as knot_sem_wait).
+ *
+ * \return True if semaphore acquired, false if timeout passed.
+ */
+bool knot_sem_timedwait(knot_sem_t *sem, unsigned long ms);
 
 /*!
  * \brief Block until the semaphore could decrement, but keep the value unchanged.

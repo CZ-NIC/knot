@@ -17,6 +17,7 @@
 #define KNOT_BUS_EVENT_STARTED       "started"
 #define KNOT_BUS_EVENT_STOPPED       "stopped"
 #define KNOT_BUS_EVENT_ZONE_UPD      "zone_updated"
+#define KNOT_BUS_EVENT_EXTERNAL      "external_verify"
 #define KNOT_BUS_EVENT_ZONE_KEYS_UPD "keys_updated"
 #define KNOT_BUS_EVENT_ZONE_KSK_SUBM "zone_ksk_submission"
 #define KNOT_BUS_EVENT_ZONE_INVALID  "zone_dnssec_invalid"
@@ -48,6 +49,13 @@ void dbus_emit_running(bool up);
  * \param serial     Current zone SOA serial.
  */
 void dbus_emit_zone_updated(const knot_dname_t *zone_name, uint32_t serial);
+
+/*!
+ * \brief Emit event signal that external verify shall take place.
+ *
+ * \param zone_name   Zone name.
+ */
+void dbus_emit_external_verify(const knot_dname_t *zone_name);
 
 /*!
  * \brief Emit event signal for updated DNSSEC key set.
