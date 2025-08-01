@@ -200,16 +200,6 @@ void zone_control_clear(zone_t *zone)
 	zone->control_update = NULL;
 }
 
-void zone_shutdown(zone_t *zone)
-{
-	pthread_mutex_lock(&zone->cu_lock);
-	if (zone->control_update != NULL && (zone->control_update->flags & UPDATE_WFEV)) {
-		knot_sem_post(&zone->control_update->external);
-	}
-	zone_set_flag(zone, ZONE_SHUT_DOWN);
-	pthread_mutex_unlock(&zone->cu_lock);
-}
-
 void zone_free(zone_t **zone_ptr)
 {
 	if (zone_ptr == NULL || *zone_ptr == NULL) {

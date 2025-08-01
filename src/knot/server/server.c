@@ -1039,13 +1039,6 @@ int server_start(server_t *server, bool answering)
 	return KNOT_EOK;
 }
 
-static void zonedb_shutdown(server_t *server)
-{
-	if (server->zone_db != NULL) {
-		knot_zonedb_foreach(server->zone_db, zone_shutdown);
-	}
-}
-
 void server_wait(server_t *server)
 {
 	if (server == NULL) {
@@ -1411,8 +1404,8 @@ void server_stop(server_t *server)
 
 	/* Stop scheduler. */
 	evsched_stop(&server->sched);
-	/* Shut down zones. */
-	zonedb_shutdown(server);
+	/* Mark the server is shutting down. */
+	server->state |= ServerShutting;
 	/* Interrupt background workers. */
 	worker_pool_stop(server->workers);
 
@@ -1630,7 +1623,7 @@ void server_update_zones(conf_t *conf, server_t *server, reload_t mode)
 	/* Suspend adding events to worker pool queue, wait for queued events. */
 	log_debug("suspending zone events");
 	evsched_pause(&server->sched);
-	zonedb_shutdown(server);
+	server->state |= ServerShutting;
 	worker_pool_wait(server->workers);
 	log_debug("suspended zone events");
 
@@ -1645,6 +1638,7 @@ void server_update_zones(conf_t *conf, server_t *server, reload_t mode)
 	if (server->zone_db) {
 		knot_zonedb_foreach(server->zone_db, zone_events_start);
 	}
+	server->state &= ~ServerShutting;
 	log_debug("resumed zone events");
 }
 

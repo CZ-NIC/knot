@@ -533,8 +533,6 @@ static knot_zonedb_t *create_zonedb(conf_t *conf, server_t *server, reload_t mod
 	it = knot_zonedb_iter_begin(db_new);
 	while (!knot_zonedb_iter_finished(it)) {
 		zone_t *z = knot_zonedb_iter_val(it);
-		zone_unset_flag(z, ZONE_SHUT_DOWN);
-
 		conf_val_t val = conf_zone_get(conf, C_REVERSE_GEN, z->name);
 		while (val.code == KNOT_EOK) {
 			const knot_dname_t *forw_name = conf_dname(&val);

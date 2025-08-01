@@ -992,7 +992,8 @@ int zone_update_external(conf_t *conf, zone_update_t *update, conf_val_t *ev_id)
 
 	assert(update->zone->control_update == NULL);
 
-	if (zone_get_flag(update->zone, ZONE_SHUT_DOWN, false)) {
+	/* Don't start external validation if shutting down. */
+	if (update->zone->server->state & ServerShutting) {
 		pthread_mutex_unlock(&update->zone->cu_lock);
 		return KNOT_EEXTERNAL;
 	}
