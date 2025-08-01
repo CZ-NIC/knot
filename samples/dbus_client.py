@@ -25,7 +25,7 @@ def sig_updated(sender, path, interface, signal, args):
 
 def sig_external(sender, path, interface, signal, args):
     (zone) = args
-    print("Zone %s awaits external validation." % (zone))
+    print("Awaiting external validation for zone=%s" % (zone))
 
 def sig_keys_upd(sender, path, interface, signal, args):
     (zone) = args
