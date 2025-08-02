@@ -68,6 +68,8 @@ gdb_bin = get_binary("KNOT_TEST_GDB", "gdb")
 vgdb_bin = get_binary("KNOT_TEST_VGDB", "vgdb")
 # KNOT_TEST_REDIS - Redis database server binary.
 redis_bin = get_binary2("KNOT_TEST_REDIS", "redis-server")
+# KNOT_TEST_REDIS_CLI - Redis database command line client.
+redis_cli = get_binary2("KNOT_TEST_REDIS_CLI", "redis-cli")
 # KNOT_TEST_LIBTOOL - libtool script.
 libtool_bin = get_binary("KNOT_TEST_LIBTOOL", repo_binary("libtool"))
 # KNOT_TEST_LIBKNOT - libknot library.

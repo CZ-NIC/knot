@@ -2,11 +2,12 @@ import os
 import subprocess
 
 class Redis(object):
-    def __init__(self, addr, wrk_dir, redis_bin, knotso):
+    def __init__(self, addr, wrk_dir, redis_bin, redis_cli, knotso):
         self.addr = addr
         self.port = None
         self.wrk_dir = wrk_dir
         self.redis_bin = redis_bin
+        self.redis_cli = redis_cli
         self.knotso = knotso
         self.proc = None
 
@@ -35,3 +36,9 @@ class Redis(object):
     def stop(self):
         if self.proc:
             self.proc.terminate()
+
+    def cli(self, *params):
+        cmd = [ self.redis_cli, "-h", self.addr, "-p", str(self.port) ] + list(params)
+        p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        out, _ = p.communicate()
+        return out.decode().strip()
