@@ -292,11 +292,14 @@ int zone_redis_load_upd(struct redisContext *rdb, uint8_t instance,
 		return KNOT_EINVAL;
 	}
 
+	char soa_str[16] = { 0 };
+	snprintf(soa_str, sizeof(soa_str), "%u", soa_from);
+
 	int ret = KNOT_EOK;
 	redisReply *reply = redisCommand(rdb, RDB_CMD_UPD_LOAD " %b %b %b",
 	                                 zone_name, knot_dname_size(zone_name),
 	                                 &instance, sizeof(instance),
-					&soa_from, sizeof(soa_from));
+					soa_str, strlen(soa_str));
 	if (reply == NULL) {
 		snprintf(log_err, 256, "failed to connect to database");
 		return error_from_redis(rdb->err);
