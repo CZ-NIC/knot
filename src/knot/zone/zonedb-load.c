@@ -406,6 +406,15 @@ static void reg_reverse(conf_t *conf, knot_zonedb_t *db_new, zone_t *zone)
 	}
 }
 
+static bool same_group(zone_t *old_z, zone_t *new_z)
+{
+	if (old_z->catalog_group == NULL || new_z->catalog_group == NULL) {
+		return (old_z->catalog_group == new_z->catalog_group);
+	} else {
+		return (strcmp(old_z->catalog_group, new_z->catalog_group) == 0);
+	}
+}
+
 static knot_zonedb_t *create_zonedb_commit(conf_t *conf, server_t *server)
 {
 	knot_zonedb_t *db_old = server->zone_db; // If NULL, zonedb is beeing initialized.
@@ -445,7 +454,10 @@ static knot_zonedb_t *create_zonedb_commit(conf_t *conf, server_t *server)
 				catalog_generate_rem(zone, db_new);
 			} else {
 				zone_t *zone = knot_zonedb_find(db_new, name);
-				catalog_generate_add(zone, db_new, true);
+				zone_t *old = knot_zonedb_find(db_old, name);
+				if (!same_group(old, zone)) {
+					catalog_generate_add(zone, db_new, true);
+				}
 				reg_reverse(conf, db_new, zone);
 			}
 		}
@@ -510,7 +522,10 @@ static knot_zonedb_t *create_zonedb_catalog(conf_t *conf, server_t *server,
 				ptrlist_add(expired_contents, zone_expire(zone, true), NULL);
 				knot_sem_post(&zone->cow_lock);
 			}
-			catalog_generate_add(zone, db_new, true);
+			zone_t *old = knot_zonedb_find(db_old, upd->member);
+			if (!same_group(old, zone)) {
+				catalog_generate_add(zone, db_new, true);
+			}
 			reg_reverse(conf, db_new, zone);
 			break;
 		default:
@@ -520,15 +535,6 @@ static knot_zonedb_t *create_zonedb_catalog(conf_t *conf, server_t *server,
 	catalog_it_free(cat_it);
 
 	return db_new;
-}
-
-static bool same_group(zone_t *old_z, zone_t *new_z)
-{
-	if (old_z->catalog_group == NULL || new_z->catalog_group == NULL) {
-		return (old_z->catalog_group == new_z->catalog_group);
-	} else {
-		return (strcmp(old_z->catalog_group, new_z->catalog_group) == 0);
-	}
 }
 
 static knot_zonedb_t *create_zonedb_full(conf_t *conf, server_t *server,
@@ -632,7 +638,7 @@ static knot_zonedb_t *create_zonedb_full(conf_t *conf, server_t *server,
 		zone_t *old = knot_zonedb_find(db_old, zone->name);
 		if (old == NULL) {
 			catalog_generate_add(zone, db_new, false);
-		} else if (!same_group(zone, old)) {
+		} else if (!same_group(old, zone)) {
 			catalog_generate_add(zone, db_new, true);
 		}
 		reg_reverse(conf, db_new, zone);
