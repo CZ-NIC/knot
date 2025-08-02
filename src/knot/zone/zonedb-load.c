@@ -502,18 +502,14 @@ static knot_zonedb_t *create_zonedb_catalog(conf_t *conf, server_t *server,
 			catalog_generate_rem(zone, db_new);
 			break;
 		case CAT_UPD_UNIQ:
+		case CAT_UPD_PROP:
 			zone = knot_zonedb_find(db_new, upd->member);
-			if (zone != NULL) {
+			if (upd->type == CAT_UPD_UNIQ && zone != NULL) {
 				zone_purge(conf, zone);
 				knot_sem_wait(&zone->cow_lock);
 				ptrlist_add(expired_contents, zone_expire(zone, true), NULL);
 				knot_sem_post(&zone->cow_lock);
 			}
-			catalog_generate_add(zone, db_new, true);
-			reg_reverse(conf, db_new, zone);
-			break;
-		case CAT_UPD_PROP:
-			zone = knot_zonedb_find(db_new, upd->member);
 			catalog_generate_add(zone, db_new, true);
 			reg_reverse(conf, db_new, zone);
 			break;
