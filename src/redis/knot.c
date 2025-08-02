@@ -465,7 +465,7 @@ static RedisModuleKey *rrset_key_get(RedisModuleCtx *ctx, const rdb_txn_t *txn,
 	if (zone_keytype != REDISMODULE_KEYTYPE_EMPTY &&
 	    zone_keytype != REDISMODULE_KEYTYPE_ZSET) {
 		RedisModule_CloseKey(zone_key);
-		RedisModule_ReplyWithError(ctx, "ERR Bad data");
+		RedisModule_ReplyWithError(ctx, "ERR Bad data 1");
 		return NULL;
 	}
 
@@ -508,7 +508,7 @@ static int rdata_add(RedisModuleCtx *ctx, const rdb_txn_t *txn,
 		}
 	} else {
 		RedisModule_CloseKey(rrset_key);
-		RedisModule_ReplyWithError(ctx, "ERR Bad data");
+		RedisModule_ReplyWithError(ctx, "ERR Bad data 2");
 		return -1;
 	}
 
@@ -533,7 +533,7 @@ static int rdata_remove(RedisModuleCtx *ctx, const rdb_txn_t *txn,
 	if (zone_keytype != REDISMODULE_KEYTYPE_EMPTY &&
 	    zone_keytype != REDISMODULE_KEYTYPE_ZSET) {
 		RedisModule_CloseKey(zone_key);
-		RedisModule_ReplyWithError(ctx, "ERR Bad data");
+		RedisModule_ReplyWithError(ctx, "ERR Bad data 3");
 		return -1;
 	}
 
@@ -551,7 +551,7 @@ static int rdata_remove(RedisModuleCtx *ctx, const rdb_txn_t *txn,
 	} else {
 		RedisModule_CloseKey(zone_key);
 		RedisModule_CloseKey(rrset_key);
-		RedisModule_ReplyWithError(ctx, "ERR Bad data");
+		RedisModule_ReplyWithError(ctx, "ERR Bad data 4");
 		return -1;
 	}
 	rrset->ttl = ttl;
@@ -605,7 +605,7 @@ static RedisModuleKey *zone_meta_key_get(RedisModuleCtx *ctx, rdb_txn_t *txn, co
 		RedisModule_FreeString(ctx, meta_str);
 	} else if (keytype != REDISMODULE_KEYTYPE_STRING) {
 		RedisModule_CloseKey(key);
-		RedisModule_ReplyWithError(ctx, "ERR Bad data");
+		RedisModule_ReplyWithError(ctx, "ERR Bad data 5");
 		return NULL;
 	}
 
@@ -633,7 +633,7 @@ static RedisModuleKey *upd_meta_key_get(RedisModuleCtx *ctx, rdb_txn_t *txn, con
 		RedisModule_FreeString(ctx, meta_str);
 	} else if (keytype != REDISMODULE_KEYTYPE_STRING) {
 		RedisModule_CloseKey(key);
-		RedisModule_ReplyWithError(ctx, "ERR Bad data");
+		RedisModule_ReplyWithError(ctx, "ERR Bad data 6");
 		return NULL;
 	}
 
@@ -648,7 +648,7 @@ static int zone_txn_lock(RedisModuleCtx *ctx, RedisModuleKey *key, rdb_txn_t *tx
 	zone_meta_storage_t *meta = (zone_meta_storage_t *)RedisModule_StringDMA(key, &len, REDISMODULE_WRITE);
 	if (meta == NULL || len != sizeof(zone_meta_storage_t)) {
 		RedisModule_CloseKey(key);
-		RedisModule_ReplyWithError(ctx, "ERR Bad data");
+		RedisModule_ReplyWithError(ctx, "ERR Bad data 7");
 		return KNOT_EINVAL;
 	}
 
@@ -675,7 +675,7 @@ static int upd_txn_lock(RedisModuleCtx *ctx, RedisModuleKey *key, rdb_txn_t *txn
 	upd_meta_storage_t *meta = (upd_meta_storage_t *)RedisModule_StringDMA(key, &len, REDISMODULE_WRITE);
 	if (meta == NULL || len != sizeof(upd_meta_storage_t)) {
 		RedisModule_CloseKey(key);
-		RedisModule_ReplyWithError(ctx, "ERR Bad data");
+		RedisModule_ReplyWithError(ctx, "ERR Bad data 8");
 		return KNOT_EINVAL;
 	}
 
@@ -1257,7 +1257,7 @@ static int zone_commit(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t
 	int ret = zone_meta_active_exchange(ctx, meta_key, txn, origin);
 	RedisModule_CloseKey(meta_key);
 	if (ret != KNOT_EOK) {
-		RedisModule_ReplyWithError(ctx, "ERR Bad data");
+		RedisModule_ReplyWithError(ctx, "ERR Bad data 9");
 		return ret;
 	}
 
@@ -1387,7 +1387,7 @@ static int zone_exists_bin(RedisModuleCtx *ctx, RedisModuleString **argv, int ar
 		return RedisModule_ReplyWithError(ctx, "ERR Does not exist");
 	} else if (zone_keytype != REDISMODULE_KEYTYPE_ZSET) {
 		RedisModule_CloseKey(zone_key);
-		return RedisModule_ReplyWithError(ctx, "ERR Bad data");
+		return RedisModule_ReplyWithError(ctx, "ERR Bad data 10");
 	}
 
 	foreach_in_zset_subset(zone_key, SCORE_SOA, SCORE_SOA) {
@@ -1491,7 +1491,7 @@ static int zone_load(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t *
 		return RedisModule_ReplyWithError(ctx, "ERR Does not exist");
 	} else if (zone_keytype != REDISMODULE_KEYTYPE_ZSET) {
 		RedisModule_CloseKey(index_key);
-		return RedisModule_ReplyWithError(ctx, "ERR Bad data");
+		return RedisModule_ReplyWithError(ctx, "ERR Bad data 11");
 	}
 
 	char buf[128 * 1024];
@@ -1805,7 +1805,7 @@ static int upd_add_rem(RedisModuleCtx *ctx, const arg_dname_t *origin, const rdb
 		RedisModuleKey *diff_index_key = find_upd_index(ctx, origin, txn, id, REDISMODULE_READ | REDISMODULE_WRITE);
 		if (RedisModule_KeyType(diff_index_key) != REDISMODULE_KEYTYPE_EMPTY &&
 		    RedisModule_KeyType(diff_index_key) != REDISMODULE_KEYTYPE_ZSET) {
-			RedisModule_ReplyWithError(ctx, "ERR Bad data");
+			RedisModule_ReplyWithError(ctx, "ERR Bad data 12");
 			return KNOT_EINVAL;
 		}
 		ret = RedisModule_ZsetAdd(diff_index_key, evaluate_score(rtype), diff_keystr, NULL);
@@ -1818,7 +1818,7 @@ static int upd_add_rem(RedisModuleCtx *ctx, const arg_dname_t *origin, const rdb
 		diff = RedisModule_ModuleTypeGetValue(diff_key);
 	} else {
 		RedisModule_CloseKey(diff_key);
-		RedisModule_ReplyWithError(ctx, "ERR Bad data");
+		RedisModule_ReplyWithError(ctx, "ERR Bad data 13");
 		return KNOT_EINVAL;
 	}
 
@@ -2008,7 +2008,7 @@ static int upd_meta_unlock(RedisModuleCtx *ctx, RedisModuleKey *key, uint8_t id)
 	upd_meta_storage_t *meta = (upd_meta_storage_t *)RedisModule_StringDMA(key, &len, REDISMODULE_WRITE);
 	if (len != sizeof(*meta)) {
 		RedisModule_CloseKey(key);
-		RedisModule_ReplyWithError(ctx, "ERR Bad data");
+		RedisModule_ReplyWithError(ctx, "ERR Bad data 14");
 		return KNOT_ENOENT;
 	}
 	meta->lock[id] = 0;
@@ -2062,7 +2062,7 @@ static int upd_commit(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t 
 
 	RedisModuleKey *soa_key = RedisModule_OpenKey(ctx, soa_keyname, REDISMODULE_WRITE);
 	if (RedisModule_ModuleTypeGetType(soa_key) != knot_zone_rrset_t) {
-		RedisModule_ReplyWithError(ctx, "ERR Bad data");
+		RedisModule_ReplyWithError(ctx, "ERR Bad data 15");
 		return KNOT_ENOENT;
 	}
 	rrset_v *soa_rrset = RedisModule_ModuleTypeGetValue(soa_key);
@@ -2077,7 +2077,7 @@ static int upd_commit(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t 
 		if (diff->add_rrs.count == 1) {
 			new_serial = knot_soa_serial(diff->add_rrs.rdata);
 		} else {
-			RedisModule_ReplyWithError(ctx, "ERR Bad data");
+			RedisModule_ReplyWithError(ctx, "ERR Bad data 16");
 			RedisModule_CloseKey(soa_diff_key);
 			return KNOT_ENOENT;
 		}
@@ -2128,7 +2128,7 @@ static int upd_commit(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t 
 
 	RedisModule_DeleteKey(upd_key);
 	RedisModule_CloseKey(upd_key);
-
+/*
 	if (soa_rrset->rrs.count != 1) {
 		RedisModule_CloseKey(soa_diff_key);
 		RedisModule_FreeString(ctx, soa_diff_keyname);
@@ -2145,7 +2145,7 @@ static int upd_commit(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t 
 			RedisModule_FreeString(ctx, soa_diff_keyname);
 			RedisModule_CloseKey(new_upd_key);
 			RedisModule_CloseKey(soa_key);
-			RedisModule_ReplyWithError(ctx, "ERR Bad data");
+			RedisModule_ReplyWithError(ctx, "ERR Bad data 17");
 			return KNOT_ENOMEM;
 		}
 
@@ -2157,7 +2157,7 @@ static int upd_commit(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t 
 		RedisModule_ModuleTypeSetValue(soa_diff_key, knot_diff_t, diff);
 
 		RedisModule_ZsetAdd(new_upd_key, evaluate_score(KNOT_RRTYPE_SOA), soa_diff_keyname, NULL);
-	}
+	}*/
 	RedisModule_CloseKey(soa_diff_key);
 	RedisModule_FreeString(ctx, soa_diff_keyname);
 	RedisModule_CloseKey(new_upd_key);
@@ -2278,7 +2278,7 @@ static int upd_dump(RedisModuleCtx *ctx, RedisModuleKey *index_key, const arg_dn
 		return RedisModule_ReplyWithError(ctx, "ERR Does not exist");
 	} else if (zone_keytype != REDISMODULE_KEYTYPE_ZSET) {
 		RedisModule_CloseKey(index_key);
-		return RedisModule_ReplyWithError(ctx, "ERR Bad data");
+		return RedisModule_ReplyWithError(ctx, "ERR Bad data 18");
 	}
 
 	char buf[128 * 1024];
