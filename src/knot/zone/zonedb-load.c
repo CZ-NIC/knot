@@ -389,6 +389,12 @@ static void reg_reverse(conf_t *conf, knot_zonedb_t *db_new, zone_t *zone)
 		return;
 	}
 
+	ptrnode_t *n;
+	WALK_LIST(n, zone->reverse_from) {
+		zone_local_notify_unsubscribe(n->d, zone);
+	}
+	ptrlist_free(&zone->reverse_from, NULL);
+
 	conf_val_t val = conf_zone_get(conf, C_REVERSE_GEN, zone->name);
 	while (val.code == KNOT_EOK) {
 		const knot_dname_t *forw_name = conf_dname(&val);
@@ -404,6 +410,21 @@ static void reg_reverse(conf_t *conf, knot_zonedb_t *db_new, zone_t *zone)
 		}
 		conf_val_next(&val);
 	}
+}
+
+static void unreg_reverse(zone_t *zone)
+{
+	ptrnode_t *n;
+	WALK_LIST(n, zone->reverse_from) {
+		zone_local_notify_unsubscribe(n->d, zone);
+	}
+	ptrlist_free(&zone->reverse_from, NULL);
+
+	WALK_LIST(n, zone->internal_notify) {
+		zone_t *reverse = n->d;
+		ptrlist_find_rem(&reverse->reverse_from, zone, NULL);
+	}
+	ptrlist_free(&zone->internal_notify, NULL);
 }
 
 static bool same_group(zone_t *old_z, zone_t *new_z)
@@ -450,6 +471,7 @@ static knot_zonedb_t *create_zonedb_commit(conf_t *conf, server_t *server)
 				reg_reverse(conf, db_new, zone);
 			} else if (type & CONF_IO_TUNSET) {
 				zone_t *zone = knot_zonedb_find(db_new, name);
+				unreg_reverse(zone);
 				knot_zonedb_del(db_new, name);
 				catalog_generate_rem(zone, db_new);
 			} else {
@@ -510,6 +532,7 @@ static knot_zonedb_t *create_zonedb_catalog(conf_t *conf, server_t *server,
 			break;
 		case CAT_UPD_REM:
 			zone = knot_zonedb_find(db_new, upd->member);
+			unreg_reverse(zone);
 			knot_zonedb_del(db_new, upd->member);
 			catalog_generate_rem(zone, db_new);
 			break;
