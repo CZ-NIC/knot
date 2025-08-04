@@ -214,6 +214,9 @@ void zone_free(zone_t **zone_ptr)
 		pthread_join(zone->update_clear_thr, NULL);
 	}
 
+	/* Even when events are done, delayed RCU cleanup might still be ongoing. */
+	knot_sem_wait(&zone->cow_lock);
+
 	/* Free zone contents. Possible wait for XFRout lock. */
 	zone_contents_deep_free(zone->contents);
 
@@ -223,6 +226,7 @@ void zone_free(zone_t **zone_ptr)
 	pthread_mutex_destroy(&zone->ddns_lock);
 
 	pthread_mutex_destroy(&zone->cu_lock);
+	knot_sem_post(&zone->cow_lock);
 	knot_sem_destroy(&zone->cow_lock);
 
 	/* Control update. */
