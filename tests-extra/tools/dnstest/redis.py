@@ -1,5 +1,6 @@
 import os
 import subprocess
+import time
 
 class Redis(object):
     def __init__(self, addr, wrk_dir, redis_bin, redis_cli, knotso):
@@ -10,6 +11,8 @@ class Redis(object):
         self.redis_cli = redis_cli
         self.knotso = knotso
         self.proc = None
+        self.monitor = None
+        self.monitor_log = None
 
         if not os.path.exists(wrk_dir):
             os.makedirs(wrk_dir)
@@ -32,8 +35,16 @@ class Redis(object):
 
     def start(self):
         self.proc = subprocess.Popen([ self.redis_bin, self.conf_file() ])
+        time.sleep(0.3)
+        monitor_cmd = [ self.redis_cli, "-h", self.addr, "-p", str(self.port), "monitor" ]
+        self.monitor_log = open(os.path.join(self.wrk_dir, "monitor.log"), "a")
+        self.monitor = subprocess.Popen(monitor_cmd, stdout=self.monitor_log, stderr=self.monitor_log)
 
     def stop(self):
+        if self.monitor:
+            self.monitor.terminate()
+        if self.monitor_log:
+            self.monitor_log.close()
         if self.proc:
             self.proc.terminate()
 
