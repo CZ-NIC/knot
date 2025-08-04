@@ -975,7 +975,10 @@ int zone_update_external(conf_t *conf, zone_update_t *update, conf_val_t *ev_id)
 		ret = dump_changeset_part(update, false, f_rem, "w");
 	}
 	if (f_add != NULL && ret == KNOT_EOK) {
-		const char *mode = (strcmp(f_rem, f_add) == 0) ? "a" : "w";
+		const char *mode = "w";
+		if (f_rem != NULL && strcmp(f_rem, f_add) == 0) {
+			mode = "a";
+		}
 		ret = dump_changeset_part(update, true, f_add, mode);
 	}
 	free(f_new);
