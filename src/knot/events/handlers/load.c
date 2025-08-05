@@ -55,6 +55,7 @@ int event_load(conf_t *conf, zone_t *zone)
 	zone_update_t up = { 0 };
 	zone_contents_t *journal_conts = NULL, *zf_conts = NULL;
 	bool old_contents_exist = (zone->contents != NULL), zone_in_journal_exists = false;
+	struct redisContext *db_ctx = NULL;
 
 	conf_val_t val = conf_zone_get(conf, C_JOURNAL_CONTENT, zone->name);
 	unsigned load_from = conf_opt(&val);
@@ -106,6 +107,9 @@ int event_load(conf_t *conf, zone_t *zone)
 
 	val = conf_zone_get(conf, C_ZONE_DB_IN, zone->name);
 	uint8_t db_instance = conf_int(&val);
+	if (db_instance > 0) {
+		db_ctx = zone_redis_connect(conf);
+	}
 
 	// Attempt to load changes from database. If fails, load full zone from there later.
 	if (db_instance > 0 && (old_contents_exist || journal_conts != NULL)) {
@@ -133,7 +137,7 @@ int event_load(conf_t *conf, zone_t *zone)
 			goto cleanup;
 		}
 		char err_log[256] = { 0 };
-		ret = zone_redis_load_upd(zone_redis_connect(conf), db_instance, zone->name, zone_contents_serial(up.new_cont), upd_add_rem, &up, err_log);
+		ret = zone_redis_load_upd(db_ctx, db_instance, zone->name, zone_contents_serial(up.new_cont), upd_add_rem, &up, err_log);
 		if (ret == KNOT_EOK) {
 			goto load_end; // all OK, take the shortcut!
 		} else if (err_log[0] != '\0') {
@@ -151,7 +155,7 @@ int event_load(conf_t *conf, zone_t *zone)
 		if (db_instance > 0) {
 			char err_log[256] = { 0 };
 			zone_src = "database";
-			ret = zone_redis_load(zone_redis_connect(conf), db_instance, zone->name, &zf_conts, err_log);
+			ret = zone_redis_load(db_ctx, db_instance, zone->name, &zf_conts, err_log);
 			if (ret != KNOT_EOK) {
 				log_zone_error(zone->name, "failed to load zone from DB: %s", err_log);
 				goto cleanup;
@@ -490,6 +494,7 @@ load_end:
 	if (!zone_timers_serial_notified(&zone->timers, new_serial)) {
 		zone_schedule_notify(conf, zone, 0);
 	}
+	zone_redis_disconnect(db_ctx);
 	zone_skip_free(&skip);
 	zone->started = true;
 
@@ -502,6 +507,7 @@ cleanup:
 	zone_update_clear(&up);
 	zone_contents_deep_free(zf_conts);
 	zone_contents_deep_free(journal_conts);
+	zone_redis_disconnect(db_ctx);
 	zone_skip_free(&skip);
 	zone->started = true;
 

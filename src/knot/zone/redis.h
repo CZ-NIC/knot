@@ -41,9 +41,10 @@ typedef struct zone_redis_txn {
 } zone_redis_txn_t;
 
 /*!
- * \brief Wrapper to rdb_connect not needing #ifdef ENABLE_REDIS around.
+ * \brief Wrappers to rdb_connect and rdb_disconnect not needing #ifdef ENABLE_REDIS around.
  */
 struct redisContext *zone_redis_connect(conf_t *conf);
+void zone_redis_disconnect(struct redisContext *ctx);
 
 /*!
  * \brief Start a writing stransaction into Redis zone database.

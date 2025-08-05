@@ -22,6 +22,11 @@ struct redisContext *zone_redis_connect(conf_t *conf)
 	return rdb_connect(conf);
 }
 
+void zone_redis_disconnect(struct redisContext *ctx)
+{
+	return rdb_disconnect(ctx);
+}
+
 int zone_redis_txn_begin(struct zone_redis_txn *txn, struct redisContext *rdb,
                          uint8_t instance,
                          const knot_dname_t *zone_name, bool incremental)
@@ -327,6 +332,11 @@ int zone_redis_load_upd(struct redisContext *rdb, uint8_t instance,
 struct redisContext *zone_redis_connect(conf_t *conf)
 {
 	return NULL;
+}
+
+void zone_redis_disconnect(struct redisContext *ctx)
+{
+	return;
 }
 
 int zone_redis_txn_begin(struct zone_redis_txn *txn, struct redisContext *rdb,
