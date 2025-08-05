@@ -41,8 +41,16 @@
 #define PROGRAM_NAME "knotd"
 
 typedef struct {
-	bool            async;
-	bool            first_loop;
+	const char *config;
+	const char *confdb;
+	size_t max_conf_size;
+	const char *daemon_root;
+	char *socket;
+	unsigned long pid;
+	bool daemonize;
+	bool verbose;
+	bool async;
+	bool first_loop;
 	struct timespec loop_wait;
 } server_data_t;
 
@@ -299,16 +307,15 @@ static knot_ctl_t **init_ctls(const char *socket)
 }
 
 /*! \brief Event loop listening for signals and remote commands. */
-static int event_loop(server_t *server, const char *socket, bool daemonize,
-                      unsigned long pid, server_data_t *server_data)
+static int event_loop(server_t *server, server_data_t *server_data)
 {
-	knot_ctl_t **ctls = init_ctls(socket);
+	knot_ctl_t **ctls = init_ctls(server_data->socket);
 	if (ctls == NULL) {
 		return KNOT_ERROR;
 	}
 
 	conf_val_t listen_val = conf_get(conf(), C_CTL, C_LISTEN);
-	unsigned sock_count = count_ctls(socket, &listen_val);
+	unsigned sock_count = count_ctls(server_data->socket, &listen_val);
 	ctl_socket_ctx_t sctx = {
 		.ctls = ctls,
 		.server = server,
@@ -326,10 +333,10 @@ static int event_loop(server_t *server, const char *socket, bool daemonize,
 
 	/* Notify systemd about successful start. */
 	systemd_ready_notify();
-	if (daemonize) {
-		log_info("starting server as a daemon, PID %lu", pid);
+	if (server_data->daemonize) {
+		log_info("starting server as a daemon, PID %lu", server_data->pid);
 	} else {
-		log_info("starting server in the foreground, PID %lu", pid);
+		log_info("starting server in the foreground, PID %lu", server_data->pid);
 	}
 
 	/* Run interrupt processing loop. */
@@ -398,42 +405,44 @@ static void print_help(void)
 	       CONF_MAPSIZE, RUN_DIR "/knot.sock");
 }
 
-static int set_config(const char *confdb, const char *config, size_t max_conf_size)
+static int set_config(server_data_t *server_data)
 {
-	if (config != NULL && confdb != NULL) {
+	if (server_data->config != NULL && server_data->confdb != NULL) {
 		log_fatal("ambiguous configuration source");
 		return KNOT_EINVAL;
 	}
 
 	/* Choose the optimal config source. */
 	bool import = false;
-	if (confdb != NULL) {
+	if (server_data->confdb != NULL) {
 		import = false;
-	} else if (config != NULL){
+	} else if (server_data->config != NULL){
 		import = true;
 	} else if (conf_db_exists(CONF_DEFAULT_DBDIR)) {
 		import = false;
-		confdb = CONF_DEFAULT_DBDIR;
+		server_data->confdb = CONF_DEFAULT_DBDIR;
 	} else {
 		import = true;
-		config = CONF_DEFAULT_FILE;
+		server_data->config = CONF_DEFAULT_FILE;
 	}
 
 	/* Open confdb. */
 	conf_t *new_conf = NULL;
-	int ret = conf_new(&new_conf, conf_schema, confdb, max_conf_size, CONF_FREQMODULES);
+	int ret = conf_new(&new_conf, conf_schema, server_data->confdb,
+	                   server_data->max_conf_size, CONF_FREQMODULES);
 	if (ret != KNOT_EOK) {
 		log_fatal("failed to open configuration database '%s' (%s)",
-		          (confdb != NULL) ? confdb : "", knot_strerror(ret));
+		          (server_data->confdb != NULL) ? server_data->confdb : "",
+		          knot_strerror(ret));
 		return ret;
 	}
 
 	/* Import the config file. */
 	if (import) {
-		ret = conf_import(new_conf, config, IMPORT_FILE | IMPORT_REINIT_CACHE);
+		ret = conf_import(new_conf, server_data->config, IMPORT_FILE | IMPORT_REINIT_CACHE);
 		if (ret != KNOT_EOK) {
 			log_fatal("failed to load configuration file '%s' (%s)",
-			          config, knot_strerror(ret));
+			          server_data->config, knot_strerror(ret));
 			conf_free(new_conf);
 			return ret;
 		}
@@ -453,13 +462,17 @@ static int set_config(const char *confdb, const char *config, size_t max_conf_si
 
 int main(int argc, char **argv)
 {
-	bool daemonize = false;
-	const char *config = NULL;
-	const char *confdb = NULL;
-	size_t max_conf_size = (size_t)CONF_MAPSIZE * 1024 * 1024;
-	const char *daemon_root = "/";
-	char *socket = NULL;
-	bool verbose = false;
+	server_data_t server_data = {
+		.daemonize = false,
+		.config = NULL,
+		.confdb = NULL,
+		.max_conf_size = (size_t)CONF_MAPSIZE * 1024 * 1024,
+		.daemon_root = "/",
+		.socket = NULL,
+		.verbose = false,
+		.first_loop = false,
+	};
+
 
 	/* Long options. */
 	struct option opts[] = {
@@ -482,30 +495,30 @@ int main(int argc, char **argv)
 	while ((opt = getopt_long(argc, argv, "c:C:m:s:dvhV::", opts, NULL)) != -1) {
 		switch (opt) {
 		case 'c':
-			config = optarg;
+			server_data.config = optarg;
 			break;
 		case 'C':
-			confdb = optarg;
+			server_data.confdb = optarg;
 			break;
 		case 'm':
-			if (str_to_size(optarg, &max_conf_size, 1, 10000) != KNOT_EOK) {
+			if (str_to_size(optarg, &server_data.max_conf_size, 1, 10000) != KNOT_EOK) {
 				print_help();
 				return EXIT_FAILURE;
 			}
 			/* Convert to bytes. */
-			max_conf_size *= 1024 * 1024;
+			server_data.max_conf_size *= 1024 * 1024;
 			break;
 		case 's':
-			socket = optarg;
+			server_data.socket = optarg;
 			break;
 		case 'd':
-			daemonize = true;
+			server_data.daemonize = true;
 			if (optarg) {
-				daemon_root = optarg;
+				server_data.daemon_root = optarg;
 			}
 			break;
 		case 'v':
-			verbose = true;
+			server_data.verbose = true;
 			break;
 		case 'h':
 			print_help();
@@ -529,7 +542,7 @@ int main(int argc, char **argv)
 	umask(S_IROTH | S_IWOTH | S_IXOTH);
 
 	/* Now check if we want to daemonize. */
-	if (daemonize) {
+	if (server_data.daemonize) {
 		if (make_daemon(1, 0) != 0) {
 			fprintf(stderr, "Daemonization failed, shutting down...\n");
 			return EXIT_FAILURE;
@@ -547,12 +560,12 @@ int main(int argc, char **argv)
 
 	/* Initialize logging subsystem. */
 	log_init();
-	if (verbose) {
+	if (server_data.verbose) {
 		log_levels_add(LOG_TARGET_STDOUT, LOG_SOURCE_ANY, LOG_MASK(LOG_DEBUG));
 	}
 
 	/* Set up the configuration */
-	int ret = set_config(confdb, config, max_conf_size);
+	int ret = set_config(&server_data);
 	if (ret != KNOT_EOK) {
 		log_close();
 		dnssec_crypto_cleanup();
@@ -625,8 +638,8 @@ int main(int argc, char **argv)
 	}
 
 	/* Check and create PID file. */
-	unsigned long pid = pid_check_and_create();
-	if (pid == 0) {
+	server_data.pid = pid_check_and_create();
+	if (server_data.pid == 0) {
 		server_wait(&server);
 		server_deinit(&server);
 		conf_free(conf());
@@ -636,12 +649,12 @@ int main(int argc, char **argv)
 		return EXIT_FAILURE;
 	}
 
-	if (daemonize) {
-		if (chdir(daemon_root) != 0) {
+	if (server_data.daemonize) {
+		if (chdir(server_data.daemon_root) != 0) {
 			log_warning("failed to change working directory to %s",
-			            daemon_root);
+			            server_data.daemon_root);
 		} else {
-			log_info("changed directory to %s", daemon_root);
+			log_info("changed directory to %s", server_data.daemon_root);
 		}
 	}
 
@@ -659,16 +672,13 @@ int main(int argc, char **argv)
 
 	stats_reconfigure(conf(), &server);
 
-	server_data_t server_data = {
-		.first_loop = false
-	};
 	conf_val_t async_val = conf_get(conf(), C_SRV, C_ASYNC_START);
 	server_data.async = conf_bool(&async_val);
 
 	/* Start it up. */
 	/* In async-start mode, start answering early, otherwise in the event loop. */
 	if ((ret = server_start(&server, server_data.async)) != KNOT_EOK ||
-	    (ret = event_loop(&server, socket, daemonize, pid, &server_data)) != KNOT_EOK) {
+	    (ret = event_loop(&server, &server_data)) != KNOT_EOK) {
 		log_fatal("failed to start server (%s)", knot_strerror(ret));
 		server_stop(&server);
 		server_wait(&server);
