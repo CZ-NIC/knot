@@ -40,6 +40,11 @@
 
 #define PROGRAM_NAME "knotd"
 
+typedef struct {
+	bool            first_loop;
+	struct timespec loop_wait;
+} server_data_t;
+
 static int make_daemon(int nochdir, int noclose)
 {
 	int ret;
@@ -116,7 +121,24 @@ static void drop_capabilities(void)
 #endif /* ENABLE_CAP_NG */
 }
 
-static int check_loaded(server_t *server, bool async)
+static struct timespec calc_wait(struct timespec t)
+{
+	struct timespec rv = { 0 };
+	rv.tv_sec = t.tv_sec;
+	if (t.tv_sec == 0) {
+		rv.tv_nsec = MAX(t.tv_nsec, 200 * 1000 * 1000L);
+	}
+	return rv;
+}
+
+static void reset_loop_wait(server_data_t *server_data)
+{
+	/* Set the normal slow loop cycles, it could be even infinity. */
+	server_data->loop_wait.tv_sec = 5;
+	server_data->loop_wait.tv_nsec = 0L;
+}
+
+static int check_loaded(server_t *server, bool async, server_data_t *server_data)
 {
 	/*
 	 * Started: all zones loaded or at least tried to load at least once,
@@ -143,26 +165,48 @@ static int check_loaded(server_t *server, bool async)
 	started = started || async;
 	bool start = true;
 	bool load = true;
-	rcu_read_lock();
-	knot_zonedb_iter_t *it = knot_zonedb_iter_begin(server->zone_db);
-	while (!knot_zonedb_iter_finished(it)) {
-		zone_t *zone = (zone_t *)knot_zonedb_iter_val(it);
-		if (zone->contents != NULL) {
-			knot_zonedb_iter_next(it);
-			continue;
-		}
-		load = false;
-		if (started) {
-			break;
-		} else if (!zone->started) {
-			start = false;
-			break;
-		}
 
-		knot_zonedb_iter_next(it);
+	if (server_data->first_loop) {
+		rcu_read_lock();
+		knot_zonedb_iter_t *it = knot_zonedb_iter_begin(server->zone_db);
+		while (!knot_zonedb_iter_finished(it)) {
+			zone_t *zone = (zone_t *)knot_zonedb_iter_val(it);
+			if (zone->contents == NULL) {
+				load = false;
+			} else if (!zone->started) {
+				start = false;
+			}
+			knot_zonedb_iter_next(it);
+		}
+		knot_zonedb_iter_free(it);
+		rcu_read_unlock();
+
+		struct timespec then = time_now();
+		server_data->loop_wait = calc_wait(time_diff(&now, &then));
+		server_data->first_loop = false;
+	} else {
+		/* Hot path. */
+		rcu_read_lock();
+		knot_zonedb_iter_t *it = knot_zonedb_iter_begin(server->zone_db);
+		while (!knot_zonedb_iter_finished(it)) {
+			zone_t *zone = (zone_t *)knot_zonedb_iter_val(it);
+			if (zone->contents != NULL) {
+				knot_zonedb_iter_next(it);
+				continue;
+			}
+			load = false;
+			if (started) {
+				break;
+			} else if (!zone->started) {
+				start = false;
+				break;
+			}
+
+			knot_zonedb_iter_next(it);
+		}
+		knot_zonedb_iter_free(it);
+		rcu_read_unlock();
 	}
-	knot_zonedb_iter_free(it);
-	rcu_read_unlock();
 
 	if (!start) {
 		return KNOT_EOK;
@@ -184,6 +228,7 @@ static int check_loaded(server_t *server, bool async)
 	if (load) {   /* Not 'loaded' yet. */
 		dbus_emit_running(true);
 		loaded = true;
+		reset_loop_wait(server_data);
 	}
 
 	return KNOT_EOK;
@@ -254,7 +299,7 @@ static knot_ctl_t **init_ctls(const char *socket)
 
 /*! \brief Event loop listening for signals and remote commands. */
 static int event_loop(server_t *server, const char *socket, bool daemonize,
-                      unsigned long pid, bool async)
+                      unsigned long pid, bool async, server_data_t *server_data)
 {
 	knot_ctl_t **ctls = init_ctls(socket);
 	if (ctls == NULL) {
@@ -311,12 +356,13 @@ static int event_loop(server_t *server, const char *socket, bool daemonize,
 			continue;
 		}
 
-		ret = check_loaded(server, async);
+		ret = check_loaded(server, async, server_data);
 		if (ret != KNOT_EOK) {
 			goto done;
 		}
 
-		sleep(2); // wait for signals to arrive
+		/* Wait for signals to arrive. */
+		nanosleep(&(server_data->loop_wait), NULL);
 	}
 
 	if (conf()->cache.srv_dbus_event & DBUS_EVENT_RUNNING) {
@@ -612,12 +658,16 @@ int main(int argc, char **argv)
 
 	stats_reconfigure(conf(), &server);
 
-	/* Start it up. */
-	/* In async-start mode, start answering early, otherwise in the event loop. */
+	server_data_t server_data = {
+		.first_loop = false
+	};
 	conf_val_t async_val = conf_get(conf(), C_SRV, C_ASYNC_START);
 	bool async = conf_bool(&async_val);
+
+	/* Start it up. */
+	/* In async-start mode, start answering early, otherwise in the event loop. */
 	if ((ret = server_start(&server, async)) != KNOT_EOK ||
-	    (ret = event_loop(&server, socket, daemonize, pid, async)) != KNOT_EOK) {
+	    (ret = event_loop(&server, socket, daemonize, pid, async, &server_data)) != KNOT_EOK) {
 		log_fatal("failed to start server (%s)", knot_strerror(ret));
 		server_stop(&server);
 		server_wait(&server);
