@@ -41,6 +41,7 @@
 #define PROGRAM_NAME "knotd"
 
 typedef struct {
+	bool            async;
 	bool            first_loop;
 	struct timespec loop_wait;
 } server_data_t;
@@ -138,7 +139,7 @@ static void reset_loop_wait(server_data_t *server_data)
 	server_data->loop_wait.tv_nsec = 0L;
 }
 
-static int check_loaded(server_t *server, bool async, server_data_t *server_data)
+static int check_loaded(server_t *server, server_data_t *server_data)
 {
 	/*
 	 * Started: all zones loaded or at least tried to load at least once,
@@ -162,7 +163,7 @@ static int check_loaded(server_t *server, bool async, server_data_t *server_data
 	}
 	last = now;
 
-	started = started || async;
+	started = started || server_data->async;
 	bool start = true;
 	bool load = true;
 
@@ -299,7 +300,7 @@ static knot_ctl_t **init_ctls(const char *socket)
 
 /*! \brief Event loop listening for signals and remote commands. */
 static int event_loop(server_t *server, const char *socket, bool daemonize,
-                      unsigned long pid, bool async, server_data_t *server_data)
+                      unsigned long pid, server_data_t *server_data)
 {
 	knot_ctl_t **ctls = init_ctls(socket);
 	if (ctls == NULL) {
@@ -356,7 +357,7 @@ static int event_loop(server_t *server, const char *socket, bool daemonize,
 			continue;
 		}
 
-		ret = check_loaded(server, async, server_data);
+		ret = check_loaded(server, server_data);
 		if (ret != KNOT_EOK) {
 			goto done;
 		}
@@ -662,12 +663,12 @@ int main(int argc, char **argv)
 		.first_loop = false
 	};
 	conf_val_t async_val = conf_get(conf(), C_SRV, C_ASYNC_START);
-	bool async = conf_bool(&async_val);
+	server_data.async = conf_bool(&async_val);
 
 	/* Start it up. */
 	/* In async-start mode, start answering early, otherwise in the event loop. */
-	if ((ret = server_start(&server, async)) != KNOT_EOK ||
-	    (ret = event_loop(&server, socket, daemonize, pid, async, &server_data)) != KNOT_EOK) {
+	if ((ret = server_start(&server, server_data.async)) != KNOT_EOK ||
+	    (ret = event_loop(&server, socket, daemonize, pid, &server_data)) != KNOT_EOK) {
 		log_fatal("failed to start server (%s)", knot_strerror(ret));
 		server_stop(&server);
 		server_wait(&server);
