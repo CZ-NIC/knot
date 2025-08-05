@@ -6,7 +6,10 @@ Test of autogenerating reverse zone.
 
 from dnstest.utils import *
 from dnstest.test import Test
+from dnstest.libknot import libknot
 import random
+
+DYNAMIC = random.choice([False, True])
 
 t = Test()
 
@@ -70,9 +73,21 @@ knot.zones_wait(zones, serials, equal=True, greater=False) # check that sole rel
 r = knot.dig("8.2.0.192.in-addr.arpa.", "PTR")
 r.check(rcode="NOERROR", rdata="dns1.example2.com.")
 
-knot.zones.pop(zones[2].name)
-knot.gen_confile()
-knot.reload()
+if DYNAMIC:
+    ctl = libknot.control.KnotCtl()
+    ctl.connect(os.path.join(knot.dir, "knot.sock"))
+    ctl.send_block(cmd="conf-begin")
+    resp = ctl.receive_block()
+    ctl.send_block(cmd="conf-unset", section="zone", item="domain", data=zones[2].name)
+    resp = ctl.receive_block()
+    ctl.send_block(cmd="conf-commit")
+    resp = ctl.receive_block()
+    ctl.send(libknot.control.KnotCtlType.END)
+    ctl.close()
+else:
+    knot.zones.pop(zones[2].name)
+    knot.gen_confile()
+    knot.reload()
 t.sleep(5)
 
 knot.update_zonefile(zones[0], version=2)
@@ -85,9 +100,21 @@ r.check(rcode="REFUSED", nordata="dns2.example.com.")
 r = knot.dig("5.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.8.b.d.1.0.0.2.ip6.arpa.", "PTR")
 r.check(rcode="NOERROR", rdata="added2.example.com.")
 
-knot.zones.pop(zones[0].name)
-knot.gen_confile()
-knot.reload()
+if DYNAMIC:
+    ctl = libknot.control.KnotCtl()
+    ctl.connect(os.path.join(knot.dir, "knot.sock"))
+    ctl.send_block(cmd="conf-begin")
+    resp = ctl.receive_block()
+    ctl.send_block(cmd="conf-unset", section="zone", item="domain", data=zones[0].name)
+    resp = ctl.receive_block()
+    ctl.send_block(cmd="conf-commit")
+    resp = ctl.receive_block()
+    ctl.send(libknot.control.KnotCtlType.END)
+    ctl.close()
+else:
+    knot.zones.pop(zones[0].name)
+    knot.gen_confile()
+    knot.reload()
 t.sleep(5)
 
 r = knot.dig("1.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.8.b.d.1.0.0.2.ip6.arpa.", "PTR")

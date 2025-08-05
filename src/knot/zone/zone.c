@@ -811,6 +811,11 @@ void zone_local_notify_subscribe(zone_t *zone, zone_t *subscribe)
 	ptrlist_add(&zone->internal_notify, subscribe, NULL);
 }
 
+void zone_local_notify_unsubscribe(zone_t *zone, zone_t *subscribe)
+{
+	ptrlist_find_rem(&zone->internal_notify, subscribe, NULL);
+}
+
 void zone_local_notify(zone_t *zone)
 {
 	ptrnode_t *n;

@@ -6,19 +6,28 @@
 #pragma once
 
 #include "knot/catalog/catalog_update.h"
+#include "knot/zone/zonedb.h"
 
 #define CATALOG_SOA_REFRESH	3600
 #define CATALOG_SOA_RETRY	600
 #define CATALOG_SOA_EXPIRE	(INT32_MAX - 1)
 
-struct knot_zonedb;
+/*!
+ * \brief Add a member removal to corresponding catalog update.
+ *
+ * \param zone        Member zone.
+ * \param db_new      New zone database.
+ */
+void catalog_generate_rem(zone_t *zone, knot_zonedb_t *db_new);
 
 /*!
- * \brief Compare old and new zonedb, create incremental catalog upd in each catz->cat_members
+ * \brief Add a member addition/prop to corresponding catalog update.
+ *
+ * \param zone        Member zone.
+ * \param db_new      New zone database.
+ * \param property    Property or addition indicator.
  */
-void catalogs_generate(struct knot_zonedb *db_new, struct knot_zonedb *db_old);
-
-struct zone_contents;
+void catalog_generate_add(zone_t *zone, knot_zonedb_t *db_new, bool property);
 
 /*!
  * \brief Generate catalog zone contents from (full) catalog update.

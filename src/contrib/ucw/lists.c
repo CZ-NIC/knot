@@ -241,6 +241,22 @@ void ptrlist_rem(ptrnode_t *node, knot_mm_t *mm)
 }
 
 /**
+ * ptrlist_rem - remove all nodes with given pointer
+ * \p list: ptrlist
+ * \p val: pointer to remove
+ * \p mm: memory context
+ */
+void ptrlist_find_rem(list_t *list, void *val, knot_mm_t *mm)
+{
+	ptrnode_t *n, *nxt;
+	WALK_LIST_DELSAFE(n, nxt, *list) {
+		if (n->d == val) {
+			ptrlist_rem(n, mm);
+		}
+	}
+}
+
+/**
  * ptrlist_deep_free - free all nodes incl referenced data
  * \p list: list nodes
  * \p mm: memory context
