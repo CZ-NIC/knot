@@ -51,6 +51,8 @@ typedef struct {
 	bool verbose;
 	bool async;
 	bool first_loop;
+	bool started;
+	bool loaded;
 	struct timespec loop_wait;
 } server_data_t;
 
@@ -155,10 +157,8 @@ static int check_loaded(server_t *server, server_data_t *server_data)
 	 * Loaded:  all zones successfully loaded, it implies 'started',
 	 *          KNOT_BUS_EVENT_STARTED already emitted over DBus.
 	 */
-	static bool started = false;
-	static bool loaded = false;
 	assert(server->state & ServerRunning);
-	if (loaded) {
+	if (server_data->loaded) {
 		assert(server->state & ServerAnswering);
 		return KNOT_EOK;
 	}
@@ -171,7 +171,7 @@ static int check_loaded(server_t *server, server_data_t *server_data)
 	}
 	last = now;
 
-	started = started || server_data->async;
+	server_data->started = server_data->started || server_data->async;
 	bool start = true;
 	bool load = true;
 
@@ -204,7 +204,7 @@ static int check_loaded(server_t *server, server_data_t *server_data)
 				continue;
 			}
 			load = false;
-			if (started) {
+			if (server_data->started) {
 				break;
 			} else if (!zone->started) {
 				start = false;
@@ -220,23 +220,23 @@ static int check_loaded(server_t *server, server_data_t *server_data)
 	if (!start) {
 		return KNOT_EOK;
 	}
-	if (!started) {
+	if (!server_data->started) {
 		int ret = server_start_answering(server);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
-		started = true;
+		server_data->started = true;
 	}
 
 	assert(server->state & ServerAnswering);
 	if (!(conf()->cache.srv_dbus_event & DBUS_EVENT_RUNNING)) {
-		loaded = true;
+		server_data->loaded = true;
 		return KNOT_EOK;
 	}
 
-	if (load) {   /* Not 'loaded' yet. */
+	if (load) {   /* Not 'server_data->loaded' yet. */
 		dbus_emit_running(true);
-		loaded = true;
+		server_data->loaded = true;
 		reset_loop_wait(server_data);
 	}
 
@@ -470,6 +470,8 @@ int main(int argc, char **argv)
 		.daemon_root = "/",
 		.socket = NULL,
 		.verbose = false,
+		.started = false,
+		.loaded = false,
 		.first_loop = false,
 	};
 
