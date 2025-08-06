@@ -542,7 +542,11 @@ int zone_update_remove(zone_update_t *update, const knot_rrset_t *rrset)
 			}
 		}
 	} else if (update->flags & (UPDATE_FULL | UPDATE_HYBRID)) {
-		zone_node_t *n = NULL;
+		zone_node_t *n = zone_contents_find_node_for_rr(update->new_cont, rrset);
+		if (!node_rrtype_exists(n, rrset->type)) {
+			return KNOT_EOK;
+		}
+		rrset_copy->ttl = node_rrset_ttl(n, rrset->type);
 		ret = zone_contents_remove_rr(update->new_cont, rrset, &n);
 	} else {
 		ret = KNOT_EINVAL;

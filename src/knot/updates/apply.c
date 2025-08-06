@@ -241,6 +241,7 @@ int apply_remove_rr(apply_ctx_t *ctx, knot_rrset_t *rr)
 
 	// Find node for this owner
 	zone_node_t *node = zone_contents_find_node_for_rr(contents, rr);
+	rr->ttl = node_rrset_ttl(node, rr->type);
 	if (!can_remove(node, rr, ctx)) {
 		if (ctx->flags & APPLY_STRICT) {
 			return KNOT_ENORECORD;
