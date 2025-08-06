@@ -49,6 +49,9 @@
 #define knot_upd_add_bin(ctx, origin, txn, owner, ttl, rtype, rdataset) upd_add_rem((ctx), (origin), (txn), (owner), (ttl), (rtype), (rdataset), upd_add_bin_cb)
 #define knot_upd_remove_bin(ctx, origin, txn, owner, ttl, rtype, rdataset) upd_add_rem((ctx), (origin), (txn), (owner), (ttl), (rtype), (rdataset), upd_remove_bin_cb)
 
+#define register_command(name, cb, rights) RedisModule_CreateCommand(ctx, name, cb, rights, 1, 1, 1) == REDISMODULE_ERR || \
+                                           (cmd = RedisModule_GetCommand(ctx, name)) == NULL || \
+                                           RedisModule_SetCommandInfo(cmd, &cb##_info) == REDISMODULE_ERR
 typedef enum {
 	EVENT     = 1, // Keep synchronized with RDB_EVENT_KEY!
 	ZONE_META = 2,
@@ -106,6 +109,174 @@ static knot_mm_t mm = {
 	.alloc = redismodule_alloc,
 	.ctx = NULL,
 	.free = redismodule_free
+};
+
+static RedisModuleCommandArg begin_txt_info_args[] = {
+	{"origin",   REDISMODULE_ARG_TYPE_STRING,  -1, NULL, NULL, NULL, REDISMODULE_CMD_ARG_NONE},
+	{"instance", REDISMODULE_ARG_TYPE_INTEGER, -1, NULL, NULL, NULL, REDISMODULE_CMD_ARG_OPTIONAL},
+	{ 0 }
+};
+
+static const RedisModuleCommandInfo zone_begin_txt_info = {
+	.version = REDISMODULE_COMMAND_INFO_VERSION,
+	.summary = "Creates zone editing transaction",
+	.complexity = "O(1)",
+	.since = "7.0.0",
+	.arity = -2,
+	.args = begin_txt_info_args,
+};
+
+static RedisModuleCommandArg store_txt_info_args[] = {
+	{"origin",      REDISMODULE_ARG_TYPE_STRING,  -1, NULL, NULL, NULL, REDISMODULE_CMD_ARG_NONE},
+	{"transaction", REDISMODULE_ARG_TYPE_INTEGER, -1, NULL, NULL, NULL, REDISMODULE_CMD_ARG_NONE},
+	{"data",        REDISMODULE_ARG_TYPE_STRING,  -1, NULL, NULL, NULL, REDISMODULE_CMD_ARG_NONE},
+	{ 0 }
+};
+
+static const RedisModuleCommandInfo zone_store_txt_info = {
+	.version = REDISMODULE_COMMAND_INFO_VERSION,
+	.summary = "Store records to zone transaction",
+	.complexity = "O(1)",
+	.since = "7.0.0",
+	.arity = 4,
+	.args = store_txt_info_args,
+};
+
+static RedisModuleCommandArg info_args_origin_transaction[] = {
+	{"origin",      REDISMODULE_ARG_TYPE_STRING,  -1, NULL, NULL, NULL, REDISMODULE_CMD_ARG_NONE},
+	{"transaction", REDISMODULE_ARG_TYPE_INTEGER, -1, NULL, NULL, NULL, REDISMODULE_CMD_ARG_NONE},
+	{ 0 }
+};
+
+static const RedisModuleCommandInfo zone_commit_txt_info = {
+	.version = REDISMODULE_COMMAND_INFO_VERSION,
+	.summary = "Store zone transaction",
+	.complexity = "Up to O(m), where m is number of rrsets and diffs updates of zone",
+	.since = "7.0.0",
+	.arity = 3,
+	.args = info_args_origin_transaction,
+};
+
+static const RedisModuleCommandInfo zone_abort_txt_info = {
+	.version = REDISMODULE_COMMAND_INFO_VERSION,
+	.summary = "Abort zone transaction",
+	.complexity = "Up to O(l), where l is number of rrsets in zone",
+	.since = "7.0.0",
+	.arity = 3,
+	.args = info_args_origin_transaction,
+};
+
+static RedisModuleCommandArg zone_load_txt_info_args[] = {
+	{"opt",      REDISMODULE_ARG_TYPE_PURE_TOKEN, -1, "--compact", NULL, NULL, REDISMODULE_CMD_ARG_OPTIONAL},
+	{"origin",   REDISMODULE_ARG_TYPE_STRING,     -1, NULL,        NULL, NULL, REDISMODULE_CMD_ARG_NONE},
+	{"instance", REDISMODULE_ARG_TYPE_INTEGER,    -1, NULL,        NULL, NULL, REDISMODULE_CMD_ARG_NONE},
+	{"owner",    REDISMODULE_ARG_TYPE_STRING,     -1, NULL,        NULL, NULL, REDISMODULE_CMD_ARG_OPTIONAL},
+	{"rtype",    REDISMODULE_ARG_TYPE_STRING,     -1, NULL,        NULL, NULL, REDISMODULE_CMD_ARG_OPTIONAL},
+	{ 0 }
+};
+
+static const RedisModuleCommandInfo zone_load_txt_info = {
+	.version = REDISMODULE_COMMAND_INFO_VERSION,
+	.summary = "Print zone instance or transaction",
+	.complexity = "Up to O(l), where l is number of rrsets in zone",
+	.since = "7.0.0",
+	.arity = -3,
+	.args = zone_load_txt_info_args,
+};
+
+static RedisModuleCommandArg zone_purge_txt_info_args[] = {
+	{"origin",   REDISMODULE_ARG_TYPE_STRING,  -1, NULL, NULL, NULL, REDISMODULE_CMD_ARG_NONE},
+	{"instance", REDISMODULE_ARG_TYPE_INTEGER, -1, NULL, NULL, NULL, REDISMODULE_CMD_ARG_NONE},
+	{ 0 }
+};
+
+static const RedisModuleCommandInfo zone_purge_txt_info = {
+	.version = REDISMODULE_COMMAND_INFO_VERSION,
+	.summary = "Purge zone instance",
+	.complexity = "Up to O(m), where m is number of rrsets and diffs updates of zone",
+	.since = "7.0.0",
+	.arity = 3,
+	.args = zone_purge_txt_info_args,
+};
+
+static const RedisModuleCommandInfo upd_begin_txt_info = {
+	.version = REDISMODULE_COMMAND_INFO_VERSION,
+	.summary = "Creates update editing transaction",
+	.complexity = "O(1)",
+	.since = "7.0.0",
+	.arity = -2,
+	.args = begin_txt_info_args,
+};
+
+static const RedisModuleCommandInfo upd_add_txt_info = {
+	.version = REDISMODULE_COMMAND_INFO_VERSION,
+	.summary = "Add record to the zone with update",
+	.complexity = "O(1)",
+	.since = "7.0.0",
+	.arity = 4,
+	.args = store_txt_info_args,
+};
+
+static const RedisModuleCommandInfo upd_remove_txt_info = {
+	.version = REDISMODULE_COMMAND_INFO_VERSION,
+	.summary = "Remove record from the zone with update",
+	.complexity = "O(1)",
+	.since = "7.0.0",
+	.arity = 4,
+	.args = store_txt_info_args,
+};
+
+static const RedisModuleCommandInfo upd_commit_txt_info = {
+	.version = REDISMODULE_COMMAND_INFO_VERSION,
+	.summary = "Commit update to the zone",
+	.complexity = "O(k), where k is number of rrsets in update",
+	.since = "7.0.0",
+	.arity = 3,
+	.args = info_args_origin_transaction,
+};
+
+static const RedisModuleCommandInfo upd_abort_txt_info = {
+	.version = REDISMODULE_COMMAND_INFO_VERSION,
+	.summary = "Abort update transaction",
+	.complexity = "O(k), where k is number of rrsets in update",
+	.since = "7.0.0",
+	.arity = 3,
+	.args = info_args_origin_transaction,
+};
+
+static RedisModuleCommandArg upd_diff_txt_info_args[] = {
+	{"origin",   REDISMODULE_ARG_TYPE_STRING,  -1, NULL, NULL, NULL, REDISMODULE_CMD_ARG_NONE},
+	{"instance", REDISMODULE_ARG_TYPE_INTEGER, -1, NULL, NULL, NULL, REDISMODULE_CMD_ARG_NONE},
+	{"owner",    REDISMODULE_ARG_TYPE_STRING,  -1, NULL, NULL, NULL, REDISMODULE_CMD_ARG_OPTIONAL},
+	{"rtype",    REDISMODULE_ARG_TYPE_STRING,  -1, NULL, NULL, NULL, REDISMODULE_CMD_ARG_OPTIONAL},
+	{ 0 }
+};
+
+static const RedisModuleCommandInfo upd_diff_txt_info = {
+	.version = REDISMODULE_COMMAND_INFO_VERSION,
+	.summary = "Print state of update transaction",
+	.complexity = "O(k), where k is number of rrsets in update",
+	.since = "7.0.0",
+	.arity = -3,
+	.args = upd_diff_txt_info_args,
+};
+
+static RedisModuleCommandArg upd_load_txt_info_args[] = {
+	{"origin",   REDISMODULE_ARG_TYPE_STRING,  -1, NULL, NULL, NULL, REDISMODULE_CMD_ARG_NONE},
+	{"instance", REDISMODULE_ARG_TYPE_INTEGER, -1, NULL, NULL, NULL, REDISMODULE_CMD_ARG_NONE},
+	{"serial",   REDISMODULE_ARG_TYPE_INTEGER, -1, NULL, NULL, NULL, REDISMODULE_CMD_ARG_NONE},
+	{"owner",    REDISMODULE_ARG_TYPE_STRING,  -1, NULL, NULL, NULL, REDISMODULE_CMD_ARG_OPTIONAL},
+	{"rtype",    REDISMODULE_ARG_TYPE_STRING,  -1, NULL, NULL, NULL, REDISMODULE_CMD_ARG_OPTIONAL},
+	{ 0 }
+};
+
+static const RedisModuleCommandInfo upd_load_txt_info = {
+	.version = REDISMODULE_COMMAND_INFO_VERSION,
+	.summary = "Print updates since specified serial",
+	.complexity = "O(k), where k is number of rrsets in update",
+	.since = "7.0.0",
+	.arity = -4,
+	.args = upd_load_txt_info_args,
 };
 
 static RedisModuleString *meta_keyname_construct(const uint8_t prefix, RedisModuleCtx *ctx,
@@ -1227,10 +1398,6 @@ static int run_scanner(scanner_ctx_t *s_ctx, const arg_dname_t *origin,
 
 static int zone_store_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 {
-	if (argc != 4) {
-		return RedisModule_WrongArity(ctx);
-	}
-
 	arg_dname_t origin;
 	ARG_DNAME_TXT(argv[1], origin, NULL, "origin");
 
@@ -1459,10 +1626,6 @@ static int zone_commit(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t
 
 static int zone_commit_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 {
-	if (argc != 3) {
-		return RedisModule_WrongArity(ctx);
-	}
-
 	arg_dname_t origin;
 	ARG_DNAME_TXT(argv[1], origin, NULL, "origin");
 
@@ -1517,10 +1680,6 @@ static int zone_abort(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t 
 
 static int zone_abort_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 {
-	if (argc != 3) {
-		return RedisModule_WrongArity(ctx);
-	}
-
 	arg_dname_t origin;
 	ARG_DNAME_TXT(argv[1], origin, NULL, "origin");
 
@@ -1828,10 +1987,6 @@ static int zone_load_bin(RedisModuleCtx *ctx, RedisModuleString **argv, int argc
 
 static int zone_purge_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 {
-	if (argc != 3) {
-		return RedisModule_WrongArity(ctx);
-	}
-
 	rdb_txn_t txn = {
 		.instance = 1,
 		.id = TXN_ID_ACTIVE
@@ -1907,10 +2062,6 @@ static int upd_begin_bin(RedisModuleCtx *ctx, RedisModuleString **argv, int argc
 
 static int upd_add_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 {
-	if (argc != 4) {
-		return RedisModule_WrongArity(ctx);
-	}
-
 	arg_dname_t origin;
 	ARG_DNAME_TXT(argv[1], origin, NULL, "origin");
 
@@ -2199,10 +2350,6 @@ static int upd_commit(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t 
 
 static int upd_commit_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 {
-	if (argc != 3) {
-		return RedisModule_WrongArity(ctx);
-	}
-
 	arg_dname_t origin;
 	ARG_DNAME_TXT(argv[1], origin, NULL, "origin");
 
@@ -2258,10 +2405,6 @@ static int upd_abort(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t *
 
 static int upd_abort_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 {
-	if (argc != 3) {
-		return RedisModule_WrongArity(ctx);
-	}
-
 	arg_dname_t origin;
 	ARG_DNAME_TXT(argv[1], origin, NULL, "origin");
 
@@ -2668,35 +2811,36 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 		LOAD_ERROR(ctx, "failed to load");
 	}
 
-	if (RedisModule_CreateCommand(ctx, "KNOT.ZONE.BEGIN",        zone_begin_txt,    "write",    1, 1, 1) == REDISMODULE_ERR ||
-	    RedisModule_CreateCommand(ctx, "KNOT.ZONE.STORE",        zone_store_txt,    "write",    1, 1, 1) == REDISMODULE_ERR ||
-	    RedisModule_CreateCommand(ctx, "KNOT.ZONE.COMMIT",       zone_commit_txt,   "write",    1, 1, 1) == REDISMODULE_ERR ||
-	    RedisModule_CreateCommand(ctx, "KNOT.ZONE.ABORT",        zone_abort_txt,    "write",    1, 1, 1) == REDISMODULE_ERR ||
-	    RedisModule_CreateCommand(ctx, "KNOT.ZONE.LOAD",         zone_load_txt,     "readonly", 1, 1, 1) == REDISMODULE_ERR ||
-	    RedisModule_CreateCommand(ctx, "KNOT.ZONE.PURGE",        zone_purge_txt,    "write",    1, 1, 1) == REDISMODULE_ERR ||
-	    RedisModule_CreateCommand(ctx, "KNOT.UPD.BEGIN",         upd_begin_txt,     "write",    1, 1, 1) == REDISMODULE_ERR ||
-	    RedisModule_CreateCommand(ctx, "KNOT.UPD.ADD",           upd_add_txt,       "write",    1, 1, 1) == REDISMODULE_ERR ||
-	    RedisModule_CreateCommand(ctx, "KNOT.UPD.REMOVE",        upd_remove_txt,    "write",    1, 1, 1) == REDISMODULE_ERR ||
-	    RedisModule_CreateCommand(ctx, "KNOT.UPD.COMMIT",        upd_commit_txt,    "write",    1, 1, 1) == REDISMODULE_ERR ||
-	    RedisModule_CreateCommand(ctx, "KNOT.UPD.ABORT",         upd_abort_txt,     "write",    1, 1, 1) == REDISMODULE_ERR ||
-	    RedisModule_CreateCommand(ctx, "KNOT.UPD.DIFF",          upd_diff_txt,      "readonly", 1, 1, 1) == REDISMODULE_ERR ||
-	    RedisModule_CreateCommand(ctx, "KNOT.UPD.LOAD",          upd_load_txt,      "readonly", 1, 1, 1) == REDISMODULE_ERR ||
-	    RedisModule_CreateCommand(ctx, RDB_CMD_ZONE_EXISTS,      zone_exists_bin,   "readonly", 1, 1, 1) == REDISMODULE_ERR ||
-	    RedisModule_CreateCommand(ctx, RDB_CMD_ZONE_BEGIN,       zone_begin_bin,    "write",    1, 1, 1) == REDISMODULE_ERR ||
-	    RedisModule_CreateCommand(ctx, RDB_CMD_ZONE_STORE,       zone_store_bin,    "write",    1, 1, 1) == REDISMODULE_ERR ||
-	    RedisModule_CreateCommand(ctx, RDB_CMD_ZONE_COMMIT,      zone_commit_bin,   "write",    1, 1, 1) == REDISMODULE_ERR ||
-	    RedisModule_CreateCommand(ctx, RDB_CMD_ZONE_ABORT,       zone_abort_bin,    "write",    1, 1, 1) == REDISMODULE_ERR ||
-	    RedisModule_CreateCommand(ctx, RDB_CMD_ZONE_LOAD,        zone_load_bin,     "readonly", 1, 1, 1) == REDISMODULE_ERR ||
-	    RedisModule_CreateCommand(ctx, RDB_CMD_ZONE_PURGE,       zone_purge_bin,    "write",    1, 1, 1) == REDISMODULE_ERR ||
-	    RedisModule_CreateCommand(ctx, RDB_CMD_UPD_BEGIN,        upd_begin_bin,     "write",    1, 1, 1) == REDISMODULE_ERR ||
-	    RedisModule_CreateCommand(ctx, RDB_CMD_UPD_ADD,          upd_add_bin,       "write",    1, 1, 1) == REDISMODULE_ERR ||
-	    RedisModule_CreateCommand(ctx, RDB_CMD_UPD_REMOVE,       upd_remove_bin,    "write",    1, 1, 1) == REDISMODULE_ERR ||
-	    RedisModule_CreateCommand(ctx, RDB_CMD_UPD_COMMIT,       upd_commit_bin,    "write",    1, 1, 1) == REDISMODULE_ERR ||
-	    RedisModule_CreateCommand(ctx, RDB_CMD_UPD_ABORT,        upd_abort_bin,     "write",    1, 1, 1) == REDISMODULE_ERR ||
-	    RedisModule_CreateCommand(ctx, RDB_CMD_UPD_DIFF,         upd_diff_bin,      "readonly", 1, 1, 1) == REDISMODULE_ERR ||
-	    RedisModule_CreateCommand(ctx, RDB_CMD_UPD_LOAD,         upd_load_bin,      "readonly", 1, 1, 1) == REDISMODULE_ERR ||
-	    RedisModule_CreateCommand(ctx, "KNOT_BIN.AOF.RRSET",     rrset_aof_rewrite, "write",    1, 1, 1) == REDISMODULE_ERR ||
-	    RedisModule_CreateCommand(ctx, "KNOT_BIN.AOF.DIFF",      diff_aof_rewrite,  "write",    1, 1, 1) == REDISMODULE_ERR)
+	RedisModuleCommand *cmd = NULL;
+	if (register_command("KNOT.ZONE.BEGIN",  zone_begin_txt,  "write fast") ||
+	    register_command("KNOT.ZONE.STORE",  zone_store_txt,  "write fast") ||
+	    register_command("KNOT.ZONE.COMMIT", zone_commit_txt, "write")      ||
+	    register_command("KNOT.ZONE.ABORT",  zone_abort_txt,  "write")      ||
+	    register_command("KNOT.ZONE.LOAD",   zone_load_txt,   "readonly")   ||
+	    register_command("KNOT.ZONE.PURGE",  zone_purge_txt,  "write")      ||
+	    register_command("KNOT.UPD.BEGIN",   upd_begin_txt,   "write fast") ||
+	    register_command("KNOT.UPD.ADD",     upd_add_txt,     "write fast") ||
+	    register_command("KNOT.UPD.REMOVE",  upd_remove_txt,  "write fast") ||
+	    register_command("KNOT.UPD.COMMIT",  upd_commit_txt,  "write")      ||
+	    register_command("KNOT.UPD.ABORT",   upd_abort_txt,   "write")      ||
+	    register_command("KNOT.UPD.DIFF",    upd_diff_txt,    "readonly")   ||
+	    register_command("KNOT.UPD.LOAD",    upd_load_txt,    "readonly")   ||
+	    RedisModule_CreateCommand(ctx, RDB_CMD_ZONE_EXISTS,  zone_exists_bin,   "readonly", 1, 1, 1) == REDISMODULE_ERR ||
+	    RedisModule_CreateCommand(ctx, RDB_CMD_ZONE_BEGIN,   zone_begin_bin,    "write",    1, 1, 1) == REDISMODULE_ERR ||
+	    RedisModule_CreateCommand(ctx, RDB_CMD_ZONE_STORE,   zone_store_bin,    "write",    1, 1, 1) == REDISMODULE_ERR ||
+	    RedisModule_CreateCommand(ctx, RDB_CMD_ZONE_COMMIT,  zone_commit_bin,   "write",    1, 1, 1) == REDISMODULE_ERR ||
+	    RedisModule_CreateCommand(ctx, RDB_CMD_ZONE_ABORT,   zone_abort_bin,    "write",    1, 1, 1) == REDISMODULE_ERR ||
+	    RedisModule_CreateCommand(ctx, RDB_CMD_ZONE_LOAD,    zone_load_bin,     "readonly", 1, 1, 1) == REDISMODULE_ERR ||
+	    RedisModule_CreateCommand(ctx, RDB_CMD_ZONE_PURGE,   zone_purge_bin,    "write",    1, 1, 1) == REDISMODULE_ERR ||
+	    RedisModule_CreateCommand(ctx, RDB_CMD_UPD_BEGIN,    upd_begin_bin,     "write",    1, 1, 1) == REDISMODULE_ERR ||
+	    RedisModule_CreateCommand(ctx, RDB_CMD_UPD_ADD,      upd_add_bin,       "write",    1, 1, 1) == REDISMODULE_ERR ||
+	    RedisModule_CreateCommand(ctx, RDB_CMD_UPD_REMOVE,   upd_remove_bin,    "write",    1, 1, 1) == REDISMODULE_ERR ||
+	    RedisModule_CreateCommand(ctx, RDB_CMD_UPD_COMMIT,   upd_commit_bin,    "write",    1, 1, 1) == REDISMODULE_ERR ||
+	    RedisModule_CreateCommand(ctx, RDB_CMD_UPD_ABORT,    upd_abort_bin,     "write",    1, 1, 1) == REDISMODULE_ERR ||
+	    RedisModule_CreateCommand(ctx, RDB_CMD_UPD_DIFF,     upd_diff_bin,      "readonly", 1, 1, 1) == REDISMODULE_ERR ||
+	    RedisModule_CreateCommand(ctx, RDB_CMD_UPD_LOAD,     upd_load_bin,      "readonly", 1, 1, 1) == REDISMODULE_ERR ||
+	    RedisModule_CreateCommand(ctx, "KNOT_BIN.AOF.RRSET", rrset_aof_rewrite, "write",    1, 1, 1) == REDISMODULE_ERR || // Could use 'internal' with newer Redis.
+	    RedisModule_CreateCommand(ctx, "KNOT_BIN.AOF.DIFF",  diff_aof_rewrite,  "write",    1, 1, 1) == REDISMODULE_ERR)   // Could use 'internal' with newer Redis.
 	{
 		LOAD_ERROR(ctx, "failed to load");
 	}
