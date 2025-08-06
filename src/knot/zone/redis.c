@@ -179,16 +179,17 @@ int zone_redis_serial(struct redisContext *rdb, uint8_t instance,
 		return KNOT_EINVAL;
 	}
 
-	int64_t val = -1;
 	redisReply *reply = redisCommand(rdb, RDB_CMD_ZONE_EXISTS " %b %b",
 	                                 zone, knot_dname_size(zone),
 	                                 &instance, sizeof(instance));
 	if (reply != NULL && reply->type == REDIS_REPLY_INTEGER) {
-		val = reply->integer;
+		*serial = reply->integer;
+		freeReplyObject(reply);
+		return KNOT_EOK;
+	} else {
+		freeReplyObject(reply);
+		return KNOT_ENOENT;
 	}
-	freeReplyObject(reply);
-
-	return (val != -1) ? KNOT_EOK : KNOT_ENOENT;
 }
 
 int zone_redis_load(struct redisContext *rdb, uint8_t instance,
