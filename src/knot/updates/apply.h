@@ -57,6 +57,8 @@ int apply_add_rr(apply_ctx_t *ctx, knot_rrset_t *rr);
  * \param ctx  Apply context.
  * \param rr   RRSet to remove.
  *
+ * \note rr->ttl is updated according to real existing (removed) RRset.
+ *
  * \return KNOT_E*
  */
 int apply_remove_rr(apply_ctx_t *ctx, knot_rrset_t *rr);

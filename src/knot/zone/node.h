@@ -386,6 +386,19 @@ static inline knot_rrset_t node_rrset(const zone_node_t *node, uint16_t type)
 void node_set_ttl(zone_node_t *node, uint16_t type, uint32_t ttl);
 
 /*!
+ * \brief Return TTL of existing RRset of given type, or zero if not exists.
+ */
+static inline uint32_t node_rrset_ttl(const zone_node_t *node, uint16_t type)
+{
+	for (uint16_t i = 0; node && i < node->rrset_count; ++i) {
+		if (node->rrs[i].type == type) {
+			return node->rrs[i].ttl;
+		}
+	}
+	return 0;
+}
+
+/*!
  * \brief Returns RRSet structure initialized with data from node at position
  *        equal to \a pos.
  *
