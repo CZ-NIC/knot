@@ -2191,7 +2191,27 @@ static int upd_meta_unlock(RedisModuleCtx *ctx, RedisModuleKey *key, uint8_t id)
 	return KNOT_EOK;
 }
 
-static int upd_commit(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t *txn)
+static int upd_abort(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t *txn)
+{
+	RedisModuleKey *meta_key = NULL;
+	if (upd_meta_get_when_open(ctx, origin, txn, &meta_key, REDISMODULE_READ | REDISMODULE_WRITE) == false) {
+		RedisModule_CloseKey(meta_key);
+		RedisModule_ReplyWithError(ctx, "Non-existent transaction");
+		return KNOT_ENOENT;
+	}
+
+	delete_upd_index(ctx, txn, origin);
+
+	if (upd_meta_unlock(ctx, meta_key, txn->id) != KNOT_EOK) {
+		RedisModule_CloseKey(meta_key);
+		return KNOT_ENOENT;
+	}
+	RedisModule_CloseKey(meta_key);
+
+	return KNOT_EOK;
+}
+
+static int upd_commit(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t *txn, bool abort_on_fail)
 {
 	RedisModuleKey *meta_key = NULL;
 	if (upd_meta_get_when_open(ctx, origin, txn, &meta_key, REDISMODULE_READ | REDISMODULE_WRITE) == false) {
@@ -2259,7 +2279,83 @@ static int upd_commit(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t 
 		}
 	}
 
+	// dry-run
 	RedisModuleKey *upd_key = find_upd_index(ctx, origin, txn, id, REDISMODULE_READ | REDISMODULE_WRITE);
+	foreach_in_zset(upd_key) {
+		double score = 0.0;
+		RedisModuleString *el = RedisModule_ZsetRangeCurrentElement(upd_key, &score);
+		if (el == NULL) {
+			break;
+		}
+
+		size_t el_len = 0;
+		const char *el_str = RedisModule_StringPtrLen(el, &el_len);
+		wire_ctx_t w = wire_ctx_init((uint8_t *)el_str, el_len);
+
+		wire_ctx_skip(&w, 3 + origin->len);
+		arg_dname_t owner = {
+			.data = w.position,
+			.len = knot_dname_size(w.position)
+		};
+		wire_ctx_skip(&w, owner.len);
+		uint16_t rtype = wire_ctx_read_u16(&w);
+
+		RedisModuleKey *diff_key = RedisModule_OpenKey(ctx, el, REDISMODULE_READ);
+		const diff_v *diff = RedisModule_ModuleTypeGetValue(diff_key);
+
+		RedisModuleString *rrset_keystr = rrset_keyname_construct(ctx, &zone_txn, origin, &owner, rtype);
+		RedisModuleKey *rrset_key = RedisModule_OpenKey(ctx, rrset_keystr, REDISMODULE_READ);
+		RedisModule_FreeString(ctx, rrset_keystr);
+		if (rrset_key == NULL) {
+			if (diff->rem_rrs.count != 0) {
+				RedisModule_ReplyWithError(ctx, "ERR Dry-run failed");
+				RedisModule_CloseKey(rrset_key);
+				RedisModule_CloseKey(diff_key);
+				return KNOT_ENOENT;
+			} else {
+				continue;
+			}
+		}
+		rrset_v *rrset = RedisModule_ModuleTypeGetValue(rrset_key);
+
+		if (knot_rdataset_subset(&diff->rem_rrs, &rrset->rrs) == false ||
+		    rrset->ttl != diff->rem_ttl)
+		{
+			RedisModule_CloseKey(rrset_key);
+			RedisModule_CloseKey(diff_key);
+			if (abort_on_fail) {
+				if (upd_abort(ctx, origin, txn) == KNOT_EOK) {
+					RedisModule_ReplyWithError(ctx, "ERR Dry-run check failed, aborting update");
+				}
+			} else {
+				RedisModule_ReplyWithError(ctx, "ERR Dry-run check failed");
+			}
+			return KNOT_ENOENT;
+		}
+
+		uint16_t rr_count = diff->add_rrs.count;
+		knot_rdata_t *rr = diff->add_rrs.rdata;
+		for (size_t i = 0; i < rr_count; ++i) {
+			if (find_rr_pos(&rrset->rrs, rr) != KNOT_ENOENT) {
+				RedisModule_CloseKey(rrset_key);
+				RedisModule_CloseKey(diff_key);
+				if (abort_on_fail) {
+					if (upd_abort(ctx, origin, txn) == KNOT_EOK) {
+						RedisModule_ReplyWithError(ctx, "ERR Dry-run check failed, aborting update");
+					}
+				} else {
+					RedisModule_ReplyWithError(ctx, "ERR Dry-run check failed");
+				}
+				return KNOT_ENOENT;
+			}
+			rr = knot_rdataset_next(rr);
+		}
+
+		RedisModule_CloseKey(rrset_key);
+		RedisModule_CloseKey(diff_key);
+	}
+
+	// update
 	RedisModuleKey *new_upd_key = find_commited_upd_index(ctx, origin, txn, new_serial, REDISMODULE_READ | REDISMODULE_WRITE);
 	foreach_in_zset(upd_key) {
 		double score = 0.0;
@@ -2356,7 +2452,7 @@ static int upd_commit_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int arg
 	rdb_txn_t txn;
 	ARG_TXN_TXT(argv[2], txn);
 
-	if (upd_commit(ctx, &origin, &txn) != KNOT_EOK) {
+	if (upd_commit(ctx, &origin, &txn, false) != KNOT_EOK) {
 		return REDISMODULE_OK;
 	}
 
@@ -2375,32 +2471,11 @@ static int upd_commit_bin(RedisModuleCtx *ctx, RedisModuleString **argv, int arg
 	rdb_txn_t txn;
 	ARG_TXN(argv[2], txn)
 
-	if (upd_commit(ctx, &origin, &txn) != KNOT_EOK) {
-
+	if (upd_commit(ctx, &origin, &txn, true) != KNOT_EOK) {
 		return REDISMODULE_OK;
 	}
 
 	return RedisModule_ReplyWithSimpleString(ctx, RDB_RETURN_OK);
-}
-
-static int upd_abort(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t *txn)
-{
-	RedisModuleKey *meta_key = NULL;
-	if (upd_meta_get_when_open(ctx, origin, txn, &meta_key, REDISMODULE_READ | REDISMODULE_WRITE) == false) {
-		RedisModule_CloseKey(meta_key);
-		RedisModule_ReplyWithError(ctx, "Non-existent transaction");
-		return KNOT_ENOENT;
-	}
-
-	delete_upd_index(ctx, txn, origin);
-
-	if (upd_meta_unlock(ctx, meta_key, txn->id) != KNOT_EOK) {
-		RedisModule_CloseKey(meta_key);
-		return KNOT_ENOENT;
-	}
-	RedisModule_CloseKey(meta_key);
-
-	return KNOT_EOK;
 }
 
 static int upd_abort_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
