@@ -122,7 +122,7 @@ static const RedisModuleCommandInfo zone_begin_txt_info = {
 	.summary = "Creates zone editing transaction",
 	.complexity = "O(1)",
 	.since = "7.0.0",
-	.arity = -2,
+	.arity = 2,
 	.args = begin_txt_info_args,
 };
 
@@ -204,7 +204,7 @@ static const RedisModuleCommandInfo upd_begin_txt_info = {
 	.summary = "Creates update editing transaction",
 	.complexity = "O(1)",
 	.since = "7.0.0",
-	.arity = -2,
+	.arity = 3,
 	.args = begin_txt_info_args,
 };
 
@@ -1128,18 +1128,11 @@ static int zone_begin(RedisModuleCtx *ctx, rdb_txn_t *txn, const arg_dname_t *or
 
 static int zone_begin_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 {
-	rdb_txn_t txn = { .instance = 1 };
 	arg_dname_t origin;
+	ARG_DNAME_TXT(argv[1], origin, NULL, "origin");
 
-	switch (argc) {
-	case 3:
-		ARG_INST_TXT(argv[2], txn);
-	case 2: // FALLTHROUGH
-		ARG_DNAME_TXT(argv[1], origin, NULL, "origin");
-		break;
-	default:
-		return RedisModule_WrongArity(ctx);
-	}
+	rdb_txn_t txn;
+	ARG_INST_TXT(argv[2], txn);
 
 	if (zone_begin(ctx, &txn, &origin) != KNOT_EOK) {
 		return REDISMODULE_OK;
@@ -1150,18 +1143,15 @@ static int zone_begin_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int arg
 
 static int zone_begin_bin(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 {
-	rdb_txn_t txn = { .instance = 1 };
-	arg_dname_t origin;
-
-	switch (argc) {
-	case 3:
-		ARG_INST(argv[2], txn);
-	case 2: // FALLTHROUGH
-		ARG_DNAME(argv[1], origin, "origin");
-		break;
-	default:
+	if (argc != 3) {
 		return RedisModule_WrongArity(ctx);
 	}
+
+	arg_dname_t origin;
+	ARG_DNAME(argv[1], origin, "origin");
+
+	rdb_txn_t txn;
+	ARG_INST(argv[2], txn);
 
 	if (zone_begin(ctx, &txn, &origin) != KNOT_EOK) {
 		return REDISMODULE_OK;
@@ -1913,16 +1903,7 @@ static int zone_load(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t *
 
 static int zone_load_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 {
-	rdb_txn_t txn = {
-		.instance = 1,
-		.id = TXN_ID_ACTIVE
-	};
-	arg_dname_t origin;
-	arg_dname_t owner;
-	uint16_t rtype;
 	unsigned mode = 1;
-
-	// Parse command options.
 	if (argc > 1) {
 		size_t len;
 		if (strcmp(RedisModule_StringPtrLen(argv[1], &len), "--compact") == 0) {
@@ -1934,20 +1915,23 @@ static int zone_load_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int argc
 		}
 	}
 
-	// Origin must be parsed before owner!
-	if (argc > 2) {
-		ARG_DNAME_TXT(argv[1], origin, NULL, "origin");
-		ARG_INST_TXN_TXT(argv[2], txn);
+	arg_dname_t origin;
+	ARG_DNAME_TXT(argv[1], origin, NULL, "origin");
+
+	rdb_txn_t txn;
+	ARG_INST_TXN_TXT(argv[2], txn);
+
+	arg_dname_t owner;
+	if (argc > 3) {
+		ARG_DNAME_TXT(argv[3], owner, &origin, "owner");
 	}
 
-	switch (argc) {
-	case 5:
+	uint16_t rtype;
+	if (argc > 4) {
 		ARG_RTYPE_TXT(argv[4], rtype);
-	case 4: // FALLTHROUGH
-		ARG_DNAME_TXT(argv[3], owner, &origin, "owner");
-	case 3: // FALLTHROUGH
-		break;
-	default:
+	}
+
+	if (argc > 5) {
 		return RedisModule_WrongArity(ctx);
 	}
 
@@ -1958,25 +1942,27 @@ static int zone_load_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int argc
 
 static int zone_load_bin(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 {
-	rdb_txn_t txn = {
-		.instance = 1,
-		.id = TXN_ID_ACTIVE
-	};
-	arg_dname_t origin;
-	arg_dname_t owner;
-	uint16_t rtype;
+	if (argc < 3) {
+		return RedisModule_WrongArity(ctx);
+	}
 
-	switch (argc) {
-	case 5:
+	arg_dname_t origin;
+	ARG_DNAME(argv[1], origin, "origin");
+
+	rdb_txn_t txn;
+	ARG_INST_TXN(argv[2], txn);
+
+	arg_dname_t owner;
+	if (argc > 3) {
+		ARG_DNAME(argv[3], owner, "owner");
+	}
+
+	uint16_t rtype;
+	if (argc > 4) {
 		ARG_NUM(argv[4], rtype, "record type");
-	case 4: // FALLTHROUGH
-		ARG_DNAME(argv[1], owner, "owner");
-	case 3:; // FALLTHROUGH
-		ARG_INST_TXN(argv[2], txn);
-	case 2: // FALLTHROUGH
-		ARG_DNAME(argv[1], origin, "origin");
-		break;
-	default:
+	}
+
+	if (argc > 5) {
 		return RedisModule_WrongArity(ctx);
 	}
 
@@ -1987,13 +1973,10 @@ static int zone_load_bin(RedisModuleCtx *ctx, RedisModuleString **argv, int argc
 
 static int zone_purge_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 {
-	rdb_txn_t txn = {
-		.instance = 1,
-		.id = TXN_ID_ACTIVE
-	};
 	arg_dname_t origin;
-
 	ARG_DNAME_TXT(argv[1], origin, NULL, "origin");
+
+	rdb_txn_t txn;
 	ARG_INST_TXT(argv[2], txn);
 
 	return zone_purge(ctx, &origin, &txn);
@@ -2004,13 +1987,11 @@ static int zone_purge_bin(RedisModuleCtx *ctx, RedisModuleString **argv, int arg
 	if (argc != 3) {
 		return RedisModule_WrongArity(ctx);
 	}
-	rdb_txn_t txn = {
-		.instance = 1,
-		.id = TXN_ID_ACTIVE
-	};
-	arg_dname_t origin;
 
+	arg_dname_t origin;
 	ARG_DNAME(argv[1], origin, "origin");
+
+	rdb_txn_t txn;
 	ARG_INST(argv[2], txn);
 
 	return zone_purge(ctx, &origin, &txn);
@@ -2018,18 +1999,11 @@ static int zone_purge_bin(RedisModuleCtx *ctx, RedisModuleString **argv, int arg
 
 static int upd_begin_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 {
-	rdb_txn_t txn = { .instance = 1 };
 	arg_dname_t origin;
+	ARG_DNAME_TXT(argv[1], origin, NULL, "origin");
 
-	switch (argc) {
-	case 3:
-		ARG_INST_TXT(argv[2], txn);
-	case 2: // FALLTHROUGH
-		ARG_DNAME_TXT(argv[1], origin, NULL, "origin");
-		break;
-	default:
-		return RedisModule_WrongArity(ctx);
-	}
+	rdb_txn_t txn;
+	ARG_INST_TXT(argv[2], txn);
 
 	if (upd_begin(ctx, &txn, &origin) != KNOT_EOK) {
 		return REDISMODULE_OK;
@@ -2040,18 +2014,15 @@ static int upd_begin_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int argc
 
 static int upd_begin_bin(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 {
-	rdb_txn_t txn = { .instance = 1 };
-	arg_dname_t origin;
-
-	switch (argc) {
-	case 3:
-		ARG_INST(argv[2], txn);
-	case 2: // FALLTHROUGH
-		ARG_DNAME(argv[1], origin, "origin");
-		break;
-	default:
+	if (argc != 3) {
 		return RedisModule_WrongArity(ctx);
 	}
+
+	arg_dname_t origin;
+	ARG_DNAME(argv[1], origin, "origin");
+
+	rdb_txn_t txn;
+	ARG_INST(argv[2], txn);
 
 	if (upd_begin(ctx, &txn, &origin) != KNOT_EOK) {
 		return REDISMODULE_OK;
@@ -2698,28 +2669,23 @@ static int upd_load(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t *t
 
 static int upd_diff_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 {
-	rdb_txn_t txn = {
-		.instance = 1,
-		.id = TXN_ID_ACTIVE
-	};
 	arg_dname_t origin;
-	arg_dname_t owner;
-	uint16_t rtype;
+	ARG_DNAME_TXT(argv[1], origin, NULL, "origin");
 
-	// Origin must be parsed before owner!
-	if (argc > 1) {
-		ARG_DNAME_TXT(argv[1], origin, NULL, "origin");
+	rdb_txn_t txn;
+	ARG_TXN_TXT(argv[2], txn);
+
+	arg_dname_t owner;
+	if (argc > 3) {
+		ARG_DNAME_TXT(argv[3], owner, &origin, "owner");
 	}
 
-	switch (argc) {
-	case 5:
+	uint16_t rtype;
+	if (argc > 4) {
 		ARG_RTYPE_TXT(argv[4], rtype);
-	case 4: // FALLTHROUGH
-		ARG_DNAME_TXT(argv[3], owner, &origin, "owner");
-	case 3: // FALLTHROUGH
-		ARG_TXN_TXT(argv[2], txn);
-		break;
-	default:
+	}
+
+	if (argc > 5) {
 		return RedisModule_WrongArity(ctx);
 	}
 
@@ -2729,24 +2695,27 @@ static int upd_diff_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 
 static int upd_diff_bin(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 {
-	rdb_txn_t txn = {
-		.instance = 1,
-		.id = TXN_ID_ACTIVE
-	};
-	arg_dname_t origin;
-	arg_dname_t owner;
-	uint16_t rtype;
+	if (argc < 3) {
+		return RedisModule_WrongArity(ctx);
+	}
 
-	switch (argc) {
-	case 5:
-		ARG_NUM(argv[4], rtype, "record type");
-	case 4: // FALLTHROUGH
+	arg_dname_t origin;
+	ARG_DNAME(argv[1], origin, "origin");
+
+	rdb_txn_t txn;
+	ARG_TXN(argv[2], txn);
+
+	arg_dname_t owner;
+	if (argc > 3) {
 		ARG_DNAME(argv[3], owner, "owner");
-	case 3: // FALLTHROUGH
-		ARG_TXN(argv[2], txn);
-		ARG_DNAME(argv[1], origin, "origin");
-		break;
-	default:
+	}
+
+	uint16_t rtype;
+	if (argc > 4) {
+		ARG_NUM(argv[4], rtype, "record type");
+	}
+
+	if (argc > 5) {
 		return RedisModule_WrongArity(ctx);
 	}
 
@@ -2757,28 +2726,25 @@ static int upd_diff_bin(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 static int upd_load_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 {
 	arg_dname_t origin;
-	arg_dname_t owner;
-	rdb_txn_t txn = {
-		.instance = 1
-	};
-	uint32_t serial;
-	uint16_t rtype;
+	ARG_DNAME_TXT(argv[1], origin, NULL, "origin");
 
-	// Origin must be parsed before owner!
-	if (argc > 1) {
-		ARG_DNAME_TXT(argv[1], origin, NULL, "origin");
+	rdb_txn_t txn;
+	ARG_INST_TXT(argv[2], txn);
+
+	uint32_t serial;
+	ARG_NUM(argv[3], serial, "serial");
+
+	arg_dname_t owner;
+	if (argc > 4) {
+		ARG_DNAME_TXT(argv[3], owner, &origin, "owner");
 	}
 
-	switch (argc) {
-	case 6:
-		ARG_RTYPE_TXT(argv[5], rtype);
-	case 5: // FALLTHROUGH
-		ARG_DNAME_TXT(argv[4], owner, &origin, "owner");
-	case 4: // FALLTHROUGH
-		ARG_NUM(argv[3], serial, "serial");
-		ARG_INST_TXT(argv[2], txn);
-		break;
-	default:
+	uint16_t rtype;
+	if (argc > 5) {
+		ARG_RTYPE_TXT(argv[4], rtype);
+	}
+
+	if (argc > 6) {
 		return RedisModule_WrongArity(ctx);
 	}
 
@@ -2789,25 +2755,30 @@ static int upd_load_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 
 static int upd_load_bin(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 {
-	arg_dname_t origin;
-	arg_dname_t owner;
-	rdb_txn_t txn = {
-		.instance = 1
-	};
-	uint32_t serial;
-	uint16_t rtype;
+	if (argc < 3) {
+		return RedisModule_WrongArity(ctx);
+	}
 
-	switch (argc) {
-	case 6:
-		ARG_NUM(argv[5], rtype, "record type");
-	case 5: // FALLTHROUGH
-		ARG_DNAME(argv[4], owner, "owner");
-	case 4: // FALLTHROUGH
-		ARG_NUM(argv[3], serial, "serial");
-		ARG_INST(argv[2], txn);
-		ARG_DNAME(argv[1], origin, "origin");
-		break;
-	default:
+	arg_dname_t origin;
+	ARG_DNAME(argv[1], origin, "origin");
+
+	rdb_txn_t txn;
+	ARG_INST(argv[2], txn);
+
+	uint32_t serial;
+	ARG_NUM(argv[3], serial, "serial");
+
+	arg_dname_t owner;
+	if (argc > 4) {
+		ARG_DNAME(argv[3], owner, "owner");
+	}
+
+	uint16_t rtype;
+	if (argc > 5) {
+		ARG_NUM(argv[4], rtype, "record type");
+	}
+
+	if (argc > 6) {
 		return RedisModule_WrongArity(ctx);
 	}
 
