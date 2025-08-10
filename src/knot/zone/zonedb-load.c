@@ -414,6 +414,10 @@ static void reg_reverse(conf_t *conf, knot_zonedb_t *db_new, zone_t *zone)
 
 static void unreg_reverse(zone_t *zone)
 {
+	if (zone == NULL) {
+		return;
+	}
+
 	ptrnode_t *n;
 	WALK_LIST(n, zone->reverse_from) {
 		zone_local_notify_unsubscribe(n->d, zone);
@@ -429,6 +433,10 @@ static void unreg_reverse(zone_t *zone)
 
 static bool same_group(zone_t *old_z, zone_t *new_z)
 {
+	if (old_z == NULL || new_z == NULL) {
+		return false;
+	}
+
 	if (old_z->catalog_group == NULL || new_z->catalog_group == NULL) {
 		return (old_z->catalog_group == new_z->catalog_group);
 	} else {
