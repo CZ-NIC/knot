@@ -13,7 +13,7 @@
 #include <time.h>
 
 #if defined(__APPLE__)
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+#define DISABLE_POSIX 1
 #endif
 
 #define SEM_STATUS_POSIX INT_MIN
@@ -24,11 +24,13 @@ void knot_sem_init(knot_sem_t *sem, int value)
 	if (value < 0) {
 		goto nonposix;
 	}
+#if !DISABLE_POSIX
 	int ret = sem_init(&sem->semaphore, 1, value);
 	if (ret == 0) {
 		sem->status = SEM_STATUS_POSIX;
 		return;
 	}
+#endif // !DISABLE_POSIX
 nonposix:
 	knot_sem_init_nonposix(sem, value);
 }
@@ -55,10 +57,12 @@ void knot_sem_wait(knot_sem_t *sem)
 {
 	assert(sem != NULL);
 	if (sem->status == SEM_STATUS_POSIX) {
+#if !DISABLE_POSIX
 		int semret;
 		do {
 			semret = sem_wait(&sem->semaphore);
 		} while (semret != 0); // repeat wait as it might be interrupted by a signal
+#endif // !DISABLE_POSIX
 	} else {
 		pthread_mutex_lock(&sem->status_lock->mutex);
 		while (sem->status <= 0) {
@@ -95,11 +99,13 @@ bool knot_sem_timedwait(knot_sem_t *sem, unsigned long ms)
 	struct timespec end;
 	timespec_now_shift(&end, ms);
 	if (sem->status == SEM_STATUS_POSIX) {
+#if !DISABLE_POSIX
 		int semret;
 		do {
 			semret = sem_timedwait(&sem->semaphore, &end);
 		} while (semret != 0 && errno != ETIMEDOUT); // repeat wait as it might be interrupted by a signal
 		return (semret == 0);
+#endif // !DISABLE_POSIX
 	} else {
 		pthread_mutex_lock(&sem->status_lock->mutex);
 		while (sem->status <= 0 && !timespec_past(&end)) {
@@ -147,9 +153,11 @@ void knot_sem_post(knot_sem_t *sem)
 {
 	assert(sem != NULL);
 	if (sem->status == SEM_STATUS_POSIX) {
+#if !DISABLE_POSIX
 		int semret = sem_post(&sem->semaphore);
 		(void)semret;
 		assert(semret == 0);
+#endif // !DISABLE_POSIX
 	} else {
 		pthread_mutex_lock(&sem->status_lock->mutex);
 		sem->status++;
@@ -163,7 +171,9 @@ void knot_sem_destroy(knot_sem_t *sem)
 	assert(sem != NULL);
 	knot_sem_wait(sem); // NOTE this is questionable if the initial value was > 1
 	if (sem->status == SEM_STATUS_POSIX) {
+#if !DISABLE_POSIX
 		sem_destroy(&sem->semaphore);
+#endif // !DISABLE_POSIX
 	} else {
 		pthread_cond_destroy(&sem->status_lock->cond);
 		pthread_mutex_destroy(&sem->status_lock->mutex);
