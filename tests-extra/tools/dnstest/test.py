@@ -65,8 +65,13 @@ class Test(object):
 
         self.redis = None
         redis_knotso = repo_file("src", "redis", ".libs", "knot.so")
-        if redis and params.redis_bin != "" and redis_knotso is not None:
-            self.redis = dnstest.redis.Redis(self.addr, os.path.join(self.out_dir, "redis"), params.redis_bin, params.redis_cli, redis_knotso)
+        if redis:
+            if params.redis_bin == "":
+                raise Skip("Redis server not available")
+            if redis_knotso is None:
+                raise Skip("Redis knot module not available")
+            self.redis = dnstest.redis.Redis(self.addr, os.path.join(self.out_dir, "redis"),
+                                             params.redis_bin, params.redis_cli, redis_knotso)
 
         self.tsig = None
         if tsig != None:
