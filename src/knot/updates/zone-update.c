@@ -734,7 +734,7 @@ static int commit_redis(conf_t *conf, zone_update_t *update)
 	zone_redis_txn_t txn;
 	int ret = zone_redis_txn_begin(&txn, db_ctx, db_instance, update->zone->name, incremental);
 	if (ret != KNOT_EOK) {
-		zone_redis_disconnect(db_ctx);
+		zone_redis_disconnect(db_ctx, true);
 		return ret;
 	}
 
@@ -762,7 +762,7 @@ static int commit_redis(conf_t *conf, zone_update_t *update)
 		              db_instance, zone_contents_serial(update->new_cont));
 	}
 
-	zone_redis_disconnect(db_ctx);
+	zone_redis_disconnect(db_ctx, true);
 	return ret;
 }
 
