@@ -15,6 +15,6 @@
 
 redisContext *rdb_connect(conf_t *conf);
 
-void rdb_disconnect(redisContext* rdb);
+void rdb_disconnect(redisContext *rdb, bool pool_save);
 
 bool rdb_compatible(redisContext *rdb);

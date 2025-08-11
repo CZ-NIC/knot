@@ -31,6 +31,7 @@
 #include "knot/server/udp-handler.h"
 #include "knot/server/tcp-handler.h"
 #include "knot/updates/acl.h"
+#include "knot/zone/redis.h"
 #include "knot/zone/timers.h"
 #include "knot/zone/zonedb-load.h"
 #include "knot/worker/pool.h"
@@ -52,6 +53,7 @@
 #endif
 
 #define SESSION_TICKET_POOL_TIMEOUT 1200
+#define REDIS_CONN_POOL_TIMEOUT (4 * 60)
 
 #define QUIC_LOG "QUIC/TLS, "
 
@@ -972,7 +974,7 @@ static int rdb_listener_run(struct dthread *thread)
 		freeReplyObject(reply);
 	}
 
-	rdb_disconnect(s->rdb_ctx);
+	rdb_disconnect(s->rdb_ctx, false);
 	s->rdb_ctx = NULL;
 
 	return KNOT_EOK;
@@ -1101,6 +1103,8 @@ void server_deinit(server_t *server)
 	global_conn_pool = NULL;
 	conn_pool_deinit(global_sessticket_pool);
 	global_sessticket_pool = NULL;
+	conn_pool_deinit(global_redis_pool);
+	global_redis_pool = NULL;
 	knot_unreachables_deinit(&global_unreachables);
 
 	knot_creds_free(server->quic_creds);
@@ -1658,6 +1662,18 @@ static void free_sess_ticket(intptr_t ptr)
 	}
 }
 
+static void free_redis_conn(intptr_t ptr)
+{
+	if (ptr != CONN_POOL_FD_INVALID) {
+		zone_redis_disconnect((void *)ptr, false);
+	}
+}
+
+static bool invalid_redis_conn(intptr_t ptr)
+{
+	return ptr == CONN_POOL_FD_INVALID || !zone_redis_ping((void *)ptr);
+}
+
 static int reconfigure_remote_pool(conf_t *conf, server_t *server)
 {
 	conf_val_t val = conf_get(conf, C_SRV, C_RMT_POOL_LIMIT);
@@ -1695,6 +1711,17 @@ static int reconfigure_remote_pool(conf_t *conf, server_t *server)
 			conn_pool_purge(global_sessticket_pool);
 		}
 		hash = curr_hash;
+	}
+
+	val = conf_get(conf, C_DB, C_ZONE_DB_LISTEN);
+	if (global_redis_pool == NULL && val.code == KNOT_EOK) {
+		size_t bg_wrkrs = conf_bg_threads(conf);
+		conn_pool_t *new_pool = conn_pool_init(bg_wrkrs, REDIS_CONN_POOL_TIMEOUT,
+		                                       free_redis_conn, invalid_redis_conn);
+		if (new_pool == NULL) {
+			return KNOT_ENOMEM;
+		}
+		global_redis_pool = new_pool;
 	}
 
 	val = conf_get(conf, C_SRV, C_RMT_RETRY_DELAY);
