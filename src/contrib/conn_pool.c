@@ -17,6 +17,7 @@
 
 conn_pool_t *global_conn_pool = NULL;
 conn_pool_t *global_sessticket_pool = NULL;
+conn_pool_t *global_redis_pool = NULL;
 
 const conn_pool_fd_t CONN_POOL_FD_INVALID = -1;
 

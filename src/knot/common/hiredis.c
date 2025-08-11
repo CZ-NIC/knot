@@ -5,6 +5,7 @@
 
 #include "knot/common/hiredis.h"
 
+#include "contrib/conn_pool.h"
 #include "contrib/sockaddr.h"
 #include "knot/common/log.h"
 #include "libknot/errcode.h"
@@ -134,6 +135,11 @@ redisContext *rdb_connect(conf_t *conf)
 	conf_val_t db_listen = conf_db_param(conf, C_ZONE_DB_LISTEN);
 	struct sockaddr_storage addr = conf_addr(&db_listen, NULL);
 
+	redisContext *rdb = (void *)conn_pool_get(global_redis_pool, &addr, &addr);
+	if (rdb != NULL && (intptr_t)rdb != CONN_POOL_FD_INVALID) {
+		return rdb;
+	}
+
 	int port = sockaddr_port(&addr);
 	sockaddr_port_set(&addr, 0);
 
@@ -144,7 +150,6 @@ redisContext *rdb_connect(conf_t *conf)
 
 	const struct timeval timeout = { 0 };
 
-	redisContext *rdb;
 	if (addr.ss_family == AF_UNIX) {
 		rdb = redisConnectUnixWithTimeout(addr_str, timeout);
 	} else {
@@ -223,10 +228,19 @@ redisContext *rdb_connect(conf_t *conf)
 	return rdb;
 }
 
-void rdb_disconnect(redisContext* rdb)
+void rdb_disconnect(redisContext *rdb, bool pool_save)
 {
-	if (rdb != NULL) {
-		// TODO: is anything more needed for TLS case?
+	if (rdb != NULL && pool_save) {
+		struct sockaddr_storage addr = { 0 };
+		// struct redisContext seems not to have a way to read out sockaddr, only a string, so try-and-error parse the string
+		if (sockaddr_set(&addr, AF_INET6, rdb->tcp.host, rdb->tcp.port) == KNOT_EOK ||
+		    sockaddr_set(&addr, AF_INET, rdb->tcp.host, rdb->tcp.port) == KNOT_EOK ||
+		    sockaddr_set(&addr, AF_UNIX, rdb->unix_sock.path, 0) == KNOT_EOK) {
+			rdb = (void *)conn_pool_put(global_redis_pool, &addr, &addr, (intptr_t)rdb);
+		}
+	}
+
+	if (rdb != NULL && (intptr_t)rdb != CONN_POOL_FD_INVALID) {
 		redisFree(rdb);
 	}
 }
