@@ -46,6 +46,7 @@ BuildRequires:	pkgconfig(libmnl)
 BuildRequires:	pkgconfig(libnghttp2)
 BuildRequires:	pkgconfig(libsystemd)
 BuildRequires:	pkgconfig(systemd)
+BuildRequires:	pkgconfig(hiredis)
 %if 0%{?fedora} || 0%{?rhel}
 BuildRequires:	softhsm
 %endif
@@ -173,6 +174,13 @@ Requires:	%{name}-libs = %{version}-%{release}
 %description -n python3-libknot
 The package provides Python bindings for the libknot shared library.
 
+%package -n redis-knot
+Summary:	Redis module for Knot DNS.
+Requires:	%{name}-libs = %{version}-%{release}
+
+%description -n redis-knot
+The package provides Redis module for Knot DNS.
+
 %package doc
 Summary:	Documentation for the Knot DNS server
 BuildArch:	noarch
@@ -211,6 +219,7 @@ CFLAGS="%{optflags} -DNDEBUG -Wno-unused"
   --with-storage=/var/lib/knot \
   %{?configure_db_sizes} \
   %{?configure_quic} \
+  --enable-redis=auto \
   --disable-static \
   --enable-dnstap=yes \
   --with-module-dnstap=shared \
@@ -386,6 +395,9 @@ getent passwd knot >/dev/null || \
 %files -n python3-libknot
 %{python3_sitelib}/libknot
 %{python3_sitelib}/libknot-*-info
+
+%files -n redis-knot
+%{_libdir}/knot/redis/knot.so
 
 %files libs
 %license COPYING
