@@ -18,9 +18,13 @@
 #include "redis/type_rrset.h"
 #include "redis/internal.h"
 
-#define register_command(name, cb, rights) RedisModule_CreateCommand(ctx, name, cb, rights, 1, 1, 1) == REDISMODULE_ERR || \
-                                           (cmd = RedisModule_GetCommand(ctx, name)) == NULL || \
-                                           RedisModule_SetCommandInfo(cmd, &cb##_info) == REDISMODULE_ERR
+#define register_command_txt(name, cb, rights) \
+	RedisModule_CreateCommand(ctx, name, cb, rights, 1, 1, 1) == REDISMODULE_ERR || \
+	(cmd = RedisModule_GetCommand(ctx, name)) == NULL || \
+	RedisModule_SetCommandInfo(cmd, &cb##_info) == REDISMODULE_ERR
+
+#define register_command_bin(name, cb, rights) \
+	RedisModule_CreateCommand(ctx, name, cb, rights, 1, 1, 1) == REDISMODULE_ERR
 
 static RedisModuleCommandArg begin_txt_info_args[] = {
 	{"origin",   REDISMODULE_ARG_TYPE_STRING,  -1, NULL, NULL, NULL, REDISMODULE_CMD_ARG_NONE},
@@ -885,35 +889,35 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 	}
 
 	RedisModuleCommand *cmd = NULL;
-	if (register_command("KNOT.ZONE.BEGIN",  zone_begin_txt,  "write fast") ||
-	    register_command("KNOT.ZONE.STORE",  zone_store_txt,  "write fast") ||
-	    register_command("KNOT.ZONE.COMMIT", zone_commit_txt, "write")      ||
-	    register_command("KNOT.ZONE.ABORT",  zone_abort_txt,  "write")      ||
-	    register_command("KNOT.ZONE.LOAD",   zone_load_txt,   "readonly")   ||
-	    register_command("KNOT.ZONE.PURGE",  zone_purge_txt,  "write")      ||
-	    register_command("KNOT.UPD.BEGIN",   upd_begin_txt,   "write fast") ||
-	    register_command("KNOT.UPD.ADD",     upd_add_txt,     "write fast") ||
-	    register_command("KNOT.UPD.REMOVE",  upd_remove_txt,  "write fast") ||
-	    register_command("KNOT.UPD.COMMIT",  upd_commit_txt,  "write")      ||
-	    register_command("KNOT.UPD.ABORT",   upd_abort_txt,   "write")      ||
-	    register_command("KNOT.UPD.DIFF",    upd_diff_txt,    "readonly")   ||
-	    register_command("KNOT.UPD.LOAD",    upd_load_txt,    "readonly")   ||
-	    RedisModule_CreateCommand(ctx, RDB_CMD_ZONE_EXISTS,  zone_exists_bin,   "readonly", 1, 1, 1) == REDISMODULE_ERR ||
-	    RedisModule_CreateCommand(ctx, RDB_CMD_ZONE_BEGIN,   zone_begin_bin,    "write",    1, 1, 1) == REDISMODULE_ERR ||
-	    RedisModule_CreateCommand(ctx, RDB_CMD_ZONE_STORE,   zone_store_bin,    "write",    1, 1, 1) == REDISMODULE_ERR ||
-	    RedisModule_CreateCommand(ctx, RDB_CMD_ZONE_COMMIT,  zone_commit_bin,   "write",    1, 1, 1) == REDISMODULE_ERR ||
-	    RedisModule_CreateCommand(ctx, RDB_CMD_ZONE_ABORT,   zone_abort_bin,    "write",    1, 1, 1) == REDISMODULE_ERR ||
-	    RedisModule_CreateCommand(ctx, RDB_CMD_ZONE_LOAD,    zone_load_bin,     "readonly", 1, 1, 1) == REDISMODULE_ERR ||
-	    RedisModule_CreateCommand(ctx, RDB_CMD_ZONE_PURGE,   zone_purge_bin,    "write",    1, 1, 1) == REDISMODULE_ERR ||
-	    RedisModule_CreateCommand(ctx, RDB_CMD_UPD_BEGIN,    upd_begin_bin,     "write",    1, 1, 1) == REDISMODULE_ERR ||
-	    RedisModule_CreateCommand(ctx, RDB_CMD_UPD_ADD,      upd_add_bin,       "write",    1, 1, 1) == REDISMODULE_ERR ||
-	    RedisModule_CreateCommand(ctx, RDB_CMD_UPD_REMOVE,   upd_remove_bin,    "write",    1, 1, 1) == REDISMODULE_ERR ||
-	    RedisModule_CreateCommand(ctx, RDB_CMD_UPD_COMMIT,   upd_commit_bin,    "write",    1, 1, 1) == REDISMODULE_ERR ||
-	    RedisModule_CreateCommand(ctx, RDB_CMD_UPD_ABORT,    upd_abort_bin,     "write",    1, 1, 1) == REDISMODULE_ERR ||
-	    RedisModule_CreateCommand(ctx, RDB_CMD_UPD_DIFF,     upd_diff_bin,      "readonly", 1, 1, 1) == REDISMODULE_ERR ||
-	    RedisModule_CreateCommand(ctx, RDB_CMD_UPD_LOAD,     upd_load_bin,      "readonly", 1, 1, 1) == REDISMODULE_ERR ||
-	    RedisModule_CreateCommand(ctx, "KNOT_BIN.AOF.RRSET", rrset_aof_rewrite, "write",    1, 1, 1) == REDISMODULE_ERR || // Could use 'internal' with newer Redis.
-	    RedisModule_CreateCommand(ctx, "KNOT_BIN.AOF.DIFF",  diff_aof_rewrite,  "write",    1, 1, 1) == REDISMODULE_ERR)   // Could use 'internal' with newer Redis.
+	if (register_command_txt("KNOT.ZONE.BEGIN",    zone_begin_txt,    "write fast") ||
+	    register_command_txt("KNOT.ZONE.STORE",    zone_store_txt,    "write fast") ||
+	    register_command_txt("KNOT.ZONE.COMMIT",   zone_commit_txt,   "write")      ||
+	    register_command_txt("KNOT.ZONE.ABORT",    zone_abort_txt,    "write")      ||
+	    register_command_txt("KNOT.ZONE.LOAD",     zone_load_txt,     "readonly")   ||
+	    register_command_txt("KNOT.ZONE.PURGE",    zone_purge_txt,    "write")      ||
+	    register_command_txt("KNOT.UPD.BEGIN",     upd_begin_txt,     "write fast") ||
+	    register_command_txt("KNOT.UPD.ADD",       upd_add_txt,       "write fast") ||
+	    register_command_txt("KNOT.UPD.REMOVE",    upd_remove_txt,    "write fast") ||
+	    register_command_txt("KNOT.UPD.COMMIT",    upd_commit_txt,    "write")      ||
+	    register_command_txt("KNOT.UPD.ABORT",     upd_abort_txt,     "write")      ||
+	    register_command_txt("KNOT.UPD.DIFF",      upd_diff_txt,      "readonly")   ||
+	    register_command_txt("KNOT.UPD.LOAD",      upd_load_txt,      "readonly")   ||
+	    register_command_bin(RDB_CMD_ZONE_EXISTS,  zone_exists_bin,   "readonly")   ||
+	    register_command_bin(RDB_CMD_ZONE_BEGIN,   zone_begin_bin,    "write")      ||
+	    register_command_bin(RDB_CMD_ZONE_STORE,   zone_store_bin,    "write")      ||
+	    register_command_bin(RDB_CMD_ZONE_COMMIT,  zone_commit_bin,   "write")      ||
+	    register_command_bin(RDB_CMD_ZONE_ABORT,   zone_abort_bin,    "write")      ||
+	    register_command_bin(RDB_CMD_ZONE_LOAD,    zone_load_bin,     "readonly")   ||
+	    register_command_bin(RDB_CMD_ZONE_PURGE,   zone_purge_bin,    "write")      ||
+	    register_command_bin(RDB_CMD_UPD_BEGIN,    upd_begin_bin,     "write")      ||
+	    register_command_bin(RDB_CMD_UPD_ADD,      upd_add_bin,       "write")      ||
+	    register_command_bin(RDB_CMD_UPD_REMOVE,   upd_remove_bin,    "write")      ||
+	    register_command_bin(RDB_CMD_UPD_COMMIT,   upd_commit_bin,    "write")      ||
+	    register_command_bin(RDB_CMD_UPD_ABORT,    upd_abort_bin,     "write")      ||
+	    register_command_bin(RDB_CMD_UPD_DIFF,     upd_diff_bin,      "readonly")   ||
+	    register_command_bin(RDB_CMD_UPD_LOAD,     upd_load_bin,      "readonly")   ||
+	    register_command_bin("KNOT_BIN.AOF.RRSET", rrset_aof_rewrite, "write")      || // Add "internal" with newer Redis.
+	    register_command_bin("KNOT_BIN.AOF.DIFF",  diff_aof_rewrite,  "write"))        // Add "internal" with newer Redis.
 	{
 		LOAD_ERROR(ctx, "failed to load commands");
 	}
