@@ -22,9 +22,21 @@ struct redisContext *zone_redis_connect(conf_t *conf)
 	return rdb_connect(conf);
 }
 
-void zone_redis_disconnect(struct redisContext *ctx)
+void zone_redis_disconnect(struct redisContext *ctx, bool pool_save)
 {
-	return rdb_disconnect(ctx);
+	return rdb_disconnect(ctx, pool_save);
+}
+
+bool zone_redis_ping(struct redisContext *ctx)
+{
+	if (ctx == NULL) {
+		return false;
+	}
+
+	redisReply *reply = redisCommand(ctx, "ping");
+	bool res = (reply != NULL && reply->type == REDIS_REPLY_STATUS && reply->len == strlen("PONG"));
+	freeReplyObject(reply);
+	return res;
 }
 
 int zone_redis_txn_begin(struct zone_redis_txn *txn, struct redisContext *rdb,
@@ -335,9 +347,14 @@ struct redisContext *zone_redis_connect(conf_t *conf)
 	return NULL;
 }
 
-void zone_redis_disconnect(struct redisContext *ctx)
+void zone_redis_disconnect(struct redisContext *ctx, bool pool_save)
 {
 	return;
+}
+
+bool zone_redis_ping(struct redisContext *ctx)
+{
+	return false;
 }
 
 int zone_redis_txn_begin(struct zone_redis_txn *txn, struct redisContext *rdb,
