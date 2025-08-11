@@ -29,23 +29,9 @@ class Tsig(object):
 
     def __init__(self, name=None, alg=None, key=None):
         if not name:
-            nlabels = random.randint(1, 10)
-
-            self.name = ""
-            for i in range(nlabels):
-                label_len = random.randint(1, 63)
-
-                # Check for maximal dname length (255 B = max fqdn in wire).
-                # 255 = 1 leading byte + 253 + 1 trailing byte.
-                if len(self.name) + 1 + label_len > 253:
-                    break
-
-                # Add label separator.
-                if i > 0:
-                    self.name += "."
-
-                self.name += "".join(random.choice(Tsig.vocabulary)
-                             for x in range(label_len))
+            label_len = random.randint(1, 63)
+            self.name = "".join(random.choice(Tsig.vocabulary)
+                        for x in range(label_len))
         else:
             self.name = str(name)
 
@@ -57,8 +43,8 @@ class Tsig(object):
             self.alg = alg
 
         if not key:
-            self.key = base64.b64encode(os.urandom(Tsig.algs[self.alg])). \
-                       decode('ascii')
+            key_len = random.choice([4, 8, 16, 32])
+            self.key = base64.b64encode(os.urandom(key_len)).decode('ascii')
         else:
             self.key = str(key)
 
