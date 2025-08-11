@@ -511,7 +511,7 @@ load_end:
 	if (!zone_timers_serial_notified(&zone->timers, new_serial)) {
 		zone_schedule_notify(conf, zone, 0);
 	}
-	zone_redis_disconnect(db_ctx);
+	zone_redis_disconnect(db_ctx, true);
 	zone_skip_free(&skip);
 	zone->started = true;
 
@@ -524,7 +524,7 @@ cleanup:
 	zone_update_clear(&up);
 	zone_contents_deep_free(zf_conts);
 	zone_contents_deep_free(journal_conts);
-	zone_redis_disconnect(db_ctx);
+	zone_redis_disconnect(db_ctx, true);
 	zone_skip_free(&skip);
 	zone->started = true;
 
