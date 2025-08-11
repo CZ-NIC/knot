@@ -37,6 +37,7 @@ typedef struct {
 
 extern conn_pool_t *global_conn_pool;
 extern conn_pool_t *global_sessticket_pool; // pool for outgoing QUIC connection session tickets
+extern conn_pool_t *global_redis_pool; // pool for connections to Redis database
 
 /*!
  * \brief Allocate connection pool.
