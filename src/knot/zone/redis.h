@@ -36,7 +36,12 @@ typedef struct {
  * \brief Wrappers to rdb_connect and rdb_disconnect not needing #ifdef ENABLE_REDIS around.
  */
 struct redisContext *zone_redis_connect(conf_t *conf);
-void zone_redis_disconnect(struct redisContext *ctx);
+void zone_redis_disconnect(struct redisContext *ctx, bool pool_save);
+
+/*!
+ * \brief Check if the conection to the DB is still alive.
+ */
+bool zone_redis_ping(struct redisContext *ctx);
 
 /*!
  * \brief Start a writing stransaction into Redis zone database.
