@@ -5,6 +5,16 @@
 
 #pragma once
 
+#define INSTANCE_MIN		1
+#define INSTANCE_MAX		8
+#define TXN_MIN			0
+#define TXN_MAX			8
+#define TXN_MAX_COUNT		(TXN_MAX - TXN_MIN + 1)
+#define TXN_ID_ACTIVE		UINT8_MAX
+
+static uint32_t rdb_default_ttl = 600;
+static uint32_t rdb_event_age = 1200;
+
 typedef struct {
 	const uint8_t *data;
 	uint8_t len;

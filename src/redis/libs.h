@@ -3,6 +3,8 @@
  *  For more information, see <https://www.knot-dns.cz/>
  */
 
+#pragma once
+
 #include "libknot/attribute.h"
 #undef _public_
 #define _public_ _hidden_
