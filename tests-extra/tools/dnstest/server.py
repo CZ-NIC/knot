@@ -1887,10 +1887,11 @@ class Knot(Server):
         s.item_str("catalog-db-max-size", self.catalog_db_size)
         if self.redis is not None:
             tls = random.choice([True, False])
-            if tls:
-                s.item_str("zone-db-tls", "on")
             port = self.redis.tls_port if tls else self.redis.port
             s.item_str("zone-db-listen", self.redis.addr + "@" + str(port))
+            if tls:
+                s.item_str("zone-db-cert-key", self.redis.pin)
+                s.item_str("zone-db-tls", "on")
         s.end()
 
         s.begin("template")

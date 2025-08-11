@@ -1,3 +1,4 @@
+from dnstest.utils import *
 import dnstest.params as params
 import os
 import shutil
@@ -9,6 +10,7 @@ class Redis(object):
         self.addr = addr
         self.port = None
         self.tls_port = None
+        self.pin = None
         self.wrk_dir = wrk_dir
         self.redis_bin = redis_bin
         self.redis_cli = redis_cli
@@ -43,6 +45,9 @@ class Redis(object):
 
             shutil.copy(os.path.join(params.common_data_dir, "cert", "cert.pem"), self.wrk_dir)
             shutil.copy(os.path.join(params.common_data_dir, "cert", "key.pem"), self.wrk_dir)
+            keyfile = os.path.join(self.wrk_dir, "key.pem")
+            out = subprocess.check_output(["certtool", "--infile=" + keyfile, "-k"]).rstrip().decode('ascii')
+            self.pin = ssearch(out, r'pin-sha256:([^\n]*)')
 
     def start(self):
         self.proc = subprocess.Popen([ self.redis_bin, self.conf_file() ])
