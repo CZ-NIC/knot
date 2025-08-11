@@ -707,7 +707,7 @@ static int rdata_add(RedisModuleCtx *ctx, const arg_dname_t *origin, const rdb_t
 }
 
 static int rdata_remove(RedisModuleCtx *ctx, const arg_dname_t *origin, const rdb_txn_t *txn,
-                        const arg_dname_t *owner, int16_t rtype, uint32_t ttl, const knot_rdata_t *rdata)
+                        const arg_dname_t *owner, int16_t rtype, uint32_t *ttl, const knot_rdata_t *rdata)
 {
 	RedisModuleKey *zone_key = find_zone_index(ctx, origin, txn, REDISMODULE_READ | REDISMODULE_WRITE);
 	int zone_keytype = RedisModule_KeyType(zone_key);
@@ -742,6 +742,9 @@ static int rdata_remove(RedisModuleCtx *ctx, const arg_dname_t *origin, const rd
 		RedisModule_CloseKey(rrset_key);
 		RedisModule_ReplyWithError(ctx, "ERR Unable to remove");
 		return -1;
+	}
+	if (*ttl == TTL_EMPTY) {
+		*ttl = rrset->ttl;
 	}
 
 	// if (rrset->rrs.count == 0) {
@@ -2354,13 +2357,13 @@ static int upd_commit(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t 
 		wire_ctx_skip(&w, owner.len);
 		uint16_t rtype = wire_ctx_read_u16(&w);
 
-		RedisModuleKey *diff_key = RedisModule_OpenKey(ctx, el, REDISMODULE_READ);
-		const diff_v *diff = RedisModule_ModuleTypeGetValue(diff_key);
+		RedisModuleKey *diff_key = RedisModule_OpenKey(ctx, el, REDISMODULE_READ | REDISMODULE_WRITE);
+		diff_v *diff = RedisModule_ModuleTypeGetValue(diff_key);
 
 		uint16_t rr_count = diff->rem_rrs.count;
 		knot_rdata_t *rr = diff->rem_rrs.rdata;
 		for (size_t i = 0; i < rr_count; ++i) {
-			rdata_remove(ctx, origin, &zone_txn, &owner, rtype, diff->rem_ttl, diff->rem_rrs.rdata);
+			rdata_remove(ctx, origin, &zone_txn, &owner, rtype, &diff->rem_ttl, diff->rem_rrs.rdata);
 			rr = knot_rdataset_next(rr);
 		}
 
