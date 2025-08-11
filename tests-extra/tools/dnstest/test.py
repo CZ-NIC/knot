@@ -273,6 +273,7 @@ class Test(object):
 
         if self.redis is not None:
             self.redis.port = self._gen_port()
+            self.redis.tls_port = self._gen_port()
             self.redis.gen_confile()
 
         for server in self.servers:

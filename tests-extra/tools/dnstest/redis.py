@@ -1,4 +1,6 @@
+import dnstest.params as params
 import os
+import shutil
 import subprocess
 import time
 
@@ -6,6 +8,7 @@ class Redis(object):
     def __init__(self, addr, wrk_dir, redis_bin, redis_cli, knotso):
         self.addr = addr
         self.port = None
+        self.tls_port = None
         self.wrk_dir = wrk_dir
         self.redis_bin = redis_bin
         self.redis_cli = redis_cli
@@ -25,13 +28,21 @@ class Redis(object):
 
     def gen_confile(self):
         with open(self.conf_file(), "w") as cf:
-            cf.write("bind " + self.addr + os.linesep)
-            cf.write("port " + str(self.port) + os.linesep)
+            cf.write("dir " + self.wrk_dir + os.linesep)
             cf.write("logfile " + self.wrk_file("redis.log") + os.linesep)
             cf.write("loadmodule " + self.knotso + os.linesep)
-            cf.write("dir " + self.wrk_dir + os.linesep)
+            cf.write("bind " + self.addr + os.linesep)
+            cf.write("port " + str(self.port) + os.linesep)
+            cf.write("tls-port " + str(self.tls_port) + os.linesep)
+            cf.write("tls-protocols \"TLSv1.3\"" + os.linesep)
+            cf.write("tls-auth-clients no" + os.linesep)
+            cf.write("tls-key-file key.pem" + os.linesep)
+            cf.write("tls-cert-file cert.pem" + os.linesep)
             if self.addr != "127.0.0.1" and self.addr != "::1":
                 cf.write("protected-mode no " + os.linesep)
+
+            shutil.copy(os.path.join(params.common_data_dir, "cert", "cert.pem"), self.wrk_dir)
+            shutil.copy(os.path.join(params.common_data_dir, "cert", "key.pem"), self.wrk_dir)
 
     def start(self):
         self.proc = subprocess.Popen([ self.redis_bin, self.conf_file() ])
