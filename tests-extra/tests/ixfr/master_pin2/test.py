@@ -56,10 +56,11 @@ masterB.zones[zone.name].serial_modulo = str(-PIN)
 
 t.start()
 
-serials0 = slave.zones_wait(zones)
+slave.zones_wait(zones)
 
 # Align the masters before the testing starts.
 slave.ctl("zone-freeze")
+serials0 = slave.zones_wait(zones)
 masterA.ctl("zone-sign")
 masterB.ctl("zone-sign")
 slave.ctl("zone-thaw")
