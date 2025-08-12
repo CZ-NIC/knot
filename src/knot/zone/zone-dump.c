@@ -80,8 +80,7 @@ static int node_dump_text(zone_node_t *node, void *data)
 	// Zone apex rrsets.
 	if (node->owner == params->origin && !params->dump_rrsig &&
 	    !params->dump_nsec) {
-		apex_node_dump_text(node, params);
-		return KNOT_EOK;
+		return apex_node_dump_text(node, params);
 	}
 
 	// Dump non-apex rrsets.

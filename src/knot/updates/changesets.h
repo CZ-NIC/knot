@@ -275,5 +275,7 @@ int changeset_walk(const changeset_t *changeset, changeset_walk_callback callbac
  * \param changeset Changeset.
  * \param outfile   File to write into.
  * \param color     Use unix tty color metacharacters.
+ * 
+ * \return KNOT_E*
  */
-void changeset_print(const changeset_t *changeset, FILE *outfile, bool color);
+int changeset_print(const changeset_t *changeset, FILE *outfile, bool color);

@@ -241,8 +241,8 @@ int zone_update_add_digest(struct zone_update *update, int algorithm, bool place
 		return KNOT_EINVAL;
 	}
 
-	uint8_t *digest = NULL;
-	size_t dsize = 0;
+	uint8_t zero = 0, *digest = &zero;
+	size_t dsize = sizeof(zero);
 
 	knot_rrset_t exists = node_rrset(update->new_cont->apex, KNOT_RRTYPE_ZONEMD);
 	if (algorithm == ZONE_DIGEST_REMOVE) {
@@ -277,7 +277,9 @@ int zone_update_add_digest(struct zone_update *update, int algorithm, bool place
 	wire_ctx_write(&wire, digest, dsize);
 	assert(wire.error == KNOT_EOK && wire_ctx_available(&wire) == 0);
 
-	free(digest);
+	if (digest != &zero) {
+		free(digest);
+	}
 
 	knot_rrset_init(&zonemd, update->new_cont->apex->owner, KNOT_RRTYPE_ZONEMD,
 	                KNOT_CLASS_IN, soa.ttl);

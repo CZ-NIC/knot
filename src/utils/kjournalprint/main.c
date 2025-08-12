@@ -71,7 +71,7 @@ typedef struct {
 	uint64_t merged_ts;
 } print_params_t;
 
-static void print_changeset(const changeset_t *chs, uint64_t timestamp, print_params_t *params)
+static int print_changeset(const changeset_t *chs, uint64_t timestamp, print_params_t *params)
 {
 	char time_buf[64] = { 0 };
 	(void)knot_time_print(TIME_PRINT_UNIX, timestamp, time_buf, sizeof(time_buf));
@@ -93,7 +93,7 @@ static void print_changeset(const changeset_t *chs, uint64_t timestamp, print_pa
 		       time_buf,
 		       COL_RST(params->color));
 	}
-	changeset_print(chs, stdout, params->color);
+	return changeset_print(chs, stdout, params->color);
 }
 
 typedef struct {
@@ -198,6 +198,7 @@ static int merge_changeset_cb(bool special, const changeset_t *ch, uint64_t time
 static int print_changeset_cb(bool special, const changeset_t *ch, uint64_t timestamp, void *ctx)
 {
 	print_params_t *params = ctx;
+	int ret = KNOT_EOK;
 	if (ch != NULL && params->counter++ >= params->limit) {
 		if (params->merge) {
 			return merge_changeset_cb(special, ch, timestamp, ctx);
@@ -205,13 +206,13 @@ static int print_changeset_cb(bool special, const changeset_t *ch, uint64_t time
 			print_changeset_debugmode(ch, timestamp);
 			params->changes++;
 		} else {
-			print_changeset(ch, timestamp, params);
+			ret = print_changeset(ch, timestamp, params);
 		}
 		if (special && params->debug) {
 			printf("---------------------------------------------\n");
 		}
 	}
-	return KNOT_EOK;
+	return ret;
 }
 
 int print_journal(char *path, knot_dname_t *name, print_params_t *params)
