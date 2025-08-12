@@ -592,10 +592,11 @@ int changeset_walk(const changeset_t *changeset, changeset_walk_callback callbac
 	return KNOT_EOK;
 }
 
-void changeset_print(const changeset_t *changeset, FILE *outfile, bool color)
+int changeset_print(const changeset_t *changeset, FILE *outfile, bool color)
 {
 	size_t buflen = 1024;
 	char *buff = malloc(buflen);
+	int ret = KNOT_EOK;
 
 	knot_dump_style_t style = KNOT_DUMP_STYLE_DEFAULT;
 	style.now = knot_time();
@@ -605,20 +606,25 @@ void changeset_print(const changeset_t *changeset, FILE *outfile, bool color)
 		fprintf(outfile, "%s;; Removed%s\n", style.color, COL_RST(color));
 	}
 	if (changeset->soa_from != NULL && buff != NULL) {
-		(void)knot_rrset_txt_dump(changeset->soa_from, &buff, &buflen, &style);
+		ret = knot_rrset_txt_dump(changeset->soa_from, &buff, &buflen, &style);
 		fprintf(outfile, "%s%s%s", style.color, buff, COL_RST(color));
 	}
-	(void)zone_dump_text(changeset->remove, NULL, outfile, false, style.color);
+	if (ret >= 0 && changeset->remove != NULL) { // Can be NULL if zone-in-journal
+		ret = zone_dump_text(changeset->remove, NULL, outfile, false, style.color);
+	}
 
 	style.color = COL_GRN(color);
 	if (changeset->soa_to != NULL || !zone_contents_is_empty(changeset->add)) {
 		fprintf(outfile, "%s;; Added%s\n", style.color, COL_RST(color));
 	}
-	if (changeset->soa_to != NULL && buff != NULL) {
-		(void)knot_rrset_txt_dump(changeset->soa_to, &buff, &buflen, &style);
+	if (changeset->soa_to != NULL && buff != NULL && ret >= 0) {
+		ret = knot_rrset_txt_dump(changeset->soa_to, &buff, &buflen, &style);
 		fprintf(outfile, "%s%s%s", style.color, buff, COL_RST(color));
 	}
-	(void)zone_dump_text(changeset->add, NULL, outfile, false, style.color);
+	if (ret >= 0) {
+		ret = zone_dump_text(changeset->add, NULL, outfile, false, style.color);
+	}
 
 	free(buff);
+	return ret >= 0 ? KNOT_EOK : ret;
 }
