@@ -58,6 +58,14 @@ t.start()
 
 serials0 = slave.zones_wait(zones)
 
+# Align the masters before the testing starts.
+slave.ctl("zone-freeze")
+masterA.ctl("zone-sign")
+masterB.ctl("zone-sign")
+slave.ctl("zone-thaw")
+
+serials0 = slave.zones_wait(zones, serials0)
+
 for m in [ masterA, masterB ]:
     up = m.update(zone)
     up.add("server.name", 3600, "TXT", m.name)
