@@ -234,7 +234,7 @@ Options
 
 **+**\ [\ **no**\ ]\ **keepopen**
   Keep TCP connection open for the following query if it has the same connection
-  configuration. This applies to +tcp, +tls, and +https operations. The connection
+  configuration. This applies to +tcp, +tls, +https, and +quic operations. The connection
   is considered in the context of a single kdig call only.
 
 **+**\ [\ **no**\ ]\ **tls**
