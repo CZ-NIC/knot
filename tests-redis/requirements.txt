@@ -1,2 +1,2 @@
 rltest
-setuptools
+setuptools<=80.0.0

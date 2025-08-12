@@ -1,2 +1,3 @@
---module ../build/lib/knot/redis/knot.so
+--module ../src/redis/.libs/knot.so
+--redis-port 63790
 --clear-logs

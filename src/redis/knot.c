@@ -28,7 +28,7 @@
 
 static RedisModuleCommandArg begin_txt_info_args[] = {
 	{"origin",   REDISMODULE_ARG_TYPE_STRING,  -1, NULL, NULL, NULL, REDISMODULE_CMD_ARG_NONE},
-	{"instance", REDISMODULE_ARG_TYPE_INTEGER, -1, NULL, NULL, NULL, REDISMODULE_CMD_ARG_OPTIONAL},
+	{"instance", REDISMODULE_ARG_TYPE_INTEGER, -1, NULL, NULL, NULL, REDISMODULE_CMD_ARG_NONE},
 	{ 0 }
 };
 
@@ -37,7 +37,7 @@ static const RedisModuleCommandInfo zone_begin_txt_info = {
 	.summary = "Creates zone editing transaction",
 	.complexity = "O(1)",
 	.since = "7.0.0",
-	.arity = 2,
+	.arity = 3,
 	.args = begin_txt_info_args,
 };
 
