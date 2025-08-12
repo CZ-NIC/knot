@@ -38,7 +38,6 @@ redisContextFuncs redisContextGnuTLSFuncs = {
 static void ctx_deinit(redis_tls_ctx_t *ctx)
 {
 	if (ctx != NULL) {
-		knot_tls_conn_del(ctx->conn);
 		if (ctx->tls != NULL) {
 			knot_creds_free(ctx->tls->creds);
 			knot_tls_ctx_free(ctx->tls);
@@ -229,7 +228,7 @@ redisContext *rdb_connect(conf_t *conf)
 	return rdb;
 }
 
-void rdb_disconnect(redisContext* rdb, bool pool_save)
+void rdb_disconnect(redisContext *rdb, bool pool_save)
 {
 	if (rdb != NULL && pool_save) {
 		struct sockaddr_storage addr = { 0 };
@@ -242,7 +241,6 @@ void rdb_disconnect(redisContext* rdb, bool pool_save)
 	}
 
 	if (rdb != NULL && (intptr_t)rdb != CONN_POOL_FD_INVALID) {
-		// TODO: is anything more needed for TLS case?
 		redisFree(rdb);
 	}
 }
