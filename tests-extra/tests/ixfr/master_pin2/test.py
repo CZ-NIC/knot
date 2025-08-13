@@ -16,6 +16,8 @@ t = Test(address=4, tsig=False)
 
 masterA = t.server("knot", address="127.0.0.2", via=True)
 masterB = t.server("knot", address="127.0.0.3", via=True)
+masterA.notify_delay = "0"
+masterB.notify_delay = "0"
 slave = t.server("knot", address="127.0.0.4", via=True)
 zones = t.zone("example.")
 zone = zones[0]
@@ -56,13 +58,17 @@ masterB.zones[zone.name].serial_modulo = str(-PIN)
 
 t.start()
 
+ma_serials0 = masterA.zones_wait(zones)
+mb_serials0 = masterB.zones_wait(zones)
 slave.zones_wait(zones)
 
 # Align the masters before the testing starts.
-slave.ctl("zone-freeze")
+slave.ctl("zone-freeze", wait=True)
 serials0 = slave.zones_wait(zones)
 masterA.ctl("zone-sign")
 masterB.ctl("zone-sign")
+masterA.zones_wait(zones, ma_serials0)
+masterB.zones_wait(zones, mb_serials0)
 slave.ctl("zone-thaw")
 
 serials0 = slave.zones_wait(zones, serials0)
