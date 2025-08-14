@@ -274,8 +274,8 @@ void zone_timers_sanitize(conf_t *conf, zone_t *zone);
 typedef struct {
 	bool address;     //!< Fallback to next remote address is required.
 	bool remote;      //!< Fallback to next remote server is required.
-	bool trying_last; //!< This master try is for the same server as last time;
-	uint32_t pin_tol; //!< Configured mster pin tolerance (0 for no pin).
+	bool trying_last; //!< This master try is for the same server as last time.
+	uint32_t pin_tol; //!< Configured master pin tolerance (0 for no pin).
 } zone_master_fallback_t;
 
 typedef int (*zone_master_cb)(conf_t *conf, zone_t *zone, const conf_remote_t *remote,
