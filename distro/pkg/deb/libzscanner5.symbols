@@ -1,0 +1,12 @@
+libzscanner.so.5 libzscanner5 #MINVER#
+* Build-Depends-Package: libknot-dev
+ zs_deinit@Base 3.5.0
+ zs_errorname@Base 3.5.0
+ zs_init@Base 3.5.0
+ zs_parse_all@Base 3.5.0
+ zs_parse_record@Base 3.5.0
+ zs_set_input_file@Base 3.5.0
+ zs_set_input_string@Base 3.5.0
+ zs_set_processing@Base 3.5.0
+ zs_set_processing_comment@Base 3.5.0
+ zs_strerror@Base 3.5.0

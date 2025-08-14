@@ -42,9 +42,9 @@ Package: knot
 Architecture: any
 Depends:
  adduser,
- libdnssec9 (= ${binary:Version}),
- libknot15 (= ${binary:Version}),
- libzscanner4 (= ${binary:Version}),
+ libdnssec10 (= ${binary:Version}),
+ libknot16 (= ${binary:Version}),
+ libzscanner5 (= ${binary:Version}),
  ${misc:Depends},
  ${shlibs:Depends},
 Recommends:
@@ -61,10 +61,10 @@ Description: Authoritative domain name server
  registry and hence is well suited to run anything from the root
  zone, the top-level domain, to many smaller standard domain names.
 
-Package: libknot15
+Package: libknot16
 Architecture: any
 Depends:
- libdnssec9 (= ${binary:Version}),
+ libdnssec10 (= ${binary:Version}),
  ${misc:Depends},
  ${shlibs:Depends},
 Section: libs
@@ -79,7 +79,7 @@ Description: DNS shared library from Knot DNS
  This package provides a DNS shared library used by Knot DNS and
  Knot Resolver.
 
-Package: libzscanner4
+Package: libzscanner5
 Architecture: any
 Depends:
  ${misc:Depends},
@@ -96,7 +96,7 @@ Description: DNS zone-parsing shared library from Knot DNS
  This package provides a fast zone parser shared library used by Knot
  DNS and Knot Resolver.
 
-Package: libdnssec9
+Package: libdnssec10
 Architecture: any
 Depends:
  ${misc:Depends},
@@ -116,10 +116,10 @@ Description: DNSSEC shared library from Knot DNS
 Package: libknot-dev
 Architecture: any
 Depends:
- libdnssec9 (= ${binary:Version}),
+ libdnssec10 (= ${binary:Version}),
  libgnutls28-dev,
- libknot15 (= ${binary:Version}),
- libzscanner4 (= ${binary:Version}),
+ libknot16 (= ${binary:Version}),
+ libzscanner5 (= ${binary:Version}),
  ${misc:Depends},
 Section: libdevel
 Description: Knot DNS shared library development files
@@ -135,9 +135,9 @@ Description: Knot DNS shared library development files
 Package: knot-dnsutils
 Architecture: any
 Depends:
- libdnssec9 (= ${binary:Version}),
- libknot15 (= ${binary:Version}),
- libzscanner4 (= ${binary:Version}),
+ libdnssec10 (= ${binary:Version}),
+ libknot16 (= ${binary:Version}),
+ libzscanner5 (= ${binary:Version}),
  ${misc:Depends},
  ${shlibs:Depends},
 Description: DNS clients provided with Knot DNS (kdig, knsupdate)
@@ -162,9 +162,9 @@ Description: DNS clients provided with Knot DNS (kdig, knsupdate)
 Package: knot-dnssecutils
 Architecture: any
 Depends:
- libdnssec9 (= ${binary:Version}),
- libknot15 (= ${binary:Version}),
- libzscanner4 (= ${binary:Version}),
+ libdnssec10 (= ${binary:Version}),
+ libknot16 (= ${binary:Version}),
+ libzscanner5 (= ${binary:Version}),
  ${misc:Depends},
  ${shlibs:Depends},
 Description: DNSSEC tools provided with Knot DNS
@@ -184,9 +184,9 @@ Description: DNSSEC tools provided with Knot DNS
 Package: knot-host
 Architecture: any
 Depends:
- libdnssec9 (= ${binary:Version}),
- libknot15 (= ${binary:Version}),
- libzscanner4 (= ${binary:Version}),
+ libdnssec10 (= ${binary:Version}),
+ libknot16 (= ${binary:Version}),
+ libzscanner5 (= ${binary:Version}),
  ${misc:Depends},
  ${shlibs:Depends},
 Description: Version of 'host' bundled with Knot DNS
@@ -203,9 +203,9 @@ Description: Version of 'host' bundled with Knot DNS
 Package: knot-keymgr
 Architecture: any
 Depends:
- libdnssec9 (= ${binary:Version}),
- libknot15 (= ${binary:Version}),
- libzscanner4 (= ${binary:Version}),
+ libdnssec10 (= ${binary:Version}),
+ libknot16 (= ${binary:Version}),
+ libzscanner5 (= ${binary:Version}),
  ${misc:Depends},
  ${shlibs:Depends},
 Description: Knot DNS key management utility
@@ -289,7 +289,7 @@ Description: Prometheus exporter for Knot DNS
 Package: python3-libknot
 Architecture: all
 Depends:
- libknot15 (= ${binary:Version}),
+ libknot16 (= ${binary:Version}),
  ${misc:Depends},
  ${python3:Depends},
 Section: python
