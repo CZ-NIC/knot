@@ -117,7 +117,7 @@ When listing the filters a command accepts, the letter which is passed into
 The following commands apply to all zones if `ZONE` is left empty.
 
 * `zone-status([ZONE], [FILTERS={"rstefc"}])`
-  + filters: **r**ole, **s**erial, **t**ransaction, **e**vents, **f**reeze, **c**atalog <!-- , **u**nixtime -->
+  + filters: **r**ole, **s**erial, **t**ransaction, **e**vents, **f**reeze, **c**atalog, **u**nixtime
 * `zone-reload([ZONE], [FLAGS={"BF"}])`
   + the `F` flag commands to also reload modules
 * `zone-refresh([ZONE], [FLAGS="B"])`
