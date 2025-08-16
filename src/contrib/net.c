@@ -26,6 +26,7 @@
 #include <sys/uio.h>
 #include <unistd.h>
 
+#include "libknot/attribute.h"
 #include "libknot/errcode.h"
 #include "contrib/macros.h"
 #include "contrib/net.h"
@@ -374,7 +375,7 @@ uint8_t net_cmsg_ecn(struct msghdr *msg)
 
 int net_ecn_set(int sock, int family, uint8_t ecn)
 {
-	int val = ecn;
+	_unused_ int val = ecn;
 	switch (family) {
 	case AF_INET:
 #if defined(__linux__)
