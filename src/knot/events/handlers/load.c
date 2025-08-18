@@ -113,7 +113,7 @@ int event_load(conf_t *conf, zone_t *zone)
 	}
 
 	// Attempt to load changes from database. If fails, load full zone from there later.
-	if (db_instance > 0 && (old_contents_exist || journal_conts != NULL)) {
+	if (db_instance > 0 && (old_contents_exist || journal_conts != NULL) && zone->cat_members == NULL) {
 		uint32_t db_serial = 0;
 		ret = zone_redis_serial(db_ctx, db_instance, zone->name, &db_serial);
 		if (ret == KNOT_EOK && old_contents_exist && db_serial == zone_contents_serial(zone->contents)) {
@@ -121,24 +121,26 @@ int event_load(conf_t *conf, zone_t *zone)
 			goto cleanup;
 		} else if (ret == KNOT_EOK && journal_conts != NULL && db_serial == zone_contents_serial(journal_conts)) {
 			log_zone_info(zone->name, "database is up-to-date with zone-in-journal, serial %u", db_serial);
-			// TODO what kind of handling in this case?
+			assert(!old_contents_exist);
+			db_instance = 0; // skip further DB load as if it isn't configured
 		} else if (ret != KNOT_EOK) {
-			// TODO log
+			log_zone_error(zone->name, "failed to load zone from database (%s)", knot_strerror(ret));
 			goto cleanup; // NOTE this includes the case of KNOT_ENOENT, where DB load is configured but not available
 		}
 
-		// TODO zone->cat_mebers handling???
 		if (old_contents_exist) {
 			ret = zone_update_init(&up, zone, UPDATE_INCREMENTAL);
 		} else {
 			ret = zone_update_from_contents(&up, zone, journal_conts, UPDATE_HYBRID);
 		}
 		if (ret != KNOT_EOK) {
-			// TODO log
+			log_zone_error(zone->name, "failed to load from database (%s)", knot_strerror(ret));
 			goto cleanup;
 		}
 		char err_log[256] = "";
-		ret = zone_redis_load_upd(db_ctx, db_instance, zone->name, zone_contents_serial(up.new_cont), upd_add_rem, &up, err_log);
+		if (db_instance > 0) {
+			ret = zone_redis_load_upd(db_ctx, db_instance, zone->name, zone_contents_serial(up.new_cont), upd_add_rem, &up, err_log);
+		}
 		if (ret == KNOT_EOK) {
 			goto load_end; // all OK, take the shortcut!
 		} else if (err_log[0] != '\0') {
