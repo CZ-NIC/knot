@@ -17,30 +17,33 @@ typedef struct {
 
 static RedisModuleType *rdb_diff_t;
 
-static void *diff_load(RedisModuleIO *rdb, int encver)
+static void *diff_load(RedisModuleIO *io, int encver)
 {
 	if (encver != DIFF_ENCODING_VERSION) {
-		// TODO ignore or version compatibility layers
+		RedisModule_LogIOError(io, REDISMODULE_LOGLEVEL_WARNING, RDB_ECOMPAT);
 		return NULL;
 	}
 
 	diff_v *diff = RedisModule_Alloc(sizeof(diff_v));
 	if (diff == NULL) {
+		RedisModule_LogIOError(io, REDISMODULE_LOGLEVEL_WARNING, RDB_EALLOC);
 		return NULL;
 	}
 	size_t len = 0;
-	diff->add_rrs.count = RedisModule_LoadUnsigned(rdb);
-	diff->add_rrs.rdata = (knot_rdata_t *)RedisModule_LoadStringBuffer(rdb, &len);
+	diff->add_rrs.count = RedisModule_LoadUnsigned(io);
+	diff->add_rrs.rdata = (knot_rdata_t *)RedisModule_LoadStringBuffer(io, &len);
 	if (len > UINT32_MAX) {
+		RedisModule_LogIOError(io, REDISMODULE_LOGLEVEL_WARNING, RDB_EMALF);
 		RedisModule_Free(diff->add_rrs.rdata);
 		RedisModule_Free(diff);
 		return NULL;
 	}
 	diff->add_rrs.size = len;
 
-	diff->rem_rrs.count = RedisModule_LoadUnsigned(rdb);
-	diff->rem_rrs.rdata = (knot_rdata_t *)RedisModule_LoadStringBuffer(rdb, &len);
+	diff->rem_rrs.count = RedisModule_LoadUnsigned(io);
+	diff->rem_rrs.rdata = (knot_rdata_t *)RedisModule_LoadStringBuffer(io, &len);
 	if (len > UINT32_MAX) {
+		RedisModule_LogIOError(io, REDISMODULE_LOGLEVEL_WARNING, RDB_EMALF);
 		RedisModule_Free(diff->add_rrs.rdata);
 		RedisModule_Free(diff->rem_rrs.rdata);
 		RedisModule_Free(diff);
@@ -48,24 +51,24 @@ static void *diff_load(RedisModuleIO *rdb, int encver)
 	}
 	diff->rem_rrs.size = len;
 
-	diff->add_ttl = RedisModule_LoadUnsigned(rdb);
-	diff->rem_ttl = RedisModule_LoadUnsigned(rdb);
+	diff->add_ttl = RedisModule_LoadUnsigned(io);
+	diff->rem_ttl = RedisModule_LoadUnsigned(io);
 
 	return diff;
 }
 
-static void diff_save(RedisModuleIO *rdb, void *value)
+static void diff_save(RedisModuleIO *io, void *value)
 {
 	diff_v *diff = (diff_v *)value;
 
-	RedisModule_SaveUnsigned(rdb, diff->add_rrs.count);
-	RedisModule_SaveStringBuffer(rdb, (const char *)diff->add_rrs.rdata, diff->add_rrs.size);
+	RedisModule_SaveUnsigned(io, diff->add_rrs.count);
+	RedisModule_SaveStringBuffer(io, (const char *)diff->add_rrs.rdata, diff->add_rrs.size);
 
-	RedisModule_SaveUnsigned(rdb, diff->rem_rrs.count);
-	RedisModule_SaveStringBuffer(rdb, (const char *)diff->rem_rrs.rdata, diff->rem_rrs.size);
+	RedisModule_SaveUnsigned(io, diff->rem_rrs.count);
+	RedisModule_SaveStringBuffer(io, (const char *)diff->rem_rrs.rdata, diff->rem_rrs.size);
 
-	RedisModule_SaveUnsigned(rdb, diff->add_ttl);
-	RedisModule_SaveUnsigned(rdb, diff->rem_ttl);
+	RedisModule_SaveUnsigned(io, diff->add_ttl);
+	RedisModule_SaveUnsigned(io, diff->rem_ttl);
 }
 
 static size_t diff_mem_usage(const void *value)
@@ -77,12 +80,12 @@ static size_t diff_mem_usage(const void *value)
 	return sizeof(*diff) + diff->add_rrs.size + diff->rem_rrs.size;
 }
 
-static void diff_rewrite(RedisModuleIO *aof, RedisModuleString *key, void *value)
+static void diff_rewrite(RedisModuleIO *io, RedisModuleString *key, void *value)
 {
 	size_t key_strlen = 0;
 	const diff_v *diff = (const diff_v *)value;
 	const uint8_t *key_str = (const uint8_t *)RedisModule_StringPtrLen(key, &key_strlen);
-	RedisModule_EmitAOF(aof, "KNOT_BIN.AOF.DIFF", "blblbll",
+	RedisModule_EmitAOF(io, "KNOT_BIN.AOF.DIFF", "blblbll",
 	                    key_str, key_strlen,
 	                    (long long)diff->add_rrs.count,
 	                    diff->add_rrs.rdata, (long long)diff->add_rrs.size,
@@ -108,7 +111,7 @@ static int diff_aof_rewrite(RedisModuleCtx *ctx, RedisModuleString **argv, int a
 
 	diff_v *diff = RedisModule_Calloc(1, sizeof(diff_v));
 	if (diff == NULL) {
-		return RedisModule_ReplyWithError(ctx, "ERR Cannot allocate memory");
+		return RedisModule_ReplyWithError(ctx, RDB_EALLOC);
 	}
 
 	RedisModuleKey *diff_key = RedisModule_OpenKey(ctx, argv[1], REDISMODULE_READ | REDISMODULE_WRITE);
@@ -117,10 +120,10 @@ static int diff_aof_rewrite(RedisModuleCtx *ctx, RedisModuleString **argv, int a
 	int ret = RedisModule_StringToLongLong(argv[2], &add_rrs_count_val);
 	if (ret != REDISMODULE_OK) {
 		RedisModule_CloseKey(diff_key);
-		return RedisModule_ReplyWithError(ctx, "ERR Not a number");
+		return RedisModule_ReplyWithError(ctx, RDB_EMALF);
 	} else if (add_rrs_count_val < 0 || add_rrs_count_val > UINT16_MAX) {
 		RedisModule_CloseKey(diff_key);
-		return RedisModule_ReplyWithError(ctx, "ERR Value out of range");
+		return RedisModule_ReplyWithError(ctx, RDB_EMALF);
 	}
 	diff->add_rrs.count = add_rrs_count_val;
 
@@ -128,7 +131,7 @@ static int diff_aof_rewrite(RedisModuleCtx *ctx, RedisModuleString **argv, int a
 	diff->add_rrs.rdata = (knot_rdata_t *)RedisModule_StringPtrLen(argv[3], &add_rrs_len);
 	if (add_rrs_len > UINT32_MAX) {
 		RedisModule_CloseKey(diff_key);
-		return RedisModule_ReplyWithError(ctx, "ERR Add rrset is too long");
+		return RedisModule_ReplyWithError(ctx, RDB_EMALF);
 	}
 	diff->add_rrs.size = add_rrs_len;
 
@@ -136,10 +139,10 @@ static int diff_aof_rewrite(RedisModuleCtx *ctx, RedisModuleString **argv, int a
 	ret = RedisModule_StringToLongLong(argv[4], &rem_rrs_count_val);
 	if (ret != REDISMODULE_OK) {
 		RedisModule_CloseKey(diff_key);
-		return RedisModule_ReplyWithError(ctx, "ERR Not a number");
+		return RedisModule_ReplyWithError(ctx, RDB_EMALF);
 	} else if (rem_rrs_count_val < 0 || rem_rrs_count_val > UINT16_MAX) {
 		RedisModule_CloseKey(diff_key);
-		return RedisModule_ReplyWithError(ctx, "ERR Value out of range");
+		return RedisModule_ReplyWithError(ctx, RDB_EMALF);
 	}
 	diff->rem_rrs.count = rem_rrs_count_val;
 
@@ -147,7 +150,7 @@ static int diff_aof_rewrite(RedisModuleCtx *ctx, RedisModuleString **argv, int a
 	diff->rem_rrs.rdata = (knot_rdata_t *)RedisModule_StringPtrLen(argv[5], &rem_rrs_len);
 	if (rem_rrs_len > UINT32_MAX) {
 		RedisModule_CloseKey(diff_key);
-		return RedisModule_ReplyWithError(ctx, "ERR Remove rrset is too long");
+		return RedisModule_ReplyWithError(ctx, RDB_EMALF);
 	}
 	diff->rem_rrs.size = rem_rrs_len;
 
@@ -155,10 +158,10 @@ static int diff_aof_rewrite(RedisModuleCtx *ctx, RedisModuleString **argv, int a
 	ret = RedisModule_StringToLongLong(argv[6], &ttl_val);
 	if (ret != REDISMODULE_OK) {
 		RedisModule_CloseKey(diff_key);
-		return RedisModule_ReplyWithError(ctx, "ERR Not a number");
+		return RedisModule_ReplyWithError(ctx, RDB_EMALF);
 	} else if (ttl_val < 0 || ttl_val > UINT32_MAX) {
 		RedisModule_CloseKey(diff_key);
-		return RedisModule_ReplyWithError(ctx, "ERR Value out of range");
+		return RedisModule_ReplyWithError(ctx, RDB_EMALF);
 	}
 	diff->add_ttl = ttl_val;
 
@@ -166,10 +169,10 @@ static int diff_aof_rewrite(RedisModuleCtx *ctx, RedisModuleString **argv, int a
 	ret = RedisModule_StringToLongLong(argv[7], &ttl_val);
 	if (ret != REDISMODULE_OK) {
 		RedisModule_CloseKey(diff_key);
-		return RedisModule_ReplyWithError(ctx, "ERR Not a number");
+		return RedisModule_ReplyWithError(ctx, RDB_EMALF);
 	} else if (ttl_val < 0 || ttl_val > UINT32_MAX) {
 		RedisModule_CloseKey(diff_key);
-		return RedisModule_ReplyWithError(ctx, "ERR Value out of range");
+		return RedisModule_ReplyWithError(ctx, RDB_EMALF);
 	}
 	diff->rem_ttl = ttl_val;
 

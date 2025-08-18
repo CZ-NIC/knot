@@ -7,6 +7,7 @@ if ENABLE_REDIS_MODULE
 pkglib_LTLIBRARIES = knot.la
 knot_la_SOURCES = \
         arg.h \
+        error.h \
         internal.h \
         knot.c \
         knot.h \

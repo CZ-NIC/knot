@@ -12,6 +12,7 @@
 #define REDISMODULE_MAIN // Fixes loading error undefined symbol: RedisModule_ReplySetArrayLength.
 #include "contrib/redis/redismodule.h"
 #include "redis/knot.h"
+#include "redis/error.h"
 #include "redis/libs.h"
 #include "redis/arg.h"
 #include "redis/type_diff.h"

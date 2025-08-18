@@ -47,7 +47,7 @@ typedef struct {
 	size_t len; \
 	const uint8_t *ptr = (const uint8_t *)RedisModule_StringPtrLen(arg, &len); \
 	if (len != 1 || ptr[0] < INSTANCE_MIN || ptr[0] > INSTANCE_MAX) { \
-		return RedisModule_ReplyWithError(ctx, "ERR invalid instance"); \
+		return RedisModule_ReplyWithError(ctx, RDB_EINST); \
 	} \
 	out.instance = ptr[0]; \
 	out.id = TXN_ID_ACTIVE; \
@@ -57,7 +57,7 @@ typedef struct {
 	size_t len; \
 	const uint8_t *ptr = (const uint8_t *)RedisModule_StringPtrLen(arg, &len); \
 	if (len != 1 || ptr[0] < '0' + INSTANCE_MIN || ptr[0] > '0' + INSTANCE_MAX) { \
-		return RedisModule_ReplyWithError(ctx, "ERR invalid instance"); \
+		return RedisModule_ReplyWithError(ctx, RDB_EINST); \
 	} \
 	out.instance = ptr[0] - '0'; \
 	out.id = TXN_ID_ACTIVE; \
@@ -68,7 +68,7 @@ typedef struct {
 	const uint8_t *ptr = (const uint8_t *)RedisModule_StringPtrLen(arg, &len); \
 	if (len != 2 || ptr[0] < INSTANCE_MIN || ptr[0] > INSTANCE_MAX  \
 	             || ptr[1] < TXN_MIN || ptr[1] > TXN_MAX) { \
-		return RedisModule_ReplyWithError(ctx, "ERR invalid transaction"); \
+		return RedisModule_ReplyWithError(ctx, RDB_ETXN); \
 	} \
 	memcpy(&out, ptr, len); \
 }
@@ -78,7 +78,7 @@ typedef struct {
 	const char *ptr = RedisModule_StringPtrLen(arg, &len); \
 	if (len != 2 || ptr[0] < '0' + INSTANCE_MIN || ptr[0] > '0' + INSTANCE_MAX  \
 	             || ptr[1] < '0' + TXN_MIN || ptr[1] > '0' + TXN_MAX) { \
-		return RedisModule_ReplyWithError((ctx), "ERR invalid transaction"); \
+		return RedisModule_ReplyWithError((ctx), RDB_ETXN); \
 	} \
 	out.instance = ptr[0] - '0'; \
 	out.id = ptr[1] - '0'; \
@@ -91,17 +91,17 @@ typedef struct {
 	switch (len) { \
 	case 2: \
 		if (ptr[1] < TXN_MIN || ptr[1] > TXN_MAX) { \
-			return RedisModule_ReplyWithError((ctx), "ERR invalid transaction"); \
+			return RedisModule_ReplyWithError((ctx), RDB_ETXN); \
 		} \
 		out.id = ptr[1]; \
 	case 1: /* FALLTHROUGH */ \
 		if (ptr[0] < INSTANCE_MIN || ptr[0] > INSTANCE_MAX) { \
-			return RedisModule_ReplyWithError(ctx, "ERR invalid instance"); \
+			return RedisModule_ReplyWithError(ctx, RDB_EINST); \
 		} \
 		out.instance = ptr[0]; \
 		break; \
 	default: \
-		return RedisModule_ReplyWithError(ctx, "ERR invalid transaction"); \
+		return RedisModule_ReplyWithError(ctx, RDB_ETXN); \
 	} \
 }
 
@@ -112,17 +112,17 @@ typedef struct {
 	switch (len) { \
 	case 2: \
 		if (ptr[1] < '0' - TXN_MIN || ptr[1] > '0' + TXN_MAX) { \
-			return RedisModule_ReplyWithError((ctx), "ERR invalid transaction"); \
+			return RedisModule_ReplyWithError((ctx), RDB_ETXN); \
 		} \
 		out.id = ptr[1] - '0'; \
 	case 1: /* FALLTHROUGH */ \
 		if (ptr[0] < '0' + INSTANCE_MIN || ptr[0] > '0' + INSTANCE_MAX) { \
-			return RedisModule_ReplyWithError(ctx, "ERR invalid instance"); \
+			return RedisModule_ReplyWithError(ctx, RDB_EINST); \
 		} \
 		out.instance = ptr[0] - '0'; \
 		break; \
 	default: \
-		return RedisModule_ReplyWithError(ctx, "ERR invalid transaction"); \
+		return RedisModule_ReplyWithError(ctx, RDB_ETXN); \
 	} \
 }
 

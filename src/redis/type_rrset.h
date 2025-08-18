@@ -15,40 +15,42 @@ typedef struct {
 
 static RedisModuleType *rdb_rrset_t;
 
-static void *rrset_load(RedisModuleIO *rdb, int encver)
+static void *rrset_load(RedisModuleIO *io, int encver)
 {
 	if (encver != RRSET_ENCODING_VERSION) {
-		// TODO ignore or version compatibility layers
+		RedisModule_LogIOError(io, REDISMODULE_LOGLEVEL_WARNING, RDB_ECOMPAT);
 		return NULL;
 	}
 
 	rrset_v *rrset = RedisModule_Alloc(sizeof(rrset_v));
 	if (rrset == NULL) {
+		RedisModule_LogIOError(io, REDISMODULE_LOGLEVEL_WARNING, RDB_EALLOC);
 		return NULL;
 	}
 	size_t len = 0;
-	rrset->rrs.count = RedisModule_LoadUnsigned(rdb);
-	rrset->rrs.rdata = (knot_rdata_t *)RedisModule_LoadStringBuffer(rdb, &len);
+	rrset->rrs.count = RedisModule_LoadUnsigned(io);
+	rrset->rrs.rdata = (knot_rdata_t *)RedisModule_LoadStringBuffer(io, &len);
 	if (len > UINT32_MAX) {
+		RedisModule_LogIOError(io, REDISMODULE_LOGLEVEL_WARNING, RDB_EMALF);
 		RedisModule_Free(rrset->rrs.rdata);
 		RedisModule_Free(rrset);
 		return NULL;
 	}
 	rrset->rrs.size = len;
 
-	rrset->ttl = RedisModule_LoadUnsigned(rdb);
+	rrset->ttl = RedisModule_LoadUnsigned(io);
 
 	return rrset;
 }
 
-static void rrset_save(RedisModuleIO *rdb, void *value)
+static void rrset_save(RedisModuleIO *io, void *value)
 {
 	rrset_v *rrset = (rrset_v *)value;
 
-	RedisModule_SaveUnsigned(rdb, rrset->rrs.count);
-	RedisModule_SaveStringBuffer(rdb, (const char *)rrset->rrs.rdata, rrset->rrs.size);
+	RedisModule_SaveUnsigned(io, rrset->rrs.count);
+	RedisModule_SaveStringBuffer(io, (const char *)rrset->rrs.rdata, rrset->rrs.size);
 
-	RedisModule_SaveUnsigned(rdb, rrset->ttl);
+	RedisModule_SaveUnsigned(io, rrset->ttl);
 }
 
 static size_t rrset_mem_usage(const void *value)
@@ -60,12 +62,12 @@ static size_t rrset_mem_usage(const void *value)
 	return sizeof(*rrset) + rrset->rrs.size;
 }
 
-static void rrset_rewrite(RedisModuleIO *aof, RedisModuleString *key, void *value)
+static void rrset_rewrite(RedisModuleIO *io, RedisModuleString *key, void *value)
 {
 	size_t key_strlen = 0;
 	const rrset_v *rrset = (const rrset_v *)value;
 	const uint8_t *key_str = (const uint8_t *)RedisModule_StringPtrLen(key, &key_strlen);
-	RedisModule_EmitAOF(aof, "KNOT_BIN.AOF.RRSET", "blbl",
+	RedisModule_EmitAOF(io, "KNOT_BIN.AOF.RRSET", "blbl",
 	                    key_str, key_strlen,
 	                    (long long)rrset->rrs.count,
 	                    rrset->rrs.rdata, rrset->rrs.size,
@@ -87,7 +89,7 @@ static int rrset_aof_rewrite(RedisModuleCtx *ctx, RedisModuleString **argv, int 
 
 	rrset_v *rrset = RedisModule_Calloc(1, sizeof(rrset_v));
 	if (rrset == NULL) {
-		return RedisModule_ReplyWithError(ctx, "ERR Cannot allocate memory");
+		return RedisModule_ReplyWithError(ctx, RDB_EALLOC);
 	}
 
 	RedisModuleKey *rrset_key = RedisModule_OpenKey(ctx, argv[1], REDISMODULE_READ | REDISMODULE_WRITE);
@@ -96,10 +98,10 @@ static int rrset_aof_rewrite(RedisModuleCtx *ctx, RedisModuleString **argv, int 
 	int ret = RedisModule_StringToLongLong(argv[3], &count_val);
 	if (ret != REDISMODULE_OK) {
 		RedisModule_CloseKey(rrset_key);
-		return RedisModule_ReplyWithError(ctx, "ERR Not a number");
+		return RedisModule_ReplyWithError(ctx, RDB_EMALF);
 	} else if (count_val < 0 || count_val > UINT16_MAX) {
 		RedisModule_CloseKey(rrset_key);
-		return RedisModule_ReplyWithError(ctx, "ERR Value out of range");
+		return RedisModule_ReplyWithError(ctx, RDB_EMALF);
 	}
 	rrset->rrs.count = count_val;
 
@@ -118,10 +120,10 @@ static int rrset_aof_rewrite(RedisModuleCtx *ctx, RedisModuleString **argv, int 
 	ret = RedisModule_StringToLongLong(argv[2], &ttl_val);
 	if (ret != REDISMODULE_OK) {
 		RedisModule_CloseKey(rrset_key);
-		return RedisModule_ReplyWithError(ctx, "ERR Not a number");
+		return RedisModule_ReplyWithError(ctx, RDB_EMALF);
 	} else if (ttl_val < 0 || ttl_val > UINT32_MAX) {
 		RedisModule_CloseKey(rrset_key);
-		return RedisModule_ReplyWithError(ctx, "ERR Value out of range");
+		return RedisModule_ReplyWithError(ctx, RDB_EMALF);
 	}
 	rrset->ttl = ttl_val;
 
