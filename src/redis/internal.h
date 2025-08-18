@@ -45,13 +45,14 @@
 
 typedef enum {
 	EVENT     = 1, // Keep synchronized with RDB_EVENT_KEY!
-	ZONE_META = 2,
-	ZONE      = 3,
-	RRSET     = 4,
-	UPD_META  = 5,
-	UPD_TMP   = 6,
-	UPD       = 7,
-	DIFF      = 8,
+	ZONES     = 2,
+	ZONE_META = 3,
+	ZONE      = 4,
+	RRSET     = 5,
+	UPD_META  = 6,
+	UPD_TMP   = 7,
+	UPD       = 8,
+	DIFF      = 9,
 } rdb_type_t;
 
 typedef struct {
@@ -190,6 +191,26 @@ static int commit_event(RedisModuleCtx *ctx, rdb_event_t type, const arg_dname_t
 	}
 
 	return KNOT_EOK;
+}
+
+static index_k find_zones_index(RedisModuleCtx *ctx, int rights)
+{
+	static const uint8_t prefix = ZONES;
+	RedisModule_Assert(ctx != NULL);
+
+	char buf[RDB_PREFIX_LEN + 1];
+
+	wire_ctx_t w = wire_ctx_init((uint8_t *)buf, sizeof(buf));
+	wire_ctx_write(&w, RDB_PREFIX, RDB_PREFIX_LEN);
+	wire_ctx_write(&w, &prefix, sizeof(prefix));
+	RedisModule_Assert(w.error == KNOT_EOK);
+
+	RedisModuleString *keyname = RedisModule_CreateString(ctx, buf, wire_ctx_offset(&w));
+
+	index_k key = RedisModule_OpenKey(ctx, keyname, rights);
+	RedisModule_FreeString(ctx, keyname);
+
+	return key;
 }
 
 static index_k find_zone_index(RedisModuleCtx *ctx, const arg_dname_t *origin, const rdb_txn_t *txn, int rights)
@@ -1107,9 +1128,45 @@ static void zone_purge(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t
 		return;
 	}
 
+	index_k zones_index = find_zones_index(ctx, REDISMODULE_READ | REDISMODULE_WRITE);
+	RedisModuleString *zone_name = RedisModule_CreateString(ctx, (const char *)origin->data, origin->len);
+	if (RedisModule_ZsetRem(zones_index, zone_name, NULL) != REDISMODULE_OK) {
+		RedisModule_FreeString(ctx, zone_name);
+		return;
+	}
+	RedisModule_FreeString(ctx, zone_name);
+
 	commit_event(ctx, RDB_EVENT_PURGE, origin, txn->instance, serial);
 
 	RedisModule_ReplyWithSimpleString(ctx, RDB_RETURN_OK);
+}
+
+static void zone_list(RedisModuleCtx *ctx, bool txt)
+{
+	index_k zones_index = find_zones_index(ctx, REDISMODULE_READ);
+	if (zones_index == NULL) {
+		RedisModule_ReplyWithEmptyArray(ctx);
+		return;
+	}
+
+	size_t count = 0;
+	RedisModule_ReplyWithArray(ctx, REDISMODULE_POSTPONED_ARRAY_LEN);
+	foreach_in_zset(zones_index) {
+		RedisModuleString *zone_name = RedisModule_ZsetRangeCurrentElement(zones_index, NULL);
+		if (txt) {
+			size_t len;
+			const char *dname = RedisModule_StringPtrLen(zone_name, &len);
+			char buf[KNOT_DNAME_TXT_MAXLEN];
+			if (knot_dname_to_str(buf, (knot_dname_t *)dname, KNOT_DNAME_TXT_MAXLEN) == NULL) {
+				continue;
+			}
+			RedisModule_ReplyWithCString(ctx, buf);
+		} else {
+			RedisModule_ReplyWithString(ctx, zone_name);
+		}
+		++count;
+	}
+	RedisModule_ReplySetArrayLength(ctx, count);
 }
 
 static int zone_meta_active_exchange(RedisModuleCtx *ctx, zone_meta_k key, rdb_txn_t *txn, const arg_dname_t *origin)
@@ -1194,6 +1251,15 @@ static void zone_commit(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_
 	if (ret != KNOT_EOK) {
 		return;
 	}
+
+	index_k zones_index = find_zones_index(ctx, REDISMODULE_READ | REDISMODULE_WRITE);
+	RedisModuleString *zone_name = RedisModule_CreateString(ctx, (const char *)origin->data, origin->len);
+	int flags = REDISMODULE_ZADD_NX;
+	if (RedisModule_ZsetAdd(zones_index, .0, zone_name, &flags) != REDISMODULE_OK) {
+		RedisModule_FreeString(ctx, zone_name);
+		return;
+	}
+	RedisModule_FreeString(ctx, zone_name);
 
 	ret = commit_event(ctx, RDB_EVENT_ZONE, origin, txn->instance, serial);
 	if (ret != KNOT_EOK) {
