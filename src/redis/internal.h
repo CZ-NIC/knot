@@ -1004,11 +1004,37 @@ static void zone_store_txt_format(RedisModuleCtx *ctx, const arg_dname_t *origin
 	RedisModule_ReplyWithSimpleString(ctx, RDB_RETURN_OK);
 }
 
-static int zone_purge(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t *txn)
+static int zone_meta_release(RedisModuleCtx *ctx, rdb_txn_t *txn, const arg_dname_t *origin)
+{
+	RedisModuleString *txn_k = zone_meta_keyname_construct(ctx, origin, txn->instance);
+	zone_meta_k key = RedisModule_OpenKey(ctx, txn_k, REDISMODULE_READ | REDISMODULE_WRITE);
+	RedisModule_FreeString(ctx, txn_k);
+	if (key == NULL || RedisModule_KeyType(key) != REDISMODULE_KEYTYPE_STRING) {
+		RedisModule_CloseKey(key);
+		return KNOT_EEXIST;
+	}
+
+	size_t len = 0;
+	zone_meta_storage_t *meta = (zone_meta_storage_t *)RedisModule_StringDMA(key, &len, REDISMODULE_READ | REDISMODULE_WRITE);
+	if (len != sizeof(*meta)) {
+		RedisModule_CloseKey(key);
+		RedisModule_ReplyWithError(ctx, "ERR corrupted metadata");
+		return KNOT_EINVAL;
+	}
+	if (meta->active == txn->id) {
+		meta->active = ZONE_META_INACTIVE;
+	}
+	meta->lock[txn->id] = 0;
+	RedisModule_CloseKey(key);
+
+	return KNOT_EOK;
+}
+
+static void zone_purge(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t *txn)
 {
 	if (set_active_transaction(ctx, origin, txn) != KNOT_EOK) {
 		RedisModule_ReplyWithError(ctx, "ERR not active zone");
-		return KNOT_EEXIST;
+		return;
 	}
 
 	RedisModuleString *soa_rrset_keyname = rrset_keyname_construct(ctx, txn, origin, origin, KNOT_RRTYPE_SOA);
@@ -1016,15 +1042,14 @@ static int zone_purge(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t 
 	if (soa_rrset_key == NULL) {
 		RedisModule_CloseKey(soa_rrset_key);
 		RedisModule_ReplyWithError(ctx, "ERR missing SOA rrset");
-		return KNOT_EACCES;
+		return;
 	}
 	RedisModule_FreeString(ctx, soa_rrset_keyname);
 	rrset_v *rrset = RedisModule_ModuleTypeGetValue(soa_rrset_key);
 	if (rrset == NULL) {
 		RedisModule_CloseKey(soa_rrset_key);
-		RedisModule_Log(ctx, REDISMODULE_LOGLEVEL_WARNING, "ERR missing SOA rrset");
 		RedisModule_ReplyWithError(ctx, "ERR missing SOA rrset");
-		return KNOT_EACCES;
+		return;
 	}
 	uint32_t serial = knot_soa_serial(rrset->rrs.rdata);
 	RedisModule_CloseKey(soa_rrset_key);
@@ -1046,7 +1071,7 @@ static int zone_purge(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t 
 		}
 		if (soa_count != 1) {
 			RedisModule_ReplyWithError(ctx, "ERR malformed SOA");
-			return KNOT_EINVAL;
+			return;
 		}
 
 		RedisModuleKey *soa_diff_key = RedisModule_OpenKey(ctx, soa_diff_keyname, REDISMODULE_READ);
@@ -1074,23 +1099,14 @@ static int zone_purge(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t 
 		upd_index_key = find_commited_upd_index(ctx, origin, txn, serial, REDISMODULE_READ | REDISMODULE_WRITE);
 	}
 
-	RedisModuleString *txn_k = zone_meta_keyname_construct(ctx, origin, txn->instance);
-	zone_meta_k key = RedisModule_OpenKey(ctx, txn_k, REDISMODULE_READ | REDISMODULE_WRITE);
-	RedisModule_FreeString(ctx, txn_k);
-	if (key == NULL || RedisModule_KeyType(key) != REDISMODULE_KEYTYPE_STRING) {
-		RedisModule_CloseKey(key);
-		return REDISMODULE_ERR;
+	if (zone_meta_release(ctx, txn, origin) != KNOT_EOK) {
+		RedisModule_ReplyWithError(ctx, "ERR corrupted metadata");
+		return;
 	}
-
-	size_t len = 0;
-	zone_meta_storage_t *meta = (zone_meta_storage_t *)RedisModule_StringDMA(key, &len, REDISMODULE_READ);
-	meta->active = ZONE_META_INACTIVE;
-	meta->lock[txn->id] = 0;
-	RedisModule_CloseKey(key);
 
 	commit_event(ctx, RDB_EVENT_PURGE, origin, txn->instance, serial);
 
-	return RedisModule_ReplyWithSimpleString(ctx, RDB_RETURN_OK);
+	RedisModule_ReplyWithSimpleString(ctx, RDB_RETURN_OK);
 }
 
 static int zone_meta_active_exchange(RedisModuleCtx *ctx, zone_meta_k key, rdb_txn_t *txn, const arg_dname_t *origin)
@@ -1108,7 +1124,7 @@ static int zone_meta_active_exchange(RedisModuleCtx *ctx, zone_meta_k key, rdb_t
 			.instance = txn->instance,
 			.id = active_old
 		};
-		ret = zone_purge(ctx, origin, &txn_old);
+		zone_purge(ctx, origin, &txn_old);
 		meta->lock[active_old] = 0;
 	}
 	meta->active = txn->id;

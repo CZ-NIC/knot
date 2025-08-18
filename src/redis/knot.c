@@ -403,7 +403,8 @@ static int zone_purge_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int arg
 	rdb_txn_t txn;
 	ARG_INST_TXT(argv[2], txn);
 
-	return zone_purge(ctx, &origin, &txn);
+	zone_purge(ctx, &origin, &txn);
+	return REDISMODULE_OK;
 }
 
 static int zone_purge_bin(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
@@ -418,7 +419,8 @@ static int zone_purge_bin(RedisModuleCtx *ctx, RedisModuleString **argv, int arg
 	rdb_txn_t txn;
 	ARG_INST(argv[2], txn);
 
-	return zone_purge(ctx, &origin, &txn);
+	zone_purge(ctx, &origin, &txn);
+	return REDISMODULE_OK;
 }
 
 static int upd_begin_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
