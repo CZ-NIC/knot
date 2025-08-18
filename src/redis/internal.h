@@ -495,7 +495,7 @@ static zone_meta_k zone_meta_key_get(RedisModuleCtx *ctx, rdb_txn_t *txn, const 
 		RedisModule_FreeString(ctx, meta_str);
 	} else if (keytype != REDISMODULE_KEYTYPE_STRING) {
 		RedisModule_CloseKey(key);
-		RedisModule_ReplyWithError(ctx, "ERR bad data");
+		RedisModule_ReplyWithError(ctx, "ERR corrupted metadata");
 		return NULL;
 	}
 
@@ -700,6 +700,9 @@ static int upd_begin(RedisModuleCtx *ctx, rdb_txn_t *txn, const arg_dname_t *ori
 static int zone_begin(RedisModuleCtx *ctx, rdb_txn_t *txn, const arg_dname_t *origin)
 {
 	zone_meta_k key = zone_meta_key_get(ctx, txn, origin, REDISMODULE_WRITE);
+	if (key == NULL) {
+		return KNOT_EMALF;
+	}
 	int ret = zone_txn_lock(ctx, key, txn);
 	delete_zone_index(ctx, txn, origin);
 
