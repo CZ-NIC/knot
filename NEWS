@@ -1,3 +1,230 @@
+Knot DNS 3.4.8 (2025-07-29)
+===========================
+
+Features:
+---------
+ - keymgr: implemented key pregeneration for later use (see 'for-later')
+
+Improvements:
+-------------
+ - knotd: decreased remote session ticket lifetime to 1200 seconds
+ - knotd: TCP connection is not shared between SOA and XFR if 'remote.no-edns' is set
+ - knotd: 'zone.notify-delay' now applies to every outgoing NOTIFY
+ - knotd: reduced timers database size by omitting zero timer values
+ - knotd: zone-reload can be called on an expired zone
+ - knotd: improved configuration commit performance when many zones are present
+ - keymgr: allowed boolen key flags without an explicit 'on' value
+ - keymgr: support for colon separators in keyid specification
+ - utils: added INTERNET and CHAOS aliases for IN and CH class names
+ - libs: upgraded embedded libngtcp2 to 1.14.0
+ - doc: various improvements
+
+Bugfixes:
+---------
+ - knotd: possible use after free if member zone is reused when full reload
+ - knotd: incorrect zone update revert adjustments
+
+Knot DNS 3.4.7 (2025-06-04)
+===========================
+
+Features:
+---------
+ - knotd: implemented optional NOTIFY delay upon zone loading (see 'zone.notify-delay')
+ - knotd: failed ZONEMD validation emits 'dnssec-invalid' D-Bus event
+ - kdig: added option for delayed reading of next transfer message (see '+msgdelay')
+ - kzonecheck: new parameter for job count (see '-j')
+
+Improvements:
+-------------
+ - knotd: semantic checks support DS algorithms 5 and 6
+ - knotd: pending generation of reverse records is logged as warning
+ - knotd: DNSKEY synchronization considers keytag modulo for better reliability
+ - knotd: zone-(un)set parser errors no longer logged by the server
+ - knotd: more verbose zone-(un)set parser errors are returned to the client
+ - knotc: configuration warnings are printed only with the conf-check command
+ - kdig: enabled TLS 1.2 support (with warning)
+ - kdig: more verbose TLS/QUIC certificate information - SAN (see '-dd')
+ - mod-rrl: disabled optimized KRU version on macOS to fix CPU issues
+ - libknot: added two specific variants of KNOT_EAGAIN error (KNOT_NET_EAGAIN, KNOT_ETRYAGAIN)
+ - libs: upgraded embedded libngtcp2 to 1.13.0
+ - knot-exporter: added maximum libknot version dependency #956
+ - knot-exporter: removed return statement from a finally block #957
+ - packaging: new knot-exporter and python3-libknot RPM subpackages
+ - doc: simplified highlighting of options enabled by default
+ - doc: various improvements
+
+Bugfixes:
+---------
+ - knotd: false warning for missing glue if NS is at other delegation
+ - knotd: missing rdata canonicalization in zone-(un)set operations
+ - knotd: missing check for member zone configured with a non-generated catalog
+ - knotd: benevolent IXFR skips whole rrset when ignoring a record
+ - knotd: missing next remove key action log during KSK/algorithm rollover
+ - knotd: missing catalog template configuration checks
+ - knotd: missing check for empty QUIC connection in XDP mode
+ - libknot: incorrect trailing rdata check in packet parser
+ - kdig: ignored DoQ response from dnsdist #954
+ - packaging: uninstalling lib*t64 packages removes files from upstream packages
+
+Knot DNS 3.4.6 (2025-04-10)
+===========================
+
+Improvements:
+-------------
+ - knotd: default TSIG algorithm is now 'hmac-sha256'
+ - knotd: added zone expiration info to the failed zone refresh log
+ - knotd: reverse record generation now accepts multiple forward zones to be reversed
+ - keymgr: underscores are now tolerated instead of dashes in command names
+ - keymgr: correct mnemonic 'rsasha1-nsec3-sha1' is used instead of 'rsasha1nsec3sha1'
+ - kdig: new '+[no]doflag' alias for '+[no]dnssec' #952
+ - kdig: documented default option values #951
+ - kxdpgun: extended JSON output with some packet statistics
+ - doc: various updates and improvements
+
+Bugfixes:
+---------
+ - knotd: failed to stop the server if 'dbus-event: running` is set
+ - knotd: TLS 0-RTT not working if compiled with the QUIC support
+ - knotd: TLS handshake fails on FreeBSD
+ - knotd: outbound QUIC communication fails on FreeBSD
+ - knotd: KSK submission not ignored in the manual key management mode
+ - knotd: failed to bind to a UNIX socket on recent Linux kernels
+ - kzonecheck: failed to check non-trivial zones through standard input
+
+Knot DNS 3.4.5 (2025-03-18)
+===========================
+
+Features:
+---------
+ - knotd: support for SOA serial shift (see 'serial-modulo')
+ - knotd: new server statistics (see 'tcp-io-timeout"' and 'tcp-idle-timeout')
+
+Improvements:
+-------------
+ - knotd: better signing performance of many zones in parallel by
+          moving 'last_signed_serial' from KASP database to timer database
+ - knotd: the 'terminated inactive client' TCP log moved to debug level
+ - knotd: allowed initial DDNS to an empty zone
+ - knotd: extended backup and flush argument checks
+ - knotd: new debug logs for zone events suspension
+ - libs: upgraded embedded libngtcp2 to 1.11.0
+ - doc: new section Multi-primary, updates
+
+Bugfixes:
+---------
+ - libdnssec: inappropriate DNSKEY flags evaluation
+ - libknot: incorrect VLAN map size calculation for XDP
+
+Knot DNS 3.4.4 (2025-01-22)
+===========================
+
+Features:
+---------
+ - knotd: added support for EDNS ZONEVERSION
+ - kdig: added support for EDNS ZONEVERSION (see '+zoneversion')
+
+Improvements:
+-------------
+ - knotd: improved control error detection and reporting
+ - kdig: proper section names for exported DDNS messages
+ - libs: upgraded embedded libngtcp2 to 1.10.0
+ - python: expanded documentation for the libknot control API
+ - doc: updated XDP prerequisites
+
+Bugfixes:
+---------
+ - knotd: a DNAME record at the zone apex with active NSEC3 not accepted via XFR
+ - knotd: configuration abort times out if no active transaction
+ - knotd: defective serial modulo result if it overflows
+ - knotd: TLS connections not properly terminated
+ - knotd: maximum zone TTL not correctly recomputed after RRSIG TTL change
+ - knotd: zone hangs if zone reload fails (Thanks to solidcc2)
+ - knotd: statistics dump generates invalid YAML output if XDP is enabled #947
+ - knotd: insufficient check for incomplete control message
+ - mod-dnstap: used incorrect type for DDNS messages
+ - knot-exporter: failed to run with Python 3.11 or older
+ - tests: test_atomic and test_spinlock require building with the daemon enabled #946
+
+Knot DNS 3.4.3 (2024-12-06)
+===========================
+
+Improvements:
+-------------
+ - knotd: improved processing of QNAMEs containing zero bytes
+ - knotd: zone expiration now aborts possible zone control transaction #929
+ - knotd: generated catalog memeber metadata is stored when the zone is loaded
+ - knotd: new configuration check for using default NSEC3 salt length, which will change
+ - mod-rrl: added QNAME (if possible) and transport protocol to log messages
+ - mod-rrl: increased defaults for 'log-period' to 30 secs, 'rate-limit' to 50,
+            'instant-rate-limit' to 125, and 'time-rate-limit' to 5 ms
+ - kxdpgun: added space separators to some printed values for better readability
+ - libs: upgraded embedded libngtcp2 to 1.9.1
+ - knot-exporter: zone timers metric is now disabled by default (see '--zone-timers')
+ - packaging: added build dependency softhsm for PKCS #11 testing on RPM distributions
+ - doc: updated description of DNSSEC key management and module RRL
+
+Bugfixes:
+---------
+ - knotd: more active ZSKs cause cumulative ZSK rollovers
+ - knotd: zone purge clears active generated catalog member metadata
+ - mod-rrl: authorized requests are rate limited #943
+ - kdig: misleading warning about timeout during QUIC connection
+ - keymgr: public-only keys are marked as missing in the list output
+
+Knot DNS 3.4.2 (2024-10-31)
+===========================
+
+Improvements:
+-------------
+ - knotd: new warning log upon every incremental update if previous zone signing failed
+ - mod-cookies: support for two secret values specification
+ - keymgr: key pregenerate works even when a KSK exists
+ - libs: upgraded embedded libngtcp2 to 1.8.1
+
+Bugfixes:
+---------
+ - knotd: server can crash when processing just a terminal label as QNAME
+ - knotd: failed to compile if no atomic operations available
+ - kjournalprint: failed to merge zone-in-journal if followed by a non-first changeset
+ - knot-exporter: faulty escape sequence in time value parsing
+ - knot-exporter: failed to parse zone-status output
+ - kxdpgun: periodic statistics doesn't work correctly for longer time periods
+
+Knot DNS 3.4.1 (2024-10-14)
+===========================
+
+Features:
+---------
+ - knotd: ACL configuration allows protocol specification (see 'acl.protocol')
+ - knotc: support for benevolent zone updates (see zone-begin with '+benevolent')
+ - knotd: implemented TLS session resumption
+ - kjournalprint: added print merged changesets mode (see '-M')
+ - libknot: added NXNAME meta type (Thanks to Jan Včelák)
+
+Improvements:
+-------------
+ - knotd: DNSKEY synchronization event logs removed/added *DNSKEYs
+ - knotd: control command log message contains filters and flags in the debug mode
+ - knotc: zone status prints running, pending, and frozen duration
+ - knotd,knotc: unification of control flags and filters
+ - keymgr: key listing reports configured keys that are inaccessible
+ - libs: upgraded embedded libngtcp2 to 1.8.0
+ - doc: various fixes and updates
+
+Bugfixes:
+---------
+ - knotd: missing support for IPv6 link local address configuration
+ - knotd: zone reload occasionally causes a core dump #939 (Thanks to solidcc2)
+ - knotd: race condition in DDNS over QUIC processing
+ - knotd: imperfect signal handling on some auxiliary threads
+ - knotd: EDNS EXPIRE not updated when zone signing results in up-to-date
+ - knotd: failed to reload autogenerated QUIC/TLS key after process ownership change
+ - knotc: zone backup filter +keysonly doesn't disable other defaults
+ - kxdpgun: failed to receive more data over QUIC until 1-RTT handshake is done
+ - knsupdate: memory leak if rdata parsing fails
+ - doc: failed to install manual pages from a tarball
+ - Dockerfile: TCP port 853 not exposed for DoT
+
 Knot DNS 3.4.0 (2024-09-02)
 ===========================
 
@@ -69,6 +296,30 @@ Compatibility:
  - kcatalogprint: removed legacy database specification without '--dir'
  - packaging: CentOS 7, Debian 10, and Ubuntu 18.04 no longer supported
  - doc: removed info pages
+
+Knot DNS 3.3.10 (2024-12-12)
+============================
+
+Improvements:
+-------------
+ - libknot: added NXNAME meta type (Thanks to Jan Včelák)
+
+Improvements:
+-------------
+ - knotd: improved processing of QNAMEs containing zero bytes
+ - knotd: generated catalog member metadata is stored when the zone is loaded
+ - doc: various fixes and updates
+
+Bugfixes:
+---------
+ - knotd: more active ZSKs cause cumulative ZSK rollovers
+ - knotd: zone reload occasionally causes a core dump #939 (Thanks to solidcc2)
+ - knotd: zone purge clears active generated catalog member metadata
+ - knotc: zone backup filter +keysonly doesn't disable other defaults
+ - kxdpgun: failed to receive more data over QUIC until 1-RTT handshake is done
+ - knsupdate: memory leak if rdata parsing fails
+ - kdig: misleading warning about timeout during QUIC connection
+ - knot-exporter: faulty escape sequence in time value parsing
 
 Knot DNS 3.3.9 (2024-08-26)
 ===========================
