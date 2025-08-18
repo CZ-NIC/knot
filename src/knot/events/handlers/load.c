@@ -113,7 +113,7 @@ int event_load(conf_t *conf, zone_t *zone)
 	}
 
 	// Attempt to load changes from database. If fails, load full zone from there later.
-	if (db_instance > 0 && (old_contents_exist || journal_conts != NULL) && zone->cat_members == NULL) {
+	if (db_instance > 0 && (old_contents_exist || journal_conts != NULL) && zone->cat_members == NULL && EMPTY_LIST(zone->reverse_from)) {
 		uint32_t db_serial = 0;
 		ret = zone_redis_serial(db_ctx, db_instance, zone->name, &db_serial);
 		if (ret == KNOT_EOK && old_contents_exist && db_serial == zone_contents_serial(zone->contents)) {
