@@ -2386,6 +2386,15 @@ int knot_rrset_txt_dump_data(const knot_rrset_t      *rrset,
 		ret = dump_unknown(&p);
 	} else {
 		ret = txt_dump_data(&p, rrset->type);
+		if (ret == KNOT_EMALF) {
+			p.in = data;
+			p.in_max = data_len;
+			p.out = dst;
+			p.out_max = maxlen;
+			p.total = 0;
+			p.ret = 0;
+			ret = dump_unknown(&p);
+		}
 	}
 
 	// Terminate the string just in case.
