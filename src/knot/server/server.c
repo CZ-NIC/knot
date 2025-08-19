@@ -17,9 +17,6 @@
 #include "libknot/yparser/ypschema.h"
 #include "libknot/xdp.h"
 #include "libknot/quic/tls.h"
-#ifdef ENABLE_QUIC
-#include "libknot/quic/quic.h" // knot_quic_session_*
-#endif // ENABLE_QUIC
 #include "knot/common/log.h"
 #include "knot/common/stats.h"
 #include "knot/common/systemd.h"
