@@ -39,6 +39,7 @@ typedef enum {
 	ZONE_XFR_FROZEN     = 1 << 7, /*!< Outgoing AXFR/IXFR temporarily disabled. */
 	ZONE_USER_FLUSH     = 1 << 8, /*!< User-triggered flush. */
 	ZONE_LAST_SIGN_OK   = 1 << 9, /*!< Last full-sign event finished OK. */
+	ZONE_PREF_MASTER_2X = 1 << 10, /*!< Preferred master has been overwritten at least once. */
 } zone_flag_t;
 
 /*!

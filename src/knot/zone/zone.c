@@ -517,10 +517,16 @@ void zone_set_preferred_master(zone_t *zone, const struct sockaddr_storage *addr
 
 	pthread_mutex_lock(&zone->preferred_lock);
 	if (zone->preferred_master == NULL) {
-		zone->preferred_master = malloc(sizeof(*zone->preferred_master));
+		zone->preferred_master = calloc(1, sizeof(*zone->preferred_master));
 		assert(zone->preferred_master != NULL);
 	}
-	memcpy(zone->preferred_master, addr, sockaddr_len(addr));
+
+	if (!sockaddr_net_match(zone->preferred_master, addr, -1)) {
+		if (zone->preferred_master->ss_family != AF_UNSPEC) {
+			zone->flags |= ZONE_PREF_MASTER_2X; // not zone_set_flag() as the mutex is already locked
+		}
+		memcpy(zone->preferred_master, addr, sockaddr_len(addr));
+	}
 	pthread_mutex_unlock(&zone->preferred_lock);
 }
 
@@ -533,6 +539,7 @@ void zone_clear_preferred_master(zone_t *zone)
 	pthread_mutex_lock(&zone->preferred_lock);
 	free(zone->preferred_master);
 	zone->preferred_master = NULL;
+	zone->flags &= ~ZONE_PREF_MASTER_2X;
 	pthread_mutex_unlock(&zone->preferred_lock);
 }
 
@@ -698,6 +705,7 @@ int zone_master_try(conf_t *conf, zone_t *zone, zone_master_cb callback,
 	const char *last_id = NULL, *preferred_id = NULL;
 	conf_val_t last = { 0 }, preferred = { 0 };
 	int idx = 0, last_idx = -1, preferred_idx = -1;
+	bool preferred_2x = false;
 
 	conf_val_t masters = conf_zone_get(conf, C_MASTER, zone->name);
 	conf_mix_iter_t iter;
@@ -714,6 +722,7 @@ int zone_master_try(conf_t *conf, zone_t *zone, zone_master_cb callback,
 				preferred_id = conf_str(iter.id);
 				preferred = *iter.id;
 				preferred_idx = idx;
+				preferred_2x = (zone->flags & ZONE_PREF_MASTER_2X);
 			}
 			if (pin_tolerance > 0 &&
 			    sockaddr_net_match(&remote.addr, (struct sockaddr_storage *)&zone->timers.last_master, -1)) {
@@ -738,7 +747,7 @@ int zone_master_try(conf_t *conf, zone_t *zone, zone_master_cb callback,
 		};
 		ret = try_remote(conf, zone, callback, callback_data, err_str,
 		                 preferred_id, &preferred, &fallback, "notifier ");
-		if (ret == KNOT_EOK || !fallback.remote) {
+		if ((ret == KNOT_EOK && !preferred_2x) || !fallback.remote) {
 			return ret; // Success or local error.
 		}
 	}
