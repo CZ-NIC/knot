@@ -6,7 +6,7 @@ from dnstest.test import Test
 from dnstest.utils import *
 import shutil
 
-t = Test()
+t = Test(stress=False)
 
 ZONE = "example.com."
 master = t.server("knot")
@@ -45,8 +45,20 @@ resp.check(rcode="NOERROR", rdata="192.0.2.2")
 resp = master.dig("dns1." + ZONE, "A")
 resp.check(rcode="SERVFAIL", nordata="192.0.2.1")
 
+try:
+    resp = master.dig("svcb." + ZONE, "SVCB", timeout=0.3)
+    resp.check(rcode="NOERROR")
+except Failed:
+    pass
+
 resp = slave.dig("dns2." + ZONE, "A")
 resp.check(rcode="SERVFAIL", nordata="192.0.2.2")
+
+resp = slave.dig("svcb." + ZONE, "SVCB")
+resp.check(rcode="SERVFAIL")
+
+resp = zfloader.dig("svcb." + ZONE, "SVCB")
+resp.check(rcode="NXDOMAIN")
 
 shutil.copyfile(master.zones[ZONE].zfile.path, zfloader.zones[ZONE].zfile.path)
 zfloader.ctl("zone-reload", wait=True)
@@ -58,5 +70,11 @@ resp.check(rcode="NOERROR", rdata="192.0.2.2")
 
 resp = zfloader.dig("dns1." + ZONE, "A")
 resp.check(rcode="SERVFAIL", nordata="192.0.2.1")
+
+try:
+    resp = zfloader.dig("svcb." + ZONE, "SVCB", timeout=0.3)
+    resp.check(rcode="NOERROR")
+except Failed:
+    pass
 
 t.end()
