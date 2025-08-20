@@ -10,18 +10,24 @@ t = Test()
 
 ZONE = "example.com."
 master = t.server("knot")
+slave = t.server("knot")
+zfloader = t.server("knot")
 zone = t.zone(ZONE)
 
-t.link(zone, master)
+t.link(zone, master, slave)
+t.link(zone, zfloader)
 
 master.zonefile_load = "none"
 master.zones[ZONE].journal_content = "all"
+
+zfloader.zonefile_load = "difference-no-serial"
+zfloader.zones[ZONE].journal_content = "all"
 
 shutil.copytree(os.path.join(t.data_dir, "journal"), os.path.join(master.dir, "journal"))
 
 t.start()
 
-master.zone_wait(zone)
+serial = master.zone_wait(zone)
 master.ctl("zone-flush", wait=True)
 
 generic_a = False
@@ -37,6 +43,20 @@ resp = master.dig("dns2." + ZONE, "A")
 resp.check(rcode="NOERROR", rdata="192.0.2.2")
 
 resp = master.dig("dns1." + ZONE, "A")
+resp.check(rcode="SERVFAIL", nordata="192.0.2.1")
+
+resp = slave.dig("dns2." + ZONE, "A")
+resp.check(rcode="SERVFAIL", nordata="192.0.2.2")
+
+shutil.copyfile(master.zones[ZONE].zfile.path, zfloader.zones[ZONE].zfile.path)
+zfloader.ctl("zone-reload", wait=True)
+
+zfloader.zone_wait(zone, serial)
+
+resp = zfloader.dig("dns2." + ZONE, "A")
+resp.check(rcode="NOERROR", rdata="192.0.2.2")
+
+resp = zfloader.dig("dns1." + ZONE, "A")
 resp.check(rcode="SERVFAIL", nordata="192.0.2.1")
 
 t.end()
