@@ -130,6 +130,8 @@ typedef struct zone
 	pthread_mutex_t preferred_lock;
 	/*! \brief Preferred master for remote operation. */
 	struct sockaddr_storage *preferred_master;
+	/*! \brief How many times the preferred master has been overwritten. */
+	size_t preferred_count;
 
 	/*! \brief Query modules. */
 	list_t query_modules;
