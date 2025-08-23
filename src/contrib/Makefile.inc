@@ -180,6 +180,8 @@ libembngtcp2_la_SOURCES = \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_opl.h \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_path.c \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_path.h \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_pcg.c \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_pcg.h \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_pkt.c \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_pkt.h \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_pktns_id.h \
@@ -195,6 +197,8 @@ libembngtcp2_la_SOURCES = \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_qlog.h \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_range.c \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_range.h \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_ratelim.c \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_ratelim.h \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_rcvry.h \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_ringbuf.c \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_ringbuf.h \
