@@ -121,6 +121,9 @@ static void drop_capabilities(void)
 #endif /* ENABLE_CAP_NG */
 }
 
+#define LOOP_WAIT_LOAD  5   /* Wait in a loop for all zones loaded */
+#define LOOP_WAIT       5   /* It could be even infinity. */
+
 static struct timespec calc_wait(struct timespec t)
 {
 	struct timespec rv;
@@ -136,10 +139,9 @@ static struct timespec calc_wait(struct timespec t)
 	return rv;
 }
 
-static void reset_loop_wait(server_data_t *server_data)
+static void set_loop_wait(server_data_t *server_data, int seconds)
 {
-	/* Set the normal slow loop cycles, it could be even infinity. */
-	server_data->loop_wait.tv_sec = 5;
+	server_data->loop_wait.tv_sec = seconds;
 	server_data->loop_wait.tv_nsec = 0UL;
 }
 
@@ -223,6 +225,7 @@ static int check_loaded(server_t *server, bool async, server_data_t *server_data
 			return ret;
 		}
 		started = true;
+		set_loop_wait(server_data, LOOP_WAIT_LOAD);
 	}
 
 	assert(server->state & ServerAnswering);
@@ -234,7 +237,7 @@ static int check_loaded(server_t *server, bool async, server_data_t *server_data
 	if (load) {   /* Not 'loaded' yet. */
 		dbus_emit_running(true);
 		loaded = true;
-		reset_loop_wait(server_data);
+		set_loop_wait(server_data, LOOP_WAIT);
 	}
 
 	return KNOT_EOK;
