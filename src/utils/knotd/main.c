@@ -129,6 +129,8 @@ static struct timespec calc_wait(struct timespec t)
 	rv.tv_nsec = double_ns % (1000 * 1000 * 1000UL);
 	if (rv.tv_sec == 0) {
 		rv.tv_nsec = MAX(rv.tv_nsec, 200 * 1000 * 1000UL);
+	} else {
+		rv.tv_sec = MIN(rv.tv_sec, 30);
 	}
 
 	return rv;
