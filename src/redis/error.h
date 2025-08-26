@@ -14,6 +14,7 @@
 #define RDB_EINST	RDB_E("invalid instance")
 #define RDB_EMALF	RDB_E("malformed data")
 #define RDB_ENOSOA	RDB_E("missing SOA")
+#define RDB_EPARSE	RDB_E("failed to parse")
 #define RDB_ETXN	RDB_E("invalid transaction")
 #define RDB_ETXN_MANY	RDB_E("too many transactions")
 #define RDB_EZONE	RDB_E("unknown zone")
