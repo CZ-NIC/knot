@@ -518,15 +518,14 @@ static int zone_txn_lock(RedisModuleCtx *ctx, zone_meta_k key, rdb_txn_t *txn)
 	return KNOT_EOK;
 }
 
-static int upd_txn_lock(RedisModuleCtx *ctx, upd_meta_k key, rdb_txn_t *txn)
+static exception_t upd_txn_lock(RedisModuleCtx *ctx, upd_meta_k key, rdb_txn_t *txn)
 {
 	RedisModule_Assert(ctx != NULL && key != NULL && txn != NULL && txn->instance != 0);
 
 	size_t len;
 	upd_meta_storage_t *meta = (upd_meta_storage_t *)RedisModule_StringDMA(key, &len, REDISMODULE_WRITE);
 	if (meta == NULL || len != sizeof(upd_meta_storage_t)) {
-		RedisModule_ReplyWithError(ctx, RDB_EMALF);
-		return KNOT_EINVAL;
+		throw(KNOT_EINVAL, RDB_EMALF);
 	}
 
 	for (txn->id = TXN_MIN; txn->id <= TXN_MAX; ++txn->id) {
@@ -537,11 +536,10 @@ static int upd_txn_lock(RedisModuleCtx *ctx, upd_meta_k key, rdb_txn_t *txn)
 		}
 	}
 	if (txn->id > TXN_MAX) {
-		RedisModule_ReplyWithError(ctx, RDB_ETXN_MANY);
-		return KNOT_EBUSY;
+		throw(KNOT_EBUSY, RDB_ETXN_MANY);
 	}
 
-	return KNOT_EOK;
+	return_ok;
 }
 
 static int serialize_transaction(const rdb_txn_t *txn)
@@ -685,28 +683,48 @@ static void zone_begin_bin_format(RedisModuleCtx *ctx, rdb_txn_t *txn, const arg
 	}
 }
 
-static int upd_begin(RedisModuleCtx *ctx, rdb_txn_t *txn, const arg_dname_t *origin)
+static exception_t upd_begin(RedisModuleCtx *ctx, rdb_txn_t *txn, const arg_dname_t *origin)
 {
 	upd_meta_k key = upd_meta_key_get(ctx, txn, origin, REDISMODULE_WRITE);
 	if (key == NULL) {
-		return KNOT_EMALF;
+		throw(KNOT_EMALF, RDB_ECORRUPTED);
 	}
 
-	int ret = upd_txn_lock(ctx, key, txn);
+	exception_t e = upd_txn_lock(ctx, key, txn);
 	RedisModule_CloseKey(key);
-	if (ret != KNOT_EOK) {
-		return ret;
+	if (e.ret != KNOT_EOK) {
+		raise(e);
 	}
 
-	ret = delete_upd_index(ctx, txn, origin);
+	int ret = delete_upd_index(ctx, txn, origin);
 	if (ret != KNOT_EOK && ret != KNOT_EEXIST) {
-		RedisModule_ReplyWithError(ctx, RDB_ECORRUPTED);
-		return ret;
+		throw(ret, RDB_ECORRUPTED);
 	}
 
-	return KNOT_EOK;
+	return_ok;
 }
 
+static void upd_begin_txt_format(RedisModuleCtx *ctx, rdb_txn_t *txn, const arg_dname_t *origin)
+{
+	exception_t e = upd_begin(ctx, txn, origin);
+	if (e.ret != KNOT_EOK) {
+		RedisModule_ReplyWithError(ctx, e.what);
+		return;
+	}
+
+	RedisModule_ReplyWithLongLong(ctx, serialize_transaction(txn));
+}
+
+static void upd_begin_bin_format(RedisModuleCtx *ctx, rdb_txn_t *txn, const arg_dname_t *origin)
+{
+	exception_t e = upd_begin(ctx, txn, origin);
+	if (e.ret != KNOT_EOK) {
+		RedisModule_ReplyWithError(ctx, e.what);
+		return;
+	}
+
+	RedisModule_ReplyWithStringBuffer(ctx, (const char *)txn, sizeof(*txn));
+}
 
 static RedisModuleKey *upd_meta_get_when_open(RedisModuleCtx *ctx, const arg_dname_t *origin,
                                               const rdb_txn_t *txn, int rights)

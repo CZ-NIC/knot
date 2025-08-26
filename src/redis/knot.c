@@ -468,11 +468,8 @@ static int upd_begin_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int argc
 	rdb_txn_t txn;
 	ARG_INST_TXT(argv[2], txn);
 
-	if (upd_begin(ctx, &txn, &origin) != KNOT_EOK) {
-		return REDISMODULE_OK;
-	}
-
-	return RedisModule_ReplyWithLongLong(ctx, serialize_transaction(&txn));
+	upd_begin_txt_format(ctx, &txn, &origin);
+	return REDISMODULE_OK;
 }
 
 static int upd_begin_bin(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
@@ -487,11 +484,8 @@ static int upd_begin_bin(RedisModuleCtx *ctx, RedisModuleString **argv, int argc
 	rdb_txn_t txn;
 	ARG_INST(argv[2], txn);
 
-	if (upd_begin(ctx, &txn, &origin) != KNOT_EOK) {
-		return REDISMODULE_OK;
-	}
-
-	return RedisModule_ReplyWithStringBuffer(ctx, (const char *)&txn, sizeof(txn));
+	upd_begin_bin_format(ctx, &txn, &origin);
+	return REDISMODULE_OK;
 }
 
 static int upd_add_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
