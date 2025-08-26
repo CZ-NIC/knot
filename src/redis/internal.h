@@ -33,15 +33,8 @@
 #define knot_upd_add_bin(ctx, origin, txn, owner, ttl, rtype, rdataset) upd_add_rem((ctx), (origin), (txn), (owner), (ttl), (rtype), (rdataset), upd_add_bin_cb)
 #define knot_upd_remove_bin(ctx, origin, txn, owner, ttl, rtype, rdataset) upd_add_rem((ctx), (origin), (txn), (owner), (ttl), (rtype), (rdataset), upd_remove_bin_cb)
 
-#define zone_begin_txt_format(ctx, txn, origin) \
-	if (zone_begin((ctx), (txn), (origin)) == KNOT_EOK) { \
-		RedisModule_ReplyWithLongLong(ctx, serialize_transaction(txn)); \
-	}
-
-#define zone_begin_bin_format(ctx, txn, origin) \
-	if (zone_begin((ctx), (txn), (origin)) == KNOT_EOK) { \
-		RedisModule_ReplyWithStringBuffer(ctx, (const char *)txn, sizeof(*txn)); \
-	}
+#define throw(_ret, _msg) return (exception_t){ .ret = _ret, .what = _msg }
+#define return_ok         throw(KNOT_EOK, NULL)
 
 typedef enum {
 	EVENT     = 1, // Keep synchronized with RDB_EVENT_KEY!
@@ -54,6 +47,11 @@ typedef enum {
 	UPD       = 8,
 	DIFF      = 9,
 } rdb_type_t;
+
+typedef struct {
+	const char *what;
+	int ret;
+} exception_t;
 
 typedef struct {
 	uint8_t active;
@@ -467,7 +465,6 @@ static zone_meta_k zone_meta_key_get(RedisModuleCtx *ctx, rdb_txn_t *txn, const 
 		RedisModule_FreeString(ctx, meta_str);
 	} else if (keytype != REDISMODULE_KEYTYPE_STRING) {
 		RedisModule_CloseKey(key);
-		RedisModule_ReplyWithError(ctx, RDB_ECORRUPTED);
 		return NULL;
 	}
 
@@ -504,7 +501,6 @@ static int zone_txn_lock(RedisModuleCtx *ctx, zone_meta_k key, rdb_txn_t *txn)
 	size_t len = 0;
 	zone_meta_storage_t *meta = (zone_meta_storage_t *)RedisModule_StringDMA(key, &len, REDISMODULE_WRITE);
 	if (meta == NULL || len != sizeof(zone_meta_storage_t)) {
-		RedisModule_ReplyWithError(ctx, RDB_EMALF);
 		return KNOT_EINVAL;
 	}
 
@@ -515,7 +511,6 @@ static int zone_txn_lock(RedisModuleCtx *ctx, zone_meta_k key, rdb_txn_t *txn)
 		}
 	}
 	if (txn->id > TXN_MAX) {
-		RedisModule_ReplyWithError(ctx, RDB_ETXN_MANY);
 		return KNOT_EBUSY;
 	}
 
@@ -649,26 +644,44 @@ static int delete_index(const uint8_t prefix, RedisModuleCtx *ctx, const rdb_txn
 	return KNOT_EOK;
 }
 
-static int zone_begin(RedisModuleCtx *ctx, rdb_txn_t *txn, const arg_dname_t *origin)
+static exception_t zone_begin(RedisModuleCtx *ctx, rdb_txn_t *txn, const arg_dname_t *origin)
 {
 	zone_meta_k key = zone_meta_key_get(ctx, txn, origin, REDISMODULE_WRITE);
 	if (key == NULL) {
-		return KNOT_EMALF;
+		throw(KNOT_EMALF, RDB_ECORRUPTED);
 	}
 
 	int ret = zone_txn_lock(ctx, key, txn);
 	RedisModule_CloseKey(key);
-	if (ret != KNOT_EOK) {
-		return ret;
+	if (ret == KNOT_EBUSY) {
+		throw(KNOT_EBUSY, RDB_ETXN_MANY);
+	} else if (ret != KNOT_EOK) {
+		throw(ret, RDB_ECORRUPTED);
 	}
 
 	ret = delete_upd_index(ctx, txn, origin);
 	if (ret != KNOT_EOK && ret != KNOT_EEXIST) {
-		RedisModule_ReplyWithError(ctx, RDB_ECORRUPTED);
-		return ret;
+		throw(ret, RDB_ECORRUPTED);
 	}
 
-	return KNOT_EOK;
+	return_ok;
+}
+static void zone_begin_txt_format(RedisModuleCtx *ctx, rdb_txn_t *txn, const arg_dname_t *origin) {
+	exception_t e = zone_begin(ctx, txn, origin);
+	if (e.ret != KNOT_EOK) {
+		RedisModule_ReplyWithError(ctx, e.what);
+	} else {
+		RedisModule_ReplyWithLongLong(ctx, serialize_transaction(txn));
+	}
+}
+
+static void zone_begin_bin_format(RedisModuleCtx *ctx, rdb_txn_t *txn, const arg_dname_t *origin) {
+	exception_t e = zone_begin(ctx, txn, origin);
+	if (e.ret != KNOT_EOK) {
+		RedisModule_ReplyWithError(ctx, e.what);
+	} else {
+		RedisModule_ReplyWithStringBuffer(ctx, (const char *)txn, sizeof(*txn));
+	}
 }
 
 static int upd_begin(RedisModuleCtx *ctx, rdb_txn_t *txn, const arg_dname_t *origin)
