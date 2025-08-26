@@ -1315,7 +1315,7 @@ static void zone_exists(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_
 	int zone_keytype = RedisModule_KeyType(zone_index_key);
 	if (zone_keytype == REDISMODULE_KEYTYPE_EMPTY) {
 		RedisModule_CloseKey(zone_index_key);
-		RedisModule_ReplyWithError(ctx, RDB_ECORRUPTED);
+		RedisModule_ReplyWithLongLong(ctx, -1);
 		return;
 	} else if (zone_keytype != REDISMODULE_KEYTYPE_ZSET) {
 		RedisModule_CloseKey(zone_index_key);
@@ -1337,6 +1337,11 @@ static void zone_exists(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_
 	}
 
 	rrset_v *rrset = RedisModule_ModuleTypeGetValue(rrset_key);
+	if (rrset->rrs.count == 0) {
+		RedisModule_CloseKey(rrset_key);
+		RedisModule_ReplyWithError(ctx, RDB_ENOSOA);
+		return;
+	}
 	uint32_t serial = knot_soa_serial(rrset->rrs.rdata);
 	RedisModule_CloseKey(rrset_key);
 
