@@ -1281,8 +1281,12 @@ static void zone_abort(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t
 
 	size_t len = 0;
 	zone_meta_storage_t *meta = (zone_meta_storage_t *)RedisModule_StringDMA(meta_key, &len, REDISMODULE_WRITE);
+	if (meta == NULL || len != sizeof(zone_meta_storage_t)) {
+		RedisModule_CloseKey(meta_key);
+		RedisModule_ReplyWithError(ctx, RDB_ECORRUPTED);
+		return;
+	}
 	meta->lock[txn->id] = 0;
-
 	RedisModule_CloseKey(meta_key);
 
 	int ret = delete_zone_index(ctx, txn, origin);
