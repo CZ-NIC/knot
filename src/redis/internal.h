@@ -34,6 +34,7 @@
 #define knot_upd_remove_bin(ctx, origin, txn, owner, ttl, rtype, rdataset) upd_add_rem((ctx), (origin), (txn), (owner), (ttl), (rtype), (rdataset), upd_remove_bin_cb)
 
 #define throw(_ret, _msg) return (exception_t){ .ret = _ret, .what = _msg }
+#define raise(e)          return e
 #define return_ok         throw(KNOT_EOK, NULL)
 
 typedef enum {
@@ -1066,26 +1067,27 @@ static RedisModuleString *index_soa_keyname(index_k index)
 	return NULL;
 }
 
-static int zone_purge_silent(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t *txn)
+static exception_t zone_purge(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t *txn)
 {
 	if (set_active_transaction(ctx, origin, txn) != KNOT_EOK) {
-		return KNOT_ECONNREFUSED;
+		throw(KNOT_ECONNREFUSED, RDB_ECORRUPTED);
 	}
 
 	RedisModuleString *soa_rrset_keyname = rrset_keyname_construct(ctx, txn, origin, origin, KNOT_RRTYPE_SOA);
 	rrset_k soa_rrset_key = RedisModule_OpenKey(ctx, soa_rrset_keyname, REDISMODULE_READ);
 	RedisModule_FreeString(ctx, soa_rrset_keyname);
 	if (soa_rrset_key == NULL) {
-		return KNOT_ESOAINVAL;
+		throw(KNOT_ESOAINVAL, RDB_ENOSOA);
 	}
 	rrset_v *rrset = RedisModule_ModuleTypeGetValue(soa_rrset_key);
 	if (rrset == NULL) {
 		RedisModule_CloseKey(soa_rrset_key);
-		return KNOT_ESOAINVAL;
+		throw(KNOT_ESOAINVAL, RDB_ENOSOA);
 	}
 	uint32_t serial = knot_soa_serial(rrset->rrs.rdata);
 	RedisModule_CloseKey(soa_rrset_key);
 
+	// TODO return val
 	delete_zone_index(ctx, txn, origin);
 
 	index_k upd_index_key = get_commited_upd_index(ctx, origin, txn, serial, REDISMODULE_READ | REDISMODULE_WRITE);
@@ -1093,7 +1095,7 @@ static int zone_purge_silent(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb
 		RedisModuleString *soa_diff_keyname = index_soa_keyname(upd_index_key);
 		if (soa_diff_keyname == NULL) {
 			RedisModule_CloseKey(upd_index_key);
-			return KNOT_EMALF;
+			throw(KNOT_EMALF, RDB_ECORRUPTED);
 		}
 
 		RedisModuleKey *soa_diff_key = RedisModule_OpenKey(ctx, soa_diff_keyname, REDISMODULE_READ);
@@ -1123,7 +1125,7 @@ static int zone_purge_silent(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb
 	RedisModule_CloseKey(upd_index_key);
 
 	if (zone_meta_release(ctx, txn, origin) != KNOT_EOK) {
-		return KNOT_EDENIED;
+		throw(KNOT_EDENIED, RDB_ECORRUPTED);
 	}
 
 	index_k zones_index = get_zones_index(ctx, txn, REDISMODULE_READ | REDISMODULE_WRITE);
@@ -1131,30 +1133,22 @@ static int zone_purge_silent(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb
 	if (RedisModule_ZsetRem(zones_index, zone_name, NULL) != REDISMODULE_OK) {
 		RedisModule_FreeString(ctx, zone_name);
 		RedisModule_CloseKey(zones_index);
-		return KNOT_EUNREACH;
+		throw(KNOT_EUNREACH, RDB_ECORRUPTED);
 	}
 	RedisModule_FreeString(ctx, zone_name);
 	RedisModule_CloseKey(zones_index);
 
-	return commit_event(ctx, RDB_EVENT_PURGE, origin, txn->instance, serial);
+	int ret = commit_event(ctx, RDB_EVENT_PURGE, origin, txn->instance, serial);
+	if (ret != KNOT_EOK) {
+		throw(ret, RDB_EEVENT);
+	}
+	return_ok;
 }
 
-static void zone_purge(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t *txn)
+static void zone_purge_v(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t *txn)
 {
-	int ret = zone_purge_silent(ctx, origin, txn);
-	if (ret == KNOT_ECONNREFUSED) {
-		RedisModule_ReplyWithError(ctx, RDB_EZONE);
-	} else if (ret == KNOT_ESOAINVAL) {
-		RedisModule_ReplyWithError(ctx, RDB_ENOSOA);
-	} else if (ret == KNOT_EMALF) {
-		RedisModule_ReplyWithError(ctx, RDB_ECORRUPTED);
-	} else if (ret == KNOT_EDENIED) {
-		RedisModule_ReplyWithError(ctx, RDB_ECORRUPTED);
-	} else if (ret == KNOT_EUNREACH) {
-		RedisModule_ReplyWithError(ctx, RDB_ECORRUPTED);
-	} else if (ret == KNOT_EINVAL) {
-		RedisModule_ReplyWithError(ctx, RDB_ECORRUPTED);
-	} else if (ret == KNOT_EBUSY) {
+	exception_t e = zone_purge(ctx, origin, txn);
+	if (e.ret != KNOT_EOK) {
 		RedisModule_ReplyWithError(ctx, RDB_EEVENT);
 	} else {
 		RedisModule_ReplyWithSimpleString(ctx, RDB_RETURN_OK);
@@ -1190,14 +1184,12 @@ static void zone_list(RedisModuleCtx *ctx, const rdb_txn_t *txn, bool txt)
 	RedisModule_CloseKey(zones_index);
 }
 
-static int zone_meta_active_exchange(RedisModuleCtx *ctx, zone_meta_k key, rdb_txn_t *txn, const arg_dname_t *origin)
+static exception_t zone_meta_active_exchange(RedisModuleCtx *ctx, zone_meta_k key, rdb_txn_t *txn, const arg_dname_t *origin)
 {
 	size_t len = 0;
-	int ret = KNOT_EOK;
 	zone_meta_storage_t *meta = (zone_meta_storage_t *)RedisModule_StringDMA(key, &len, REDISMODULE_WRITE);
 	if (len != sizeof(*meta)) {
-		RedisModule_ReplyWithError(ctx, RDB_ECORRUPTED);
-		return KNOT_EINVAL;
+		throw(KNOT_EINVAL, RDB_ECORRUPTED);
 	}
 	uint8_t active_old = meta->active;
 	if (active_old != ZONE_META_INACTIVE) {
@@ -1205,22 +1197,17 @@ static int zone_meta_active_exchange(RedisModuleCtx *ctx, zone_meta_k key, rdb_t
 			.instance = txn->instance,
 			.id = active_old
 		};
-		ret = zone_purge_silent(ctx, origin, &txn_old);
-		if (ret == KNOT_ECONNREFUSED) {
-			RedisModule_ReplyWithError(ctx, RDB_EZONE);
-		} else if (ret == KNOT_ESOAINVAL) {
-			RedisModule_ReplyWithError(ctx, RDB_ENOSOA);
-		} else if (ret == KNOT_EMALF) {
-			RedisModule_ReplyWithError(ctx, RDB_ECORRUPTED);
-		} else if (ret == KNOT_EDENIED) {
-			RedisModule_ReplyWithError(ctx, RDB_ECORRUPTED);
-		} else if (ret == KNOT_EUNREACH) {
-			RedisModule_ReplyWithError(ctx, RDB_ECORRUPTED);
+		exception_t e = zone_purge(ctx, origin, &txn_old);
+		if (e.ret != KNOT_EOK) {
+			// TODO maybe do not finish exchange (??)
+			meta->lock[active_old] = 0;
+			meta->active = txn->id;
+			raise(e);
 		}
 		meta->lock[active_old] = 0;
 	}
 	meta->active = txn->id;
-	return ret;
+	return_ok;
 }
 
 static void zone_commit(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t *txn)
@@ -1231,7 +1218,7 @@ static void zone_commit(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_
 		return;
 	}
 
-	index_k zone_index_key = get_zone_index(ctx, origin, txn, REDISMODULE_READ | REDISMODULE_WRITE);
+	index_k zone_index_key = get_zone_index(ctx, origin, txn, REDISMODULE_READ | REDISMODULE_WRITE); // NOTE for iteration need also key opened for writing
 	RedisModuleString *soa_keyname = index_soa_keyname(zone_index_key);
 	RedisModule_CloseKey(zone_index_key);
 	if (soa_keyname == NULL) {
@@ -1248,31 +1235,38 @@ static void zone_commit(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_
 	}
 
 	rrset_v *rrset = RedisModule_ModuleTypeGetValue(soa_key);
+	if (rrset == NULL || rrset->rrs.count == 0) {
+		RedisModule_CloseKey(meta_key);
+		RedisModule_CloseKey(soa_key);
+		RedisModule_ReplyWithError(ctx, RDB_ENOSOA);
+		return;
+	}
 	uint32_t serial = knot_soa_serial(rrset->rrs.rdata);
 	RedisModule_CloseKey(soa_key);
 
-	int ret = zone_meta_active_exchange(ctx, meta_key, txn, origin);
+	exception_t e = zone_meta_active_exchange(ctx, meta_key, txn, origin);
 	RedisModule_CloseKey(meta_key);
-	if (ret != KNOT_EOK) {
+	if (e.ret != KNOT_EOK) {
+		RedisModule_ReplyWithError(ctx, e.what);
 		return;
 	}
 
 	index_k zones_index = get_zones_index(ctx, txn, REDISMODULE_READ | REDISMODULE_WRITE);
 	RedisModuleString *zone_name = RedisModule_CreateString(ctx, (const char *)origin->data, origin->len);
 	int flags = REDISMODULE_ZADD_NX;
-	if (RedisModule_ZsetAdd(zones_index, .0, zone_name, &flags) != REDISMODULE_OK) {
-		RedisModule_FreeString(ctx, zone_name);
+	int ret = RedisModule_ZsetAdd(zones_index, .0, zone_name, &flags);
+	RedisModule_FreeString(ctx, zone_name);
+	if (ret != REDISMODULE_OK) {
 		RedisModule_ReplyWithError(ctx, "ERR unable to store in database");
 		return;
 	}
-	RedisModule_FreeString(ctx, zone_name);
 
 	ret = commit_event(ctx, RDB_EVENT_ZONE, origin, txn->instance, serial);
-	if (ret == KNOT_EINVAL) {
-		RedisModule_ReplyWithError(ctx, RDB_ECORRUPTED);
-	} else if (ret == KNOT_EBUSY) {
+	if (ret == KNOT_EBUSY) {
 		RedisModule_ReplyWithError(ctx, RDB_EEVENT);
-	} else if (ret == KNOT_EOK) {
+	} else if (ret != KNOT_EOK) {
+		RedisModule_ReplyWithError(ctx, RDB_ECORRUPTED);
+	} else {
 		RedisModule_ReplyWithSimpleString(ctx, RDB_RETURN_OK);
 	}
 }
