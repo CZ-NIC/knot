@@ -1645,22 +1645,24 @@ static void upd_commit(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t
 		}
 		rrset_v *rrset = RedisModule_ModuleTypeGetValue(rrset_key);
 
-		if (knot_rdataset_subset(&diff->rem_rrs, &rrset->rrs) == false ||
-		    (diff->rem_ttl != TTL_EMPTY && rrset->ttl != diff->rem_ttl))
-		{
-			RedisModule_CloseKey(rrset_key);
-			RedisModule_CloseKey(diff_key);
-			if (abort_on_fail) {
-				if (upd_abort_silent(ctx, origin, upd_txn) == KNOT_EOK) {
-					RedisModule_ReplyWithError(ctx, "ERR dry-run check failed, aborting update");
+		if (diff->rem_rrs.count > 0) {
+			bool can_remove = knot_rdataset_subset(&diff->rem_rrs, &rrset->rrs);
+			bool compat_ttl = diff->rem_ttl == TTL_EMPTY || rrset->ttl == diff->rem_ttl;
+			if (!can_remove || !compat_ttl) {
+				RedisModule_CloseKey(rrset_key);
+				RedisModule_CloseKey(diff_key);
+				if (abort_on_fail) {
+					if (upd_abort_silent(ctx, origin, upd_txn) == KNOT_EOK) {
+						RedisModule_ReplyWithError(ctx, "ERR dry-run check failed, aborting update 1");
+					} else {
+						RedisModule_ReplyWithError(ctx, "ERR dry-run check failed and failed abort update 2");
+					}
 				} else {
-					RedisModule_ReplyWithError(ctx, "ERR dry-run check failed and failed abort update");
+					RedisModule_ReplyWithError(ctx, "ERR dry-run check failed 3");
 				}
-			} else {
-				RedisModule_ReplyWithError(ctx, "ERR dry-run check failed");
+				RedisModule_CloseKey(meta_key);
+				return;
 			}
-			RedisModule_CloseKey(meta_key);
-			return;
 		}
 
 		uint16_t rr_count = diff->add_rrs.count;
@@ -1676,7 +1678,7 @@ static void upd_commit(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t
 						RedisModule_ReplyWithError(ctx, "ERR dry-run check failed and failed abort update");
 					}
 				} else {
-					RedisModule_ReplyWithError(ctx, "ERR dry-run check failed");
+					RedisModule_ReplyWithError(ctx, "ERR dry-run check failed 4");
 				}
 				RedisModule_CloseKey(meta_key);
 				return;
