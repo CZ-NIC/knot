@@ -28,11 +28,6 @@
 #define delete_zone_index(...)  delete_index(ZONE, __VA_ARGS__)
 #define delete_upd_index(...)  delete_index(UPD_TMP, __VA_ARGS__)
 
-#define knot_upd_add_txt(ctx, origin, txn, owner, ttl, rtype, rdataset) upd_add_rem((ctx), (origin), (txn), (owner), (ttl), (rtype), (rdataset), upd_add_txt_cb)
-#define knot_upd_remove_txt(ctx, origin, txn, owner, ttl, rtype, rdataset) upd_add_rem((ctx), (origin), (txn), (owner), (ttl), (rtype), (rdataset), upd_remove_txt_cb)
-#define knot_upd_add_bin(ctx, origin, txn, owner, ttl, rtype, rdataset) upd_add_rem((ctx), (origin), (txn), (owner), (ttl), (rtype), (rdataset), upd_add_bin_cb)
-#define knot_upd_remove_bin(ctx, origin, txn, owner, ttl, rtype, rdataset) upd_add_rem((ctx), (origin), (txn), (owner), (ttl), (rtype), (rdataset), upd_remove_bin_cb)
-
 #define throw(_ret, _msg) return (exception_t){ .ret = _ret, .what = _msg }
 #define raise(e)          return e
 #define return_ok         throw(KNOT_EOK, NULL)
@@ -818,16 +813,16 @@ static int upd_remove_bin_cb(diff_v *diff, const void *data, uint32_t ttl)
 	return KNOT_EOK;
 }
 
-static void upd_add_rem(RedisModuleCtx *ctx, const arg_dname_t *origin, const rdb_txn_t *txn,
-                       const arg_dname_t *owner, const uint32_t ttl, const uint16_t rtype,
-                       const void *data, upd_callback cb)
+static exception_t upd_add_rem(RedisModuleCtx *ctx, const arg_dname_t *origin,
+                               const rdb_txn_t *txn, const arg_dname_t *owner,
+                               const uint32_t ttl, const uint16_t rtype,
+                               void *data, upd_callback cb)
 {
 	RedisModule_Assert(cb != NULL);
 
 	int ret = get_id(ctx, origin, txn);
 	if (ret < 0 || ret > UINT16_MAX) {
-		RedisModule_ReplyWithError(ctx, RDB_ETXN);
-		return;
+		throw(ret, RDB_ETXN);
 	}
 	uint16_t id = ret;
 
@@ -841,8 +836,7 @@ static void upd_add_rem(RedisModuleCtx *ctx, const arg_dname_t *origin, const rd
 		if (diff == NULL) {
 			RedisModule_CloseKey(diff_key);
 			RedisModule_FreeString(ctx, diff_keystr);
-			RedisModule_ReplyWithError(ctx, RDB_EALLOC);
-			return;
+			throw(KNOT_ENOMEM, RDB_EALLOC);
 		}
 		RedisModule_ModuleTypeSetValue(diff_key, rdb_diff_t, diff);
 
@@ -851,15 +845,13 @@ static void upd_add_rem(RedisModuleCtx *ctx, const arg_dname_t *origin, const rd
 		    RedisModule_KeyType(diff_index_key) != REDISMODULE_KEYTYPE_ZSET) {
 			RedisModule_CloseKey(diff_key);
 			RedisModule_FreeString(ctx, diff_keystr);
-			RedisModule_ReplyWithError(ctx, RDB_EMALF);
-			return;
+			throw(KNOT_EMALF, RDB_EMALF);
 		}
 		ret = RedisModule_ZsetAdd(diff_index_key, evaluate_score(rtype), diff_keystr, NULL);
 		if (ret != REDISMODULE_OK) {
 			RedisModule_CloseKey(diff_key);
 			RedisModule_FreeString(ctx, diff_keystr);
-			RedisModule_ReplyWithError(ctx, "ERR unable to add to zset");
-			return;
+			throw(KNOT_ENOMEM, "ERR unable to add to zset");
 		}
 	} else if (diff_keytype == REDISMODULE_KEYTYPE_MODULE &&
 	           RedisModule_ModuleTypeGetType(diff_key) == rdb_diff_t) {
@@ -867,19 +859,70 @@ static void upd_add_rem(RedisModuleCtx *ctx, const arg_dname_t *origin, const rd
 	} else {
 		RedisModule_CloseKey(diff_key);
 		RedisModule_FreeString(ctx, diff_keystr);
-		RedisModule_ReplyWithError(ctx, RDB_EMALF);
-		return;
+		throw(KNOT_EMALF, RDB_EMALF);
 	}
 	RedisModule_FreeString(ctx, diff_keystr);
 
 	ret = cb(diff, data, ttl);
 	if (ret == KNOT_EBUSY) {
 		RedisModule_CloseKey(diff_key);
-		RedisModule_ReplyWithError(ctx, "ERR already set");
-		return;
+		throw(KNOT_EEXIST, "ERR already set");
 	}
 
 	RedisModule_CloseKey(diff_key);
+	return_ok;
+}
+
+static void upd_add_txt_format(RedisModuleCtx *ctx, const arg_dname_t *origin,
+                               const rdb_txn_t *txn, const arg_dname_t *owner,
+                               const uint32_t ttl, const uint16_t rtype,
+                               const knot_rdata_t *data)
+{
+	exception_t e = upd_add_rem(ctx, origin, txn, owner, ttl, rtype, (void *)data, upd_add_txt_cb);
+	if (e.ret != KNOT_EOK) {
+		RedisModule_ReplyWithError(ctx, e.what);
+	} else {
+		RedisModule_ReplyWithSimpleString(ctx, RDB_RETURN_OK);
+	}
+}
+
+static void upd_remove_txt_format(RedisModuleCtx *ctx, const arg_dname_t *origin,
+                                  const rdb_txn_t *txn, const arg_dname_t *owner,
+                                  const uint32_t ttl, const uint16_t rtype,
+                                  const knot_rdata_t *data)
+{
+	exception_t e = upd_add_rem(ctx, origin, txn, owner, ttl, rtype, (void *)data, upd_remove_txt_cb);
+	if (e.ret != KNOT_EOK) {
+		RedisModule_ReplyWithError(ctx, e.what);
+	} else {
+		RedisModule_ReplyWithSimpleString(ctx, RDB_RETURN_OK);
+	}
+}
+
+static void upd_add_bin_format(RedisModuleCtx *ctx, const arg_dname_t *origin,
+                               const rdb_txn_t *txn, const arg_dname_t *owner,
+                               const uint32_t ttl, const uint16_t rtype,
+                               const knot_rdataset_t *data)
+{
+	exception_t e = upd_add_rem(ctx, origin, txn, owner, ttl, rtype, (void *)data, upd_add_bin_cb);
+	if (e.ret != KNOT_EOK) {
+		RedisModule_ReplyWithError(ctx, e.what);
+	} else {
+		RedisModule_ReplyWithSimpleString(ctx, RDB_RETURN_OK);
+	}
+}
+
+static void upd_remove_bin_format(RedisModuleCtx *ctx, const arg_dname_t *origin,
+                                  const rdb_txn_t *txn, const arg_dname_t *owner,
+                                  const uint32_t ttl, const uint16_t rtype,
+                                  const knot_rdataset_t *data)
+{
+	exception_t e = upd_add_rem(ctx, origin, txn, owner, ttl, rtype, (void *)data, upd_remove_bin_cb);
+	if (e.ret != KNOT_EOK) {
+		RedisModule_ReplyWithError(ctx, e.what);
+	} else {
+		RedisModule_ReplyWithSimpleString(ctx, RDB_RETURN_OK);
+	}
 }
 
 static void scanner_data(zs_scanner_t *s)
@@ -913,11 +956,11 @@ static void scanner_data(zs_scanner_t *s)
 		                s->r_type, s->r_ttl, rdata);
 		break;
 	case ADD:
-		knot_upd_add_txt(s_ctx->ctx, &origin, s_ctx->txn, &owner,
+		upd_add_txt_format(s_ctx->ctx, &origin, s_ctx->txn, &owner,
 		                 s->r_ttl, s->r_type, rdata);
 		break;
 	case REM:
-		knot_upd_remove_txt(s_ctx->ctx, &origin, s_ctx->txn, &owner,
+		upd_remove_txt_format(s_ctx->ctx, &origin, s_ctx->txn, &owner,
 		                    s->r_ttl, s->r_type, rdata);
 		break;
 	default:

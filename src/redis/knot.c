@@ -540,8 +540,8 @@ static int upd_add_bin(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 		.rdata = (knot_rdata_t *)rdata
 	};
 
-	knot_upd_add_bin(ctx, &origin, &txn, &owner, ttl, rtype, &rdataset);
-	RedisModule_ReplyWithSimpleString(ctx, RDB_RETURN_OK);
+	upd_add_bin_format(ctx, &origin, &txn, &owner, ttl, rtype, &rdataset);
+
 	return REDISMODULE_OK;
 }
 
@@ -597,8 +597,8 @@ static int upd_remove_bin(RedisModuleCtx *ctx, RedisModuleString **argv, int arg
 		.rdata = (knot_rdata_t *)rdata
 	};
 
-	knot_upd_remove_bin(ctx, &origin, &txn, &owner, ttl, rtype, &rdataset);
-	RedisModule_ReplyWithSimpleString(ctx, RDB_RETURN_OK);
+	upd_remove_bin_format(ctx, &origin, &txn, &owner, ttl, rtype, &rdataset);
+
 	return REDISMODULE_OK;
 }
 
