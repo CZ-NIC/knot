@@ -123,7 +123,12 @@ static void drop_capabilities(void)
 
 #define LOOP_WAIT_LOAD  5   /* Wait in a loop for all zones loaded */
 #define LOOP_WAIT       5   /* It could be even infinity. */
+#define LOOP_WAIT_MIN   (200 * 1000 * 1000UL)   /* In nanoseconds; < 1 s. */
+#define LOOP_WAIT_MAX   30
+#define LOAD_START_DECLINE  30
+#define LOAD_END_DECLINE    180
 
+/*! \brief Calculate wait in 'started' state detection. */
 static struct timespec calc_wait(struct timespec t)
 {
 	struct timespec rv;
@@ -131,9 +136,29 @@ static struct timespec calc_wait(struct timespec t)
 	rv.tv_sec = t.tv_sec + t.tv_sec + double_ns / (1000 * 1000 * 1000UL);
 	rv.tv_nsec = double_ns % (1000 * 1000 * 1000UL);
 	if (rv.tv_sec == 0) {
-		rv.tv_nsec = MAX(rv.tv_nsec, 200 * 1000 * 1000UL);
+		rv.tv_nsec = MAX(rv.tv_nsec, LOOP_WAIT_MIN);
 	} else {
-		rv.tv_sec = MIN(rv.tv_sec, 30);
+		rv.tv_sec = MIN(rv.tv_sec, LOOP_WAIT_MAX);
+	}
+
+	return rv;
+}
+
+/*! \brief Calculate wait in 'loaded' state detection. */
+static struct timespec calc_wait_loaded(struct timespec t)
+{
+	struct timespec rv = { .tv_nsec = 0UL };
+
+	if (t.tv_sec > LOAD_END_DECLINE) {
+		rv.tv_sec = LOOP_WAIT_MAX;
+	} else if (t.tv_sec > LOAD_START_DECLINE) {
+		rv.tv_sec = t.tv_sec - LOAD_START_DECLINE;
+		/* This formula has been chosen just to fit nicely. */
+		int divisor = LOAD_START_DECLINE * LOAD_START_DECLINE / LOOP_WAIT_LOAD;
+		rv.tv_sec = rv.tv_sec * rv.tv_sec / divisor;
+		rv.tv_sec = MIN(rv.tv_sec, LOOP_WAIT_MAX);
+	} else {
+		rv.tv_sec = LOOP_WAIT_LOAD;
 	}
 
 	return rv;
@@ -155,6 +180,7 @@ static int check_loaded(server_t *server, bool async, server_data_t *server_data
 	 */
 	static bool started = false;
 	static bool loaded = false;
+	static struct timespec started_time = { 0 };
 	assert(server->state & ServerRunning);
 	if (loaded) {
 		assert(server->state & ServerAnswering);
@@ -174,6 +200,7 @@ static int check_loaded(server_t *server, bool async, server_data_t *server_data
 	bool load = true;
 
 	if (server_data->first_loop) {
+		/* Benchmark the zonedb traversal while checking. */
 		rcu_read_lock();
 		knot_zonedb_iter_t *it = knot_zonedb_iter_begin(server->zone_db);
 		while (!knot_zonedb_iter_finished(it)) {
@@ -225,7 +252,8 @@ static int check_loaded(server_t *server, bool async, server_data_t *server_data
 			return ret;
 		}
 		started = true;
-		set_loop_wait(server_data, LOOP_WAIT_LOAD);
+		set_loop_wait(server_data, MAX(LOOP_WAIT_LOAD, server_data->loop_wait.tv_sec));
+		started_time = now;
 	}
 
 	assert(server->state & ServerAnswering);
@@ -238,6 +266,10 @@ static int check_loaded(server_t *server, bool async, server_data_t *server_data
 		dbus_emit_running(true);
 		loaded = true;
 		set_loop_wait(server_data, LOOP_WAIT);
+	} else {
+		/* Extend the wait a little. */
+		struct timespec elapsed = time_diff(&started_time, &now);
+		server_data->loop_wait = calc_wait_loaded(elapsed);
 	}
 
 	return KNOT_EOK;
