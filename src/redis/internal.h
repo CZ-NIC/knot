@@ -1595,34 +1595,32 @@ static int upd_meta_unlock(RedisModuleCtx *ctx, RedisModuleKey *key, uint8_t id)
 	return KNOT_EOK;
 }
 
-static int upd_abort_silent(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t *txn)
+static exception_t upd_abort(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t *txn)
 {
 	RedisModuleKey *meta_key = upd_meta_get_when_open(ctx, origin, txn, REDISMODULE_READ | REDISMODULE_WRITE);
 	if (meta_key == NULL) {
-		return KNOT_ENOENT;
+		throw(KNOT_ENOENT, RDB_ETXN);
 	}
 
 	if (delete_upd_index(ctx, txn, origin) != KNOT_EOK) {
 		RedisModule_CloseKey(meta_key);
-		return KNOT_EINVAL;
+		throw(KNOT_EINVAL, RDB_ECORRUPTED);
 	}
 
 	if (upd_meta_unlock(ctx, meta_key, txn->id) != KNOT_EOK) {
 		RedisModule_CloseKey(meta_key);
-		return KNOT_EBUSY;
+		throw(KNOT_EBUSY, RDB_ECORRUPTED);
 	}
 	RedisModule_CloseKey(meta_key);
-	return KNOT_EOK;
+	return_ok;
 }
 
-static void upd_abort(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t *txn)
+static void upd_abort_v(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t *txn)
 {
-	int ret = upd_abort_silent(ctx, origin, txn);
-	if (ret == KNOT_ENOENT) {
-		RedisModule_ReplyWithError(ctx, RDB_ETXN);
-	} else if (ret == KNOT_EINVAL || ret == KNOT_EBUSY) {
-		RedisModule_ReplyWithError(ctx, RDB_ECORRUPTED);
-	} else if (ret == KNOT_EOK) {
+	exception_t e = upd_abort(ctx, origin, txn);
+	if (e.ret != KNOT_EOK) {
+		RedisModule_ReplyWithError(ctx, e.what);
+	} else {
 		RedisModule_ReplyWithSimpleString(ctx, RDB_RETURN_OK);
 	}
 }
@@ -1728,7 +1726,8 @@ static void upd_commit(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t
 			RedisModule_CloseKey(rrset_key);
 			RedisModule_CloseKey(diff_key);
 			if (abort_on_fail) {
-				if (upd_abort_silent(ctx, origin, upd_txn) == KNOT_EOK) {
+				exception_t e = upd_abort(ctx, origin, upd_txn);
+				if (e.ret == KNOT_EOK) {
 					RedisModule_ReplyWithError(ctx, "ERR dry-run check failed, aborting update");
 				} else {
 					RedisModule_ReplyWithError(ctx, "ERR dry-run check failed and failed abort update");
@@ -1747,7 +1746,8 @@ static void upd_commit(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t
 				RedisModule_CloseKey(rrset_key);
 				RedisModule_CloseKey(diff_key);
 				if (abort_on_fail) {
-					if (upd_abort_silent(ctx, origin, upd_txn) == KNOT_EOK) {
+					exception_t e = upd_abort(ctx, origin, upd_txn);
+					if (e.ret == KNOT_EOK) {
 						RedisModule_ReplyWithError(ctx, "ERR dry-run check failed, aborting update");
 					} else {
 						RedisModule_ReplyWithError(ctx, "ERR dry-run check failed and failed abort update");
@@ -1772,7 +1772,8 @@ static void upd_commit(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t
 				RedisModule_CloseKey(rrset_key);
 				RedisModule_CloseKey(diff_key);
 				if (abort_on_fail) {
-					if (upd_abort_silent(ctx, origin, upd_txn) == KNOT_EOK) {
+					exception_t e = upd_abort(ctx, origin, upd_txn);
+					if (e.ret == KNOT_EOK) {
 						RedisModule_ReplyWithError(ctx, "ERR dry-run check failed, aborting update");
 					} else {
 						RedisModule_ReplyWithError(ctx, "ERR dry-run check failed and failed abort update");

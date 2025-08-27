@@ -638,7 +638,7 @@ static int upd_abort_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int argc
 	rdb_txn_t txn;
 	ARG_TXN_TXT(argv[2], txn);
 
-	upd_abort(ctx, &origin, &txn);
+	upd_abort_v(ctx, &origin, &txn);
 	return REDISMODULE_OK;
 }
 
@@ -654,7 +654,7 @@ static int upd_abort_bin(RedisModuleCtx *ctx, RedisModuleString **argv, int argc
 	rdb_txn_t txn;
 	ARG_TXN(argv[2], txn)
 
-	upd_abort(ctx, &origin, &txn);
+	upd_abort_v(ctx, &origin, &txn);
 	return REDISMODULE_OK;
 }
 
