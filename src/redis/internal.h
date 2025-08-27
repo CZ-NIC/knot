@@ -209,7 +209,8 @@ static index_k get_zones_index(RedisModuleCtx *ctx, const rdb_txn_t *txn, int ri
 	return key;
 }
 
-static index_k get_zone_index(RedisModuleCtx *ctx, const arg_dname_t *origin, const rdb_txn_t *txn, int rights)
+static index_k get_zone_index(RedisModuleCtx *ctx, const arg_dname_t *origin,
+                              const rdb_txn_t *txn, int rights)
 {
 	static const uint8_t prefix = ZONE;
 	RedisModule_Assert(ctx != NULL && txn != NULL);
@@ -232,7 +233,7 @@ static index_k get_zone_index(RedisModuleCtx *ctx, const arg_dname_t *origin, co
 }
 
 static index_k get_upd_index(RedisModuleCtx *ctx, const arg_dname_t *origin,
-                                      const rdb_txn_t *txn, uint16_t id, int rights)
+                             const rdb_txn_t *txn, uint16_t id, int rights)
 {
 	static const uint8_t prefix = UPD_TMP;
 	RedisModule_Assert(ctx != NULL && txn != NULL);
@@ -320,7 +321,8 @@ static void redismodule_free(void *ptr)
 	RedisModule_Free(ptr);
 }
 
-static int rrset_key_set(RedisModuleCtx *ctx, rrset_k key, RedisModuleString *keyname, const arg_dname_t *origin, const rdb_txn_t *txn, uint16_t rtype, rrset_v *val)
+static int rrset_key_set(RedisModuleCtx *ctx, rrset_k key, RedisModuleString *keyname,
+                         const arg_dname_t *origin, const rdb_txn_t *txn, uint16_t rtype, rrset_v *val)
 {
 	RedisModule_Assert(ctx != NULL && origin != NULL && txn != NULL && val != NULL);
 
@@ -393,7 +395,7 @@ static int rdata_remove(RedisModuleCtx *ctx, const arg_dname_t *origin, const rd
 	    zone_keytype != REDISMODULE_KEYTYPE_ZSET) {
 		RedisModule_CloseKey(zone_index);
 		RedisModule_ReplyWithError(ctx, RDB_EMALF);
-		return -1;
+		return KNOT_EMALF;
 	}
 
 	RedisModuleString *rrset_keystr = rrset_keyname_construct(ctx, txn, origin, owner, rtype);
@@ -660,7 +662,9 @@ static exception_t zone_begin(RedisModuleCtx *ctx, rdb_txn_t *txn, const arg_dna
 
 	return_ok;
 }
-static void zone_begin_txt_format(RedisModuleCtx *ctx, rdb_txn_t *txn, const arg_dname_t *origin) {
+
+static void zone_begin_txt_format(RedisModuleCtx *ctx, rdb_txn_t *txn, const arg_dname_t *origin)
+{
 	exception_t e = zone_begin(ctx, txn, origin);
 	if (e.ret != KNOT_EOK) {
 		RedisModule_ReplyWithError(ctx, e.what);
@@ -669,7 +673,8 @@ static void zone_begin_txt_format(RedisModuleCtx *ctx, rdb_txn_t *txn, const arg
 	}
 }
 
-static void zone_begin_bin_format(RedisModuleCtx *ctx, rdb_txn_t *txn, const arg_dname_t *origin) {
+static void zone_begin_bin_format(RedisModuleCtx *ctx, rdb_txn_t *txn, const arg_dname_t *origin)
+{
 	exception_t e = zone_begin(ctx, txn, origin);
 	if (e.ret != KNOT_EOK) {
 		RedisModule_ReplyWithError(ctx, e.what);
@@ -882,9 +887,9 @@ static exception_t upd_add_rem(RedisModuleCtx *ctx, const arg_dname_t *origin,
 }
 
 static int upd_add_txt_format(RedisModuleCtx *ctx, const arg_dname_t *origin,
-                               const rdb_txn_t *txn, const arg_dname_t *owner,
-                               const uint32_t ttl, const uint16_t rtype,
-                               const knot_rdata_t *data)
+                              const rdb_txn_t *txn, const arg_dname_t *owner,
+                              const uint32_t ttl, const uint16_t rtype,
+                              const knot_rdata_t *data)
 {
 	exception_t e = upd_add_rem(ctx, origin, txn, owner, ttl, rtype, (void *)data, upd_add_txt_cb);
 	if (e.ret != KNOT_EOK) {
@@ -894,9 +899,9 @@ static int upd_add_txt_format(RedisModuleCtx *ctx, const arg_dname_t *origin,
 }
 
 static int upd_remove_txt_format(RedisModuleCtx *ctx, const arg_dname_t *origin,
-                                  const rdb_txn_t *txn, const arg_dname_t *owner,
-                                  const uint32_t ttl, const uint16_t rtype,
-                                  const knot_rdata_t *data)
+                                 const rdb_txn_t *txn, const arg_dname_t *owner,
+                                 const uint32_t ttl, const uint16_t rtype,
+                                 const knot_rdata_t *data)
 {
 	exception_t e = upd_add_rem(ctx, origin, txn, owner, ttl, rtype, (void *)data, upd_remove_txt_cb);
 	if (e.ret != KNOT_EOK) {
@@ -955,7 +960,7 @@ static void scanner_data(zs_scanner_t *s)
 		return;
 	}
 
-	int ret = 0;
+	int ret = KNOT_EOK;
 	switch (s_ctx->mode) {
 	case STORE:
 		ret = rdata_add(s_ctx->ctx, &origin, s_ctx->txn, &owner,
@@ -963,11 +968,11 @@ static void scanner_data(zs_scanner_t *s)
 		break;
 	case ADD:
 		ret = upd_add_txt_format(s_ctx->ctx, &origin, s_ctx->txn, &owner,
-		                 s->r_ttl, s->r_type, rdata);
+		                         s->r_ttl, s->r_type, rdata);
 		break;
 	case REM:
 		ret = upd_remove_txt_format(s_ctx->ctx, &origin, s_ctx->txn, &owner,
-		                    s->r_ttl, s->r_type, rdata);
+		                            s->r_ttl, s->r_type, rdata);
 		break;
 	default:
 		RedisModule_Assert(0);
@@ -1071,14 +1076,21 @@ static void run_scanner(scanner_ctx_t *s_ctx, const arg_dname_t *origin,
 	zs_deinit(&s);
 }
 
-static void zone_store_txt_format(RedisModuleCtx *ctx, const arg_dname_t *origin, const rdb_txn_t *txn, const char *zone_data, const size_t zone_data_len)
+static void zone_store_txt_format(RedisModuleCtx *ctx, const arg_dname_t *origin,
+                                  const rdb_txn_t *txn, const char *zone_data, const size_t zone_data_len)
 {
 	if (zone_txn_is_open(ctx, origin, txn) == false) {
 		RedisModule_ReplyWithError(ctx, RDB_ETXN);
 		return;
 	}
 
-	scanner_ctx_t s_ctx = { ctx, txn, rdb_default_ttl, STORE };
+	scanner_ctx_t s_ctx = {
+		.ctx = ctx,
+		.txn = txn,
+		.dflt_ttl = rdb_default_ttl,
+		.mode = STORE
+	};
+
 	run_scanner(&s_ctx, origin, zone_data, zone_data_len);
 }
 
@@ -1239,7 +1251,7 @@ static void zone_list(RedisModuleCtx *ctx, const rdb_txn_t *txn, bool txt)
 			size_t len;
 			const char *dname = RedisModule_StringPtrLen(zone_name, &len);
 			char buf[KNOT_DNAME_TXT_MAXLEN];
-			if (knot_dname_to_str(buf, (knot_dname_t *)dname, KNOT_DNAME_TXT_MAXLEN) == NULL) {
+			if (knot_dname_to_str(buf, (knot_dname_t *)dname, sizeof(buf)) == NULL) {
 				continue;
 			}
 			RedisModule_ReplyWithCString(ctx, buf);

@@ -48,11 +48,11 @@ static RedisModuleCommandArg store_txt_info_args[] = {
 
 static RedisModuleCommandArg upd_load_txt_info_args[] = {
 	{"opt",      REDISMODULE_ARG_TYPE_PURE_TOKEN, -1, "--compact", NULL, NULL, REDISMODULE_CMD_ARG_OPTIONAL},
-	{"origin",   REDISMODULE_ARG_TYPE_STRING,     -1, NULL, NULL, NULL, REDISMODULE_CMD_ARG_NONE},
-	{"instance", REDISMODULE_ARG_TYPE_INTEGER,    -1, NULL, NULL, NULL, REDISMODULE_CMD_ARG_NONE},
-	{"serial",   REDISMODULE_ARG_TYPE_INTEGER,    -1, NULL, NULL, NULL, REDISMODULE_CMD_ARG_NONE},
-	{"owner",    REDISMODULE_ARG_TYPE_STRING,     -1, NULL, NULL, NULL, REDISMODULE_CMD_ARG_OPTIONAL},
-	{"rtype",    REDISMODULE_ARG_TYPE_STRING,     -1, NULL, NULL, NULL, REDISMODULE_CMD_ARG_OPTIONAL},
+	{"origin",   REDISMODULE_ARG_TYPE_STRING,     -1, NULL,        NULL, NULL, REDISMODULE_CMD_ARG_NONE},
+	{"instance", REDISMODULE_ARG_TYPE_INTEGER,    -1, NULL,        NULL, NULL, REDISMODULE_CMD_ARG_NONE},
+	{"serial",   REDISMODULE_ARG_TYPE_INTEGER,    -1, NULL,        NULL, NULL, REDISMODULE_CMD_ARG_NONE},
+	{"owner",    REDISMODULE_ARG_TYPE_STRING,     -1, NULL,        NULL, NULL, REDISMODULE_CMD_ARG_OPTIONAL},
+	{"rtype",    REDISMODULE_ARG_TYPE_STRING,     -1, NULL,        NULL, NULL, REDISMODULE_CMD_ARG_OPTIONAL},
 	{ 0 }
 };
 
@@ -72,7 +72,7 @@ static RedisModuleCommandArg zone_list_txt_info_args[] = {
 
 static const RedisModuleCommandInfo zone_begin_txt_info = {
 	.version = REDISMODULE_COMMAND_INFO_VERSION,
-	.summary = "Creates zone editing transaction",
+	.summary = "Create a zone full transaction",
 	.complexity = "O(1)",
 	.since = "7.0.0",
 	.arity = 3,
@@ -81,8 +81,8 @@ static const RedisModuleCommandInfo zone_begin_txt_info = {
 
 static const RedisModuleCommandInfo zone_store_txt_info = {
 	.version = REDISMODULE_COMMAND_INFO_VERSION,
-	.summary = "Store records to zone transaction",
-	.complexity = "O(1)",
+	.summary = "Store records in a zone full transaction",
+	.complexity = "O(m), where m is the number of stored records",
 	.since = "7.0.0",
 	.arity = 4,
 	.args = store_txt_info_args,
@@ -90,8 +90,8 @@ static const RedisModuleCommandInfo zone_store_txt_info = {
 
 static const RedisModuleCommandInfo zone_commit_txt_info = {
 	.version = REDISMODULE_COMMAND_INFO_VERSION,
-	.summary = "Store zone transaction",
-	.complexity = "Up to O(m), where m is number of rrsets and diffs updates of zone",
+	.summary = "Commit a zone full transaction",
+	.complexity = "O(1)",
 	.since = "7.0.0",
 	.arity = 3,
 	.args = origin_transaction_info_args,
@@ -99,8 +99,8 @@ static const RedisModuleCommandInfo zone_commit_txt_info = {
 
 static const RedisModuleCommandInfo zone_abort_txt_info = {
 	.version = REDISMODULE_COMMAND_INFO_VERSION,
-	.summary = "Abort zone transaction",
-	.complexity = "Up to O(l), where l is number of rrsets in zone",
+	.summary = "Abort a zone full transaction",
+	.complexity = "O(n), where n is the number of records in the transaction",
 	.since = "7.0.0",
 	.arity = 3,
 	.args = origin_transaction_info_args,
@@ -108,8 +108,8 @@ static const RedisModuleCommandInfo zone_abort_txt_info = {
 
 static const RedisModuleCommandInfo zone_load_txt_info = {
 	.version = REDISMODULE_COMMAND_INFO_VERSION,
-	.summary = "Print zone instance or transaction",
-	.complexity = "Up to O(l), where l is number of rrsets in zone",
+	.summary = "Load a zone instance or full transaction",
+	.complexity = "O(n), where n is the number of records in the zone",
 	.since = "7.0.0",
 	.arity = -3,
 	.args = zone_load_txt_info_args,
@@ -117,8 +117,8 @@ static const RedisModuleCommandInfo zone_load_txt_info = {
 
 static const RedisModuleCommandInfo zone_purge_txt_info = {
 	.version = REDISMODULE_COMMAND_INFO_VERSION,
-	.summary = "Purge zone instance",
-	.complexity = "Up to O(m), where m is number of rrsets and diffs updates of zone",
+	.summary = "Purge a zone instance",
+	.complexity = "O(n), where n is the number of records in the zone and its updates",
 	.since = "7.0.0",
 	.arity = 3,
 	.args = origin_instance_info_args,
@@ -126,8 +126,8 @@ static const RedisModuleCommandInfo zone_purge_txt_info = {
 
 static const RedisModuleCommandInfo zone_list_txt_info = {
 	.version = REDISMODULE_COMMAND_INFO_VERSION,
-	.summary = "Print zones stored in database",
-	.complexity = "O(j), where j is number of zones",
+	.summary = "List zones stored in the database",
+	.complexity = "O(z), where z is the number of zones",
 	.since = "7.0.0",
 	.arity = 2,
 	.args = zone_list_txt_info_args,
@@ -135,7 +135,7 @@ static const RedisModuleCommandInfo zone_list_txt_info = {
 
 static const RedisModuleCommandInfo upd_begin_txt_info = {
 	.version = REDISMODULE_COMMAND_INFO_VERSION,
-	.summary = "Creates update editing transaction",
+	.summary = "Create an zone update transaction",
 	.complexity = "O(1)",
 	.since = "7.0.0",
 	.arity = 3,
@@ -144,8 +144,8 @@ static const RedisModuleCommandInfo upd_begin_txt_info = {
 
 static const RedisModuleCommandInfo upd_add_txt_info = {
 	.version = REDISMODULE_COMMAND_INFO_VERSION,
-	.summary = "Add record to the zone with update",
-	.complexity = "O(1)",
+	.summary = "Add records to a zone update transaction",
+	.complexity = "O(m), where m is the number of added records",
 	.since = "7.0.0",
 	.arity = 4,
 	.args = store_txt_info_args,
@@ -153,8 +153,8 @@ static const RedisModuleCommandInfo upd_add_txt_info = {
 
 static const RedisModuleCommandInfo upd_remove_txt_info = {
 	.version = REDISMODULE_COMMAND_INFO_VERSION,
-	.summary = "Remove record from the zone with update",
-	.complexity = "O(1)",
+	.summary = "Remove records from a zone update transaction",
+	.complexity = "O(m), where m is the number of removed records",
 	.since = "7.0.0",
 	.arity = 4,
 	.args = store_txt_info_args,
@@ -162,8 +162,8 @@ static const RedisModuleCommandInfo upd_remove_txt_info = {
 
 static const RedisModuleCommandInfo upd_commit_txt_info = {
 	.version = REDISMODULE_COMMAND_INFO_VERSION,
-	.summary = "Commit update to the zone",
-	.complexity = "O(k), where k is number of rrsets in update",
+	.summary = "Commit a zone update transaction to a zone",
+	.complexity = "O(u), where u is the number of records in the update",
 	.since = "7.0.0",
 	.arity = 3,
 	.args = origin_transaction_info_args,
@@ -171,8 +171,8 @@ static const RedisModuleCommandInfo upd_commit_txt_info = {
 
 static const RedisModuleCommandInfo upd_abort_txt_info = {
 	.version = REDISMODULE_COMMAND_INFO_VERSION,
-	.summary = "Abort update transaction",
-	.complexity = "O(k), where k is number of rrsets in update",
+	.summary = "Abort a zone update transaction",
+	.complexity = "O(u), where u is the number of records in the update",
 	.since = "7.0.0",
 	.arity = 3,
 	.args = origin_transaction_info_args,
@@ -180,8 +180,8 @@ static const RedisModuleCommandInfo upd_abort_txt_info = {
 
 static const RedisModuleCommandInfo upd_diff_txt_info = {
 	.version = REDISMODULE_COMMAND_INFO_VERSION,
-	.summary = "Print state of update transaction",
-	.complexity = "O(k), where k is number of rrsets in update",
+	.summary = "Load the contents of a zone update transaction",
+	.complexity = "O(u), where u is the number of records in the update",
 	.since = "7.0.0",
 	.arity = -3,
 	.args = zone_load_txt_info_args,
@@ -189,8 +189,8 @@ static const RedisModuleCommandInfo upd_diff_txt_info = {
 
 static const RedisModuleCommandInfo upd_load_txt_info = {
 	.version = REDISMODULE_COMMAND_INFO_VERSION,
-	.summary = "Print updates since specified serial",
-	.complexity = "O(k), where k is number of rrsets in update",
+	.summary = "Load zone updates since a specified serial",
+	.complexity = "O(u), where u is the number of records in the retrieved updates",
 	.since = "7.0.0",
 	.arity = -4,
 	.args = upd_load_txt_info_args,
@@ -205,7 +205,6 @@ static int zone_begin_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int arg
 	ARG_INST_TXT(argv[2], txn);
 
 	zone_begin_txt_format(ctx, &txn, &origin);
-
 	return REDISMODULE_OK;
 }
 
@@ -222,7 +221,6 @@ static int zone_begin_bin(RedisModuleCtx *ctx, RedisModuleString **argv, int arg
 	ARG_INST(argv[2], txn);
 
 	zone_begin_bin_format(ctx, &txn, &origin);
-
 	return REDISMODULE_OK;
 }
 
@@ -239,7 +237,6 @@ static int zone_store_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int arg
 	ARG_DATA(argv[3], data_len, zone_data, "zone data");
 
 	zone_store_txt_format(ctx, &origin, &txn, zone_data, data_len);
-
 	return REDISMODULE_OK;
 }
 
@@ -272,7 +269,6 @@ static int zone_store_bin(RedisModuleCtx *ctx, RedisModuleString **argv, int arg
 	ARG_DATA(argv[7], rdataset_len, rdataset, "rdataset");
 
 	zone_store_bin_format(ctx, &origin, &txn, &owner, rtype, ttl, rcount, rdataset, rdataset_len);
-
 	return REDISMODULE_OK;
 }
 
@@ -345,7 +341,6 @@ static int zone_exists_bin(RedisModuleCtx *ctx, RedisModuleString **argv, int ar
 	ARG_INST(argv[2], txn);
 
 	zone_exists(ctx, &origin, &txn);
-
 	return REDISMODULE_OK;
 }
 
@@ -500,9 +495,14 @@ static int upd_add_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 	size_t data_len;
 	ARG_DATA(argv[3], data_len, zone_data, "zone data");
 
-	scanner_ctx_t s_ctx = { ctx, &txn, rdb_default_ttl, ADD };
-	run_scanner(&s_ctx, &origin, zone_data, data_len);
+	scanner_ctx_t s_ctx = {
+		.ctx = ctx,
+		.txn = &txn,
+		.dflt_ttl = rdb_default_ttl,
+		.mode = ADD
+	};
 
+	run_scanner(&s_ctx, &origin, zone_data, data_len);
 	return REDISMODULE_OK;
 }
 
@@ -541,7 +541,6 @@ static int upd_add_bin(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 	};
 
 	upd_add_bin_format(ctx, &origin, &txn, &owner, ttl, rtype, &rdataset);
-
 	return REDISMODULE_OK;
 }
 
@@ -557,9 +556,14 @@ static int upd_remove_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int arg
 	size_t data_len;
 	ARG_DATA(argv[3], data_len, zone_data, "zone data");
 
-	scanner_ctx_t s_ctx = { ctx, &txn, TTL_EMPTY, REM };
-	run_scanner(&s_ctx, &origin, zone_data, data_len);
+	scanner_ctx_t s_ctx = {
+		.ctx = ctx,
+		.txn = &txn,
+		.dflt_ttl = TTL_EMPTY,
+		.mode = REM
+	};
 
+	run_scanner(&s_ctx, &origin, zone_data, data_len);
 	return REDISMODULE_OK;
 }
 
@@ -598,7 +602,6 @@ static int upd_remove_bin(RedisModuleCtx *ctx, RedisModuleString **argv, int arg
 	};
 
 	upd_remove_bin_format(ctx, &origin, &txn, &owner, ttl, rtype, &rdataset);
-
 	return REDISMODULE_OK;
 }
 
