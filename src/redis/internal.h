@@ -1315,7 +1315,7 @@ static void zone_commit(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_
 	}
 
 	rrset_v *rrset = RedisModule_ModuleTypeGetValue(soa_key);
-	if (rrset == NULL || rrset->rrs.count == 0) {
+	if (rrset == NULL || rrset->rrs.count != 1) {
 		RedisModule_CloseKey(meta_key);
 		RedisModule_CloseKey(soa_key);
 		RedisModule_ReplyWithError(ctx, RDB_ENOSOA);
