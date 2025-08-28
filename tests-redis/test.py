@@ -108,11 +108,14 @@ def test_zone_commit():
 
     # multiple SOA
     txn = env.cmd('KNOT.ZONE.BEGIN', 'example.com', 1)
-    env.cmd('KNOT.ZONE.STORE', 'example.com', txn, "@ IN SOA ns.icann.org. noc.dns.icann.org. ( 1 7200  3600 1209600 3600 )")
     env.cmd('KNOT.ZONE.STORE', 'example.com', txn, "dns1.example.com. IN SOA ns.icann.org. noc.dns.icann.org. ( 2 7200  3600 1209600 3600 )")
+    env.cmd('KNOT.ZONE.STORE', 'example.com', txn, "@ IN SOA ns.icann.org. noc.dns.icann.org. ( 3 7200  3600 1209600 3600 )")
 
     resp = env.cmd('KNOT.ZONE.COMMIT', 'example.com', txn)
     env.assertEqual(resp, b'OK', message="Failed to commit")
+
+    resp = env.cmd('KNOT_BIN.ZONE.EXISTS', '\aexample\x03com\x00', '\x01')
+    env.assertEqual(resp, 3, message="Failed to commit")
 
     # new transaction with active zone
     txn = env.cmd('KNOT.ZONE.BEGIN', 'example.com', 1)
@@ -120,17 +123,28 @@ def test_zone_commit():
 
     txn1 = env.cmd('KNOT.ZONE.BEGIN', 'example.com', 1)
     env.assertEqual(txn1, 12, message="Wrong implicit instance transaction number")
-
     resp = env.cmd('KNOT.ZONE.ABORT', 'example.com', txn)
-    resp = env.cmd('KNOT.ZONE.ABORT', 'example.com', txn1)
+    env.cmd('KNOT.ZONE.STORE', 'example.com', txn1, "@ IN SOA ns.icann.org. noc.dns.icann.org. ( 3 7200  3600 1209600 3600 )")
+
+    old_zone = env.cmd('KNOT.ZONE.LOAD', 'example.com', 1)
+
+    resp = env.cmd('KNOT.ZONE.COMMIT', 'example.com', txn1)
+    env.assertEqual(resp, b'OK', message="Failed to commit")
+
+    new_zone =env.cmd('KNOT.ZONE.LOAD', 'example.com', 1)
+    env.assertNotEqual(old_zone, new_zone)
+
 
 def test_zone_abort():
     env = Env(moduleArgs=['max-event-age', '60', 'default-ttl', '3600'])
 
     # basic
     txn = env.cmd('KNOT.ZONE.BEGIN', 'example.com', 1)
+    env.cmd('KNOT.ZONE.STORE', 'example.com', txn, "@ IN SOA ns.icann.org. noc.dns.icann.org. ( 1 7200  3600 1209600 3600 )")
     resp = env.cmd('KNOT.ZONE.ABORT', 'example.com', txn)
     env.assertEqual(resp, b'OK', message="Failed to abort")
+    with env.assertResponseError(msg="Should not be available after abort"):
+        env.cmd('KNOT.ZONE.LOAD', 'example.com', txn)
 
     # after abort
     txn = env.cmd('KNOT.ZONE.BEGIN', 'example.com', 1)
@@ -150,13 +164,14 @@ def test_zone_load():
     ZONE = [[b'example.com.', b'3600', b'SOA', b'ns.icann.org. noc.dns.icann.org. 1 7200 3600 1209600 3600']]
 
     # load uncommited
-    resp = env.cmd('KNOT.ZONE.LOAD', 'example.com', txn)
-    env.assertEqual(resp, ZONE, message="Failed to store SOA")
+    zone_txn = env.cmd('KNOT.ZONE.LOAD', 'example.com', txn)
+    env.assertEqual(zone_txn, ZONE, message="Zone is not equals to template")
 
     # load commited
     env.cmd('KNOT.ZONE.COMMIT', 'example.com', txn)
     resp = env.cmd('KNOT.ZONE.LOAD', 'example.com', txn_get_instance(txn))
-    env.assertEqual(resp, ZONE, message="Failed to store SOA")
+    env.assertEqual(resp, ZONE, message="Zone is not equals to template")
+    env.assertEqual(resp, zone_txn, message="Zones from transaction and instance does not equals")
 
 def test_zone_purge():
     env = Env(moduleArgs=['max-event-age', '60', 'default-ttl', '3600'])
@@ -165,17 +180,42 @@ def test_zone_purge():
     env.cmd('KNOT.ZONE.STORE', 'example.com', txn, "@ IN SOA ns.icann.org. noc.dns.icann.org. ( 1 7200  3600 1209600 3600 )")
     env.cmd('KNOT.ZONE.COMMIT', 'example.com', txn)
 
-    txn = env.cmd('KNOT.UPD.BEGIN', 'example.com', 1)
-    env.cmd('KNOT.UPD.ADD', 'example.com', txn, "example IN A 1.1.1.1")
-    env.cmd('KNOT.UPD.COMMIT','example.com', txn)
+    txn1 = env.cmd('KNOT.ZONE.BEGIN', 'example.com', 1)
+    env.cmd('KNOT.ZONE.STORE', 'example.com', txn1, "@ IN SOA ns.icann.org. noc.dns.icann.org. ( 1 7200  3600 1209600 3600 )")
 
+    txn2 = env.cmd('KNOT.UPD.BEGIN', 'example.com', 1)
+    env.cmd('KNOT.UPD.ADD', 'example.com', txn2, "dns IN A 1.1.1.1")
+    env.cmd('KNOT.UPD.COMMIT','example.com', txn2)
+
+    txn3 = env.cmd('KNOT.UPD.BEGIN', 'example.com', 1)
+    env.cmd('KNOT.UPD.ADD', 'example.com', txn3, "dns IN A 1.1.1.1")
+
+    # basic
     resp = env.cmd('KNOT.ZONE.PURGE', 'example.com', txn_get_instance(txn))
     env.assertEqual(resp, b'OK', message="Failed to purge zone")
 
     with env.assertResponseError(msg="Zone has not been purged"):
+        env.cmd('KNOT.ZONE.LOAD', 'example.com', txn_get_instance(txn))
+    with env.assertResponseError(msg="Zone has not been purged"):
         env.cmd('KNOT.ZONE.LOAD', 'example.com', txn)
     with env.assertResponseError(msg="Update has not been purged"):
-        env.cmd('KNOT.UPD.DIFF', 'example.com', txn)
+        env.cmd('KNOT.UPD.DIFF', 'example.com', txn2)
+
+    # test whether uncommitted update transaction remains available before commit
+    with env.assertResponseError(msg="Zone should not be available anymore"):
+        env.cmd('KNOT.UPD.COMMIT','example.com', txn3)
+
+    # test whether uncommitted zone transaction remains available
+    env.cmd('KNOT.ZONE.STORE', 'example.com', txn1, "dns IN A 1.1.1.1")
+    resp = env.cmd('KNOT.ZONE.COMMIT','example.com', txn1)
+    ZONE = [[b'example.com.', b'3600', b'SOA', b'ns.icann.org. noc.dns.icann.org. 1 7200 3600 1209600 3600'], [b'dns.example.com.', b'3600', b'A', b'1.1.1.1']]
+    env.assertEqual(resp, b'OK', message="Failed to commit after purge")
+    resp = env.cmd('KNOT.ZONE.LOAD', 'example.com', txn_get_instance(txn1))
+    env.assertEqual(resp, ZONE, message="Zone does not equals template")
+
+    # test whether uncommitted update transaction remains available after commit
+    resp = env.cmd('KNOT.UPD.COMMIT','example.com', txn3)
+    env.assertEqual(resp, b'OK', message="Failed to commit update")
 
 def test_zone_list():
     env = Env(moduleArgs=['max-event-age', '60', 'default-ttl', '3600'])
