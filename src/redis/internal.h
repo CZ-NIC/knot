@@ -550,7 +550,7 @@ static int set_active_transaction(RedisModuleCtx *ctx, const arg_dname_t *origin
 	RedisModuleKey *key = RedisModule_OpenKey(ctx, txn_k, REDISMODULE_READ);
 	RedisModule_FreeString(ctx, txn_k);
 	if (key == NULL) {
-		return KNOT_EMALF;
+		return KNOT_EEXIST;
 	} else if (RedisModule_KeyType(key) != REDISMODULE_KEYTYPE_STRING) {
 		RedisModule_CloseKey(key);
 		return KNOT_EMALF;
@@ -680,6 +680,14 @@ static void zone_begin_bin_format(RedisModuleCtx *ctx, rdb_txn_t *txn, const arg
 
 static exception_t upd_begin(RedisModuleCtx *ctx, rdb_txn_t *txn, const arg_dname_t *origin)
 {
+	rdb_txn_t zone_txn = {
+		.instance = txn->instance,
+		.id = TXN_ID_ACTIVE
+	};
+	if (set_active_transaction(ctx, origin, &zone_txn) == KNOT_EEXIST) {
+		throw(KNOT_EINVAL, RDB_EZONE);
+	}
+
 	upd_meta_k key = upd_meta_key_get(ctx, txn, origin, REDISMODULE_WRITE);
 	if (key == NULL) {
 		throw(KNOT_EMALF, RDB_ECORRUPTED);
@@ -873,7 +881,7 @@ static exception_t upd_add_rem(RedisModuleCtx *ctx, const arg_dname_t *origin,
 	return_ok;
 }
 
-static void upd_add_txt_format(RedisModuleCtx *ctx, const arg_dname_t *origin,
+static int upd_add_txt_format(RedisModuleCtx *ctx, const arg_dname_t *origin,
                                const rdb_txn_t *txn, const arg_dname_t *owner,
                                const uint32_t ttl, const uint16_t rtype,
                                const knot_rdata_t *data)
@@ -881,12 +889,11 @@ static void upd_add_txt_format(RedisModuleCtx *ctx, const arg_dname_t *origin,
 	exception_t e = upd_add_rem(ctx, origin, txn, owner, ttl, rtype, (void *)data, upd_add_txt_cb);
 	if (e.ret != KNOT_EOK) {
 		RedisModule_ReplyWithError(ctx, e.what);
-	} else {
-		RedisModule_ReplyWithSimpleString(ctx, RDB_RETURN_OK);
 	}
+	return e.ret;
 }
 
-static void upd_remove_txt_format(RedisModuleCtx *ctx, const arg_dname_t *origin,
+static int upd_remove_txt_format(RedisModuleCtx *ctx, const arg_dname_t *origin,
                                   const rdb_txn_t *txn, const arg_dname_t *owner,
                                   const uint32_t ttl, const uint16_t rtype,
                                   const knot_rdata_t *data)
@@ -894,9 +901,8 @@ static void upd_remove_txt_format(RedisModuleCtx *ctx, const arg_dname_t *origin
 	exception_t e = upd_add_rem(ctx, origin, txn, owner, ttl, rtype, (void *)data, upd_remove_txt_cb);
 	if (e.ret != KNOT_EOK) {
 		RedisModule_ReplyWithError(ctx, e.what);
-	} else {
-		RedisModule_ReplyWithSimpleString(ctx, RDB_RETURN_OK);
 	}
+	return e.ret;
 }
 
 static void upd_add_bin_format(RedisModuleCtx *ctx, const arg_dname_t *origin,
@@ -956,22 +962,23 @@ static void scanner_data(zs_scanner_t *s)
 		                s->r_type, s->r_ttl, rdata);
 		break;
 	case ADD:
-		upd_add_txt_format(s_ctx->ctx, &origin, s_ctx->txn, &owner,
+		ret = upd_add_txt_format(s_ctx->ctx, &origin, s_ctx->txn, &owner,
 		                 s->r_ttl, s->r_type, rdata);
 		break;
 	case REM:
-		upd_remove_txt_format(s_ctx->ctx, &origin, s_ctx->txn, &owner,
+		ret = upd_remove_txt_format(s_ctx->ctx, &origin, s_ctx->txn, &owner,
 		                    s->r_ttl, s->r_type, rdata);
 		break;
 	default:
 		RedisModule_Assert(0);
 	}
-	if (ret != 0) {
+	if (ret != KNOT_EOK) {
 		s_ctx->replied = true;
 		s->error.fatal = true;
 		s->state = ZS_STATE_STOP;
+	} else {
+		RedisModule_ReplyWithSimpleString(s_ctx->ctx, RDB_RETURN_OK);
 	}
-	RedisModule_ReplyWithSimpleString(s_ctx->ctx, RDB_RETURN_OK);
 }
 
 static void scanner_error(zs_scanner_t *s)
@@ -1719,24 +1726,26 @@ static void upd_commit(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t
 			}
 		}
 		rrset_v *rrset = RedisModule_ModuleTypeGetValue(rrset_key);
-
-		if (knot_rdataset_subset(&diff->rem_rrs, &rrset->rrs) == false ||
-		    (diff->rem_ttl != TTL_EMPTY && rrset->ttl != diff->rem_ttl))
-		{
-			RedisModule_CloseKey(rrset_key);
-			RedisModule_CloseKey(diff_key);
-			if (abort_on_fail) {
-				exception_t e = upd_abort(ctx, origin, upd_txn);
-				if (e.ret == KNOT_EOK) {
-					RedisModule_ReplyWithError(ctx, "ERR dry-run check failed, aborting update");
+		
+		if (diff->rem_rrs.count > 0) {
+			if (knot_rdataset_subset(&diff->rem_rrs, &rrset->rrs) == false ||
+			    (diff->rem_ttl != TTL_EMPTY && rrset->ttl != diff->rem_ttl))
+			{
+				RedisModule_CloseKey(rrset_key);
+				RedisModule_CloseKey(diff_key);
+				if (abort_on_fail) {
+					exception_t e = upd_abort(ctx, origin, upd_txn);
+					if (e.ret == KNOT_EOK) {
+						RedisModule_ReplyWithError(ctx, "ERR dry-run check failed, aborting update");
+					} else {
+						RedisModule_ReplyWithError(ctx, "ERR dry-run check failed and failed abort update");
+					}
 				} else {
-					RedisModule_ReplyWithError(ctx, "ERR dry-run check failed and failed abort update");
+					RedisModule_ReplyWithError(ctx, "ERR dry-run check failed");
 				}
-			} else {
-				RedisModule_ReplyWithError(ctx, "ERR dry-run check failed");
+				RedisModule_CloseKey(meta_key);
+				return;
 			}
-			RedisModule_CloseKey(meta_key);
-			return;
 		}
 
 		uint16_t rr_count = diff->add_rrs.count;
