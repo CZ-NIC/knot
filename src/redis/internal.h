@@ -386,58 +386,32 @@ static int rdata_add(RedisModuleCtx *ctx, const arg_dname_t *origin, const rdb_t
 	return KNOT_EOK;
 }
 
-static int rdata_remove(RedisModuleCtx *ctx, const arg_dname_t *origin, const rdb_txn_t *txn,
-                        const arg_dname_t *owner, int16_t rtype, uint32_t *ttl, const knot_rdata_t *rdata)
+static void rdata_remove(RedisModuleCtx *ctx, const arg_dname_t *origin, const rdb_txn_t *txn,
+                         const arg_dname_t *owner, int16_t rtype, uint32_t *ttl, const knot_rdata_t *rdata)
 {
-	index_k zone_index = get_zone_index(ctx, origin, txn, REDISMODULE_READ | REDISMODULE_WRITE);
-	int zone_keytype = RedisModule_KeyType(zone_index);
-	if (zone_keytype != REDISMODULE_KEYTYPE_EMPTY &&
-	    zone_keytype != REDISMODULE_KEYTYPE_ZSET) {
-		RedisModule_CloseKey(zone_index);
-		RedisModule_ReplyWithError(ctx, RDB_EMALF);
-		return KNOT_EMALF;
-	}
-
+	// Existence of the rrset is ensured by the previous check.
 	RedisModuleString *rrset_keystr = rrset_keyname_construct(ctx, txn, origin, owner, rtype);
 	RedisModuleKey *rrset_key = RedisModule_OpenKey(ctx, rrset_keystr, REDISMODULE_READ | REDISMODULE_WRITE);
+	RedisModule_Assert(RedisModule_ModuleTypeGetType(rrset_key) == rdb_rrset_t);
+	rrset_v *rrset = RedisModule_ModuleTypeGetValue(rrset_key);
+	RedisModule_Assert(rrset != NULL);
 
-	rrset_v *rrset = NULL;
-	if (RedisModule_KeyType(rrset_key) == REDISMODULE_KEYTYPE_EMPTY) {
-		RedisModule_FreeString(ctx, rrset_keystr);
-		RedisModule_CloseKey(zone_index);
-		RedisModule_CloseKey(rrset_key);
-		return KNOT_EOK;
-	} else if (RedisModule_ModuleTypeGetType(rrset_key) == rdb_rrset_t) {
-		rrset = RedisModule_ModuleTypeGetValue(rrset_key);
-	} else {
-		RedisModule_FreeString(ctx, rrset_keystr);
-		RedisModule_CloseKey(zone_index);
-		RedisModule_CloseKey(rrset_key);
-		RedisModule_ReplyWithError(ctx, RDB_EMALF);
-		return KNOT_EINVAL;
-	}
-
-	int ret = knot_rdataset_remove(&rrset->rrs, rdata, &mm);
-	if (ret != KNOT_EOK) {
-		RedisModule_FreeString(ctx, rrset_keystr);
-		RedisModule_CloseKey(zone_index);
-		RedisModule_CloseKey(rrset_key);
-		RedisModule_ReplyWithError(ctx, "ERR unable to remove");
-		return ret;
-	}
+	RedisModule_Assert(knot_rdataset_remove(&rrset->rrs, rdata, &mm) == KNOT_EOK);
 	if (*ttl == TTL_EMPTY) {
 		*ttl = rrset->ttl;
 	}
 
 	if (rrset->rrs.count == 0 && rtype != KNOT_RRTYPE_SOA) {
 		RedisModule_DeleteKey(rrset_key);
-		RedisModule_ZsetRem(zone_index, rrset_keystr, NULL);
-	}
-	RedisModule_FreeString(ctx, rrset_keystr);
-	RedisModule_CloseKey(zone_index);
-	RedisModule_CloseKey(rrset_key);
 
-	return 0;
+		index_k zone_index = get_zone_index(ctx, origin, txn, REDISMODULE_READ | REDISMODULE_WRITE);
+		RedisModule_Assert(RedisModule_KeyType(zone_index) == REDISMODULE_KEYTYPE_ZSET);
+		RedisModule_ZsetRem(zone_index, rrset_keystr, NULL);
+		RedisModule_CloseKey(zone_index);
+	}
+
+	RedisModule_FreeString(ctx, rrset_keystr);
+	RedisModule_CloseKey(rrset_key);
 }
 
 static void zone_meta_storage_init(zone_meta_storage_t *meta)
@@ -985,8 +959,6 @@ static void scanner_data(zs_scanner_t *s)
 		s_ctx->replied = true;
 		s->error.fatal = true;
 		s->state = ZS_STATE_STOP;
-	} else {
-		RedisModule_ReplyWithSimpleString(s_ctx->ctx, RDB_RETURN_OK);
 	}
 }
 
@@ -1078,6 +1050,8 @@ static void run_scanner(scanner_ctx_t *s_ctx, const arg_dname_t *origin,
 		return;
 	}
 	zs_deinit(&s);
+
+	RedisModule_ReplyWithSimpleString(s_ctx->ctx, RDB_RETURN_OK);
 }
 
 static void zone_store_txt_format(RedisModuleCtx *ctx, const arg_dname_t *origin,
@@ -1798,7 +1772,7 @@ static void upd_commit(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t
 		const char *el_str = RedisModule_StringPtrLen(el, &el_len);
 		RedisModule_Assert(el_str != NULL && el_len > 0);
 
-		RedisModule_ZsetAdd(new_upd_key, score, el, NULL);
+		RedisModule_Assert(RedisModule_ZsetAdd(new_upd_key, score, el, NULL) == REDISMODULE_OK);
 
 		wire_ctx_t w = wire_ctx_init((uint8_t *)el_str, el_len);
 		wire_ctx_skip(&w, RDB_PREFIX_LEN + 1 + origin->len);
@@ -1817,7 +1791,6 @@ static void upd_commit(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t
 		knot_rdata_t *rr = diff->rem_rrs.rdata;
 		for (size_t i = 0; i < rr_count; ++i) {
 			rdata_remove(ctx, origin, &zone_txn, &owner, rtype, &diff->rem_ttl, diff->rem_rrs.rdata);
-			// TODO return check
 			rr = knot_rdataset_next(rr);
 		}
 
