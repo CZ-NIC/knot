@@ -11,6 +11,7 @@
 #define RDB_ECOMPAT	RDB_E("incompatible module version")
 #define RDB_ECORRUPTED	RDB_E("corrupted metadata")
 #define RDB_EEVENT	RDB_E("failed to emit event")
+#define RDB_EEXIST	RDB_E("already set")
 #define RDB_EINST	RDB_E("invalid instance")
 #define RDB_EMALF	RDB_E("malformed data")
 #define RDB_ENOSOA	RDB_E("missing SOA")

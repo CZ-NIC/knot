@@ -782,48 +782,52 @@ static int upd_add_txt_cb(diff_v *diff, const void *data, uint32_t ttl)
 {
 	const knot_rdata_t *rdata = data;
 
-	knot_rdataset_remove(&diff->rem_rrs, rdata, &mm);
-	knot_rdataset_add(&diff->add_rrs, rdata, &mm);
+	int ret = knot_rdataset_remove(&diff->rem_rrs, rdata, &mm);
+	if (ret == KNOT_EOK) {
+		ret = knot_rdataset_add(&diff->add_rrs, rdata, &mm);
+	}
 	diff->add_ttl = (ttl == TTL_EMPTY) ? rdb_default_ttl : ttl;
 
-	return KNOT_EOK;
+	return ret;
 }
 
 static int upd_remove_txt_cb(diff_v *diff, const void *data, uint32_t ttl)
 {
 	const knot_rdata_t *rdata = data;
 
-	knot_rdataset_remove(&diff->add_rrs, rdata, &mm);
-	knot_rdataset_add(&diff->rem_rrs, rdata, &mm);
+	int ret = knot_rdataset_remove(&diff->add_rrs, rdata, &mm);
+	if (ret == KNOT_EOK) {
+		ret = knot_rdataset_add(&diff->rem_rrs, rdata, &mm);
+	}
 	diff->rem_ttl = ttl;
 
-	return KNOT_EOK;
+	return ret;
 }
 
 static int upd_add_bin_cb(diff_v *diff, const void *data, uint32_t ttl)
 {
 	const knot_rdataset_t *rdataset = data;
 
-	if (diff->add_rrs.count) {
-		return KNOT_EBUSY;
+	if (diff->add_rrs.count > 0) {
+		return KNOT_EEXIST;
 	}
-	knot_rdataset_copy(&diff->add_rrs, rdataset, &mm);
+	int ret = knot_rdataset_copy(&diff->add_rrs, rdataset, &mm);
 	diff->add_ttl = ttl;
 
-	return KNOT_EOK;
+	return ret;
 }
 
 static int upd_remove_bin_cb(diff_v *diff, const void *data, uint32_t ttl)
 {
 	const knot_rdataset_t *rdataset = data;
 
-	if (diff->rem_rrs.count) {
-		return KNOT_EBUSY;
+	if (diff->rem_rrs.count > 0) {
+		return KNOT_EEXIST;
 	}
-	knot_rdataset_copy(&diff->rem_rrs, rdataset, &mm);
+	int ret = knot_rdataset_copy(&diff->rem_rrs, rdataset, &mm);
 	diff->rem_ttl = ttl;
 
-	return KNOT_EOK;
+	return ret;
 }
 
 static exception_t upd_add_rem(RedisModuleCtx *ctx, const arg_dname_t *origin,
@@ -877,9 +881,9 @@ static exception_t upd_add_rem(RedisModuleCtx *ctx, const arg_dname_t *origin,
 	RedisModule_FreeString(ctx, diff_keystr);
 
 	ret = cb(diff, data, ttl);
-	if (ret == KNOT_EBUSY) {
+	if (ret == KNOT_EEXIST) {
 		RedisModule_CloseKey(diff_key);
-		throw(KNOT_EEXIST, "ERR already set");
+		throw(KNOT_EEXIST, RDB_EEXIST);
 	}
 
 	RedisModule_CloseKey(diff_key);
@@ -1603,15 +1607,12 @@ static void zone_load(RedisModuleCtx *ctx, const arg_dname_t *origin,
 	RedisModule_ReplySetArrayLength(ctx, count);
 }
 
-static int upd_meta_unlock(RedisModuleCtx *ctx, RedisModuleKey *key, uint8_t id)
+static void upd_meta_unlock(RedisModuleCtx *ctx, RedisModuleKey *key, uint8_t id)
 {
 	size_t len = 0;
 	upd_meta_storage_t *meta = (upd_meta_storage_t *)RedisModule_StringDMA(key, &len, REDISMODULE_WRITE);
-	if (len != sizeof(*meta)) {
-		return KNOT_ENOENT;
-	}
+	RedisModule_Assert(len == sizeof(*meta));
 	meta->lock[id] = 0;
-	return KNOT_EOK;
 }
 
 static exception_t upd_abort(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t *txn)
@@ -1626,10 +1627,8 @@ static exception_t upd_abort(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb
 		throw(KNOT_EINVAL, RDB_ECORRUPTED);
 	}
 
-	if (upd_meta_unlock(ctx, meta_key, txn->id) != KNOT_EOK) {
-		RedisModule_CloseKey(meta_key);
-		throw(KNOT_EBUSY, RDB_ECORRUPTED);
-	}
+	upd_meta_unlock(ctx, meta_key, txn->id);
+
 	RedisModule_CloseKey(meta_key);
 	return_ok;
 }
@@ -1774,7 +1773,7 @@ static void upd_commit(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t
 	}
 
 	// Check if SOA serial was explicitly incremented; compute new serial otherwise.
-	rrset_k soa_key;
+	rrset_k soa_key = NULL;
 	rrset_v *soa_rrset = NULL;
 	uint32_t serial_new;
 	if (serial_upd == -1) {
@@ -1842,14 +1841,15 @@ static void upd_commit(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t
 		RedisModuleKey *soa_diff_key = RedisModule_OpenKey(ctx, soa_diff_keyname, REDISMODULE_WRITE);
 
 		diff_v *diff = RedisModule_Calloc(1, sizeof(diff_v));
+		RedisModule_Assert(diff != NULL);
 		diff->add_ttl = soa_rrset->ttl;
 		diff->rem_ttl = soa_rrset->ttl;
 		RedisModule_Assert(soa_rrset != NULL);
-		knot_rdataset_add(&diff->rem_rrs, soa_rrset->rrs.rdata, &mm);
+		(void)knot_rdataset_copy(&diff->rem_rrs, &soa_rrset->rrs, &mm);
 		knot_soa_serial_set(soa_rrset->rrs.rdata, serial_new);
-		knot_rdataset_add(&diff->add_rrs, soa_rrset->rrs.rdata, &mm);
-		RedisModule_ModuleTypeSetValue(soa_diff_key, rdb_diff_t, diff);
-		RedisModule_ZsetAdd(new_upd_key, evaluate_score(KNOT_RRTYPE_SOA), soa_diff_keyname, NULL);
+		(void)knot_rdataset_copy(&diff->add_rrs, &soa_rrset->rrs, &mm);
+		RedisModule_Assert(RedisModule_ModuleTypeSetValue(soa_diff_key, rdb_diff_t, diff) == REDISMODULE_OK);
+		RedisModule_Assert(RedisModule_ZsetAdd(new_upd_key, evaluate_score(KNOT_RRTYPE_SOA), soa_diff_keyname, NULL) == REDISMODULE_OK);
 
 		RedisModule_FreeString(ctx, soa_diff_keyname);
 		RedisModule_CloseKey(soa_diff_key);
@@ -1857,11 +1857,7 @@ static void upd_commit(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t
 	}
 	RedisModule_CloseKey(new_upd_key);
 
-	if (upd_meta_unlock(ctx, meta_key, upd_txn->id) != KNOT_EOK) {
-		RedisModule_CloseKey(meta_key);
-		RedisModule_ReplyWithError(ctx, RDB_ECORRUPTED);
-		return;
-	}
+	upd_meta_unlock(ctx, meta_key, upd_txn->id);
 	RedisModule_CloseKey(meta_key);
 
 	ret = commit_event(ctx, RDB_EVENT_UPD, origin, upd_txn->instance, serial_new);
