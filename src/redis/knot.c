@@ -613,7 +613,7 @@ static int upd_commit_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int arg
 	rdb_txn_t txn;
 	ARG_TXN_TXT(argv[2], txn);
 
-	upd_commit(ctx, &origin, &txn, false);
+	upd_commit(ctx, &origin, &txn);
 	return REDISMODULE_OK;
 }
 
@@ -629,7 +629,7 @@ static int upd_commit_bin(RedisModuleCtx *ctx, RedisModuleString **argv, int arg
 	rdb_txn_t txn;
 	ARG_TXN(argv[2], txn)
 
-	upd_commit(ctx, &origin, &txn, true);
+	upd_commit(ctx, &origin, &txn);
 	return REDISMODULE_OK;
 }
 

@@ -1644,7 +1644,66 @@ static void upd_abort_v(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_
 	}
 }
 
-static void upd_commit(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t *upd_txn, bool abort_on_fail)
+static int upd_check(const diff_v *diff, const rrset_v *rrset, uint16_t rtype,
+                     int64_t *serial_upd, const char **err)
+{
+	if (diff->rem_rrs.count > 0) {
+		if (rrset == NULL) {
+			*err = "failed to remove non-existent record";
+			return KNOT_ESEMCHECK;
+		} else if (!knot_rdataset_subset(&diff->rem_rrs, &rrset->rrs)) {
+			*err = "failed to remove non-existent record";
+			return KNOT_ESEMCHECK;
+		} else if (diff->rem_ttl != TTL_EMPTY && rrset->ttl != diff->rem_ttl) {
+			*err = "failed to remove record with non-matching TTL";
+			return KNOT_ESEMCHECK;
+		}
+	}
+
+	if (rrset != NULL) {
+		uint16_t rr_count = diff->add_rrs.count;
+		knot_rdata_t *rr = diff->add_rrs.rdata;
+		for (size_t i = 0; i < rr_count; ++i) {
+			if (find_rr_pos(&rrset->rrs, rr) != KNOT_ENOENT) {
+				*err = "failed to add existing record";
+				return KNOT_ESEMCHECK;
+			}
+			rr = knot_rdataset_next(rr);
+		}
+	}
+
+	if (rtype == KNOT_RRTYPE_SOA) {
+		RedisModule_Assert(rrset != NULL);
+		knot_rdataset_t soa_tmp;
+		if (knot_rdataset_copy(&soa_tmp, &rrset->rrs, &mm) != KNOT_EOK ||
+		    knot_rdataset_subtract(&soa_tmp, &diff->rem_rrs, &mm) != KNOT_EOK ||
+		    knot_rdataset_merge(&soa_tmp, &diff->add_rrs, &mm) != KNOT_EOK) {
+			*err = "failed to update SOA";
+			return KNOT_ENOMEM;
+		}
+
+		if (soa_tmp.count != 1) {
+			knot_rdataset_clear(&soa_tmp, &mm);
+			*err = "exactly one SOA expected";
+			return KNOT_ESEMCHECK;
+		}
+
+		uint32_t serial_new = knot_soa_serial(soa_tmp.rdata);
+		uint32_t serial_diff = serial_new - knot_soa_serial(rrset->rrs.rdata);
+		if (serial_diff == 0 || serial_diff >= 0x80000000U) {
+			knot_rdataset_clear(&soa_tmp, &mm);
+			*err = "new SOA serial not increased";
+			return KNOT_ESEMCHECK;
+		}
+		*serial_upd = serial_new;
+
+		knot_rdataset_clear(&soa_tmp, &mm);
+	}
+
+	return KNOT_EOK;
+}
+
+static void upd_commit(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t *upd_txn)
 {
 	RedisModuleKey *meta_key = upd_meta_get_when_open(ctx, origin, upd_txn, REDISMODULE_READ | REDISMODULE_WRITE);
 	if (meta_key == NULL) {
@@ -1670,49 +1729,17 @@ static void upd_commit(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t
 		return;
 	}
 
-	index_k zone_key = get_zone_index(ctx, origin, &zone_txn, REDISMODULE_READ | REDISMODULE_WRITE);
-	RedisModuleString *soa_keyname = index_soa_keyname(zone_key);
-	RedisModule_CloseKey(zone_key);
-	if (soa_keyname == NULL) {
-		RedisModule_CloseKey(meta_key);
-		RedisModule_ReplyWithError(ctx, RDB_ENOSOA);
-		return;
-	}
-
-	rrset_k soa_key = RedisModule_OpenKey(ctx, soa_keyname, REDISMODULE_WRITE);
-	if (RedisModule_ModuleTypeGetType(soa_key) != rdb_rrset_t) {
-		RedisModule_CloseKey(meta_key);
-		RedisModule_ReplyWithError(ctx, RDB_EMALF);
-		return;
-	}
-	rrset_v *soa_rrset = RedisModule_ModuleTypeGetValue(soa_key);
-	uint32_t new_serial = knot_soa_serial(soa_rrset->rrs.rdata);
-
-	RedisModuleString *soa_diff_keyname = diff_keyname_construct(ctx, origin, upd_txn, origin, KNOT_RRTYPE_SOA, id);
-	RedisModuleKey *soa_diff_key = RedisModule_OpenKey(ctx, soa_diff_keyname, REDISMODULE_WRITE);
-	if (RedisModule_KeyType(soa_diff_key) == REDISMODULE_KEYTYPE_EMPTY) {
-		new_serial += 1;
-	} else {
-		diff_v *diff = RedisModule_ModuleTypeGetValue(soa_diff_key);
-		if (diff->add_rrs.count == 1) {
-			new_serial = knot_soa_serial(diff->add_rrs.rdata);
-		} else {
-			RedisModule_CloseKey(meta_key);
-			RedisModule_CloseKey(soa_diff_key);
-			RedisModule_ReplyWithError(ctx, RDB_EMALF);
-			return;
-		}
-	}
-
-	// dry-run
+	// Check the update before its application.
+	int64_t serial_upd = -1;
 	index_k upd_key = get_upd_index(ctx, origin, upd_txn, id, REDISMODULE_READ | REDISMODULE_WRITE);
 	foreach_in_zset(upd_key) {
 		RedisModuleString *el = RedisModule_ZsetRangeCurrentElement(upd_key, NULL);
 		size_t el_len = 0;
 		const char *el_str = RedisModule_StringPtrLen(el, &el_len);
-		wire_ctx_t w = wire_ctx_init((uint8_t *)el_str, el_len);
+		RedisModule_Assert(el_str != NULL && el_len > 0);
 
-		wire_ctx_skip(&w, 3 + origin->len);
+		wire_ctx_t w = wire_ctx_init((uint8_t *)el_str, el_len);
+		wire_ctx_skip(&w, RDB_PREFIX_LEN + 1 + origin->len);
 		arg_dname_t owner = {
 			.data = w.position,
 			.len = knot_dname_size(w.position)
@@ -1722,112 +1749,60 @@ static void upd_commit(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t
 
 		RedisModuleKey *diff_key = RedisModule_OpenKey(ctx, el, REDISMODULE_READ);
 		const diff_v *diff = RedisModule_ModuleTypeGetValue(diff_key);
+		RedisModule_Assert(diff != NULL);
 
 		RedisModuleString *rrset_keystr = rrset_keyname_construct(ctx, &zone_txn, origin, &owner, rtype);
 		RedisModuleKey *rrset_key = RedisModule_OpenKey(ctx, rrset_keystr, REDISMODULE_READ);
 		RedisModule_FreeString(ctx, rrset_keystr);
-		if (rrset_key == NULL) {
-			if (diff->rem_rrs.count != 0) {
-				RedisModule_CloseKey(meta_key);
-				RedisModule_CloseKey(rrset_key);
-				RedisModule_CloseKey(diff_key);
-				RedisModule_ReplyWithError(ctx, "ERR dry-run failed");
-				return;
-			} else {
-				continue;
-			}
-		}
 		rrset_v *rrset = RedisModule_ModuleTypeGetValue(rrset_key);
-		
-		if (diff->rem_rrs.count > 0) {
-			if (knot_rdataset_subset(&diff->rem_rrs, &rrset->rrs) == false ||
-			    (diff->rem_ttl != TTL_EMPTY && rrset->ttl != diff->rem_ttl))
-			{
-				RedisModule_CloseKey(rrset_key);
-				RedisModule_CloseKey(diff_key);
-				if (abort_on_fail) {
-					exception_t e = upd_abort(ctx, origin, upd_txn);
-					if (e.ret == KNOT_EOK) {
-						RedisModule_ReplyWithError(ctx, "ERR dry-run check failed, aborting update");
-					} else {
-						RedisModule_ReplyWithError(ctx, "ERR dry-run check failed and failed abort update");
-					}
-				} else {
-					RedisModule_ReplyWithError(ctx, "ERR dry-run check failed");
-				}
-				RedisModule_CloseKey(meta_key);
-				return;
-			}
-		}
 
-		uint16_t rr_count = diff->add_rrs.count;
-		knot_rdata_t *rr = diff->add_rrs.rdata;
-		for (size_t i = 0; i < rr_count; ++i) {
-			if (find_rr_pos(&rrset->rrs, rr) != KNOT_ENOENT) {
-				RedisModule_CloseKey(rrset_key);
-				RedisModule_CloseKey(diff_key);
-				if (abort_on_fail) {
-					exception_t e = upd_abort(ctx, origin, upd_txn);
-					if (e.ret == KNOT_EOK) {
-						RedisModule_ReplyWithError(ctx, "ERR dry-run check failed, aborting update");
-					} else {
-						RedisModule_ReplyWithError(ctx, "ERR dry-run check failed and failed abort update");
-					}
-				} else {
-					RedisModule_ReplyWithError(ctx, "ERR dry-run check failed");
-				}
-				RedisModule_CloseKey(meta_key);
-				return;
-			}
-			rr = knot_rdataset_next(rr);
-		}
-
-		if (rtype == KNOT_RRTYPE_SOA) {
-			knot_rdataset_t soa_tmp;
-			if (knot_rdataset_copy(&soa_tmp, &rrset->rrs, &mm) != KNOT_EOK ||
-			    knot_rdataset_subtract(&soa_tmp, &diff->rem_rrs, &mm) != KNOT_EOK ||
-			    knot_rdataset_merge(&soa_tmp, &diff->add_rrs, &mm) != KNOT_EOK ||
-			    soa_tmp.count != 1)
-			{
-				knot_rdataset_clear(&soa_tmp, &mm);
-				RedisModule_CloseKey(rrset_key);
-				RedisModule_CloseKey(diff_key);
-				if (abort_on_fail) {
-					exception_t e = upd_abort(ctx, origin, upd_txn);
-					if (e.ret == KNOT_EOK) {
-						RedisModule_ReplyWithError(ctx, "ERR dry-run check failed, aborting update");
-					} else {
-						RedisModule_ReplyWithError(ctx, "ERR dry-run check failed and failed abort update");
-					}
-				} else {
-					RedisModule_ReplyWithError(ctx, "ERR dry-run check failed");
-				}
-				RedisModule_CloseKey(meta_key);
-				return;
-			}
-			knot_rdataset_clear(&soa_tmp, &mm);
-		}
-
+		const char *err = NULL;
+		ret = upd_check(diff, rrset, rtype, &serial_upd, &err);
 		RedisModule_CloseKey(rrset_key);
 		RedisModule_CloseKey(diff_key);
+		if (ret != KNOT_EOK) {
+			char msg[300], owner_str[256], rtype_str[16];
+			(void)knot_dname_to_str(owner_str, owner.data, sizeof(owner_str));
+			(void)knot_rrtype_to_string(rtype, rtype_str, sizeof(rtype_str));
+			(void)snprintf(msg, sizeof(msg), RDB_E("%s, owner %s, type %s"),
+			               err, owner_str, rtype_str);
+			RedisModule_CloseKey(upd_key);
+			RedisModule_CloseKey(meta_key);
+			RedisModule_ReplyWithError(ctx, msg);
+			return;
+		}
 	}
 
-	// update
-	RedisModuleKey *new_upd_key = get_commited_upd_index(ctx, origin, upd_txn, new_serial, REDISMODULE_READ | REDISMODULE_WRITE);
+	// Check if SOA serial was explicitly incremented; compute new serial otherwise.
+	rrset_k soa_key;
+	rrset_v *soa_rrset = NULL;
+	uint32_t serial_new;
+	if (serial_upd == -1) {
+		index_k zone_key = get_zone_index(ctx, origin, &zone_txn, REDISMODULE_READ);
+		RedisModuleString *soa_keyname = index_soa_keyname(zone_key);
+		RedisModule_CloseKey(zone_key);
+		soa_key = RedisModule_OpenKey(ctx, soa_keyname, REDISMODULE_WRITE);
+		RedisModule_Assert(RedisModule_ModuleTypeGetType(soa_key) == rdb_rrset_t);
+		soa_rrset = RedisModule_ModuleTypeGetValue(soa_key);
+		RedisModule_Assert(soa_rrset != NULL);
+		serial_new = knot_soa_serial(soa_rrset->rrs.rdata) + 1;
+	} else {
+		serial_new = serial_upd;
+	}
+
+	// Commit the update.
+	RedisModuleKey *new_upd_key = get_commited_upd_index(ctx, origin, upd_txn, serial_new, REDISMODULE_READ | REDISMODULE_WRITE);
 	foreach_in_zset(upd_key) {
 		double score = 0.0;
 		RedisModuleString *el = RedisModule_ZsetRangeCurrentElement(upd_key, &score);
-		if (el == NULL) {
-			break;
-		}
+		size_t el_len = 0;
+		const char *el_str = RedisModule_StringPtrLen(el, &el_len);
+		RedisModule_Assert(el_str != NULL && el_len > 0);
 
 		RedisModule_ZsetAdd(new_upd_key, score, el, NULL);
 
-		size_t el_len = 0;
-		const char *el_str = RedisModule_StringPtrLen(el, &el_len);
 		wire_ctx_t w = wire_ctx_init((uint8_t *)el_str, el_len);
-
-		wire_ctx_skip(&w, 3 + origin->len);
+		wire_ctx_skip(&w, RDB_PREFIX_LEN + 1 + origin->len);
 		arg_dname_t owner = {
 			.data = w.position,
 			.len = knot_dname_size(w.position)
@@ -1837,11 +1812,13 @@ static void upd_commit(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t
 
 		RedisModuleKey *diff_key = RedisModule_OpenKey(ctx, el, REDISMODULE_READ | REDISMODULE_WRITE);
 		diff_v *diff = RedisModule_ModuleTypeGetValue(diff_key);
+		RedisModule_Assert(diff != NULL);
 
 		uint16_t rr_count = diff->rem_rrs.count;
 		knot_rdata_t *rr = diff->rem_rrs.rdata;
 		for (size_t i = 0; i < rr_count; ++i) {
 			rdata_remove(ctx, origin, &zone_txn, &owner, rtype, &diff->rem_ttl, diff->rem_rrs.rdata);
+			// TODO return check
 			rr = knot_rdataset_next(rr);
 		}
 
@@ -1849,6 +1826,7 @@ static void upd_commit(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t
 		rr = diff->add_rrs.rdata;
 		for (size_t i = 0; i < rr_count; ++i) {
 			rdata_add(ctx, origin, &zone_txn, &owner, rtype, diff->add_ttl, diff->add_rrs.rdata);
+			// TODO return check
 			rr = knot_rdataset_next(rr);
 		}
 
@@ -1858,31 +1836,26 @@ static void upd_commit(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t
 	RedisModule_DeleteKey(upd_key);
 	RedisModule_CloseKey(upd_key);
 
-	if (knot_soa_serial(soa_rrset->rrs.rdata) != new_serial) {
-		// routine for add diffs of serial change
-		if (RedisModule_KeyType(soa_diff_key) != REDISMODULE_KEYTYPE_EMPTY) {
-			RedisModule_CloseKey(meta_key);
-			RedisModule_CloseKey(soa_diff_key);
-			RedisModule_FreeString(ctx, soa_diff_keyname);
-			RedisModule_CloseKey(new_upd_key);
-			RedisModule_CloseKey(soa_key);
-			RedisModule_ReplyWithError(ctx, RDB_EMALF);
-			return;
-		}
+	// Increment SOA serial and add a corresponding diff.
+	if (serial_upd == -1) {
+		RedisModuleString *soa_diff_keyname = diff_keyname_construct(ctx, origin, upd_txn, origin, KNOT_RRTYPE_SOA, id);
+		RedisModuleKey *soa_diff_key = RedisModule_OpenKey(ctx, soa_diff_keyname, REDISMODULE_WRITE);
 
 		diff_v *diff = RedisModule_Calloc(1, sizeof(diff_v));
 		diff->add_ttl = soa_rrset->ttl;
+		diff->rem_ttl = soa_rrset->ttl;
+		RedisModule_Assert(soa_rrset != NULL);
 		knot_rdataset_add(&diff->rem_rrs, soa_rrset->rrs.rdata, &mm);
-		knot_soa_serial_set(soa_rrset->rrs.rdata, new_serial);
+		knot_soa_serial_set(soa_rrset->rrs.rdata, serial_new);
 		knot_rdataset_add(&diff->add_rrs, soa_rrset->rrs.rdata, &mm);
 		RedisModule_ModuleTypeSetValue(soa_diff_key, rdb_diff_t, diff);
-
 		RedisModule_ZsetAdd(new_upd_key, evaluate_score(KNOT_RRTYPE_SOA), soa_diff_keyname, NULL);
+
+		RedisModule_FreeString(ctx, soa_diff_keyname);
+		RedisModule_CloseKey(soa_diff_key);
+		RedisModule_CloseKey(soa_key);
 	}
-	RedisModule_CloseKey(soa_diff_key);
-	RedisModule_FreeString(ctx, soa_diff_keyname);
 	RedisModule_CloseKey(new_upd_key);
-	RedisModule_CloseKey(soa_key);
 
 	if (upd_meta_unlock(ctx, meta_key, upd_txn->id) != KNOT_EOK) {
 		RedisModule_CloseKey(meta_key);
@@ -1891,7 +1864,7 @@ static void upd_commit(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t
 	}
 	RedisModule_CloseKey(meta_key);
 
-	ret = commit_event(ctx, RDB_EVENT_UPD, origin, upd_txn->instance, new_serial);
+	ret = commit_event(ctx, RDB_EVENT_UPD, origin, upd_txn->instance, serial_new);
 	if (ret == KNOT_EINVAL) {
 		RedisModule_ReplyWithError(ctx, RDB_ECORRUPTED);
 	} else if (ret == KNOT_EBUSY) {

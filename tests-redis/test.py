@@ -386,7 +386,7 @@ def test_upd_diff_load():
     TRANSFER = [
         [
             [
-                [[b'example.com.', b'0', b'SOA', b'ns.icann.org. noc.dns.icann.org. 1 7200 3600 1209600 3600']],
+                [[b'example.com.', b'3600', b'SOA', b'ns.icann.org. noc.dns.icann.org. 1 7200 3600 1209600 3600']],
                 [[b'example.com.', b'3600', b'SOA', b'ns.icann.org. noc.dns.icann.org. 2 7200 3600 1209600 3600']]
             ], UPD
         ]
