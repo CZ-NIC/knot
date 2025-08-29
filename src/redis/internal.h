@@ -74,6 +74,7 @@ typedef struct {
 typedef int (*upd_callback)(diff_v *diff, const void *data, uint32_t ttl);
 
 typedef RedisModuleKey *rrset_k;
+typedef RedisModuleKey *diff_k;
 typedef RedisModuleKey *upd_meta_k;
 typedef RedisModuleKey *zone_meta_k;
 typedef RedisModuleKey *index_k;
@@ -1670,6 +1671,58 @@ static int upd_check(const diff_v *diff, const rrset_v *rrset, uint16_t rtype,
 	return KNOT_EOK;
 }
 
+static exception_t upd_deep_delete(RedisModuleCtx *ctx,
+                                   const arg_dname_t *origin,
+                                   const rdb_txn_t *txn, const uint32_t serial,
+                                   size_t *counter)
+{
+	index_k upd_index_key = get_commited_upd_index(ctx, origin, txn, serial, REDISMODULE_READ | REDISMODULE_WRITE);
+	int upd_index_type = RedisModule_KeyType(upd_index_key);
+	if (upd_index_type == REDISMODULE_KEYTYPE_EMPTY) {
+		RedisModule_CloseKey(upd_index_key);
+		return_ok;
+	} else if (upd_index_type != REDISMODULE_KEYTYPE_ZSET) {
+		RedisModule_CloseKey(upd_index_key);
+		throw(KNOT_EINVAL, RDB_ECORRUPTED);
+	}
+
+
+	RedisModuleString *soa_diff_keyname = index_soa_keyname(upd_index_key);
+	if (soa_diff_keyname == NULL) {
+		RedisModule_CloseKey(upd_index_key);
+		throw(KNOT_EINVAL, RDB_ECORRUPTED);
+	}
+
+	diff_k soa_diff_key = RedisModule_OpenKey(ctx, soa_diff_keyname, REDISMODULE_READ);
+	if (soa_diff_key == NULL) {
+		RedisModule_CloseKey(upd_index_key);
+		throw(KNOT_EINVAL, RDB_ECORRUPTED);
+	}
+
+	diff_v *diff = RedisModule_ModuleTypeGetValue(soa_diff_key);
+	uint32_t serial_next = knot_soa_serial(diff->rem_rrs.rdata);
+	RedisModule_CloseKey(soa_diff_key);
+
+	*counter += 1;
+
+	foreach_in_zset(upd_index_key) {
+		RedisModuleString *el = RedisModule_ZsetRangeCurrentElement(upd_index_key, NULL);
+		diff_k diff_key = RedisModule_OpenKey(ctx, el, REDISMODULE_READ | REDISMODULE_WRITE);
+		RedisModule_DeleteKey(diff_key);
+		RedisModule_CloseKey(diff_key);
+	}
+	RedisModule_DeleteKey(upd_index_key);
+	RedisModule_CloseKey(upd_index_key);
+
+	size_t counter_s = *counter;
+	exception_t e = upd_deep_delete(ctx, origin, txn, serial_next, counter);
+	if (e.ret != KNOT_EOK || counter_s == *counter) {
+		raise(e);
+	}
+
+	return_ok;
+}
+
 static void upd_commit(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t *upd_txn)
 {
 	RedisModuleKey *meta_key = upd_meta_get_when_open(ctx, origin, upd_txn, REDISMODULE_READ | REDISMODULE_WRITE);
@@ -1755,6 +1808,16 @@ static void upd_commit(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t
 		serial_new = knot_soa_serial(soa_rrset->rrs.rdata) + 1;
 	} else {
 		serial_new = serial_upd;
+	}
+
+	// Delete collision updates
+	size_t counter = 0;
+	exception_t e = upd_deep_delete(ctx, origin, upd_txn, serial_new, &counter);
+	if (e.ret != KNOT_EOK) {
+		RedisModule_CloseKey(upd_key);
+		RedisModule_CloseKey(meta_key);
+		RedisModule_ReplyWithError(ctx, e.what);
+		return;
 	}
 
 	// Commit the update.
