@@ -46,5 +46,4 @@ typedef struct {
 typedef enum {
 	RDB_EVENT_ZONE  = 1,
 	RDB_EVENT_UPD   = 2,
-	RDB_EVENT_PURGE = 3,
 } rdb_event_t;

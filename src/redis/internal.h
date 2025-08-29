@@ -131,7 +131,19 @@ static bool zone_txn_is_open(RedisModuleCtx *ctx, const arg_dname_t *origin, con
 	return out;
 }
 
-static int commit_event(RedisModuleCtx *ctx, rdb_event_t type, const arg_dname_t *origin,
+static const char *rdb_event_t_str(rdb_event_t type)
+{
+	switch(type) {
+	case RDB_EVENT_ZONE:
+		return "zone";
+	case RDB_EVENT_UPD:
+		return "update";
+	default:
+		return "unknown";
+	}
+}
+
+static void commit_event(RedisModuleCtx *ctx, rdb_event_t type, const arg_dname_t *origin,
                         uint8_t instance, uint32_t serial)
 {
 	RedisModule_Assert(ctx != NULL);
@@ -142,8 +154,9 @@ static int commit_event(RedisModuleCtx *ctx, rdb_event_t type, const arg_dname_t
 
 	int zone_stream_type = RedisModule_KeyType(stream_key);
 	if (zone_stream_type != REDISMODULE_KEYTYPE_EMPTY && zone_stream_type != REDISMODULE_KEYTYPE_STREAM) {
+		RedisModule_Log(ctx, REDISMODULE_LOGLEVEL_WARNING, "failed to commit %s event", rdb_event_t_str(type));
 		RedisModule_CloseKey(stream_key);
-		return KNOT_EINVAL;
+		return;
 	}
 
 	RedisModuleString *events[] = {
@@ -166,13 +179,14 @@ static int commit_event(RedisModuleCtx *ctx, rdb_event_t type, const arg_dname_t
 	}
 
 	if (ret != REDISMODULE_OK) {
+		RedisModule_Log(ctx, REDISMODULE_LOGLEVEL_WARNING, "failed to commit %s event", rdb_event_t_str(type));
 		RedisModule_CloseKey(stream_key);
-		return KNOT_EBUSY;
+		return;
 	}
 
 	if (rdb_event_age == 0) {
 		RedisModule_CloseKey(stream_key);
-		return KNOT_EOK;
+		return;
 	}
 
 	ts.ms -= 1000LLU * rdb_event_age;
@@ -184,8 +198,6 @@ static int commit_event(RedisModuleCtx *ctx, rdb_event_t type, const arg_dname_t
 		RedisModule_Log(ctx, REDISMODULE_LOGLEVEL_NOTICE, "stream cleanup %lld old events", removed_cnt);
 	}
 	RedisModule_CloseKey(stream_key);
-
-	return KNOT_EOK;
 }
 
 static index_k get_zones_index(RedisModuleCtx *ctx, const rdb_txn_t *txn, int rights)
@@ -1222,10 +1234,6 @@ static exception_t zone_purge(RedisModuleCtx *ctx, const arg_dname_t *origin, rd
 	RedisModule_FreeString(ctx, zone_name);
 	RedisModule_CloseKey(zones_index);
 
-	int ret = commit_event(ctx, RDB_EVENT_PURGE, origin, txn->instance, serial);
-	if (ret != KNOT_EOK) {
-		throw(ret, RDB_EEVENT);
-	}
 	return_ok;
 }
 
@@ -1345,14 +1353,8 @@ static void zone_commit(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_
 		return;
 	}
 
-	ret = commit_event(ctx, RDB_EVENT_ZONE, origin, txn->instance, serial);
-	if (ret == KNOT_EBUSY) {
-		RedisModule_ReplyWithError(ctx, RDB_EEVENT);
-	} else if (ret != KNOT_EOK) {
-		RedisModule_ReplyWithError(ctx, RDB_ECORRUPTED);
-	} else {
-		RedisModule_ReplyWithSimpleString(ctx, RDB_RETURN_OK);
-	}
+	commit_event(ctx, RDB_EVENT_ZONE, origin, txn->instance, serial);
+	RedisModule_ReplyWithSimpleString(ctx, RDB_RETURN_OK);
 }
 
 static void zone_abort(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t *txn)
@@ -1860,14 +1862,8 @@ static void upd_commit(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t
 	upd_meta_unlock(ctx, meta_key, upd_txn->id);
 	RedisModule_CloseKey(meta_key);
 
-	ret = commit_event(ctx, RDB_EVENT_UPD, origin, upd_txn->instance, serial_new);
-	if (ret == KNOT_EINVAL) {
-		RedisModule_ReplyWithError(ctx, RDB_ECORRUPTED);
-	} else if (ret == KNOT_EBUSY) {
-		RedisModule_ReplyWithError(ctx, RDB_EEVENT);
-	} else if (ret == KNOT_EOK) {
-		RedisModule_ReplyWithSimpleString(ctx, RDB_RETURN_OK);
-	}
+	commit_event(ctx, RDB_EVENT_UPD, origin, upd_txn->instance, serial_new);
+	RedisModule_ReplyWithSimpleString(ctx, RDB_RETURN_OK);
 }
 
 static int upd_dump(RedisModuleCtx *ctx, RedisModuleKey *index_key, const arg_dname_t *origin,
