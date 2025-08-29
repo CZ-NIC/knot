@@ -16,11 +16,6 @@ support DNS Cookies, otherwise they are not used.
    - ``presence`` – The number of queries containing the COOKIE option.
    - ``dropped`` – The number of dropped queries due to the slip limit.
 
-.. WARNING::
-   For effective module operation the :ref:`RRL<mod-rrl>` module must also
-   be enabled and configured after :ref:`Cookies<mod-cookies>`. See
-   :ref:`query-modules` how to configure modules.
-
 Example
 -------
 
