@@ -59,7 +59,7 @@ Options
   Extended output (listing of keys with full description).
 
 **-j**, **--json**
-  Print the zones or keys in JSON format.
+  Print the zones or keys (not TSIG keys) in JSON format.
 
 **-l**, **--list**
   Print the list of zones that have at least one key stored in the configured KASP
