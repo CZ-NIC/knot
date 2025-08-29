@@ -26,8 +26,8 @@ be configured per zone.
    - ``dropped-time`` – The number of dropped non-UDP packets due to the time rate limit.
 
 .. NOTE::
-   If the :ref:`Cookies<mod-cookies>` module is active, RRL is not applied
-   to UDP responses with a valid DNS cookie.
+   If the :ref:`Cookies<mod-cookies>` module is active and configured before
+   this module, RRL is not applied to UDP responses with a valid DNS cookie.
 
 .. NOTE::
    The time limiting applies even to handshakes of incoming authorized requests
