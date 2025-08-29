@@ -822,6 +822,12 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 			} else {
 				LOAD_ERROR(ctx, "invalid value of " RDB_PARAM_EVENT_AGE);
 			}
+		} else if (strcmp(key, RDB_PARAM_UPD_HIST) == 0) {
+			if (RedisModule_StringToLongLong(argv[i + 1], &num) == REDISMODULE_OK) {
+				rdb_upd_history_len = num;
+			} else {
+				LOAD_ERROR(ctx, "invalid value of " RDB_PARAM_UPD_HIST);
+			}
 		} else {
 			LOAD_ERROR(ctx, "unknown configuration option");
 		}
@@ -873,8 +879,10 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 		LOAD_ERROR(ctx, "failed to load commands");
 	}
 
-	RedisModule_Log(ctx, REDISMODULE_LOGLEVEL_NOTICE, "loaded with %s=%u %s=%u",
-	                RDB_PARAM_DFLT_TTL, rdb_default_ttl, RDB_PARAM_EVENT_AGE, rdb_event_age);
+	RedisModule_Log(ctx, REDISMODULE_LOGLEVEL_NOTICE, "loaded with %s=%u %s=%u %s=%u",
+	                RDB_PARAM_DFLT_TTL, rdb_default_ttl,
+	                RDB_PARAM_EVENT_AGE, rdb_event_age,
+	                RDB_PARAM_UPD_HIST, rdb_upd_history_len);
 
 	return REDISMODULE_OK;
 }

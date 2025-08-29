@@ -14,6 +14,7 @@
 
 static uint32_t rdb_default_ttl = 600;
 static uint32_t rdb_event_age = 1200;
+static uint32_t rdb_upd_history_len = 20;
 
 typedef enum {
 	DUMP_BIN,
