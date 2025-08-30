@@ -13,9 +13,6 @@
 #define TTL_EMPTY		UINT32_MAX
 #define TTL_EMPTY_STR		"NONE"
 
-#define RRSET_KEY_MAXLEN (RDB_PREFIX_LEN + 1 + KNOT_DNAME_MAXLEN + KNOT_DNAME_MAXLEN + sizeof(uint16_t) + sizeof(uint16_t))
-#define TXN_KEY_MAXLEN (RDB_PREFIX_LEN + 1 + KNOT_DNAME_MAXLEN + sizeof(uint8_t))
-
 #define foreach_in_zset_subset(key, min, max) \
 	for (RedisModule_ZsetFirstInScoreRange(key, min, max, 0, 0); \
 	     RedisModule_ZsetRangeEndReached(key) == 0 && RedisModule_ZsetRangeCurrentElement(key, NULL) != NULL; /* TODO test without 2nd condition*/ \
@@ -91,13 +88,61 @@ static knot_mm_t mm = {
 static RedisModuleString *meta_keyname_construct(const uint8_t prefix, RedisModuleCtx *ctx,
                                                  const arg_dname_t *origin, uint8_t instance)
 {
-	char buf[TXN_KEY_MAXLEN];
+	char buf[RDB_PREFIX_LEN + 1 + 1 + KNOT_DNAME_MAXLEN + 1];
 
 	wire_ctx_t w = wire_ctx_init((uint8_t *)buf, sizeof(buf));
 	wire_ctx_write(&w, RDB_PREFIX, RDB_PREFIX_LEN);
-	wire_ctx_write(&w, &prefix, sizeof(prefix));
+	wire_ctx_write_u8(&w, prefix);
+	wire_ctx_write_u8(&w, origin->len);
 	wire_ctx_write(&w, origin->data, origin->len);
-	wire_ctx_write(&w, &instance, sizeof(instance));
+	wire_ctx_write_u8(&w, instance);
+	RedisModule_Assert(w.error == KNOT_EOK);
+
+	return RedisModule_CreateString(ctx, buf, wire_ctx_offset(&w));
+}
+
+static RedisModuleString *rrset_keyname_construct(RedisModuleCtx *ctx,
+                                                  const rdb_txn_t *txn,
+                                                  const arg_dname_t *origin,
+                                                  const arg_dname_t *owner,
+                                                  uint16_t rtype)
+{
+	static const uint8_t prefix = RRSET;
+
+	char buf[RDB_PREFIX_LEN + 1 + 1 + KNOT_DNAME_MAXLEN + 1 + KNOT_DNAME_MAXLEN + 2 + 2];
+
+	wire_ctx_t w = wire_ctx_init((uint8_t *)buf, sizeof(buf));
+	wire_ctx_write(&w, RDB_PREFIX, RDB_PREFIX_LEN);
+	wire_ctx_write_u8(&w, prefix);
+	wire_ctx_write_u8(&w, origin->len);
+	wire_ctx_write(&w, origin->data, origin->len);
+	wire_ctx_write_u8(&w, owner->len);
+	wire_ctx_write(&w, owner->data, owner->len);
+	wire_ctx_write_u16(&w, rtype);
+	wire_ctx_write(&w, txn, sizeof(*txn));
+	RedisModule_Assert(w.error == KNOT_EOK);
+
+	return RedisModule_CreateString(ctx, (const char *)buf, wire_ctx_offset(&w));
+}
+
+static RedisModuleString *diff_keyname_construct(RedisModuleCtx *ctx, const arg_dname_t *origin,
+                                                 const rdb_txn_t *txn, const arg_dname_t *owner,
+                                                 uint16_t rtype, uint16_t id)
+{
+	static const uint8_t prefix = DIFF;
+
+	char buf[RDB_PREFIX_LEN + 1 + 1 + KNOT_DNAME_MAXLEN + 1 + KNOT_DNAME_MAXLEN + 2 + 2 + 2];
+
+	wire_ctx_t w = wire_ctx_init((uint8_t *)buf, sizeof(buf));
+	wire_ctx_write(&w, RDB_PREFIX, RDB_PREFIX_LEN);
+	wire_ctx_write_u8(&w, prefix);
+	wire_ctx_write_u8(&w, origin->len);
+	wire_ctx_write(&w, origin->data, origin->len);
+	wire_ctx_write_u8(&w, owner->len);
+	wire_ctx_write(&w, owner->data, owner->len);
+	wire_ctx_write_u16(&w, rtype);
+	wire_ctx_write(&w, txn, sizeof(*txn));
+	wire_ctx_write_u16(&w, id);
 	RedisModule_Assert(w.error == KNOT_EOK);
 
 	return RedisModule_CreateString(ctx, buf, wire_ctx_offset(&w));
@@ -135,8 +180,6 @@ static bool zone_txn_is_open(RedisModuleCtx *ctx, const arg_dname_t *origin, con
 static void commit_event(RedisModuleCtx *ctx, rdb_event_t type, const arg_dname_t *origin,
                          uint8_t instance, uint32_t serial)
 {
-	RedisModule_Assert(ctx != NULL);
-
 	RedisModuleString *keyname = RedisModule_CreateString(ctx, RDB_EVENT_KEY, strlen(RDB_EVENT_KEY));
 	RedisModuleKey *stream_key = RedisModule_OpenKey(ctx, keyname, REDISMODULE_READ | REDISMODULE_WRITE);
 	RedisModule_FreeString(ctx, keyname);
@@ -192,18 +235,16 @@ static void commit_event(RedisModuleCtx *ctx, rdb_event_t type, const arg_dname_
 static index_k get_zones_index(RedisModuleCtx *ctx, const rdb_txn_t *txn, int rights)
 {
 	static const uint8_t prefix = ZONES;
-	RedisModule_Assert(ctx != NULL);
 
 	char buf[RDB_PREFIX_LEN + 1 + 1];
 
 	wire_ctx_t w = wire_ctx_init((uint8_t *)buf, sizeof(buf));
 	wire_ctx_write(&w, RDB_PREFIX, RDB_PREFIX_LEN);
-	wire_ctx_write(&w, &prefix, sizeof(prefix));
+	wire_ctx_write_u8(&w, prefix);
 	wire_ctx_write_u8(&w, txn->instance);
 	RedisModule_Assert(w.error == KNOT_EOK);
 
 	RedisModuleString *keyname = RedisModule_CreateString(ctx, buf, wire_ctx_offset(&w));
-
 	index_k key = RedisModule_OpenKey(ctx, keyname, rights);
 	RedisModule_FreeString(ctx, keyname);
 
@@ -214,19 +255,18 @@ static index_k get_zone_index(RedisModuleCtx *ctx, const arg_dname_t *origin,
                               const rdb_txn_t *txn, int rights)
 {
 	static const uint8_t prefix = ZONE;
-	RedisModule_Assert(ctx != NULL && txn != NULL);
 
-	char buf[RDB_PREFIX_LEN + 1 + KNOT_DNAME_MAXLEN + 2];
+	char buf[RDB_PREFIX_LEN + 1 + 1 + KNOT_DNAME_MAXLEN + 2];
 
 	wire_ctx_t w = wire_ctx_init((uint8_t *)buf, sizeof(buf));
 	wire_ctx_write(&w, RDB_PREFIX, RDB_PREFIX_LEN);
-	wire_ctx_write(&w, &prefix, sizeof(prefix));
+	wire_ctx_write_u8(&w, prefix);
+	wire_ctx_write_u8(&w, origin->len);
 	wire_ctx_write(&w, origin->data, origin->len);
 	wire_ctx_write(&w, txn, sizeof(*txn));
 	RedisModule_Assert(w.error == KNOT_EOK);
 
 	RedisModuleString *keyname = RedisModule_CreateString(ctx, buf, wire_ctx_offset(&w));
-
 	index_k key = RedisModule_OpenKey(ctx, keyname, rights);
 	RedisModule_FreeString(ctx, keyname);
 
@@ -237,21 +277,20 @@ static index_k get_upd_index(RedisModuleCtx *ctx, const arg_dname_t *origin,
                              const rdb_txn_t *txn, uint16_t id, int rights)
 {
 	static const uint8_t prefix = UPD_TMP;
-	RedisModule_Assert(ctx != NULL && txn != NULL);
 
-	char buf[RDB_PREFIX_LEN + 1 + KNOT_DNAME_MAXLEN + 2];
+	char buf[RDB_PREFIX_LEN + 1 + 1 + KNOT_DNAME_MAXLEN + 2 + 2];
 
 	wire_ctx_t w = wire_ctx_init((uint8_t *)buf, sizeof(buf));
 	wire_ctx_write(&w, RDB_PREFIX, RDB_PREFIX_LEN);
-	wire_ctx_write(&w, &prefix, sizeof(prefix));
+	wire_ctx_write_u8(&w, prefix);
+	wire_ctx_write_u8(&w, origin->len);
 	wire_ctx_write(&w, origin->data, origin->len);
 	wire_ctx_write(&w, txn, sizeof(*txn));
-	wire_ctx_write(&w, &id, sizeof(id));
+	wire_ctx_write_u16(&w, id);
 	RedisModule_Assert(w.error == KNOT_EOK);
 
 	RedisModuleString *keyname = RedisModule_CreateString(ctx, buf, wire_ctx_offset(&w));
-
-	RedisModuleKey *key = RedisModule_OpenKey(ctx, keyname, rights);
+	index_k key = RedisModule_OpenKey(ctx, keyname, rights);
 	RedisModule_FreeString(ctx, keyname);
 
 	return key;
@@ -261,21 +300,20 @@ static index_k get_commited_upd_index(RedisModuleCtx *ctx, const arg_dname_t *or
                                       const rdb_txn_t *txn, const uint32_t serial, int rights)
 {
 	static const uint8_t prefix = UPD;
-	RedisModule_Assert(ctx != NULL);
 
-	char buf[RDB_PREFIX_LEN + 1 + KNOT_DNAME_MAXLEN + 1 + 4];
+	char buf[RDB_PREFIX_LEN + 1 + 1 + KNOT_DNAME_MAXLEN + 1 + 4];
 
 	wire_ctx_t w = wire_ctx_init((uint8_t *)buf, sizeof(buf));
 	wire_ctx_write(&w, RDB_PREFIX, RDB_PREFIX_LEN);
-	wire_ctx_write(&w, &prefix, sizeof(prefix));
+	wire_ctx_write_u8(&w, prefix);
+	wire_ctx_write_u8(&w, origin->len);
 	wire_ctx_write(&w, origin->data, origin->len);
 	wire_ctx_write_u8(&w, txn->instance);
-	wire_ctx_write(&w, &serial, sizeof(serial));
+	wire_ctx_write_u32(&w, serial);
 	RedisModule_Assert(w.error == KNOT_EOK);
 
 	RedisModuleString *keyname = RedisModule_CreateString(ctx, buf, wire_ctx_offset(&w));
-
-	RedisModuleKey *key = RedisModule_OpenKey(ctx, keyname, rights);
+	index_k key = RedisModule_OpenKey(ctx, keyname, rights);
 	RedisModule_FreeString(ctx, keyname);
 
 	return key;
@@ -291,27 +329,6 @@ static double evaluate_score(uint16_t rtype)
 	}
 }
 
-static RedisModuleString *rrset_keyname_construct(RedisModuleCtx *ctx,
-                                                  const rdb_txn_t *txn,
-                                                  const arg_dname_t *origin,
-                                                  const arg_dname_t *owner,
-                                                  uint16_t rtype)
-{
-	uint8_t buf[RRSET_KEY_MAXLEN];
-	uint8_t prefix = RRSET;
-
-	wire_ctx_t w = wire_ctx_init((uint8_t *)buf, sizeof(buf));
-	wire_ctx_write(&w, RDB_PREFIX, RDB_PREFIX_LEN);
-	wire_ctx_write(&w, &prefix, sizeof(prefix));
-	wire_ctx_write(&w, origin->data, origin->len);
-	wire_ctx_write(&w, owner->data, owner->len);
-	wire_ctx_write_u16(&w, rtype);
-	wire_ctx_write(&w, txn, sizeof(*txn));
-	RedisModule_Assert(w.error == KNOT_EOK);
-
-	return RedisModule_CreateString(ctx, (const char *)buf, wire_ctx_offset(&w));
-}
-
 static void *redismodule_alloc(void *ptr, size_t bytes)
 {
 	return RedisModule_Alloc(bytes);
@@ -325,8 +342,6 @@ static void redismodule_free(void *ptr)
 static int rrset_key_set(RedisModuleCtx *ctx, rrset_k key, RedisModuleString *keyname,
                          const arg_dname_t *origin, const rdb_txn_t *txn, uint16_t rtype, rrset_v *val)
 {
-	RedisModule_Assert(ctx != NULL && origin != NULL && txn != NULL && val != NULL);
-
 	index_k zone_index_key = get_zone_index(ctx, origin, txn, REDISMODULE_READ | REDISMODULE_WRITE);
 	int zone_keytype = RedisModule_KeyType(zone_index_key);
 	if (zone_keytype != REDISMODULE_KEYTYPE_EMPTY &&
@@ -734,29 +749,6 @@ static RedisModuleKey *upd_meta_get_when_open(RedisModuleCtx *ctx, const arg_dna
 	return key;
 }
 
-static RedisModuleString *diff_keyname_construct(RedisModuleCtx *ctx, const arg_dname_t *origin,
-                                                 const rdb_txn_t *txn, const arg_dname_t *owner,
-                                                 uint16_t rtype, uint16_t id)
-{
-	RedisModule_Assert(ctx != NULL && txn != NULL);
-
-	uint8_t prefix = DIFF;
-	char buf[RRSET_KEY_MAXLEN];
-
-	wire_ctx_t w = wire_ctx_init((uint8_t *)buf, sizeof(buf));
-	wire_ctx_write(&w, RDB_PREFIX, RDB_PREFIX_LEN);
-	wire_ctx_write(&w, &prefix, sizeof(prefix));
-	wire_ctx_write(&w, origin->data, origin->len);
-	wire_ctx_write(&w, owner->data, owner->len);
-	wire_ctx_write_u16(&w, rtype);
-	wire_ctx_write(&w, txn, sizeof(*txn));
-	wire_ctx_write(&w, &id, sizeof(id));
-
-	RedisModule_Assert(w.error == KNOT_EOK);
-
-	return RedisModule_CreateString(ctx, buf, wire_ctx_offset(&w));
-}
-
 static int upd_add_txt_cb(diff_v *diff, const void *data, uint32_t ttl)
 {
 	const knot_rdata_t *rdata = data;
@@ -1111,17 +1103,17 @@ static RedisModuleString *index_soa_keyname(index_k index)
 
 	wire_ctx_t index_w = wire_ctx_init(key_str, key_strlen);
 	wire_ctx_skip(&index_w, RDB_PREFIX_LEN + 1);
+	uint8_t origin_len = wire_ctx_read_u8(&index_w);
 
-	size_t origin_len = knot_dname_size(index_w.position);
 	foreach_in_zset_subset(index, SCORE_SOA, SCORE_SOA) {
 		RedisModuleString *soa_keyname = RedisModule_ZsetRangeCurrentElement(index, NULL);
 		key_str = (uint8_t *)RedisModule_StringPtrLen(soa_keyname, &key_strlen);
 
 		wire_ctx_t soa_w = wire_ctx_init((uint8_t *)key_str, key_strlen);
-		wire_ctx_skip(&soa_w, RDB_PREFIX_LEN + 1);
-		wire_ctx_skip(&soa_w, origin_len);
+		wire_ctx_skip(&soa_w, RDB_PREFIX_LEN + 2 + origin_len);
+		uint8_t owner_len = wire_ctx_read_u8(&soa_w);
 
-		if (knot_dname_cmp(index_w.position, soa_w.position) == 0) {
+		if (origin_len == owner_len && memcmp(index_w.position, soa_w.position, origin_len) == 0) {
 			RedisModule_ZsetRangeStop(index);
 			return soa_keyname;
 		}
@@ -1532,10 +1524,9 @@ static void zone_load(RedisModuleCtx *ctx, const arg_dname_t *origin,
 		size_t key_strlen = 0;
 		const char *key_str = RedisModule_StringPtrLen(el, &key_strlen);
 		wire_ctx_t w = wire_ctx_init((uint8_t *)key_str, key_strlen);
-		wire_ctx_skip(&w, RDB_PREFIX_LEN + 1);
-		wire_ctx_skip(&w, origin->len);
+		wire_ctx_skip(&w, RDB_PREFIX_LEN + 2 + origin->len);
+		uint8_t owner_len = wire_ctx_read_u8(&w);
 		knot_dname_t *owner = w.position;
-		size_t owner_len = knot_dname_size(owner);
 		wire_ctx_skip(&w, owner_len);
 		uint16_t rtype = wire_ctx_read_u16(&w);
 		RedisModule_Assert(w.error == KNOT_EOK);
@@ -1759,10 +1750,11 @@ static void upd_commit(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t
 		RedisModule_Assert(el_str != NULL && el_len > 0);
 
 		wire_ctx_t w = wire_ctx_init((uint8_t *)el_str, el_len);
-		wire_ctx_skip(&w, RDB_PREFIX_LEN + 1 + origin->len);
+		wire_ctx_skip(&w, RDB_PREFIX_LEN + 2 + origin->len);
+		uint8_t owner_len = wire_ctx_read_u8(&w);
 		arg_dname_t owner = {
 			.data = w.position,
-			.len = knot_dname_size(w.position)
+			.len = owner_len
 		};
 		wire_ctx_skip(&w, owner.len);
 		uint16_t rtype = wire_ctx_read_u16(&w);
@@ -1832,10 +1824,11 @@ static void upd_commit(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t
 		RedisModule_Assert(RedisModule_ZsetAdd(new_upd_key, score, el, NULL) == REDISMODULE_OK);
 
 		wire_ctx_t w = wire_ctx_init((uint8_t *)el_str, el_len);
-		wire_ctx_skip(&w, RDB_PREFIX_LEN + 1 + origin->len);
+		wire_ctx_skip(&w, RDB_PREFIX_LEN + 2 + origin->len);
+		uint8_t owner_len = wire_ctx_read_u8(&w);
 		arg_dname_t owner = {
 			.data = w.position,
-			.len = knot_dname_size(w.position)
+			.len = owner_len
 		};
 		wire_ctx_skip(&w, owner.len);
 		uint16_t rtype = wire_ctx_read_u16(&w);
@@ -1920,15 +1913,11 @@ static int upd_dump(RedisModuleCtx *ctx, RedisModuleKey *index_key, const arg_dn
 		size_t key_strlen = 0;
 		const char *key_str = RedisModule_StringPtrLen(el, &key_strlen);
 		wire_ctx_t w = wire_ctx_init((uint8_t *)key_str, key_strlen);
-
-		wire_ctx_skip(&w, RDB_PREFIX_LEN + 1);
-		wire_ctx_skip(&w, origin->len);
+		wire_ctx_skip(&w, RDB_PREFIX_LEN + 2 + origin->len);
+		uint8_t owner_len = wire_ctx_read_u8(&w);
 		knot_dname_t *owner = w.position;
-		size_t owner_len = knot_dname_size(owner);
-
 		wire_ctx_skip(&w, owner_len);
 		uint16_t rtype = wire_ctx_read_u16(&w);
-
 		RedisModule_Assert(w.error == KNOT_EOK);
 
 		if (opt_owner != NULL &&
