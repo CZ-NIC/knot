@@ -171,6 +171,7 @@ int event_load(conf_t *conf, zone_t *zone)
 				               ret == KNOT_ERDB ? err : knot_strerror(ret));
 				goto cleanup;
 			}
+			zone->zonefile.serial = zone_contents_serial(zf_conts); // for logging
 			goto zonefile_loaded;
 		}
 
