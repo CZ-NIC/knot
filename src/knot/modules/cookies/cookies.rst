@@ -25,29 +25,20 @@ It is recommended to enable DNS Cookies globally, not per zone. The module may b
 
     template:
         - id: default
-          global-module: mod-cookies # Enable DNS Cookies globally
+          global-module: mod-cookies  # Enable DNS Cookies globally with defaults
 
 Module configuration may be supplied if necessary.
 
 ::
 
     mod-cookies:
-      - id: default
-        secret-lifetime: 30h # The Server Secret is regenerated every 30 hours
-        badcookie-slip: 3    # The server replies only to every third query with a wrong cookie
+      - id: custom
+        badcookie-slip: 3  # The server replies only to every third query with a wrong cookie
+        secret: 0xdeadbeefdeadbeefdeadbeefdeadbeef  # Explicit Server Secret
 
     template:
       - id: default
-        global-module: mod-cookies/default # Enable DNS Cookies globally
-
-The value of the Server Secret may also be managed manually using the :ref:`mod-cookies_secret` option. In this case
-the server does not automatically regenerate the Server Secret.
-
-::
-
-    mod-cookies:
-        - id: default
-          secret: 0xdeadbeefdeadbeefdeadbeefdeadbeef
+        global-module: mod-cookies/custom  # Enable DNS Cookies globally with custom settings
 
 Module reference
 ----------------
