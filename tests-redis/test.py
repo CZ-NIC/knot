@@ -344,6 +344,54 @@ def test_upd_commit():
     resp = env.cmd('KNOT.UPD.COMMIT', 'example.com', txn)
     env.assertEqual(resp, b'OK', message="Failed to commit update")
 
+    # update depth trimmig
+    txn1 = env.cmd('KNOT.ZONE.BEGIN', 'example.com', 1)
+    env.cmd('KNOT.ZONE.STORE', 'example.com', txn1, "@ IN SOA ns.icann.org. noc.dns.icann.org. ( 1 7200  3600 1209600 3600 )")
+    env.cmd('KNOT.ZONE.COMMIT', 'example.com', txn1)
+
+    for i in range(1, 15): # NOTE limit is 10
+        txn = env.cmd('KNOT.UPD.BEGIN', 'example.com', 1)
+        resp = env.cmd('KNOT.UPD.ADD', 'example.com', txn, f"dns{i} IN A {i}.{i}.{i}.{i}")
+        resp = env.cmd('KNOT.UPD.COMMIT', 'example.com', txn)
+        env.assertEqual(resp, b'OK', message="Failed to commit update")
+
+        resp = env.cmd('KNOT.UPD.LOAD', 'example.com', 1, 1)
+        env.assertEqual(len(resp), min(i, 10), message="Failed to commit update")
+
+    # update serial collisions
+    txn1 = env.cmd('KNOT.ZONE.BEGIN', 'example.com', 1)
+    env.cmd('KNOT.ZONE.STORE', 'example.com', txn1, "@ IN SOA ns.icann.org. noc.dns.icann.org. ( 1 7200  3600 1209600 3600 )")
+    env.cmd('KNOT.ZONE.COMMIT', 'example.com', txn1)
+
+    txn = env.cmd('KNOT.UPD.BEGIN', 'example.com', 1)
+    env.cmd('KNOT.UPD.REMOVE', 'example.com', txn, "@ IN SOA ns.icann.org. noc.dns.icann.org. ( 1 7200  3600 1209600 3600 )")
+    env.cmd('KNOT.UPD.ADD', 'example.com', txn, "@ IN SOA ns.icann.org. noc.dns.icann.org. ( 2147483648 7200  3600 1209600 3600 )")
+    env.cmd('KNOT.UPD.COMMIT', 'example.com', txn)
+    resp = env.cmd('KNOT.UPD.LOAD', 'example.com', 1, 2147483649)
+    env.assertEqual(len(resp), 1, message="Failed to commit update")
+
+    txn = env.cmd('KNOT.UPD.BEGIN', 'example.com', 1)
+    env.cmd('KNOT.UPD.REMOVE', 'example.com', txn, "@ IN SOA ns.icann.org. noc.dns.icann.org. ( 2147483648 7200  3600 1209600 3600 )")
+    env.cmd('KNOT.UPD.ADD', 'example.com', txn, "@ IN SOA ns.icann.org. noc.dns.icann.org. ( 4294967295 7200  3600 1209600 3600 )")
+    env.cmd('KNOT.UPD.COMMIT', 'example.com', txn)
+    resp = env.cmd('KNOT.UPD.LOAD', 'example.com', 1, 0)
+    env.assertEqual(len(resp), 2, message="Failed to commit update")
+
+    txn = env.cmd('KNOT.UPD.BEGIN', 'example.com', 1)
+    env.cmd('KNOT.UPD.REMOVE', 'example.com', txn, "@ IN SOA ns.icann.org. noc.dns.icann.org. ( 4294967295 7200  3600 1209600 3600 )")
+    env.cmd('KNOT.UPD.ADD', 'example.com', txn, "@ IN SOA ns.icann.org. noc.dns.icann.org. ( 1 7200  3600 1209600 3600 )")
+    env.cmd('KNOT.UPD.COMMIT', 'example.com', txn)
+    resp = env.cmd('KNOT.UPD.LOAD', 'example.com', 1, 2)
+    env.assertEqual(len(resp), 3, message="Failed to commit update")
+
+    txn = env.cmd('KNOT.UPD.BEGIN', 'example.com', 1)
+    env.cmd('KNOT.UPD.REMOVE', 'example.com', txn, "@ IN SOA ns.icann.org. noc.dns.icann.org. ( 1 7200  3600 1209600 3600 )")
+    env.cmd('KNOT.UPD.ADD', 'example.com', txn, "@ IN SOA ns.icann.org. noc.dns.icann.org. ( 2147483648 7200  3600 1209600 3600 )")
+    env.cmd('KNOT.UPD.COMMIT', 'example.com', txn)
+    resp = env.cmd('KNOT.UPD.LOAD', 'example.com', 1, 2147483649)
+    env.assertEqual(len(resp), 1, message="Failed to commit update")
+    pass
+
 def test_upd_abort():
     env = Env(moduleArgs=['max-event-age', '60', 'default-ttl', '3600'])
 

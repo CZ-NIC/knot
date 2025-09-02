@@ -29,6 +29,8 @@
 #define raise(e)          return e
 #define return_ok         throw(KNOT_EOK, NULL)
 
+#define UPDATE_DEPTH 10
+
 typedef enum {
 	EVENT     = 1, // Keep synchronized with RDB_EVENT_KEY!
 	ZONES     = 2,
@@ -54,6 +56,7 @@ typedef struct {
 typedef struct {
 	uint16_t counter;
 	uint16_t lock[TXN_MAX_COUNT];
+	uint16_t depth;
 } upd_meta_storage_t;
 
 typedef struct {
@@ -729,7 +732,7 @@ static void upd_begin_bin_format(RedisModuleCtx *ctx, const arg_dname_t *origin,
 	RedisModule_ReplyWithStringBuffer(ctx, (const char *)txn, sizeof(*txn));
 }
 
-static RedisModuleKey *upd_meta_get_when_open(RedisModuleCtx *ctx, const arg_dname_t *origin,
+static upd_meta_k upd_meta_get_when_open(RedisModuleCtx *ctx, const arg_dname_t *origin,
                                               const rdb_txn_t *txn, int rights)
 {
 	RedisModuleString *txn_k = upd_meta_keyname_construct(ctx, origin, txn->instance);
@@ -1113,6 +1116,54 @@ static RedisModuleString *index_soa_keyname(index_k index)
 	return NULL;
 }
 
+static exception_t upd_deep_delete(RedisModuleCtx *ctx,
+                                   const arg_dname_t *origin,
+                                   const rdb_txn_t *txn, const uint32_t serial,
+                                   size_t *counter)
+{
+	index_k upd_index_key = get_commited_upd_index(ctx, origin, txn, serial, REDISMODULE_READ | REDISMODULE_WRITE);
+	int upd_index_type = RedisModule_KeyType(upd_index_key);
+	if (upd_index_type == REDISMODULE_KEYTYPE_EMPTY) {
+		RedisModule_CloseKey(upd_index_key);
+		return_ok;
+	} else if (upd_index_type != REDISMODULE_KEYTYPE_ZSET) {
+		RedisModule_CloseKey(upd_index_key);
+		throw(KNOT_EINVAL, RDB_ECORRUPTED);
+	}
+
+
+	RedisModuleString *soa_diff_keyname = index_soa_keyname(upd_index_key);
+	if (soa_diff_keyname == NULL) {
+		RedisModule_CloseKey(upd_index_key);
+		throw(KNOT_EINVAL, RDB_ECORRUPTED);
+	}
+
+	diff_k soa_diff_key = RedisModule_OpenKey(ctx, soa_diff_keyname, REDISMODULE_READ);
+	if (soa_diff_key == NULL) {
+		RedisModule_CloseKey(upd_index_key);
+		throw(KNOT_EINVAL, RDB_ECORRUPTED);
+	}
+
+	diff_v *diff = RedisModule_ModuleTypeGetValue(soa_diff_key);
+	uint32_t serial_prev = knot_soa_serial(diff->rem_rrs.rdata);
+	RedisModule_CloseKey(soa_diff_key);
+
+	*counter += 1;
+
+	foreach_in_zset(upd_index_key) {
+		RedisModuleString *el = RedisModule_ZsetRangeCurrentElement(upd_index_key, NULL);
+		diff_k diff_key = RedisModule_OpenKey(ctx, el, REDISMODULE_READ | REDISMODULE_WRITE);
+		RedisModule_DeleteKey(diff_key);
+		RedisModule_CloseKey(diff_key);
+	}
+
+	RedisModule_DeleteKey(upd_index_key);
+	RedisModule_CloseKey(upd_index_key);
+
+	exception_t e = upd_deep_delete(ctx, origin, txn, serial_prev, counter);
+	raise(e);
+}
+
 static exception_t zone_purge(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t *txn)
 {
 	if (set_active_transaction(ctx, origin, txn) != KNOT_EOK) {
@@ -1136,39 +1187,19 @@ static exception_t zone_purge(RedisModuleCtx *ctx, const arg_dname_t *origin, rd
 	// TODO return val
 	delete_zone_index(ctx, origin, txn);
 
-	index_k upd_index_key = get_commited_upd_index(ctx, origin, txn, serial, REDISMODULE_READ | REDISMODULE_WRITE);
-	while (RedisModule_KeyType(upd_index_key) == REDISMODULE_KEYTYPE_ZSET) {
-		RedisModuleString *soa_diff_keyname = index_soa_keyname(upd_index_key);
-		if (soa_diff_keyname == NULL) {
-			RedisModule_CloseKey(upd_index_key);
-			throw(KNOT_EMALF, RDB_ECORRUPTED);
-		}
+	size_t counter;
+	upd_deep_delete(ctx, origin, txn, serial, &counter);
 
-		RedisModuleKey *soa_diff_key = RedisModule_OpenKey(ctx, soa_diff_keyname, REDISMODULE_READ);
-		diff_v *diff = RedisModule_ModuleTypeGetValue(soa_diff_key);
-		serial = knot_soa_serial(diff->rem_rrs.rdata);
-		RedisModule_CloseKey(soa_diff_key);
-
-		foreach_in_zset(upd_index_key) {
-			double score = 0.0;
-			RedisModuleString *el = RedisModule_ZsetRangeCurrentElement(upd_index_key, &score);
-			if (el == NULL) {
-				break;
-			}
-
-			RedisModuleKey *rrset_key = RedisModule_OpenKey(ctx, el, REDISMODULE_READ | REDISMODULE_WRITE);
-			if (rrset_key != NULL) {
-				RedisModule_DeleteKey(rrset_key);
-				RedisModule_CloseKey(rrset_key);
-			}
-		}
-
-		RedisModule_DeleteKey(upd_index_key);
-		RedisModule_CloseKey(upd_index_key);
-
-		upd_index_key = get_commited_upd_index(ctx, origin, txn, serial, REDISMODULE_READ | REDISMODULE_WRITE);
+	RedisModuleString *meta_k = upd_meta_keyname_construct(ctx, origin, txn->instance);
+	upd_meta_k meta_key = RedisModule_OpenKey(ctx, meta_k, REDISMODULE_READ | REDISMODULE_WRITE);
+	RedisModule_FreeString(ctx, meta_k);
+	if (RedisModule_KeyType(meta_key) == REDISMODULE_KEYTYPE_STRING) {
+		size_t len = 0;
+		upd_meta_storage_t *meta = (upd_meta_storage_t *)RedisModule_StringDMA(meta_key, &len, REDISMODULE_WRITE);
+		RedisModule_Assert(len == sizeof(*meta));
+		meta->depth = 0;
 	}
-	RedisModule_CloseKey(upd_index_key);
+	RedisModule_CloseKey(meta_key);
 
 	if (zone_meta_release(ctx, origin, txn) != KNOT_EOK) {
 		throw(KNOT_EDENIED, RDB_ECORRUPTED);
@@ -1567,7 +1598,7 @@ static void upd_meta_unlock(RedisModuleCtx *ctx, RedisModuleKey *key, uint8_t id
 
 static exception_t upd_abort(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t *txn)
 {
-	RedisModuleKey *meta_key = upd_meta_get_when_open(ctx, origin, txn, REDISMODULE_READ | REDISMODULE_WRITE);
+	upd_meta_k meta_key = upd_meta_get_when_open(ctx, origin, txn, REDISMODULE_READ | REDISMODULE_WRITE);
 	if (meta_key == NULL) {
 		throw(KNOT_ENOENT, RDB_ETXN);
 	}
@@ -1652,50 +1683,73 @@ static int upd_check(const diff_v *diff, const rrset_v *rrset, uint16_t rtype,
 	return KNOT_EOK;
 }
 
-static exception_t upd_deep_delete(RedisModuleCtx *ctx, const arg_dname_t *origin,
-                                   const rdb_txn_t *txn, const uint32_t serial,
-                                   size_t *counter)
+static exception_t upd_trim_history(RedisModuleCtx *ctx, const arg_dname_t *origin,
+                                    const rdb_txn_t *txn, const uint16_t depth)
 {
-	index_k upd_index_key = get_commited_upd_index(ctx, origin, txn, serial, REDISMODULE_READ | REDISMODULE_WRITE);
-	int upd_index_type = RedisModule_KeyType(upd_index_key);
-	if (upd_index_type == REDISMODULE_KEYTYPE_EMPTY) {
-		RedisModule_CloseKey(upd_index_key);
+	rdb_txn_t zone_txn = {
+		.instance = txn->instance,
+		.id = TXN_ID_ACTIVE
+	};
+	int ret = set_active_transaction(ctx, origin, &zone_txn);
+	if (ret != KNOT_EOK) {
+		throw(KNOT_EEXIST, RDB_EZONE);
+	}
+
+	RedisModuleString *soa_rrset_keyname = rrset_keyname_construct(ctx, origin, &zone_txn, origin, KNOT_RRTYPE_SOA);
+	RedisModuleKey *soa_rrset_key = RedisModule_OpenKey(ctx, soa_rrset_keyname, REDISMODULE_READ);
+	if (soa_rrset_key == NULL) {
+		throw(KNOT_EEXIST, RDB_ENOSOA);
+	}
+	RedisModule_FreeString(ctx, soa_rrset_keyname);
+
+	rrset_v *rrset = RedisModule_ModuleTypeGetValue(soa_rrset_key);
+	if (rrset == NULL) {
+		RedisModule_CloseKey(soa_rrset_key);
+		throw(KNOT_EEXIST, RDB_ENOSOA);
+	}
+
+	uint32_t serial_it = knot_soa_serial(rrset->rrs.rdata);
+	uint32_t serial_begin = serial_it;
+	RedisModule_CloseKey(soa_rrset_key);
+
+	uint16_t counter = 0;
+	for (counter = 0; counter < depth; ++counter) {
+		if (counter != 0 && serial_begin == serial_it) {
+			break;
+		}
+		index_k upd_index_key = get_commited_upd_index(ctx, origin, txn, serial_it, REDISMODULE_READ | REDISMODULE_WRITE);
+		int upd_index_type = RedisModule_KeyType(upd_index_key);
+		if (upd_index_type == REDISMODULE_KEYTYPE_EMPTY) {
+			RedisModule_CloseKey(upd_index_key);
+			return_ok;
+		} else if (upd_index_type != REDISMODULE_KEYTYPE_ZSET) {
+			RedisModule_CloseKey(upd_index_key);
+			throw(KNOT_EINVAL, RDB_ECORRUPTED);
+		}
+		RedisModuleString *soa_diff_keyname = index_soa_keyname(upd_index_key);
+		if (soa_diff_keyname == NULL) {
+			RedisModule_CloseKey(upd_index_key);
+			throw(KNOT_EINVAL, RDB_ECORRUPTED);
+		}
+
+		diff_k soa_diff_key = RedisModule_OpenKey(ctx, soa_diff_keyname, REDISMODULE_READ);
+		if (soa_diff_key == NULL) {
+			RedisModule_CloseKey(upd_index_key);
+			throw(KNOT_EINVAL, RDB_ECORRUPTED);
+		}
+
+		diff_v *diff = RedisModule_ModuleTypeGetValue(soa_diff_key);
+		serial_it = knot_soa_serial(diff->rem_rrs.rdata);
+		RedisModule_CloseKey(soa_diff_key);
+	}
+
+	if (counter < depth) {
 		return_ok;
-	} else if (upd_index_type != REDISMODULE_KEYTYPE_ZSET) {
-		RedisModule_CloseKey(upd_index_key);
-		throw(KNOT_EINVAL, RDB_ECORRUPTED);
 	}
 
-	RedisModuleString *soa_diff_keyname = index_soa_keyname(upd_index_key);
-	if (soa_diff_keyname == NULL) {
-		RedisModule_CloseKey(upd_index_key);
-		throw(KNOT_EINVAL, RDB_ECORRUPTED);
-	}
-
-	diff_k soa_diff_key = RedisModule_OpenKey(ctx, soa_diff_keyname, REDISMODULE_READ);
-	if (soa_diff_key == NULL) {
-		RedisModule_CloseKey(upd_index_key);
-		throw(KNOT_EINVAL, RDB_ECORRUPTED);
-	}
-
-	diff_v *diff = RedisModule_ModuleTypeGetValue(soa_diff_key);
-	uint32_t serial_next = knot_soa_serial(diff->rem_rrs.rdata);
-	RedisModule_CloseKey(soa_diff_key);
-
-	*counter += 1;
-
-	foreach_in_zset(upd_index_key) {
-		RedisModuleString *el = RedisModule_ZsetRangeCurrentElement(upd_index_key, NULL);
-		diff_k diff_key = RedisModule_OpenKey(ctx, el, REDISMODULE_READ | REDISMODULE_WRITE);
-		RedisModule_DeleteKey(diff_key);
-		RedisModule_CloseKey(diff_key);
-	}
-	RedisModule_DeleteKey(upd_index_key);
-	RedisModule_CloseKey(upd_index_key);
-
-	size_t counter_s = *counter;
-	exception_t e = upd_deep_delete(ctx, origin, txn, serial_next, counter);
-	if (e.ret != KNOT_EOK || counter_s == *counter) {
+	size_t c;
+	exception_t e = upd_deep_delete(ctx, origin, txn, serial_it, &c);
+	if (e.ret != KNOT_EOK) {
 		raise(e);
 	}
 
@@ -1704,7 +1758,7 @@ static exception_t upd_deep_delete(RedisModuleCtx *ctx, const arg_dname_t *origi
 
 static void upd_commit(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t *upd_txn)
 {
-	RedisModuleKey *meta_key = upd_meta_get_when_open(ctx, origin, upd_txn, REDISMODULE_READ | REDISMODULE_WRITE);
+	upd_meta_k meta_key = upd_meta_get_when_open(ctx, origin, upd_txn, REDISMODULE_READ | REDISMODULE_WRITE);
 	if (meta_key == NULL) {
 		RedisModule_ReplyWithError(ctx, RDB_ETXN);
 		return;
@@ -1791,6 +1845,10 @@ static void upd_commit(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t
 	}
 
 	// Delete collision updates
+	size_t len = 0;
+	upd_meta_storage_t *meta = (upd_meta_storage_t *)RedisModule_StringDMA(meta_key, &len, REDISMODULE_WRITE);
+	RedisModule_Assert(len == sizeof(*meta));
+
 	size_t counter = 0;
 	exception_t e = upd_deep_delete(ctx, origin, upd_txn, serial_new, &counter);
 	if (e.ret != KNOT_EOK) {
@@ -1799,6 +1857,7 @@ static void upd_commit(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t
 		RedisModule_ReplyWithError(ctx, e.what);
 		return; // TODO
 	}
+	meta->depth -= counter;
 
 	// Commit the update.
 	RedisModuleKey *new_upd_key = get_commited_upd_index(ctx, origin, upd_txn, serial_new, REDISMODULE_READ | REDISMODULE_WRITE);
@@ -1847,7 +1906,7 @@ static void upd_commit(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t
 
 		RedisModule_CloseKey(diff_key);
 	}
-
+	++meta->depth;
 	RedisModule_DeleteKey(upd_key);
 	RedisModule_CloseKey(upd_key);
 
@@ -1873,11 +1932,20 @@ static void upd_commit(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t
 	}
 	RedisModule_CloseKey(new_upd_key);
 
+	e = upd_trim_history(ctx, origin, upd_txn, UPDATE_DEPTH);
+	if (e.ret == KNOT_EOK) {
+		meta->depth = MIN(meta->depth, UPDATE_DEPTH);
+	}
+
 	upd_meta_unlock(ctx, meta_key, upd_txn->id);
 	RedisModule_CloseKey(meta_key);
 
 	commit_event(ctx, RDB_EVENT_UPD, origin, upd_txn->instance, serial_new);
-	RedisModule_ReplyWithSimpleString(ctx, RDB_RETURN_OK);
+	if (e.ret != KNOT_EOK) {
+		RedisModule_ReplyWithError(ctx, e.what);
+	} else {
+		RedisModule_ReplyWithSimpleString(ctx, RDB_RETURN_OK);
+	}
 }
 
 static int upd_dump(RedisModuleCtx *ctx, RedisModuleKey *index_key, const arg_dname_t *origin,
@@ -1986,7 +2054,7 @@ static void upd_diff(RedisModuleCtx *ctx, const arg_dname_t *origin, const rdb_t
 }
 
 static int upd_load_serial(RedisModuleCtx *ctx, size_t *counter, const arg_dname_t *origin,
-                           const rdb_txn_t *txn, const uint32_t serial_final, const uint32_t serial,
+                           const rdb_txn_t *txn, const uint32_t serial_begin, const uint32_t serial_end, const uint32_t serial,
                            const arg_dname_t *opt_owner, const uint16_t *opt_rtype, const dump_mode_t mode)
 {
 	index_k upd_index_key = get_commited_upd_index(ctx, origin, txn, serial, REDISMODULE_READ);
@@ -2010,9 +2078,9 @@ static int upd_load_serial(RedisModuleCtx *ctx, size_t *counter, const arg_dname
 	uint32_t serial_next = knot_soa_serial(diff->rem_rrs.rdata);
 	RedisModule_CloseKey(soa_diff_key);
 
-	if (serial_next != serial_final) {
-		int ret = upd_load_serial(ctx, counter, origin, txn,
-		                          serial_final, serial_next, opt_owner,
+	if (serial_next != serial_end && serial_next != serial_begin) {
+		int ret = upd_load_serial(ctx, counter, origin, txn, serial_begin,
+		                          serial_end, serial_next, opt_owner,
 		                          opt_rtype, mode);
 		if (ret != KNOT_EOK) {
 			RedisModule_CloseKey(upd_index_key);
@@ -2049,7 +2117,7 @@ static void upd_load(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t *
 
 	size_t counter = 0;
 	RedisModule_ReplyWithArray(ctx, REDISMODULE_POSTPONED_ARRAY_LEN);
-	if (upd_load_serial(ctx, &counter, origin, txn, serial, serial_it, opt_owner, opt_rtype, mode) != KNOT_EOK) {
+	if (upd_load_serial(ctx, &counter, origin, txn, serial_it, serial, serial_it, opt_owner, opt_rtype, mode) != KNOT_EOK) {
 		return;
 	}
 	RedisModule_ReplySetArrayLength(ctx, counter);
