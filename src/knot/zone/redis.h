@@ -24,7 +24,7 @@ typedef struct {
 	uint8_t instance;
 
 	const knot_dname_t *origin;
-	uint8_t origin_len;
+	size_t origin_len;
 
 	bool incremental;
 	bool removals;

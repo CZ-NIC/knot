@@ -143,7 +143,7 @@ int zone_redis_write_rrset(zone_redis_txn_t *txn, const knot_rrset_t *rr)
 	int ret = redisAppendCommand(txn->rdb, cmd, txn->origin, txn->origin_len,
 	                             &txn->rdb_txn, sizeof(txn->rdb_txn),
 	                             rr->owner, knot_dname_size(rr->owner), rr->type, rr->ttl,
-	                             rr->rrs.count, rr->rrs.rdata, rr->rrs.size);
+	                             rr->rrs.count, rr->rrs.rdata, (size_t)rr->rrs.size);
 	if (ret != REDIS_OK) {
 		return check_reply(txn->rdb, NULL, REDIS_REPLY_ERROR, txn->err);
 	}
