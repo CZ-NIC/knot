@@ -116,6 +116,7 @@ int zone_redis_write_rrset(zone_redis_txn_t *txn, const knot_rrset_t *rr)
 	                                 rr->rrs.count, rr->rrs.rdata, rr->rrs.size);
 	int ret = check_reply(txn->rdb, reply, REDIS_REPLY_STATUS, txn->err);
 	if (ret != KNOT_EOK) {
+		freeReplyObject(reply);
 		return ret;
 	}
 
