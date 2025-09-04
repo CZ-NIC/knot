@@ -1811,7 +1811,7 @@ static void upd_commit(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t
 		RedisModule_CloseKey(rrset_key);
 		RedisModule_CloseKey(diff_key);
 		if (ret != KNOT_EOK) {
-			char msg[300], owner_str[256], rtype_str[16];
+			char msg[512], owner_str[256], rtype_str[16];
 			(void)knot_dname_to_str(owner_str, owner.data, sizeof(owner_str));
 			(void)knot_rrtype_to_string(rtype, rtype_str, sizeof(rtype_str));
 			(void)snprintf(msg, sizeof(msg), RDB_E("%s, owner %s, type %s"),
