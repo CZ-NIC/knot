@@ -29,6 +29,8 @@ typedef struct {
 	bool incremental;
 	bool removals;
 
+	size_t unread;
+
 	zone_redis_err_t err;
 } zone_redis_txn_t;
 
