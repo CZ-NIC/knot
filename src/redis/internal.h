@@ -755,26 +755,24 @@ static int upd_add_txt_cb(diff_v *diff, const void *data, uint32_t ttl)
 {
 	const knot_rdata_t *rdata = data;
 
-	int ret = knot_rdataset_remove(&diff->rem_rrs, rdata, &mm);
-	if (ret == KNOT_EOK) {
-		ret = knot_rdataset_add(&diff->add_rrs, rdata, &mm);
+	if (knot_rdataset_member(&diff->rem_rrs, rdata)) {
+		return knot_rdataset_remove(&diff->rem_rrs, rdata, &mm);
+	} else {
+		diff->add_ttl = (ttl == TTL_EMPTY) ? rdb_default_ttl : ttl;
+		return knot_rdataset_add(&diff->add_rrs, rdata, &mm);
 	}
-	diff->add_ttl = (ttl == TTL_EMPTY) ? rdb_default_ttl : ttl;
-
-	return ret;
 }
 
 static int upd_remove_txt_cb(diff_v *diff, const void *data, uint32_t ttl)
 {
 	const knot_rdata_t *rdata = data;
 
-	int ret = knot_rdataset_remove(&diff->add_rrs, rdata, &mm);
-	if (ret == KNOT_EOK) {
-		ret = knot_rdataset_add(&diff->rem_rrs, rdata, &mm);
+	if (knot_rdataset_member(&diff->add_rrs, rdata)) {
+		return knot_rdataset_remove(&diff->add_rrs, rdata, &mm);
+	} else {
+		diff->rem_ttl = ttl;
+		return knot_rdataset_add(&diff->rem_rrs, rdata, &mm);
 	}
-	diff->rem_ttl = ttl;
-
-	return ret;
 }
 
 static int upd_add_bin_cb(diff_v *diff, const void *data, uint32_t ttl)
