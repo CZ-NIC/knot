@@ -2049,6 +2049,17 @@ static void upd_diff(RedisModuleCtx *ctx, const arg_dname_t *origin, const rdb_t
 	RedisModule_CloseKey(index_key);
 }
 
+/*!
+ * \notice The changesets are searched for in reverse order: first the surrent SOA is read from the zone and
+ *         then every changeset is found by its own "serial to". From inside of the changeset, the
+ *         "serial from" is gained, digging deeper into the history down to the given limit. Thanks to
+ *         a trick with recursion, the changesets are in the end returned in chronological order. The
+ *         serial-related params are as follows:
+ *
+ * \param serial_begin    The current SOA serial of the zone, where the search starts. It is the newest (highest) serial.
+ * \param serial_end      The serial where the search ends, specified by the user (caller of knot.upd.load). It is the oldest (lowest) serial.
+ * \param serial          The "serial to" of the changeset that is being loaded.
+ */
 static int upd_load_serial(RedisModuleCtx *ctx, size_t *counter, const arg_dname_t *origin,
                            const rdb_txn_t *txn, const uint32_t serial_begin, const uint32_t serial_end, const uint32_t serial,
                            const arg_dname_t *opt_owner, const uint16_t *opt_rtype, const dump_mode_t mode)
