@@ -46,11 +46,11 @@
 
 /*! \brief macros with repetitive (mostly error-checking) code of methods from first section of this file */
 #define CHECK_PRET if (p->ret < 0) return;
-#define CHECK_INMAX(mininmax) if (p->in_max < (mininmax)) { p->ret = -1; return; }
-#define CHECK_RET_OUTMAX_SNPRINTF if (ret <= 0 || (size_t)ret >= p->out_max) { p->ret = -1; return; }
-#define STRING_TERMINATION if (p->out_max > 0) { *p->out = '\0'; } else { p->ret = -1; return; }
-#define FILL_IN_INPUT(pdata) if (memcpy(&(pdata), p->in, in_len) == NULL) { p->ret = -1; return; }
-#define CHECK_RET_POSITIVE if (ret <= 0) { p->ret = -1; return; }
+#define CHECK_INMAX(mininmax) if (p->in_max < (mininmax)) { p->ret = KNOT_EMALF; return; }
+#define CHECK_RET_OUTMAX_SNPRINTF if (ret <= 0 || (size_t)ret >= p->out_max) { p->ret = KNOT_ESPACE; return; }
+#define STRING_TERMINATION if (p->out_max > 0) { *p->out = '\0'; } else { p->ret = KNOT_ESPACE; return; }
+#define FILL_IN_INPUT(pdata) if (memcpy(&(pdata), p->in, in_len) == NULL) { p->ret = KNOT_ERROR; return; }
+#define CHECK_RET_POSITIVE if (ret <= 0) { p->ret = (ret < -1 ? ret : KNOT_ESPACE); return; }
 
 #define SNPRINTF_CHECK(ret, max_len)			\
 	if ((ret) < 0 || (size_t)(ret) >= (max_len)) {	\
@@ -97,13 +97,13 @@ static void dump_string(rrset_dump_params_t *p, const char *str)
 
 	// Check input size (+ 1 termination).
 	if (in_len >= p->out_max) {
-		p->ret = -1;
+		p->ret = KNOT_ESPACE;
 		return;
 	}
 
 	// Copy string including termination '\0'!
 	if (memcpy(p->out, str, in_len + 1) == NULL) {
-		p->ret = -1;
+		p->ret = KNOT_ERROR;
 		return;
 	}
 
@@ -210,7 +210,7 @@ static void wire_ipv4_to_str(rrset_dump_params_t *p)
 
 	// Write address.
 	if (knot_inet_ntop(AF_INET, &addr4, p->out, p->out_max) == NULL) {
-		p->ret = -1;
+		p->ret = KNOT_ESPACE;
 		return;
 	}
 	out_len = strlen(p->out);
@@ -237,7 +237,7 @@ static void wire_ipv6_to_str(rrset_dump_params_t *p)
 
 	// Write address.
 	if (knot_inet_ntop(AF_INET6, &addr6, p->out, p->out_max) == NULL) {
-		p->ret = -1;
+		p->ret = KNOT_ESPACE;
 		return;
 	}
 	out_len = strlen(p->out);
@@ -288,7 +288,7 @@ static int hex_encode(const uint8_t  *in,
 	static const char hex[] = "0123456789ABCDEF";
 
 	if (out_len < 2 * in_len) {
-		return -1;
+		return KNOT_ESPACE;
 	}
 
 	for (uint32_t i = 0; i < in_len; i++) {
@@ -309,7 +309,7 @@ static int hex_encode_alloc(const uint8_t  *in,
 	*out = malloc(out_len);
 
 	if (*out == NULL) {
-		return -1;
+		return KNOT_ENOMEM;
 	}
 
 	// Encoding data.
@@ -322,14 +322,14 @@ static int num48_encode(const uint8_t  *in,
                         const uint32_t out_len)
 {
 	if (in_len != 6) {
-		return -1;
+		return KNOT_EMALF;
 	}
 
 	uint64_t data = knot_wire_read_u48(in);
 
 	int ret = snprintf((char *)out, out_len, "%"PRIu64"", data);
 	if (ret <= 0 || (size_t)ret >= out_len) {
-		return -1;
+		return KNOT_ESPACE;
 	}
 
 	return ret;
@@ -400,7 +400,7 @@ static void wire_data_encode_to_str(rrset_dump_params_t *p,
 
 			if ((size_t)src_len > p->out_max) {
 				free(buf);
-				p->ret = -1;
+				p->ret = KNOT_ESPACE;
 				return;
 			}
 
@@ -448,7 +448,7 @@ static void wire_len_data_encode_to_str(rrset_dump_params_t *p,
 		in_len = knot_wire_read_u32(p->in);
 		break;
 	default:
-		p->ret = -1;
+		p->ret = KNOT_ERROR;
 		return;
 	}
 
@@ -517,7 +517,7 @@ static void wire_data_omit(rrset_dump_params_t *p,
 		in_len = knot_wire_read_u16(p->in);
 		break;
 	default:
-		p->ret = -1;
+		p->ret = KNOT_ERROR;
 		return;
 	}
 
@@ -541,7 +541,7 @@ static void wire_data_omit(rrset_dump_params_t *p,
 	const size_t omlen = strlen(omit_message);
 
 	if (p->out_max < omlen) {
-		p->ret = -1;
+		p->ret = KNOT_ESPACE;
 		return;
 	}
 
@@ -660,7 +660,7 @@ static void wire_text_to_str(rrset_dump_params_t *p, size_t in_len,
 
 			// Print text character.
 			if (p->out_max == 0) {
-				p->ret = -1;
+				p->ret = KNOT_ESPACE;
 				return;
 			}
 
@@ -738,7 +738,7 @@ static uint32_t wire_time_to_val(rrset_dump_params_t *p)
 
 	if (p->ret < 0 || p->in_max < in_len ||
 	    memcpy(&data, p->in, in_len) == NULL) {
-		p->ret = -1;
+		p->ret = KNOT_EMALF;
 		return 0;
 	}
 
@@ -794,7 +794,7 @@ static void wire_bitmap_to_str(rrset_dump_params_t *p)
 
 		// Check window length (length must follow).
 		if (i >= in_len) {
-			p->ret = -1;
+			p->ret = KNOT_EMALF;
 			return;
 		}
 
@@ -803,7 +803,7 @@ static void wire_bitmap_to_str(rrset_dump_params_t *p)
 
 		// Check window length (len bytes must follow).
 		if (i + bitmap_len > in_len) {
-			p->ret = -1;
+			p->ret = KNOT_EMALF;
 			return;
 		}
 
@@ -852,7 +852,7 @@ static void wire_dname_to_str(rrset_dump_params_t *p)
 	if (p->style->ascii_to_idn == NULL) {
 		char *dname_str = knot_dname_to_str(p->out, p->in, p->out_max);
 		if (dname_str == NULL) {
-			p->ret = -1;
+			p->ret = KNOT_ESPACE;
 			return;
 		}
 		out_len = strlen(dname_str);
@@ -913,18 +913,18 @@ static void wire_apl_to_str(rrset_dump_params_t *p)
 		memset(&addr4, 0, sizeof(addr4));
 
 		if (afdlen > sizeof(addr4.s_addr) || afdlen > p->in_max) {
-			p->ret = -1;
+			p->ret = KNOT_EMALF;
 			return;
 		}
 
 		if (memcpy(&(addr4.s_addr), p->in, afdlen) == NULL) {
-			p->ret = -1;
+			p->ret = KNOT_ERROR;
 			return;
 		}
 
 		// Write address.
 		if (knot_inet_ntop(AF_INET, &addr4, p->out, p->out_max) == NULL) {
-			p->ret = -1;
+			p->ret = KNOT_ESPACE;
 			return;
 		}
 		out_len = strlen(p->out);
@@ -934,25 +934,25 @@ static void wire_apl_to_str(rrset_dump_params_t *p)
 		memset(&addr6, 0, sizeof(addr6));
 
 		if (afdlen > sizeof(addr6.s6_addr) || afdlen > p->in_max) {
-			p->ret = -1;
+			p->ret = KNOT_EMALF;
 			return;
 		}
 
 		if (memcpy(&(addr6.s6_addr), p->in, afdlen) == NULL) {
-			p->ret = -1;
+			p->ret = KNOT_ERROR;
 			return;
 		}
 
 		// Write address.
 		if (knot_inet_ntop(AF_INET6, &addr6, p->out, p->out_max) == NULL) {
-			p->ret = -1;
+			p->ret = KNOT_ESPACE;
 			return;
 		}
 		out_len = strlen(p->out);
 
 		break;
 	default:
-		p->ret = -1;
+		p->ret = KNOT_EMALF;
 		return;
 	}
 	p->in += afdlen;
@@ -1208,7 +1208,7 @@ static void wire_loc_to_str(rrset_dump_params_t *p)
 	// Version check.
 	if (version != 0) {
 		wire_unknown_to_str(p);
-		p->ret = -1;
+		p->ret = KNOT_EMALF;
 		return;
 	}
 
@@ -1222,7 +1222,7 @@ static void wire_loc_to_str(rrset_dump_params_t *p)
 
 	// Check if all reads are correct.
 	if (wire.error != KNOT_EOK) {
-		p->ret = -1;
+		p->ret = KNOT_EMALF;
 		return;
 	}
 
@@ -1282,7 +1282,7 @@ static void wire_loc_to_str(rrset_dump_params_t *p)
 	// Sizes check.
 	if (size_m > 9 || size_e > 9 || hpre_m > 9 || hpre_e > 9 ||
 	    vpre_m > 9 || vpre_e > 9) {
-		p->ret = -1;
+		p->ret = KNOT_EMALF;
 		return;
 	}
 
@@ -1344,7 +1344,7 @@ static void wire_gateway_to_str(rrset_dump_params_t *p)
 		wire_dname_to_str(p);
 		break;
 	default:
-		p->ret = -1;
+		p->ret = KNOT_EMALF;
 	}
 	CHECK_PRET
 
@@ -1369,7 +1369,7 @@ static void wire_l64_to_str(rrset_dump_params_t *p)
 
 	// Check input size (64-bit identifier).
 	if (p->in_max != 8) {
-		p->ret = -1;
+		p->ret = KNOT_EMALF;
 		return;
 	}
 
@@ -1483,7 +1483,7 @@ static void wire_value_list_to_str(rrset_dump_params_t *p,
 		CHECK_PRET
 	}
 	if (expect_end != p->in) {
-		p->ret = -1;
+		p->ret = KNOT_EMALF;
 	}
 }
 
@@ -1550,11 +1550,11 @@ static void wire_svcparam_to_str(rrset_dump_params_t *p)
 			CHECK_PRET
 			break;
 		case KNOT_SVCB_PARAM_NDALPN:
-			p->ret = -1; // must not have value
+			p->ret = KNOT_EMALF; // must not have value
 			break;
 		case KNOT_SVCB_PARAM_PORT:
 			if (val_len != sizeof(uint16_t)) {
-				p->ret = -1;
+				p->ret = KNOT_EMALF;
 			} else {
 				wire_num16_to_str(p);
 			}
@@ -1572,7 +1572,7 @@ static void wire_svcparam_to_str(rrset_dump_params_t *p)
 			wire_text_to_str(p, val_len, NULL, true, false);
 			break;
 		case KNOT_SVCB_PARAM_OHTTP:
-			p->ret = -1; // must not have value
+			p->ret = KNOT_EMALF; // must not have value
 			break;
 		default:
 			wire_text_to_str(p, val_len, NULL, true, false);
@@ -2386,10 +2386,22 @@ int knot_rrset_txt_dump_data(const knot_rrset_t      *rrset,
 		ret = dump_unknown(&p);
 	} else {
 		ret = txt_dump_data(&p, rrset->type);
+		if (ret == KNOT_EMALF) {
+			p.in = data;
+			p.in_max = data_len;
+			p.out = dst;
+			p.out_max = maxlen;
+			p.total = 0;
+			p.ret = 0;
+			ret = dump_unknown(&p);
+		}
 	}
 
 	// Terminate the string just in case.
-	if (ret < 0 || ret >= maxlen) {
+	if (ret < 0) {
+		return ret;
+	}
+	if (ret >= maxlen) {
 		return KNOT_ESPACE;
 	}
 	dst[ret] = '\0';
@@ -2441,7 +2453,10 @@ int knot_rrset_txt_dump_edns(const knot_rrset_t      *rrset,
 	}
 
 	// Terminate the string just in case.
-	if (ret < 0 || ret >= maxlen) {
+	if (ret < 0) {
+		return ret;
+	}
+	if (ret >= maxlen) {
 		return KNOT_ESPACE;
 	}
 	dst[ret] = '\0';
@@ -2560,7 +2575,7 @@ static int rrset_txt_dump(const knot_rrset_t      *rrset,
 		int ret = knot_rrset_txt_dump_header(rrset, ttl, dst + len,
 		                                     maxlen - len, style);
 		if (ret < 0) {
-			return KNOT_ESPACE;
+			return ret;
 		}
 		len += ret;
 
@@ -2568,7 +2583,7 @@ static int rrset_txt_dump(const knot_rrset_t      *rrset,
 		ret = knot_rrset_txt_dump_data(rrset, i, dst + len,
 		                               maxlen - len, style);
 		if (ret < 0) {
-			return KNOT_ESPACE;
+			return ret;
 		}
 		len += ret;
 
