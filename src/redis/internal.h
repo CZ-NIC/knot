@@ -1158,9 +1158,9 @@ static exception_t upd_deep_delete(RedisModuleCtx *ctx, const arg_dname_t *origi
 
 	uint32_t serial_prev = 0;
 	exception_t e = index_soa_serial(ctx, upd_index_key, true, &serial_prev);
-	if (e.ret) {
+	if (e.ret != KNOT_EOK) {
 		RedisModule_CloseKey(upd_index_key);
-		throw(KNOT_EINVAL, RDB_ECORRUPTED);
+		throw(KNOT_EINVAL, e.what);
 	}
 
 	*counter += 1;
@@ -1307,14 +1307,13 @@ static void zone_commit(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_
 		return;
 	}
 
-	index_k zone_index_key = get_zone_index(ctx, origin, txn, REDISMODULE_READ | REDISMODULE_WRITE); // NOTE for iteration need also key opened for writing
-
 	uint32_t serial = 0;
+	index_k zone_index_key = get_zone_index(ctx, origin, txn, REDISMODULE_READ | REDISMODULE_WRITE); // NOTE for iteration need also key opened for writing
 	exception_t e = index_soa_serial(ctx, zone_index_key, false, &serial);
 	RedisModule_CloseKey(zone_index_key);
-	if (e.ret) {
+	if (e.ret != KNOT_EOK) {
 		RedisModule_CloseKey(meta_key);
-		RedisModule_ReplyWithError(ctx, RDB_ENOSOA);
+		RedisModule_ReplyWithError(ctx, e.what);
 		return;
 	}
 
@@ -1394,7 +1393,7 @@ static void zone_exists(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_
 	uint32_t serial = 0;
 	exception_t e = index_soa_serial(ctx, zone_index_key, false, &serial);
 	RedisModule_CloseKey(zone_index_key);
-	if (e.ret) {
+	if (e.ret != KNOT_EOK) {
 		RedisModule_ReplyWithError(ctx, e.what);
 		return;
 	}
@@ -1714,9 +1713,9 @@ static exception_t upd_trim_history(RedisModuleCtx *ctx, const arg_dname_t *orig
 		}
 
 		exception_t e = index_soa_serial(ctx, upd_index_key, true, &serial_it);
-		if (e.ret) {
-			RedisModule_CloseKey(upd_index_key);
-			throw(KNOT_EINVAL, RDB_ECORRUPTED);
+		RedisModule_CloseKey(upd_index_key);
+		if (e.ret != KNOT_EOK) {
+			throw(KNOT_EINVAL, e.what);
 		}
 	}
 
@@ -2052,9 +2051,9 @@ static int upd_load_serial(RedisModuleCtx *ctx, size_t *counter, const arg_dname
 
 	uint32_t serial_next = 0;
 	exception_t e = index_soa_serial(ctx, upd_index_key, true, &serial_next);
-	if (e.ret) {
+	if (e.ret != KNOT_EOK) {
 		RedisModule_CloseKey(upd_index_key);
-		RedisModule_ReplyWithError(ctx, RDB_ECORRUPTED);
+		RedisModule_ReplyWithError(ctx, e.what);
 		return e.ret;
 	}
 
