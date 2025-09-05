@@ -180,8 +180,10 @@ conf_val_t conf_zone_get_txn(
 	conf_db_get(conf, txn, C_ZONE, key1_name, dname, dname_size, &val);
 	switch (val.code) {
 	case KNOT_EOK:
-		if (val.blob_len == 1 && (val.item->flags & CONF_REF_EMPTY)) {
-			static const conf_val_t empty = { .code = KNOT_ENOENT };
+		// 3 ~ 2-byte length prefix + '\0'.
+		if (val.blob_len == 3 && (val.item->flags & (YP_FMULTI | CONF_REF_EMPTY))) {
+			assert(memcmp(val.blob, "\x00\x01\x00", val.blob_len) == 0);
+			conf_val_t empty = { .item = val.item, .code = KNOT_ENOENT };
 			return empty;
 		}
 		return val;
