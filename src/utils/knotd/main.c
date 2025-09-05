@@ -335,7 +335,7 @@ static knot_ctl_t **init_ctls(const char *socket)
 
 /*! \brief Event loop listening for signals and remote commands. */
 static int event_loop(server_t *server, const char *socket, bool daemonize,
-                      unsigned long pid, bool async, startup_data_t *startup_data)
+                      unsigned long pid, bool async)
 {
 	knot_ctl_t **ctls = init_ctls(socket);
 	if (ctls == NULL) {
@@ -367,6 +367,11 @@ static int event_loop(server_t *server, const char *socket, bool daemonize,
 		log_info("starting server in the foreground, PID %lu", pid);
 	}
 
+	/* Server startup parameters. */
+	startup_data_t startup_data = {
+		.first_loop = true
+	};
+
 	/* Run interrupt processing loop. */
 	for (;;) {
 		if (signals_req_reload && !signals_req_stop) {
@@ -392,13 +397,13 @@ static int event_loop(server_t *server, const char *socket, bool daemonize,
 			continue;
 		}
 
-		ret = check_loaded(server, async, startup_data);
+		ret = check_loaded(server, async, &startup_data);
 		if (ret != KNOT_EOK) {
 			goto done;
 		}
 
 		/* Wait for signals to arrive. */
-		nanosleep(&(startup_data->loop_wait), NULL);
+		nanosleep(&(startup_data.loop_wait), NULL);
 	}
 
 	if (conf()->cache.srv_dbus_event & DBUS_EVENT_RUNNING) {
@@ -694,16 +699,13 @@ int main(int argc, char **argv)
 
 	stats_reconfigure(conf(), &server);
 
-	startup_data_t startup_data = {
-		.first_loop = true
-	};
 	conf_val_t async_val = conf_get(conf(), C_SRV, C_ASYNC_START);
 	bool async = conf_bool(&async_val);
 
 	/* Start it up. */
 	/* In async-start mode, start answering early, otherwise in the event loop. */
 	if ((ret = server_start(&server, async)) != KNOT_EOK ||
-	    (ret = event_loop(&server, socket, daemonize, pid, async, &startup_data)) != KNOT_EOK) {
+	    (ret = event_loop(&server, socket, daemonize, pid, async)) != KNOT_EOK) {
 		log_fatal("failed to start server (%s)", knot_strerror(ret));
 		server_stop(&server);
 		server_wait(&server);
