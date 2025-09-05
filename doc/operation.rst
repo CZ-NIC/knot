@@ -205,12 +205,6 @@ Reading and editing zones
 Knot DNS allows you to read or change zone contents online using the server
 control interface.
 
-.. WARNING::
-   Avoid concurrent zone access from a third party software when a zone event
-   (zone file load, refresh, DNSSEC signing, dynamic update) is in progress or
-   pending. In such a case, zone events must be frozen before. For more
-   information on how to freeze the zone read :ref:`Editing zone file`.
-
 To get contents of all configured zones, or a specific zone contents, or zone
 records with a specific owner, or even with a specific record type::
 
@@ -231,6 +225,12 @@ To start a writing transaction on all zones or on specific zones::
 Now you can list all nodes within the transaction using the ``zone-get``
 command, which always returns current data with all changes included. The
 command has the same syntax as ``zone-read``.
+
+.. WARNING::
+   If a zone transaction is open, all zone events that modify the zone
+   (e.g. DNSSEC signing) are blocked until the transaction is eithe committed
+   or aborted. It is therefore advisable to finish the transaction quickly and
+   commit without delay.
 
 Within the transaction, you can add a record to a specific zone or to all
 zones with an open transaction::
