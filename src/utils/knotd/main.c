@@ -179,18 +179,21 @@ static void reset_loop_wait(startup_data_t *startup_data)
 	startup_data->loop_wait.tv_nsec = 0;
 }
 
-static void walk_zonedb(server_t *server, bool *start, bool *load, bool started, bool fast)
+static void walk_zonedb(server_t *server, bool *out_start, bool *out_load, bool started, bool fast)
 {
+	bool start = true;
+	bool load = true;
+
 	rcu_read_lock();
 	knot_zonedb_iter_t *it = knot_zonedb_iter_begin(server->zone_db);
 	while (!knot_zonedb_iter_finished(it)) {
 		zone_t *zone = (zone_t *)knot_zonedb_iter_val(it);
 		if (zone->contents == NULL) {
-			*load = false;
+			load = false;
 			if (started && fast) {
 				break;
 			} else if (!zone->started) {
-				*start = false;
+				start = false;
 				if (fast) {
 					break;
 				}
@@ -200,6 +203,9 @@ static void walk_zonedb(server_t *server, bool *start, bool *load, bool started,
 	}
 	knot_zonedb_iter_free(it);
 	rcu_read_unlock();
+
+	*out_start = start;
+	*out_load = load;
 }
 
 static int check_loaded(server_t *server, bool async, startup_data_t *startup_data)
@@ -228,8 +234,7 @@ static int check_loaded(server_t *server, bool async, startup_data_t *startup_da
 	last = now;
 
 	started = started || async;
-	bool start = true;
-	bool load = true;
+	bool start, load;
 
 	/* In the first db walk, benchmark the zonedb traversal while checking. */
 	walk_zonedb(server, &start, &load, started, startup_data->wait_set);
