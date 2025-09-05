@@ -207,9 +207,9 @@ Actions
   Get zone data that are currently being presented.
 
 **zone-begin** *zone*... [**+benevolent**]
-  Begin a zone transaction. If **+benevolent** is used, the zone transaction will
-  be committed even when it contains removals of non-existing or additions of
-  existing records.
+  Begin a zone transaction. If **+benevolent** is used, the transaction will
+  be committed even if it contains removals of non-existent records or additions
+  of existing records.
 
 **zone-commit** *zone*...
   Commit the zone transaction. All changes are applied to the zone.
