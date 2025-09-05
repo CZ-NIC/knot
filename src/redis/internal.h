@@ -1830,8 +1830,8 @@ static void upd_commit(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t
 	if (e.ret != KNOT_EOK) {
 		RedisModule_CloseKey(upd_key);
 		RedisModule_CloseKey(meta_key);
-		RedisModule_ReplyWithError(ctx, e.what);
-		return; // TODO
+		RedisModule_ReplyWithError(ctx, RDB_EHISTORY);
+		return;
 	}
 	meta->depth -= counter;
 
