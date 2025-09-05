@@ -129,7 +129,7 @@ static const RedisModuleCommandInfo zone_list_txt_info = {
 	.summary = "List zones stored in the database",
 	.complexity = "O(z), where z is the number of zones",
 	.since = "7.0.0",
-	.arity = 2,
+	.arity = -1,
 	.args = zone_list_txt_info_args,
 };
 
@@ -435,23 +435,17 @@ static int zone_purge_bin(RedisModuleCtx *ctx, RedisModuleString **argv, int arg
 
 static int zone_list_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 {
-	rdb_txn_t txn;
-	ARG_INST_TXT(argv[1], txn);
-
-	zone_list(ctx, &txn, true);
+	zone_list(ctx, true);
 	return REDISMODULE_OK;
 }
 
 static int zone_list_bin(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 {
-	if (argc != 2) {
+	if (argc < 1) {
 		return RedisModule_WrongArity(ctx);
 	}
 
-	rdb_txn_t txn;
-	ARG_INST(argv[1], txn);
-
-	zone_list(ctx, &txn, false);
+	zone_list(ctx, false);
 	return REDISMODULE_OK;
 }
 
