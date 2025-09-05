@@ -1289,6 +1289,7 @@ typedef struct {
 	size_t count;
 	int ret;
 	bool txt;
+	bool instances;
 } scan_ctx;
 
 static void zone_list_cb(RedisModuleKey *key, RedisModuleString *zone_name, RedisModuleString *mask, void *privdata)
@@ -1313,25 +1314,33 @@ static void zone_list_cb(RedisModuleKey *key, RedisModuleString *zone_name, Redi
 			++(sctx->count);
 			return;
 		}
-		int count = 0;
-		for (int it = 0; it < TXN_MAX; ++it) {
-			const char separator = (count) ? ',' : ':';
-			if ((*mask_p) & (1 << it)) {
-				*(buf_ptr++) = separator;
-				*(buf_ptr++) = ' ';
-				*(buf_ptr++) = '0' + it + 1;
-				*buf_ptr = '\0';
-				count++;
+		if (sctx->instances) {
+			int count = 0;
+			for (int it = 0; it < TXN_MAX; ++it) {
+				const char separator = (count) ? ',' : ':';
+				if ((*mask_p) & (1 << it)) {
+					*(buf_ptr++) = separator;
+					*(buf_ptr++) = ' ';
+					*(buf_ptr++) = '0' + it + 1;
+					*buf_ptr = '\0';
+					count++;
+				}
 			}
 		}
 		RedisModule_ReplyWithCString(sctx->ctx, buf);
 	} else {
-		RedisModule_ReplyWithString(sctx->ctx, zone_name);
+		if (sctx->instances) {
+			RedisModule_ReplyWithArray(sctx->ctx, 2);
+			RedisModule_ReplyWithString(sctx->ctx, zone_name);
+			RedisModule_ReplyWithString(sctx->ctx, mask);
+		} else {
+			RedisModule_ReplyWithString(sctx->ctx, zone_name);
+		}
 	}
 	++(sctx->count);
 }
 
-static void zone_list(RedisModuleCtx *ctx, bool txt)
+static void zone_list(RedisModuleCtx *ctx, bool instances, bool txt)
 {
 	RedisModuleKey *zones_index = get_zones_index(ctx, REDISMODULE_READ);
 	if (zones_index == NULL) {
@@ -1343,7 +1352,8 @@ static void zone_list(RedisModuleCtx *ctx, bool txt)
 
 	scan_ctx sctx = {
 		.ctx = ctx,
-		.txt = txt
+		.txt = txt,
+		.instances = instances
 	};
 	RedisModuleScanCursor *cursor = RedisModule_ScanCursorCreate();
 	while (RedisModule_ScanKey(zones_index, cursor, zone_list_cb, &sctx) && sctx.ret == KNOT_EOK);

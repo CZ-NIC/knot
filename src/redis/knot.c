@@ -66,7 +66,7 @@ static RedisModuleCommandArg zone_load_txt_info_args[] = {
 };
 
 static RedisModuleCommandArg zone_list_txt_info_args[] = {
-	{"zone",     REDISMODULE_ARG_TYPE_STRING,     -1, NULL,        NULL, NULL, REDISMODULE_CMD_ARG_NONE},
+	{"opt", REDISMODULE_ARG_TYPE_PURE_TOKEN, -1, "--instances", NULL, NULL, REDISMODULE_CMD_ARG_OPTIONAL},
 	{ 0 }
 };
 
@@ -435,17 +435,39 @@ static int zone_purge_bin(RedisModuleCtx *ctx, RedisModuleString **argv, int arg
 
 static int zone_list_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 {
-	zone_list(ctx, true);
+	bool instances = false;
+	if (argc > 1) {
+		size_t len;
+		if (strcmp(RedisModule_StringPtrLen(argv[1], &len), "--instances") == 0) {
+			instances = true;
+
+			argc--;
+			argv++;
+		} else {
+			return RedisModule_ReplyWithError(ctx, RDB_E("invalid option"));
+		}
+	}
+
+	zone_list(ctx, instances, true);
 	return REDISMODULE_OK;
 }
 
 static int zone_list_bin(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 {
-	if (argc < 1) {
-		return RedisModule_WrongArity(ctx);
+	bool instances = false;
+	if (argc > 1) {
+		size_t len;
+		if (strcmp(RedisModule_StringPtrLen(argv[1], &len), "--instances") == 0) {
+			instances = true;
+
+			argc--;
+			argv++;
+		} else {
+			return RedisModule_ReplyWithError(ctx, RDB_E("invalid option"));
+		}
 	}
 
-	zone_list(ctx, false);
+	zone_list(ctx, instances, false);
 	return REDISMODULE_OK;
 }
 
