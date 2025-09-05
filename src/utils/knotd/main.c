@@ -179,6 +179,29 @@ static void reset_loop_wait(startup_data_t *startup_data)
 	startup_data->loop_wait.tv_nsec = 0;
 }
 
+static void walk_zonedb(server_t *server, bool *start, bool *load, bool started, bool fast)
+{
+	rcu_read_lock();
+	knot_zonedb_iter_t *it = knot_zonedb_iter_begin(server->zone_db);
+	while (!knot_zonedb_iter_finished(it)) {
+		zone_t *zone = (zone_t *)knot_zonedb_iter_val(it);
+		if (zone->contents == NULL) {
+			*load = false;
+			if (started && fast) {
+				break;
+			} else if (!zone->started) {
+				*start = false;
+				if (fast) {
+					break;
+				}
+			}
+		}
+		knot_zonedb_iter_next(it);
+	}
+	knot_zonedb_iter_free(it);
+	rcu_read_unlock();
+}
+
 static int check_loaded(server_t *server, bool async, startup_data_t *startup_data)
 {
 	/*
@@ -208,48 +231,13 @@ static int check_loaded(server_t *server, bool async, startup_data_t *startup_da
 	bool start = true;
 	bool load = true;
 
-	if (startup_data->first_loop) {
-		/* Benchmark the zonedb traversal while checking. */
-		rcu_read_lock();
-		knot_zonedb_iter_t *it = knot_zonedb_iter_begin(server->zone_db);
-		while (!knot_zonedb_iter_finished(it)) {
-			zone_t *zone = (zone_t *)knot_zonedb_iter_val(it);
-			if (zone->contents == NULL) {
-				load = false;
-				if (!zone->started) {
-					start = false;
-				}
-			}
-			knot_zonedb_iter_next(it);
-		}
-		knot_zonedb_iter_free(it);
-		rcu_read_unlock();
+	/* In the first loop, benchmark the zonedb traversal while checking. */
+	walk_zonedb(server, &start, &load, started, !startup_data->first_loop);
 
+	if (startup_data->first_loop) {
 		struct timespec then = time_now();
 		calc_wait(startup_data, time_diff(&now, &then));
 		startup_data->first_loop = false;
-	} else {
-		/* Hot path. */
-		rcu_read_lock();
-		knot_zonedb_iter_t *it = knot_zonedb_iter_begin(server->zone_db);
-		while (!knot_zonedb_iter_finished(it)) {
-			zone_t *zone = (zone_t *)knot_zonedb_iter_val(it);
-			if (zone->contents != NULL) {
-				knot_zonedb_iter_next(it);
-				continue;
-			}
-			load = false;
-			if (started) {
-				break;
-			} else if (!zone->started) {
-				start = false;
-				break;
-			}
-
-			knot_zonedb_iter_next(it);
-		}
-		knot_zonedb_iter_free(it);
-		rcu_read_unlock();
 	}
 
 	if (!start) {
