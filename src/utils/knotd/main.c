@@ -41,7 +41,7 @@
 #define PROGRAM_NAME "knotd"
 
 typedef struct {
-	bool            first_loop;
+	bool            wait_set;
 	struct timespec loop_wait;
 } startup_data_t;
 
@@ -231,13 +231,13 @@ static int check_loaded(server_t *server, bool async, startup_data_t *startup_da
 	bool start = true;
 	bool load = true;
 
-	/* In the first loop, benchmark the zonedb traversal while checking. */
-	walk_zonedb(server, &start, &load, started, !startup_data->first_loop);
+	/* In the first db walk, benchmark the zonedb traversal while checking. */
+	walk_zonedb(server, &start, &load, started, startup_data->wait_set);
 
-	if (startup_data->first_loop) {
+	if (!startup_data->wait_set) {
 		struct timespec then = time_now();
 		calc_wait(startup_data, time_diff(&now, &then));
-		startup_data->first_loop = false;
+		startup_data->wait_set = true;
 	}
 
 	if (!start) {
@@ -369,7 +369,7 @@ static int event_loop(server_t *server, const char *socket, bool daemonize,
 
 	/* Server startup parameters. */
 	startup_data_t startup_data = {
-		.first_loop = true
+		.wait_set = false
 	};
 
 	/* Run interrupt processing loop. */
