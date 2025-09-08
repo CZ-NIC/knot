@@ -1,3 +1,57 @@
+Knot DNS 3.5.0 (2025-09-xx)
+===========================
+
+Features:
+---------
+ - knotd: database zone backend using Redis/Valkey (see 'Database zone backend')
+ - knotd: support for multiple control sockets (see 'control.listen')
+ - knotd: external zone validation (see 'External validation')
+ - knotd: authorization based on certificate hostname validation (see 'DNS over QUIC')
+ - knotd: multiple keystores can be specified per policy (see 'DNSSEC multiple keystores')
+ - knotd: specified resource record types can be omitted when loading (see 'zone.zonefile-skip')
+ - knotd: subzone flattening (see 'zone.include-from')
+
+Improvements:
+-------------
+ - knotd: optimized dynamic zone addition/removal for many zones
+ - knotd: optimized catalog updates for many zones
+ - knotd: replaced a poor atomic fallback with a spin-lock-protected version
+ - knotd: support for independent SOA serial series on the secondary side
+ - knotd: self-signed certificate contains SAN instead of CN
+ - knotd: removed RCU synchronization lock between unrelated zones' updates
+ - knotd: zone-reload/reload fails if there is a module configuration error
+ - knotd: control interfaces are started before zones loading
+ - knotd: session ticket pool is purged on server reload if changed credentials
+ - knotc: status returns 'Loading' if the server is not yet answering
+ - knotc: extended tab completion for details, filters, and paths
+ - kzonecheck: zone origin auto-detection uses SOA owner from the checked zone file
+ - libknot: XDP drops packets with too many or inappropriate extended IPv6 headers
+ - libknot: extended XDP checks for correct packets
+ - libknot: semantically malformed resource records are dumped in generic format
+ - libs: upgraded embedded libngtcp2 to 1.15.0
+ - knot-exporter: less confusing option parsing and documentation
+ - doc: various improvements
+
+Bugfixes:
+---------
+ - knotd: if multiple primaries send NOTIFY concurrently, only the last remote is queried
+ - knotd: failed to build on macOS with POSIX semaphores
+ - knotd: early zone free due to RCU-delayed update cleanup
+ - knotd: server crashes if "" value overrides template master value
+ - knot-exporter: label collisions caused by duplicate metrics (Thanks to Guillaume Cornet)
+
+Packaging:
+----------
+ - deb,rpm: keymgr extracted to a separate package knot-keymgr
+ - deb,rpm: new package redis-knot with a Knot module for Redis/Valkey
+ - docker: upgraded to Debian trixie-slim
+
+Compatibility:
+--------------
+ - license: project relicensed to GPL-2.0-or-later
+ - knotd: new default value of 'policy.nsec3-salt-length' is 0
+ - knot-exporter: renamed some metrics, labes, or units (see 'Migration')
+
 Knot DNS 3.4.8 (2025-07-29)
 ===========================
 
