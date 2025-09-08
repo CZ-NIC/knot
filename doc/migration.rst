@@ -473,6 +473,43 @@ Building notes
 - *Liburcu* must be available via pkg-config.
 - Linux distributions CentOS 7, Debian 10, and Ubuntu 18.04 are no longer supported.
 
+.. _Upgrade 3.4.x to 3.5.x:
+
+Upgrade 3.4.x to 3.5.x
+======================
+
+There are the following changes between Knot DNS versions 3.5.x and 3.4.x.
+
+DNSSEC
+------
+
+- The default value of :ref:`policy_nsec3-salt-length` was lowered to 0,
+  which means no extra SHA-1 iterations are used. If the option value is not
+  explicitly set, zones that rely on the default will be re-signed upon upgrade.
+
+Utilities
+---------
+
+- :doc:`kzonecheck<man_kzonecheck>`'s zone origin auto-detection now uses the owner
+  name of the first SOA record from the checked zone file. If the owner isn't
+  a FQDN, the zone file name (without possible **.zone** suffix) is used as
+  the initial zone origin.
+- `knot-exporter`: the following metrics, labes, or units have been changed:
+
+   .. csv-table::
+      :header: Old metric (old labels), New metric (new labels), New unit
+      :delim: ;
+
+      ``knot_memory_usage(section, type)``; ``knot_memory_usage(pid)``;     ``bytes``
+      ``knot_*(section, type)``;            ``knot_stats_*(module, type)``;
+      ``knot_*(section)``;                  ``knot_stats_*(module, type="")``;
+      ``knot_*(zone, section, type)``;      ``knot_zone_stats_*(zone, module, type)``;
+      ``knot_*(zone, section)``;            ``knot_zone_stats_*(zone, module, type="")``;
+      ``knot_zone_stats_*(zone)``;          ``knot_zone_status_*(zone)``;
+      ``knot_zone_refresh(zone)``;          ``knot_zone_refresh(zone)``;    ``seconds``
+      ``knot_zone_retry(zone)``;            ``knot_zone_retry(zone)``;      ``seconds``
+      ``knot_zone_expiration(zone)``;       ``knot_zone_expiration(zone)``; ``seconds``
+
 .. _Knot DNS for BIND users:
 
 Knot DNS for BIND users
