@@ -41,6 +41,16 @@ struct timespec time_diff(const struct timespec *begin, const struct timespec *e
  */
 double time_diff_ms(const struct timespec *begin, const struct timespec *end);
 
+typedef unsigned long long knot_millis_t;
+
+knot_millis_t knot_millis_from_timespec(struct timespec *ts);
+
+struct timespec knot_millis_to_timespec(knot_millis_t ms);
+
+knot_millis_t knot_millis_now(void);
+
+void knot_millis_sleep(knot_millis_t ms);
+
 /*!
  * \brief Data type for keeping UNIX timestamps.
  *
