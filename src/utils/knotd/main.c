@@ -42,7 +42,7 @@
 
 typedef struct {
 	bool            wait_set;
-	struct timespec loop_wait;
+	knot_millis_t   loop_wait;
 } startup_data_t;
 
 static int make_daemon(int nochdir, int noclose)
@@ -121,62 +121,32 @@ static void drop_capabilities(void)
 #endif /* ENABLE_CAP_NG */
 }
 
-#define LOOP_WAIT            5   /* Seconds. It could be even infinity. */
-#define LOOP_WAIT_MIN_MS   200   /* In milliseconds; it must be < 1000. */
-#define LOOP_WAIT_MAX       30   /* Seconds. */
-#define LOOP_WAIT_LOAD_MAX  10   /* Seconds. Can be overruled by higher initial wait value. */
-#define LOAD_START_DECLINE  60   /* Seconds. Before the wait starts to grow. */
+/* The following time constants are in milliseconds. */
+#define LOOP_WAIT           5000LLU  /* After loading all zones. It could be even infinity. */
+#define LOOP_WAIT_MIN        200LLU  /* Minimum wait before all zones are started. */
+#define LOOP_WAIT_MAX      30000LLU  /* Maximum wait before all zones are started. */
+#define LOOP_WAIT_LOAD_MIN  1000LLU  /* Minimum wait before all zones are loaded, after 'started'. */
+#define LOOP_WAIT_LOAD_MAX 10000LLU  /* Can be overruled by higher initial wait value. */
+#define LOAD_START_DECLINE 60000LLU  /* Before the wait starts to grow. */
 
 /*! \brief Calculate wait in 'started' state detection. */
-static void calc_wait(startup_data_t *startup_data, struct timespec t)
+static void calc_wait(startup_data_t *startup_data, knot_millis_t t)
 {
-	struct timespec rv;
-	long int double_ns = 2 * t.tv_nsec;
-	rv.tv_sec = 2 * t.tv_sec + double_ns / (1000 * 1000 * 1000L);
-	rv.tv_nsec = double_ns % (1000 * 1000 * 1000L);
-	if (rv.tv_sec == 0) {
-		rv.tv_nsec = MAX(rv.tv_nsec, LOOP_WAIT_MIN_MS * 1000 * 1000L);
-	} else {
-		rv.tv_sec = MIN(rv.tv_sec, LOOP_WAIT_MAX);
-	}
-
-	startup_data->loop_wait = rv;
+	/* Multiply wait by 2 -- just a chosen number. */
+	startup_data->loop_wait = MAX(LOOP_WAIT_MIN, MIN(LOOP_WAIT_MAX, t * 2));
 }
 
 /*! \brief Calculate wait in 'loaded' state detection. */
-static void calc_wait_loaded(startup_data_t *startup_data, struct timespec t)
+static void calc_wait_loaded(startup_data_t *startup_data, knot_millis_t t)
 {
-	struct timespec wait = startup_data->loop_wait;
-	assert(wait.tv_sec < LONG_MAX / 10000);
-
-	if (wait.tv_sec >= LOOP_WAIT_LOAD_MAX) {  /* One second tolerance is ok. */
-		return;
-	}
-
-	if (t.tv_sec < LOAD_START_DECLINE) {
-		if (wait.tv_sec < 1) {   /* Start at one second at least. */
-			startup_data->loop_wait.tv_sec = 1;
-			startup_data->loop_wait.tv_nsec = 0;
-		}
+	if (t < LOAD_START_DECLINE) {
+		startup_data->loop_wait = MAX(LOOP_WAIT_LOAD_MIN, startup_data->loop_wait);
 		return;
 	}
 
 	/* Multiply wait by approx. 1.05 -- just a chosen number. */
-	long int waitm = wait.tv_sec * 1000 + wait.tv_nsec / (1000 * 1000);
-	waitm *= 105;
-	startup_data->loop_wait.tv_sec = waitm / (100 * 1000);
-	startup_data->loop_wait.tv_nsec = (waitm % (100 * 1000)) * (10 * 1000);
-
-	if (startup_data->loop_wait.tv_sec >= LOOP_WAIT_LOAD_MAX) {
-		startup_data->loop_wait.tv_sec = LOOP_WAIT_LOAD_MAX;
-		startup_data->loop_wait.tv_nsec = 0;
-	}
-}
-
-static void reset_loop_wait(startup_data_t *startup_data)
-{
-	startup_data->loop_wait.tv_sec = LOOP_WAIT;
-	startup_data->loop_wait.tv_nsec = 0;
+	startup_data->loop_wait = MIN(LOOP_WAIT_LOAD_MAX,
+	                              startup_data->loop_wait + startup_data->loop_wait / 20);
 }
 
 static void walk_zonedb(server_t *server, bool *out_start, bool *out_load,
@@ -219,7 +189,7 @@ static int check_loaded(server_t *server, bool async, startup_data_t *startup_da
 	 */
 	static bool started = false;
 	static bool loaded = false;
-	static struct timespec started_time = { 0 };
+	static knot_millis_t started_time = 0;
 	assert(server->state & ServerRunning);
 	if (loaded) {
 		assert(server->state & ServerAnswering);
@@ -227,17 +197,16 @@ static int check_loaded(server_t *server, bool async, startup_data_t *startup_da
 	}
 
 	bool start, load;
-	struct timespec now = time_now();
+	knot_millis_t now_ms = knot_millis_now();
 
 	/* In the first db walk, benchmark the zonedb traversal while checking. */
 	walk_zonedb(server, &start, &load, started, startup_data->wait_set);
 
 	if (!startup_data->wait_set) {
-		struct timespec then = time_now();
-		calc_wait(startup_data, time_diff(&now, &then));
+		knot_millis_t afterwalk = knot_millis_now();
+		calc_wait(startup_data, afterwalk - now_ms);
 		if (async) {
-			struct timespec zero_time = { 0 };
-			calc_wait_loaded(startup_data, zero_time);
+			calc_wait_loaded(startup_data, 0);
 		}
 		startup_data->wait_set = true;
 	}
@@ -246,7 +215,7 @@ static int check_loaded(server_t *server, bool async, startup_data_t *startup_da
 		return KNOT_EOK;
 	}
 	if (!started) {
-		started_time = now;
+		started_time = now_ms;
 		if (!async) {
 			int ret = server_start_answering(server);
 			if (ret != KNOT_EOK) {
@@ -265,10 +234,10 @@ static int check_loaded(server_t *server, bool async, startup_data_t *startup_da
 	if (load) {   /* Not 'loaded' yet. */
 		dbus_emit_running(true);
 		loaded = true;
-		reset_loop_wait(startup_data);
+		startup_data->loop_wait = LOOP_WAIT;
 	} else {
 		/* Extend the wait gradually. */
-		calc_wait_loaded(startup_data, time_diff(&started_time, &now));
+		calc_wait_loaded(startup_data, now_ms - started_time);
 	}
 
 	return KNOT_EOK;
@@ -407,7 +376,7 @@ static int event_loop(server_t *server, const char *socket, bool daemonize,
 		}
 
 		/* Wait for signals to arrive. */
-		nanosleep(&(startup_data.loop_wait), NULL);
+		knot_millis_sleep(startup_data.loop_wait);
 	}
 
 	if (conf()->cache.srv_dbus_event & DBUS_EVENT_RUNNING) {
