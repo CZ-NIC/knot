@@ -57,6 +57,7 @@ Server features:
 * Multithreaded DNSSEC zone signing and zone validation
 * Automatic DNSSEC key management
 * Zone data backup and restore
+* Database zone backend
 * Offline KSK operation
 * PKCS #11 interface
 

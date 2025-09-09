@@ -113,3 +113,7 @@ and :doc:`kdig<man_kdig>`:
 * libngtcp2 >= 0.17.0 (or embedded one via `--enable-quic`)
 * gnutls >= 3.7.3
 * :ref:`Mode XDP` (for knotd and kxdpgun)
+
+:ref:`Database_zone_backend` support in :doc:`knotd<man_knotd>`:
+
+* libhiredis (for TLS support >= 1.1.0)
