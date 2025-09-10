@@ -71,32 +71,32 @@ class KnotCollector(object):
         ctl.set_timeout(self._ttl)
         metric_families = dict()
 
-        def metric_families_append(family, labels, labels_val, data):
-            m = metric_families.get(family, GaugeMetricFamily(family, '', labels=labels))
-            c = metric_families.get(family + '_total', CounterMetricFamily(family, '', labels=labels))
+        def metric_families_append(family, labels, labels_val, data, unit=None):
+            m = metric_families.get(family, GaugeMetricFamily(family, '', labels=labels, unit=unit))
+            c = metric_families.get(family + '_total', CounterMetricFamily(family, '', labels=labels, unit=unit))
             m.add_metric(labels_val, data)
             c.add_metric(labels_val, data)
             metric_families[family] = m
             metric_families[family + '_total'] = c
 
         if self.collect_meminfo:
-            # Get global metrics.
             for pid, usage in memory_usage().items():
-                metric_families_append('knot_memory_usage', ['section', 'type'], ['server', str(pid)], usage)
+                metric_families_append('knot_memory_usage', ['pid'], [str(pid)], usage, "bytes")
 
         if self.collect_stats:
+            # Get global metrics.
             ctl.send_block(cmd="stats", flags="")
             global_stats = ctl.receive_stats()
 
             for section, section_data in global_stats.items():
                 for item, item_data in section_data.items():
-                    name = ('knot_' + item).replace('-', '_')
+                    name = ('knot_stats_' + item).replace('-', '_')
                     try:
                         for kind, kind_data in item_data.items():
-                            metric_families_append(name, ['section', 'type'], [section, kind], kind_data)
+                            metric_families_append(name, ['module', 'type'], [section, kind], kind_data)
 
                     except AttributeError:
-                        metric_families_append(name, ['section'], [section], item_data)
+                        metric_families_append(name, ['module'], [section], item_data)
 
         if self.collect_zone_stats:
             # Get zone metrics.
@@ -107,12 +107,12 @@ class KnotCollector(object):
                 for zone, zone_data in zone_stats["zone"].items():
                     for section, section_data in zone_data.items():
                         for item, item_data in section_data.items():
-                            name = ('knot_' + item).replace('-', '_')
+                            name = ('knot_zone_stats_' + item).replace('-', '_')
                             try:
                                 for kind, kind_data in item_data.items():
-                                    metric_families_append(name, ['zone', 'section', 'type'], [zone, section, kind], kind_data)
+                                    metric_families_append(name, ['zone', 'module', 'type'], [zone, section, kind], kind_data)
                             except AttributeError:
-                                metric_families_append(name, ['zone', 'section'], [zone, section], item_data)
+                                metric_families_append(name, ['zone', 'module'], [zone, section], item_data)
 
         if self.collect_zone_status:
             # zone state metrics
@@ -132,7 +132,7 @@ class KnotCollector(object):
                     if seconds == None:
                         continue
 
-                    metric_families_append('knot_zone_stats_' + metric, ['zone'], [zone], seconds)
+                    metric_families_append('knot_zone_status_' + metric, ['zone'], [zone], seconds, "seconds")
 
         if self.collect_zone_timers:
             # zone configuration metrics
@@ -149,7 +149,7 @@ class KnotCollector(object):
                 zone_config = params[name]['SOA']['data'][0].split(" ")
 
                 for metric in metrics:
-                    metric_families_append(metric['name'], ['zone'], [name], int(zone_config[metric['index']]))
+                    metric_families_append(metric['name'], ['zone'], [name], int(zone_config[metric['index']]), "seconds")
 
         for val in metric_families.values():
             yield val
