@@ -154,6 +154,9 @@ class KnotCollector(object):
         for val in metric_families.values():
             yield val
 
+        ctl.send(libknot.control.KnotCtlType.END)
+        ctl.close()
+
 
 def main():
     parser = argparse.ArgumentParser(
