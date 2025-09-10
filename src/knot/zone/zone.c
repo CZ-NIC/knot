@@ -181,7 +181,7 @@ zone_t* zone_new(const knot_dname_t *name)
 	// Initialize query modules list.
 	init_list(&zone->query_modules);
 
-	init_list(&zone->reverse_from);
+	init_list(&zone->include_from);
 	init_list(&zone->internal_notify);
 
 	ATOMIC_INIT(zone->backup_ctx, NULL);
@@ -242,7 +242,7 @@ void zone_free(zone_t **zone_ptr)
 
 	conf_deactivate_modules(&zone->query_modules, &zone->query_plan);
 
-	ptrlist_free(&zone->reverse_from, NULL);
+	zone_includes_clear(zone);
 	ptrlist_free(&zone->internal_notify, NULL);
 
 	ATOMIC_DEINIT(zone->backup_ctx);
@@ -813,6 +813,38 @@ int zone_dump_to_dir(conf_t *conf, zone_t *zone, const char *dir)
 	free(zonefile);
 
 	return zonefile_write_skip(target, zone->contents, conf);
+}
+
+int zone_includes_add(zone_t *zone, zone_t *include, zone_include_method_t method)
+{
+	zone_include_t *n = calloc(1, sizeof(*n));
+	if (n == NULL) {
+		return KNOT_ENOMEM;
+	}
+	n->include = include;
+	n->method = method;
+	add_tail(&zone->include_from, &n->n);
+	return KNOT_EOK;
+}
+
+void zone_includes_rem(zone_t *zone, zone_t *include)
+{
+	zone_include_t *n, *nxt;
+	WALK_LIST_DELSAFE(n, nxt, zone->include_from) {
+		if (n->include == include) {
+			rem_node(&n->n);
+			free(n);
+		}
+	}
+}
+
+void zone_includes_clear(zone_t *zone)
+{
+	zone_include_t *n, *next;
+	WALK_LIST_DELSAFE(n, next, zone->include_from) {
+		free(n);
+	}
+	init_list(&zone->include_from);
 }
 
 void zone_local_notify_subscribe(zone_t *zone, zone_t *subscribe)

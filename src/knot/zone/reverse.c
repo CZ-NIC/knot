@@ -129,9 +129,10 @@ int zone_reverse(zone_contents_t *from, zone_contents_t *to_conts,
 int zones_reverse(list_t *zones, zone_contents_t *to_conts, const knot_dname_t **fail_fwd)
 {
 	int ret = KNOT_EOK;
-	ptrnode_t *n;
+	zone_include_t *n;
 	WALK_LIST(n, *zones) {
-		zone_t *z = n->d;
+		zone_t *z = n->include;
+		assert(n->method == ZONE_INCLUDE_REVERSE);
 		rcu_read_lock();
 		if (z->contents == NULL) {
 			ret = KNOT_ETRYAGAIN;

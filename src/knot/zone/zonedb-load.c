@@ -389,11 +389,11 @@ static void reg_reverse(conf_t *conf, knot_zonedb_t *db_new, zone_t *zone)
 		return;
 	}
 
-	ptrnode_t *n;
-	WALK_LIST(n, zone->reverse_from) {
-		zone_local_notify_unsubscribe(n->d, zone);
+	zone_include_t *n;
+	WALK_LIST(n, zone->include_from) {
+		zone_local_notify_unsubscribe(n->include, zone);
 	}
-	ptrlist_free(&zone->reverse_from, NULL);
+	zone_includes_clear(zone);
 
 	conf_val_t val = conf_zone_get(conf, C_REVERSE_GEN, zone->name);
 	while (val.code == KNOT_EOK) {
@@ -405,7 +405,7 @@ static void reg_reverse(conf_t *conf, knot_zonedb_t *db_new, zone_t *zone)
 			log_zone_warning(zone->name, "zone to reverse %s does not exist",
 			                 forw_str);
 		} else {
-			ptrlist_add(&zone->reverse_from, forw, NULL);
+			(void)zone_includes_add(zone, forw, ZONE_INCLUDE_REVERSE);
 			zone_local_notify_subscribe(forw, zone);
 		}
 		conf_val_next(&val);
@@ -418,15 +418,16 @@ static void unreg_reverse(zone_t *zone)
 		return;
 	}
 
-	ptrnode_t *n;
-	WALK_LIST(n, zone->reverse_from) {
-		zone_local_notify_unsubscribe(n->d, zone);
+	zone_include_t *in;
+	WALK_LIST(in, zone->include_from) {
+		zone_local_notify_unsubscribe(in->include, zone);
 	}
-	ptrlist_free(&zone->reverse_from, NULL);
+	zone_includes_clear(zone);
 
+	ptrnode_t *n;
 	WALK_LIST(n, zone->internal_notify) {
 		zone_t *reverse = n->d;
-		ptrlist_find_rem(&reverse->reverse_from, zone, NULL);
+		zone_includes_rem(reverse, zone);
 	}
 	ptrlist_free(&zone->internal_notify, NULL);
 }
