@@ -817,6 +817,56 @@ different templates::
       catalog-role: interpret
       catalog-template: [ unsigned, signed ]
 
+.. _Database_zone_backend:
+
+Database zone backend
+=====================
+
+It is possible to use `Redis <https://redis.io/>`_ 7.0+ or a `Valkey <https://valkey.io/>`_
+database for storing zone contents. The database does not need to be located on
+the same machine as the Knot DNS servers. One or more servers can read from
+or write to the same database. However, if multiple writers are used, they
+must be configured carefully to avoid conflicts or unexpected interactions.
+
+On the database side, the **knot.so** module must be available (e.g. by installing
+the *redis-knot* package from a `repository <https://www.knot-dns.cz/download/>`_)
+and loaded into the database. This is usually done by adding the following
+line to the database configuration::
+
+  loadmodule /usr/lib/redis/modules/knot.so
+
+On the Knot DNS side, at least an address or a UNIX socket path must be configured
+:ref:`database_zone-db-listen` in the :ref:`database section`. Optionally,
+TLS communication can be enabled using :ref:`database_zone-db-tls`,
+:ref:`database_zone-db-cert-key`, or :ref:`database_zone-db-cert-hostname`.
+For example::
+
+  database:
+    zone-db-listen: /run/redis/redis-server.sock
+
+or::
+
+  database:
+    zone-db-listen: 192.168.1.2@6379
+    zone-db-tls: on
+    zone-db-cert-key: s3L4U7E41DnN2tHFT8bu9DQe6eo2ySehlltyzdLbWjg=
+
+In the database, up to 8 independent versions of zone contents — called zone *instances*
+— can be stored per zone, numbered from 1 to 8. Whether a zone is loaded from
+or store to the database is configured independently using the :ref:`zone_zone-db-input`
+and :ref:`zone_zone-db-output` options, whose values correspond to zone instances.
+For example, if a zone should be read from database instance 1 and the
+DNSSEC-signed version stored in instance 2, the configuration may look like this::
+
+  zone:
+    - domain: example.com.
+      dnssec-signing: on
+      zone-db-input: 1
+      zone-db-output: 2
+
+It is still possible to combine zone database backend with zone file or journal
+operations.
+
 .. _DNS_over_QUIC:
 
 DNS over QUIC
