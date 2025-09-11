@@ -45,6 +45,28 @@ double time_diff_ms(const struct timespec *begin, const struct timespec *end)
 	return (result.tv_sec * 1e3) + (result.tv_nsec / 1e6);
 }
 
+knot_millis_t knot_millis_from_timespec(struct timespec *ts)
+{
+	return ts->tv_sec * 1000LLU + ts->tv_nsec / 1000000LLU;
+}
+
+struct timespec knot_millis_to_timespec(knot_millis_t ms)
+{
+	return (struct timespec){ .tv_sec = ms / 1000LLU, .tv_nsec = (ms % 1000LLU) * 1000000LLU };
+}
+
+knot_millis_t knot_millis_now(void)
+{
+	struct timespec ts = time_now();
+	return knot_millis_from_timespec(&ts);
+}
+
+void knot_millis_sleep(knot_millis_t ms)
+{
+	struct timespec ts = knot_millis_to_timespec(ms);
+	nanosleep(&ts, NULL);
+}
+
 typedef struct {
 	const char *format;
 	const char *timespec;

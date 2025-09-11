@@ -15,6 +15,8 @@
  #define st_mtim st_mtimespec
 #endif
 
+typedef unsigned long long knot_millis_t;
+
 /*!
  * \brief Specify output format for knot_time_print().
  */
@@ -40,6 +42,14 @@ struct timespec time_diff(const struct timespec *begin, const struct timespec *e
  * \brief Get time elapsed between two events in milliseconds.
  */
 double time_diff_ms(const struct timespec *begin, const struct timespec *end);
+
+knot_millis_t knot_millis_from_timespec(struct timespec *ts);
+
+struct timespec knot_millis_to_timespec(knot_millis_t ms);
+
+knot_millis_t knot_millis_now(void);
+
+void knot_millis_sleep(knot_millis_t ms);
 
 /*!
  * \brief Data type for keeping UNIX timestamps.

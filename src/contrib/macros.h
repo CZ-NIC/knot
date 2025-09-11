@@ -16,7 +16,7 @@
 
 /*! \brief Type-safe maximum macro. */
 #define MAX(a, b) \
-	({ __typeof__ (a) _a = (a); __typeof__ (b) _b = (b); _a > _b ? _a : _b; })
+	({ __typeof__ (a) _x = (a); __typeof__ (b) _y = (b); _x > _y ? _x : _y; })
 #endif
 
 #ifndef likely
