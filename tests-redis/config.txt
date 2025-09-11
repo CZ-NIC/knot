@@ -1,3 +1,5 @@
 --module ../src/redis/.libs/knot.so
---redis-port 63790
+--randomize-ports
 --clear-logs
+--no-progress
+--use-valgrind
