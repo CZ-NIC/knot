@@ -105,8 +105,63 @@ static int reverse_from_node(zone_node_t *node, void *data)
 	return ret;
 }
 
+static bool flatten_apex_nocopy(uint16_t type)
+{
+	return type == KNOT_RRTYPE_SOA ||
+	       type == KNOT_RRTYPE_NS ||
+	       type == KNOT_RRTYPE_DNSKEY ||
+	       type == KNOT_RRTYPE_NSEC3PARAM ||
+	       type == KNOT_RRTYPE_CDNSKEY ||
+	       type == KNOT_RRTYPE_CDS;
+}
+
+static bool flatten_apex_delete(uint16_t type)
+{
+	return type == KNOT_RRTYPE_NS ||
+	       type == KNOT_RRTYPE_DS;
+}
+
+static int flatten_from_node(zone_node_t *node, void *data)
+{
+	rev_ctx_t *ctx = data;
+
+	bool apex = node_rrtype_exists(node, KNOT_RRTYPE_SOA);
+
+	int ret = KNOT_EOK;
+
+	zone_node_t *target_node = NULL;
+
+	for (int i = 0; i < node->rrset_count && ret == KNOT_EOK; i++) {
+		knot_rrset_t rrset = node_rrset_at(node, i);
+		if (apex && flatten_apex_nocopy(rrset.type)) {
+			continue;
+		}
+
+		assert(ctx->rev_upd == NULL); // not implemented with update in mind
+
+		ret = zone_contents_add_rr(ctx->rev_conts, &rrset, &target_node);
+	}
+
+	if (apex && target_node == NULL) {
+		target_node = (zone_node_t *)zone_contents_find_node(ctx->rev_conts, node->owner);
+	}
+
+	// TODO delete whole subtree from rev_conts BEFORE adding records from included zone?
+	for (int i = 0; apex && target_node != NULL && i < target_node->rrset_count && ret == KNOT_EOK; ) {
+		knot_rrset_t rrset = node_rrset_at(target_node, i);
+		if (flatten_apex_delete(rrset.type)) {
+			ret = zone_contents_remove_rr(ctx->rev_conts, &rrset, &target_node);
+		} else {
+			i++; // NOTE otherwise we jump to next RRSet by deleting the current one
+		}
+	}
+
+	return ret;
+}
+
 int zone_reverse(zone_contents_t *from, zone_contents_t *to_conts,
-                 zone_update_t *to_upd, bool to_upd_rem)
+                 zone_update_t *to_upd, bool to_upd_rem,
+                 zone_include_method_t method)
 {
 	const knot_dname_t *to_name;
 	if (to_upd != NULL) {
@@ -123,7 +178,16 @@ int zone_reverse(zone_contents_t *from, zone_contents_t *to_conts,
 		.ipv6 = (knot_dname_in_bailiwick(to_name, reverse6postfix) >= 0)
 	};
 
-	return zone_contents_apply(from, reverse_from_node, &ctx);
+	switch (method) {
+	case ZONE_INCLUDE_REVERSE:
+		return zone_contents_apply(from, reverse_from_node, &ctx);
+	case ZONE_INCLUDE_FLATTEN:
+		assert(to_upd == NULL && to_conts != NULL); // flattening from changeset is problematic since SOA is no present in changeset's zone_contents
+		return zone_contents_apply(from, flatten_from_node, &ctx);
+	default:
+		assert(0);
+		return KNOT_ERROR;
+	}
 }
 
 int zones_reverse(list_t *zones, zone_contents_t *to_conts, const knot_dname_t **fail_fwd)
@@ -132,12 +196,11 @@ int zones_reverse(list_t *zones, zone_contents_t *to_conts, const knot_dname_t *
 	zone_include_t *n;
 	WALK_LIST(n, *zones) {
 		zone_t *z = n->include;
-		assert(n->method == ZONE_INCLUDE_REVERSE);
 		rcu_read_lock();
 		if (z->contents == NULL) {
 			ret = KNOT_ETRYAGAIN;
 		} else {
-			ret = zone_reverse(z->contents, to_conts, NULL, false);
+			ret = zone_reverse(z->contents, to_conts, NULL, false, n->method);
 		}
 		rcu_read_unlock();
 		if (ret != KNOT_EOK) {

@@ -2696,6 +2696,7 @@ Definition of zones served by the server.
      serial-policy: increment | unixtime | dateserial
      serial-modulo: INT/INT | +INT | -INT | INT/INT+INT | INT/INT-INT
      reverse-generate: DNAME ...
+     include-from: DNAME ...
      refresh-min-interval: TIME
      refresh-max-interval: TIME
      retry-min-interval: TIME
@@ -3292,6 +3293,21 @@ Current limitations:
 
 - Is slow for large zones (even when changing a little).
 - Recomputes all reverse records upon any change in any of the reversed zones.
+
+*Default:* none
+
+.. _zone_include-from:
+
+include-from
+------------
+
+A list of subzones that should be flattened into this zone. The flattening deletes
+all delegation-related records (including NS, SOA, ...) from both zones and copies
+all other records from the subzone to this zone.
+
+This feature works analogously to :ref:`zone_reverse-generate` in the way that subzones'
+records are being imported while loading this zone's zone file, and that it implies
+:ref:`zone_zonefile-load`: *difference-no-serial* and :ref:`zone_journal-content`: *all*.
 
 *Default:* none
 

@@ -14,17 +14,19 @@
  * \param to_conts       Out/optional: resulting reverse zone.
  * \param to_upd         Out/optional: resulting update of reverse zone.
  * \param to_upd_rem     Trigger removal from reverse zone.
+ * \param method         Including mode.
  *
  * \return KNOT_E*
  */
 int zone_reverse(zone_contents_t *from, zone_contents_t *to_conts,
-                 zone_update_t *to_upd, bool to_upd_rem);
+                 zone_update_t *to_upd, bool to_upd_rem,
+                 zone_include_method_t method);
 
 inline static int changeset_reverse(changeset_t *from, zone_update_t *to)
 {
-	int ret = zone_reverse(from->remove, NULL, to, true);
+	int ret = zone_reverse(from->remove, NULL, to, true, ZONE_INCLUDE_REVERSE);
 	if (ret == KNOT_EOK) {
-		ret = zone_reverse(from->add, NULL, to, false);
+		ret = zone_reverse(from->add, NULL, to, false, ZONE_INCLUDE_REVERSE);
 	}
 	return ret;
 }

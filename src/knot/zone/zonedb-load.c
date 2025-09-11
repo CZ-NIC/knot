@@ -395,7 +395,12 @@ static void reg_reverse(conf_t *conf, knot_zonedb_t *db_new, zone_t *zone)
 	}
 	zone_includes_clear(zone);
 
+	zone_include_method_t method = ZONE_INCLUDE_REVERSE;
 	conf_val_t val = conf_zone_get(conf, C_REVERSE_GEN, zone->name);
+	if (val.code != KNOT_EOK) {
+		method = ZONE_INCLUDE_FLATTEN;
+		val = conf_zone_get(conf, C_INCLUDE_FROM, zone->name);
+	}
 	while (val.code == KNOT_EOK) {
 		const knot_dname_t *forw_name = conf_dname(&val);
 		zone_t *forw = knot_zonedb_find(db_new, forw_name);
@@ -405,7 +410,7 @@ static void reg_reverse(conf_t *conf, knot_zonedb_t *db_new, zone_t *zone)
 			log_zone_warning(zone->name, "zone to reverse %s does not exist",
 			                 forw_str);
 		} else {
-			(void)zone_includes_add(zone, forw, ZONE_INCLUDE_REVERSE);
+			(void)zone_includes_add(zone, forw, method);
 			zone_local_notify_subscribe(forw, zone);
 		}
 		conf_val_next(&val);

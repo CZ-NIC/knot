@@ -139,6 +139,7 @@ typedef struct zone
 
 typedef enum {
 	ZONE_INCLUDE_REVERSE,
+	ZONE_INCLUDE_FLATTEN,
 } zone_include_method_t;
 
 typedef struct {

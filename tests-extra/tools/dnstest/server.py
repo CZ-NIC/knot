@@ -102,6 +102,7 @@ class Zone(object):
         self.journal_content = journal_content # journal contents
         self.modules = []
         self.reverse_from = None
+        self.include_from = None
         self.external = None
         self.dnssec = ZoneDnssec()
         self.catalog_role = ZoneCatalogRole.NONE
@@ -1969,6 +1970,8 @@ class Knot(Server):
 
             if z.reverse_from:
                 s.item("reverse-generate", "[ " + ", ".join([ x.name for x in z.reverse_from ]) + " ]")
+            if z.include_from:
+                s.item("include-from", "[ " + ", ".join([ x.name for x in z.include_from ]) + " ]")
 
             self._str(s, "refresh-min-interval", z.refresh_min)
             self._str(s, "refresh-max-interval", z.refresh_max)

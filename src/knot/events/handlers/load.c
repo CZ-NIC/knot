@@ -58,6 +58,7 @@ int event_load(conf_t *conf, zone_t *zone)
 
 	// Note: zone->reverse_from!=NULL almost works, but we need to check if configured even when failed.
 	if (conf_zone_get(conf, C_REVERSE_GEN, zone->name).code == KNOT_EOK ||
+	    conf_zone_get(conf, C_INCLUDE_FROM, zone->name).code == KNOT_EOK ||
 	    zone->cat_members != NULL) { // This should be equivalent to setting catalog-role:generate.
 		zf_from = ZONEFILE_LOAD_DIFSE;
 		load_from = JOURNAL_CONTENT_ALL;
