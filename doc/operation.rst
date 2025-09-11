@@ -465,6 +465,126 @@ but some specific resource record types (e.g. DS) are managed externally
 ensures that both approaches do not interfere and that additions of these records
 are not reverted when reloading the zone file that does not contain them.
 
+.. _Zone_database:
+
+Zone database
+=============
+
+The :ref:`zone database<Database_zone_backend>` can be accessed directly through
+the database CLI or API, without any interaction with a Knot DNS server. The
+``knot`` module provides specific commands for zone data manipulation.
+
+The ``KNOT.ZONE.*`` commands are used for manipulating entire zones:
+
+- ``KNOT.ZONE.BEGIN <zone> <instance>`` — Initializes a zone transaction for the
+  specified instance. Returns a transaction ID, which is then used as a parameter
+  for subsequent commands.
+- ``KNOT.ZONE.STORE <zone> <txn> "data"`` — Stores zone data in a zone transaction.
+  The data must be provided in the form of a textual zone file and may contain
+  one or more records (including a full zone file content).
+- ``KNOT.ZONE.COMMIT <txn>`` — Commits the specified zone transaction.
+- ``KNOT.ZONE.ABORT <txn>`` — Aborts the specified zone transaction.
+- ``KNOT.ZONE.LOAD [--compact] <zone> <instance|txn> [owner] [type]`` — Returns
+  the contents of the specified zone instance, optionally in compact format and
+  filtered by owner and record type.
+- ``KNOT.ZONE.PURGE <zone>`` — Purges all data for the specified zone.
+- ``KNOT.ZONE.LIST [--instances]`` — Lists stored zones, optionally including
+  available instances.
+
+Example of a zone initialization::
+
+   $ redis-cli KNOT.ZONE.BEGIN example.com 1
+   (integer) 10
+
+   $ redis-cli KNOT.ZONE.STORE example.com 10 "@ SOA ns admin 1 86400 900 691200 3600"
+   OK
+   $ redis-cli KNOT.ZONE.STORE example.com 10 "@ NS ns"
+   OK
+   $ redis-cli KNOT.ZONE.STORE example.com 10 "ns 300 AAAA ::1"
+   OK
+
+   $ redis-cli KNOT.ZONE.LOAD example.com 10
+   1) 1) "example.com."
+      2) "600"
+      3) "SOA"
+      4) "ns.example.com. admin.example.com. 1 86400 900 691200 3600"
+   2) 1) "example.com."
+      2) "600"
+      3) "NS"
+      4) "ns.example.com."
+   3) 1) "ns.example.com."
+      2) "300"
+      3) "AAAA"
+      4) "::1"
+
+   $ redis-cli KNOT.ZONE.COMMIT example.com 10
+   OK
+
+   $ redis-cli KNOT.ZONE.LOAD --compact example.com 1
+   1) "example.com. 600 SOA ns.example.com. admin.example.com. 1 86400 900 691200 3600"
+   2) "example.com. 600 NS ns.example.com."
+   3) "ns.example.com. 300 AAAA ::1"
+
+   $ redis-cli KNOT.ZONE.LIST --instances
+   1) "example.com.: 1"
+
+.. TIP::
+   For storing the entire zone file, the following command works::
+
+      $ cat example.com.zone | redis-cli --raw -x KNOT.ZONE.STORE example.com 10
+
+   In the case of very large zone files, ensure that the database limits
+   ``proto-max-bulk-len`` and ``client-query-buffer-limit`` are set high enough.
+
+The ``KNOT.UPD.*`` commands are used to manipulate zone updates:
+
+- ``KNOT.UPD.BEGIN <zone> <instance>`` — Initializes a zone update transaction
+  for the specified instance. Returns a transaction ID, which is then used as
+  a parameter for subsequent commands.
+- ``KNOT.UPD.ADD <zone> <txn> "data"`` — Adds zone data to a zone update transaction.
+  The data must be provided in the form of a textual zone file and may contain
+  one or more records (including a full zone file content).
+- ``KNOT.UPD.REMOVE <zone> <txn> "data"`` — Removes zone data from a zone
+  update transaction. The data must be provided in the form of a textual zone
+  file and may contain one or more records (including a full zone file content).
+- ``KNOT.UPD.DIFF [--compact] <zone> <txn> [owner] [type]`` — Returns the contents
+  of the specified zone update transaction, optionally in compact format and
+  filtered by owner and record type.
+- ``KNOT.UPD.COMMIT <zone> <txn>`` — Commits the specified zone update transaction.
+  If the SOA serial is not incremented explicitly, it will be incremented automatically.
+- ``KNOT.UPD.ABORT <zone> <txn>`` — Aborts the specified zone update transaction.
+- ``KNOT.UPD.LOAD [--compact] <zone> <instance> <serial>`` — Returns the contents
+  of the zone updates since the specified SOA serial, optionally in compact
+  format and filtered by owner and record type.
+
+Example of a zone update::
+
+   $ redis-cli KNOT.UPD.BEGIN example.com 1
+   (integer) 10
+
+   $ redis-cli KNOT.UPD.ADD example.com 10 "test TXT \"Knot DNS\""
+   OK
+
+   $ redis-cli KNOT.UPD.DIFF example.com 10
+   1) 1) (empty array)
+      2) 1) 1) "test.example.com."
+            2) "600"
+            3) "TXT"
+            4) "\"Knot DNS\""
+
+   $ redis-cli KNOT.UPD.COMMIT example.com 10
+   OK
+
+   $ redis-cli KNOT.UPD.LOAD --compact example.com 1 1
+   1) 1) 1) 1) "example.com. 600 SOA ns.example.com. admin.example.com. 1 86400 900 691200 3600"
+         2) 1) "example.com. 600 SOA ns.example.com. admin.example.com. 2 86400 900 691200 3600"
+      2) 1) (empty array)
+         2) 1) "test.example.com. 600 TXT \"Knot DNS\""
+
+.. WARNING::
+   Do not modify the zone data using native commands such as SET or ZADD,
+   as this may cause data corruption!
+
 .. _Multi-primary:
 
 Multi-primary
