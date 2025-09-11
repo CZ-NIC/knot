@@ -828,12 +828,18 @@ the same machine as the Knot DNS servers. One or more servers can read from
 or write to the same database. However, if multiple writers are used, they
 must be configured carefully to avoid conflicts or unexpected interactions.
 
-On the database side, the **knot.so** module must be available (e.g. by installing
-the *redis-knot* package from a `repository <https://www.knot-dns.cz/download/>`_)
+On the database side, the ``knot`` module must be available (e.g. by installing
+the ``redis-knot`` package from a `repository <https://www.knot-dns.cz/download/>`_)
 and loaded into the database. This is usually done by adding the following
 line to the database configuration::
 
-  loadmodule /usr/lib/redis/modules/knot.so
+  loadmodule /usr/lib/redis/modules/knot.so [<parameter> <value>]...
+
+where the optional module parameters are:
+
+- ``default-ttl`` — The default record TTL value if not specified (default is 600 seconds).
+- ``max-event-age`` — The maximum age of the stored zone events (default is 1200 seconds).
+- ``max-update-depth`` — The maximum depth of the zone update history (default is 20).
 
 On the Knot DNS side, at least an address or a UNIX socket path must be configured
 :ref:`database_zone-db-listen` in the :ref:`database section`. Optionally,
@@ -866,6 +872,8 @@ DNSSEC-signed version stored in instance 2, the configuration may look like this
 
 It is still possible to combine zone database backend with zone file or journal
 operations.
+
+For manual operations on the database, see :ref:`Zone_database`.
 
 .. _DNS_over_QUIC:
 
