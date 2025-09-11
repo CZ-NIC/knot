@@ -650,8 +650,8 @@ static int finalize_previous_section(
 	};
 	knotd_conf_check_args_t args = {
 		.item = node->item,
-		.id = node->id,
-		.id_len = node->id_len,
+		.id = (node->parent != NULL) ? node->parent->id : node->id,
+		.id_len = (node->parent != NULL) ? node->parent->id_len : node->id_len,
 		.data = node->data,
 		.data_len = node->data_len,
 		.extra = &extra
@@ -686,8 +686,8 @@ static int finalize_item(
 	};
 	knotd_conf_check_args_t args = {
 		.item = (parser->event == YP_EID) ? node->item->var.g.id : node->item,
-		.id = node->id,
-		.id_len = node->id_len,
+		.id = (node->parent != NULL) ? node->parent->id : node->id,
+		.id_len = (node->parent != NULL) ? node->parent->id_len : node->id_len,
 		.data = node->data,
 		.data_len = node->data_len,
 		.extra = &extra
