@@ -1,0 +1,11 @@
+$ORIGIN cz.
+$TTL 3600
+
+@	SOA	dns1 hostmaster 2010111201 10800 3600 1209600 7200
+	NS	dns1
+dns1	A	192.0.2.1
+com	NS	dns1
+com	DS	57855 5 1 B6DCD485719ADCA18E5F3D48A2331627FDD3636B
+com	TXT	"nonauth-txt"
+org	NS	dns1.org
+dns1.org A	192.0.2.2

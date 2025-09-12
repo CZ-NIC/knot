@@ -58,6 +58,7 @@ int event_load(conf_t *conf, zone_t *zone)
 
 	// Note: zone->reverse_from!=NULL almost works, but we need to check if configured even when failed.
 	if (conf_zone_get(conf, C_REVERSE_GEN, zone->name).code == KNOT_EOK ||
+	    conf_zone_get(conf, C_INCLUDE_FROM, zone->name).code == KNOT_EOK ||
 	    zone->cat_members != NULL) { // This should be equivalent to setting catalog-role:generate.
 		zf_from = ZONEFILE_LOAD_DIFSE;
 		load_from = JOURNAL_CONTENT_ALL;
@@ -137,7 +138,7 @@ int event_load(conf_t *conf, zone_t *zone)
 
 		// If configured, add reverse records to zone contents
 		const knot_dname_t *fail_fwd = NULL;
-		ret = zones_reverse(&zone->reverse_from, zf_conts, &fail_fwd);
+		ret = zones_reverse(&zone->include_from, zf_conts, &fail_fwd);
 		if (ret == KNOT_ETRYAGAIN) {
 			knot_dname_txt_storage_t forw_str;
 			(void)knot_dname_to_str(forw_str, fail_fwd, sizeof(forw_str));

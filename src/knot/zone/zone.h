@@ -124,7 +124,7 @@ typedef struct zone
 	const char *catalog_group;
 
 	/*! \brief Auto-generated reverse zones... */
-	list_t reverse_from;
+	list_t include_from;
 	list_t internal_notify;
 
 	/*! \brief Preferred master lock. Also used for flags access. */
@@ -136,6 +136,17 @@ typedef struct zone
 	list_t query_modules;
 	struct query_plan *query_plan;
 } zone_t;
+
+typedef enum {
+	ZONE_INCLUDE_REVERSE,
+	ZONE_INCLUDE_FLATTEN,
+} zone_include_method_t;
+
+typedef struct {
+	node_t n;
+	zone_t *include;
+	zone_include_method_t method;
+} zone_include_t;
 
 /*!
  * \brief Creates new zone with empty zone content.
@@ -283,6 +294,13 @@ int zone_master_try(conf_t *conf, zone_t *zone, zone_master_cb callback,
 
 /*! \brief Write zone contents to zonefile, but into different directory. */
 int zone_dump_to_dir(conf_t *conf, zone_t *zone, const char *dir);
+
+/*!
+ * \brief Zone inclusion (reverse generation) related ops.
+ */
+int zone_includes_add(zone_t *zone, zone_t *include, zone_include_method_t method);
+void zone_includes_rem(zone_t *zone, zone_t *include);
+void zone_includes_clear(zone_t *zone);
 
 void zone_local_notify_subscribe(zone_t *zone, zone_t *subscribe);
 void zone_local_notify_unsubscribe(zone_t *zone, zone_t *subscribe);

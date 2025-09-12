@@ -1025,6 +1025,18 @@ static conf_val_t conf_get_wrap(
 	}
 }
 
+int check_include_from(
+	knotd_conf_check_args_t *args)
+{
+	if (knot_dname_in_bailiwick(args->data, args->id) < 0 ||
+	    knot_dname_is_equal(args->data, args->id)) {
+		args->err_str = "not a subzone";
+		return KNOT_EINVAL;
+	}
+
+	return KNOT_EOK;
+}
+
 #define CHECK_ZONE_INTERVALS(low_item, high_item) { \
 	conf_val_t high = conf_get_wrap(args, high_item); \
 	if (high.code == KNOT_EOK) { \
@@ -1174,6 +1186,15 @@ static int check_zone_or_tpl(
 				args->err_str = "DS push requires enabled CDS/CDNSKEY publication";
 				return KNOT_EINVAL;
 			}
+		}
+	}
+
+	conf_val_t inc_from = conf_get_wrap(args, C_INCLUDE_FROM);
+	if (inc_from.code == KNOT_EOK) {
+		conf_val_t rev_from = conf_get_wrap(args, C_REVERSE_GEN);
+		if (rev_from.code == KNOT_EOK) {
+			args->err_str = "include-from not compatible with reverse-from";
+			return KNOT_EINVAL;
 		}
 	}
 

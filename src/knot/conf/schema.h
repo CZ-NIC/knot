@@ -67,6 +67,7 @@
 #define C_GLOBAL_MODULE		"\x0D""global-module"
 #define C_ID			"\x02""id"
 #define C_IDENT			"\x08""identity"
+#define C_INCLUDE_FROM		"\x0C""include-from"
 #define C_INCL			"\x07""include"
 #define C_IXFR_BENEVOLENT	"\x0F""ixfr-benevolent"
 #define C_IXFR_BY_ONE		"\x0B""ixfr-by-one"
