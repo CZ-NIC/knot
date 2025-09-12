@@ -22,6 +22,7 @@
 #include "knot/updates/changesets.h"
 #include "knot/zone/adjust.h"
 #include "knot/zone/digest.h"
+#include "knot/zone/reverse.h"
 #include "knot/zone/serial.h"
 #include "knot/zone/zone.h"
 #include "knot/zone/zonefile.h"
@@ -106,6 +107,7 @@ struct refresh_data {
 	bool fallback_axfr;               //!< Flag allowing fallback to AXFR,
 	bool ixfr_by_one;                 //!< Allow only single changeset within IXFR.
 	bool ixfr_from_axfr;              //!< Diff computation of incremental update from AXFR allowed.
+	bool reverse_or_include;          //!< Auto reverse generation or subzone inclusion configured.
 	uint32_t expire_timer;            //!< Result: expire timer from answer EDNS.
 
 	// internal state, initialize with zeroes:
@@ -341,15 +343,25 @@ static int axfr_finalize(struct refresh_data *data)
 	zone_skip_t skip = { 0 };
 	int ret = KNOT_EOK;
 
-	if (dnssec_enable) {
+	if (dnssec_enable || data->reverse_or_include) {
 		axfr_slave_sign_serial(new_zone, data->zone, data->conf, &master_serial);
 		ret = zone_skip_add_dnssec_diff(&skip);
 		assert(ret == KNOT_EOK); // static size of zone_skip is enough to cover dnssec types
 	}
 
+	if (data->reverse_or_include) {
+		ret = zones_reverse_log(data->zone, new_zone);
+		if (ret != KNOT_EOK) {
+			data->fallback->remote = false;
+			return ret;
+		}
+	}
+
 	zone_update_t up = { 0 };
 
-	if (data->ixfr_from_axfr && data->axfr_style_ixfr) {
+	// With ixfr-from-axfr configured, compute diff only when axfr-style-ixfr received. With include-from, do always.
+	if (data->ixfr_from_axfr && data->zone->contents != NULL &&
+	    (data->axfr_style_ixfr || data->reverse_or_include)) {
 		ret = zone_update_from_differences(&up, data->zone, NULL, new_zone, UPDATE_INCREMENTAL | UPDATE_EVREQ, &skip);
 	} else {
 		ret = zone_update_from_contents(&up, data->zone, new_zone, UPDATE_FULL | UPDATE_EVREQ);
@@ -397,7 +409,7 @@ static int axfr_finalize(struct refresh_data *data)
 		return ret;
 	}
 
-	if (dnssec_enable) {
+	if (dnssec_enable || data->reverse_or_include) {
 		ret = zone_set_master_serial(data->zone, master_serial);
 		if (ret != KNOT_EOK) {
 			log_zone_warning(data->zone->name,
@@ -407,7 +419,7 @@ static int axfr_finalize(struct refresh_data *data)
 
 	finalize_timers(data);
 	xfr_log_publish(data, old_serial, zone_contents_serial(data->zone->contents),
-	                master_serial, dnssec_enable, bootstrap);
+	                master_serial, dnssec_enable || data->reverse_or_include, bootstrap);
 
 	data->fallback->remote = false;
 	zone_set_last_master(data->zone, (const struct sockaddr_storage *)data->remote);
@@ -1341,6 +1353,7 @@ typedef struct {
 	bool send_notify;
 	bool ixfr_by_one;
 	bool ixfr_from_axfr;
+	bool reverse_or_include;
 	bool more_xfr;
 } try_refresh_ctx_t;
 
@@ -1379,6 +1392,7 @@ static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master,
 		.fallback_axfr = false, // will be set upon IXFR consume
 		.ixfr_by_one = trctx->ixfr_by_one,
 		.ixfr_from_axfr = trctx->ixfr_from_axfr,
+	        .reverse_or_include = trctx->reverse_or_include,
 	};
 
 	knot_requestor_t requestor;
@@ -1454,6 +1468,13 @@ int event_refresh(conf_t *conf, zone_t *zone)
 	trctx.ixfr_by_one = conf_bool(&val);
 	val = conf_zone_get(conf, C_IXFR_FROM_AXFR, zone->name);
 	trctx.ixfr_from_axfr = conf_bool(&val);
+
+	if (zone_includes_configured(conf, zone)) {
+		trctx.force_axfr = true;
+		zone->zonefile.retransfer = true;
+		trctx.ixfr_from_axfr = true;
+		trctx.reverse_or_include = true;
+	}
 
 	int ret = zone_master_try(conf, zone, try_refresh, &trctx, "refresh");
 	zone_clear_preferred_master(zone);

@@ -64,10 +64,9 @@ int event_load(conf_t *conf, zone_t *zone)
 	val = conf_zone_get(conf, C_ZONEFILE_LOAD, zone->name);
 	unsigned zf_from = conf_opt(&val);
 
-	// Note: zone->reverse_from!=NULL almost works, but we need to check if configured even when failed.
-	if (conf_zone_get(conf, C_REVERSE_GEN, zone->name).code == KNOT_EOK ||
-	    conf_zone_get(conf, C_INCLUDE_FROM, zone->name).code == KNOT_EOK ||
-	    zone->cat_members != NULL) { // This should be equivalent to setting catalog-role:generate.
+	bool includes_configured = zone_includes_configured(conf, zone);
+
+	if (includes_configured || zone->cat_members != NULL) { // The latter should be equivalent to setting catalog-role:generate.
 		zf_from = ZONEFILE_LOAD_DIFSE;
 		load_from = JOURNAL_CONTENT_ALL;
 	}
@@ -116,7 +115,7 @@ int event_load(conf_t *conf, zone_t *zone)
 	// Attempt to load changes from database. If fails, load full zone from there later.
 	if (db_enabled && (old_contents_exist || journal_conts != NULL) &&
 	    zone->cat_members == NULL && EMPTY_LIST(zone->include_from) &&
-	    zf_from != ZONEFILE_LOAD_DIFSE) {
+	    zf_from != ZONEFILE_LOAD_DIFSE && !includes_configured) {
 		zone_redis_err_t err;
 		uint32_t db_serial = 0;
 		ret = zone_redis_serial(db_ctx, db_instance, zone->name, &db_serial, err);
@@ -212,18 +211,13 @@ int event_load(conf_t *conf, zone_t *zone)
 		zone->zonefile.exists = (zf_conts != NULL);
 		zone->zonefile.mtime = mtime;
 
-zonefile_loaded: ;
+zonefile_loaded:
 		// If configured, add reverse records to zone contents
-		const knot_dname_t *fail_fwd = NULL;
-		ret = zones_reverse(&zone->include_from, zf_conts, &fail_fwd);
-		if (ret == KNOT_ETRYAGAIN) {
-			knot_dname_txt_storage_t forw_str;
-			(void)knot_dname_to_str(forw_str, fail_fwd, sizeof(forw_str));
-			log_zone_warning(zone->name, "waiting for source forward zone '%s'", forw_str);
-			goto cleanup;
-		} else if (ret != KNOT_EOK) {
-			log_zone_error(zone->name, "failed to generate reverse records");
-			goto cleanup;
+		if (includes_configured) {
+			ret = zones_reverse_log(zone, zf_conts);
+			if (ret != KNOT_EOK) {
+				goto cleanup;
+			}
 		}
 
 		// If configured and possible, fix the SOA serial of zonefile.

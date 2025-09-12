@@ -10,15 +10,22 @@ import random
 
 t = Test()
 
-master = t.server("knot") # only providing the subzones
+master = t.server("knot") # if not tld_axfr: only providing the subzones
 flattener = t.server("knot")
 slave = t.server("knot") # only slaving the flattened zone
 
 parent = t.zone("cz.", storage=".")
 childs = t.zone("com.cz.", storage=".") + t.zone("net.cz.", storage=".") + t.zone("org.cz.", storage=".")
 
+tld_axfr = random.choice([False, True])
+
 t.link(childs, master, flattener)
 t.link(parent, flattener, slave)
+
+if tld_axfr:
+    t.link(parent, master, flattener)
+
+parent_master = master if tld_axfr else flattener
 
 flattener.zones[parent[0].name].include_from = childs
 
@@ -51,9 +58,11 @@ serial = slave.zone_wait(parent, serial)
 r = slave.dig("dns1.com.cz.", "AAAA")
 r.check(rcode="NOERROR", rdata="1::2")
 
-flattener.zones[parent[0].name].zfile.append_rndTXT("txt.cz.", rdata="added-txt")
-if random.choice([False, True]):
-    flattener.ctl("zone-reload " + parent[0].name)
+parent_zf = parent_master.zones[parent[0].name].zfile
+parent_zf.append_rndTXT("txt.cz.", rdata="added-txt")
+parent_zf.update_soa()
+if tld_axfr or random.choice([False, True]):
+    parent_master.ctl("zone-reload " + parent[0].name)
 else:
     up = master.update(childs[1])
     up.add("anything", 3600, "TXT", "dontcare")
