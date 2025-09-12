@@ -9,7 +9,7 @@
 
 #define RDB_PARAM_DFLT_TTL	"default-ttl"
 #define RDB_PARAM_EVENT_AGE	"max-event-age"
-#define RDB_PARAM_UPD_HIST	"update-history-length"
+#define RDB_PARAM_UPD_DEPTH	"max-update-depth"
 
 #define RDB_VERSION		"\x01"
 #define RDB_PREFIX		"k" RDB_VERSION
