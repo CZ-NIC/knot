@@ -315,7 +315,7 @@ def test_upd_add_rem():
 
 def test_upd_commit():
     UPD_HIST_LEN = 10
-    env = Env(moduleArgs=['max-event-age', '60', 'default-ttl', '3600', 'update-history-length', f'{UPD_HIST_LEN}'])
+    env = Env(moduleArgs=['max-event-age', '60', 'default-ttl', '3600', 'max-update-depth', f'{UPD_HIST_LEN}'])
 
     txn = env.cmd('KNOT.ZONE.BEGIN', 'example.com', 1)
     env.cmd('KNOT.ZONE.STORE', 'example.com', txn, "@ IN SOA ns.icann.org. noc.dns.icann.org. ( 1 7200  3600 1209600 3600 )")
