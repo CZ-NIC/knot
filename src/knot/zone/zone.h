@@ -304,7 +304,7 @@ void zone_includes_clear(zone_t *zone);
 
 void zone_local_notify_subscribe(zone_t *zone, zone_t *subscribe);
 void zone_local_notify_unsubscribe(zone_t *zone, zone_t *subscribe);
-void zone_local_notify(zone_t *zone);
+void zone_local_notify(conf_t *conf, zone_t *zone);
 
 int zone_set_master_serial(zone_t *zone, uint32_t serial);
 
