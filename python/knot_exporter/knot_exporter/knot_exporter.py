@@ -84,6 +84,12 @@ class KnotCollector(object):
             for pid, usage in memory_usage().items():
                 metric_families_append('knot_memory_usage', ['section', 'type'], ['server', str(pid)], usage)
 
+        # Pre-create metrics to avoid future label collisions
+        forced_metrics_format = ['knot_request_protocol', 'knot_server_operation', 'knot_request_bytes', 'knot_response_bytes', 'knot_response_code']
+        for metric  in forced_metrics_format:
+            metric_families[metric] = GaugeMetricFamily(metric, '', labels=['zone', 'section', 'type'])
+            metric_families[metric + '_total'] = CounterMetricFamily(metric + '_total', '', labels=['zone', 'section', 'type'])
+
         if self.collect_stats:
             ctl.send_block(cmd="stats", flags="")
             global_stats = ctl.receive_stats()
