@@ -41,6 +41,9 @@ def test_zone_begin():
         env.assertEqual(resp, b'OK', message="Fail while aborting transaction")
 
     # multiple instances
+    with env.assertResponseError(msg="Wrong instance number"):
+        env.cmd('KNOT.ZONE.BEGIN', 'example.com', 0)
+
     for i in range(1, 9):
         txn = env.cmd('KNOT.ZONE.BEGIN', 'example.com', i)
         env.assertEqual(txn, i * 10, message="Wrong transaction number")
@@ -52,8 +55,19 @@ def test_zone_begin():
         resp = env.cmd('KNOT.ZONE.ABORT', 'example.com', i * 10)
         env.assertEqual(resp, b'OK', message="Fail while aborting transaction")
 
+    # wrong argument number
+    with env.assertResponseError(msg="Wrong argument number"):
+        env.cmd('KNOT.ZONE.BEGIN', 'example.com')
+
+    with env.assertResponseError(msg="Wrong argument number"):
+        env.cmd('KNOT.ZONE.BEGIN', 'example.com', 1, 2)
+
 def test_zone_store():
     env = Env(moduleArgs=['max-event-age', '60', 'default-ttl', '3600'])
+
+    # without transaction
+    with env.assertResponseError(msg="Transaction should not be opened"):
+        env.cmd('KNOT.ZONE.STORE', 'example.com', 10, "@ IN SOA ns.icann.org. noc.dns.icann.org. ( 1 7200  3600 1209600 3600 )")
 
     # basic
     txn = env.cmd('KNOT.ZONE.BEGIN', 'example.com', 1)
@@ -63,6 +77,9 @@ def test_zone_store():
 
     resp = env.cmd('KNOT.ZONE.STORE', 'example.com', txn, "dns1.example.com. IN A 1.1.1.1")
     env.assertEqual(resp, b'OK', message="Fail while store A")
+
+    resp = env.cmd('KNOT.ZONE.STORE', 'example.com', txn, "dns1.example.com. IN A 2.2.2.2")
+    env.assertEqual(resp, b'OK', message="Fail while store secondary A")
 
     resp = env.cmd('KNOT.ZONE.STORE', 'example.com', txn, "dns2 IN A 1.1.1.1")
     env.assertEqual(resp, b'OK', message="Fail while store implicit A")
@@ -76,7 +93,10 @@ def test_zone_store():
     resp = env.cmd('KNOT.ZONE.STORE', 'example.com', txn, "mail MX 10 dns1.example.com.")
     env.assertEqual(resp, b'OK', message="Fail while store MX")
 
-    ZONE1=[[b'example.com.', b'3600', b'SOA', b'ns.icann.org. noc.dns.icann.org. 1 7200 3600 1209600 3600'], [b'dns1.example.com.', b'3600', b'A', b'1.1.1.1'], [b'dns2.example.com.', b'3600', b'A', b'1.1.1.1'], [b'dns3.example.com.', b'123', b'A', b'1.1.1.1'], [b'dns4.example.com.', b'3600', b'A', b'1.1.1.1'], [b'mail.example.com.', b'3600', b'MX', b'10 dns1.example.com.']]
+    with env.assertResponseError(msg="Malformed data"):
+        env.cmd('KNOT.ZONE.STORE', 'example.com', txn, "malformed IN 123 C 1.1.1.1")
+
+    ZONE1=[[b'example.com.', b'3600', b'SOA', b'ns.icann.org. noc.dns.icann.org. 1 7200 3600 1209600 3600'], [b'dns1.example.com.', b'3600', b'A', b'1.1.1.1'], [b'dns1.example.com.', b'3600', b'A', b'2.2.2.2'], [b'dns2.example.com.', b'3600', b'A', b'1.1.1.1'], [b'dns3.example.com.', b'123', b'A', b'1.1.1.1'], [b'dns4.example.com.', b'3600', b'A', b'1.1.1.1'], [b'mail.example.com.', b'3600', b'MX', b'10 dns1.example.com.']]
     resp = env.cmd('KNOT.ZONE.LOAD', 'example.com', txn)
     env.assertEqual(resp, ZONE1, message="Basic store")
 
@@ -96,8 +116,19 @@ def test_zone_store():
 def test_zone_commit():
     env = Env(moduleArgs=['max-event-age', '60', 'default-ttl', '3600'])
 
+    # non-existent transaction
+    with env.assertResponseError(msg="Should not commit non-existent transaction"):
+        env.cmd('KNOT.ZONE.COMMIT', 'example.com', 10)
+
     # without SOA
     txn = env.cmd('KNOT.ZONE.BEGIN', 'example.com', 1)
+    with env.assertResponseError(msg="Should not commit zone without SOA"):
+        env.cmd('KNOT.ZONE.COMMIT', 'example.com', txn)
+    resp = env.cmd('KNOT.ZONE.ABORT', 'example.com', txn)
+
+    # with fake SOA
+    txn = env.cmd('KNOT.ZONE.BEGIN', 'example.com', 1)
+    env.cmd('KNOT.ZONE.STORE', 'example.com', txn, "soa.example.com IN SOA ns.icann.org. noc.dns.icann.org. ( 3 7200  3600 1209600 3600 )")
     with env.assertResponseError(msg="Should not commit zone without SOA"):
         env.cmd('KNOT.ZONE.COMMIT', 'example.com', txn)
 
