@@ -830,9 +830,11 @@ static exception_t upd_add_rem(RedisModuleCtx *ctx, const arg_dname_t *origin,
 		    diff_keytype != REDISMODULE_KEYTYPE_ZSET) {
 			RedisModule_FreeString(ctx, diff_keystr);
 			RedisModule_CloseKey(diff_key);
+			RedisModule_CloseKey(diff_index_key);
 			throw(KNOT_EMALF, RDB_EMALF);
 		}
 		ret = RedisModule_ZsetAdd(diff_index_key, evaluate_score(rtype), diff_keystr, NULL);
+		RedisModule_CloseKey(diff_index_key);
 		if (ret != REDISMODULE_OK) {
 			RedisModule_FreeString(ctx, diff_keystr);
 			RedisModule_CloseKey(diff_key);
