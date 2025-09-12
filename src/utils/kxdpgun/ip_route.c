@@ -19,6 +19,7 @@
 
 #include "utils/kxdpgun/ip_route.h"
 #include "contrib/sockaddr.h"
+#include "contrib/time.h"
 
 #define ROUTE_LOOKUP_LOOP_LIMIT 10000
 
@@ -335,7 +336,7 @@ int ip_neigh_get(const struct sockaddr_storage *ip, bool dummy_sendto, uint8_t *
 		if (ret < 0) {
 			return ret;
 		}
-		usleep(10000);
+		knot_millis_sleep(10);
 	}
 	ip_neigh_ctx_t ctx = { ip, mac, 0 };
 	int ret = netlink_query(ip->ss_family, RTM_GETNEIGH, ip_neigh_cb, &ctx,

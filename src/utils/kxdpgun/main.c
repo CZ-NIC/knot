@@ -37,6 +37,7 @@
 #include "contrib/openbsd/strlcpy.h"
 #include "contrib/os.h"
 #include "contrib/sockaddr.h"
+#include "contrib/time.h"
 #include "contrib/toeplitz.h"
 #include "utils/common/msg.h"
 #include "utils/common/params.h"
@@ -390,7 +391,7 @@ void *xdp_gun_thread(void *_ctx)
 	struct pollfd pfd = { knot_xdp_socket_fd(xsk), POLLIN, 0 };
 
 	while (xdp_trigger == KXDPGUN_WAIT) {
-		usleep(1000);
+		knot_millis_sleep(1);
 	}
 
 	uint64_t tick = 0;
@@ -771,10 +772,14 @@ void *xdp_gun_thread(void *_ctx)
 			pthread_mutex_unlock(&stats_lock);
 		}
 		if (dura_exp > duration_us) {
-			usleep(dura_exp - duration_us);
+			uint64_t tdiff = dura_exp - duration_us;
+			struct timespec ts = { .tv_sec = tdiff / 1000000,
+			                       .tv_nsec = (tdiff % 1000000) * 1000,
+			};
+			nanosleep(&ts, NULL);
 		}
 		if (duration_us > ctx->duration) {
-			usleep(1000);
+			knot_millis_sleep(1);
 		}
 		tick++;
 	}
@@ -1398,11 +1403,11 @@ int main(int argc, char *argv[])
 		if (ret != 0) {
 			WARN2("failed to set affinity of thread#%zu to CPU#%u", i, affinity);
 		}
-		usleep(20000);
+		knot_millis_sleep(20);
 	}
-	usleep(1000000);
+	sleep(1);
 	xdp_trigger = KXDPGUN_START;
-	usleep(1000000);
+	sleep(1);
 
 	for (size_t i = 0; i < ctx.n_threads; i++) {
 		pthread_join(threads[i], NULL);
