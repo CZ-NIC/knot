@@ -120,6 +120,7 @@ class Response(object):
             ref = str(list(rrset)[0])
 
             # Check answer section if contains reference rdata.
+            found = False
             for data in sect:
                 if name is not None and str(data.name) != str(name):
                     continue
@@ -133,8 +134,11 @@ class Response(object):
                         # Check TTL if specified.
                         if ttl != None:
                             compare(data.ttl, int(ttl), "TTL")
-                        return
-            else:
+                        found = True
+                        break
+                if found:
+                    break
+            if not found:
                 set_err("CHECK RDATA")
                 check_log("ERROR: CHECK RDATA")
                 detail_log("!Missing data in %s section:" % section)
