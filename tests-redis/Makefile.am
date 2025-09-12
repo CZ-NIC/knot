@@ -9,4 +9,4 @@ EXTRA_DIST = config.txt requirements.txt test.py
 .PHONY: test
 
 test:
-	RLTest
+	RLTest --randomize-ports --clear-logs --parallelism 4
