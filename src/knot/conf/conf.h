@@ -991,3 +991,21 @@ int conf_xdp_iface(
 	struct sockaddr_storage *addr,
 	conf_xdp_iface_t *iface
 );
+
+/*!
+ * Checks if zone database backend is enabled for the zone.
+ *
+ * \param[in] conf       Configuration.
+ * \param[in] zone       Zone name.
+ * \param[in] input      Input backend indication; Output backend otherwise.
+ * \param[out] instance  Configured instance number.
+ *
+ * \retval true   if enabled.
+ * \retval false  if disabled.
+ */
+bool conf_zone_rdb_enabled(
+	conf_t *conf,
+	const knot_dname_t *zone,
+	bool input,
+	uint8_t *instance
+);

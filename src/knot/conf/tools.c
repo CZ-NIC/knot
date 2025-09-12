@@ -1213,6 +1213,29 @@ int check_catalog_tpl(
 	return check_zone_or_tpl(args);
 }
 
+int check_rdb(
+	knotd_conf_check_args_t *args)
+{
+#ifndef ENABLE_REDIS
+	args->err_str = "Zone database support not available";
+	return KNOT_ENOTSUP;
+#else
+	return KNOT_EOK;
+#endif
+}
+
+int check_db_instance(
+	knotd_conf_check_args_t *args)
+{
+	int64_t instance = yp_int(args->data);
+	if (instance == 0) {
+		args->err_str = "instance number must be 1-8";
+		return KNOT_EINVAL;
+	}
+
+	return KNOT_EOK;
+}
+
 static int glob_error(
 	const char *epath,
 	int eerrno)

@@ -2,3 +2,4 @@ dnspython>=2.2.0
 jsonschema
 psutil
 pyyaml
+setuptools

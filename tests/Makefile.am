@@ -15,7 +15,8 @@ LDADD += \
 	$(top_builddir)/src/libknotd.la		\
 	$(liburcu_LIBS)				\
 	$(systemd_LIBS)				\
-	$(libdbus_LIBS)
+	$(libdbus_LIBS)				\
+	$(hiredis_LIBS)
 endif HAVE_DAEMON
 
 LDADD += \

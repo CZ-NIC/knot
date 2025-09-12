@@ -9,6 +9,7 @@
 
 #include <assert.h>
 #include <gnutls/x509.h>
+#include <string.h>
 #include <sys/types.h>   // OpenBSD
 #include <netinet/tcp.h> // TCP_FASTOPEN
 #include <sys/resource.h>
@@ -30,6 +31,7 @@
 #include "knot/server/udp-handler.h"
 #include "knot/server/tcp-handler.h"
 #include "knot/updates/acl.h"
+#include "knot/zone/redis.h"
 #include "knot/zone/timers.h"
 #include "knot/zone/zonedb-load.h"
 #include "knot/worker/pool.h"
@@ -51,6 +53,7 @@
 #endif
 
 #define SESSION_TICKET_POOL_TIMEOUT 1200
+#define REDIS_CONN_POOL_TIMEOUT (4 * 60)
 
 #define QUIC_LOG "QUIC/TLS, "
 
@@ -831,16 +834,161 @@ static int configure_sockets(conf_t *conf, server_t *s)
 	return KNOT_EOK;
 }
 
+#ifdef ENABLE_REDIS
+#include "contrib/openbsd/strlcpy.h"
+#include "contrib/strtonum.h"
+#include "redis/knot.h"
+#include "knot/common/hiredis.h"
+
+#define RDB_TIMESTAMP_SIZE 42 // 2x uint64_t as string (2x20) + dash separator + zero byte.
+
+static void rdb_process_event(redisReply *reply, knot_zonedb_t *zone_db,
+                              char since[static RDB_TIMESTAMP_SIZE])
+{
+	redisReply *timestamp = reply->element[0];
+	redisReply *data = reply->element[1];
+	if (data->type != REDIS_REPLY_ARRAY ||
+	    data->elements % 2 != 0 ||
+	    timestamp->len > RDB_TIMESTAMP_SIZE) {
+		goto failed;
+	}
+	strlcpy(since, timestamp->str, RDB_TIMESTAMP_SIZE);
+
+	uint8_t type = 0;
+	uint8_t instance = 0;
+	uint32_t serial = 0;
+	const knot_dname_t *origin = NULL;
+
+	for (int idx = 0; idx < data->elements; ++idx) {
+		redisReply *key = data->element[idx++];
+		redisReply *val = data->element[idx];
+		if (key->type != REDIS_REPLY_STRING) {
+			goto failed;
+		}
+		if (strcmp(key->str, RDB_EVENT_ARG_EVENT) == 0) {
+			if (str_to_u8(val->str, &type) != KNOT_EOK) {
+				goto failed;
+			}
+		} else if (strcmp(key->str, RDB_EVENT_ARG_ORIGIN) == 0) {
+			origin = (const knot_dname_t *)val->str;
+		} else if (strcmp(key->str, RDB_EVENT_ARG_INSTANCE) == 0) {
+			if (str_to_u8(val->str, &instance) != KNOT_EOK) {
+				goto failed;
+			}
+		} else if (strcmp(key->str, RDB_EVENT_ARG_SERIAL) == 0) {
+			if (str_to_u32(val->str, &serial) != KNOT_EOK) {
+				goto failed;
+			}
+		}
+	}
+
+	if (type == 0 || origin == NULL || instance == 0) {
+		goto failed;
+	}
+
+	uint8_t db_instance = 0;
+	bool db_enabled = conf_zone_rdb_enabled(conf(), origin, true, &db_instance);
+	if (!db_enabled || db_instance != instance) {
+		return;
+	}
+	zone_t *zone = knot_zonedb_find(zone_db, origin);
+	if (zone == NULL) {
+		return;
+	}
+
+	switch (type) {
+	case RDB_EVENT_ZONE:
+	case RDB_EVENT_UPD:
+		zone_events_schedule_now(zone, ZONE_EVENT_LOAD);
+		break;
+	default:
+		break;
+	}
+
+	return;
+failed:
+	log_error("rdb, invalid event parameters");
+}
+
+static void rdb_process_events(redisReply *reply, knot_zonedb_t *zone_db,
+                               char since[static RDB_TIMESTAMP_SIZE])
+{
+	if (reply->type != REDIS_REPLY_ARRAY) {
+		log_error("rdb, unexpected response");
+		return;
+	}
+
+	for (int idx = 0; idx < reply->elements; ++idx) {
+		if (reply->element[idx]->type != REDIS_REPLY_ARRAY) {
+			log_error("rdb, unexpected response");
+			continue;
+		}
+		redisReply *events = reply->element[idx]->element[1];
+		for (int event_idx = 0; event_idx < events->elements; ++event_idx) {
+			rdb_process_event(events->element[event_idx], zone_db, since);
+		}
+	}
+}
+
+static int rdb_listener_run(struct dthread *thread)
+{
+	server_t *s = thread->data;
+
+	s->rdb_ctx = NULL;
+	char since[RDB_TIMESTAMP_SIZE] = "$";
+
+	while (thread->state & ThreadActive) {
+		if (s->rdb_ctx == NULL) {
+			s->rdb_ctx = rdb_connect(conf());
+			if (s->rdb_ctx == NULL) {
+				log_error("rdb, failed to connect");
+				sleep(2);
+				continue;
+			} else if (!rdb_compatible(s->rdb_ctx)) {
+				log_error("rdb, incompatible CPU endianness");
+				break;
+			}
+		}
+
+		redisReply *reply = redisCommand(s->rdb_ctx, "XREAD BLOCK %d STREAMS %b %s",
+		                                 10000, RDB_EVENT_KEY, strlen(RDB_EVENT_KEY), since);
+		if (reply == NULL) {
+			if (thread->state & ThreadDead) {
+				break;
+			}
+			if (s->rdb_ctx->err != REDIS_OK) {
+				log_error("rdb, failed to read events (%s)", s->rdb_ctx->errstr);
+			}
+			sleep(2);
+			continue;
+		}
+		if (reply->type == REDIS_REPLY_NIL) {
+			freeReplyObject(reply);
+			continue;
+		}
+
+		knot_zonedb_t *zone_db = s->zone_db;
+		if (zone_db != NULL) {
+			rdb_process_events(reply, zone_db, since);
+		}
+		freeReplyObject(reply);
+	}
+
+	rdb_disconnect(s->rdb_ctx, false);
+	s->rdb_ctx = NULL;
+
+	return KNOT_EOK;
+}
+#endif // ENABLE_REDIS
+
 int server_init(server_t *server, int bg_workers)
 {
 	if (server == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	/* Clear the structure. */
 	memset(server, 0, sizeof(server_t));
 
-	/* Initialize event scheduler. */
 	if (evsched_init(&server->sched, server) != KNOT_EOK) {
 		return KNOT_ENOMEM;
 	}
@@ -851,8 +999,22 @@ int server_init(server_t *server, int bg_workers)
 		return KNOT_ENOMEM;
 	}
 
+#ifdef ENABLE_REDIS
+	conf_val_t rdb = conf_db_param(conf(), C_ZONE_DB_LISTEN);
+	if (rdb.code == KNOT_EOK) {
+		server->rdb_events = dt_create(1, rdb_listener_run, NULL, server);
+		if (server->rdb_events == NULL) {
+			worker_pool_destroy(server->workers);
+			evsched_deinit(&server->sched);
+			return KNOT_ENOMEM;
+		}
+	}
+#endif // ENABLE_REDIS
+
 	int ret = catalog_update_init(&server->catalog_upd);
 	if (ret != KNOT_EOK) {
+		dt_stop(server->rdb_events);
+		dt_delete(&server->rdb_events);
 		worker_pool_destroy(server->workers);
 		evsched_deinit(&server->sched);
 		return ret;
@@ -909,6 +1071,9 @@ void server_deinit(server_t *server)
 	/* Free threads and event handlers. */
 	worker_pool_destroy(server->workers);
 
+	/* Free optional zone DB event thread. */
+	dt_delete(&server->rdb_events);
+
 	/* Free zone database. */
 	knot_zonedb_deep_free(&server->zone_db, true);
 
@@ -938,6 +1103,8 @@ void server_deinit(server_t *server)
 	global_conn_pool = NULL;
 	conn_pool_deinit(global_sessticket_pool);
 	global_sessticket_pool = NULL;
+	conn_pool_deinit(global_redis_pool);
+	global_redis_pool = NULL;
 	knot_unreachables_deinit(&global_unreachables);
 
 	knot_creds_free(server->quic_creds);
@@ -1022,6 +1189,9 @@ int server_start(server_t *server, bool answering)
 
 	/* Start workers. */
 	worker_pool_start(server->workers);
+
+	/* Start zone DB event loop. */
+	dt_start(server->rdb_events);
 
 	/* Start evsched handler. */
 	evsched_start(&server->sched);
@@ -1399,6 +1569,14 @@ void server_stop(server_t *server)
 	log_info("stopping server");
 	systemd_stopping_notify();
 
+#ifdef ENABLE_REDIS
+	/* Interrupt and stop XREAD BLOCK loop. */
+	if (server->rdb_ctx != NULL) {
+		redisSetTimeout(server->rdb_ctx, (struct timeval){ 0, 1 });
+	}
+	dt_stop(server->rdb_events);
+#endif // ENABLE_REDIS
+
 	/* Stop scheduler. */
 	evsched_stop(&server->sched);
 	/* Mark the server is shutting down. */
@@ -1484,6 +1662,18 @@ static void free_sess_ticket(intptr_t ptr)
 	}
 }
 
+static void free_redis_conn(intptr_t ptr)
+{
+	if (ptr != CONN_POOL_FD_INVALID) {
+		zone_redis_disconnect((void *)ptr, false);
+	}
+}
+
+static bool invalid_redis_conn(intptr_t ptr)
+{
+	return ptr == CONN_POOL_FD_INVALID || !zone_redis_ping((void *)ptr);
+}
+
 static int reconfigure_remote_pool(conf_t *conf, server_t *server)
 {
 	conf_val_t val = conf_get(conf, C_SRV, C_RMT_POOL_LIMIT);
@@ -1521,6 +1711,17 @@ static int reconfigure_remote_pool(conf_t *conf, server_t *server)
 			conn_pool_purge(global_sessticket_pool);
 		}
 		hash = curr_hash;
+	}
+
+	val = conf_get(conf, C_DB, C_ZONE_DB_LISTEN);
+	if (global_redis_pool == NULL && val.code == KNOT_EOK) {
+		size_t bg_wrkrs = conf_bg_threads(conf);
+		conn_pool_t *new_pool = conn_pool_init(bg_wrkrs, REDIS_CONN_POOL_TIMEOUT,
+		                                       free_redis_conn, invalid_redis_conn);
+		if (new_pool == NULL) {
+			return KNOT_ENOMEM;
+		}
+		global_redis_pool = new_pool;
 	}
 
 	val = conf_get(conf, C_SRV, C_RMT_RETRY_DELAY);

@@ -46,6 +46,7 @@ override_dh_auto_configure:
 	  --disable-silent-rules \
 	  --enable-xdp=yes \
 	  --enable-quic=yes \
+	  --enable-redis=auto \
 	  --disable-static \
 	  $(FASTPARSER)
 
@@ -65,6 +66,9 @@ override_dh_auto_install-arch:
 	@if grep -E -q "DoQ support: +no" "$(CURDIR)/debian/tmp/usr/sbin/knotd"; then \
 	  echo "Stripping the QUIC symbols"; \
 	  sed -i '/knot_quic_/d' $(LIBKNOT_SYMBOLS); \
+	fi
+	@if [ -f "$(CURDIR)/debian/tmp/usr/lib/*/knot/redis/knot.so" ]; then \
+	  chmod 0755 $(CURDIR)/debian/tmp/usr/lib/*/knot/redis/knot.so; \
 	fi
 
 override_dh_auto_install-indep:

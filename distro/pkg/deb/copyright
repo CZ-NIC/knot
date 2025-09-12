@@ -7,6 +7,10 @@ Files: *
 Copyright: 2011-2025 CZ.NIC, z.s.p.o. and contributors <knot-dns@labs.nic.cz>
 License: GPL-2+
 
+Files: src/redis/*
+Copyright: 2011-2025 CZ.NIC, z.s.p.o. and contributors <knot-dns@labs.nic.cz>
+License: LGPL-2.1+
+
 Files: m4/ax_check_compile_flag.m4 m4/ax_check_link_flag.m4
 Copyright: 2008 Guido U. Draheim <guidod@gmx.de>
            2011 Maarten Bosmans <mkbosmans@gmail.com>
@@ -36,6 +40,10 @@ License: BSD-3-Clause
 Files: src/contrib/openbsd/strl*
 Copyright: 1998 Todd C. Miller <Todd.Miller@courtesan.com>
 License: ISC
+
+Files: src/contrib/redis/*
+Copyright: 2016 Redis Labs
+License: MIT
 
 Files: src/contrib/ucw/*
 Copyright: 2011-2025 CZ.NIC, z.s.p.o. and contributors <knot-dns@labs.nic.cz>
@@ -104,6 +112,23 @@ License: LGPL-2+
  .
  On Debian GNU/Linux systems, the complete text of the GNU Lesser
  General Public License can be found in `/usr/share/common-licenses/LGPL-2'.
+
+License: LGPL-2.1+
+ This library is free software; you can redistribute it and/or
+ modify it under the terms of the GNU Lesser General Public
+ License as published by the Free Software Foundation; either
+ version 2.1 of the License, or (at your option) any later version.
+ .
+ This library is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ Lesser General Public License for more details.
+ .
+ You should have received a copy of the GNU Lesser General Public
+ License along with this library; if not, see <https://www.gnu.org/licenses/>.
+ .
+ On Debian GNU/Linux systems, the complete text of the GNU Lesser
+ General Public License can be found in `/usr/share/common-licenses/LGPL-2.1'.
 
 License: FSFAP
  Copying and distribution of this file, with or without modification, are
