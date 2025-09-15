@@ -521,10 +521,13 @@ static exception_t upd_txn_lock(upd_meta_k key, rdb_txn_t *txn)
 		throw(KNOT_EINVAL, RDB_EMALF);
 	}
 
+	uint16_t counter = knot_wire_read_u16((uint8_t *)meta + offsetof(upd_meta_storage_t, counter));
 	for (txn->id = TXN_MIN; txn->id <= TXN_MAX; ++txn->id) {
-		if (meta->lock[txn->id] == 0) {
-			meta->counter = MAX(meta->counter + 1, 1);
-			meta->lock[txn->id] = meta->counter;
+		uint16_t lock = knot_wire_read_u16((uint8_t *)meta + offsetof(upd_meta_storage_t, lock[txn->id]));
+		if (lock == 0) {
+			counter = MAX((uint16_t)(counter + 1), (uint16_t)1);
+			knot_wire_write_u16((uint8_t *)meta + offsetof(upd_meta_storage_t, counter), counter);
+			knot_wire_write_u16((uint8_t *)meta + offsetof(upd_meta_storage_t, lock[txn->id]), counter);
 			break;
 		}
 	}
@@ -583,7 +586,7 @@ static int get_id(RedisModuleCtx *ctx, const arg_dname_t *origin, const rdb_txn_
 		return KNOT_EINVAL;
 	}
 
-	uint16_t id = meta->lock[txn->id];
+	uint16_t id = knot_wire_read_u16((uint8_t *)meta + offsetof(upd_meta_storage_t, lock[txn->id]));
 	if (id == 0) {
 		RedisModule_CloseKey(meta_key);
 		return KNOT_EEXIST;
@@ -744,7 +747,8 @@ static upd_meta_k upd_meta_get_when_open(RedisModuleCtx *ctx, const arg_dname_t 
 	}
 	size_t len = 0;
 	const upd_meta_storage_t *transaction = (const upd_meta_storage_t *)RedisModule_StringDMA(key, &len, REDISMODULE_WRITE);
-	if (transaction->lock[txn->id] == 0) {
+	uint16_t lock = knot_wire_read_u16((uint8_t *)transaction + offsetof(upd_meta_storage_t, lock[txn->id]));
+	if (lock == 0) {
 		RedisModule_CloseKey(key);
 		return NULL;
 	}
@@ -1220,7 +1224,7 @@ static exception_t zone_purge(RedisModuleCtx *ctx, const arg_dname_t *origin, rd
 		size_t len = 0;
 		upd_meta_storage_t *meta = (upd_meta_storage_t *)RedisModule_StringDMA(meta_key, &len, REDISMODULE_WRITE);
 		RedisModule_Assert(len == sizeof(*meta));
-		meta->depth = 0;
+		knot_wire_write_u16((uint8_t *)meta + offsetof(upd_meta_storage_t, depth), 0);
 	}
 	RedisModule_CloseKey(meta_key);
 
@@ -1703,7 +1707,7 @@ static void upd_meta_unlock(RedisModuleCtx *ctx, upd_meta_k key, uint8_t id)
 	size_t len = 0;
 	upd_meta_storage_t *meta = (upd_meta_storage_t *)RedisModule_StringDMA(key, &len, REDISMODULE_WRITE);
 	RedisModule_Assert(len == sizeof(*meta));
-	meta->lock[id] = 0;
+	knot_wire_write_u16((uint8_t *)meta + offsetof(upd_meta_storage_t, lock[id]), 0);
 }
 
 static exception_t upd_abort(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t *txn)
@@ -1960,7 +1964,8 @@ static void upd_commit(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t
 		RedisModule_ReplyWithError(ctx, RDB_EHISTORY);
 		return;
 	}
-	meta->depth -= counter;
+	uint16_t depth = knot_wire_read_u16((uint8_t *)meta + offsetof(upd_meta_storage_t, depth));
+	knot_wire_write_u16((uint8_t *)meta + offsetof(upd_meta_storage_t, depth), depth - counter);
 
 	// Commit the update.
 	index_k new_upd_key = get_commited_upd_index(ctx, origin, upd_txn, serial_new, REDISMODULE_READ | REDISMODULE_WRITE);
@@ -2010,7 +2015,7 @@ static void upd_commit(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t
 
 		RedisModule_CloseKey(diff_key);
 	}
-	++meta->depth;
+	knot_wire_write_u16((uint8_t *)meta + offsetof(upd_meta_storage_t, depth), ++depth);
 	RedisModule_DeleteKey(upd_key);
 	RedisModule_CloseKey(upd_key);
 
@@ -2038,7 +2043,7 @@ static void upd_commit(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t
 
 	e = upd_trim_history(ctx, origin, upd_txn, rdb_upd_history_len);
 	if (e.ret == KNOT_EOK) {
-		meta->depth = MIN(meta->depth, rdb_upd_history_len);
+		knot_wire_write_u16((uint8_t *)meta + offsetof(upd_meta_storage_t, depth), MIN(depth, rdb_upd_history_len));
 	}
 
 	upd_meta_unlock(ctx, meta_key, upd_txn->id);
