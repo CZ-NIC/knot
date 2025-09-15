@@ -6,6 +6,7 @@
 #include <string.h>
 #include <urcu.h>
 
+#include "knot/common/log.h"
 #include "knot/zone/reverse.h"
 
 static const uint8_t *reverse4postfix = (const uint8_t *)"\x07""in-addr""\x04""arpa";
@@ -209,6 +210,20 @@ int zones_reverse(list_t *zones, zone_contents_t *to_conts, const knot_dname_t *
 			}
 			break;
 		}
+	}
+	return ret;
+}
+
+int zones_reverse_log(zone_t *zone, zone_contents_t *to_conts)
+{
+	const knot_dname_t *fail_fwd = NULL;
+	int ret = zones_reverse(&zone->include_from, to_conts, &fail_fwd);
+	if (ret == KNOT_ETRYAGAIN) {
+		knot_dname_txt_storage_t forw_str;
+		(void)knot_dname_to_str(forw_str, fail_fwd, sizeof(forw_str));
+		log_zone_warning(zone->name, "waiting for source forward zone '%s'", forw_str);
+	} else if (ret != KNOT_EOK) {
+		log_zone_error(zone->name, "failed to generate reverse records");
 	}
 	return ret;
 }

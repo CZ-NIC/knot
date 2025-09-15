@@ -815,6 +815,12 @@ int zone_dump_to_dir(conf_t *conf, zone_t *zone, const char *dir)
 	return zonefile_write_skip(target, zone->contents, conf);
 }
 
+bool zone_includes_configured(conf_t *conf, zone_t *zone)
+{
+	return conf_zone_get(conf, C_REVERSE_GEN, zone->name).code == KNOT_EOK ||
+	       conf_zone_get(conf, C_INCLUDE_FROM, zone->name).code == KNOT_EOK;
+}
+
 int zone_includes_add(zone_t *zone, zone_t *include, zone_include_method_t method)
 {
 	zone_include_t *n = calloc(1, sizeof(*n));
@@ -857,11 +863,12 @@ void zone_local_notify_unsubscribe(zone_t *zone, zone_t *subscribe)
 	ptrlist_find_rem(&zone->internal_notify, subscribe, NULL);
 }
 
-void zone_local_notify(zone_t *zone)
+void zone_local_notify(conf_t *conf, zone_t *zone)
 {
 	ptrnode_t *n;
 	WALK_LIST(n, zone->internal_notify) {
-		zone_events_schedule_now(n->d, ZONE_EVENT_LOAD);
+		zone_t *to_notify = n->d;
+		zone_events_schedule_now(to_notify, zone_is_slave(conf, to_notify) ? ZONE_EVENT_REFRESH : ZONE_EVENT_LOAD);
 	}
 }
 
@@ -901,7 +908,7 @@ int slave_zone_serial(zone_t *zone, conf_t *conf, uint32_t *serial)
 	*serial = zone_contents_serial(zone->contents);
 
 	conf_val_t val = conf_zone_get(conf, C_DNSSEC_SIGNING, zone->name);
-	if (conf_bool(&val)) {
+	if (conf_bool(&val) || zone_includes_configured(conf, zone)) {
 		ret = zone_get_master_serial(zone, serial);
 	}
 

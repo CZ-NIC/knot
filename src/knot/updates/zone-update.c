@@ -677,6 +677,11 @@ static int commit_journal(conf_t *conf, zone_update_t *update)
 {
 	conf_val_t val = conf_zone_get(conf, C_JOURNAL_CONTENT, update->zone->name);
 	unsigned content = conf_opt(&val);
+
+	if (zone_includes_configured(conf, update->zone)){
+		content = JOURNAL_CONTENT_ALL;
+	}
+
 	int ret = KNOT_EOK;
 	if (update->flags & UPDATE_NO_CHSET) {
 		zone_diff_t diff;
@@ -1221,7 +1226,7 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 		log_zone_error(update->zone->name, "failed to deallocate unused memory");
 	}
 
-	zone_local_notify(update->zone);
+	zone_local_notify(conf, update->zone);
 
 	/* Sync zonefile immediately if configured. */
 	val = conf_zone_get(conf, C_ZONEFILE_SYNC, update->zone->name);

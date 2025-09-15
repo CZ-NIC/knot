@@ -3380,6 +3380,10 @@ Current limitations:
 - Is slow for large zones (even when changing a little).
 - Recomputes all reverse records upon any change in any of the reversed zones.
 
+In case of secondary zone (i.e. :ref:`zone_master` is specified) this option implies
+:ref:`zone_ixfr-from-axfr`: *on* and :ref:`zone_journal-content`: *all*, otherwise
+:ref:`zone_zonefile-load`: *difference-no-serial* and :ref:`zone_journal-content`: *all*.
+
 *Default:* none
 
 .. _zone_include-from:
@@ -3391,8 +3395,8 @@ A list of subzones that should be flattened into this zone. The flattening delet
 all delegation-related records (including NS, SOA, ...) from both zones and copies
 all other records from the subzone to this zone.
 
-This feature works analogously to :ref:`zone_reverse-generate` in the way that subzones'
-records are being imported while loading this zone's zone file, and that it implies
+In case of secondary zone (i.e. :ref:`zone_master` is specified) this option implies
+:ref:`zone_ixfr-from-axfr`: *on* and :ref:`zone_journal-content`: *all*, otherwise
 :ref:`zone_zonefile-load`: *difference-no-serial* and :ref:`zone_journal-content`: *all*.
 
 *Default:* none

@@ -42,3 +42,13 @@ inline static int changeset_reverse(changeset_t *from, zone_update_t *to)
  * \return KNOT_E*
  */
 int zones_reverse(list_t *zones, zone_contents_t *to_conts, const knot_dname_t **fail_fwd);
+
+/*!
+ * \brief Reverse/include from all configured zones (in zone->include_from) and log if failed.
+ *
+ * \param zone       Zone to include records from others.
+ * \param to_conts   Out: resulting reverse zone.
+ *
+ * \return KNOT_E*
+ */
+int zones_reverse_log(zone_t *zone, zone_contents_t *to_conts);
