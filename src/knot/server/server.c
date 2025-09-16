@@ -33,6 +33,7 @@
 #include "knot/updates/acl.h"
 #include "knot/zone/redis.h"
 #include "knot/zone/timers.h"
+#include "knot/zone/zone.h"
 #include "knot/zone/zonedb-load.h"
 #include "knot/worker/pool.h"
 #include "contrib/base64.h"
@@ -899,7 +900,7 @@ static void rdb_process_event(redisReply *reply, knot_zonedb_t *zone_db,
 	switch (type) {
 	case RDB_EVENT_ZONE:
 	case RDB_EVENT_UPD:
-		zone_events_schedule_now(zone, ZONE_EVENT_LOAD);
+		zone_schedule_update(conf(), zone, ZONE_EVENT_LOAD);
 		break;
 	default:
 		break;

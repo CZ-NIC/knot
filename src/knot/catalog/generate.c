@@ -52,7 +52,7 @@ static knot_dname_t *catalog_member_owner(const knot_dname_t *member,
 	return out;
 }
 
-void catalog_generate_rem(zone_t *zone, knot_zonedb_t *db_new)
+void catalog_generate_rem(conf_t *conf, zone_t *zone, knot_zonedb_t *db_new)
 {
 	if (zone == NULL) {
 		return;
@@ -76,12 +76,12 @@ void catalog_generate_rem(zone_t *zone, knot_zonedb_t *db_new)
 	if (ret != KNOT_EOK) {
 		catz->cat_members->error = ret;
 	} else {
-		zone_events_schedule_now(catz, ZONE_EVENT_LOAD);
+		zone_schedule_update(conf, catz, ZONE_EVENT_LOAD);
 	}
 	free(owner);
 }
 
-void catalog_generate_add(zone_t *zone, knot_zonedb_t *db_new, bool property)
+void catalog_generate_add(conf_t *conf, zone_t *zone, knot_zonedb_t *db_new, bool property)
 {
 	if (zone == NULL) {
 		return;
@@ -110,7 +110,7 @@ void catalog_generate_add(zone_t *zone, knot_zonedb_t *db_new, bool property)
 	if (ret != KNOT_EOK) {
 		catz->cat_members->error = ret;
 	} else {
-		zone_events_schedule_now(catz, ZONE_EVENT_LOAD);
+		zone_schedule_update(conf, catz, ZONE_EVENT_LOAD);
 	}
 	free(owner);
 }

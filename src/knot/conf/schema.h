@@ -177,6 +177,7 @@
 #define C_UDP_MAX_PAYLOAD_IPV6	"\x14""udp-max-payload-ipv6"
 #define C_UDP_WORKERS		"\x0B""udp-workers"
 #define C_UNSAFE_OPERATION	"\x10""unsafe-operation"
+#define C_UPDATE_DELAY		"\x0C""update-delay"
 #define C_UPDATE_OWNER		"\x0C""update-owner"
 #define C_UPDATE_OWNER_MATCH	"\x12""update-owner-match"
 #define C_UPDATE_OWNER_NAME	"\x11""update-owner-name"

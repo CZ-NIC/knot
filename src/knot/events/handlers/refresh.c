@@ -1520,7 +1520,7 @@ int event_refresh(conf_t *conf, zone_t *zone)
 		zone_schedule_notify(conf, zone, 1);
 	}
 	if (trctx.more_xfr && ret == KNOT_EOK) {
-		zone_events_schedule_now(zone, ZONE_EVENT_REFRESH);
+		zone_schedule_update(conf, zone, ZONE_EVENT_REFRESH);
 	}
 
 	return ret;

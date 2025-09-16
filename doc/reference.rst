@@ -2721,6 +2721,7 @@ Definition of zones served by the server.
      ddns-master: remote_id
      notify: remote_id | remotes_id ...
      notify-delay: TIME
+     update-delay: TIME
      acl: acl_id ...
      master-pin-tolerance: TIME
      provide-ixfr: BOOL
@@ -2889,6 +2890,22 @@ notify-delay
 
 A time delay in seconds before an outgoing NOTIFY message is sent. This delay
 also defines the time granularity at which NOTIFY messages are sent per zone.
+
+*Default:* ``0``
+
+.. _zone_update-delay:
+
+update-delay
+------------
+
+A time delay in seconds before a change to zone contents is made after an external
+trigger such as incoming NOTIFY or DDNS, or an internal trigger from different zone
+such as change to zone to be :ref:`reversed<zone_reverse-generate>`,
+:ref:`included from<zone_include-from>` or a member of generated catalog zone.
+
+Exception: zone changing events triggered by control socket (knotc zone-*
+commands) or by interpreted catalog are performed immediately, without configured
+delay.
 
 *Default:* ``0``
 

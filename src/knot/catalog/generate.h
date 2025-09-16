@@ -15,19 +15,21 @@
 /*!
  * \brief Add a member removal to corresponding catalog update.
  *
+ * \param conf        Configuration.
  * \param zone        Member zone.
  * \param db_new      New zone database.
  */
-void catalog_generate_rem(zone_t *zone, knot_zonedb_t *db_new);
+void catalog_generate_rem(conf_t *conf, zone_t *zone, knot_zonedb_t *db_new);
 
 /*!
  * \brief Add a member addition/prop to corresponding catalog update.
  *
+ * \param conf        Configuration.
  * \param zone        Member zone.
  * \param db_new      New zone database.
  * \param property    Property or addition indicator.
  */
-void catalog_generate_add(zone_t *zone, knot_zonedb_t *db_new, bool property);
+void catalog_generate_add(conf_t *conf, zone_t *zone, knot_zonedb_t *db_new, bool property);
 
 /*!
  * \brief Generate catalog zone contents from (full) catalog update.

@@ -204,6 +204,7 @@ class Server(object):
         self.semantic_check = True
         self.zonefile_sync = "1d"
         self.notify_delay = None
+        self.update_delay = None
         self.zonefile_load = None
         self.zonefile_skip = None
         self.zonemd_verify = None
@@ -1902,6 +1903,7 @@ class Knot(Server):
         if self.notify_delay is None:
             self.notify_delay = random.randint(0, 1)
         s.item_str("notify-delay", self.notify_delay)
+        self._str(s, "update-delay", self.update_delay)
         if self.zonemd_verify:
             s.item_str("zonemd-verify", "on")
         if self.zonemd_generate is not None:
