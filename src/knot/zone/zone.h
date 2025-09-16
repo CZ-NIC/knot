@@ -229,6 +229,8 @@ bool zone_journal_same_serial(zone_t *zone, uint32_t serial_to);
 void zone_notifailed_clear(zone_t *zone);
 void zone_schedule_notify(conf_t *conf, zone_t *zone, time_t delay);
 
+void zone_schedule_update(conf_t *conf, zone_t *zone, zone_event_type_t type);
+
 /*!
  * \brief Atomically switch the content of the zone.
  */

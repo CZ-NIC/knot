@@ -76,7 +76,7 @@ knot_layer_state_t notify_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 
 	/* Incoming NOTIFY expires REFRESH timer and renews EXPIRE timer. */
 	zone_set_preferred_master(zone, knotd_qdata_remote_addr(qdata));
-	zone_events_schedule_now(zone, ZONE_EVENT_REFRESH);
+	zone_schedule_update(conf(), zone, ZONE_EVENT_REFRESH);
 
 	return KNOT_STATE_DONE;
 }
