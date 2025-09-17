@@ -164,6 +164,8 @@ int zone_reverse(zone_contents_t *from, zone_contents_t *to_conts,
                  zone_update_t *to_upd, bool to_upd_rem,
                  zone_include_method_t method)
 {
+	assert((to_conts != NULL) != (to_upd != NULL));
+
 	const knot_dname_t *to_name;
 	if (to_upd != NULL) {
 		to_name = to_upd->zone->name;
