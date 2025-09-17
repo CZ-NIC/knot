@@ -180,7 +180,7 @@ static bool genkeyargs(int argc, char *argv[], bool just_timing,
 				ERR2("invalid size: '%s'", argv[i] + 5);
 				return false;
 			}
-		} else if (!just_timing && same_command(argv[i], "addtopolicy=", true)) {
+		} else if (!just_timing && same_command(argv[i], "addtopolicy=", true) && addtopolicy != NULL) {
 			*addtopolicy = argv[i] + 12;
 		} else if (same_command_bool(argv[i], "ksk", &res)) {
 			bitmap_set(flags, DNSKEY_GENERATE_KSK, res);
