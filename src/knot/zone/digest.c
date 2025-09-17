@@ -262,7 +262,9 @@ int zone_update_add_digest(struct zone_update *update, int algorithm, bool place
 
 		ret = zone_update_remove(update, &exists);
 		if (ret != KNOT_EOK && ret != KNOT_ENOENT) {
-			free(digest);
+			if (digest != &zero) {
+				free(digest);
+			}
 			return ret;
 		}
 	}
