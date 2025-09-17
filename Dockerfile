@@ -98,10 +98,10 @@ COPY --from=builder /knot-src/distro/common/cz.nic.knotd.conf /usr/share/dbus-1/
 RUN mkdir -p /run/dbus
 
 # Expose port
-EXPOSE 53/UDP
-EXPOSE 53/TCP
-EXPOSE 853/UDP
-EXPOSE 853/TCP
+EXPOSE 53/udp
+EXPOSE 53/tcp
+EXPOSE 853/udp
+EXPOSE 853/tcp
 
 # Prepare shared directories
 VOLUME /config
