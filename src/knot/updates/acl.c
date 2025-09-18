@@ -68,6 +68,7 @@ static bool match_type(uint16_t type, conf_val_t *types)
 
 static bool match_pattern(const knot_dname_t *rr_owner, const knot_dname_t *name)
 {
+	assert(rr_owner != NULL && name != NULL);
 	while (true) {
 		uint8_t name_len = *name++;
 		uint8_t owner_len = *rr_owner++;
