@@ -225,6 +225,7 @@ int copy_file(const char *dest, const char *src)
 	}
 
 	size_t cnt;
+	ret = 0;
 	while ((cnt = fread(buf, sizeof(*buf), BUFSIZE, from)) != 0 &&
 	       (ret = (fwrite(buf, sizeof(*buf), cnt, file) == cnt)) &&
 	       (feof(from) | ferror(from)) == 0) {
