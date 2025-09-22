@@ -283,6 +283,18 @@ def test_zone_list():
     resp = env.cmd('KNOT.ZONE.LIST', txn_get_instance(txn))
     env.assertEqual(len(resp), 2, message="Failed to purge zone")
 
+    # zone info
+    INFO = [
+        [b'example.com.', [[b'instance: 1', b'serial: 1', []]]],
+        [b'example.net.', [[b'instance: 1', b'serial: 1', []]]]
+    ]
+
+    resp = env.cmd('KNOT.ZONE.INFO')
+    env.assertEqual(resp, INFO, message="Failed to info zones")
+
+    resp = env.cmd('KNOT.ZONE.INFO', 'example.com', '1')
+    env.assertEqual(resp, INFO[0], message="Failed to info zones")
+
 def test_upd_begin():
     env = Env(moduleArgs=['max-event-age', '60', 'default-ttl', '3600'])
 
