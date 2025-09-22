@@ -490,6 +490,8 @@ The ``KNOT.ZONE.*`` commands are used for manipulating entire zones:
 - ``KNOT.ZONE.PURGE <zone>`` — Purges all data for the specified zone.
 - ``KNOT.ZONE.LIST [--instances]`` — Lists stored zones, optionally including
   available instances.
+- ``KNOT.ZONE.INFO [zone] [instance]`` — Print info about zones and its updates,
+  optionally filtered by zone and instance number.
 
 Example of a zone initialization::
 
@@ -580,6 +582,12 @@ Example of a zone update::
          2) 1) "example.com. 600 SOA ns.example.com. admin.example.com. 2 86400 900 691200 3600"
       2) 1) (empty array)
          2) 1) "test.example.com. 600 TXT \"Knot DNS\""
+
+   $ redis-cli KNOT.ZONE.INFO
+   1) 1) "example.com."
+      2) 1) 1) "instance: 1"
+            2) "serial: 2"
+            3) 1) "update: 1 -> 2"
 
 .. WARNING::
    Do not modify the zone data using native commands such as SET or ZADD,

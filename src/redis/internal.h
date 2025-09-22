@@ -1296,14 +1296,15 @@ typedef struct {
 	RedisModuleCtx *ctx;
 	size_t count;
 	int ret;
-	bool txt;
-	bool instances;
-} scan_ctx;
+	uint8_t instance; // Used by zone_info
+	bool txt;         // Used by zone_list
+	bool instances;   // Used by zone_list
+} scan_ctx_t;
 
 static void zone_list_cb(RedisModuleKey *key, RedisModuleString *zone_name,
                          RedisModuleString *mask, void *privdata)
 {
-	scan_ctx *sctx = privdata;
+	scan_ctx_t *sctx = privdata;
 	if (sctx->txt) {
 		size_t len;
 		const char *dname = RedisModule_StringPtrLen(zone_name, &len);
@@ -1359,16 +1360,180 @@ static void zone_list(RedisModuleCtx *ctx, bool instances, bool txt)
 
 	RedisModule_ReplyWithArray(ctx, REDISMODULE_POSTPONED_ARRAY_LEN);
 
-	scan_ctx sctx = {
+	scan_ctx_t sctx = {
 		.ctx = ctx,
 		.txt = txt,
 		.instances = instances
 	};
+
 	RedisModuleScanCursor *cursor = RedisModule_ScanCursorCreate();
 	while (RedisModule_ScanKey(zones_index, cursor, zone_list_cb, &sctx) && sctx.ret == KNOT_EOK);
 	RedisModule_ReplySetArrayLength(ctx, sctx.count);
 	RedisModule_CloseKey(zones_index);
 	RedisModule_ScanCursorDestroy(cursor);
+}
+
+exception_t zone_info_serial(RedisModuleCtx *ctx, size_t *counter, const arg_dname_t *origin,
+                             const rdb_txn_t *txn, const uint32_t serial_end, const uint32_t serial)
+{
+	index_k upd_index_key = get_commited_upd_index(ctx, origin, txn, serial, REDISMODULE_READ);
+	if (upd_index_key == NULL) {
+		return_ok;
+	}
+
+	uint32_t serial_next = 0;
+	exception_t e = index_soa_serial(ctx, upd_index_key, true, &serial_next);
+	if (e.ret != KNOT_EOK) {
+		RedisModule_CloseKey(upd_index_key);
+		raise(e);
+	}
+
+	if (serial_next != serial_end) {
+		e = zone_info_serial(ctx, counter, origin, txn, serial_end, serial_next);
+		if (e.ret != KNOT_EOK) {
+			RedisModule_CloseKey(upd_index_key);
+			raise(e);
+		}
+	}
+
+	char buf[64];
+	(void)snprintf(buf, sizeof(buf), "update: %u -> %u", serial_next, serial);
+	RedisModule_ReplyWithCString(ctx, buf);
+	*counter += 1;
+
+	RedisModule_CloseKey(upd_index_key);
+
+	return_ok;
+}
+
+static void zone_info_serials(RedisModuleCtx *ctx, arg_dname_t *origin, rdb_txn_t *txn)
+{
+	if (set_active_transaction(ctx, origin, txn) != KNOT_EOK) {
+		RedisModule_ReplyWithError(ctx, RDB_EZONE);
+		return;
+	}
+
+	RedisModuleString *soa_rrset_keyname = rrset_keyname_construct(ctx, origin, txn, origin, KNOT_RRTYPE_SOA);
+	rrset_k soa_rrset_key = RedisModule_OpenKey(ctx, soa_rrset_keyname, REDISMODULE_READ);
+	RedisModule_FreeString(ctx, soa_rrset_keyname);
+	rrset_v *rrset = RedisModule_ModuleTypeGetValue(soa_rrset_key);
+	if (rrset == NULL) {
+		RedisModule_CloseKey(soa_rrset_key);
+		RedisModule_ReplyWithError(ctx, RDB_ENOSOA);
+		return;
+	}
+	uint32_t serial_it = knot_soa_serial(rrset->rrs.rdata);
+	RedisModule_CloseKey(soa_rrset_key);
+
+	RedisModule_ReplyWithArray(ctx, 3);
+	char buf[64];
+	(void)snprintf(buf, sizeof(buf), "instance: %u", txn->instance);
+	RedisModule_ReplyWithCString(ctx, buf);
+	(void)snprintf(buf, sizeof(buf), "serial: %u", serial_it);
+	RedisModule_ReplyWithCString(ctx, buf);
+
+	size_t upd_count = 0;
+	RedisModule_ReplyWithArray(ctx, REDISMODULE_POSTPONED_ARRAY_LEN);
+	exception_t e = zone_info_serial(ctx, &upd_count, origin, txn, serial_it, serial_it);
+	if (e.ret != KNOT_EOK && e.what != NULL) {
+		RedisModule_ReplyWithError(ctx, e.what);
+		upd_count++;
+	}
+	RedisModule_ReplySetArrayLength(ctx, upd_count);
+}
+
+static void zone_info_cb(RedisModuleKey *key, RedisModuleString *zone_name,
+                         RedisModuleString *mask, void *privdata)
+{
+	scan_ctx_t *sctx = privdata;
+
+	char buf[KNOT_DNAME_TXT_MAXLEN];
+
+	size_t len;
+	const char *dname = RedisModule_StringPtrLen(zone_name, &len);
+	arg_dname_t origin = { .data = (uint8_t *)dname, .len = len };
+	RedisModule_Assert(knot_dname_to_str(buf, (knot_dname_t *)dname, sizeof(buf)) != NULL);
+
+	const uint8_t *mask_p = (const uint8_t *)RedisModule_StringPtrLen(mask, &len);
+	RedisModule_Assert(len == sizeof(uint8_t));
+
+	RedisModule_ReplyWithArray(sctx->ctx, 2);
+	RedisModule_ReplyWithCString(sctx->ctx, buf);
+
+	RedisModule_ReplyWithArray(sctx->ctx, REDISMODULE_POSTPONED_ARRAY_LEN);
+	size_t inst_count = 0;
+	if (sctx->instance != 0) {
+		if ((*mask_p) & (1 << (sctx->instance - 1))) {
+			rdb_txn_t txn = {
+				.instance = sctx->instance,
+				.id = TXN_ID_ACTIVE
+			};
+			zone_info_serials(sctx->ctx, &origin, &txn);
+			++inst_count;
+		}
+	} else {
+		for (unsigned inst = 1; inst <= INSTANCE_MAX; ++inst) {
+			if ((*mask_p) & (1 << (inst - 1))) {
+				rdb_txn_t txn = {
+					.instance = inst,
+					.id = TXN_ID_ACTIVE
+				};
+				zone_info_serials(sctx->ctx, &origin, &txn);
+				++inst_count;
+			}
+		}
+	}
+	RedisModule_ReplySetArrayLength(sctx->ctx, inst_count);
+
+	++(sctx->count);
+}
+
+static void zone_info(RedisModuleCtx *ctx, arg_dname_t *origin, rdb_txn_t *txn)
+{
+	scan_ctx_t sctx = {
+		.ctx = ctx,
+		.instance = (txn != NULL) ? txn->instance : 0
+	};
+
+	RedisModuleKey *zones_index = get_zones_index(ctx, REDISMODULE_READ);
+	if (zones_index == NULL) {
+		RedisModule_ReplyWithError(ctx, RDB_EALLOC);
+		return;
+	}
+
+	if (origin != NULL) {
+		RedisModuleString *origin_str = RedisModule_CreateString(ctx, (const char *)origin->data, origin->len);
+		if (origin_str == NULL) {
+			RedisModule_CloseKey(zones_index);
+			RedisModule_ReplyWithError(ctx, RDB_EALLOC);
+			return;
+		}
+
+		RedisModuleString *value;
+		if (RedisModule_HashGet(zones_index, REDISMODULE_HASH_NONE, origin_str, &value, NULL) != REDISMODULE_OK) {
+			RedisModule_FreeString(ctx, origin_str);
+			RedisModule_CloseKey(zones_index);
+			RedisModule_ReplyWithError(ctx, RDB_ECORRUPTED);
+			return;
+		}
+		zone_info_cb(zones_index, origin_str, value, &sctx);
+		RedisModule_FreeString(ctx, value);
+		RedisModule_FreeString(ctx, origin_str);
+	} else {
+		RedisModuleScanCursor *cursor = RedisModule_ScanCursorCreate();
+		if (cursor == NULL) {
+			RedisModule_CloseKey(zones_index);
+			RedisModule_ReplyWithError(ctx, RDB_EALLOC);
+			return;
+		}
+
+		RedisModule_ReplyWithArray(ctx, REDISMODULE_POSTPONED_ARRAY_LEN);
+		while (RedisModule_ScanKey(zones_index, cursor, zone_info_cb, &sctx) && sctx.ret == KNOT_EOK);
+		RedisModule_ReplySetArrayLength(ctx, sctx.count);
+
+		RedisModule_ScanCursorDestroy(cursor);
+	}
+	RedisModule_CloseKey(zones_index);
 }
 
 static exception_t zone_meta_active_exchange(RedisModuleCtx *ctx, zone_meta_k key,
