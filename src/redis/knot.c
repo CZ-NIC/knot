@@ -133,6 +133,15 @@ static const RedisModuleCommandInfo zone_list_txt_info = {
 	.args = zone_list_txt_info_args,
 };
 
+static const RedisModuleCommandInfo zone_info_txt_info = {
+	.version = REDISMODULE_COMMAND_INFO_VERSION,
+	.summary = "List zones stored in the database showing serials and update serials",
+	.complexity = "O(z), where z is the number of zones",
+	.since = "7.0.0",
+	.arity = -1,
+	.args = zone_list_txt_info_args,
+};
+
 static const RedisModuleCommandInfo upd_begin_txt_info = {
 	.version = REDISMODULE_COMMAND_INFO_VERSION,
 	.summary = "Create an zone update transaction",
@@ -449,6 +458,12 @@ static int zone_list_bin(RedisModuleCtx *ctx, RedisModuleString **argv, int argc
 	}
 
 	zone_list(ctx, true, false);
+	return REDISMODULE_OK;
+}
+
+static int zone_info_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
+{
+	zone_info(ctx);
 	return REDISMODULE_OK;
 }
 
@@ -848,6 +863,7 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 	    register_command_txt("KNOT.ZONE.LOAD",     zone_load_txt,     "readonly")   ||
 	    register_command_txt("KNOT.ZONE.PURGE",    zone_purge_txt,    "write")      ||
 	    register_command_txt("KNOT.ZONE.LIST",     zone_list_txt,     "readonly")   ||
+	    register_command_txt("KNOT.ZONE.INFO",     zone_info_txt,     "readonly")   ||
 	    register_command_txt("KNOT.UPD.BEGIN",     upd_begin_txt,     "write fast") ||
 	    register_command_txt("KNOT.UPD.ADD",       upd_add_txt,       "write fast") ||
 	    register_command_txt("KNOT.UPD.REMOVE",    upd_remove_txt,    "write fast") ||
