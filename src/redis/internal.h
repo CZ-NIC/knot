@@ -1375,6 +1375,7 @@ typedef struct {
 	RedisModuleCtx *ctx;
 	size_t count;
 	int ret;
+	uint8_t instance;
 } zone_info_ctx;
 
 exception_t zone_info_print_serial(RedisModuleCtx *ctx, size_t *counter, const arg_dname_t *origin,
@@ -1495,8 +1496,10 @@ static void zone_info_cb(RedisModuleKey *key, RedisModuleString *zone_name,
 	RedisModule_ReplyWithCString(sctx->ctx, buf);
 
 	RedisModule_ReplyWithArray(sctx->ctx, REDISMODULE_POSTPONED_ARRAY_LEN);
+
 	size_t inst_count = 0;
-	for (int it = 0; it < TXN_MAX; ++it) {
+	if (sctx->instance != 0) {
+		int it = sctx->instance - 1;
 		if ((*mask_p) & (1 << it)) {
 			rdb_txn_t txn = {
 				.instance = it + 1,
@@ -1505,13 +1508,24 @@ static void zone_info_cb(RedisModuleKey *key, RedisModuleString *zone_name,
 			zone_info_print_serials(sctx->ctx, &origin, &txn);
 			++inst_count;
 		}
+	} else {
+		for (int it = 0; it < TXN_MAX; ++it) {
+			if ((*mask_p) & (1 << it)) {
+				rdb_txn_t txn = {
+					.instance = it + 1,
+					.id = TXN_ID_ACTIVE
+				};
+				zone_info_print_serials(sctx->ctx, &origin, &txn);
+				++inst_count;
+			}
+		}
 	}
 	RedisModule_ReplySetArrayLength(sctx->ctx, inst_count);
 	
 	++(sctx->count);
 }
 
-static void zone_info(RedisModuleCtx *ctx)
+static void zone_info(RedisModuleCtx *ctx, arg_dname_t *origin, rdb_txn_t *instance)
 {
 	RedisModuleKey *zones_index = get_zones_index(ctx, REDISMODULE_READ);
 	if (zones_index == NULL) {
@@ -1520,15 +1534,31 @@ static void zone_info(RedisModuleCtx *ctx)
 	}
 
 	zone_info_ctx sctx = {
-		.ctx = ctx
+		.ctx = ctx,
+		.instance = (instance != NULL) ? instance->instance : 0
 	};
-	RedisModuleScanCursor *cursor = RedisModule_ScanCursorCreate();
+	if (origin != NULL) {
+		RedisModuleString *mask;
+		uint8_t dname_wire[KNOT_DNAME_TXT_MAXLEN];
+		knot_dname_t *dname = knot_dname_from_str(dname_wire, origin->txt, sizeof(dname_wire));
+		RedisModuleString *zone_name = RedisModule_CreateString(ctx, (const char *)dname_wire, knot_dname_size(dname));
 
-	RedisModule_ReplyWithArray(ctx, REDISMODULE_POSTPONED_ARRAY_LEN);
-	while (RedisModule_ScanKey(zones_index, cursor, zone_info_cb, &sctx) && sctx.ret == KNOT_EOK);
-	RedisModule_ReplySetArrayLength(ctx, sctx.count);
+		int ret = RedisModule_HashGet(zones_index, REDISMODULE_HASH_NONE, zone_name, &mask, NULL);
+		if (ret == REDISMODULE_OK) {
+			zone_info_cb(zones_index, zone_name, mask, &sctx);
+		} else {
+			RedisModule_ReplyWithEmptyArray(ctx);
+		}
+		
+	} else {
+		RedisModuleScanCursor *cursor = RedisModule_ScanCursorCreate();
 
-	RedisModule_ScanCursorDestroy(cursor);
+		RedisModule_ReplyWithArray(ctx, REDISMODULE_POSTPONED_ARRAY_LEN);
+		while (RedisModule_ScanKey(zones_index, cursor, zone_info_cb, &sctx) && sctx.ret == KNOT_EOK);
+		RedisModule_ReplySetArrayLength(ctx, sctx.count);
+
+		RedisModule_ScanCursorDestroy(cursor);
+	}
 	RedisModule_CloseKey(zones_index);
 }
 

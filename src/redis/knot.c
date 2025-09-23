@@ -66,7 +66,8 @@ static RedisModuleCommandArg zone_load_txt_info_args[] = {
 };
 
 static RedisModuleCommandArg zone_list_txt_info_args[] = {
-	{"opt", REDISMODULE_ARG_TYPE_PURE_TOKEN, -1, "--instances", NULL, NULL, REDISMODULE_CMD_ARG_OPTIONAL},
+	{"zone",     REDISMODULE_ARG_TYPE_STRING,     -1, NULL, NULL, NULL, REDISMODULE_CMD_ARG_OPTIONAL},
+	{"instance", REDISMODULE_ARG_TYPE_INTEGER,    -1, NULL, NULL, NULL, REDISMODULE_CMD_ARG_OPTIONAL},
 	{ 0 }
 };
 
@@ -463,7 +464,15 @@ static int zone_list_bin(RedisModuleCtx *ctx, RedisModuleString **argv, int argc
 
 static int zone_info_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 {
-	zone_info(ctx);
+	arg_dname_t origin;
+	rdb_txn_t txn;
+	if (argc >= 2) {
+		ARG_DNAME_TXT(argv[1], origin, NULL, "zone origin");
+	}
+	if (argc >= 3) {
+		ARG_INST_TXT(argv[2], txn);
+	}
+	zone_info(ctx, (argc >= 2) ? &origin : NULL, (argc >= 3) ? &txn : NULL);
 	return REDISMODULE_OK;
 }
 
