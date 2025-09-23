@@ -490,6 +490,8 @@ The ``KNOT.ZONE.*`` commands are used for manipulating entire zones:
 - ``KNOT.ZONE.PURGE <zone>`` — Purges all data for the specified zone.
 - ``KNOT.ZONE.LIST [--instances]`` — Lists stored zones, optionally including
   available instances.
+- ``KNOT.ZONE.INFO [origin] [instance]`` — Print info about zones and it's
+  updates. Optionally filtered by origin and instance number.
 
 Example of a zone initialization::
 
@@ -527,6 +529,23 @@ Example of a zone initialization::
 
    $ redis-cli KNOT.ZONE.LIST --instances
    1) "example.com.: 1"
+
+   $ KNOT.ZONE.INFO
+   1) 1) "example.com."
+      2) 1) 1) "instance 1"
+            2) "serial 3"
+            3) 1) "update 1 -> 2"
+               2) "update 2 -> 3"
+         2) 1) "instance 2"
+            2) "serial 1"
+            3) (empty array)
+         3) 1) "instance 4"
+            2) "serial 1"
+            3) (empty array)
+   2) 1) "example.net."
+      2) 1) 1) "instance 4"
+            2) "serial 1"
+            3) (empty array)
 
 .. TIP::
    For storing the entire zone file, the following command works::
