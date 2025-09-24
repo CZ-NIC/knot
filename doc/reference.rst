@@ -720,7 +720,7 @@ Change of this parameter requires restart of the Knot server to take effect.
 listen-quic
 -----------
 
-One or more IP addresses (and optionally ports) where the server listens
+One or more IP addresses and optionally ports (default is 853) where the server listens
 for incoming queries over QUIC protocol.
 
 Change of this parameter requires restart of the Knot server to take effect.
@@ -732,7 +732,7 @@ Change of this parameter requires restart of the Knot server to take effect.
 listen-tls
 ----------
 
-One or more IP addresses (and optionally ports) where the server listens
+One or more IP addresses and optionally ports (default is 853) where the server listens
 for incoming queries over TLS protocol (DoT).
 
 Change of this parameter requires restart of the Knot server to take effect.
