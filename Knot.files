@@ -47,6 +47,8 @@ src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_cid.c
 src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_cid.h
 src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_conn.c
 src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_conn.h
+src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_conn_info.c
+src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_conn_info.h
 src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_conn_stat.h
 src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_conv.c
 src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_conv.h
