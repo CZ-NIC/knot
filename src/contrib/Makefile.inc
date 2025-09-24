@@ -152,6 +152,8 @@ libembngtcp2_la_SOURCES = \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_cid.h \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_conn.c \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_conn.h \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_conn_info.c \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_conn_info.h \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_conn_stat.h \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_conv.c \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_conv.h \
