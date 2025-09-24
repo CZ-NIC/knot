@@ -56,11 +56,13 @@ done
 cp "${clonedir}/ngtcp2/lib/ngtcp2_crypto.h" ./lib/ngtcp2_crypto.h
 cp "${clonedir}/ngtcp2/crypto/includes/ngtcp2/ngtcp2_crypto.h" ./ngtcp2_crypto.h
 
-newfiles="$(wc -l "${clonedir}/added" | cut -d' ' -f1)"
+newfiles="$(wc -l <"${clonedir}/added")"
 if [ "$newfiles" -gt 0 ]; then
 	printf "%s new file(s) were added between %s and %s; add these manually if desired:\n" \
 		"$newfiles" "$cur_version" "$1"
 	cut -d'/' -f'5-' "${clonedir}/added" | xargs -r printf "\t%s\n"
+	mkdir NEWFILES
+	xargs <"$clonedir"/added -I{} mv {} ./NEWFILES
 fi
 
 rm -rf "$clonedir"
