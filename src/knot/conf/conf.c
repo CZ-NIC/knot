@@ -1483,7 +1483,7 @@ int conf_xdp_iface(
 				return KNOT_EINVAL;
 			}
 		} else {
-			iface->port = 53;
+			iface->port = CONF_DNS_PORT;
 		}
 	} else {
 		int ret = knot_eth_name_from_addr(addr, iface->name, sizeof(iface->name));

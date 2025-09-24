@@ -244,19 +244,19 @@ static const yp_item_t desc_server[] = {
 	{ C_PROXY_ALLOWLIST,      YP_TNET,  YP_VNONE, YP_FMULTI},
 	{ C_DBUS_EVENT,           YP_TOPT,  YP_VOPT = { dbus_events, DBUS_EVENT_NONE }, YP_FMULTI },
 	{ C_DBUS_INIT_DELAY,      YP_TINT,  YP_VINT = { 0, INT32_MAX, 1, YP_STIME } },
-	{ C_LISTEN,               YP_TADDR, YP_VADDR = { 53 }, YP_FMULTI, { check_listen } },
-	{ C_LISTEN_QUIC,          YP_TADDR, YP_VADDR = { 853 }, YP_FMULTI, { check_listen } },
-	{ C_LISTEN_TLS,           YP_TADDR, YP_VADDR = { 853 }, YP_FMULTI, { check_listen } },
+	{ C_LISTEN,               YP_TADDR, YP_VADDR = { CONF_DNS_PORT }, YP_FMULTI, { check_listen } },
+	{ C_LISTEN_QUIC,          YP_TADDR, YP_VADDR = { CONF_DNS_TLS_PORT }, YP_FMULTI, { check_listen } },
+	{ C_LISTEN_TLS,           YP_TADDR, YP_VADDR = { CONF_DNS_TLS_PORT }, YP_FMULTI, { check_listen } },
 	{ C_COMMENT,              YP_TSTR,  YP_VNONE },
 	{ NULL }
 };
 
 static const yp_item_t desc_xdp[] = {
-	{ C_LISTEN,               YP_TADDR, YP_VADDR = { 53 }, YP_FMULTI, { check_xdp_listen } },
+	{ C_LISTEN,               YP_TADDR, YP_VADDR = { CONF_DNS_PORT }, YP_FMULTI, { check_xdp_listen } },
 	{ C_UDP,                  YP_TBOOL, YP_VBOOL = { true } },
 	{ C_TCP,                  YP_TBOOL, YP_VNONE },
 	{ C_QUIC,                 YP_TBOOL, YP_VNONE },
-	{ C_QUIC_PORT,            YP_TINT,  YP_VINT = { 1, 65535, 853 } },
+	{ C_QUIC_PORT,            YP_TINT,  YP_VINT = { 1, 65535, CONF_DNS_TLS_PORT } },
 	{ C_TCP_MAX_CLIENTS,      YP_TINT,  YP_VINT = { 1024, INT32_MAX, 1000000 } },
 	{ C_TCP_INBUF_MAX_SIZE,   YP_TINT,  YP_VINT = { MEGA(1), SSIZE_MAX, MEGA(100), YP_SSIZE } },
 	{ C_TCP_OUTBUF_MAX_SIZE,  YP_TINT,  YP_VINT = { MEGA(1), SSIZE_MAX, MEGA(100), YP_SSIZE } },
@@ -313,7 +313,7 @@ static const yp_item_t desc_database[] = {
 	{ C_CATALOG_DB,            YP_TSTR,  YP_VSTR = { "catalog" } },
 	{ C_CATALOG_DB_MAX_SIZE,   YP_TINT,  YP_VINT = { MEGA(5), VIRT_MEM_LIMIT(GIGA(100)),
 	                                                 VIRT_MEM_LIMIT(GIGA(20)), YP_SSIZE } },
-	{ C_ZONE_DB_LISTEN,        YP_TADDR, YP_VADDR = { 6379 }, YP_FNONE, { check_rdb, check_listen } },
+	{ C_ZONE_DB_LISTEN,        YP_TADDR, YP_VADDR = { CONF_REDIS_PORT }, YP_FNONE, { check_rdb, check_listen } },
 	{ C_ZONE_DB_TLS,           YP_TBOOL, YP_VNONE },
 	{ C_ZONE_DB_CERT_KEY,      YP_TB64,  YP_VNONE, YP_FMULTI, { check_cert_pin } },
 	{ C_ZONE_DB_CERT_HOSTNAME, YP_TSTR,  YP_VNONE, YP_FMULTI },
@@ -342,7 +342,7 @@ static const yp_item_t desc_key[] = {
 
 static const yp_item_t desc_remote[] = {
 	{ C_ID,               YP_TSTR,  YP_VNONE, CONF_IO_FREF },
-	{ C_ADDR,             YP_TADDR, YP_VADDR = { 53, 853 }, YP_FMULTI },
+	{ C_ADDR,             YP_TADDR, YP_VADDR = { CONF_DNS_PORT, CONF_DNS_TLS_PORT }, YP_FMULTI },
 	{ C_VIA,              YP_TADDR, YP_VNONE, YP_FMULTI },
 	{ C_QUIC,             YP_TBOOL, YP_VNONE },
 	{ C_TLS,              YP_TBOOL, YP_VNONE },
