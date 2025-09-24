@@ -5,7 +5,9 @@
 
 #include "knot/common/hiredis.h"
 #include "contrib/conn_pool.h"
+#include "contrib/openbsd/strlcpy.h"
 #include "contrib/sockaddr.h"
+#include "contrib/strtonum.h"
 #include "knot/common/log.h"
 #include "libknot/errcode.h"
 
@@ -139,17 +141,39 @@ redisContext *rdb_connect(conf_t *conf)
 		return rdb;
 	}
 
-	int port = sockaddr_port(&addr);
-	sockaddr_port_set(&addr, 0);
-
+	int port = 0;
 	char addr_str[SOCKADDR_STRLEN];
-	if (sockaddr_tostr(addr_str, sizeof(addr_str), &addr) <= 0) {
-		return NULL;
+
+	if (addr.ss_family == AF_UNIX) {
+		const char *path = ((struct sockaddr_un *)&addr)->sun_path;
+		if (path[0] != '/') { // hostname
+			strlcpy(addr_str, path, sizeof(addr_str));
+
+			char *port_sep = strchr(addr_str, '@');
+			if (port_sep != NULL) {
+				*port_sep = '\0';
+				uint16_t num;
+				int ret = str_to_u16(port_sep + 1, &num);
+				if (ret != KNOT_EOK || num == 0) {
+					return NULL;
+				}
+				port = num;
+			} else {
+				port = CONF_REDIS_PORT;
+			}
+		}
+	} else {
+		port = sockaddr_port(&addr);
+		sockaddr_port_set(&addr, 0);
+
+		if (sockaddr_tostr(addr_str, sizeof(addr_str), &addr) <= 0) {
+			return NULL;
+		}
 	}
 
 	const struct timeval timeout = { 10, 0 };
 
-	if (addr.ss_family == AF_UNIX) {
+	if (port == 0) {
 		rdb = redisConnectUnixWithTimeout(addr_str, timeout);
 	} else {
 		rdb = redisConnectWithTimeout(addr_str, port, timeout);
