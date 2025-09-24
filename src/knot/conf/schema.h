@@ -203,6 +203,10 @@
 #define C_ZSK_LIFETIME		"\x0C""zsk-lifetime"
 #define C_ZSK_SIZE		"\x08""zsk-size"
 
+#define CONF_DNS_PORT		53
+#define CONF_DNS_TLS_PORT	853
+#define CONF_REDIS_PORT		6379
+
 enum {
 	KEYSTORE_BACKEND_PEM    = 1,
 	KEYSTORE_BACKEND_PKCS11 = 2,
