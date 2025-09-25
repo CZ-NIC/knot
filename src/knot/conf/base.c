@@ -868,9 +868,9 @@ static int export_group_name(
 		return ret;
 	}
 
-	fprintf(fp, "%s", out);
+	ret = (fprintf(fp, "%s", out) < 0) ? knot_map_errno() : KNOT_EOK;
 
-	return KNOT_EOK;
+	return ret;
 }
 
 static int export_group(
@@ -902,7 +902,9 @@ static int export_group(
 			if (ret != KNOT_EOK) {
 				return ret;
 			}
-			fprintf(fp, "%s", out);
+			if (fprintf(fp, "%s", out) < 0) {
+				return knot_map_errno();
+			}
 			continue;
 		}
 
@@ -934,7 +936,9 @@ static int export_group(
 			if (ret != KNOT_EOK) {
 				return ret;
 			}
-			fprintf(fp, "%s", out);
+			if (fprintf(fp, "%s", out) < 0) {
+				return knot_map_errno();
+			}
 
 			if (values > 1) {
 				conf_val_next(&bin);
@@ -942,8 +946,8 @@ static int export_group(
 		}
 	}
 
-	if (*exported) {
-		fprintf(fp, "\n");
+	if (*exported && (fprintf(fp, "\n") < 0)) {
+		return knot_map_errno();
 	}
 
 	return KNOT_EOK;
@@ -1030,12 +1034,16 @@ int conf_export(
 		return knot_map_errno();
 	}
 
-	fprintf(fp, "# Configuration export (Knot DNS %s)\n\n", PACKAGE_VERSION);
+	int ret;
+
+	if (fprintf(fp, "# Configuration export (Knot DNS %s)\n\n",
+	            PACKAGE_VERSION) < 0) {
+		ret = knot_map_errno();
+		goto export_error;
+	}
 
 	const char *mod_prefix = KNOTD_MOD_NAME_PREFIX;
 	const size_t mod_prefix_len = strlen(mod_prefix);
-
-	int ret;
 
 	// Iterate over the schema.
 	for (yp_item_t *item = conf->schema; item->name != NULL; item++) {
@@ -1069,8 +1077,8 @@ int conf_export(
 
 	ret = KNOT_EOK;
 export_error:
-	if (file_name != NULL) {
-		fclose(fp);
+	if (file_name != NULL && fclose(fp) == -1 && ret == KNOT_EOK) {
+		ret = knot_map_errno();
 	}
 	free(buff);
 
@@ -1297,8 +1305,8 @@ int conf_export_schema(
 	jsonw_end(w);
 	jsonw_free(&w);
 
-	if (file_name != NULL) {
-		fclose(fp);
+	if (file_name != NULL && fclose(fp) == -1 && ret == KNOT_EOK) {
+		ret = knot_map_errno();
 	}
 
 	return ret;

@@ -544,7 +544,7 @@ int main(int argc, char **argv)
 	/* Now check if we want to daemonize. */
 	if (daemonize) {
 		if (make_daemon(1, 0) != 0) {
-			fprintf(stderr, "Daemonization failed, shutting down...\n");
+			(void)fprintf(stderr, "Daemonization failed, shutting down...\n");
 			return EXIT_FAILURE;
 		}
 	}

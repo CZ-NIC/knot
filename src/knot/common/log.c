@@ -172,7 +172,7 @@ void log_init(void)
 	// Publish base log sink.
 	log_t *log = sink_setup(0);
 	if (log == NULL) {
-		fprintf(stderr, "Failed to setup logging\n");
+		(void)fprintf(stderr, "Failed to setup logging\n");
 		return;
 	}
 
@@ -456,7 +456,7 @@ void log_reconfigure(conf_t *conf)
 	// Initialize logsystem.
 	log_t *log = sink_setup(files);
 	if (log == NULL) {
-		fprintf(stderr, "Failed to setup logging\n");
+		(void)fprintf(stderr, "Failed to setup logging\n");
 		return;
 	}
 

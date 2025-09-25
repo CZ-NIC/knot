@@ -577,7 +577,7 @@ int knsupdate_exec(knsupdate_params_t *params)
 			break;
 		}
 		ret = process_lines(params, fp);
-		fclose(fp);
+		(void)fclose(fp);
 		if (ret != KNOT_EOK) {
 			break;
 		}

@@ -137,7 +137,7 @@ int knot_tsig_key_init_file(knot_tsig_key_t *key, const char *filename)
 	size_t line_size = 0;
 	ssize_t read = knot_getline(&line, &line_size, file);
 
-	fclose(file);
+	(void)fclose(file);
 
 	if (read == -1) {
 		return KNOT_EMALF;

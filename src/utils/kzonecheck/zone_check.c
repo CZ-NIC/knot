@@ -35,9 +35,9 @@ static void err_callback(sem_handler_t *handler, const zone_contents_t *zone,
 		owner = "";
 	}
 
-	fprintf(stderr, "[%s] %s%s%s\n", owner, sem_error_msg(error),
-	       (data != NULL ? " "  : ""),
-	       (data != NULL ? data : ""));
+	(void)fprintf(stderr, "[%s] %s%s%s\n", owner, sem_error_msg(error),
+	              (data != NULL ? " "  : ""),
+	              (data != NULL ? data : ""));
 
 	stats->errors[error]++;
 	stats->error_count++;
@@ -45,10 +45,10 @@ static void err_callback(sem_handler_t *handler, const zone_contents_t *zone,
 
 static void print_statistics(err_handler_stats_t *stats)
 {
-	fprintf(stderr, "\nError summary:\n");
+	(void)fprintf(stderr, "\nError summary:\n");
 	for (sem_error_t i = 0; i <= SEM_ERR_UNKNOWN; ++i) {
 		if (stats->errors[i] > 0) {
-			fprintf(stderr, "%4u\t%s\n", stats->errors[i], sem_error_msg(i));
+			(void)fprintf(stderr, "%4u\t%s\n", stats->errors[i], sem_error_msg(i));
 		}
 	}
 }
@@ -96,7 +96,7 @@ int zone_check(const char *zone_file, const knot_dname_t *zone_name, bool zonemd
 	if (stats.error_count > 0) {
 		print_statistics(&stats);
 		if (stats.handler.error) {
-			fprintf(stderr, "\n");
+			(void)fprintf(stderr, "\n");
 			ERR2("serious semantic error detected");
 			ret = KNOT_EINVAL;
 		} else {
@@ -108,7 +108,7 @@ int zone_check(const char *zone_file, const knot_dname_t *zone_name, bool zonemd
 		ret = zone_contents_digest_verify(contents);
 		if (ret != KNOT_EOK) {
 			if (stats.error_count > 0 && !stats.handler.error) {
-				fprintf(stderr, "\n");
+				(void)fprintf(stderr, "\n");
 			}
 			ERR2("invalid ZONEMD");
 		}
@@ -116,7 +116,7 @@ int zone_check(const char *zone_file, const knot_dname_t *zone_name, bool zonemd
 
 	if (print) {
 		if (ret != KNOT_EOK) {
-			fprintf(stderr, "\n");
+			(void)fprintf(stderr, "\n");
 		}
 		printf(";; Zone dump (Knot DNS %s)\n", PACKAGE_VERSION);
 		zone_dump_text(contents, NULL, stdout, false, NULL);
