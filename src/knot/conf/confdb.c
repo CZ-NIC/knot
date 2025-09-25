@@ -901,29 +901,29 @@ int conf_db_raw_dump(
 		uint8_t *k = (uint8_t *)key.data;
 		uint8_t *d = (uint8_t *)data.data;
 		if (k[1] == KEY1_ITEMS) {
-			fprintf(fp, "[%i][%i]%.*s", k[0], k[1],
-			        (int)key.len - 2, k + 2);
-			fprintf(fp, ": %u\n", d[0]);
+			(void)fprintf(fp, "[%i][%i]%.*s", k[0], k[1],
+			              (int)key.len - 2, k + 2);
+			(void)fprintf(fp, ": %u\n", d[0]);
 		} else if (k[1] == KEY1_ID) {
-			fprintf(fp, "[%i][%i](%zu){", k[0], k[1], key.len - 2);
+			(void)fprintf(fp, "[%i][%i](%zu){", k[0], k[1], key.len - 2);
 			for (size_t i = 2; i < key.len; i++) {
-				fprintf(fp, "%02x", (uint8_t)k[i]);
+				(void)fprintf(fp, "%02x", (uint8_t)k[i]);
 			}
-			fprintf(fp, "}\n");
+			(void)fprintf(fp, "}\n");
 		} else {
-			fprintf(fp, "[%i][%i]", k[0], k[1]);
+			(void)fprintf(fp, "[%i][%i]", k[0], k[1]);
 			if (key.len > 2) {
-				fprintf(fp, "(%zu){", key.len - 2);
+				(void)fprintf(fp, "(%zu){", key.len - 2);
 				for (size_t i = 2; i < key.len; i++) {
-					fprintf(fp, "%02x", (uint8_t)k[i]);
+					(void)fprintf(fp, "%02x", (uint8_t)k[i]);
 				}
-				fprintf(fp, "}");
+				(void)fprintf(fp, "}");
 			}
-			fprintf(fp, ": (%zu)<", data.len);
+			(void)fprintf(fp, ": (%zu)<", data.len);
 			for (size_t i = 0; i < data.len; i++) {
-				fprintf(fp, "%02x", (uint8_t)d[i]);
+				(void)fprintf(fp, "%02x", (uint8_t)d[i]);
 			}
-			fprintf(fp, ">\n");
+			(void)fprintf(fp, ">\n");
 		}
 
 		it = conf->api->iter_next(it);
@@ -931,9 +931,9 @@ int conf_db_raw_dump(
 	conf->api->iter_finish(it);
 
 	if (file_name != NULL) {
-		fclose(fp);
+		(void)fclose(fp);
 	} else {
-		fflush(fp);
+		(void)fflush(fp);
 	}
 
 	return ret;

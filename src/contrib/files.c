@@ -248,12 +248,12 @@ int copy_file(const char *dest, const char *src)
 
 done:
 	free(tmp_name);
-	if (file != NULL) {
-		fclose(file);
+	if (file != NULL && fclose(file) == -1 && ret == KNOT_EOK) {
+		ret = knot_map_errno();
 	}
 	free(buf);
 	if (from != NULL) {
-		fclose(from);
+		(void)fclose(from);
 	}
 	return ret;
 }

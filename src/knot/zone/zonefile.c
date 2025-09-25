@@ -314,16 +314,15 @@ int zonefile_write(const char *path, zone_contents_t *zone, zone_skip_t *skip)
 	}
 
 	ret = zone_dump_text(zone, skip, file, true, NULL);
-	fclose(file);
 	if (ret != KNOT_EOK) {
+		(void)fclose(file);
 		unlink(tmp_name);
 		free(tmp_name);
 		return ret;
 	}
 
-	/* Swap temporary zonefile and new zonefile. */
-	ret = rename(tmp_name, path);
-	if (ret != 0) {
+	/* Close, then swap temporary zonefile and new zonefile. */
+	if (fclose(file) == -1 || rename(tmp_name, path) == -1) {
 		ret = knot_map_errno();
 		unlink(tmp_name);
 		free(tmp_name);
