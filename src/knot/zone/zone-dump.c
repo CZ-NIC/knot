@@ -39,7 +39,9 @@ static int apex_node_dump_text(zone_node_t *node, dump_params_t *params)
 			return ret;
 		}
 		params->rr_count += soa.rrs.count;
-		fprintf(params->file, "%s", params->buf);
+		if (fprintf(params->file, "%s", params->buf) < 0) {
+			return knot_map_errno();
+		}
 		params->buf[0] = '\0';
 	}
 
@@ -66,7 +68,9 @@ static int apex_node_dump_text(zone_node_t *node, dump_params_t *params)
 			return ret;
 		}
 		params->rr_count +=  rrset.rrs.count;
-		fprintf(params->file, "%s", params->buf);
+		if (fprintf(params->file, "%s", params->buf) < 0) {
+			return knot_map_errno();
+		}
 		params->buf[0] = '\0';
 	}
 
@@ -114,7 +118,9 @@ static int node_dump_text(zone_node_t *node, void *data)
 
 		// Dump block comment if available.
 		if (params->first_comment != NULL) {
-			fprintf(params->file, "%s", params->first_comment);
+			if (fprintf(params->file, "%s", params->first_comment) < 0) {
+				return knot_map_errno();
+			}
 			params->first_comment = NULL;
 		}
 
@@ -124,7 +130,9 @@ static int node_dump_text(zone_node_t *node, void *data)
 			return ret;
 		}
 		params->rr_count += rrset.rrs.count;
-		fprintf(params->file, "%s", params->buf);
+		if (fprintf(params->file, "%s", params->buf) < 0) {
+			return knot_map_errno();
+		}
 		params->buf[0] = '\0';
 	}
 
@@ -148,7 +156,9 @@ int zone_dump_text(zone_contents_t *zone, zone_skip_t *skip, FILE *file, bool co
 	}
 
 	if (comments) {
-		fprintf(file, ";; Zone dump (Knot DNS %s)\n", PACKAGE_VERSION);
+		if (fprintf(file, ";; Zone dump (Knot DNS %s)\n", PACKAGE_VERSION) < 0) {
+			return knot_map_errno();
+		}
 	}
 
 	// Set structure with parameters.
@@ -222,12 +232,14 @@ int zone_dump_text(zone_contents_t *zone, zone_skip_t *skip, FILE *file, bool co
 		strftime(date, sizeof(date), "%Y-%m-%d %H:%M:%S %Z", &tm);
 
 		// Dump trailing statistics.
-		fprintf(file, ";; Written %"PRIu64" records\n"
-		              ";; Time %s\n",
-		        params.rr_count, date);
+		if (fprintf(file, ";; Written %"PRIu64" records\n"
+		                  ";; Time %s\n",
+		            params.rr_count, date) < 0) {
+			ret = knot_map_errno();
+		}
 	}
 
 	free(params.buf); // params.buf may be != buf because of knot_rrset_txt_dump_dynamic()
 
-	return KNOT_EOK;
+	return ret;
 }

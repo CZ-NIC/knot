@@ -151,7 +151,9 @@ static int make_label_file(zone_backup_ctx_t *ctx)
 
 	ret = (ret < 0) ? knot_map_errno() : KNOT_EOK;
 
-	fclose(file);
+	if (fclose(file) == -1 && ret == KNOT_EOK) {
+		ret = knot_map_errno();
+	}
 	return ret;
 }
 

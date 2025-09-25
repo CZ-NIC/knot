@@ -603,11 +603,15 @@ int changeset_print(const changeset_t *changeset, FILE *outfile, bool color)
 
 	style.color = COL_RED(color);
 	if (changeset->soa_from != NULL || !zone_contents_is_empty(changeset->remove)) {
-		fprintf(outfile, "%s;; Removed%s\n", style.color, COL_RST(color));
+		if (fprintf(outfile, "%s;; Removed%s\n", style.color, COL_RST(color)) < 0) {
+			goto failed_outfile;
+		}
 	}
 	if (changeset->soa_from != NULL && buff != NULL) {
 		ret = knot_rrset_txt_dump(changeset->soa_from, &buff, &buflen, &style);
-		fprintf(outfile, "%s%s%s", style.color, buff, COL_RST(color));
+		if (fprintf(outfile, "%s%s%s", style.color, buff, COL_RST(color)) < 0) {
+			goto failed_outfile;
+		}
 	}
 	if (ret >= 0 && changeset->remove != NULL) { // Can be NULL if zone-in-journal
 		ret = zone_dump_text(changeset->remove, NULL, outfile, false, style.color);
@@ -615,11 +619,15 @@ int changeset_print(const changeset_t *changeset, FILE *outfile, bool color)
 
 	style.color = COL_GRN(color);
 	if (changeset->soa_to != NULL || !zone_contents_is_empty(changeset->add)) {
-		fprintf(outfile, "%s;; Added%s\n", style.color, COL_RST(color));
+		if (fprintf(outfile, "%s;; Added%s\n", style.color, COL_RST(color)) < 0) {
+			goto failed_outfile;
+		}
 	}
 	if (changeset->soa_to != NULL && buff != NULL && ret >= 0) {
 		ret = knot_rrset_txt_dump(changeset->soa_to, &buff, &buflen, &style);
-		fprintf(outfile, "%s%s%s", style.color, buff, COL_RST(color));
+		if (fprintf(outfile, "%s%s%s", style.color, buff, COL_RST(color)) < 0) {
+			goto failed_outfile;
+		}
 	}
 	if (ret >= 0) {
 		ret = zone_dump_text(changeset->add, NULL, outfile, false, style.color);
@@ -627,4 +635,8 @@ int changeset_print(const changeset_t *changeset, FILE *outfile, bool color)
 
 	free(buff);
 	return ret >= 0 ? KNOT_EOK : ret;
+
+failed_outfile:
+	free(buff);
+	return knot_map_errno();
 }

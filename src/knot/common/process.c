@@ -84,7 +84,9 @@ static int pid_write(const char *filename, pid_t pid)
 		if (write(fd, buf, len) != len) {
 			ret = knot_map_errno();
 		}
-		close(fd);
+		if (close(fd) == -1 && ret == KNOT_EOK) {
+			ret = knot_map_errno();
+		}
 	} else {
 		ret = knot_map_errno();
 	}

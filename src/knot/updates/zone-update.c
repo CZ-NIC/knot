@@ -1025,9 +1025,15 @@ static int dump_changeset_part(zone_update_t *up, bool additions,
 	ctx.style = KNOT_DUMP_STYLE_DEFAULT;
 	ctx.style.now = knot_time();
 
-	(void)fprintf(ctx.f, ";; %s records\n", additions ? "Added" : "Removed");
-	int ret = zone_update_foreach(up, additions, dump_rrset, &ctx);
-	fclose(ctx.f);
+	int ret;
+	if (fprintf(ctx.f, ";; %s records\n", additions ? "Added" : "Removed") > 0) {
+		ret = zone_update_foreach(up, additions, dump_rrset, &ctx);
+	} else {
+		ret = knot_map_errno();
+	}
+	if (fclose(ctx.f) == -1 && ret == KNOT_EOK) {
+		ret = knot_map_errno();
+	}
 	free(ctx.buf);
 	return ret;
 }
