@@ -41,6 +41,9 @@
 #include "contrib/sockaddr.h"
 #include "contrib/string.h"
 #include "contrib/wire_ctx.h"
+#ifdef ENABLE_REDIS
+#include "knot/common/hiredis.h"
+#endif
 
 #define MAX_INCLUDE_DEPTH	5
 
@@ -291,12 +294,33 @@ int check_listen(
 	return KNOT_EOK;
 }
 
+int check_db_listen(
+	knotd_conf_check_args_t *args)
+{
+#ifndef ENABLE_REDIS
+	args->err_str = "zone database backend is not available";
+	return KNOT_ENOTSUP;
+#else
+	bool no_port;
+	struct sockaddr_storage ss = yp_addr(args->data, &no_port);
+
+	int port;
+	char addr_str[SOCKADDR_STRLEN - SOCKADDR_STRLEN_EXT] = "\0";
+	if (rdb_addr_to_str(&ss, addr_str, sizeof(addr_str), &port) != KNOT_EOK) {
+		args->err_str = "invalid value";
+		return KNOT_EINVAL;
+	}
+
+	return KNOT_EOK;
+#endif
+}
+
 int check_xdp_listen(
 	knotd_conf_check_args_t *args)
 {
 #ifndef ENABLE_XDP
-		args->err_str = "XDP is not available";
-		return KNOT_ENOTSUP;
+	args->err_str = "XDP is not available";
+	return KNOT_ENOTSUP;
 #else
 	bool no_port;
 	struct sockaddr_storage ss = yp_addr(args->data, &no_port);
@@ -1211,17 +1235,6 @@ int check_catalog_tpl(
 	knotd_conf_check_args_t *args)
 {
 	return check_zone_or_tpl(args);
-}
-
-int check_rdb(
-	knotd_conf_check_args_t *args)
-{
-#ifndef ENABLE_REDIS
-	args->err_str = "Zone database support not available";
-	return KNOT_ENOTSUP;
-#else
-	return KNOT_EOK;
-#endif
 }
 
 int check_db_instance(

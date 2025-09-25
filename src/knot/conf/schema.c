@@ -313,7 +313,7 @@ static const yp_item_t desc_database[] = {
 	{ C_CATALOG_DB,            YP_TSTR,  YP_VSTR = { "catalog" } },
 	{ C_CATALOG_DB_MAX_SIZE,   YP_TINT,  YP_VINT = { MEGA(5), VIRT_MEM_LIMIT(GIGA(100)),
 	                                                 VIRT_MEM_LIMIT(GIGA(20)), YP_SSIZE } },
-	{ C_ZONE_DB_LISTEN,        YP_TADDR, YP_VADDR = { CONF_REDIS_PORT }, YP_FNONE, { check_rdb, check_listen } },
+	{ C_ZONE_DB_LISTEN,        YP_TADDR, YP_VADDR = { CONF_REDIS_PORT }, YP_FMULTI, { check_db_listen } },
 	{ C_ZONE_DB_TLS,           YP_TBOOL, YP_VNONE },
 	{ C_ZONE_DB_CERT_KEY,      YP_TB64,  YP_VNONE, YP_FMULTI, { check_cert_pin } },
 	{ C_ZONE_DB_CERT_HOSTNAME, YP_TSTR,  YP_VNONE, YP_FMULTI },

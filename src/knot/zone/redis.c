@@ -14,9 +14,9 @@
 
 #define UNREAD_MAX 20 // Redis write batch length.
 
-struct redisContext *zone_redis_connect(conf_t *conf)
+struct redisContext *zone_redis_connect(conf_t *conf, bool require_master)
 {
-	return rdb_connect(conf);
+	return rdb_connect(conf, require_master);
 }
 
 void zone_redis_disconnect(struct redisContext *ctx, bool pool_save)
@@ -34,6 +34,29 @@ bool zone_redis_ping(struct redisContext *ctx)
 	bool res = (reply != NULL &&
 	            reply->type == REDIS_REPLY_STATUS &&
 	            strcmp(reply->str, "PONG") == 0);
+
+	freeReplyObject(reply);
+
+	return res;
+}
+
+int zone_redis_role(struct redisContext *ctx)
+{
+	if (ctx == NULL) {
+		return -1;
+	}
+
+	int res = -1;
+	redisReply *reply = redisCommand(ctx, "ROLE");
+	if (reply != NULL && reply->type == REDIS_REPLY_ARRAY) {
+		if (strcmp(reply->element[0]->str, "master") == 0) {
+			res = 0;
+		} else if (strcmp(reply->element[0]->str, "sentinel") == 0) {
+			res = 2;
+		} else {
+			res = 1;
+		}
+	}
 
 	freeReplyObject(reply);
 
@@ -409,7 +432,7 @@ int zone_redis_load_upd(struct redisContext *rdb, uint8_t instance,
 
 #else // ENABLE_REDIS
 
-struct redisContext *zone_redis_connect(conf_t *conf)
+struct redisContext *zone_redis_connect(conf_t *conf, bool require_master)
 {
 	return NULL;
 }
@@ -422,6 +445,11 @@ void zone_redis_disconnect(struct redisContext *ctx, bool pool_save)
 bool zone_redis_ping(struct redisContext *ctx)
 {
 	return false;
+}
+
+int zone_redis_role(struct redisContext *ctx)
+{
+	return -1;
 }
 
 int zone_redis_txn_begin(zone_redis_txn_t *txn, struct redisContext *rdb,
