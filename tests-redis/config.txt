@@ -1,3 +1,4 @@
 --module ../src/redis/.libs/knot.so
 --no-progress
---use-valgrind
+--use-valgrind --vg-suppressions ../tests-redis/knot-redis.supp
+--use-slaves
