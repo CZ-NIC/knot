@@ -940,7 +940,7 @@ static int rdb_listener_run(struct dthread *thread)
 
 	while (thread->state & ThreadActive) {
 		if (s->rdb_ctx == NULL) {
-			s->rdb_ctx = rdb_connect(conf());
+			s->rdb_ctx = rdb_connect(conf(), false);
 			if (s->rdb_ctx == NULL) {
 				log_error("rdb, failed to connect");
 				sleep(2);

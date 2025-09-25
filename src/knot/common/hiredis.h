@@ -13,7 +13,7 @@
 
 #include "knot/conf/conf.h"
 
-redisContext *rdb_connect(conf_t *conf);
+redisContext *rdb_connect(conf_t *conf, bool require_master);
 
 void rdb_disconnect(redisContext *rdb, bool pool_save);
 

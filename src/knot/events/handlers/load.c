@@ -109,7 +109,7 @@ int event_load(conf_t *conf, zone_t *zone)
 	bool db_enabled = conf_zone_rdb_enabled(conf, zone->name, true, &db_instance);
 	if (db_enabled) {
 		zone_src = "database";
-		db_ctx = zone_redis_connect(conf);
+		db_ctx = zone_redis_connect(conf, false);
 	}
 
 	// Attempt to load changes from database. If fails, load full zone from there later.
