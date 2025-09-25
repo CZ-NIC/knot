@@ -314,8 +314,16 @@ int zonefile_write(const char *path, zone_contents_t *zone, zone_skip_t *skip)
 	}
 
 	ret = zone_dump_text(zone, skip, file, true, NULL);
-	fclose(file);
 	if (ret != KNOT_EOK) {
+		fclose(file);
+		unlink(tmp_name);
+		free(tmp_name);
+		return ret;
+	}
+
+	ret = fclose(file);
+	if (ret != 0) {
+		ret = knot_map_errno();
 		unlink(tmp_name);
 		free(tmp_name);
 		return ret;
