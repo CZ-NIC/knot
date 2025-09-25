@@ -735,7 +735,7 @@ static int commit_redis(conf_t *conf, zone_update_t *update)
 		return KNOT_EOK;
 	}
 
-	struct redisContext *db_ctx = zone_redis_connect(conf);
+	struct redisContext *db_ctx = zone_redis_connect(conf, true);
 	if (db_ctx == NULL) {
 		return KNOT_ECONN;
 	}
