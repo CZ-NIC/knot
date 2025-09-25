@@ -77,3 +77,19 @@
    fun:InitServerLast
    fun:main
 }
+{
+   master-5
+   Memcheck:Value8
+   fun:lzf_compress
+   fun:rdbSaveLzfStringObject
+   fun:rdbSaveRawString
+   fun:rdbSaveAuxField
+   fun:rdbSaveInfoAuxFields
+   fun:rdbSaveRio
+   obj:/usr/bin/redis-server
+   fun:rdbSave
+   fun:finishShutdown
+   fun:serverCron
+   obj:/usr/bin/redis-server
+   fun:aeMain
+}
