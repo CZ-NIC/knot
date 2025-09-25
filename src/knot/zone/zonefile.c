@@ -321,17 +321,8 @@ int zonefile_write(const char *path, zone_contents_t *zone, zone_skip_t *skip)
 		return ret;
 	}
 
-	ret = fclose(file);
-	if (ret != 0) {
-		ret = knot_map_errno();
-		unlink(tmp_name);
-		free(tmp_name);
-		return ret;
-	}
-
-	/* Swap temporary zonefile and new zonefile. */
-	ret = rename(tmp_name, path);
-	if (ret != 0) {
+	/* Close and then swap temporary zonefile and new zonefile. */
+	if (fclose(file) || rename(tmp_name, path)) {
 		ret = knot_map_errno();
 		unlink(tmp_name);
 		free(tmp_name);
