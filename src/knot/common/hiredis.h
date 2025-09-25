@@ -13,7 +13,9 @@
 
 #include "knot/conf/conf.h"
 
-redisContext *rdb_connect(conf_t *conf);
+int rdb_addr_to_str(struct sockaddr_storage *addr, char *out, size_t out_len, int *port);
+
+redisContext *rdb_connect(conf_t *conf, bool require_master);
 
 void rdb_disconnect(redisContext *rdb, bool pool_save);
 

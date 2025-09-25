@@ -1214,7 +1214,7 @@ Configuration of databases for zone contents, DNSSEC metadata, or event timers.
      timer-db-max-size: SIZE
      catalog-db: str
      catalog-db-max-size: SIZE
-     zone-db-listen: ADDR[@INT] | STR[@INT]
+     zone-db-listen: ADDR[@INT] | STR[@INT] ...
      zone-db-tls: BOOL
      zone-db-cert-key: BASE64 ...
      zone-db-cert-hostname: STR ...
@@ -1348,10 +1348,15 @@ The hard limit for the catalog database maximum size.
 zone-db-listen
 --------------
 
-An IP address or a hostname and optionally a port (default is 6379) or an
-absolute UNIX socket path (starting with ``/``) of a running instance of
-a Redis (or compatible) database to be used for reading and/or writing zone
-contents. See :ref:`zone_zone-db-input` and :ref:`zone_zone-db-output`.
+An ordered list of IP addresses or hostnames, and optionally ports (default is 6379),
+or absolute UNIX socket paths (starting with ``/``) of running Redis (or compatible)
+instances to be used for reading and/or writing zone contents.
+See :ref:`zone_zone-db-input` and :ref:`zone_zone-db-output`.
+
+The listen parameters are tried sequentially until a usable connection
+is established. The connected database can be a master, a replica, or a sentinel.
+If it is a sentinel, it is used to acquire connection parameters of a master
+database.
 
 *Default:* not set
 

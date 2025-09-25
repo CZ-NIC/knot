@@ -9,6 +9,7 @@
 #include "contrib/sockaddr.h"
 #include "contrib/strtonum.h"
 #include "knot/common/log.h"
+#include "knot/zone/redis.h"
 #include "libknot/errcode.h"
 
 #ifdef ENABLE_REDIS_TLS
@@ -131,57 +132,20 @@ static int hiredis_attach_gnutls(redisContext *ctx, struct knot_creds *local_cre
 }
 #endif // ENABLE_REDIS_TLS
 
-redisContext *rdb_connect(conf_t *conf)
+static redisContext *connect_addr(conf_t *conf, const char *addr_str, int port)
 {
-	conf_val_t db_listen = conf_db_param(conf, C_ZONE_DB_LISTEN);
-	struct sockaddr_storage addr = conf_addr(&db_listen, NULL);
-
-	redisContext *rdb = (void *)conn_pool_get(global_redis_pool, &addr, &addr);
-	if (rdb != NULL && (intptr_t)rdb != CONN_POOL_FD_INVALID) {
-		return rdb;
-	}
-
-	int port = 0;
-	char addr_str[SOCKADDR_STRLEN];
-
-	if (addr.ss_family == AF_UNIX) {
-		const char *path = ((struct sockaddr_un *)&addr)->sun_path;
-		if (path[0] != '/') { // hostname
-			strlcpy(addr_str, path, sizeof(addr_str));
-
-			char *port_sep = strchr(addr_str, '@');
-			if (port_sep != NULL) {
-				*port_sep = '\0';
-				uint16_t num;
-				int ret = str_to_u16(port_sep + 1, &num);
-				if (ret != KNOT_EOK || num == 0) {
-					return NULL;
-				}
-				port = num;
-			} else {
-				port = CONF_REDIS_PORT;
-			}
-		}
-	} else {
-		port = sockaddr_port(&addr);
-		sockaddr_port_set(&addr, 0);
-
-		if (sockaddr_tostr(addr_str, sizeof(addr_str), &addr) <= 0) {
-			return NULL;
-		}
-	}
-
 	const struct timeval timeout = { 10, 0 };
 
+	redisContext *rdb;
 	if (port == 0) {
 		rdb = redisConnectUnixWithTimeout(addr_str, timeout);
 	} else {
 		rdb = redisConnectWithTimeout(addr_str, port, timeout);
 	}
-	if (rdb == NULL) {
-		log_error("rdb, failed to connect");
-	} else if (rdb->err) {
-		log_error("rdb, failed to connect (%s)", rdb->errstr);
+	if (rdb == NULL || rdb->err != REDIS_OK) {
+		log_debug("rdb, failed to connect, remote %s%s%.0u (%s)",
+		          addr_str, (port != 0 ? "@" : ""), port,
+		          (rdb != NULL ? rdb->errstr : "no reply"));
 		return NULL;
 	}
 
@@ -211,6 +175,8 @@ redisContext *rdb_connect(conf_t *conf)
 			free(key_file);
 			free(cert_file);
 			if (ret != KNOT_EOK) {
+				log_error("rdb, failed to initialize credentials or to load certificates (%s)",
+				          knot_strerror(ret));
 				redisFree(rdb);
 				return NULL;
 			}
@@ -233,6 +199,7 @@ redisContext *rdb_connect(conf_t *conf)
 
 		struct knot_creds *creds = knot_creds_init_peer(local_creds, hostnames, pins);
 		if (creds == NULL) {
+			log_debug("rdb, failed to use TLS (%s)", knot_strerror(KNOT_ENOMEM));
 			knot_creds_free(local_creds);
 			redisFree(rdb);
 			return NULL;
@@ -240,6 +207,7 @@ redisContext *rdb_connect(conf_t *conf)
 
 		int ret = hiredis_attach_gnutls(rdb, local_creds, creds);
 		if (ret != KNOT_EOK) {
+			log_debug("rdb, failed to use TLS (%s)", knot_strerror(ret));
 			knot_creds_free(local_creds);
 			knot_creds_free(creds);
 			redisFree(rdb);
@@ -247,6 +215,170 @@ redisContext *rdb_connect(conf_t *conf)
 		}
 	}
 #endif // ENABLE_REDIS_TLS
+
+	return rdb;
+}
+
+int rdb_addr_to_str(struct sockaddr_storage *addr, char *out, size_t out_len, int *port)
+{
+	*port = 0;
+
+	if (addr->ss_family == AF_UNIX) {
+		const char *path = ((struct sockaddr_un *)addr)->sun_path;
+		if (path[0] != '/') { // hostname
+			size_t len = strlcpy(out, path, out_len);
+			if (len == 0 || len >= out_len) {
+				return KNOT_EINVAL;
+			}
+
+			char *port_sep = strchr(out, '@');
+			if (port_sep != NULL) {
+				*port_sep = '\0';
+				uint16_t num;
+				int ret = str_to_u16(port_sep + 1, &num);
+				if (ret != KNOT_EOK || num == 0) {
+					return KNOT_EINVAL;
+				}
+				*port = num;
+			} else {
+				*port = CONF_REDIS_PORT;
+			}
+		}
+	} else {
+		*port = sockaddr_port(addr);
+		sockaddr_port_set(addr, 0);
+
+		if (sockaddr_tostr(out, out_len, addr) <= 0 || *port == 0) {
+			return KNOT_EINVAL;
+		}
+	}
+
+	return KNOT_EOK;
+}
+
+static int get_master(redisContext *rdb, char *out, size_t out_len, int *port)
+{
+	redisReply *masters_reply = redisCommand(rdb, "SENTINEL masters");
+	if (masters_reply == NULL || masters_reply->type != REDIS_REPLY_ARRAY ||
+	    masters_reply->elements == 0) {
+		if (masters_reply != NULL) {
+			freeReplyObject(masters_reply);
+		}
+		return KNOT_ENOENT;
+	}
+
+	redisReply *first_master = masters_reply->element[0];
+	const char *master_name = NULL;
+
+	for (size_t j = 0; j < first_master->elements; j += 2) {
+		const char *field = first_master->element[j]->str;
+		const char *value = first_master->element[j + 1]->str;
+		if (strcmp(field, "name") == 0) {
+			master_name = value;
+			break;
+		}
+	}
+	if (master_name == NULL) {
+		freeReplyObject(masters_reply);
+		return KNOT_ENOENT;
+	}
+
+	redisReply *addr_reply = redisCommand(rdb, "SENTINEL get-master-addr-by-name %s",
+	                                      master_name);
+	freeReplyObject(masters_reply);
+
+	if (addr_reply == NULL || addr_reply->type != REDIS_REPLY_ARRAY ||
+	    addr_reply->elements != 2) {
+		if (addr_reply != NULL) {
+			freeReplyObject(addr_reply);
+		}
+		return KNOT_ENOENT;
+	}
+	const char *ip_str = addr_reply->element[0]->str;
+	const char *port_str = addr_reply->element[1]->str;
+
+	size_t len = strlcpy(out, ip_str, out_len);
+	if (len == 0 || len >= out_len) {
+		freeReplyObject(addr_reply);
+		return KNOT_ERANGE;
+	}
+
+	uint16_t num;
+	int ret = str_to_u16(port_str, &num);
+	if (ret != KNOT_EOK || num == 0) {
+		freeReplyObject(addr_reply);
+		return KNOT_EINVAL;
+	}
+	*port = num;
+
+	freeReplyObject(addr_reply);
+
+	return KNOT_EOK;
+}
+
+redisContext *rdb_connect(conf_t *conf, bool require_master)
+{
+	int port = 0;
+	int role = -1;
+	char addr_str[SOCKADDR_STRLEN - SOCKADDR_STRLEN_EXT] = "\0";
+	redisContext *rdb = NULL;
+
+	conf_val_t db_listen = conf_db_param(conf, C_ZONE_DB_LISTEN);
+	while (db_listen.code == KNOT_EOK) {
+		struct sockaddr_storage addr = conf_addr(&db_listen, NULL);
+
+		rdb = (void *)conn_pool_get(global_redis_pool, &addr, &addr);
+		if (rdb != NULL && (intptr_t)rdb != CONN_POOL_FD_INVALID) {
+			role = zone_redis_role(rdb);
+			if (!require_master || role == 0) {
+				goto connected;
+			}
+			redisFree(rdb);
+		}
+
+		conf_val_next(&db_listen);
+	}
+
+	conf_val_reset(&db_listen);
+	while (db_listen.code == KNOT_EOK) {
+		struct sockaddr_storage addr = conf_addr(&db_listen, NULL);
+
+		if (rdb_addr_to_str(&addr, addr_str, sizeof(addr_str), &port) != KNOT_EOK ||
+		    (rdb = connect_addr(conf, addr_str, port)) == NULL) {
+			conf_val_next(&db_listen);
+			continue;
+		}
+
+		role = zone_redis_role(rdb);
+		if (role == 0) { // Master
+			goto connected;
+		} else if (role == 1 && !require_master) { // Replica
+			goto connected;
+		} else if (role == 2) { // Sentinel
+			if (get_master(rdb, addr_str, sizeof(addr_str), &port) == KNOT_EOK &&
+			    (rdb = connect_addr(conf, addr_str, port)) == KNOT_EOK) {
+				goto connected;
+			}
+		}
+
+		conf_val_next(&db_listen);
+	}
+
+	return NULL;
+
+connected:
+	if (log_enabled_debug()) {
+		bool tcp = rdb->connection_type == REDIS_CONN_TCP;
+		bool tls = rdb->privctx != NULL;
+		bool pool = addr_str[0] == '\0';
+		log_debug("rdb, connected, remote %s%s%.0u%s%s%s",
+		          (tcp ? rdb->tcp.host : rdb->unix_sock.path),
+		          (tcp ? "@" : ""),
+		          (tcp ? rdb->tcp.port : 0),
+		          (tls ? " TLS" : ""),
+		          (role == 1 ? " replica" : ""),
+		          (pool ? " pool" : ""));
+	}
 
 	return rdb;
 }
