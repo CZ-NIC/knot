@@ -7,7 +7,7 @@
    fun:rdbSaveAuxField
    fun:rdbSaveInfoAuxFields
    fun:rdbSaveRio
-   obj:/usr/bin/redis-server
+   obj:*/redis-server
    fun:rdbSave
    fun:flushAllDataAndResetRDB
    fun:flushCommandCommon
@@ -23,62 +23,15 @@
    fun:rdbSaveAuxField
    fun:rdbSaveInfoAuxFields
    fun:rdbSaveRio
-   obj:/usr/bin/redis-server
+   obj:*/redis-server
    fun:rdbSave
    fun:finishShutdown
    fun:serverCron
-   obj:/usr/bin/redis-server
+   obj:*/redis-server
    fun:aeMain
 }
 {
    master-2
-   Memcheck:Leak
-   match-leak-kinds: possible
-   fun:calloc
-   fun:calloc
-   fun:allocate_dtv
-   fun:_dl_allocate_tls
-   fun:allocate_stack
-   fun:pthread_create@@GLIBC_2.34
-   obj:/usr/bin/redis-server
-   obj:/usr/bin/redis-server
-   obj:/usr/bin/redis-server
-   obj:/usr/bin/redis-server
-   fun:je_mallctl
-   fun:InitServerLast
-   fun:main
-}
-{
-   master-3
-   Memcheck:Leak
-   match-leak-kinds: possible
-   fun:calloc
-   fun:calloc
-   fun:allocate_dtv
-   fun:_dl_allocate_tls
-   fun:allocate_stack
-   fun:pthread_create@@GLIBC_2.34
-   obj:/usr/bin/redis-server
-   obj:/usr/bin/redis-server
-   fun:start_thread
-   fun:clone
-}
-{
-   master-4
-   Memcheck:Leak
-   match-leak-kinds: possible
-   fun:calloc
-   fun:calloc
-   fun:allocate_dtv
-   fun:_dl_allocate_tls
-   fun:allocate_stack
-   fun:pthread_create@@GLIBC_2.34
-   fun:bioInit
-   fun:InitServerLast
-   fun:main
-}
-{
-   master-5
    Memcheck:Value8
    fun:lzf_compress
    fun:rdbSaveLzfStringObject
@@ -86,10 +39,10 @@
    fun:rdbSaveAuxField
    fun:rdbSaveInfoAuxFields
    fun:rdbSaveRio
-   obj:/usr/bin/redis-server
+   obj:*/redis-server
    fun:rdbSave
    fun:finishShutdown
    fun:serverCron
-   obj:/usr/bin/redis-server
+   obj:*/redis-server
    fun:aeMain
 }
