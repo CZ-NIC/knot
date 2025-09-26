@@ -264,12 +264,10 @@ AC_ARG_ENABLE([redis],
    AS_HELP_STRING([--enable-redis=auto|yes|client|module|no], [enable Redis support [default=auto]]),
    [], [enable_redis=auto])
 
-PKG_CHECK_MODULES([hiredis], [hiredis], [have_hiredis=yes], [have_hiredis=no])
-
 AS_CASE([$enable_redis],
-   [auto],   [AS_IF([test "$have_hiredis" = "yes"], [enable_redis=yes], [enable_redis=no])],
-   [yes],    [AS_IF([test "$have_hiredis" = "yes"], [enable_redis=yes], [AC_MSG_ERROR([libhiredis not available])])],
-   [client], [AS_IF([test "$have_hiredis" = "yes"], [enable_redis=client], [AC_MSG_ERROR([libhiredis not available])])],
+   [auto],   [PKG_CHECK_MODULES([hiredis], [hiredis], [enable_redis=yes], [enable_redis=no])],
+   [yes],    [PKG_CHECK_MODULES([hiredis], [hiredis], [enable_redis=yes], [AC_MSG_ERROR([libhiredis not available])])],
+   [client], [PKG_CHECK_MODULES([hiredis], [hiredis], [have_hiredis=client], [AC_MSG_ERROR([libhiredis not available])])],
    [module], [AS_IF([test "$enable_shared" = "yes"], [enable_redis=module], [AC_MSG_ERROR([link mode has to be 'shared'])])],
    [no], [],
    [*], [AC_MSG_ERROR([Invalid value of --enable-redis.])]
