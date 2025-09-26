@@ -264,11 +264,9 @@ AC_ARG_ENABLE([redis],
    AS_HELP_STRING([--enable-redis=auto|yes|no], [enable Redis support [default=auto]]),
    [], [enable_redis=auto])
 
-PKG_CHECK_MODULES([hiredis], [hiredis], [have_hiredis=yes], [have_hiredis=no])
-
 AS_CASE([$enable_redis],
-   [auto], [AS_IF([test "$have_hiredis" = "yes"], [enable_redis=yes], [enable_redis=no])],
-   [yes],  [AS_IF([test "$have_hiredis" = "yes"], [enable_redis=yes], [AC_MSG_ERROR([libhiredis not available])])],
+   [auto], [PKG_CHECK_MODULES([hiredis], [hiredis], [enable_redis=yes], [enable_redis=no])],
+   [yes],  [PKG_CHECK_MODULES([hiredis], [hiredis], [enable_redis=yes], [AC_MSG_ERROR([libhiredis not available])])],
    [no], [],
    [*], [AC_MSG_ERROR([Invalid value of --enable-redis.])]
 )
