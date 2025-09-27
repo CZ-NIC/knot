@@ -36,7 +36,6 @@ Standards-Version: 4.5.0
 Homepage: https://www.knot-dns.cz/
 Vcs-Browser: https://gitlab.nic.cz/knot/knot-dns
 Vcs-Git: https://gitlab.nic.cz/knot/knot-dns.git
-Rules-Requires-Root: no
 
 Package: knot
 Architecture: any
