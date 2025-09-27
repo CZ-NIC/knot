@@ -1,7 +1,7 @@
 .. highlight:: none
 
-``knsec3hash`` – NSEC hash computation utility
-==============================================
+``knsec3hash`` – NSEC3 hash computation utility
+===============================================
 
 Synopsis
 --------
@@ -15,7 +15,7 @@ Synopsis
 Description
 -----------
 
-This utility generates a NSEC3 hash for a given domain name and parameters of NSEC3 hash.
+This utility generates an NSEC3 hash for a given domain name and parameters of NSEC3 hash.
 
 Parameters
 ..........
