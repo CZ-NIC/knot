@@ -11,6 +11,7 @@ Depends:
  knot,
  knot-dnsutils,
  knot-dnssecutils,
+ knot-keymgr,
 
 Tests: python-libknot
 Depends:
