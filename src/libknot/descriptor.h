@@ -97,6 +97,7 @@ enum knot_rr_type {
 	KNOT_RRTYPE_ZONEMD     =  63, /*!< Message digest for DNS zone. */
 	KNOT_RRTYPE_SVCB       =  64, /*!< Service Binding. */
 	KNOT_RRTYPE_HTTPS      =  65, /*!< HTTPS Binding. */
+	KNOT_RRTYPE_DSYNC      =  66, /*!< Generalized NOTIFY endpoint. */
 
 	KNOT_RRTYPE_SPF        =  99, /*!< Sender policy framework. */
 
