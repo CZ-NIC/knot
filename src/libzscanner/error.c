@@ -159,6 +159,8 @@ static const err_table_t err_msgs[] = {
 	          "permission denied" ),
 	ERR_ITEM( ZS_BAD_ALPN_BACKSLASH,
 	          "unscaped backslash character" ),
+        ERR_ITEM( ZS_BAD_DSYNC_SCHEME,
+                 "invalid scheme" ),
 
 	ERR_ITEM( 0, NULL ) // Terminator
 };

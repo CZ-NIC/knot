@@ -1580,6 +1580,21 @@ static void wire_svcparam_to_str(rrset_dump_params_t *p)
 	}
 }
 
+static void wire_dsync_scheme_to_str(rrset_dump_params_t *p)
+{
+	CHECK_PRET
+
+	CHECK_INMAX(1)
+	uint8_t scheme = *(uint8_t *)p->in;
+	if (scheme == 1) {
+		dump_string(p, "NOTIFY");
+	} else {
+		dump_uint(p, scheme);
+	}
+	p->in += sizeof(scheme);
+	p->in_max -= sizeof(scheme);
+}
+
 static size_t dnskey_len(const uint8_t *rdata,
                          const size_t  rdata_len)
 {
@@ -1795,6 +1810,7 @@ static void dnskey_info(const uint8_t *rdata,
 #define DUMP_EUI	wire_eui_to_str(p); CHECK_RET(p);
 #define DUMP_TSIG_RCODE	wire_tsig_rcode_to_str(p); CHECK_RET(p);
 #define DUMP_SVCPARAM	wire_svcparam_to_str(p); CHECK_RET(p);
+#define DUMP_DSYNC_SCH	wire_dsync_scheme_to_str(p); CHECK_RET(p);
 #define DUMP_UNKNOWN	wire_unknown_to_str(p); CHECK_RET(p);
 
 static int dump_unknown(DUMP_PARAMS)
@@ -2256,6 +2272,16 @@ static int dump_svcb(DUMP_PARAMS)
 	DUMP_END;
 }
 
+static int dump_dsync(DUMP_PARAMS)
+{
+	DUMP_TYPE; DUMP_SPACE;
+	DUMP_DSYNC_SCH; DUMP_SPACE;
+	DUMP_NUM16; DUMP_SPACE;
+	DUMP_DNAME;
+
+	DUMP_END;
+}
+
 static int txt_dump_data(rrset_dump_params_t *p, uint16_t type)
 {
 	switch (type) {
@@ -2343,6 +2369,8 @@ static int txt_dump_data(rrset_dump_params_t *p, uint16_t type)
 		case KNOT_RRTYPE_SVCB:
 		case KNOT_RRTYPE_HTTPS:
 			return dump_svcb(p);
+	        case KNOT_RRTYPE_DSYNC:
+		        return dump_dsync(p);
 		default:
 			return dump_unknown(p);
 	}
