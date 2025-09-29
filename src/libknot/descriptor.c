@@ -115,6 +115,8 @@ static const knot_rdata_descriptor_t rdata_descriptors[] = {
 	                               KNOT_RDATA_WF_END }, "SVCB" },
 	[KNOT_RRTYPE_HTTPS]      = { { KNOT_RDATA_WF_REMAINDER,
 	                               KNOT_RDATA_WF_END }, "HTTPS" },
+	[KNOT_RRTYPE_DSYNC]      = { { KNOT_RDATA_WF_REMAINDER,
+	                               KNOT_RDATA_WF_END }, "DSYNC" },
 	[KNOT_RRTYPE_SPF]        = { { KNOT_RDATA_WF_REMAINDER,
 	                               KNOT_RDATA_WF_END }, "SPF" },
 	[KNOT_RRTYPE_NID]        = { { 10, KNOT_RDATA_WF_END }, "NID" },
