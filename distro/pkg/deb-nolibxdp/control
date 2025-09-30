@@ -246,7 +246,7 @@ Description: Prometheus exporter for Knot DNS
 Package: python3-libknot
 Architecture: all
 Depends:
- libknot16 (= ${binary:Version}),
+ libknot16 (>= ${source:Version}),
  ${misc:Depends},
  ${python3:Depends},
 Section: python
