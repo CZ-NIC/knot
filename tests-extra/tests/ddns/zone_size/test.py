@@ -8,9 +8,10 @@ t = Test()
 
 master = t.server("knot")
 zone = t.zone("example.com.")
-master.zone_size_limit = 500
-
 t.link(zone, master, ddns=True)
+
+master.conf_zone(zone).zone_max_size = 500
+
 t.start()
 
 master.zones_wait(zone)

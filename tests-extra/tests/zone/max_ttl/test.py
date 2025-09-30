@@ -39,8 +39,8 @@ zones = t.zone("example.com.", storage=".")
 
 t.link(zones, knot)
 
-knot.zonefile_load = "difference-no-serial"
-knot.zones[zones[0].name].journal_content = "all"
+knot.conf_zone(zones).zonefile_load = "difference-no-serial"
+knot.conf_zone(zones).journal_content = "all"
 knot.dnssec(zones).enable = True
 
 t.start()

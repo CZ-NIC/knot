@@ -11,10 +11,11 @@ master = t.server("knot")
 
 zone = t.zone("example.com.", storage=".")
 
-t.link(zone, master, ixfr=True, journal_content="all")
+t.link(zone, master, ixfr=True)
 
+master.conf_zone(zone).journal_content = "all"
 master.dnssec(zone).enable = True
-master.dnssec(zone).repro_sign = True
+master.dnssec(zone).reproducible_signing = True
 
 t.start()
 

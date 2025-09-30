@@ -106,7 +106,7 @@ master = t.server("knot")
 slave = t.server("knot")
 
 for server in [master, slave]:
-    server.tcp_remote_io_timeout = "1000"
+    server.conf_srv().tcp_remote_io_timeout = "1000"
 
 t.link([zone], master, slave)
 master.disable_notify = True

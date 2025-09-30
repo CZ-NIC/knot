@@ -67,8 +67,8 @@ master = t.server("knot")
 zone = t.zone("example.com.", storage=".")
 t.link(zone, unsigned_master, master, ddns=True)
 
-unsigned_master.zones[zone[0].name].journal_content = "none"
-master.ixfr_from_axfr = True
+unsigned_master.conf_zone(zone).journal_content = "none"
+master.conf_zone(zone).ixfr_from_axfr = True
 
 master.dnssec(zone).enable = True
 master.dnssec(zone).manual = False
@@ -76,7 +76,7 @@ master.dnssec(zone).dnskey_ttl = 3
 master.dnssec(zone).zsk_lifetime = 16
 master.dnssec(zone).propagation_delay = 3
 master.dnssec(zone).nsec3 = True
-master.dnssec(zone).nsec3_salt_len = 8
+master.dnssec(zone).nsec3_salt_length = 8
 master.dnssec(zone).nsec3_salt_lifetime = -1
 
 t.start()

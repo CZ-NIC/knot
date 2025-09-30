@@ -18,11 +18,11 @@ zones = t.zone_rnd(2, records=10)
 
 t.link(zones, master, slave)
 
-master.update_delay = 6
-slave.update_delay = 6
+master.conf_zone(zones).update_delay = 6
+slave.conf_zone(zones).update_delay = 6
 
-master.serial_policy = "unixtime"
-slave.serial_policy = "unixtime"
+master.conf_zone(zones).serial_policy = "unixtime"
+slave.conf_zone(zones).serial_policy = "unixtime"
 
 for z in zones:
     master.zones[z.name].zfile.update_soa(serial=int(time.time()))
@@ -31,7 +31,7 @@ for z in zones:
 def increment_serials(server, zones, serials):
     res = serials
     for z in zones:
-        res[z.name] += server.update_delay
+        res[z.name] += server.conf_zone(zones[0]).update_delay
     return res
 
 def zones_wait_eq(server, zones, serials):

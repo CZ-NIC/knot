@@ -37,8 +37,8 @@ for z in zone:
     for s in [slave1, slave2]:
         s.dnssec(z).enable = True
         s.dnssec(z).manual = True
-        s.dnssec(z).alg = alg['name']
-        s.dnssec(z).repro_sign = not alg['always_reproducible']
+        s.dnssec(z).algorithm = alg['name']
+        s.dnssec(z).reproducible_signing = not alg['always_reproducible']
 
 slave1.gen_confile() # needed for keymgr
 

@@ -8,12 +8,13 @@ t = Test()
 
 knot = t.server("knot")
 knot.DIG_TIMEOUT = 2
-knot.tcp_reuseport = True
 bind = t.server("bind")
 zone = t.zone("example.", "example.zone.nsec3", storage=".")
 
 t.link(zone, knot)
 t.link(zone, bind)
+
+knot.conf_srv().tcp_reuseport = True
 
 t.start()
 knot.zone_wait(zone)

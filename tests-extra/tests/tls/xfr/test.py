@@ -25,13 +25,13 @@ for z in rnd_zones:
     master.dnssec(z).enable = True
 
 if master.valgrind:
-    slave.quic_idle_close_timeout = 10 # for DoQ xfrs
-    master.tcp_io_timeout = 10000
-    slave.tcp_io_timeout = 10000
-    master.tcp_remote_io_timeout = 10000
-    slave.tcp_remote_io_timeout = 10000
+    slave.conf_srv().quic_idle_close_timeout = 10 # for DoQ xfrs
+    master.conf_srv().tcp_io_timeout = 10000
+    slave.conf_srv().tcp_io_timeout = 10000
+    master.conf_srv().tcp_remote_io_timeout = 10000
+    slave.conf_srv().tcp_remote_io_timeout = 10000
 if slave.valgrind:
-    master.quic_idle_close_timeout = 10 # for sending DoQ notify
+    master.conf_srv().quic_idle_close_timeout = 10 # for sending DoQ notify
 
 MSG_DENIED_NOTIFY = "ACL, denied, action notify"
 MSG_DENIED_TRANSFER = "ACL, denied, action transfer"

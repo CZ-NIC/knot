@@ -14,7 +14,7 @@ zones = t.zone_rnd(3, records=50)
 
 t.link(zones, master, slave, ixfr=True)
 
-slave.ixfr_by_one = "on"
+slave.conf_zone(zones).ixfr_by_one = True
 
 t.start()
 

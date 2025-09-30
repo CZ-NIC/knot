@@ -26,15 +26,16 @@ slave = t.server("knot")
 
 t.link(zones, master, slave)
 
+slave.conf_zone(zones).journal_content = "all"
+slave.conf_zone(zones).zonefile_load = "none"
+
 for z in zones:
     if random.choice([True, False]):
         master.dnssec(z).enable = True
-        master.dnssec(z).alg = "ECDSAP256SHA256"
+        master.dnssec(z).algorithm = "ECDSAP256SHA256"
         master.dnssec(z).single_type_signing = False
     else:
         master.add_module(z, ModOnlineSign(algorithm="ECDSAP256SHA256"))
-    slave.zones[z.name].journal_content = "all"
-    slave.zonefile_load = "none"
 
 backup_dir = master.dir + "/backup"
 backup_dir2 = master.dir + "/backup2"  # Backup of a backup, for debugging.
@@ -45,8 +46,8 @@ valgrind_delay = 2 if slave.valgrind else 0  # allow a little time margin under 
 valgrind_delay += 2 # even without valgrind, add some tolerance because rounding timestamps to whole seconds multiple times
 
 if master.valgrind:
-    master.semantic_check = False
-    slave.semantic_check = False
+    master.conf_zone(zones).semantic_checks = False
+    slave.conf_zone(zones).semantic_checks = False
 
 t.start()
 serials_init = slave.zones_wait(zones)

@@ -68,26 +68,26 @@ def check_same_dnskey(server1, server2, server3, tst, tries=20):
 
 def configure_dnssec(server1, master, server2, server3, roll):
     t.link(zone, master, server1, ddns=True)
-    server1.tcp_remote_io_timeout = 1500
+    server1.conf_srv().tcp_remote_io_timeout = 1500
     if DNSKEY_MASTER < 2:
-        server1.ddns_master = ""
+        server1.conf_zone(zone).ddns_master = ""
     if DNSKEY_MASTER > 0:
-        server1.ixfr_benevolent = True
+        server1.conf_zone(list(server1.zones.keys())).ixfr_benevolent = True
 
     server_mod = int(server1.name[-1]) - 2
 
     server1.dnssec(zone).enable = True
     server1.dnssec(zone).single_type_signing = (roll == 2)
     server1.dnssec(zone).propagation_delay = 4
-    server1.dnssec(zone).ksk_sbm_timeout = 4
-    server1.dnssec(zone).dnskey_mgmt = "incremental"
+    server1.conf_ss("submission", zone).timeout = 4
+    server1.dnssec(zone).dnskey_management = "incremental"
     server1.dnssec(zone).delete_delay = 4
-    server1.dnssec(zone).cds_publish = ("always" if CDS else "none")
+    server1.dnssec(zone).cds_cdnskey_publish = ("always" if CDS else "none")
     server1.dnssec(zone).keytag_modulo = "%d/3" % server_mod
     if DNSKEY_MASTER == 1:
-        server1.dnssec(zone).dnskey_sync = [ master ]
+        server1.conf_ss("dnskey-sync", zone).remote = [ master ]
     else:
-        server1.dnssec(zone).dnskey_sync = [ server2, server3 ] if SIGNERS3 else [ server2 ]
+        server1.conf_ss("dnskey-sync", zone).remote = [ server2, server3 ] if SIGNERS3 else [ server2 ]
 
 t = Test()
 

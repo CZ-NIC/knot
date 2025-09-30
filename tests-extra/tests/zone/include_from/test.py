@@ -27,7 +27,7 @@ if tld_axfr:
 
 parent_master = master if tld_axfr else flattener
 
-flattener.zones[parent[0].name].include_from = childs
+flattener.conf_zone(parent).include_from = [ z.name for z in childs ]
 
 flattener.dnssec(parent).enable = random.choice([False, True])
 
@@ -74,11 +74,11 @@ r.check(rcode="NOERROR", rdata="added-txt")
 
 invalid_conf = random.choice(["include_self", "include_parent", "also_reverse"])
 if invalid_conf == "include_self":
-    flattener.zones[parent[0].name].include_from = parent
+    flattener.conf_zone(parent).include_from = parent[0].name
 elif invalid_conf == "include_parent":
-    flattener.zones[childs[0].name].include_from = parent
+    flattener.conf_zone(childs[0]).include_from = parent[0].name
 else:
-    flattener.zones[parent[0].name].reverse_from = childs
+    flattener.conf_zone(parent).reverse_generate = [ z.name for z in childs ]
 flattener.gen_confile()
 try:
     flattener.reload()

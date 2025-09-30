@@ -43,7 +43,7 @@ t.link(zones, knot)
 for z in zones:
     knot.dnssec(z).enable = True
     knot.dnssec(z).ksk_shared = True
-    knot.dnssec(z).alg = "ECDSAP256SHA256"
+    knot.dnssec(z).algorithm = "ECDSAP256SHA256"
     knot.dnssec(z).shared_policy_with = zones[0].name
 
 t.start()
@@ -61,8 +61,8 @@ for z in zones:
 
 # perform algorithm rollover
 for z in zones:
-    knot.dnssec(z).alg = "ECDSAP384SHA384"
-    knot.dnssec(z).ksk_sbm_timeout = 10
+    knot.dnssec(z).algorithm = "ECDSAP384SHA384"
+    knot.conf_ss("submission", z).timeout = 10
     knot.dnssec(z).propagation_delay = 5
 
 knot.gen_confile()
@@ -88,8 +88,8 @@ t.link(zones_add, knot)
 for z in zones_add:
     knot.dnssec(z).enable = True
     knot.dnssec(z).ksk_shared = True
-    knot.dnssec(z).alg = "ECDSAP384SHA384"
-    knot.dnssec(z).ksk_sbm_timeout = 10
+    knot.dnssec(z).algorithm = "ECDSAP384SHA384"
+    knot.conf_ss("submission", z).timeout = 10
     knot.dnssec(z).propagation_delay = 5
     knot.dnssec(z).shared_policy_with = zones[0].name
 

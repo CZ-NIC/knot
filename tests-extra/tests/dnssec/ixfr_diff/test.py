@@ -13,12 +13,12 @@ if not master.valgrind:
   zones = t.zone_rnd(12)
 else:
   zones = t.zone_rnd(4, records=100)
-  slave.tcp_remote_io_timeout = 20000
+  slave.conf_srv().tcp_remote_io_timeout = 20000
   master.ctl_params_append = ["-t", "30"]
 
 t.link(zones, master, slave, ixfr=True)
 
-master.semantic_check = False
+master.conf_zone(zones).semantic_checks = False
 master.zonefile_sync = "-1"
 for zone in zones:
   master.dnssec(zone).enable = True

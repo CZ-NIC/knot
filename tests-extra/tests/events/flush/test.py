@@ -12,10 +12,11 @@ t = Test()
 
 master = t.server("bind")
 slave = t.server("knot")
-slave.zonefile_sync = "5s"
 
 zone = t.zone("example.")
 t.link(zone, master, slave)
+
+slave.conf_zone(zone).zonefile_sync = "5s"
 
 zone_path = slave.zones[zone[0].name].zfile.path
 
@@ -51,7 +52,7 @@ if prev_mtime == last_mtime:
     set_err("NO POST-TRANSFER FLUSH")
 
 # Set the zonefile-sync parameter to 60s and update master - should not flush
-slave.zonefile_sync = "60s"
+slave.conf_zone(zone).zonefile_sync = "60s"
 slave.gen_confile()
 slave.reload()
 t.sleep(FLUSH_SLEEP) # ~ 15s wait for master to start
@@ -64,7 +65,7 @@ if os.stat(zone_path).st_mtime != last_mtime:
     set_err("SOON POST-RELOAD FLUSH")
 
 # Set the zonefile-sync parameter to 1s - should flush
-slave.zonefile_sync = "1s"
+slave.conf_zone(zone).zonefile_sync = "1s"
 slave.gen_confile()
 slave.reload()
 t.sleep(1.5)
