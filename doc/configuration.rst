@@ -829,11 +829,16 @@ or write to the same database. However, if multiple writers are used, they
 must be configured carefully to avoid conflicts or unexpected interactions.
 
 On the database side, the ``knot`` module must be available (e.g. by installing
-the ``redis-knot`` package from a `repository <https://www.knot-dns.cz/download/>`_)
-and loaded into the database. This is usually done by adding the following
-line to the database configuration::
+the ``redis-module-knot`` or ``valkey-module-knot`` package from
+a `repository <https://www.knot-dns.cz/download/>`_)
+and loaded into the database. This is usually done by adding one of the following
+lines to the database configuration::
 
-  loadmodule /usr/lib/redis/modules/knot.so [<parameter> <value>]...
+  loadmodule /usr/lib/x86_64-linux-gnu/redis/modules/knot.so [<parameter> <value>]...
+
+or::
+
+  loadmodule /usr/lib64/valkey/modules/knot.so [<parameter> <value>]...
 
 where the optional module parameters are:
 

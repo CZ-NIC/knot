@@ -217,7 +217,7 @@ Description: geoip module for Knot DNS
  registry and hence is well suited to run anything from the root
  zone, the top-level domain, to many smaller standard domain names.
 
-Package: redis-knot
+Package: redis-module-knot
 Architecture: any
 Depends:
  ${misc:Depends},

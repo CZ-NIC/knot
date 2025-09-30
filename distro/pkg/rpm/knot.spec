@@ -174,12 +174,12 @@ Requires:	%{name}-libs = %{version}-%{release}
 %description -n python3-libknot
 The package provides Python bindings for the libknot shared library.
 
-%package -n redis-knot
-Summary:	Redis module for Knot DNS.
+%package -n valkey-module-knot
+Summary:	Valkey module for Knot DNS.
 Requires:	%{name}-libs = %{version}-%{release}
 
-%description -n redis-knot
-The package provides Redis module for Knot DNS.
+%description -n valkey-module-knot
+The package provides Valkey module for Knot DNS.
 
 %package doc
 Summary:	Documentation for the Knot DNS server
@@ -216,6 +216,7 @@ CFLAGS="%{optflags} -DNDEBUG -Wno-unused"
   --libexecdir=/usr/lib/knot \
   --with-rundir=/run/knot \
   --with-moduledir=%{_libdir}/knot/modules-%{BASE_VERSION} \
+  --with-redisdir=%{_libdir}/valkey/modules \
   --with-storage=/var/lib/knot \
   %{?configure_db_sizes} \
   %{?configure_quic} \
@@ -396,8 +397,8 @@ getent passwd knot >/dev/null || \
 %{python3_sitelib}/libknot
 %{python3_sitelib}/libknot-*-info
 
-%files -n redis-knot
-%attr(0755, root, root) %{_libdir}/knot/redis/knot.so
+%files -n valkey-module-knot
+%attr(0755, root, root) %{_libdir}/valkey/modules/knot.so
 
 %files libs
 %license COPYING
