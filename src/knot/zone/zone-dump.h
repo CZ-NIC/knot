@@ -12,7 +12,7 @@
  * \brief Dumps given zone to text file.
  *
  * \param zone      Zone to be saved.
- * \param skip      RRRTypes to be skipped.
+ * \param skip      RRTypes to be skipped.
  * \param file      File to write to.
  * \param comments  Add separating comments indicator.
  * \param color     Optional color control sequence.
