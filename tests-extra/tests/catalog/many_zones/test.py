@@ -28,12 +28,12 @@ master.cat_generate(cz)
 slave.cat_interpret(cz)
 
 slave.dnssec(catz[0]).enable = DNSSEC
-slave.dnssec(catz[0]).alg = "ECDSAP256SHA256"
-slave.zones[catz[0].name].journal_content = "all"
+slave.dnssec(catz[0]).algorithm = "ECDSAP256SHA256"
+slave.conf_zone(catz).journal_content = "all"
 slave.journal_db_size = 200 * 1024 * 1024
 
 if master.valgrind:
-    master.tcp_idle_timeout = 15000
+    master.conf_srv().tcp_idle_timeout = 15000
 
 t.start()
 

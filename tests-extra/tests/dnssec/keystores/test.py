@@ -27,7 +27,7 @@ t.link(zone, server)
 
 server.dnssec(zone).enable = True
 server.dnssec(zone).propagation_delay = 1
-server.dnssec(zone).keystores = [ "keys1", "keys2" ]
+server.dnssec(zone).keystore = [ "keys1", "keys2" ]
 
 t.start()
 serial = server.zone_wait(zone)
@@ -35,7 +35,7 @@ serial = server.zone_wait(zone)
 check_key_count(server, "keys1", 2)
 check_key_count(server, "keys2", 0)
 
-server.dnssec(zone).keystores = [ "keys2", "keys1" ]
+server.dnssec(zone).keystore = [ "keys2", "keys1" ]
 server.gen_confile()
 server.reload()
 server.ctl("zone-key-rollover %s zsk" % zone[0].name)
@@ -61,7 +61,7 @@ serial = server.zone_wait(zone, serial)
 server.flush(zone[0], wait=True)
 server.zone_verify(zone[0])
 
-server.dnssec(zone).keystores = [ "keys0ksk", "keys1", "keys2" ]
+server.dnssec(zone).keystore = [ "keys0ksk", "keys1", "keys2" ]
 server.gen_confile()
 server.reload()
 

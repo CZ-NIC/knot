@@ -58,7 +58,7 @@ def wait_for_count(t, server, rrtype, count, timeout):
         if rtime > timeout:
             break
 
-t = Test()
+t = Test(tsig=False)
 
 parent = t.server("knot")
 parent_zone = t.zone("com.", storage=".")
@@ -66,8 +66,9 @@ t.link(parent_zone, parent)
 
 #parent.dnssec(parent_zone).enable = True
 
+CHILDZ = "example.com."
 child = t.server("knot")
-child_zone = t.zone("example.com.", storage=".")
+child_zone = t.zone(CHILDZ, storage=".")
 t.link(child_zone, child)
 
 def cds_submission():
@@ -77,16 +78,16 @@ def cds_submission():
     up.add(ZONE, 7, "DS", cds_rdata)
     up.send("NOERROR")
 
-child.zonefile_sync = 24 * 60 * 60
+child.conf_zone(child_zone).zonefile_sync = 24 * 60 * 60
 
 child.dnssec(child_zone).enable = True
 child.dnssec(child_zone).manual = False
-child.dnssec(child_zone).alg = "ECDSAP384SHA384"
+child.dnssec(child_zone).algorithm = "ECDSAP384SHA384"
 child.dnssec(child_zone).dnskey_ttl = 2
 child.dnssec(child_zone).zsk_lifetime = 99999
 child.dnssec(child_zone).ksk_lifetime = 9999
 child.dnssec(child_zone).propagation_delay = 4
-child.dnssec(child_zone).ksk_sbm_check_interval = 2
+child.conf_ss("submission", child_zone).check_interval = 2
 
 # parameters
 ZONE = "example.com."
@@ -96,7 +97,7 @@ child.zone_wait(child_zone)
 
 cds_submission()
 
-child.dnssec(child_zone).ksk_sbm_check = [ parent ]
+child.conf_ss("submission", child_zone).parent = [ parent ]
 child.dnssec(child_zone).ksk_lifetime = 13
 child.gen_confile()
 
@@ -105,7 +106,7 @@ child.reload()
 wait_for_count(t, child, "DNSKEY", 3, 20) # initiation of KSK rollover means the initial submission was successful
 check_zone(child, child_zone, 3, 2, 0, 1, "KSK rollover start")
 
-child.dnssec(child_zone).ksk_sbm_check = [ ]
+child.conf_ss("submission", child_zone).parent = [ ]
 child.dnssec(child_zone).ksk_lifetime = 150
 child.gen_confile()
 
@@ -115,7 +116,7 @@ t.sleep(6)
 cds_submission()
 t.sleep(1)
 
-child.dnssec(child_zone).ksk_sbm_check = [ parent ]
+child.conf_ss("submission", child_zone).parent = [ parent ]
 child.gen_confile()
 
 child.reload()

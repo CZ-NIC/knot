@@ -16,9 +16,9 @@ ZONE = "example.com."
 zone = t.zone(ZONE)
 t.link(zone, master, slave)
 
-master.zonefile_sync = -1
-master.zonemd_generate = "zonemd-sha384"
-slave.zonemd_verify = True
+master.conf_zone(zone).zonefile_sync = -1
+master.conf_zone(zone).zonemd_generate = "zonemd-sha384"
+slave.conf_zone(zone).zonemd_verify = True
 
 VALIDATE_ZONEFILE = random.choice([True, False])
 backup_cnt = 0
@@ -30,9 +30,9 @@ for load in ["whole", "difference", "difference-no-serial"]:
         check_log("ZONE FILE LOAD: " + load + ", DNSSEC: " + str(dnssec) + ", valide ZF: " + str(VALIDATE_ZONEFILE))
 
         master.ctl("-f zone-purge +journal +timers +kaspdb " + ZONE)
-        master.zonefile_load = load
-        master.zones[ZONE].journal_content = "all" if load == "difference-no-serial" else "changes"
-        master.zones[ZONE].dnssec.enable = dnssec
+        master.conf_zone(zone).zonefile_load = load
+        master.conf_zone(zone).journal_content = "all" if load == "difference-no-serial" else "changes"
+        master.dnssec(zone).enable = dnssec
         master.gen_confile()
         master.stop()
         master.start()

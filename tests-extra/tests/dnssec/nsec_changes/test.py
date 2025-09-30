@@ -8,7 +8,7 @@ from dnstest.utils import *
 from dnstest.test import Test
 
 def check_salt(server, zone):
-  expect_salt_len = server.dnssec(zone).nsec3_salt_len * 2 # *2 because we get hex string
+  expect_salt_len = server.dnssec(zone).nsec3_salt_length * 2 # *2 because we get hex string
   if expect_salt_len == 0:
       expect_salt_len = 1 # there will be a dash
 
@@ -47,8 +47,8 @@ master.check_nsec(zone2, nonsec=True)
 master.dnssec(zone1).enable = True
 master.dnssec(zone2).enable = True
 master.dnssec(zone2).nsec3 = True
-master.dnssec(zone2).nsec3_iters = 2
-master.dnssec(zone2).nsec3_salt_len = 2
+master.dnssec(zone2).nsec3_iterations = 2
+master.dnssec(zone2).nsec3_salt_length = 2
 master.gen_confile()
 master.reload()
 
@@ -84,11 +84,11 @@ master.zone_verify(zone2)
 
 # Reconfigure autosigning.
 master.dnssec(zone1).nsec3 = True
-master.dnssec(zone1).nsec3_iters = 2
-master.dnssec(zone1).nsec3_salt_len = 2
+master.dnssec(zone1).nsec3_iterations = 2
+master.dnssec(zone1).nsec3_salt_length = 2
 master.dnssec(zone2).nsec3 = True
-master.dnssec(zone2).nsec3_iters = 1
-master.dnssec(zone2).nsec3_salt_len = 0
+master.dnssec(zone2).nsec3_iterations = 1
+master.dnssec(zone2).nsec3_salt_length = 0
 master.gen_confile()
 # Intentionally restarted to ensure the zone file is fully loaded.
 master.stop()
@@ -127,8 +127,8 @@ master.zone_verify(zone2)
 
 # Reconfigure autosigning.
 master.dnssec(zone1).nsec3 = True
-master.dnssec(zone1).nsec3_iters = 1
-master.dnssec(zone1).nsec3_salt_len = 0
+master.dnssec(zone1).nsec3_iterations = 1
+master.dnssec(zone1).nsec3_salt_length = 0
 master.dnssec(zone2).nsec3 = False
 master.gen_confile()
 master.reload()

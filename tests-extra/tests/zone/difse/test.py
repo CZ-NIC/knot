@@ -40,9 +40,10 @@ start_version = random.choice([0, 2])
 knot = t.server("knot")
 zone = t.zone("example.com.", storage=".")
 t.link(zone, knot)
-knot.zonefile_sync = "-1"
-knot.zones[zone[0].name].journal_content = "all"
-knot.zonefile_load = "difference-no-serial"
+
+knot.conf_zone(zone).zonefile_sync = "-1"
+knot.conf_zone(zone).journal_content = "all"
+knot.conf_zone(zone).zonefile_load = "difference-no-serial"
 
 knot.update_zonefile(zone, version=start_version)
 

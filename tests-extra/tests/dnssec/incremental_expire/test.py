@@ -21,9 +21,9 @@ t.link(zone, master, slave, ddns=True)
 
 ZONE = zone[0].name
 
-slave.zonefile_sync = "-1"
+slave.conf_zone(zone).zonefile_sync = "-1"
 if FAIL2ROLL:
-    slave.journal_max_usage = 128 * 1024
+    slave.conf_zone(zone).journal_max_usage = 128 * 1024
 
 slave.dnssec(zone).enable = True
 slave.dnssec(zone).dnskey_ttl = 3

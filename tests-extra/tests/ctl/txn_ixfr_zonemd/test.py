@@ -15,7 +15,7 @@ ZONE = zones[0].name
 
 t.link(zones, master, slave, ixfr=True)
 
-slave.zonemd_generate = "zonemd-sha512"
+slave.conf_zone(zones).zonemd_generate = "zonemd-sha512"
 
 t.start()
 

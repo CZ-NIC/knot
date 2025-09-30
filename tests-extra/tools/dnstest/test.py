@@ -393,16 +393,16 @@ class Test(object):
 
         return zones
 
-    def link(self, zones, master, slave=None, ddns=False, ixfr=False, journal_content="changes"):
+    def link(self, zones, master, slave=None, ddns=False, ixfr=False):
         for zone in zones:
             if master not in self.servers:
                 raise Failed("Server is out of testing scope")
-            master.set_master(zone, slave, ddns, ixfr, journal_content)
+            master.set_master(zone, slave, ddns, ixfr)
 
             if slave:
                 if slave not in self.servers:
                     raise Failed("Server is out of testing scope")
-                slave.set_slave(zone, master, ddns, ixfr, journal_content)
+                slave.set_slave(zone, master, ddns, ixfr)
 
     def _canonize_record(self, rtype, record):
         ''':-(('''

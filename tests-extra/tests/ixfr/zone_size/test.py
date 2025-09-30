@@ -9,8 +9,9 @@ t = Test()
 master1 = t.server("knot")
 slave = t.server("knot")
 zone = t.zone("example.com.", storage=".", version=1)
-slave.zone_size_limit = 230
 t.link(zone, master1, slave, ixfr=True)
+
+slave.conf_zone(zone).zone_max_size = 230
 
 t.start()
 

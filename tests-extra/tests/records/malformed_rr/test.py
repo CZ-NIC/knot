@@ -17,11 +17,11 @@ zone = t.zone(ZONE)
 t.link(zone, master, slave)
 t.link(zone, zfloader)
 
-master.zonefile_load = "none"
-master.zones[ZONE].journal_content = "all"
+master.conf_zone(zone).zonefile_load = "none"
+master.conf_zone(zone).journal_content = "all"
 
-zfloader.zonefile_load = "difference-no-serial"
-zfloader.zones[ZONE].journal_content = "all"
+zfloader.conf_zone(zone).zonefile_load = "difference-no-serial"
+zfloader.conf_zone(zone).journal_content = "all"
 
 shutil.copytree(os.path.join(t.data_dir, "journal"), os.path.join(master.dir, "journal"))
 

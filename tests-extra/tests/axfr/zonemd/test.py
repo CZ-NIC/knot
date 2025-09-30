@@ -15,9 +15,9 @@ t.link(zone, master, slave)
 
 slave.dnssec(zone).enable = True
 
-master.zonemd_verify = True
-slave.zonemd_verify = True
-slave.zonemd_generate = random.choice(["zonemd-sha384", "zonemd-sha512"])
+master.conf_zone(zone).zonemd_verify = True
+slave.conf_zone(zone).zonemd_verify = True
+slave.conf_zone(zone).zonemd_generate = random.choice(["zonemd-sha384", "zonemd-sha512"])
 
 t.start()
 

@@ -14,12 +14,12 @@ t.link(zone, master, slave, ixfr=True)
 
 master.dnssec(zone).enable = True
 
-master.zonefile_sync = 0
-slave.zonefile_sync = 0
+master.conf_zone(zone).zonefile_sync = 0
+slave.conf_zone(zone).zonefile_sync = 0
 
 if master.valgrind:
-    master.semantic_check = False
-    slave.semantic_check = False
+    master.conf_zone(zone).semantic_checks = False
+    slave.conf_zone(zone).semantic_checks = False
 
 t.start()
 

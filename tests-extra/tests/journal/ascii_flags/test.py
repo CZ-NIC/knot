@@ -16,7 +16,7 @@ t.link(zones, master, slave)
 
 master.zones[ZONE].zfile.update_soa(serial=1718378850)
 
-master.journal_max_depth = 10
+master.conf_zone(zones).journal_max_depth = 10
 
 t.start()
 serials = master.zones_wait(zones)

@@ -14,9 +14,9 @@ zones = t.zone(ZONE, storage=".")
 
 t.link(zones, master, slave)
 
-master.zonefile_sync = 0
-master.zonefile_load = "difference-no-serial"
-master.zones[ZONE].journal_content = "all"
+master.conf_zone(zones).zonefile_sync = 0
+master.conf_zone(zones).zonefile_load = "difference-no-serial"
+master.conf_zone(zones).journal_content = "all"
 
 if random.choice([False, True]):
     master.dnssec(zones[0]).enable = True

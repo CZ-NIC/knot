@@ -13,7 +13,7 @@ t.link(zone, server)
 
 server.dnssec(zone).enable = True
 
-server.zonefile_skip = [ "aaaa", "dnssec" ]
+server.conf_zone(zone).zonefile_skip = [ "aaaa", "dnssec" ]
 
 t.start()
 
@@ -39,7 +39,7 @@ zf.check_count(0, "AAAA")
 zf.check_count(0, "RRSIG")
 zf.check_count(0, "NSEC")
 
-server.zonefile_skip = [ "a", "nsec" ]
+server.conf_zone(zone).zonefile_skip = [ "a", "nsec" ]
 server.gen_confile()
 server.reload()
 t.sleep(2)
@@ -63,9 +63,9 @@ zf.check_count(1, "AAAA")
 zf.check_count(10, "RRSIG")
 zf.check_count(0, "NSEC")
 
-server.zonefile_sync = "-1"
-server.zonefile_load = "difference-no-serial"
-server.zones[zone[0].name].journal_content = "all"
+server.conf_zone(zone).zonefile_sync = "-1"
+server.conf_zone(zone).zonefile_load = "difference-no-serial"
+server.conf_zone(zone).journal_content = "all"
 server.gen_confile()
 server.reload()
 t.sleep(1)

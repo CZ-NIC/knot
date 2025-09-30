@@ -10,9 +10,10 @@ t = Test()
 
 master = t.server("knot")
 zone = t.zone("example.com.")
-master.zone_size_limit = 5000
-
 t.link(zone, master, ddns=True)
+
+master.conf_zone(zone).zone_max_size = 5000
+
 t.start()
 
 master.zones_wait(zone)
@@ -36,7 +37,7 @@ next_step = random.choice([2, 3])
 # Step 2. Check possibly dead pointer in additionals_tree (server would crash).
 
 if next_step == 2:
-    master.zone_size_limit = 10000
+    master.conf_zone(zone).zone_max_size = 10000
     master.gen_confile()
     master.reload()
 
@@ -51,7 +52,7 @@ if next_step == 3:
     soa1 = resp.soa_serial()
 
     master.stop()
-    master.zone_size_limit = 10000
+    master.conf_zone(zone).zone_max_size = 10000
     master.gen_confile()
     master.start() # let the changesets from journal apply
     master.zones_wait(zone)

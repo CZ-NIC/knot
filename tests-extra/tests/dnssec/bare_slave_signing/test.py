@@ -10,9 +10,10 @@ t = Test()
 
 master = t.server("knot")
 slave = t.server("knot")
-slave.zonefile_sync = "-1"
 zone = t.zone_rnd(1, dnssec=False)
 t.link(zone, master, slave)
+
+slave.conf_zone(zone).zonefile_sync = "-1"
 slave.dnssec(zone).enable = True
 
 t.start()

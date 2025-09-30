@@ -38,8 +38,8 @@ t.link(zone, master)
 
 master.dnssec(zone).enable = True
 master.dnssec(zone).nsec3 = True
-master.dnssec(zone).nsec3_iters = 2
-master.dnssec(zone).nsec3_salt_len = 8
+master.dnssec(zone).nsec3_iterations = 2
+master.dnssec(zone).nsec3_salt_length = 8
 master.dnssec(zone).nsec3_opt_out = False
 
 t.start()

@@ -14,8 +14,9 @@ zone.update_soa(serial=1, refresh=600, retry=600, expire=3600)
 master = t.server("knot")
 slave = t.server("knot")
 
-slave.zonefile_sync = 24 * 60 * 60
 t.link([zone], master, slave)
+
+slave.conf_zone(zone).zonefile_sync = 24 * 60 * 60
 
 t.start()
 

@@ -30,13 +30,13 @@ EXPIRE_SLEEP = 18
 master = t.server("knot")
 slave = t.server("knot")
 sub_slave = t.server("knot")
-slave.tcp_remote_io_timeout = "1000"
 
 t.link(zone, master, slave)
 t.link(zone, slave, sub_slave)
 
-slave.zones[zone[0].name].expire_min = 16
-sub_slave.zones[zone[0].name].expire_min = 16
+slave.conf_srv().tcp_remote_io_timeout = "1000"
+slave.conf_zone(zone).expire_min_interval = 16
+sub_slave.conf_zone(zone).expire_min_interval = 16
 
 t.start()
 
@@ -91,7 +91,7 @@ test_not_expired(zone, sub_slave)
 # expire timer difference (normally caused by multi-path propagation)
 # by lowering the expire value while keeping the serial.
 # Journal must be disabled in order to allow mangled SOA serials.
-master.zones["example."].journal_content = "none"
+master.conf_zone(zone).journal_content = "none"
 master.gen_confile()
 master.reload()
 master.ctl("zone-begin example.")
