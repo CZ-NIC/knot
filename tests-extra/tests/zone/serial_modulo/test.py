@@ -36,7 +36,7 @@ else:
 
 for z in zones:
     knot.dnssec(z).enable = True
-    knot.zones[z.name].serial_modulo = "%d/%d" % (MODULO_A, MODULO_B)
+    knot.conf_zone(z).serial_modulo = "%d/%d" % (MODULO_A, MODULO_B)
 
     knot.zonefile_load = "difference-no-serial"
     knot.zones[z.name].journal_content = "all"

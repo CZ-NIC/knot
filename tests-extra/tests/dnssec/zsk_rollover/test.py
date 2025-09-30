@@ -68,7 +68,7 @@ zone = t.zone("example.com.", storage=".")
 t.link(zone, unsigned_master, master, ddns=True)
 
 unsigned_master.zones[zone[0].name].journal_content = "none"
-master.ixfr_from_axfr = True
+master.conf_zone(zone).ixfr_from_axfr = True
 
 master.dnssec(zone).enable = True
 master.dnssec(zone).manual = False

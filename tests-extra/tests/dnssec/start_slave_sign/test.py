@@ -16,8 +16,8 @@ zone = t.zone("example.") # has SOA serial lower than @now
 
 t.link(zone, master, slave, ddns=True)
 
-master.serial_policy = random.choice(["increment", "unixtime", "dateserial"])
-slave.serial_policy = random.choice(["increment", "unixtime", "dateserial"])
+master.conf_zone(zone).serial_policy = random.choice(["increment", "unixtime", "dateserial"])
+slave.conf_zone(zone).serial_policy = random.choice(["increment", "unixtime", "dateserial"])
 
 slave.dnssec(zone).nsec3 = random.choice([False, True])
 

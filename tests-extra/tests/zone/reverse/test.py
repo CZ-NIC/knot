@@ -20,8 +20,7 @@ zones = t.zone("example.com.", storage=".") + \
         t.zone("0.8.b.d.1.0.0.2.ip6.arpa.", storage=".")
 t.link(zones, knot)
 
-knot.zones[zones[2].name].reverse_from = [ zones[0], zones[1] ]
-knot.zones[zones[3].name].reverse_from = [ zones[0], zones[1] ]
+knot.conf_zone(zones[2:]).reverse_generate = [ zones[0].name, zones[1].name ]
 
 for z in zones:
     knot.dnssec(z).enable = random.choice([False, True])

@@ -37,6 +37,22 @@ def zone_arg_check(zone):
         return zone[0]
     return zone
 
+def zones_names(zones):
+    # Consume either names or zones objects, return list of names
+    if not isinstance(zones, list):
+        zones = [ zones ]
+    return [ z if isinstance(z, str) else z.name for z in zones ]
+
+class multidict(object):
+    def __init__(self, zonenames, allzones):
+        self.__dict__['zonenames'] = zonenames
+        self.__dict__['allzones'] = allzones
+    def __getattr__(self, attr):
+        return dict((zn, self.__dict__['allzones'][zn][attr]) for zn in self.__dict__['zonenames'])
+    def __setattr__(self, key, value):
+        for zn in self.__dict__['zonenames']:
+            self.__dict__['allzones'][zn][key] = value
+
 class ZoneDnssec(object):
     '''Zone DNSSEC signing configuration'''
 
@@ -98,13 +114,10 @@ class Zone(object):
         self.slaves = set()
         self.redis_in = None
         self.redis_out = None
-        self.serial_modulo = None
         self.ddns = ddns
         self.ixfr = ixfr
         self.journal_content = journal_content # journal contents
         self.modules = []
-        self.reverse_from = None
-        self.include_from = None
         self.external = None
         self.dnssec = ZoneDnssec()
         self.catalog_role = ZoneCatalogRole.NONE
@@ -161,6 +174,8 @@ class Server(object):
 
         self.data_dir = None
 
+        self.zone_conf = dict()
+
         self.nsid = None
         self.ident = None
         self.version = None
@@ -211,7 +226,6 @@ class Server(object):
         self.zonemd_generate = None
         self.ixfr_benevolent = None
         self.ixfr_by_one = None
-        self.ixfr_from_axfr = None
         self.journal_db_size = 20 * 1024 * 1024
         self.journal_max_usage = 5 * 1024 * 1024
         self.journal_max_depth = 100
@@ -219,7 +233,6 @@ class Server(object):
         self.kasp_db_size = 10 * 1024 * 1024
         self.catalog_db_size = 10 * 1024 * 1024
         self.zone_size_limit = None
-        self.serial_policy = None
         self.auto_acl = None
         self.async_start = None
         self.provide_ixfr = None
@@ -243,6 +256,12 @@ class Server(object):
         self.redis = None
 
         self.binding_errors = 0
+
+    def conf_base(self, conf_dict, zones):
+        return multidict(zones_names(zones), conf_dict)
+
+    def conf_zone(self, zones):
+        return self.conf_base(self.zone_conf, zones)
 
     def _check_socket(self, proto, port):
         if self.addr.startswith("/"):
@@ -291,6 +310,7 @@ class Server(object):
             master_file = zone.clone(self.dir + "/master")
             z = Zone(master_file, ddns, ixfr, journal_content)
             self.zones[zone.name] = z
+            self.zone_conf[zone.name] = dict()
         else:
             z = self.zones[zone.name]
 
@@ -305,6 +325,7 @@ class Server(object):
         if zone.name not in self.zones:
             z = Zone(slave_file, ddns, ixfr, journal_content)
             self.zones[zone.name] = z
+            self.zone_conf[zone.name] = dict()
         else:
             z = self.zones[zone.name]
             z.disable_master(slave_file)
@@ -1969,25 +1990,20 @@ class Knot(Server):
             s.id_item("domain", z.name)
             s.item_str("file", z.zfile.path)
 
+            for ci, val in self.zone_conf[z.name].items():
+                s.item_type(ci.replace("_", "-"), val)
+
             self.config_xfr(z, s)
 
             self._str(s, "zone-db-input", z.redis_in)
             self._str(s, "zone-db-output", z.redis_out)
 
-            self._str(s, "serial-policy", self.serial_policy)
-            self._str(s, "serial-modulo", z.serial_modulo)
             self._str(s, "ddns-master", self.ddns_master)
 
             s.item_str("journal-content", z.journal_content)
             self._bool(s, "ixfr-benevolent", self.ixfr_benevolent)
             self._bool(s, "ixfr-by-one", self.ixfr_by_one)
-            self._bool(s, "ixfr-from-axfr", self.ixfr_from_axfr)
             self._bool(s, "provide-ixfr", self.provide_ixfr)
-
-            if z.reverse_from:
-                s.item("reverse-generate", "[ " + ", ".join([ x.name for x in z.reverse_from ]) + " ]")
-            if z.include_from:
-                s.item("include-from", "[ " + ", ".join([ x.name for x in z.include_from ]) + " ]")
 
             self._str(s, "refresh-min-interval", z.refresh_min)
             self._str(s, "refresh-max-interval", z.refresh_max)

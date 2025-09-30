@@ -14,7 +14,7 @@ zone = t.zone("xfr", storage=".")
 t.link(zone, master, slave)
 t.link(zone, slave, sub_slave)
 
-slave.ixfr_from_axfr = True
+slave.conf_zone(zone).ixfr_from_axfr = True
 
 t.start()
 

@@ -21,8 +21,8 @@ t.link(zones, master, slave)
 master.update_delay = 6
 slave.update_delay = 6
 
-master.serial_policy = "unixtime"
-slave.serial_policy = "unixtime"
+master.conf_zone(zones).serial_policy = "unixtime"
+slave.conf_zone(zones).serial_policy = "unixtime"
 
 for z in zones:
     master.zones[z.name].zfile.update_soa(serial=int(time.time()))
