@@ -22,7 +22,7 @@ for z in zones:
     master.dnssec(z).enable = True
     master.dnssec(z).rrsig_lifetime = 10
     master.dnssec(z).rrsig_refresh = 1
-    master.dnssec(z).rrsig_prerefresh = 1
+    master.dnssec(z).rrsig_pre_refresh = 1
 
 t.start()
 
@@ -43,8 +43,7 @@ dig_multi(slave, zones, "SERVFAIL")
 # SCENARIO II -- configured  dnssec-validation
 master.start()
 slave.stop()
-for z in zones:
-    slave.dnssec(z).validate = True
+slave.conf_zone(zones).dnssec_validation = True
 slave.gen_confile()
 slave.start()
 serials = slave.zones_wait(zones, serials)

@@ -64,8 +64,8 @@ lockfile = os.path.join(backup_dir, "lock.knot_backup")
 labelfile = os.path.join(backup_dir, "knot_backup.label")
 
 if master.valgrind:
-    master.semantic_check = False
-    master2.semantic_check = False
+    master.conf_zone(zones).semantic_checks = False
+    master2.conf_zone(zones).semantic_checks = False
 
 t.start()
 serials_init = master.zones_wait(zones)

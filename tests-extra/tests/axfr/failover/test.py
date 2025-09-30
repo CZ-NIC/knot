@@ -24,16 +24,16 @@ master1 = t.server("knot")
 master2 = t.server("knot")
 slave = t.server("knot")
 
-# flush zones immediately
-for server in [master1, master2, slave]:
-    slave.zonefile_sync = "0"
-
 t.link([zone], master1, master2)
 t.link([zone], master1, slave)
 t.link([zone], master2, slave)
 
 slave.journal_db_size = 1024 * 1024
-slave.zones[zone.name].journal_content = "all"
+slave.conf_zone(zone).journal_content = "all"
+
+# flush zones immediately
+for server in [master1, master2, slave]:
+    server.conf_zone(zone).zonefile_sync = "0"
 
 t.start()
 

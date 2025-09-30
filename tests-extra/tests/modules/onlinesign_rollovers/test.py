@@ -157,7 +157,7 @@ def watch_ksk_rollover(t, server, zone, before_keys, after_keys, total_keys, des
     wait_for_dnskey_count(t, server, after_keys, 28)
     check_zone(server, zone, after_keys, 1, 1, 1, desc + ": old key removed")
 
-t = Test(stress=False)
+t = Test(stress=False, tsig=False)
 
 ModOnlineSign.check()
 
@@ -180,7 +180,8 @@ def cds_submission():
 
 child.zonefile_sync = 24 * 60 * 60
 
-child.dnssec(child_zone).ksk_sbm_check = [ parent ]
+child.conf_ss("submission", child_zone).parent = [ parent ]
+
 child.add_module(child_zone, ModOnlineSign("ECDSAP384SHA384", key_size="384", prop_delay=11, ksc = [ parent ],
                                            ksci = 2, ksk_shared=True, cds_publish="always",
                                            cds_digesttype=random.choice(["sha256", "sha384"])))

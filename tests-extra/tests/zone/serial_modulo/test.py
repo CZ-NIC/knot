@@ -34,12 +34,10 @@ else:
     source = knot
     t.link(zones, knot)
 
-for z in zones:
-    knot.dnssec(z).enable = True
-    knot.zones[z.name].serial_modulo = "%d/%d" % (MODULO_A, MODULO_B)
-
-    knot.zonefile_load = "difference-no-serial"
-    knot.zones[z.name].journal_content = "all"
+knot.dnssec(zones).enable = True
+knot.conf_zone(zones).serial_modulo = "%d/%d" % (MODULO_A, MODULO_B)
+knot.conf_zone(zones).zonefile_load = "difference-no-serial"
+knot.conf_zone(zones).journal_content = "all"
 
 detail_log("SCENARIO " + SCENARIO)
 t.start()

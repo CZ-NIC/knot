@@ -17,7 +17,7 @@ t.link(zone, master, slave1)
 t.link(zone, master, slave2)
 t.link(zone, master, slave3)
 
-master.zones[zone[0].name].retry_max = 10
+master.conf_zone(zone).retry_max_interval = 10
 
 t.start()
 

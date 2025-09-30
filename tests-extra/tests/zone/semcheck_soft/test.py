@@ -14,8 +14,8 @@ zone = t.zone("example.com.", storage=".")
 
 t.link(zone, master, slave, ixfr=True)
 
-master.semantic_check = "soft"
-slave.semantic_check = "soft"
+master.conf_zone(zone).semantic_checks = "soft"
+slave.conf_zone(zone).semantic_checks = "soft"
 
 t.start()
 

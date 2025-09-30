@@ -47,10 +47,10 @@ t.link(zones, masterA, slave, ixfr=True)
 t.link(zones, masterB, slave, ixfr=True)
 
 for m in [ masterA, masterB ]:
-    m.serial_policy = "unixtime"
-    m.zonefile_load = "difference-no-serial"
-    m.dnssec(zone).enable = True
-    m.zones[zone.name].journal_content = "all"
+    m.conf_zone(zones).serial_policy = "unixtime"
+    m.conf_zone(zones).zonefile_load = "difference-no-serial"
+    m.dnssec(zones).enable = True
+    m.conf_zone(zones).journal_content = "all"
 
 masterB.zones[zone.name].serial_modulo = str(-PIN)
 

@@ -68,25 +68,25 @@ t.link(zone, master, slave, ixfr=random.choice([True, False]))
 if DNSSEC:
     for z in zone:
         master.dnssec(z).enable = True
-        slave.dnssec(z).validate = True
+        slave.conf_zone(z).dnssec_validation = True
 
-master.zonefile_sync = 0
-master.zonemd_generate = "none"
-slave.zonemd_verify = False
+master.conf_zone(zone).zonefile_sync = 0
+master.conf_zone(zone).zonemd_generate = "none"
+slave.conf_zone(zone).zonemd_verify = False
 
 t.start()
 
 serial = slave.zones_wait(zone)
 check_zonemd(master, zone, Algo.NONE)
 
-master.zonemd_generate = "zonemd-sha384"
+master.conf_zone(zone).zonemd_generate = "zonemd-sha384"
 master.gen_confile()
 master.reload()
-slave.zonemd_verify = True
+slave.conf_zone(zone).zonemd_verify = True
 check_serial_incr(slave, zone, serial, 1, "alg change")
 check_zonemd(master, zone, Algo.SHA384)
 
-master.zonemd_generate = "zonemd-sha512"
+master.conf_zone(zone).zonemd_generate = "zonemd-sha512"
 master.gen_confile()
 master.reload()
 check_serial_incr(slave, zone, serial, 1, "alg change")
@@ -118,28 +118,28 @@ master.ctl("zone-reload")
 check_serial_incr(slave, zone, serial, 2, "ZF reload")
 check_zonemd(master, zone, Algo.SHA512)
 
-slave.zonemd_verify = False
+slave.conf_zone(zone).zonemd_verify = False
 slave.gen_confile()
 slave.reload()
 
-master.zonemd_generate = "none"
+master.conf_zone(zone).zonemd_generate = "none"
 master.gen_confile()
 master.reload()
 check_zonemd(master, zone, Algo.SHA512)
 
-master.zonemd_generate = "remove"
+master.conf_zone(zone).zonemd_generate = "remove"
 master.gen_confile()
 master.reload()
 check_serial_incr(slave, zone, serial, 1, "ZONEMD remove")
 check_zonemd(master, zone, Algo.NONE)
 
 # removing when there's nothing left to remove shouldn't do anything
-master.zonemd_generate = "none"
+master.conf_zone(zone).zonemd_generate = "none"
 master.gen_confile()
 master.reload()
 check_zonemd(master, zone, Algo.NONE)
 
-master.zonemd_generate = "remove"
+master.conf_zone(zone).zonemd_generate = "remove"
 master.gen_confile()
 master.reload()
 check_zonemd(master, zone, Algo.NONE)

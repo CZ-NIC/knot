@@ -32,15 +32,15 @@ t.link(nsec_zone, master)
 t.link(nsec3_zone, master)
 t.link(static_zone, master)
 
-master.dnssec(nsec_zone).alg = "rsasha1"
-master.dnssec(nsec3_zone).alg = "rsasha1"
+master.dnssec(nsec_zone).algorithm = "rsasha1"
+master.dnssec(nsec3_zone).algorithm = "rsasha1"
 master.dnssec(nsec3_zone).nsec3 = True
-master.dnssec(nsec3_zone).nsec3_iters = 0
-master.dnssec(nsec3_zone).nsec3_salt_len = 0
-master.dnssec(static_zone).alg = "ecdsap256sha256"
-master.dnssec(nsec_zone).cds_publish = "rollover"
-master.dnssec(nsec3_zone).cds_publish = "rollover"
-master.dnssec(static_zone).cds_publish = "rollover"
+master.dnssec(nsec3_zone).nsec3_iterations = 0
+master.dnssec(nsec3_zone).nsec3_salt_length = 0
+master.dnssec(static_zone).algorithm = "ecdsap256sha256"
+master.dnssec(nsec_zone).cds_cdnskey_publish = "rollover"
+master.dnssec(nsec3_zone).cds_cdnskey_publish = "rollover"
+master.dnssec(static_zone).cds_cdnskey_publish = "rollover"
 
 # install KASP db
 keydir = master.keydir

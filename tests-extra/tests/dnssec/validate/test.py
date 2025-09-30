@@ -23,12 +23,7 @@ zones_unsigned = t.zone("example.com.")
 zones = zones_ok + zones_ok3 + zones_nok + zones_nok3
 t.link(zones + zones_unsigned, master, slave, ixfr=True)
 
-for z in zones_ok + zones_nok:
-    slave.dnssec(z).validate = True
-for z in zones_ok3 + zones_nok3:
-    slave.dnssec(z).validate = True
-for z in zones_unsigned:
-    slave.dnssec(z).validate = True
+slave.conf_zone(zones_ok + zones_nok + zones_ok3 + zones_nok3 + zones_unsigned).dnssec_validation = True
 
 t.start()
 

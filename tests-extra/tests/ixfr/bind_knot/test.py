@@ -12,8 +12,8 @@ zones = t.zone_rnd(5, records=50) + t.zone("records.")
 
 t.link(zones, master, slave, ixfr=True)
 
-slave.tcp_io_timeout = 3000
-slave.tcp_remote_io_timeout = 8000
+slave.conf_srv().tcp_io_timeout = 3000
+slave.conf_srv().tcp_remote_io_timeout = 8000
 
 t.start()
 

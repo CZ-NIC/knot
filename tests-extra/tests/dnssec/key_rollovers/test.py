@@ -160,7 +160,7 @@ def watch_alg_rollover(t, server, zone, slave, before_keys, after_keys, desc, se
 
     if set_stss is not None:
         server.dnssec(zone).single_type_signing = set_stss
-    server.dnssec(zone).alg = set_alg
+    server.dnssec(zone).algorithm = set_alg
     server.gen_confile()
     server.reload()
 
@@ -239,7 +239,7 @@ def watch_ksk_rollover(t, server, zone, slave, before_keys, after_keys, total_ke
         wait_for_count(t, server, "DNSKEY", after_keys, 14, 20, msg)
     check_zone(server, zone, slave, after_keys, 1, 1, 1, msg)
 
-t = Test()
+t = Test(tsig=False) # the facility of DS Query does not work with TSIG
 
 parent = t.server("knot")
 parent_zone = t.zone("com.", storage=".")
@@ -260,27 +260,27 @@ def cds_submission():
         up.add(ZONE, 7, "DS", rd.to_text())
     up.send("NOERROR")
 
-child.zonefile_sync = 24 * 60 * 60
+child.conf_zone(child_zone).zonefile_sync = 24 * 60 * 60
 
 child.dnssec(child_zone).enable = True
 child.dnssec(child_zone).manual = False
-child.dnssec(child_zone).alg = "ECDSAP384SHA384"
+child.dnssec(child_zone).algorithm = "ECDSAP384SHA384"
 child.dnssec(child_zone).dnskey_ttl = 2
 child.dnssec(child_zone).zsk_lifetime = 99999
 child.dnssec(child_zone).ksk_lifetime = 300 # this can be possibly left also infinity
 child.dnssec(child_zone).delete_delay = DELETE_DELAY
-child.dnssec(child_zone).dnskey_mgmt = "incremental" if INCREMENTAL else "full"
+child.dnssec(child_zone).dnskey_management = "incremental" if INCREMENTAL else "full"
 child.dnssec(child_zone).propagation_delay = 11
-child.dnssec(child_zone).ksk_sbm_check = [ parent ]
-child.dnssec(child_zone).ksk_sbm_check_interval = 2
-child.dnssec(child_zone).ksk_sbm_delay = 6
 child.dnssec(child_zone).ksk_shared = True
-child.dnssec(child_zone).cds_publish = "always"
+child.dnssec(child_zone).cds_cdnskey_publish = "always"
 if DOUBLE_DS:
-    child.dnssec(child_zone).cds_publish = "double-ds"
-child.dnssec(child_zone).cds_digesttype = CDS_DT
+    child.dnssec(child_zone).cds_cdnskey_publish = "double-ds"
+child.dnssec(child_zone).cds_digest_type = CDS_DT
+child.conf_ss("submission", child_zone).parent = [ parent ]
+child.conf_ss("submission", child_zone).check_interval = 2
+child.conf_ss("submission", child_zone).parent_delay = 6
 
-slave.dnssec(child_zone).validate = True
+slave.conf_zone(child_zone).dnssec_validation = True
 
 # parameters
 ZONE = "example.com."

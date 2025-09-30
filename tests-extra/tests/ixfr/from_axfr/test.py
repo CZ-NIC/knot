@@ -14,11 +14,11 @@ zone = t.zone("xfr", storage=".")
 t.link(zone, master, slave)
 t.link(zone, slave, sub_slave)
 
-slave.ixfr_from_axfr = True
+slave.conf_zone(zone).ixfr_from_axfr = True
 
 t.start()
 
-serial = master.zones_wait(zone)
+serial = sub_slave.zones_wait(zone)
 serial_init = serial
 
 # update zone with small change
@@ -37,8 +37,8 @@ t.xfr_diff(slave, sub_slave, zone, serial_init)
 
 # test case 2: generate+verify ZONEMD
 
-slave.zonemd_generate = "zonemd-sha384"
-sub_slave.zonemd_verify = True
+slave.conf_zone(zone).zonemd_generate = "zonemd-sha384"
+sub_slave.conf_zone(zone).zonemd_verify = True
 
 slave.gen_confile()
 sub_slave.gen_confile()
@@ -58,7 +58,7 @@ t.xfr_diff(slave, sub_slave, zone, serial_init)
 
 for z in zone:
     slave.dnssec(z).enable = True
-    sub_slave.dnssec(z).validate = True
+    sub_slave.conf_zone(z).dnssec_validation = True
 
 slave.gen_confile()
 sub_slave.gen_confile()

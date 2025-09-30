@@ -24,7 +24,7 @@ z0name = zones[0].name
 for z in zones:
     knot.dnssec(z).enable = (z.name == z0name)
     knot.dnssec(z).ksk_shared = True
-    knot.dnssec(z).alg = "ECDSAP256SHA256"
+    knot.dnssec(z).algorithm = "ECDSAP256SHA256"
     knot.dnssec(z).shared_policy_with = zones[0].name
 
 t.start()
@@ -32,9 +32,8 @@ knot.zones_wait(zones)
 
 for z in zones:
     check_zone(knot, z, 1 if z.name == z0name else 0, "initial sign")
-    knot.dnssec(z).disable = knot.dnssec(z).enable
-    knot.dnssec(z).enable = True
-    knot.dnssec(z).alg = "ECDSAP384SHA384"
+    knot.dnssec(z).enable = not knot.dnssec(z).enable
+    knot.dnssec(z).algorithm = "ECDSAP384SHA384"
 
 knot.gen_confile()
 knot.reload()

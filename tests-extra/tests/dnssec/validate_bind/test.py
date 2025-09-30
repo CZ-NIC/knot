@@ -17,7 +17,7 @@ t.link(zones, master, slave, ixfr=True, ddns=True)
 
 for z in zones:
     master.dnssec(z).enable = True
-    slave.dnssec(z).validate = True
+    slave.conf_zone(z).dnssec_validation = True
 
 for z in zones_nsec3:
     master.dnssec(z).nsec3 = True

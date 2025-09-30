@@ -137,7 +137,7 @@ def watch_ksk_rollover(t, server, zone, before_keys, after_keys, total_keys, des
     wait_for_count(t, server, "DNSKEY", after_keys, 10, 20, msg) # ds_ttl
     check_zone(server, zone, server, after_keys, 1, 0, 1, msg)
 
-t = Test()
+t = Test(tsig=False)
 
 parent = t.server("knot")
 parent_zone = t.zone("com.", storage=".")
@@ -159,9 +159,9 @@ def cds_submission():
 child.dnssec(child_zone).enable = True
 child.dnssec(child_zone).dnskey_ttl = 6
 child.dnssec(child_zone).propagation_delay = 11
-child.dnssec(child_zone).ksk_sbm_check = [ parent ]
-child.dnssec(child_zone).ksk_sbm_check_interval = 3
-child.dnssec(child_zone).cds_publish = "rollover"
+child.dnssec(child_zone).cds_cdnskey_publish = "rollover"
+child.conf_ss("submission", child_zone).parent = [ parent ]
+child.conf_ss("submission", child_zone).check_interval = 3
 
 t.start()
 child.zone_wait(child_zone)

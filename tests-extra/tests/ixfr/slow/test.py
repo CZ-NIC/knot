@@ -21,8 +21,8 @@ master.dnssec(zone_slow).enable = True
 
 MSGDELAY = 90
 
-master.tcp_remote_io_timeout = 4000
-master.tcp_io_timeout = 4000
+master.conf_srv().tcp_remote_io_timeout = 4000
+master.conf_srv().tcp_io_timeout = 4000
 
 def slow_ixfr(server, zname, serial):
     server.kdig(zname, "IXFR=" + str(serial), msgdelay=MSGDELAY)

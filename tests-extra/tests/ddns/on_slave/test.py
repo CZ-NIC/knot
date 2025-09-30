@@ -15,7 +15,7 @@ zone = t.zone("example.com.")
 t.link(zone, master, slave, ddns=True)
 
 slave.dnssec(zone).enable = True
-slave.ddns_master = ""
+slave.conf_zone(zone).ddns_master = ""
 
 t.start()
 

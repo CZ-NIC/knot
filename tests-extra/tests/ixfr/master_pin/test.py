@@ -20,7 +20,7 @@ zone = zones[0]
 
 t.link(zones, masterA, slave, ixfr=True)
 
-slave.master_pin_tol = PERIOD
+slave.conf_zone(zones).master_pin_tolerance = PERIOD
 
 masterA.disable_notify = DISABLE_NOTIFY
 masterB.disable_notify = DISABLE_NOTIFY

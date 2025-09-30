@@ -17,14 +17,13 @@ UPDATES = 132
 t = Test(stress=False)
 
 knot = t.server("knot")
-
-if knot.valgrind:
-    knot.semantic_check = False
-
 catz = t.zone("catalog1.", storage=".")
 
 t.link(catz, knot)
 knot.cat_interpret(catz)
+
+if knot.valgrind:
+    knot.conf_zone(catz).semantic_checks = False
 
 os.mkdir(knot.dir + "/catalog")
 

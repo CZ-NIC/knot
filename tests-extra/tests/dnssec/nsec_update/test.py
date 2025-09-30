@@ -61,12 +61,12 @@ master.disable_notify = True
 for zone in zones:
     master.dnssec(zone).enable = True
     master.dnssec(zone).nsec3 = random.choice([True, False])
-    master.dnssec(zone).nsec3_iters = 2
-    master.dnssec(zone).nsec3_salt_len = random.choice([0, 1, 9, 64, 128, 255])
+    master.dnssec(zone).nsec3_iterations = 2
+    master.dnssec(zone).nsec3_salt_length = random.choice([0, 1, 9, 64, 128, 255])
     master.dnssec(zone).nsec3_opt_out = (random.random() < 0.5)
 
     if not slave.valgrind:
-        slave.dnssec(zone).validate = True
+        slave.conf_zone(zone).dnssec_validation = True
         slave.dnssec(zone).nsec3 = master.dnssec(zone).nsec3
         slave.dnssec(zone).nsec3_opt_out = master.dnssec(zone).nsec3_opt_out
 
@@ -187,7 +187,7 @@ if slave.log_search("no such record in zone found") or slave.log_search("fallbac
 
 # update salt with keymgr and see if zone correctly re-NSEC3-d after update
 for z in zones1:
-    salt = "-" if master.dnssec(z).nsec3_salt_len == 0 else "fe" * master.dnssec(z).nsec3_salt_len
+    salt = "-" if master.dnssec(z).nsec3_salt_length == 0 else "fe" * master.dnssec(z).nsec3_salt_length
     Keymgr.run_check(master.confile, z.name, "nsec3-salt", salt)
     up = master.update(z)
     up.add("abc." + z.name, 3600, "A", "1.2.3.4")

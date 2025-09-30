@@ -11,7 +11,7 @@ zone = t.zone_rnd(1, records=200)
 
 t.link(zone, master)
 
-master.journal_max_usage = 51200 # the creation of NSEC3 tree fails on ESPACE
+master.conf_zone(zone).journal_max_usage = 51200 # the creation of NSEC3 tree fails on ESPACE
 
 t.start()
 master.zone_wait(zone)

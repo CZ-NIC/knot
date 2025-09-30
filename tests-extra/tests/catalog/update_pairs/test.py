@@ -39,16 +39,16 @@ def check_catalog_db(server, memb_name):
 t = Test()
 
 knot = t.server("knot")
-knot.bg_workers = 4
-
-knot.semantic_check = False
+knot.conf_srv().background_workers = 4
 
 catz = t.zone("catalog1.", storage=".")
 rzone = t.zone(".") # to slow down background workers
 rzone[0].update_rnd() # it needs to be larger, slower
 
-t.link(catz, knot, journal_content = "none")
-t.link(rzone, knot, journal_content = "none")
+t.link(catz, knot)
+t.link(rzone, knot)
+knot.conf_zone(catz + rzone).journal_content = "none"
+knot.conf_zone(catz + rzone).semantic_checks = False
 knot.cat_interpret(catz)
 
 catalog_dir = os.path.join(knot.dir, "catalog")
@@ -62,8 +62,8 @@ for z in rzone:
     knot.dnssec(z).signing_threads = "2"
     if not knot.valgrind: # it would be too slow with valgrind
         knot.dnssec(z).nsec3 = True
-        knot.dnssec(z).nsec3_iters = "65000"
-        knot.dnssec(z).alg = "rsasha512"
+        knot.dnssec(z).nsec3_iterations = "65000"
+        knot.dnssec(z).algorithm = "rsasha512"
         knot.dnssec(z).zsk_size = "4096"
 
 # Whether to test a property change instead of add/del.

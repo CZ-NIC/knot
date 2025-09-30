@@ -37,8 +37,8 @@ t.link(zone_common2, remote)
 t.link(zone_remote, remote)
 
 if local.valgrind:
-    local.semantic_check = False
-    remote.semantic_check = False
+    local.conf_zone(zone_common1 + zone_local).semantic_checks = False
+    remote.conf_zone(zone_common2 + zone_remote).semantic_checks = False
 
 def fallback_checks(server, zone_local, zone_remote, nxdomain):
     # Local preferred OK, try with local TSIG.

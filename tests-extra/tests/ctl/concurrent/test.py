@@ -136,9 +136,9 @@ for z in zones:
     master.dnssec(z).nsec3 = True
 
 for s in [ master, slave ]:
-    s.bg_workers = 3
-    s.udp_workers = 1
-    s.tcp_workers = 1
+    s.conf_srv().background_workers = 3
+    s.conf_srv().udp_workers = 1
+    s.conf_srv().tcp_workers = 1
 
 t.start()
 slave.zones_wait(zones)
