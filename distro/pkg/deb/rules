@@ -36,6 +36,7 @@ override_dh_auto_configure:
 	  --libexecdir=/usr/lib/knot \
 	  --with-rundir=/run/knot \
 	  --with-moduledir=/usr/lib/$(DEB_HOST_MULTIARCH)/knot/modules-$(BASE_VERSION) \
+	  --with-redisdir=/usr/lib/$(DEB_HOST_MULTIARCH)/redis/modules \
 	  --with-storage=/var/lib/knot \
 	  --enable-systemd=auto \
 	  --enable-dnstap \
@@ -66,8 +67,8 @@ override_dh_auto_install-arch:
 	  echo "Stripping the QUIC symbols"; \
 	  sed -i '/knot_quic_/d' $(LIBKNOT_SYMBOLS); \
 	fi
-	@if [ -f "$(CURDIR)/debian/tmp/usr/lib/*/knot/redis/knot.so" ]; then \
-	  chmod 0755 $(CURDIR)/debian/tmp/usr/lib/*/knot/redis/knot.so; \
+	@if [ -f "$(CURDIR)/debian/tmp/usr/lib/*/redis/modules/knot.so" ]; then \
+	  chmod 0755 $(CURDIR)/debian/tmp/usr/lib/*/redis/modules/knot.so; \
 	fi
 
 override_dh_auto_install-indep:
