@@ -425,9 +425,9 @@ AC_ARG_ENABLE([dnstap],
   [], [enable_dnstap=no])
 
 AS_IF([test "$enable_dnstap" != "no" -o "$STATIC_MODULE_dnstap" != "no" -o "$SHARED_MODULE_dnstap" != "no"],[
-  AC_PATH_PROG([PROTOC_C], [protoc-c])
+  AC_PATH_PROGS([PROTOC_C], [protoc protoc-c])
   AS_IF([test -z "$PROTOC_C"],[
-    AC_MSG_ERROR([The protoc-c program was not found. Please install protobuf-c!])
+      AC_MSG_ERROR([The protoc program was not found. Please install protobuf-compiler!])
   ])
   PKG_CHECK_MODULES([libfstrm], [libfstrm])
   PKG_CHECK_MODULES([libprotobuf_c], [libprotobuf-c >= 1.0.0])
