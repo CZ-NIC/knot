@@ -20,7 +20,7 @@ zone = t.zone("existing.", storage=".")
 t.link(zone, master, slave, ixfr=True)
 
 if IGNORE:
-    slave.ixfr_benevolent = True
+    slave.conf_zone(zone).ixfr_benevolent = True
 
 slave.update_zonefile(zone, version="slave0")
 

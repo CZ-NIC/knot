@@ -144,10 +144,10 @@ knot.dnssec(zone).dnskey_ttl = 2
 knot.dnssec(zone).zone_max_ttl = 3
 knot.dnssec(zone).keytag_modulo = "0/2"
 # optional
-knot.dnssec(zone).alg = "ECDSAP384SHA384"
+knot.dnssec(zone).algorithm = "ECDSAP384SHA384"
 knot.dnssec(zone).zsk_lifetime = STARTUP + 6 * TICK # see ksk1 lifetime
 knot.dnssec(zone).propagation_delay = TICK - 2
-knot.dnssec(zone).cds_publish = "rollover"
+knot.dnssec(zone).cds_cdnskey_publish = "rollover"
 knot.dnssec(zone).rrsig_lifetime = 15
 knot.dnssec(zone).rrsig_refresh = 6
 knot.dnssec(zone).rrsig_prerefresh = 1
@@ -167,8 +167,8 @@ signer.dnssec(zone).offline_ksk = True
 signer.dnssec(zone).rrsig_refresh = 2
 signer.dnssec(zone).keytag_modulo = "1/2"
 # optional
-signer.dnssec(zone).alg = "ECDSAP384SHA384"
-signer.dnssec(zone).cds_publish = random.choice(["none", "rollover"])
+signer.dnssec(zone).algorithm = "ECDSAP384SHA384"
+signer.dnssec(zone).cds_cdnskey_publish = random.choice(["none", "rollover"])
 signer.dnssec(zone).rrsig_lifetime = 6
 signer.dnssec(zone).rrsig_prerefresh = 1
 # options without any effect

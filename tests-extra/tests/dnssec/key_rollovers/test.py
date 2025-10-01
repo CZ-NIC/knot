@@ -160,7 +160,7 @@ def watch_alg_rollover(t, server, zone, slave, before_keys, after_keys, desc, se
 
     if set_stss is not None:
         server.dnssec(zone).single_type_signing = set_stss
-    server.dnssec(zone).alg = set_alg
+    server.dnssec(zone).algorithm = set_alg
     server.gen_confile()
     server.reload()
 
@@ -264,21 +264,21 @@ child.zonefile_sync = 24 * 60 * 60
 
 child.dnssec(child_zone).enable = True
 child.dnssec(child_zone).manual = False
-child.dnssec(child_zone).alg = "ECDSAP384SHA384"
+child.dnssec(child_zone).algorithm = "ECDSAP384SHA384"
 child.dnssec(child_zone).dnskey_ttl = 2
 child.dnssec(child_zone).zsk_lifetime = 99999
 child.dnssec(child_zone).ksk_lifetime = 300 # this can be possibly left also infinity
 child.dnssec(child_zone).delete_delay = DELETE_DELAY
-child.dnssec(child_zone).dnskey_mgmt = "incremental" if INCREMENTAL else "full"
+child.dnssec(child_zone).dnskey_management = "incremental" if INCREMENTAL else "full"
 child.dnssec(child_zone).propagation_delay = 11
 child.dnssec(child_zone).ksk_sbm_check = [ parent ]
 child.dnssec(child_zone).ksk_sbm_check_interval = 2
 child.dnssec(child_zone).ksk_sbm_delay = 6
 child.dnssec(child_zone).ksk_shared = True
-child.dnssec(child_zone).cds_publish = "always"
+child.dnssec(child_zone).cds_cdnskey_publish = "always"
 if DOUBLE_DS:
-    child.dnssec(child_zone).cds_publish = "double-ds"
-child.dnssec(child_zone).cds_digesttype = CDS_DT
+    child.dnssec(child_zone).cds_cdnskey_publish = "double-ds"
+child.dnssec(child_zone).cds_digest_type = CDS_DT
 
 slave.dnssec(child_zone).validate = True
 

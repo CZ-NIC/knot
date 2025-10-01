@@ -48,53 +48,16 @@ class multidict(object):
         self.__dict__['zonenames'] = zonenames
         self.__dict__['allzones'] = allzones
     def __getattr__(self, attr):
-        return dict((zn, self.__dict__['allzones'][zn][attr]) for zn in self.__dict__['zonenames'])
+        if len(self.__dict__['zonenames']) != 1:
+            raise Exception("can't read configuration of multiple zones")
+        zn = self.__dict__['zonenames'][0]
+        try:
+            return self.__dict__['allzones'][zn][attr]
+        except KeyError:
+            return None
     def __setattr__(self, key, value):
         for zn in self.__dict__['zonenames']:
             self.__dict__['allzones'][zn][key] = value
-
-class ZoneDnssec(object):
-    '''Zone DNSSEC signing configuration'''
-
-    def __init__(self):
-        self.enable = None
-        self.validate = None
-        self.disable = None # create the policy in config, but set dnssec-signing: off
-        self.manual = None
-        self.keystores = []
-        self.single_type_signing = None
-        self.alg = None
-        self.ksk_size = None
-        self.zsk_size = None
-        self.dnskey_ttl = None
-        self.zone_max_ttl = None
-        self.keytag_modulo = "0/1"
-        self.ksk_lifetime = None
-        self.zsk_lifetime = None
-        self.delete_delay = None
-        self.propagation_delay = None
-        self.rrsig_lifetime = None
-        self.rrsig_refresh = None
-        self.rrsig_prerefresh = None
-        self.repro_sign = None
-        self.nsec3 = None
-        self.nsec3_iters = None
-        self.nsec3_opt_out = None
-        self.nsec3_salt_lifetime = None
-        self.nsec3_salt_len = None
-        self.ksk_sbm_check = []
-        self.ksk_sbm_check_interval = None
-        self.ksk_sbm_timeout = None
-        self.ksk_sbm_delay = None
-        self.ds_push = None
-        self.dnskey_sync = None
-        self.ksk_shared = None
-        self.shared_policy_with = None
-        self.cds_publish = None
-        self.cds_digesttype = None
-        self.dnskey_mgmt = None
-        self.offline_ksk = None
-        self.signing_threads = None
 
 class ZoneCatalogRole(enum.IntEnum):
     """Zone catalog roles."""
@@ -112,23 +75,15 @@ class Zone(object):
         self.zfile = zone_file
         self.masters = set()
         self.slaves = set()
-        self.redis_in = None
-        self.redis_out = None
         self.ddns = ddns
         self.ixfr = ixfr
         self.journal_content = journal_content # journal contents
         self.modules = []
         self.external = None
-        self.dnssec = ZoneDnssec()
+        self.dnssec = None # TODO temporary, refactor to remove
         self.catalog_role = ZoneCatalogRole.NONE
         self.catalog_gen_name = None # Generated catalog name for this member
         self.catalog_group = None
-        self.refresh_max = None
-        self.refresh_min = None
-        self.retry_max = None
-        self.retry_min = None
-        self.expire_max = None
-        self.expire_min = None
 
     @property
     def name(self):
@@ -175,6 +130,7 @@ class Server(object):
         self.data_dir = None
 
         self.zone_conf = dict()
+        self.policy_conf = dict()
 
         self.nsid = None
         self.ident = None
@@ -224,8 +180,6 @@ class Server(object):
         self.zonefile_skip = None
         self.zonemd_verify = None
         self.zonemd_generate = None
-        self.ixfr_benevolent = None
-        self.ixfr_by_one = None
         self.journal_db_size = 20 * 1024 * 1024
         self.journal_max_usage = 5 * 1024 * 1024
         self.journal_max_depth = 100
@@ -303,14 +257,18 @@ class Server(object):
             xdp = (random.random() < 0.8)
         return self.xdp_port if xdp else self.port
 
+    def set_new_zone(self, name, z):
+        self.zones[name] = z
+        self.zone_conf[name] = dict()
+        self.policy_conf[name] = { 'keystore': [], 'keytag_modulo': '0/1', 'ksk_sbm_check': [], "signing-threads": str(random.randint(1,4)) }
+
     def set_master(self, zone, slave=None, ddns=False, ixfr=False, journal_content="changes"):
         '''Set the server as a master for the zone'''
 
         if zone.name not in self.zones:
             master_file = zone.clone(self.dir + "/master")
             z = Zone(master_file, ddns, ixfr, journal_content)
-            self.zones[zone.name] = z
-            self.zone_conf[zone.name] = dict()
+            self.set_new_zone(zone.name, z)
         else:
             z = self.zones[zone.name]
 
@@ -324,8 +282,7 @@ class Server(object):
 
         if zone.name not in self.zones:
             z = Zone(slave_file, ddns, ixfr, journal_content)
-            self.zones[zone.name] = z
-            self.zone_conf[zone.name] = dict()
+            self.set_new_zone(zone.name, z)
         else:
             z = self.zones[zone.name]
             z.disable_master(slave_file)
@@ -1027,9 +984,7 @@ class Server(object):
         distutils.dir_util.copy_tree(zone.key_dir, self.keydir, update=True)
 
     def dnssec(self, zone):
-        zone = zone_arg_check(zone)
-
-        return self.zones[zone.name].dnssec
+        return self.conf_base(self.policy_conf, zone)
 
     def enable_nsec3(self, zone, **args):
         zone = zone_arg_check(zone)
@@ -1248,6 +1203,7 @@ class Bind(Server):
 
         for zone in sorted(self.zones):
             z = self.zones[zone]
+            z.dnssec = self.dnssec(z)
             if not z.dnssec.enable:
                 continue
 
@@ -1277,6 +1233,7 @@ class Bind(Server):
 
         for zone in sorted(self.zones):
             z = self.zones[zone]
+            z.dnssec = self.dnssec(z)
             s.begin("zone", z.name)
             s.item_str("file", z.zfile.path)
             s.item("check-names", "warn")
@@ -1370,6 +1327,7 @@ class Bind(Server):
     def start(self, clean=False, fatal=True):
         for zname in self.zones:
             z = self.zones[zname]
+            z.dnssec = self.dnssec(z)
             if z.dnssec.enable != True:
                 continue
 
@@ -1527,7 +1485,7 @@ class Knot(Server):
                 acl += ", acl_%s" % slave.name
             if slaves:
                 conf.item("notify", "[%s]" % slaves)
-        for remote in zone.dnssec.dnskey_sync if zone.dnssec.dnskey_sync else []:
+        for remote in self.dnssec(zone).dnskey_sync if self.dnssec(zone).dnskey_sync else []:
             acl += ", acl_%s_ddns" % remote.name
         if not self.auto_acl:
             conf.item("acl", "[%s]" % acl)
@@ -1602,6 +1560,7 @@ class Knot(Server):
 
             for zone in sorted(self.zones):
                 z = self.zones[zone]
+                z.dnssec = self.dnssec(z)
                 for master in z.masters:
                     self._key(s, keys, master.tsig, master.name)
                 for slave in z.slaves:
@@ -1614,6 +1573,7 @@ class Knot(Server):
         servers = set() # Duplicity check.
         for zone in sorted(self.zones):
             z = self.zones[zone]
+            z.dnssec = self.dnssec(z)
             for master in z.masters:
                 if master.name not in servers:
                     if not have_remote:
@@ -1718,6 +1678,7 @@ class Knot(Server):
         servers = set() # Duplicity check.
         for zone in sorted(self.zones):
             z = self.zones[zone]
+            z.dnssec = self.dnssec(z)
             for master in z.masters:
                 if master.name not in servers:
                     s.id_item("id", "acl_%s" % master.name)
@@ -1773,6 +1734,7 @@ class Knot(Server):
         have_sbm = False
         for zone in sorted(self.zones):
             z = self.zones[zone]
+            z.dnssec = self.dnssec(z)
             if not z.dnssec.enable:
                 continue
             if len(z.dnssec.ksk_sbm_check) < 1 and z.dnssec.ksk_sbm_timeout is None:
@@ -1799,6 +1761,7 @@ class Knot(Server):
         have_dnskeysync = False
         for zone in sorted(self.zones):
             z = self.zones[zone]
+            z.dnssec = self.dnssec(z)
             if not z.dnssec.enable:
                 continue
             if z.dnssec.dnskey_sync is None:
@@ -1836,12 +1799,13 @@ class Knot(Server):
         have_keystore = False
         for zone in sorted(self.zones):
             z = self.zones[zone]
-            if not z.dnssec.keystores:
+            z.dnssec = self.dnssec(z)
+            if not z.dnssec.keystore:
                 continue
             if not have_keystore:
                 s.begin("keystore")
                 have_keystore = True
-            for ks in z.dnssec.keystores:
+            for ks in z.dnssec.keystore:
                 s.id_item("id", ks)
                 s.item("config", ks)
                 if ks.endswith("ksk"):
@@ -1852,6 +1816,7 @@ class Knot(Server):
         have_policy = False
         for zone in sorted(self.zones):
             z = self.zones[zone]
+            z.dnssec = self.dnssec(z)
             if not z.dnssec.enable and not z.dnssec.validate:
                 continue
 
@@ -1862,42 +1827,18 @@ class Knot(Server):
                 s.begin("policy")
                 have_policy = True
             s.id_item("id", z.name)
-            self._bool(s, "manual", z.dnssec.manual)
-            self._bool(s, "single-type-signing", z.dnssec.single_type_signing)
-            if z.dnssec.keystores:
-                s.item("keystore", "[ %s ]" % ", ".join(z.dnssec.keystores))
-            self._str(s, "algorithm", z.dnssec.alg)
-            self._str(s, "ksk-size", z.dnssec.ksk_size)
-            self._str(s, "zsk-size", z.dnssec.zsk_size)
-            self._str(s, "dnskey-ttl", z.dnssec.dnskey_ttl)
-            self._str(s, "zone-max-ttl", z.dnssec.zone_max_ttl)
-            self._str(s, "keytag-modulo", z.dnssec.keytag_modulo)
-            self._str(s, "ksk-lifetime", z.dnssec.ksk_lifetime)
-            self._str(s, "zsk-lifetime", z.dnssec.zsk_lifetime)
-            self._str(s, "delete-delay", z.dnssec.delete_delay)
-            self._str(s, "propagation-delay", z.dnssec.propagation_delay)
-            self._str(s, "rrsig-lifetime", z.dnssec.rrsig_lifetime)
-            self._str(s, "rrsig-refresh", z.dnssec.rrsig_refresh)
+            for ci, val in self.policy_conf[z.name].items():
+                if ci not in [ "enable", "disable", "validate", "shared_policy_with", "rrsig_prerefresh", "nsec3_iters", "nsec3_salt_len", "ksk_sbm_check", "ksk_sbm_timeout", "ksk_sbm_delay", "ksk_sbm_check_interval", "cds_publish", "cds_digesttype", "dnskey_sync", "ds_push" ]:
+                    s.item_type(ci.replace("_", "-"), val)
+
             self._str(s, "rrsig-pre-refresh", z.dnssec.rrsig_prerefresh)
-            self._str(s, "reproducible-signing", z.dnssec.repro_sign)
-            self._bool(s, "nsec3", z.dnssec.nsec3)
             self._str(s, "nsec3-iterations", z.dnssec.nsec3_iters)
-            self._bool(s, "nsec3-opt-out", z.dnssec.nsec3_opt_out)
-            self._str(s, "nsec3-salt-lifetime", z.dnssec.nsec3_salt_lifetime)
             self._str(s, "nsec3-salt-length", z.dnssec.nsec3_salt_len)
             if len(z.dnssec.ksk_sbm_check) > 0 or z.dnssec.ksk_sbm_timeout is not None:
                 s.item("ksk-submission", z.name)
             if z.dnssec.dnskey_sync:
                 s.item("dnskey-sync", z.name)
-            self._bool(s, "ksk-shared", z.dnssec.ksk_shared)
-            self._str(s, "cds-cdnskey-publish", z.dnssec.cds_publish)
-            if z.dnssec.cds_digesttype:
-                self._str(s, "cds-digest-type", z.dnssec.cds_digesttype)
-            self._str(s, "dnskey-management", z.dnssec.dnskey_mgmt)
-            self._bool(s, "offline-ksk", z.dnssec.offline_ksk)
-            self._str(s, "signing-threads",
-                      z.dnssec.signing_threads if z.dnssec.signing_threads is not None
-                      else str(random.randint(1,4)))
+
         if have_policy:
             s.end()
 
@@ -1949,6 +1890,7 @@ class Knot(Server):
         have_catalog = None
         for zone in self.zones:
             z = self.zones[zone]
+            z.dnssec = self.dnssec(z)
             if z.catalog_role in [ZoneCatalogRole.INTERPRET, ZoneCatalogRole.GENERATE]:
                 have_catalog = z
                 break
@@ -1984,6 +1926,7 @@ class Knot(Server):
         s.begin("zone")
         for zone in sorted(self.zones):
             z = self.zones[zone]
+            z.dnssec = self.dnssec(z)
             if z.catalog_role == ZoneCatalogRole.HIDDEN:
                 continue
 
@@ -1995,22 +1938,10 @@ class Knot(Server):
 
             self.config_xfr(z, s)
 
-            self._str(s, "zone-db-input", z.redis_in)
-            self._str(s, "zone-db-output", z.redis_out)
-
             self._str(s, "ddns-master", self.ddns_master)
 
             s.item_str("journal-content", z.journal_content)
-            self._bool(s, "ixfr-benevolent", self.ixfr_benevolent)
-            self._bool(s, "ixfr-by-one", self.ixfr_by_one)
             self._bool(s, "provide-ixfr", self.provide_ixfr)
-
-            self._str(s, "refresh-min-interval", z.refresh_min)
-            self._str(s, "refresh-max-interval", z.refresh_max)
-            self._str(s, "retry-min-interval", z.retry_min)
-            self._str(s, "retry-max-interval", z.retry_max)
-            self._str(s, "expire-min-interval", z.expire_min)
-            self._str(s, "expire-max-interval", z.expire_max)
 
             if z.external:
                 s.item("external-validation", z.name)

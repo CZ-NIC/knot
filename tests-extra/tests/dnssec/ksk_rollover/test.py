@@ -161,7 +161,7 @@ child.dnssec(child_zone).dnskey_ttl = 6
 child.dnssec(child_zone).propagation_delay = 11
 child.dnssec(child_zone).ksk_sbm_check = [ parent ]
 child.dnssec(child_zone).ksk_sbm_check_interval = 3
-child.dnssec(child_zone).cds_publish = "rollover"
+child.dnssec(child_zone).cds_cdnskey_publish = "rollover"
 
 t.start()
 child.zone_wait(child_zone)

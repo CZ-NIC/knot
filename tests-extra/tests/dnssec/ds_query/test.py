@@ -81,7 +81,7 @@ child.zonefile_sync = 24 * 60 * 60
 
 child.dnssec(child_zone).enable = True
 child.dnssec(child_zone).manual = False
-child.dnssec(child_zone).alg = "ECDSAP384SHA384"
+child.dnssec(child_zone).algorithm = "ECDSAP384SHA384"
 child.dnssec(child_zone).dnskey_ttl = 2
 child.dnssec(child_zone).zsk_lifetime = 99999
 child.dnssec(child_zone).ksk_lifetime = 9999

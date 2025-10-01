@@ -44,7 +44,9 @@ class KnotConf(object):
         elif isinstance(value, str):
             self.item_str(name, value)
         elif isinstance(value, list):
-            if len(value) > 0 and isinstance(value[0], str):
+            if len(value) < 1:
+                return
+            elif isinstance(value[0], str):
                 self.item_list_str(name, value)
             else:
                 self.item_list(name, value)

@@ -32,7 +32,7 @@ for load in ["whole", "difference", "difference-no-serial"]:
         master.ctl("-f zone-purge +journal +timers +kaspdb " + ZONE)
         master.zonefile_load = load
         master.zones[ZONE].journal_content = "all" if load == "difference-no-serial" else "changes"
-        master.zones[ZONE].dnssec.enable = dnssec
+        master.dnssec(zone).enable = dnssec
         master.gen_confile()
         master.stop()
         master.start()

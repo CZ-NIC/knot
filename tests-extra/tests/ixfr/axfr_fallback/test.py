@@ -15,7 +15,7 @@ t.link(zone, master, slave, ixfr=True)
 for z in zone:
     master.dnssec(z).enable = True
 master.disable_notify = True
-slave.zones[zone[0].name].retry_max = 10
+slave.conf_zone(zone).retry_max_interval = 10
 
 t.start()
 

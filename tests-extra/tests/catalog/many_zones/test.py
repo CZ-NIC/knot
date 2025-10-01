@@ -28,7 +28,7 @@ master.cat_generate(cz)
 slave.cat_interpret(cz)
 
 slave.dnssec(catz[0]).enable = DNSSEC
-slave.dnssec(catz[0]).alg = "ECDSAP256SHA256"
+slave.dnssec(catz[0]).algorithm = "ECDSAP256SHA256"
 slave.zones[catz[0].name].journal_content = "all"
 slave.journal_db_size = 200 * 1024 * 1024
 

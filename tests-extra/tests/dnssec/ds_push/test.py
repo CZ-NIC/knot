@@ -116,7 +116,7 @@ child.zonefile_sync = 24 * 60 * 60
 
 child.dnssec(child_zone).enable = True
 child.dnssec(child_zone).manual = False
-child.dnssec(child_zone).alg = "ECDSAP256SHA256"
+child.dnssec(child_zone).algorithm = "ECDSAP256SHA256"
 child.dnssec(child_zone).dnskey_ttl = 2
 child.dnssec(child_zone).zsk_lifetime = 99999
 child.dnssec(child_zone).ksk_lifetime = 300 # this can be possibly left also infinity
@@ -125,7 +125,7 @@ child.dnssec(child_zone).ksk_sbm_check = [ parent ]
 child.dnssec(child_zone).ksk_sbm_check_interval = 2
 child.dnssec(child_zone).ds_push = parent
 child.dnssec(child_zone).ksk_shared = True
-child.dnssec(child_zone).cds_publish = "always"
+child.dnssec(child_zone).cds_cdnskey_publish = "always"
 
 #t.start()
 t.generate_conf()

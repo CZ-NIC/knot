@@ -73,8 +73,8 @@ def knot_dnskey_checks(t, msg, zones, timeout):
             same_dnskey_count(t, bind, knot, knot.zones[z.name], i, msg, timeout)
 
 def clone_policy(zone):
-    knot.zones[zone.name].dnssec = copy.copy(bind.zones[zone.name].dnssec)
-    knot.zones[zone.name].dnssec.ksk_lifetime -= 2 * int(knot.zones[zone.name].dnssec.dnskey_ttl)
+    knot.policy_conf[zone.name] = copy.copy(bind.policy_conf[zone.name])
+    knot.dnssec(zone).ksk_lifetime -= 2 * int(knot.dnssec(zone).dnskey_ttl)
 
 def knot_import_zone(zone):
     if zone.name not in knot.zones:

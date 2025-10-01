@@ -63,7 +63,7 @@ for z in rzone:
     if not knot.valgrind: # it would be too slow with valgrind
         knot.dnssec(z).nsec3 = True
         knot.dnssec(z).nsec3_iters = "65000"
-        knot.dnssec(z).alg = "rsasha512"
+        knot.dnssec(z).algorithm = "rsasha512"
         knot.dnssec(z).zsk_size = "4096"
 
 # Whether to test a property change instead of add/del.

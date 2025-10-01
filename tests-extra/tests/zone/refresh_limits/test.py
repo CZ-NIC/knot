@@ -19,12 +19,12 @@ t.link(zones, master, slave, ixfr=True)
 
 master.disable_notify = True
 
-slave.zones[zone_min.name].refresh_min = 12
-slave.zones[zone_max.name].refresh_max = 9
-slave.zones[zone_min.name].retry_min = 12
-slave.zones[zone_max.name].retry_max = 9
-slave.zones[zone_min.name].expire_min = 24
-slave.zones[zone_max.name].expire_max = 18
+slave.conf_zone(zone_min).refresh_min_interval = 12
+slave.conf_zone(zone_max).refresh_max_interval = 9
+slave.conf_zone(zone_min).retry_min_interval = 12
+slave.conf_zone(zone_max).retry_max_interval = 9
+slave.conf_zone(zone_min).expire_min_interval = 24
+slave.conf_zone(zone_max).expire_max_interval = 18
 
 t.start()
 
