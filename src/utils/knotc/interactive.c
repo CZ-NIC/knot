@@ -321,6 +321,10 @@ static void path_lookup(EditLine *el, const char *str, bool dirsonly)
 		str = "./";
 	}
 
+#ifndef PATH_MAX        // GNU Hurd needs this.
+	long PATH_MAX = MAX(pathconf(str, _PC_PATH_MAX), 1024);
+#endif
+
 	char path[PATH_MAX]; // avoid editing argument directly
 	strlcpy(path, str, PATH_MAX);
 	char *sep = strrchr(path, '/');
