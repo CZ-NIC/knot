@@ -29,7 +29,7 @@ Build-Depends:
  libtool,
  liburcu-dev,
  pkgconf,
- protobuf-c-compiler,
+ protobuf-compiler,
  python3-all,
  softhsm2 <!nocheck>,
 Standards-Version: 4.7.2

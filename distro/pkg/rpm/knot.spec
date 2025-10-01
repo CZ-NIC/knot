@@ -71,7 +71,7 @@ BuildRequires:  python3-setuptools
 %if 0%{?suse_version}
 BuildRequires:	python3-Sphinx
 BuildRequires:	lmdb-devel
-BuildRequires:	protobuf-c
+BuildRequires:	protobuf
 Requires(pre):	pwdutils
 %if 0%{?sle_version} != 150400
 BuildRequires:	pkgconfig(libxdp)

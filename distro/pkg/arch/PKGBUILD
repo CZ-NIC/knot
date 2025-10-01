@@ -20,7 +20,7 @@ depends=('fstrm'
          'libmaxminddb'
          'liburcu'
          'lmdb'
-         'protobuf-c'
+         'protobuf-compiler'
          'systemd')
 backup=('etc/knot/knot.conf')
 source=("${pkgname}-${pkgver}.tar.xz")
