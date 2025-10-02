@@ -1004,25 +1004,88 @@ static int zone_txn_commit(zone_t *zone, ctl_args_t *args)
 	return ret;
 }
 
-static int zone_txn_abort(zone_t *zone, _unused_ ctl_args_t *args)
+static int zone_txn_abort_l(zone_t *zone, _unused_ ctl_args_t *args)
 {
-	pthread_mutex_lock(&zone->cu_lock);
 	if (zone->control_update == NULL) {
 		args->suppress = true;
-		pthread_mutex_unlock(&zone->cu_lock);
 		return KNOT_TXN_ENOTEXISTS;
 	}
 
 	if (zone->control_update->flags & UPDATE_WFEV) {
 		knot_sem_post(&zone->control_update->external);
-		pthread_mutex_unlock(&zone->cu_lock);
 		return KNOT_EOK;
 	}
 
 	zone_control_clear(zone);
-
-	pthread_mutex_unlock(&zone->cu_lock);
 	return KNOT_EOK;
+}
+
+static int zone_txn_abort(zone_t *zone, ctl_args_t *args)
+{
+	pthread_mutex_lock(&zone->cu_lock);
+	int ret = zone_txn_abort_l(zone, args);
+	pthread_mutex_unlock(&zone->cu_lock);
+	return ret;
+}
+
+static int zone_serial(zone_t *zone, ctl_args_t *args)
+{
+	int ret = KNOT_EOK;
+	const char *serial_set_str = args->data[KNOT_CTL_IDX_DATA];
+	const char *serial_inc_str = args->data[KNOT_CTL_IDX_TYPE];
+	bool serial_set_do = (serial_set_str != NULL && is_digit(serial_set_str[0]));
+	bool serial_inc_do = (serial_inc_str != NULL && serial_inc_str[0] == '+');
+	bool serial_lowered = false;
+	uint32_t serial_set = serial_set_do ? atol(serial_set_str) : 0;
+
+	rcu_read_lock();
+	const zone_contents_t *c = zone->contents;
+	if (c == NULL) {
+		rcu_read_unlock();
+		return KNOT_EEMPTYZONE;
+	}
+	uint32_t return_serial = zone_contents_serial(c);
+	rcu_read_unlock();
+
+	pthread_mutex_lock(&zone->cu_lock);
+	bool cu_exists = (zone->control_update != NULL);
+
+	if (serial_set_do && !cu_exists) {
+		ret = zone_txn_begin_l(zone, args);
+	}
+
+	if (zone->control_update != NULL && ret == KNOT_EOK &&
+	    !node_rrtype_exists(zone->control_update->new_cont->apex, KNOT_RRTYPE_SOA)) {
+		ret = KNOT_EEMPTYZONE;
+	}
+
+	if (zone->control_update != NULL && ret == KNOT_EOK) {
+		return_serial = zone_update_current_serial(zone->control_update);
+		if (serial_inc_do) {
+			serial_set += return_serial;
+		}
+		if (serial_set_do) {
+			ret = zone_update_set_soa(zone->control_update, serial_set, &serial_lowered);
+		}
+		// serial_lowered is ignored at this point, just emitting warning in knotd log
+	}
+
+	if (serial_set_do && !cu_exists) {
+		if (ret == KNOT_EOK) {
+			ret = zone_txn_commit_l(zone, args);
+		}
+		if (ret != KNOT_EOK) {
+			zone_txn_abort_l(zone, args);
+		}
+	}
+	pthread_mutex_unlock(&zone->cu_lock);
+
+	send_ctx_t *ctx = &ctl_globals[args->thread_idx].send_ctx;
+	ctx->data[KNOT_CTL_IDX_TTL] = ctx->ttl;
+	snprintf(ctx->ttl, sizeof(ctx->ttl), "%u", return_serial);
+	knot_ctl_send(args->ctl, KNOT_CTL_TYPE_DATA, &ctx->data);
+
+	return ret;
 }
 
 static int init_send_ctx(send_ctx_t *ctx, const knot_dname_t *zone_name,
@@ -1889,6 +1952,8 @@ static int ctl_zone(ctl_args_t *args, ctl_cmd_t cmd)
 		return zones_apply(args, zone_xfr_freeze);
 	case CTL_ZONE_XFR_THAW:
 		return zones_apply(args, zone_xfr_thaw);
+	case CTL_ZONE_SERIAL:
+		return zones_apply(args, zone_serial);
 	case CTL_ZONE_READ:
 		return zones_apply(args, zone_read);
 	case CTL_ZONE_BEGIN:
@@ -2375,6 +2440,7 @@ static const desc_t cmd_table[] = {
 	[CTL_ZONE_THAW]       = { "zone-thaw",          ctl_zone,         CTL_LOCK_SRV_R },
 	[CTL_ZONE_XFR_FREEZE] = { "zone-xfr-freeze",    ctl_zone,         CTL_LOCK_SRV_R },
 	[CTL_ZONE_XFR_THAW]   = { "zone-xfr-thaw",      ctl_zone,         CTL_LOCK_SRV_R },
+	[CTL_ZONE_SERIAL]     = { "zone-serial",        ctl_zone,         CTL_LOCK_SRV_R },
 
 	[CTL_ZONE_READ]       = { "zone-read",          ctl_zone,         CTL_LOCK_SRV_R },
 	[CTL_ZONE_BEGIN]      = { "zone-begin",         ctl_zone,         CTL_LOCK_SRV_R },
@@ -2385,7 +2451,7 @@ static const desc_t cmd_table[] = {
 	[CTL_ZONE_SET]        = { "zone-set",           ctl_zone,         CTL_LOCK_SRV_R },
 	[CTL_ZONE_UNSET]      = { "zone-unset",         ctl_zone,         CTL_LOCK_SRV_R },
 	[CTL_ZONE_PURGE]      = { "zone-purge",         ctl_zone,         CTL_LOCK_SRV_W },
-	[CTL_ZONE_STATS]      = { "zone-stats",	        ctl_zone,         CTL_LOCK_SRV_R },
+	[CTL_ZONE_STATS]      = { "zone-stats",	       ctl_zone,         CTL_LOCK_SRV_R },
 
 	[CTL_CONF_LIST]       = { "conf-list",          ctl_conf_list,    CTL_LOCK_SRV_R }, // Can either read live conf or conf txn. The latter would deserve CTL_LOCK_SRV_W, but when conf txn exists, all cmds are done by single thread anyway.
 	[CTL_CONF_READ]       = { "conf-read",          ctl_conf_read,    CTL_LOCK_SRV_R },
