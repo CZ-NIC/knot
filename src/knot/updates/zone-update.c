@@ -630,9 +630,9 @@ int zone_update_apply_changeset_reverse(zone_update_t *update, const changeset_t
 	return zone_update_apply_changeset(update, &reverse);
 }
 
-int zone_update_increment_soa(zone_update_t *update, conf_t *conf)
+int zone_update_set_soa(zone_update_t *update, uint32_t new_serial, bool semcheck)
 {
-	if (update == NULL || conf == NULL) {
+	if (update == NULL) {
 		return KNOT_EINVAL;
 	}
 
@@ -642,26 +642,38 @@ int zone_update_increment_soa(zone_update_t *update, conf_t *conf)
 		return KNOT_ENOMEM;
 	}
 
-	int ret = zone_update_remove(update, soa_cpy);
-	if (ret != KNOT_EOK) {
+	uint32_t old_serial = knot_soa_serial(soa_cpy->rrs.rdata);
+	if (semcheck && serial_compare(old_serial, new_serial) != SERIAL_LOWER) {
 		knot_rrset_free(soa_cpy, NULL);
-		return ret;
+		return KNOT_ESOAINVAL;
 	}
 
-	uint32_t old_serial = knot_soa_serial(soa_cpy->rrs.rdata);
-	uint32_t new_serial = serial_next(old_serial, conf, update->zone->name,
-	                                  SERIAL_POLICY_AUTO, 1);
-	if (serial_compare(old_serial, new_serial) != SERIAL_LOWER) {
-		log_zone_warning(update->zone->name, "updated SOA serial is lower "
-		                 "than current, serial %u -> %u",
-		                 old_serial, new_serial);
-		ret = KNOT_ESOAINVAL;
-	} else {
+	int ret = zone_update_remove(update, soa_cpy);
+	if (ret == KNOT_EOK) {
 		knot_soa_serial_set(soa_cpy->rrs.rdata, new_serial);
-
 		ret = zone_update_add(update, soa_cpy);
 	}
 	knot_rrset_free(soa_cpy, NULL);
+
+	return ret;
+}
+
+int zone_update_increment_soa(zone_update_t *update, conf_t *conf)
+{
+	if (update == NULL || conf == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	uint32_t old_serial = zone_update_current_serial(update);
+	uint32_t new_serial = serial_next(old_serial, conf, update->zone->name,
+	                                  SERIAL_POLICY_AUTO, 1);
+
+	int ret = zone_update_set_soa(update, new_serial, true);
+	if (ret == KNOT_ESOAINVAL) {
+		log_zone_warning(update->zone->name, "updated SOA serial is lower "
+		                 "than current, serial %u -> %u",
+		                 old_serial, new_serial);
+	}
 
 	return ret;
 }

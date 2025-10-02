@@ -243,11 +243,24 @@ int zone_update_apply_changeset(zone_update_t *update, const changeset_t *change
 int zone_update_apply_changeset_reverse(zone_update_t *update, const changeset_t *changes);
 
 /*!
+ * \brief Set SOA serial in the update.
+ *
+ * \param update        Update to be modified.
+ * \param new_serial    SOA serial to be set.
+ * \param semcheck      Enable serial decrement check.
+ *
+ * \retval KNOT_ESOAINVAL if updated serial is lower than current and semcheck enabled.
+ * \return KNOT_E*
+ */
+int zone_update_set_soa(zone_update_t *update, uint32_t new_serial, bool semcheck);
+
+/*!
  * \brief Increment SOA serial (according to configured policy) in the update.
  *
  * \param update  Update to be modified.
  * \param conf    Configuration.
  *
+ * \retval KNOT_ESOAINVAL if updated serial is lower than current.
  * \return KNOT_E*
  */
 int zone_update_increment_soa(zone_update_t *update, conf_t *conf);

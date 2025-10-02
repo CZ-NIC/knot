@@ -325,6 +325,15 @@ static void format_data(cmd_args_t *args, knot_ctl_type_t data_type,
 		       (value != NULL ? value      : ""));
 		*empty = false;
 		break;
+	case CTL_ZONE_SERIAL_SET:
+		if (error != NULL) {
+			printf("error: (%s)", error);
+			*empty = false;
+		} else if (value != NULL) {
+			printf("%s", value);
+			*empty = false;
+		}
+		break;
 	default:
 		assert(0);
 	}
@@ -366,7 +375,8 @@ static void format_block(ctl_cmd_t cmd, bool failed, bool empty)
 	case CTL_ZONE_SET:
 	case CTL_ZONE_UNSET:
 	case CTL_ZONE_PURGE:
-		printf("%s\n", failed ? "" : "OK");
+	case CTL_ZONE_SERIAL_SET:
+		printf("%s\n", (failed || !empty) ? "" : "OK");
 		break;
 	case CTL_STATUS:
 	case CTL_ZONE_STATUS:
@@ -586,6 +596,35 @@ static int cmd_zone_key_roll_ctl(cmd_args_t *args)
 		[KNOT_CTL_IDX_ZONE] = args->argv[0],
 		[KNOT_CTL_IDX_TYPE] = args->argv[1],
 	};
+
+	CTL_SEND_DATA
+	CTL_SEND_BLOCK
+
+	return ctl_receive(args);
+}
+
+static int cmd_zone_serial_ctl(cmd_args_t *args)
+{
+	int ret = check_args(args, 1, 2);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	knot_ctl_data_t data = {
+		[KNOT_CTL_IDX_CMD] = ctl_cmd_to_str(args->desc->cmd),
+		[KNOT_CTL_IDX_FLAGS] = *args->flags ? args->flags : NULL,
+		[KNOT_CTL_IDX_ZONE] = args->argv[0],
+	};
+
+	if (args->argc > 1) {
+		bool incr = args->argv[1][0] == '+';
+		const char *value = incr ? args->argv[1] + 1 : args->argv[1];
+		if (incr && strcmp("MAX", value) == 0) {
+			value = "2147483647";
+		}
+		data[KNOT_CTL_IDX_TYPE] = incr ? "+" : "=";
+		data[KNOT_CTL_IDX_DATA] = value;
+	}
 
 	CTL_SEND_DATA
 	CTL_SEND_BLOCK
@@ -1229,6 +1268,7 @@ const cmd_desc_t cmd_table[] = {
 	{ CMD_ZONE_UNSET,      cmd_zone_node_ctl,   CTL_ZONE_UNSET,      CMD_FREQ_ZONE },
 	{ CMD_ZONE_PURGE,      cmd_zone_ctl,        CTL_ZONE_PURGE,      CMD_FREQ_ZONE | CMD_FOPT_ZONE | CMD_FOPT_FILTER },
 	{ CMD_ZONE_STATS,      cmd_stats_ctl,       CTL_ZONE_STATS,      CMD_FREQ_ZONE },
+	{ CMD_ZONE_SERIAL_SET, cmd_zone_serial_ctl, CTL_ZONE_SERIAL_SET, CMD_FREQ_ZONE },
 
 	{ CMD_CONF_INIT,       cmd_conf_init,     CTL_NONE,            CMD_FWRITE },
 	{ CMD_CONF_CHECK,      cmd_conf_check,    CTL_NONE,            CMD_FREAD  | CMD_FREQ_MOD | CMD_FLOG_MORE },
@@ -1283,6 +1323,7 @@ static const cmd_help_t cmd_help_table[] = {
 	{ CMD_ZONE_UNSET,      "<zone>  <owner> [<type> [<rdata>]]",         "Remove zone data within the transaction." },
 	{ CMD_ZONE_PURGE,      "<zone>... [<filter>...]",                    "Purge zone data, zone file, journal, timers, and KASP data. (#)" },
 	{ CMD_ZONE_STATS,      "<zone> [<module>[.<counter>]]",              "Show zone statistics counter(s)."},
+	{ CMD_ZONE_SERIAL_SET, "<zone> [[+]<number>]",                       "Get/set/increment SOA serial of given zone. (#)" },
 	{ "",                  "",                                           "" },
 	{ CMD_CONF_INIT,       "",                                           "Initialize the confdb. (*)" },
 	{ CMD_CONF_CHECK,      "",                                           "Check the server configuration. (*)" },
