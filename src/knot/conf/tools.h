@@ -67,6 +67,10 @@ int check_listen(
 	knotd_conf_check_args_t *args
 );
 
+int check_db_listen(
+	knotd_conf_check_args_t *args
+);
+
 int check_xdp_listen(
 	knotd_conf_check_args_t *args
 );

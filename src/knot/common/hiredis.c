@@ -215,14 +215,17 @@ static redisContext *connect_addr(conf_t *conf, const char *addr_str, int port)
 	return rdb;
 }
 
-static int addr_to_str(struct sockaddr_storage *addr, char *out, size_t out_len, int *port)
+int rdb_addr_to_str(struct sockaddr_storage *addr, char *out, size_t out_len, int *port)
 {
 	*port = 0;
 
 	if (addr->ss_family == AF_UNIX) {
 		const char *path = ((struct sockaddr_un *)addr)->sun_path;
 		if (path[0] != '/') { // hostname
-			strlcpy(out, path, out_len);
+			size_t len = strlcpy(out, path, out_len);
+			if (len == 0 || len >= out_len) {
+				return KNOT_EINVAL;
+			}
 
 			char *port_sep = strchr(out, '@');
 			if (port_sep != NULL) {
@@ -241,7 +244,7 @@ static int addr_to_str(struct sockaddr_storage *addr, char *out, size_t out_len,
 		*port = sockaddr_port(addr);
 		sockaddr_port_set(addr, 0);
 
-		if (sockaddr_tostr(out, out_len, addr) <= 0) {
+		if (sockaddr_tostr(out, out_len, addr) <= 0 || *port == 0) {
 			return KNOT_EINVAL;
 		}
 	}
@@ -304,7 +307,7 @@ redisContext *rdb_connect(conf_t *conf, bool require_master)
 {
 	int port = 0;
 	int role = -1;
-	char addr_str[SOCKADDR_STRLEN] = "\0";
+	char addr_str[SOCKADDR_STRLEN - SOCKADDR_STRLEN_EXT] = "\0";
 	redisContext *rdb = NULL;
 
 	conf_val_t db_listen = conf_db_param(conf, C_ZONE_DB_LISTEN);
@@ -320,7 +323,7 @@ redisContext *rdb_connect(conf_t *conf, bool require_master)
 			redisFree(rdb);
 		}
 
-		if (addr_to_str(&addr, addr_str, sizeof(addr_str), &port) != KNOT_EOK ||
+		if (rdb_addr_to_str(&addr, addr_str, sizeof(addr_str), &port) != KNOT_EOK ||
 		    (rdb = connect_addr(conf, addr_str, port)) == NULL) {
 			conf_val_next(&db_listen);
 			continue;
