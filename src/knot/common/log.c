@@ -20,6 +20,7 @@
 
 #include "knot/common/log.h"
 #include "libknot/libknot.h"
+#include "contrib/time.h"
 #include "contrib/ucw/lists.h"
 
 /*! Single log message buffer length (one line). */
@@ -266,7 +267,12 @@ static void emit_log_msg(int level, log_source_t src, const char *zone,
 
 			// Print the message.
 			if (fprintf(stream, "%s%s\n", tstr, msg) < 0) {
-				fprintf(stderr, "Logging failed (%s)\n", strerror(errno));
+				static knot_time_t last_log_fail = 0;
+				knot_time_t now = knot_time();
+				if (now - last_log_fail >= 120) {
+					fprintf(stderr, "Logging failed (%s)\n", strerror(errno));
+					last_log_fail = now;
+				}
 			}
 			if (stream == stdout) {
 				fflush(stream);
