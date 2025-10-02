@@ -265,7 +265,9 @@ static void emit_log_msg(int level, log_source_t src, const char *zone,
 			}
 
 			// Print the message.
-			fprintf(stream, "%s%s\n", tstr, msg);
+			if (fprintf(stream, "%s%s\n", tstr, msg) < 0) {
+				fprintf(stderr, "Logging failed (%s)\n", strerror(errno));
+			}
 			if (stream == stdout) {
 				fflush(stream);
 			}
