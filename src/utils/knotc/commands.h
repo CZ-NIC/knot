@@ -44,6 +44,7 @@
 #define CMD_ZONE_UNSET		"zone-unset"
 #define CMD_ZONE_PURGE		"zone-purge"
 #define CMD_ZONE_STATS		"zone-stats"
+#define CMD_ZONE_SERIAL_SET	"zone-serial-set"
 
 #define CMD_CONF_INIT		"conf-init"
 #define CMD_CONF_CHECK		"conf-check"

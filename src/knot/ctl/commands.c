@@ -1004,25 +1004,96 @@ static int zone_txn_commit(zone_t *zone, ctl_args_t *args)
 	return ret;
 }
 
-static int zone_txn_abort(zone_t *zone, _unused_ ctl_args_t *args)
+static int zone_txn_abort_l(zone_t *zone, _unused_ ctl_args_t *args)
 {
-	pthread_mutex_lock(&zone->cu_lock);
 	if (zone->control_update == NULL) {
 		args->suppress = true;
-		pthread_mutex_unlock(&zone->cu_lock);
 		return KNOT_TXN_ENOTEXISTS;
 	}
 
 	if (zone->control_update->flags & UPDATE_WFEV) {
 		knot_sem_post(&zone->control_update->external);
-		pthread_mutex_unlock(&zone->cu_lock);
 		return KNOT_EOK;
 	}
 
 	zone_control_clear(zone);
-
-	pthread_mutex_unlock(&zone->cu_lock);
 	return KNOT_EOK;
+}
+
+static int zone_txn_abort(zone_t *zone, ctl_args_t *args)
+{
+	pthread_mutex_lock(&zone->cu_lock);
+	int ret = zone_txn_abort_l(zone, args);
+	pthread_mutex_unlock(&zone->cu_lock);
+	return ret;
+}
+
+static int zone_serial_set(zone_t *zone, ctl_args_t *args)
+{
+	int ret = KNOT_EOK;
+	const char *serial_set_str = args->data[KNOT_CTL_IDX_DATA];
+	const char *serial_inc_str = args->data[KNOT_CTL_IDX_TYPE];
+	bool forced = ctl_has_flag(args->data[KNOT_CTL_IDX_FLAGS], CTL_FLAG_FORCE);
+	bool serial_set_do = (serial_set_str != NULL);
+	bool serial_inc_do = (serial_inc_str != NULL && serial_inc_str[0] == '+');
+
+	uint32_t serial_set = 0;
+	if (serial_set_do) {
+		ret = str_to_u32(serial_set_str, &serial_set);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+	}
+
+	rcu_read_lock();
+	const zone_contents_t *c = zone->contents;
+	if (c == NULL) {
+		rcu_read_unlock();
+		return KNOT_EEMPTYZONE;
+	}
+	uint32_t return_serial = zone_contents_serial(c);
+	rcu_read_unlock();
+
+	pthread_mutex_lock(&zone->cu_lock);
+	bool cu_exists = (zone->control_update != NULL);
+
+	if (serial_set_do && !cu_exists) {
+		ret = zone_txn_begin_l(zone, args);
+	}
+
+	if (zone->control_update != NULL && ret == KNOT_EOK &&
+	    !node_rrtype_exists(zone->control_update->new_cont->apex, KNOT_RRTYPE_SOA)) {
+		ret = KNOT_EEMPTYZONE;
+	}
+
+	if (zone->control_update != NULL && ret == KNOT_EOK) {
+		return_serial = zone_update_current_serial(zone->control_update);
+		if (serial_inc_do) {
+			serial_set += return_serial;
+		}
+		if (serial_set_do) {
+			ret = zone_update_set_soa(zone->control_update, serial_set, !forced);
+		}
+	}
+
+	if (serial_set_do && !cu_exists) {
+		if (ret == KNOT_EOK) {
+			ret = zone_txn_commit_l(zone, args);
+		}
+		if (ret != KNOT_EOK) {
+			zone_txn_abort_l(zone, args);
+		}
+	}
+	pthread_mutex_unlock(&zone->cu_lock);
+
+	if (!serial_set_do && ret == KNOT_EOK) {
+		send_ctx_t *ctx = &ctl_globals[args->thread_idx].send_ctx;
+		ctx->data[KNOT_CTL_IDX_DATA] = ctx->ttl;
+		(void)snprintf(ctx->ttl, sizeof(ctx->ttl), "%u", return_serial);
+		ret = knot_ctl_send(args->ctl, KNOT_CTL_TYPE_DATA, &ctx->data);
+	}
+
+	return ret;
 }
 
 static int init_send_ctx(send_ctx_t *ctx, const knot_dname_t *zone_name,
@@ -1913,6 +1984,8 @@ static int ctl_zone(ctl_args_t *args, ctl_cmd_t cmd)
 		}
 	case CTL_ZONE_STATS:
 		return zones_apply(args, zone_stats);
+	case CTL_ZONE_SERIAL_SET:
+		return zones_apply(args, zone_serial_set);
 	default:
 		assert(0);
 		return KNOT_EINVAL;
@@ -2386,6 +2459,7 @@ static const desc_t cmd_table[] = {
 	[CTL_ZONE_UNSET]      = { "zone-unset",         ctl_zone,         CTL_LOCK_SRV_R },
 	[CTL_ZONE_PURGE]      = { "zone-purge",         ctl_zone,         CTL_LOCK_SRV_W },
 	[CTL_ZONE_STATS]      = { "zone-stats",	        ctl_zone,         CTL_LOCK_SRV_R },
+	[CTL_ZONE_SERIAL_SET] = { "zone-serial-set",    ctl_zone,         CTL_LOCK_SRV_R },
 
 	[CTL_CONF_LIST]       = { "conf-list",          ctl_conf_list,    CTL_LOCK_SRV_R }, // Can either read live conf or conf txn. The latter would deserve CTL_LOCK_SRV_W, but when conf txn exists, all cmds are done by single thread anyway.
 	[CTL_CONF_READ]       = { "conf-read",          ctl_conf_read,    CTL_LOCK_SRV_R },
