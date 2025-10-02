@@ -255,6 +255,9 @@ static void format_data(cmd_args_t *args, knot_ctl_type_t data_type,
 			first_status_item = false;
 		}
 		break;
+	case CTL_ZONE_SERIAL:
+		printf("%s\n", ttl);
+		break;
 	case CTL_CONF_COMMIT: // Can return a check error context.
 	case CTL_CONF_LIST:
 	case CTL_CONF_READ:
@@ -360,6 +363,7 @@ static void format_block(ctl_cmd_t cmd, bool failed, bool empty)
 	case CTL_ZONE_THAW:
 	case CTL_ZONE_XFR_FREEZE:
 	case CTL_ZONE_XFR_THAW:
+	case CTL_ZONE_SERIAL:
 	case CTL_ZONE_BEGIN:
 	case CTL_ZONE_COMMIT:
 	case CTL_ZONE_ABORT:
@@ -585,6 +589,27 @@ static int cmd_zone_key_roll_ctl(cmd_args_t *args)
 		[KNOT_CTL_IDX_FLAGS] = *args->flags ? args->flags : NULL,
 		[KNOT_CTL_IDX_ZONE] = args->argv[0],
 		[KNOT_CTL_IDX_TYPE] = args->argv[1],
+	};
+
+	CTL_SEND_DATA
+	CTL_SEND_BLOCK
+
+	return ctl_receive(args);
+}
+
+static int cmd_zone_serial_ctl(cmd_args_t *args)
+{
+	int ret = check_args(args, 1, 2);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	knot_ctl_data_t data = {
+	        [KNOT_CTL_IDX_CMD] = ctl_cmd_to_str(args->desc->cmd),
+	        [KNOT_CTL_IDX_FLAGS] = *args->flags ? args->flags : NULL,
+	        [KNOT_CTL_IDX_ZONE] = args->argv[0],
+	        [KNOT_CTL_IDX_TYPE] = ((args->argc > 1 && args->argv[1][0] == '+') ? "+" : "="),
+	        [KNOT_CTL_IDX_DATA] = args->argc > 1 ? (is_digit(args->argv[1][0]) ? args->argv[1] : args->argv[1] + 1) : NULL,
 	};
 
 	CTL_SEND_DATA
@@ -1218,6 +1243,7 @@ const cmd_desc_t cmd_table[] = {
 	{ CMD_ZONE_THAW,       cmd_zone_ctl,          CTL_ZONE_THAW,       CMD_FOPT_ZONE },
 	{ CMD_ZONE_XFR_FREEZE, cmd_zone_ctl,          CTL_ZONE_XFR_FREEZE, CMD_FOPT_ZONE },
 	{ CMD_ZONE_XFR_THAW,   cmd_zone_ctl,          CTL_ZONE_XFR_THAW,   CMD_FOPT_ZONE },
+	{ CMD_ZONE_SERIAL,     cmd_zone_serial_ctl,   CTL_ZONE_SERIAL,     CMD_FREQ_ZONE },
 
 	{ CMD_ZONE_READ,       cmd_zone_node_ctl,   CTL_ZONE_READ,       CMD_FREQ_ZONE },
 	{ CMD_ZONE_BEGIN,      cmd_zone_ctl,        CTL_ZONE_BEGIN,      CMD_FREQ_ZONE | CMD_FOPT_ZONE | CMD_FOPT_FILTER },
@@ -1272,6 +1298,7 @@ static const cmd_help_t cmd_help_table[] = {
 	{ CMD_ZONE_THAW,       "[<zone>...]",                                "Dismiss zone freeze. (#)" },
 	{ CMD_ZONE_XFR_FREEZE, "[<zone>...]",                                "Temporarily disable outgoing AXFR/IXFR. (#)" },
 	{ CMD_ZONE_XFR_THAW,   "[<zone>...]",                                "Dismiss outgoing XFR freeze. (#)" },
+	{ CMD_ZONE_SERIAL,     " <zone> [[+]<number>]",                      "Get/set/increment SOA serial of given zone. (#)" },
 	{ "",                  "",                                           "" },
 	{ CMD_ZONE_READ,       "<zone> [<owner> [<type>]]",                  "Get zone data that are currently being presented." },
 	{ CMD_ZONE_BEGIN,      "<zone>... [+benevolent]",                    "Begin a zone transaction." },

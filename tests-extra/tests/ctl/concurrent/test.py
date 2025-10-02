@@ -23,9 +23,11 @@ def random_ctl(server, zone_name):
                          "zone-sign", "zone-keys-load", "zone-ksk-submitted", "zone-freeze",
                          "zone-thaw", "zone-xfr-freeze", "zone-xfr-thaw", "zone-read", "zone-get",
                          "zone-stats", "conf-init", "conf-list", "conf-read", "conf-diff",
-                         "conf-get"])
+                         "conf-get", "zone-serial"])
     if cmd[0:5] == "zone-" and random.choice([False, True, True]):
         cmd += " " + zone_name
+    if cmd == "zone-serial" and random.choice([False, True, True]):
+        cmd += " " + random.choice(["+", "="]) + str(random.randint(0, 4000000000))
     if random.choice([False, True]):
         cmd = "-b " + cmd
     try:
@@ -106,7 +108,7 @@ def bck_purge_rest(server, zone_name):
 
 def ctl_update(server, zone_name):
     ctl_txn_generic(server, "-b zone-begin " + zone_name,
-                    "zone-set " + zone_name + " abc 3600 A 1.2.3." + str(random.randint(1, 254)),
+                    random.choice(["zone-set " + zone_name + " abc 3600 A 1.2.3." + str(random.randint(1, 254)), "zone-serial " + zone_name + " " + random.choice(["+", "="]) + str(random.randint(0, 4000000000))]),
                     "zone-commit " + zone_name, "zone-abort " + zone_name, True)
 
 def conf_update(server, zone_name):
