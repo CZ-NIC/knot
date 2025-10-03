@@ -1084,7 +1084,7 @@ int zone_update_external(conf_t *conf, zone_update_t *update, conf_val_t *ev_id)
 	log_zone_notice(update->zone->name, "waiting for external validation");
 
 	if (conf->cache.srv_dbus_event & DBUS_EVENT_EXTERNAL) {
-		dbus_emit_external_verify(update->zone->name);
+		dbus_emit_external_verify(update->zone->name, zone_contents_serial(update->new_cont));
 	}
 
 	val = conf_id_get(conf, C_EXTERNAL, C_TIMEOUT, ev_id);

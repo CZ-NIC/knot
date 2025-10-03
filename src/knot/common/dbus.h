@@ -54,8 +54,9 @@ void dbus_emit_zone_updated(const knot_dname_t *zone_name, uint32_t serial);
  * \brief Emit event signal that external verify shall take place.
  *
  * \param zone_name   Zone name.
+ * \param serial      Candidate zone SOA serial.
  */
-void dbus_emit_external_verify(const knot_dname_t *zone_name);
+void dbus_emit_external_verify(const knot_dname_t *zone_name, uint32_t serial);
 
 /*!
  * \brief Emit event signal for updated DNSSEC key set.

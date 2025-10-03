@@ -44,8 +44,8 @@ $knotd_interface->connect_to_signal('zone_updated', sub
 
 $knotd_interface->connect_to_signal('external_verify', sub
 {
-    my ($zone) = @_;
-    print "Awaiting external validation for zone=$zone\n";
+    my ($zone, $serial) = @_;
+    print "Awaiting external validation for zone=$zone serial=$serial\n";
 });
 
 $knotd_interface->connect_to_signal('keys_updated', sub
