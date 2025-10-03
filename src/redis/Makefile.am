@@ -1,7 +1,7 @@
 AM_CPPFLAGS = -I$(top_srcdir)/src -include $(top_builddir)/src/config.h
 AM_LDFLAGS = $(LT_NO_UNDEFINED)
 
-pkglibdir = ${libdir}/knot/redis
+pkglibdir = ${redis_dir}
 
 if ENABLE_REDIS_MODULE
 pkglib_LTLIBRARIES = knot.la

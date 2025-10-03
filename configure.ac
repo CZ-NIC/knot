@@ -264,6 +264,12 @@ AC_ARG_ENABLE([redis],
    AS_HELP_STRING([--enable-redis=auto|yes|client|module|no], [enable Redis support [default=auto]]),
    [], [enable_redis=auto])
 
+redis_dir="${libdir}/knot/redis"
+AC_ARG_WITH([redisdir],
+   AS_HELP_STRING([--with-redisdir=path], [Destination of module for Redis [default=${libdir}/knot/redis]]),
+   [redis_dir=$withval])
+AC_SUBST(redis_dir)
+
 AS_CASE([$enable_redis],
    [auto],   [PKG_CHECK_MODULES([hiredis], [hiredis], [enable_redis=yes], [enable_redis=no])],
    [yes],    [PKG_CHECK_MODULES([hiredis], [hiredis], [enable_redis=yes], [AC_MSG_ERROR([libhiredis not available])])],
@@ -790,6 +796,7 @@ result_msg_base="
     Storage dir: ${storage_dir}
     Config dir:  ${config_dir}
     Module dir:  ${module_dir}
+    Redis dir:   ${redis_dir}
 
     Static modules: ${static_modules}
     Shared modules: ${shared_modules}
