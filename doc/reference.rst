@@ -653,23 +653,25 @@ the interface name is ``cz.nic.knotd.events``.
 Possible values:
 
 - ``none`` – No signal is emitted.
-- ``running`` – There are two possible signals emitted:
+- ``running`` – Two signals may be emitted:
 
-  - ``started`` when the server is started and all configured zones (including
+  - ``started`` – Emitted when the server is started and all configured zones (including
     catalog zones and their members) are loaded or successfully bootstrapped.
-  - ``stopped`` when the server shutdown sequence is initiated.
-- ``zone-updated`` – The signal ``zone_updated`` is emitted when a zone has been updated;
-  the signal parameters are `zone name` and `zone SOA serial`.
-- ``external-verify`` - The signal ``external_verify`` is emitted when a zone is awaiting
-  external validation before applying the changes; the signal parameter is `zone name`.
-- ``keys-updated`` - The signal ``keys_updated`` is emitted when a DNSSEC key set
-  is updated; the signal parameter is `zone name`.
-- ``ksk-submission`` – The signal ``zone_ksk_submission`` is emitted if there is
-  a ready KSK present when the zone is signed; the signal parameters are
-  `zone name`, `KSK keytag`, and `KSK KASP id`.
+  - ``stopped`` – Emitted when the server shutdown sequence is initiated.
+- ``zone-updated`` – The signal ``zone_updated`` is emitted when a zone has been updated.
+  Parameters: **zone** name and zone SOA **serial**.
+- ``external-verify`` – The signal ``external_verify`` is emitted when a zone is awaiting
+  external validation before applying changes.
+  Parameters: **zone** name and new zone SOA **serial**.
+- ``keys-updated`` – The signal ``keys_updated`` is emitted when a DNSSEC key set
+  is updated.
+  Parameters: **zone** name.
+- ``ksk-submission`` – The signal ``zone_ksk_submission`` is emitted if a ready
+  KSK is present when the zone is signed.
+  Parameters: **zone** name, KSK **keytag**, and KSK KASP **id**.
 - ``dnssec-invalid`` – The signal ``zone_dnssec_invalid`` is emitted when DNSSEC
-  validation fails, or when ZONEMD verification fails; the signal parameters
-  are `zone name`, and `remaining seconds` until an RRSIG expires.
+  validation fails or when ZONEMD verification fails.
+  Parameters: **zone** name and remaining **seconds** until an RRSIG expires.
 
 .. NOTE::
    This function requires systemd version at least 221 or libdbus.
