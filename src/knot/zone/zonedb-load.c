@@ -746,6 +746,11 @@ static void remove_old_zonedb_commit(conf_t *conf, knot_zonedb_t *db_old, server
 			}
 			zone_t *zone = knot_zonedb_find(db_new, name);
 			zone_events_schedule_now(zone, ZONE_EVENT_LOAD);
+
+			zone_t *old_zone = knot_zonedb_find(db_old, zone->name);
+			if (old_zone != NULL) {
+				old_zone->contents = NULL;
+			}
 		}
 		knot_zonedb_iter_free(db_it);
 
