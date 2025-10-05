@@ -450,6 +450,29 @@ static bool same_group(zone_t *old_z, zone_t *new_z)
 	}
 }
 
+static zone_t *get_zone(conf_t *conf, const knot_dname_t *name, server_t *server,
+                        zone_t *old_zone)
+{
+	zone_t *zone = create_zone(conf, name, server, old_zone);
+	if (zone == NULL) {
+		log_zone_error(name, "zone cannot be created");
+		return NULL;
+	} else {
+		int ret = conf_activate_modules(conf, server, zone->name,
+		                                &zone->query_modules,
+		                                &zone->query_plan);
+		if (ret != KNOT_EOK) {
+			log_zone_error(zone->name, "zone cannot be activated (%s)",
+			               knot_strerror(ret));
+			zone->contents = NULL;
+			zone_free(&zone);
+			return NULL;
+		}
+	}
+
+	return zone;
+}
+
 static knot_zonedb_t *create_zonedb_commit(conf_t *conf, server_t *server)
 {
 	knot_zonedb_t *db_old = server->zone_db; // If NULL, zonedb is beeing initialized.
@@ -464,21 +487,9 @@ static knot_zonedb_t *create_zonedb_commit(conf_t *conf, server_t *server)
 			const knot_dname_t *name = (const knot_dname_t *)trie_it_key(trie_it, NULL);
 			conf_io_type_t type = conf_io_trie_val(trie_it);
 			if (type & CONF_IO_TSET) {
-				zone_t *zone = create_zone(conf, name, server, NULL);
+				zone_t *zone = get_zone(conf, name, server, NULL);
 				if (zone == NULL) {
-					log_zone_error(name, "zone cannot be created");
 					continue;
-				} else {
-					int ret = conf_activate_modules(conf, server, zone->name,
-					                                &zone->query_modules,
-					                                &zone->query_plan);
-					if (ret != KNOT_EOK) {
-						log_zone_error(zone->name, "zone cannot be activated (%s)",
-						               knot_strerror(ret));
-						zone->contents = NULL;
-						zone_free(&zone);
-						continue;
-					}
 				}
 				knot_zonedb_insert(db_new, zone);
 				catalog_generate_add(conf, zone, db_new, false);
@@ -588,21 +599,9 @@ static knot_zonedb_t *create_zonedb_full(conf_t *conf, server_t *server,
 		conf_val_t id = conf_iter_id(conf, &it);
 		const knot_dname_t *name = conf_dname(&id);
 		zone_t *old_zone = knot_zonedb_find(db_old, name);
-		zone_t *zone = create_zone(conf, name, server, old_zone);
+		zone_t *zone = get_zone(conf, name, server, old_zone);
 		if (zone == NULL) {
-			log_zone_error(name, "zone cannot be created");
 			continue;
-		} else {
-			int ret = conf_activate_modules(conf, server, zone->name,
-			                                &zone->query_modules,
-			                                &zone->query_plan);
-			if (ret != KNOT_EOK) {
-				log_zone_error(zone->name, "zone cannot be activated (%s)",
-				               knot_strerror(ret));
-				zone->contents = NULL;
-				zone_free(&zone);
-				continue;
-			}
 		}
 		knot_zonedb_insert(db_new, zone);
 	}
