@@ -475,13 +475,28 @@ static zone_t *get_zone(conf_t *conf, const knot_dname_t *name, server_t *server
 
 static knot_zonedb_t *create_zonedb_commit(conf_t *conf, server_t *server)
 {
+	assert(conf->io.flags & CONF_IO_FACTIVE);
+	bool reload_zones = conf->io.flags & CONF_IO_FRLD_ZONES;
+
 	knot_zonedb_t *db_old = server->zone_db; // If NULL, zonedb is beeing initialized.
-	knot_zonedb_t *db_new = (db_old != NULL) ? knot_zonedb_cow(db_old) : knot_zonedb_new();
+	knot_zonedb_t *db_new = (!reload_zones && db_old != NULL) ? knot_zonedb_cow(db_old) : knot_zonedb_new();
 	if (db_new == NULL) {
 		return NULL;
 	}
 
-	if (conf->io.zones != NULL) {
+	if (reload_zones) {
+		for (conf_iter_t it = conf_iter(conf, C_ZONE); it.code == KNOT_EOK;
+		     conf_iter_next(conf, &it)) {
+			conf_val_t id = conf_iter_id(conf, &it);
+			const knot_dname_t *name = conf_dname(&id);
+			zone_t *old_zone = knot_zonedb_find(db_old, name);
+			zone_t *zone = get_zone(conf, name, server, old_zone);
+			if (zone == NULL) {
+				continue;
+			}
+			knot_zonedb_insert(db_new, zone);
+		}
+	} else if (conf->io.zones != NULL) {
 		trie_it_t *trie_it = trie_it_begin(conf->io.zones);
 		for (; !trie_it_finished(trie_it); trie_it_next(trie_it)) {
 			const knot_dname_t *name = (const knot_dname_t *)trie_it_key(trie_it, NULL);
@@ -712,31 +727,10 @@ static knot_zonedb_t *create_zonedb(conf_t *conf, server_t *server, reload_t mod
 
 static void remove_old_zonedb_commit(conf_t *conf, knot_zonedb_t *db_old, server_t *server)
 {
-	knot_zonedb_t *db_new = server->zone_db;
-
 	assert(conf->io.flags & CONF_IO_FACTIVE);
 	bool reload_zones = conf->io.flags & CONF_IO_FRLD_ZONES;
 
-	if (conf->io.zones != NULL) {
-		trie_it_t *trie_it = trie_it_begin(conf->io.zones);
-		for (; !trie_it_finished(trie_it); trie_it_next(trie_it)) {
-			const knot_dname_t *name = (const knot_dname_t *)trie_it_key(trie_it, NULL);
-			conf_io_type_t type = conf_io_trie_val(trie_it);
-			if (type & CONF_IO_TUNSET) {
-				zone_t *zone = knot_zonedb_find(db_old, name);
-				zone_free(&zone);
-			} else if (!reload_zones && (type & CONF_IO_TRELOAD)) {
-				int ret = zone_reload_modules(conf, server, name);
-				if (ret != KNOT_EOK) {
-					log_zone_error(name, "failed to reload modules (%s)",
-					               knot_strerror(ret));
-				}
-				zone_t *zone = knot_zonedb_find(db_new, name);
-				zone_events_schedule_now(zone, ZONE_EVENT_LOAD);
-			}
-		}
-		trie_it_free(trie_it);
-	}
+	knot_zonedb_t *db_new = server->zone_db;
 
 	if (reload_zones) {
 		knot_zonedb_iter_t *db_it = knot_zonedb_iter_begin(db_new);
@@ -752,15 +746,42 @@ static void remove_old_zonedb_commit(conf_t *conf, knot_zonedb_t *db_old, server
 			}
 			zone_t *zone = knot_zonedb_find(db_new, name);
 			zone_events_schedule_now(zone, ZONE_EVENT_LOAD);
+
+			zone_t *old_zone = knot_zonedb_find(db_old, zone->name);
+			if (old_zone != NULL) {
+				old_zone->contents = NULL;
+			}
 		}
 		knot_zonedb_iter_free(db_it);
-	}
 
-	trie_cow_commit(db_new->cow, NULL, NULL);
-	db_new->cow = NULL;
+		knot_zonedb_deep_free(&db_old, false);
+	} else if (conf->io.zones != NULL) {
+		trie_it_t *trie_it = trie_it_begin(conf->io.zones);
+		for (; !trie_it_finished(trie_it); trie_it_next(trie_it)) {
+			const knot_dname_t *name = (const knot_dname_t *)trie_it_key(trie_it, NULL);
+			conf_io_type_t type = conf_io_trie_val(trie_it);
+			if (type & CONF_IO_TUNSET) {
+				zone_t *zone = knot_zonedb_find(db_old, name);
+				zone_free(&zone);
+			} else if (type & CONF_IO_TRELOAD) {
+				int ret = zone_reload_modules(conf, server, name);
+				if (ret != KNOT_EOK) {
+					log_zone_error(name, "failed to reload modules (%s)",
+					               knot_strerror(ret));
+				}
+				zone_t *zone = knot_zonedb_find(db_new, name);
+				zone_events_schedule_now(zone, ZONE_EVENT_LOAD);
+			}
+		}
+		trie_it_free(trie_it);
 
-	if (db_old != NULL && db_old->cow != NULL) {
-		free(db_old);
+		assert(db_new->cow);
+		trie_cow_commit(db_new->cow, NULL, NULL);
+		db_new->cow = NULL;
+
+		if (db_old != NULL && db_old->cow != NULL) {
+			free(db_old);
+		}
 	}
 }
 
