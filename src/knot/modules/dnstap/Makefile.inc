@@ -1,4 +1,7 @@
-knot_modules_dnstap_la_SOURCES = knot/modules/dnstap/dnstap.c
+knot_modules_dnstap_la_SOURCES = knot/modules/dnstap/dnstap.c \
+                                 knot/modules/dnstap/dnstapcounter.c \
+                                 knot/modules/dnstap/dnstapcounter.h
+
 EXTRA_DIST +=                    knot/modules/dnstap/dnstap.rst
 
 if STATIC_MODULE_dnstap

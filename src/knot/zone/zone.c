@@ -155,15 +155,15 @@ flush_journal_replan:
 	return ret;
 }
 
-zone_t* zone_new(const knot_dname_t *name)
+zone_t* zone_new_mm(const knot_dname_t *name, knot_mm_t *mm)
 {
-	zone_t *zone = malloc(sizeof(zone_t));
+	zone_t *zone = mm_alloc(mm, sizeof(zone_t));
 	if (zone == NULL) {
 		return NULL;
 	}
 	memset(zone, 0, sizeof(zone_t));
 
-	zone->name = knot_dname_copy(name, NULL);
+	zone->name = knot_dname_copy(name, mm);
 	if (zone->name == NULL) {
 		free(zone);
 		return NULL;
@@ -188,6 +188,11 @@ zone_t* zone_new(const knot_dname_t *name)
 	return zone;
 }
 
+zone_t* zone_new(const knot_dname_t *name)
+{
+	return zone_new_mm(name, NULL);
+}
+
 void zone_control_clear(zone_t *zone)
 {
 	if (zone == NULL) {
@@ -199,7 +204,7 @@ void zone_control_clear(zone_t *zone)
 	zone->control_update = NULL;
 }
 
-void zone_free(zone_t **zone_ptr)
+void zone_free_mm(zone_t **zone_ptr, knot_mm_t *mm)
 {
 	if (zone_ptr == NULL || *zone_ptr == NULL) {
 		return;
@@ -209,7 +214,7 @@ void zone_free(zone_t **zone_ptr)
 
 	zone_events_deinit(zone);
 
-	knot_dname_free(zone->name, NULL);
+	knot_dname_free(zone->name, mm);
 
 	free_ddns_queue(zone);
 	pthread_mutex_destroy(&zone->ddns_lock);
@@ -231,8 +236,13 @@ void zone_free(zone_t **zone_ptr)
 
 	conf_deactivate_modules(&zone->query_modules, &zone->query_plan);
 
-	free(zone);
+	mm_free(mm, zone);
 	*zone_ptr = NULL;
+}
+
+void zone_free(zone_t **zone_ptr)
+{
+	zone_free_mm(zone_ptr, NULL);
 }
 
 void zone_reset(conf_t *conf, zone_t *zone)

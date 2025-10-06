@@ -185,6 +185,22 @@ bool knot_rrset_is_nsec3rel(const knot_rrset_t *rr);
 int knot_rrset_rr_to_canonical(knot_rrset_t *rrset);
 
 /*!
+ * \brief Convert one Rdata into canonical format.
+ *
+ * RDATA domain names are converted only
+ * for types listed in RFC 4034, Section 6.2, except for NSEC (updated by
+ * RFC 6840, Section 5.1) and A6 (not supported).
+ *
+ * \warning This function expects either empty RDATA or full, not malformed
+ *          RDATA. If malformed RRSet is passed to this function, memory errors
+ *          may occur.
+ *
+ * \param data  Rdata to convert.
+ * \param len   Length of Rdata
+ * \param type  Type of Rdata.
+ */
+int knot_rdata_to_canonical(uint8_t *data, uint16_t len, uint16_t type);
+/*!
  * \brief Size of rrset in wire format.
  *
  * \retval size in bytes

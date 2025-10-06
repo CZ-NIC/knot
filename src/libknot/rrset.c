@@ -146,18 +146,28 @@ int knot_rrset_rr_to_canonical(knot_rrset_t *rrset)
 	/* Convert owner for all RRSets. */
 	knot_dname_to_lower(rrset->owner);
 
+	return knot_rdata_to_canonical(rrset->rrs.rdata->data, rrset->rrs.rdata->len, rrset->type);
+}
+
+_public_
+int knot_rdata_to_canonical(uint8_t *data, uint16_t len, uint16_t type)
+{
+	if (data == NULL) {
+		return KNOT_EINVAL;
+	}
+
 	/* Convert DNAMEs in RDATA only for RFC4034 types. */
-	if (!knot_rrtype_should_be_lowercased(rrset->type)) {
+	if (!knot_rrtype_should_be_lowercased(type)) {
 		return KNOT_EOK;
 	}
 
-	const knot_rdata_descriptor_t *desc = knot_get_rdata_descriptor(rrset->type);
+	const knot_rdata_descriptor_t *desc = knot_get_rdata_descriptor(type);
 	if (desc->type_name == NULL) {
-		desc = knot_get_obsolete_rdata_descriptor(rrset->type);
+		desc = knot_get_obsolete_rdata_descriptor(type);
 	}
 
-	uint16_t rdlen = rrset->rrs.rdata->len;
-	uint8_t *pos = rrset->rrs.rdata->data;
+	uint16_t rdlen = len;
+	uint8_t *pos = data;
 	uint8_t *endpos = pos + rdlen;
 
 	/* No RDATA */
@@ -167,8 +177,8 @@ int knot_rrset_rr_to_canonical(knot_rrset_t *rrset)
 
 	/* Otherwise, whole and not malformed RDATA are expected. */
 	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; ++i) {
-		int type = desc->block_types[i];
-		switch (type) {
+		int block_type = desc->block_types[i];
+		switch (block_type) {
 		case KNOT_RDATA_WF_COMPRESSIBLE_DNAME:
 		case KNOT_RDATA_WF_DECOMPRESSIBLE_DNAME:
 		case KNOT_RDATA_WF_FIXED_DNAME:
@@ -187,8 +197,8 @@ int knot_rrset_rr_to_canonical(knot_rrset_t *rrset)
 			break;
 		default:
 			/* Fixed size block */
-			assert(type > 0);
-			pos += type;
+			assert(block_type > 0);
+			pos += block_type;
 		}
 	}
 

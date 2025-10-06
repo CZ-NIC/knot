@@ -28,6 +28,18 @@
 
 #define RECVMMSG_BATCHLEN 10 /*!< Default recvmmsg() batch size. */
 
+#ifdef ENABLE_ASYNC_QUERY_HANDLING
+/*!
+ * \brief Initialize udp async.
+ *
+ * \param pool_size Request pool size.
+ * \param numa_enabled Indicates if numa available.
+ *
+ * \retval KNOT_EOK on success.
+ */
+int init_udp_async(size_t pool_size, bool numa_enabled);
+#endif
+
 /*!
  * \brief UDP handler thread runnable.
  *

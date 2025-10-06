@@ -102,3 +102,32 @@ log-responses
 If enabled, response messages will be logged.
 
 *Default:* on
+
+qps-limit
+.........
+If set to non-zero, the server will log maximum of qps-limit queries per second and drop other logs.
+This is a token bucket approach of how many QPS will be logged every second. Any unused tokens will expire at the end of the second.
+
+*Default:* 0
+
+err-limit
+.........
+If set to non-zero, the server will log errors upto the err-limit. qps-limit applies to the error logs as well.
+But, error queries are allowed to consume additional tokens from future seconds upto err-limit.
+If more error queries are logged, that reduces the number of tokens available for regular queries in future without changing logging qps.
+In the worst case, if there are too many errors, every second releases qps-limit tokens and only consumed by error queries.
+
+Ex, if qps-limit is 10 and err-limit is 100, after first 10 successful queries are logged, success queries on that second are ignored.
+During that second, if failures happen, 90 more failure queries are logged. At the beginning of next second, the available token to normal queries becomes -90 + 10 = -80.
+In this case, error has consumed the qps token for next 9 seconds and no success query logs will be added for next 9 seconds.
+But, if there were errors during those seconds, it still has 10 tokens per second to consume on error side. So upto 10 errors can be logged during those seconds.
+If nothing is logged for next 9 seconds, at the end of 9 seconds, the system resets to default limit of regular queries with 10 tokens, and errors with 100 tokens.
+In the long run, errors and success can consume only qps-limit. But errors are prioritized and allowed to consume more tokens at the expense of success.
+
+*Default:* 0
+
+query-with-resp
+...............
+If set to on, logs query packet along with response packet to reduce round trip and also to make analysis easier.
+
+*Default:* off

@@ -55,6 +55,7 @@
 #define C_ECS			"\x12""edns-client-subnet"
 #define C_FILE			"\x04""file"
 #define C_GLOBAL_MODULE		"\x0D""global-module"
+#define C_AZURE_MODULE		"\x0C""azure-module"
 #define C_ID			"\x02""id"
 #define C_IDENT			"\x08""identity"
 #define C_INCL			"\x07""include"
@@ -168,6 +169,13 @@
 #define C_MIN_REFRESH_INTERVAL	"\x14""min-refresh-interval"
 #define C_MAX_JOURNAL_DEPTH	"\x11""max-journal-depth"
 #define C_MAX_JOURNAL_USAGE	"\x11""max-journal-usage"
+
+#ifdef ENABLE_ASYNC_QUERY_HANDLING
+#define C_ENABLE_NUMA       "\x0b""enable-numa"
+#define C_UDP_ASYNC_REQS    "\x0d""udp-async-req"
+#define C_TCP_ASYNC_REQS    "\x0d""tcp-async-req"
+#define C_XDP_ASYNC_REQS    "\x0d""xdp-async-req"
+#endif
 
 enum {
 	KEYSTORE_BACKEND_PEM    = 1,

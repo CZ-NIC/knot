@@ -1,7 +1,7 @@
 noinst_LTLIBRARIES += libcontrib.la
 
-libcontrib_la_CPPFLAGS = $(AM_CPPFLAGS) $(CFLAG_VISIBILITY)
-libcontrib_la_LDFLAGS  = $(AM_LDFLAGS) $(LDFLAG_EXCLUDE_LIBS)
+libcontrib_la_CPPFLAGS = $(AM_CPPFLAGS) $(CFLAG_VISIBILITY) ${fuzzer_CFLAGS}
+libcontrib_la_LDFLAGS  = $(AM_LDFLAGS) $(LDFLAG_EXCLUDE_LIBS) ${fuzzer_CFLAGS}
 libcontrib_la_LIBADD   = $(pthread_LIBS)
 libcontrib_LIBS        = libcontrib.la
 if USE_GNUTLS_MEMSET
@@ -56,6 +56,7 @@ libcontrib_la_SOURCES = \
 	contrib/tolower.h			\
 	contrib/trim.h				\
 	contrib/wire_ctx.h			\
+	contrib/memcheck.h			\
 	contrib/openbsd/siphash.c		\
 	contrib/openbsd/siphash.h		\
 	contrib/openbsd/strlcat.c		\
@@ -133,13 +134,17 @@ libdnstap_la_CPPFLAGS = $(AM_CPPFLAGS) $(CFLAG_VISIBILITY) $(DNSTAP_CFLAGS)
 libdnstap_la_LDFLAGS  = $(AM_LDFLAGS) $(LDFLAG_EXCLUDE_LIBS)
 libdnstap_LIBS        = libdnstap.la $(DNSTAP_LIBS)
 
-SUFFIXES = .proto .pb-c.c .pb-c.h
+SUFFIXES = .proto .pb-c.c .pb-c.h .c .pp
 
 .proto.pb-c.c:
 	$(AM_V_GEN)@PROTOC_C@ --c_out=. -I$(srcdir) $<
 
 .proto.pb-c.h:
 	$(AM_V_GEN)@PROTOC_C@ --c_out=. -I$(srcdir) $<
+
+# Allows the creation of preprocessed file using "make <file-name-without-c>.pp"
+.c.pp:
+	$(COMPILE) -o $@ -E $<
 
 libdnstap_la_SOURCES = \
 	contrib/dnstap/convert.c	\

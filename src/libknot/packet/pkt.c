@@ -745,7 +745,17 @@ static int parse_payload(knot_pkt_t *pkt, unsigned flags)
 
 	/* Check for trailing garbage. */
 	if (pkt->parsed < pkt->size) {
+#ifdef ENABLE_TRAILING_BYTES
+		for (size_t trail = pkt->parsed; trail < pkt->size; trail++) {
+			if (pkt->wire[trail] != 0) {
+				return KNOT_ETRAIL;
+			}
+		}
+
+		pkt->size = pkt->parsed;
+#else
 		return KNOT_ETRAIL;
+#endif
 	}
 
 	return KNOT_EOK;

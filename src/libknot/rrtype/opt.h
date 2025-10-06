@@ -91,6 +91,12 @@ enum {
 
 	/*! \brief Maximal currently known option code. */
 	KNOT_EDNS_MAX_OPTION_CODE      = 17,
+
+	/*! \brief Microsoft extension for billing aggregationid support. */
+	KNOT_EDNS_OPTION_DATA_TAG_CODE = 65431,
+
+	/*! \brief Microsoft extension for origin DNS support. */
+	KNOT_EDNS_MICROSOFT_ORIGIN_SCOPE_CODE = 65432,
 };
 
 /*!
@@ -361,6 +367,7 @@ uint8_t *knot_edns_get_option(const knot_rrset_t *opt_rr, uint16_t code,
  */
 typedef struct {
 	uint8_t *ptr[KNOT_EDNS_MAX_OPTION_CODE + 1];
+	uint8_t *custom_ptr[1]; // 0 for KNOT_EDNS_MICROSOFT_ORIGIN_SCOPE_CODE
 } knot_edns_options_t;
 
 /*!

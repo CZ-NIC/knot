@@ -222,6 +222,13 @@ static const yp_item_t desc_server[] = {
 	{ C_MAX_IPV6_UDP_PAYLOAD, YP_TINT,  YP_VINT = { KNOT_EDNS_MIN_DNSSEC_PAYLOAD,
 	                                                KNOT_EDNS_MAX_UDP_PAYLOAD,
 	                                                1232, YP_SSIZE } },
+#ifdef ENABLE_ASYNC_QUERY_HANDLING
+	{ C_ENABLE_NUMA,          YP_TBOOL, YP_VBOOL = {false}},
+	{ C_UDP_ASYNC_REQS,       YP_TINT,  YP_VINT = { 0, INT32_MAX, 4 * 1024 } },
+	{ C_TCP_ASYNC_REQS,       YP_TINT,  YP_VINT = { 0, INT32_MAX,  1 * 1024 } },
+	{ C_XDP_ASYNC_REQS,       YP_TINT,  YP_VINT = { 0, INT32_MAX, 2 * 1024 } },
+#endif
+	{ C_DISABLE_ANY,         YP_TBOOL, YP_VNONE },
 	{ NULL }
 };
 
@@ -428,6 +435,8 @@ static const yp_item_t desc_policy[] = {
 static const yp_item_t desc_template[] = {
 	{ C_ID, YP_TSTR, YP_VNONE, CONF_IO_FREF },
 	{ C_GLOBAL_MODULE,       YP_TDATA, YP_VDATA = { 0, NULL, mod_id_to_bin, mod_id_to_txt },
+	                                   YP_FMULTI | CONF_IO_FRLD_MOD, { check_modref } },
+	{ C_AZURE_MODULE,       YP_TDATA, YP_VDATA = { 0, NULL, mod_id_to_bin, mod_id_to_txt },
 	                                   YP_FMULTI | CONF_IO_FRLD_MOD, { check_modref } },
 	ZONE_ITEMS(CONF_IO_FRLD_ZONES)
 	// Legacy items.

@@ -20,7 +20,7 @@
 #include "knot/include/module.h"
 #include "knot/nameserver/process_query.h"
 
-/*! \brief Don't follow CNAME/DNAME chain beyond this depth. */
+/*! \brief Don't follow CNAME/DNAME chain beyond this depth of 5. */
 #define CNAME_CHAIN_MAX 5
 
 /*!

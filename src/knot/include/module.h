@@ -396,18 +396,29 @@ typedef enum {
 	KNOTD_QUERY_FLAG_COOKIE     = 1 << 3, /*!< Valid DNS Cookie indication. */
 } knotd_query_flag_t;
 
+typedef struct knotd_qdata_params knotd_qdata_params_t;
+typedef int (*async_operation_completion_callback)(knotd_qdata_params_t *params);
+
 /*! Query processing data context parameters. */
-typedef struct {
+struct knotd_qdata_params {
 	knotd_query_flag_t flags;              /*!< Current query flgas. */
 	const struct sockaddr_storage *remote; /*!< Current remote address. */
+	const struct sockaddr_storage *local;  /*!< Current local address. */
 	int socket;                            /*!< Current network socket. */
 	unsigned thread_id;                    /*!< Current thread id. */
 	void *server;                          /*!< Server object private item. */
 	const struct knot_xdp_msg *xdp_msg;    /*!< Possible XDP message context. */
-} knotd_qdata_params_t;
+	void *dns_req;                         /*!< Request this param belongs to. */
+#ifdef ENABLE_ASYNC_QUERY_HANDLING
+	async_operation_completion_callback async_completed_callback; /*!< handler for async operation completion at layer */
+#endif
+};
+
+typedef struct knotd_qdata knotd_qdata_t;
+typedef int (*module_async_operation_completed)(knotd_qdata_t *query, int state);
 
 /*! Query processing data context. */
-typedef struct {
+struct knotd_qdata {
 	knot_pkt_t *query;              /*!< Query to be solved. */
 	knotd_query_type_t type;        /*!< Query packet type. */
 	const knot_dname_t *name;       /*!< Currently processed name. */
@@ -424,7 +435,14 @@ typedef struct {
 	knotd_qdata_params_t *params; /*!< Low-level processing parameters. */
 
 	struct knotd_qdata_extra *extra; /*!< Private items (process_query.h). */
-} knotd_qdata_t;
+
+	struct timespec query_time;      /*!< Time when the query was received. */
+	void *state;                     /*!< State of the query processor. */
+#ifdef ENABLE_ASYNC_QUERY_HANDLING
+	module_async_operation_completed async_completed;    /*!< handler for completinig the query async in module. */
+	module_async_operation_completed async_in_completed; /*!< handler for completinig the query in async in module. */
+#endif
+};
 
 /*!
  * Gets the local (destination) address of the query.
@@ -434,8 +452,7 @@ typedef struct {
  *
  * \return Local address or NULL if error.
  */
-const struct sockaddr_storage *knotd_qdata_local_addr(knotd_qdata_t *qdata,
-                                                      struct sockaddr_storage *buff);
+const struct sockaddr_storage *knotd_qdata_local_addr(knotd_qdata_t *qdata);
 
 /*!
  * Gets the remote (source) address of the query.
@@ -471,11 +488,16 @@ typedef enum {
 	KNOTD_STATE_DONE  = 4, /*!< Finished. */
 	KNOTD_STATE_FAIL  = 5, /*!< Error. */
 	KNOTD_STATE_FINAL = 6, /*!< Finished and finalized (QNAME, EDNS, TSIG). */
+	KNOTD_STATE_ZONE_LOOKUPDONE = 7, /*!< Positive result for zone fetch */
+#ifdef ENABLE_ASYNC_QUERY_HANDLING
+	KNOT_STATE_ASYNC  = 100,    //!< The request needs to be async handled.  Value should match KNOT_LAYER_STATE_ASYNC.
+#endif
 } knotd_state_t;
 
 /*! brief Internet query processing states. */
 typedef enum {
 	KNOTD_IN_STATE_BEGIN,  /*!< Begin name resolution. */
+	KNOTD_IN_STATE_LOOKUPDONE, /*!< Name lookup completed for the qname */
 	KNOTD_IN_STATE_NODATA, /*!< Positive result with NO data. */
 	KNOTD_IN_STATE_HIT,    /*!< Positive result. */
 	KNOTD_IN_STATE_MISS,   /*!< Negative result. */
@@ -483,12 +505,17 @@ typedef enum {
 	KNOTD_IN_STATE_FOLLOW, /*!< Resolution not complete (CNAME/DNAME chain). */
 	KNOTD_IN_STATE_TRUNC,  /*!< Finished, packet size limit encountered. */
 	KNOTD_IN_STATE_ERROR,  /*!< Resolution failed. */
+#ifdef ENABLE_ASYNC_QUERY_HANDLING
+	KNOTD_IN_STATE_ASYNC = 100,  /*!< The request needs to be async handled. */
+#endif
 } knotd_in_state_t;
 
 /*! Query module processing stages. */
 typedef enum {
 	KNOTD_STAGE_BEGIN = 0,  /*!< Before query processing. */
+	KNOTD_STAGE_ZONE_LOOKUP,/*!< Before zone lookup is done. */
 	KNOTD_STAGE_PREANSWER,  /*!< Before section processing. */
+	KNOTD_STAGE_NAME_LOOKUP,/*!< Before name lookup is done */
 	KNOTD_STAGE_ANSWER,     /*!< Answer section processing. */
 	KNOTD_STAGE_AUTHORITY,  /*!< Authority section processing. */
 	KNOTD_STAGE_ADDITIONAL, /*!< Additional section processing. */

@@ -26,8 +26,10 @@
 
 #ifdef HAVE_ATOMIC
  #define ATOMIC_GET(src) __atomic_load_n(&(src), __ATOMIC_RELAXED)
+ #define ATOMIC_ADD(dst, val) __atomic_add_fetch(&(dst), (val), __ATOMIC_RELAXED)
 #else
- #define ATOMIC_GET(src) (src)
+#define ATOMIC_GET(src) (src)
+#define ATOMIC_ADD(dst, val) ((dst) += (src))
 #endif
 
 #define KNOTD_STAGES (KNOTD_STAGE_END + 1)

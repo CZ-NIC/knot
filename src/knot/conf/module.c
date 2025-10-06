@@ -343,27 +343,19 @@ void conf_mod_unload_shared(
 	else \
 		log_##level(LOG_ARGS(mod_id, msg), ##__VA_ARGS__);
 
-void conf_activate_modules(
+void conf_activate_given_module_conf(
 	conf_t *conf,
 	struct server *server,
 	const knot_dname_t *zone_name,
 	list_t *query_modules,
-	struct query_plan **query_plan)
+	struct query_plan **query_plan,
+	conf_val_t val)
 {
 	int ret = KNOT_EOK;
 
 	if (conf == NULL || query_modules == NULL || query_plan == NULL) {
 		ret = KNOT_EINVAL;
 		goto activate_error;
-	}
-
-	conf_val_t val;
-
-	// Get list of associated modules.
-	if (zone_name != NULL) {
-		val = conf_zone_get(conf, C_MODULE, zone_name);
-	} else {
-		val = conf_default_get(conf, C_GLOBAL_MODULE);
 	}
 
 	switch (val.code) {
@@ -439,11 +431,42 @@ activate_error:
 	CONF_LOG(LOG_ERR, "failed to activate modules (%s)", knot_strerror(ret));
 }
 
+void conf_activate_modules(
+	conf_t *conf,
+	struct server *server,
+	const knot_dname_t *zone_name,
+	list_t *query_modules,
+	struct query_plan **query_plan)
+{
+
+	int ret = KNOT_EOK;
+
+	if (conf == NULL || query_modules == NULL || query_plan == NULL) {
+		ret = KNOT_EINVAL;
+		goto activate_error;
+	}
+
+	conf_val_t val;
+
+	// Get list of associated modules.
+	if (zone_name != NULL) {
+		val = conf_zone_get(conf, C_MODULE, zone_name);
+	} else {
+		val = conf_default_get(conf, C_GLOBAL_MODULE);
+	}
+
+	conf_activate_given_module_conf(conf, server, zone_name, query_modules, query_plan, val);
+
+	return;
+activate_error:
+	CONF_LOG(LOG_ERR, "failed to activate modules (%s)", knot_strerror(ret));
+}
+
 void conf_deactivate_modules(
 	list_t *query_modules,
 	struct query_plan **query_plan)
 {
-	if (query_modules == NULL || query_plan == NULL) {
+	if (query_modules == NULL || query_plan == NULL || *query_plan == NULL) {
 		return;
 	}
 

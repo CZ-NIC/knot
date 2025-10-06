@@ -1,7 +1,7 @@
 libknotd_la_CPPFLAGS = $(AM_CPPFLAGS) $(CFLAG_VISIBILITY) $(libkqueue_CFLAGS) \
                        $(liburcu_CFLAGS) $(lmdb_CFLAGS) $(systemd_CFLAGS) \
-                       -DKNOTD_MOD_STATIC
-libknotd_la_LDFLAGS  = $(AM_LDFLAGS) -export-symbols-regex '^knotd_'
+                       -DKNOTD_MOD_STATIC ${fuzzer_CFLAGS}
+libknotd_la_LDFLAGS  = $(AM_LDFLAGS) -export-symbols-regex '^knotd_' ${fuzzer_CFLAGS}
 libknotd_la_LIBADD   = $(dlopen_LIBS) $(libkqueue_LIBS) $(pthread_LIBS)
 libknotd_LIBS        = libknotd.la libknot.la libdnssec.la libzscanner.la \
                        $(libcontrib_LIBS) $(liburcu_LIBS) $(lmdb_LIBS) \
@@ -103,6 +103,7 @@ libknotd_la_SOURCES = \
 	knot/nameserver/notify.h		\
 	knot/nameserver/nsec_proofs.c		\
 	knot/nameserver/nsec_proofs.h		\
+	knot/nameserver/query_state.h		\
 	knot/nameserver/process_query.c		\
 	knot/nameserver/process_query.h		\
 	knot/nameserver/query_module.c		\
@@ -148,6 +149,10 @@ libknotd_la_SOURCES = \
 	knot/journal/serialization.h		\
 	knot/server/server.c			\
 	knot/server/server.h			\
+	knot/server/dns-handler.c		\
+	knot/server/dns-handler.h		\
+	knot/server/network_req_manager.c		\
+	knot/server/network_req_manager.h		\
 	knot/server/tcp-handler.c		\
 	knot/server/tcp-handler.h		\
 	knot/server/udp-handler.c		\
@@ -207,6 +212,16 @@ libknotd_la_SOURCES = \
 	knot/zone/zonefile.c			\
 	knot/zone/zonefile.h
 
+if HAVE_ATOMIC_PRIMITIVES
+libknotd_la_SOURCES += \
+	knot/common/qps_limiter.c   \
+	knot/common/qps_limiter.h   \
+	knot/nameserver/lstack.c    \
+	knot/include/lstack.h       \
+	knot/nameserver/lqueue.c    \
+	knot/include/lqueue.h
+endif HAVE_ATOMIC_PRIMITIVES
+
 if HAVE_DAEMON
 noinst_LTLIBRARIES += libknotd.la
 pkgconfig_DATA     += knotd.pc
@@ -218,6 +233,7 @@ KNOTD_MOD_LDFLAGS  = $(AM_LDFLAGS) -module -shared -avoid-version
 pkglibdir = $(module_instdir)
 pkglib_LTLIBRARIES =
 
+# include $(srcdir)/knot/modules/azuredb/Makefile.inc
 include $(srcdir)/knot/modules/cookies/Makefile.inc
 include $(srcdir)/knot/modules/dnsproxy/Makefile.inc
 include $(srcdir)/knot/modules/dnstap/Makefile.inc
@@ -230,3 +246,5 @@ include $(srcdir)/knot/modules/rrl/Makefile.inc
 include $(srcdir)/knot/modules/stats/Makefile.inc
 include $(srcdir)/knot/modules/synthrecord/Makefile.inc
 include $(srcdir)/knot/modules/whoami/Makefile.inc
+include $(srcdir)/knot/modules/delay/Makefile.inc
+# include $(srcdir)/knot/modules/azurednssec/Makefile.inc

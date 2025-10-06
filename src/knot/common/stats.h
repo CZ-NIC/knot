@@ -38,6 +38,27 @@ typedef struct {
 extern const stats_item_t server_stats[];
 
 /*!
+ * \brief Statistics metrics item.
+ */
+typedef enum {
+    server_stats_udp_received,
+    server_stats_udp_async_done,
+    server_stats_udp_no_req_obj,
+    server_stats_udp_req_batch_limited,
+    server_stats_tcp_accept,
+    server_stats_tcp_received,
+    server_stats_tcp_async_done,
+    server_stats_tcp_no_req_obj,
+    server_stats_tcp_multiple_req,
+    server_stats_max,
+} server_stats_counter_t;
+
+/*!
+ * \brief Increment the server stats.
+ */
+void server_stats_increment_counter(server_stats_counter_t counter, uint64_t value);
+
+/*!
  * \brief Read out value of single counter summed across threads.
  */
 uint64_t stats_get_counter(uint64_t **stats_vals, uint32_t offset, unsigned threads);

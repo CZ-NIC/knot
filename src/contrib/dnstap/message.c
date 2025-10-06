@@ -73,7 +73,10 @@ int dt_message_fill(Dnstap__Message             *m,
                     const int                   protocol,
                     const void                  *wire,
                     const size_t                len_wire,
-                    const struct timespec       *mtime)
+                    const struct timespec       *mtime,
+					const void                  *wire2,
+					const size_t                len_wire2,
+                    const struct timespec       *mtime2)
 {
 	if (m == NULL) {
 		return KNOT_EINVAL;
@@ -123,6 +126,20 @@ int dt_message_fill(Dnstap__Message             *m,
 			m->response_time_nsec = mtime->tv_nsec;
 			m->has_response_time_sec = 1;
 			m->has_response_time_nsec = 1;
+		}
+
+		if (len_wire2 > 0) {
+			// Message.query_message
+			m->query_message.len = len_wire2;
+			m->query_message.data = (uint8_t *)wire2;
+			m->has_query_message = 1;
+			// Message.query_time_sec, Message.query_time_nsec
+			if (mtime != NULL) {
+				m->query_time_sec = mtime2->tv_sec;
+				m->query_time_nsec = mtime2->tv_nsec;
+				m->has_query_time_sec = 1;
+				m->has_query_time_nsec = 1;
+			}
 		}
 	}
 

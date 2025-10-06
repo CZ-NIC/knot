@@ -207,7 +207,7 @@ int knot_sign_ctx_add_data(dnssec_sign_ctx_t *ctx,
  *
  * \return Error code, KNOT_EOK if successful.
  */
-static int rrsigs_create_rdata(knot_rrset_t *rrsigs, dnssec_sign_ctx_t *ctx,
+int rrsigs_create_rdata(knot_rrset_t *rrsigs, dnssec_sign_ctx_t *ctx,
                                const knot_rrset_t *covered,
                                const dnssec_key_t *key,
                                uint32_t sig_incepted, uint32_t sig_expires,

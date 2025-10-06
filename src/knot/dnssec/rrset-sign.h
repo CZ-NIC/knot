@@ -59,6 +59,27 @@ int knot_sign_rrset2(knot_rrset_t *rrsigs,
                      knot_mm_t *mm);
 
 /*!
+ * \brief Create RRSIG RDATA.
+ *
+ * \param[in]  rrsigs        RR set with RRSIGS.
+ * \param[in]  ctx           DNSSEC signing context.
+ * \param[in]  covered       RR covered by the signature.
+ * \param[in]  key           Key used for signing.
+ * \param[in]  sig_incepted  Timestamp of signature inception.
+ * \param[in]  sig_expires   Timestamp of signature expiration.
+ * \param[in]  sign_flags    Signing flags.
+ * \param[in]  mm            Memory context.
+ *
+ * \return Error code, KNOT_EOK if successful.
+ */
+int rrsigs_create_rdata(knot_rrset_t *rrsigs, dnssec_sign_ctx_t *ctx,
+                               const knot_rrset_t *covered,
+                               const dnssec_key_t *key,
+                               uint32_t sig_incepted, uint32_t sig_expires,
+                               dnssec_sign_flags_t sign_flags,
+                               knot_mm_t *mm);
+
+/*!
  * \brief Add all data covered by signature into signing context.
  *
  * RFC 4034: The signature covers RRSIG RDATA field (excluding the signature)

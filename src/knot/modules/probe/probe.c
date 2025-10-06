@@ -80,8 +80,7 @@ static knotd_state_t export(knotd_state_t state, knot_pkt_t *pkt,
 	ATOMIC_SET(ctx->last_times[idx], now_ns);
 
 	// Prepare data sources.
-	struct sockaddr_storage buff;
-	const struct sockaddr_storage *local = knotd_qdata_local_addr(qdata, &buff);
+	const struct sockaddr_storage *local = knotd_qdata_local_addr(qdata);
 	const struct sockaddr_storage *remote = knotd_qdata_remote_addr(qdata);
 
 	bool tcp = !(qdata->params->flags & KNOTD_QUERY_FLAG_LIMIT_SIZE);
