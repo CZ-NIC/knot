@@ -2,3 +2,4 @@
 --no-progress
 --use-valgrind --vg-suppressions ../tests-redis/knot-redis.supp
 --use-slaves
+--use-aof
