@@ -1,3 +1,4 @@
 --module ../src/redis/.libs/knot.so
+--use-aof
 --no-progress
 --use-valgrind
