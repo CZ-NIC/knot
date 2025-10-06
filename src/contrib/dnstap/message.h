@@ -49,6 +49,12 @@
  *	Length in bytes of 'wire'.
  * \param mtime
  *	Message time. May be NULL.
+ * \param wire2
+ * Wire-format request message received (used only when logging query and response in same message)
+ * \param len_wire2
+ * Length in bytes of 'wire2'.
+ * \param mtime2
+ * Request message time.
  *
  * \retval KNOT_EOK
  * \retval KNOT_EINVAL
@@ -60,4 +66,7 @@ int dt_message_fill(Dnstap__Message             *m,
                     const int                   protocol,
                     const void                  *wire,
                     const size_t                len_wire,
-                    const struct timespec       *mtime);
+                    const struct timespec       *mtime,
+                    const void                  *wire2,
+                    const size_t                len_wire2,
+                    const struct timespec       *mtime2);

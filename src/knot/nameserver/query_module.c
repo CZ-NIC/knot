@@ -107,7 +107,7 @@ int query_plan_step(struct query_plan *plan, knotd_stage_t stage,
 _public_
 int knotd_mod_hook(knotd_mod_t *mod, knotd_stage_t stage, knotd_mod_hook_f hook)
 {
-	if (stage != KNOTD_STAGE_BEGIN && stage != KNOTD_STAGE_END) {
+	if (stage != KNOTD_STAGE_BEGIN && stage != KNOTD_STAGE_END && stage != KNOTD_STAGE_ZONE_LOOKUP) {
 		return KNOT_EINVAL;
 	}
 
@@ -117,7 +117,7 @@ int knotd_mod_hook(knotd_mod_t *mod, knotd_stage_t stage, knotd_mod_hook_f hook)
 _public_
 int knotd_mod_in_hook(knotd_mod_t *mod, knotd_stage_t stage, knotd_mod_in_hook_f hook)
 {
-	if (stage == KNOTD_STAGE_BEGIN || stage == KNOTD_STAGE_END) {
+	if (stage == KNOTD_STAGE_BEGIN || stage == KNOTD_STAGE_END || stage == KNOTD_STAGE_ZONE_LOOKUP) {
 		return KNOT_EINVAL;
 	}
 
@@ -618,47 +618,31 @@ void knotd_conf_free(knotd_conf_t *conf)
 }
 
 _public_
-const struct sockaddr_storage *knotd_qdata_local_addr(knotd_qdata_t *qdata,
-                                                      struct sockaddr_storage *buff)
+const struct sockaddr_storage *knotd_qdata_local_addr(knotd_qdata_t *qdata)
 {
-	if (qdata == NULL) {
+	if (qdata == NULL || qdata->params == NULL) {
 		return NULL;
 	}
 
-	if (qdata->params->xdp_msg != NULL) {
-#ifdef ENABLE_XDP
-		return (struct sockaddr_storage *)&qdata->params->xdp_msg->ip_to;
-#else
-		assert(0);
-		return NULL;
-#endif
-	} else {
-		socklen_t buff_len = sizeof(*buff);
-		if (getsockname(qdata->params->socket, (struct sockaddr *)buff,
-		                &buff_len) != 0) {
-			return NULL;
-		}
-		return buff;
+	if (qdata->params->local != NULL && qdata->params->local->ss_family != AF_UNSPEC) {
+		return qdata->params->local;
 	}
+
+	return NULL;
 }
 
 _public_
 const struct sockaddr_storage *knotd_qdata_remote_addr(knotd_qdata_t *qdata)
 {
-	if (qdata == NULL) {
+	if (qdata == NULL || qdata->params == NULL) {
 		return NULL;
 	}
 
-	if (qdata->params->xdp_msg != NULL) {
-#ifdef ENABLE_XDP
-		return (struct sockaddr_storage *)&qdata->params->xdp_msg->ip_from;
-#else
-		assert(0);
-		return NULL;
-#endif
-	} else {
+	if (qdata->params->remote != NULL && qdata->params->remote->ss_family != AF_UNSPEC) {
 		return qdata->params->remote;
 	}
+
+	return NULL;
 }
 
 _public_

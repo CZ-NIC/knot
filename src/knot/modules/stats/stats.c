@@ -32,6 +32,8 @@
 #define MOD_QTYPE	"\x0A""query-type"
 #define MOD_QSIZE	"\x0A""query-size"
 #define MOD_RSIZE	"\x0A""reply-size"
+#define MOD_NO_RESP "\x07""no-resp"
+#define MOD_RESP_TIME "\x09""resp-time"
 
 #define OTHER		"other"
 
@@ -49,6 +51,8 @@ const yp_item_t stats_conf[] = {
 	{ MOD_QTYPE,      YP_TBOOL, YP_VNONE },
 	{ MOD_QSIZE,      YP_TBOOL, YP_VNONE },
 	{ MOD_RSIZE,      YP_TBOOL, YP_VNONE },
+	{ MOD_NO_RESP,    YP_TBOOL, YP_VNONE },
+	{ MOD_RESP_TIME,      YP_TBOOL, YP_VBOOL = { true } },
 	{ NULL }
 };
 
@@ -66,6 +70,8 @@ enum {
 	CTR_QTYPE,
 	CTR_QSIZE,
 	CTR_RSIZE,
+	CTR_NO_RESP,
+	CTR_RESP_TIME,
 };
 
 typedef struct {
@@ -82,6 +88,8 @@ typedef struct {
 	bool qtype;
 	bool qsize;
 	bool rsize;
+	bool no_resp;
+	bool resp_time;
 } stats_t;
 
 typedef struct {
@@ -167,6 +175,21 @@ static char *resp_bytes_to_str(uint32_t idx, uint32_t count)
 	case RESP_BYTES_REPLY:    return strdup("reply");
 	case RESP_BYTES_TRANSFER: return strdup("transfer");
 	case RESP_BYTES_OTHER:    return strdup(OTHER);
+	default:                  assert(0); return NULL;
+	}
+}
+
+enum {
+	WITH_FAILURE,
+	WITHOUT_FAILURE,
+	NO_RESP_TYPE_COUNT
+};
+
+static char *no_resp_to_str(uint32_t idx, uint32_t count)
+{
+	switch (idx) {
+	case WITH_FAILURE:    return strdup("failed");
+	case WITHOUT_FAILURE: return strdup("success");
 	default:                  assert(0); return NULL;
 	}
 }
@@ -334,6 +357,29 @@ static char *rsize_to_str(uint32_t idx, uint32_t count)
 	return size_to_str(idx, count);
 }
 
+static uint32_t resp_time_bucket[] = { 0, 5, 10, 20, 50, 100, 150, 200, 250, 500, 750, 1000, 1300, 1500, 1800, 2000, 3000, 5000, 0xFFFFFFFF };
+static char *resp_time_to_str(uint32_t idx, uint32_t count)
+{
+	char str[64];
+	if (idx < count - 1) {
+		snprintf(str, sizeof(str), "%u-%u", resp_time_bucket[idx], resp_time_bucket[idx+1]);
+	} else {
+		snprintf(str, sizeof(str), "%u-max", resp_time_bucket[idx]);
+	}
+	return strdup(str);
+}
+
+static int resp_time_to_bucket_id(uint32_t resp_time) {
+	for (int i = 1; i < sizeof(resp_time_bucket)/sizeof(uint32_t); i++)
+	{
+		if (resp_time <= resp_time_bucket[i]) {
+			return i-1;
+		}
+	}
+
+	return 0;
+}
+
 static const ctr_desc_t ctr_descs[] = {
 	#define item(macro, name, count) \
 		[CTR_##macro] = { MOD_##macro, offsetof(stats_t, name), (count), name##_to_str }
@@ -350,6 +396,8 @@ static const ctr_desc_t ctr_descs[] = {
 	item(QTYPE,      qtype,      QTYPE__COUNT),
 	item(QSIZE,      qsize,      QSIZE_MAX_IDX + 1),
 	item(RSIZE,      rsize,      RSIZE_MAX_IDX + 1),
+	item(NO_RESP,    no_resp,    NO_RESP_TYPE_COUNT),
+	item(RESP_TIME,  resp_time,  ((sizeof(resp_time_bucket)/sizeof(uint32_t)) - 1)),
 	{ NULL }
 };
 
@@ -452,6 +500,27 @@ static knotd_state_t update_counters(knotd_state_t state, knot_pkt_t *pkt,
 			                     knot_pkt_size(pkt));
 			break;
 		}
+	} else if (stats->resp_bytes == 0) {
+		knotd_mod_stats_incr(mod, tid, CTR_NO_RESP, state != KNOTD_STATE_FAIL ? WITHOUT_FAILURE : WITH_FAILURE,
+								1);
+	}
+
+	struct timespec now;
+	if (clock_gettime(CLOCK_REALTIME_COARSE, &now) != -1) {
+		// Calculate resp time
+		uint32_t time = (now.tv_sec - qdata->query_time.tv_sec) * 1000;
+		time += (now.tv_nsec - qdata->query_time.tv_nsec) / 1000000;
+		if (now.tv_nsec < qdata->query_time.tv_nsec) {
+			// time -= 1000; This results in overflow. Commenting this will round up instead of rounding down. 
+			if (now.tv_sec <= qdata->query_time.tv_sec) {
+				// now is smaller than query time
+				time = 0;
+			}
+		}
+
+		int id = resp_time_to_bucket_id(time);
+		knotd_mod_stats_incr(mod, tid, CTR_RESP_TIME, id,
+								1);
 	}
 
 	// Get the extended response code.

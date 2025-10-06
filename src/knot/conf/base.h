@@ -137,10 +137,17 @@ typedef struct {
 		uint32_t xdp_tcp_idle_reset;
 		bool xdp_tcp;
 		bool xdp_route_check;
+#ifdef ENABLE_ASYNC_QUERY_HANDLING
+		bool numa_enabled;
+		size_t udp_srv_async_reqs;
+		size_t tcp_srv_async_reqs;
+		size_t xdp_srv_async_reqs;
+#endif
 		int ctl_timeout;
 		conf_val_t srv_nsid;
 		bool srv_ecs;
 		bool srv_ans_rotate;
+		bool srv_disable_any;
 	} cache;
 
 	/*! List of dynamically loaded modules. */

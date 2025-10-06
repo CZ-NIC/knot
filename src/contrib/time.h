@@ -20,6 +20,10 @@
 #include <time.h>
 #include <inttypes.h>
 
+#ifndef CLOCK_REALTIME_COARSE
+#define CLOCK_REALTIME_COARSE CLOCK_REALTIME
+#endif
+
 #ifdef __APPLE__
  #define st_mtim st_mtimespec
 #endif
