@@ -96,7 +96,7 @@ typedef enum {
 } fdset_sweep_state_t;
 
 /*! \brief Sweep callback (set, index, data) */
-typedef fdset_sweep_state_t (*fdset_sweep_cb_t)(fdset_t *, int, void *);
+typedef fdset_sweep_state_t (*fdset_sweep_cb_t)(fdset_t *, int, void *ctx, void *arg);
 
 /*!
  * \brief Initialize fdset to given size.
@@ -127,6 +127,39 @@ void fdset_clear(fdset_t *set);
  * \retval ret < 0 on error.
  */
 int fdset_add(fdset_t *set, const int fd, const fdset_event_t events, void *ctx);
+
+/*!
+ * \brief Set the context on the descriptor at i.
+ *
+ * \param set Target set.
+ * \param i Index to set ctx at.
+ *
+ * \retval index of the added fd if successful.
+ * \retval -1 on errors.
+ */
+int fdset_set_ctx(fdset_t *set, unsigned i, void *ctx);
+
+/*!
+ * \brief Get the context on the descriptor at i.
+ *
+ * \param set Target set.
+ * \param i Index to get ctx at.
+ *
+ * \retval context value.
+ */
+void* fdset_get_ctx(fdset_t *set, unsigned i);
+
+/*!
+ * \brief Clear the context for the given fd
+ *
+ * \param set Target set.
+ * \param fd Handle whose context needs to be cancelled.
+ * \param ctx Context (optional).
+ *
+ * \retval index of the fd if successful.
+ * \retval -1 on errors.
+ */
+int fdset_set_ctx_on_fd(fdset_t *set, int fd, void *ctx);
 
 /*!
  * \brief Remove and close file descriptor from watched set.
@@ -199,6 +232,27 @@ inline static int fdset_get_fd(const fdset_t *set, const unsigned idx)
 #else
 	return set->pfd[idx].fd;
 #endif
+}
+
+/*!
+ * \brief Returns index for file descriptor.
+ *
+ * \param set  Target set.
+ * \param .
+ *
+ * \retval Index of the file descriptor. ret >= 0 for file descriptor found.
+ * \retval ret < 0 on errors.
+ */
+inline static int fdset_get_index_for_fd(const fdset_t *set, int fd)
+{
+	assert(set);
+	for (unsigned i = 0; i < set->n; i++) {
+		if (fdset_get_fd(set, i) == fd) {
+			return i;
+		}
+	}
+
+	return -1;
 }
 
 /*!
@@ -278,6 +332,20 @@ inline static void fdset_it_next(fdset_it_t *it)
 }
 
 /*!
+ * \brief Get context from the iterator.
+ *
+ * \param it  Target iterator.
+ *
+ * \return Context at the iterator.
+ */
+inline static void* fdset_it_get_ctx(fdset_it_t *it)
+{
+	assert(it);
+	unsigned idx = fdset_it_get_idx(it);
+	return fdset_get_ctx(it->set, idx);
+}
+
+/*!
  * \brief Remove file descriptor referenced by iterator from watched set.
  *
  * \param it  Target iterator.
@@ -304,9 +372,9 @@ inline static void fdset_it_remove(fdset_it_t *it)
 	/*       EVFILT_WRITE (1) -> -2                    */
 	/* If not marked for delete then mark for delete.  */
 #if defined(__NetBSD__)
-	if ((signed short)it->set->ev[idx].filter >= 0) 
+	if ((signed short)it->set->ev[idx].filter >= 0)
 #else
-	if (it->set->ev[idx].filter < 0) 
+	if (it->set->ev[idx].filter < 0)
 #endif
 	{
 		it->set->ev[idx].filter = ~it->set->ev[idx].filter;

@@ -113,6 +113,14 @@ typedef zone_node_t *(*node_new_cb)(const knot_dname_t *, void *);
  * \brief Clears additional structure.
  *
  * \param additional  Additional to clear.
+ * \param mm          Memory context to use.
+ */
+void additional_clear_mm(additional_t *additional, knot_mm_t *mm);
+
+/*!
+ * \brief Clears additional structure.
+ *
+ * \param additional  Additional to clear.
  */
 void additional_clear(additional_t *additional);
 
@@ -205,6 +213,16 @@ bool binode_additionals_unchanged(zone_node_t *node, zone_node_t *counterpart);
  *
  * \param node  Node that contains data to be destroyed.
  * \param mm    Memory context to use.
+ * \param use_mm_for_additional Use mm to free the additional data
+ */
+void node_free_rrsets_mm(zone_node_t *node, knot_mm_t *mm, bool use_mm_for_additional);
+
+/*!
+ * \brief Destroys allocated data within the node
+ *        structure, but not the node itself.
+ *
+ * \param node  Node that contains data to be destroyed.
+ * \param mm    Memory context to use.
  */
 void node_free_rrsets(zone_node_t *node, knot_mm_t *mm);
 
@@ -230,6 +248,26 @@ void node_free(zone_node_t *node, knot_mm_t *mm);
  * \retval KNOT_ETTL  RRSet TTL was updated.
  */
 int node_add_rrset(zone_node_t *node, const knot_rrset_t *rrset, knot_mm_t *mm);
+
+/*!
+ * \brief Adds an additional to the node. Just pointer is saved
+ *
+ * \param node     Node to add the RRSet to.
+ * \param type     type of the RR to which the additional has to be added.
+ * \param additional Additional data to be added       .
+ *
+ * \return KNOT_E*
+ */
+int node_add_rrset_additional(zone_node_t *node, uint16_t type, additional_t *additional);
+
+/*!
+ * \brief Removes data for given RR type from node.
+ *
+ * \param node  Node we want to delete from.
+ * \param type  RR type to delete.
+ * \param mm       Memory context to use.
+ */
+void node_remove_rdataset_mm(zone_node_t *node, uint16_t type, knot_mm_t *mm);
 
 /*!
  * \brief Removes data for given RR type from node.

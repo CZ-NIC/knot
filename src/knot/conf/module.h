@@ -102,6 +102,24 @@ void conf_activate_modules(
 );
 
 /*!
+ * Activates configured query modules for the specified zone or for all zones.
+ *
+ * \param[in] conf           Configuration.
+ * \param[in] zone_name      Zone name, NULL for all zones.
+ * \param[in] query_modules  Destination query modules list.
+ * \param[in] query_plan     Destination query plan.
+ * \param[in] val            conf val to activate.
+ */
+void conf_activate_given_module_conf(
+	conf_t *conf,
+	struct server *server,
+	const knot_dname_t *zone_name,
+	list_t *query_modules,
+	struct query_plan **query_plan,
+	conf_val_t val
+);
+
+/*!
  * Deactivates query modules list.
  *
  * \param[in] query_modules  Destination query modules list.

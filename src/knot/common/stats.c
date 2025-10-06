@@ -25,6 +25,8 @@
 #include "knot/common/log.h"
 #include "knot/nameserver/query_module.h"
 
+#define ARRAY_SIZE(array)       (sizeof(array) / sizeof((array)[0]))
+
 struct {
 	bool active_dumper;
 	pthread_t dumper;
@@ -49,6 +51,26 @@ typedef struct {
 uint64_t server_zone_count(server_t *server)
 {
 	return knot_zonedb_size(server->zone_db);
+}
+
+const char *server_stat_names[] = {
+	"udp_received",
+    "udp_async_done",
+    "udp_no_req_obj",
+	"udp_req_batch_limited",
+	"tcp_accept",
+    "tcp_received",
+    "tcp_async_done",
+    "tcp_no_req_obj",
+	"tcp_multiple_req",
+};
+
+static uint64_t server_stat_counters[ARRAY_SIZE(server_stat_names)];
+
+void server_stats_increment_counter(server_stats_counter_t counter, uint64_t value)
+{
+	assert(counter < server_stats_max);
+	ATOMIC_ADD(server_stat_counters[counter], value);
 }
 
 const stats_item_t server_stats[] = {
@@ -181,6 +203,10 @@ static void dump_to_file(FILE *fd, server_t *server)
 		DUMP_CTR(fd, 1, "%s", item->name, item->val(server));
 	}
 
+	for(int i = 0; i < ARRAY_SIZE(server_stat_names); i++) {
+		DUMP_CTR(fd, 1, "%s", server_stat_names[i], ATOMIC_GET(server_stat_counters[i]));
+	}
+
 	dump_ctx_t ctx = {
 		.fd = fd,
 		.query_modules = conf()->query_modules,
@@ -267,6 +293,7 @@ static void *dumper(void *data)
 
 void stats_reconfigure(conf_t *conf, server_t *server)
 {
+	assert(server_stats_max == ARRAY_SIZE(server_stat_names)); // Ensure enum and names are setup consistently.
 	if (conf == NULL || server == NULL) {
 		return;
 	}

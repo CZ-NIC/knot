@@ -17,14 +17,19 @@
 #include "knot/zone/node.h"
 #include "libknot/libknot.h"
 
-void additional_clear(additional_t *additional)
+void additional_clear_mm(additional_t *additional, knot_mm_t *mm)
 {
 	if (additional == NULL) {
 		return;
 	}
 
-	free(additional->glues);
-	free(additional);
+	mm_free(mm, additional->glues);
+	mm_free(mm, additional);
+}
+
+void additional_clear(additional_t *additional)
+{
+    additional_clear_mm(additional, NULL);
 }
 
 bool additional_equal(additional_t *a, additional_t *b)
@@ -265,20 +270,25 @@ bool binode_additionals_unchanged(zone_node_t *node, zone_node_t *counterpart)
 	return true;
 }
 
-void node_free_rrsets(zone_node_t *node, knot_mm_t *mm)
+void node_free_rrsets_mm(zone_node_t *node, knot_mm_t *mm, bool use_mm_for_additional)
 {
 	if (node == NULL) {
 		return;
 	}
 
 	for (uint16_t i = 0; i < node->rrset_count; ++i) {
-		additional_clear(node->rrs[i].additional);
+		additional_clear_mm(node->rrs[i].additional, use_mm_for_additional ? mm : NULL);
 		rr_data_clear(&node->rrs[i], mm);
 	}
 
 	mm_free(mm, node->rrs);
 	node->rrs = NULL;
 	node->rrset_count = 0;
+}
+
+void node_free_rrsets(zone_node_t *node, knot_mm_t *mm)
+{
+    node_free_rrsets_mm(node, mm, false);
 }
 
 void node_free(zone_node_t *node, knot_mm_t *mm)
@@ -335,7 +345,7 @@ int node_add_rrset(zone_node_t *node, const knot_rrset_t *rrset, knot_mm_t *mm)
 	return add_rrset_no_merge(node, rrset, mm);
 }
 
-void node_remove_rdataset(zone_node_t *node, uint16_t type)
+void node_remove_rdataset_mm(zone_node_t *node, uint16_t type, knot_mm_t *mm)
 {
 	if (node == NULL) {
 		return;
@@ -346,10 +356,10 @@ void node_remove_rdataset(zone_node_t *node, uint16_t type)
 	for (int i = 0; i < node->rrset_count; ++i) {
 		if (node->rrs[i].type == type) {
 			if (!binode_additional_shared(node, type)) {
-				additional_clear(node->rrs[i].additional);
+				additional_clear_mm(node->rrs[i].additional, mm);
 			}
 			if (!binode_rdata_shared(node, type)) {
-				rr_data_clear(&node->rrs[i], NULL);
+				rr_data_clear(&node->rrs[i], mm);
 			}
 			memmove(node->rrs + i, node->rrs + i + 1,
 			        (node->rrset_count - i - 1) * sizeof(struct rr_data));
@@ -357,6 +367,27 @@ void node_remove_rdataset(zone_node_t *node, uint16_t type)
 			return;
 		}
 	}
+}
+
+void node_remove_rdataset(zone_node_t *node, uint16_t type)
+{
+	node_remove_rdataset_mm(node, type, NULL);
+}
+
+int node_add_rrset_additional(zone_node_t *node, uint16_t type, additional_t *additional)
+{
+	if (node == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	for (uint16_t i = 0; i < node->rrset_count; ++i) {
+		if (node->rrs[i].type == type) {
+            node->rrs[i].additional = additional;
+            return KNOT_EOK;
+		}
+	}
+
+	return KNOT_EINVAL;
 }
 
 int node_remove_rrset(zone_node_t *node, const knot_rrset_t *rrset, knot_mm_t *mm)

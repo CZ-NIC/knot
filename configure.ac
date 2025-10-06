@@ -386,12 +386,15 @@ static_modules_declars=""
 static_modules_init=""
 doc_modules=""
 
+KNOT_MODULE([azuredb],     "yes")
 KNOT_MODULE([cookies],     "yes")
 KNOT_MODULE([dnsproxy],    "yes", "non-shareable")
 KNOT_MODULE([dnstap],      "no")
+KNOT_MODULE([delay],       "no")
 KNOT_MODULE([geoip],       "yes")
 KNOT_MODULE([noudp],       "yes")
 KNOT_MODULE([onlinesign],  "yes", "non-shareable")
+KNOT_MODULE([azurednssec],     "yes")
 KNOT_MODULE([probe],       "yes")
 KNOT_MODULE([queryacl],    "yes")
 KNOT_MODULE([rrl],         "yes")
@@ -699,11 +702,29 @@ AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <sched.h>]], [[cpuset_t* set = cpuset
 [AC_DEFINE(HAVE_CPUSET_NETBSD, 1, [Define if cpuset_t and cpuset(3) exists.])])
 
 # Check for '__atomic' compiler builtin atomic functions.
+AC_SEARCH_LIBS([__atomic_compare_exchange_8], [atomic], [], [])
 AC_LINK_IFELSE(
   [AC_LANG_PROGRAM([[#include <stdint.h>]],
-                   [[uint64_t val = 0; __atomic_add_fetch(&val, 1, __ATOMIC_RELAXED);]])],
-  [AC_DEFINE(HAVE_ATOMIC, 1, [Define to 1 if you have '__atomic' functions.])]
+                   [[uint64_t val = 0;
+                   __atomic_store_n(&val, 0UL, __ATOMIC_SEQ_CST);
+                   uint64_t expect = __atomic_add_fetch(&val, 1, __ATOMIC_RELAXED);
+                   __atomic_compare_exchange(&val, &expect, &expect, 0, __ATOMIC_ACQ_REL, __ATOMIC_CONSUME);
+                   ]])],
+  [
+    AC_DEFINE(HAVE_ATOMIC, 1, [Define to 1 if you have '__atomic' functions.])
+    have_atomic=yes
+    have_atomic8_primitives=yes
+  ]
 )
+
+AC_CHECK_HEADER([stdalign.h], [AC_DEFINE(HAVE_STDALIGN, 1, [Define to 1 if you have stdalign.h])])
+AC_CHECK_HEADER([stdatomic.h], [
+  AC_DEFINE(HAVE_STDATOMIC, 1, [Define to 1 if you have stdatomic.h])
+  have_stdatomic=yes
+  have_atomic8_primitives=yes
+])
+
+AM_CONDITIONAL([HAVE_ATOMIC_PRIMITIVES], [test "x$have_atomic8_primitives" = "xyes"])
 
 # Check for '__sync' compiler builtin atomic functions.
 AC_LINK_IFELSE(
@@ -745,6 +766,141 @@ AM_CONDITIONAL([HAVE_MAKEINFO], test "$MAKEINFO" != "false")
 filtered_cflags=$(echo -n "$CFLAGS" | sed 's/\W-f\S*-prefix-map=\S*\W/ /g')
 filtered_cppflags=$(echo -n "$CPPFLAGS" | sed 's/\W-f\S*-prefix-map=\S*\W/ /g')
 
+AC_ARG_WITH([memcheck],
+        AC_HELP_STRING([--with-memcheck=auto|yes|no|memcheck_include_folder], [Build with memcheck api. If valgrind/memcheck.h is not in path, define include path in CFLAGS or pass the valgrind/memcheck.h include folder for this parameter. [default=no]]),
+        [with_memcheck=$withval], [with_memcheck=no])
+
+AS_CASE([$with_memcheck],
+    [no], [],
+    [auto], [
+      AC_CHECK_HEADER([valgrind/memcheck.h], [with_memcheck=yes], [with_memcheck=no])
+    ],
+    [yes|*], [
+      AS_IF([test "x$with_memcheck" != "xyes"], [AC_SUBST(CPPFLAGS, "$CPPFLAGS -I$with_memcheck")])
+      AC_CHECK_HEADER([valgrind/memcheck.h], [], [AC_MSG_ERROR([--with-memcheck requries valgrind/memcheck.h header files. If valgrind/memcheck.h is not in path, define include path in CFLAGS or pass the valgrind/memcheck.h include folder for --with-memcheck parameter.])])
+      AC_DEFINE_UNQUOTED([KNOT_ENABLE_MEMCHECK],[1], [Memcheck enabled for this build (1)])
+      with_memcheck=yes
+    ])
+
+AC_ARG_WITH([numa],
+        AC_HELP_STRING([--with-numa=yes|no|numa_include_folder], [Build with numa api. If numa.h is not in path, define include path in CFLAGS or pass the numa.h include folder for this parameter. [default=no]]),
+        [with_numa=$withval], [with_numa=no])
+
+AS_CASE([$with_numa],
+    [no], [],
+    [yes|*], [
+      AC_SEARCH_LIBS([numa_node_of_cpu], [numa],
+      [
+        AC_DEFINE_UNQUOTED([KNOT_ENABLE_NUMA],[1], [NUMA enabled for this build (1)])
+        with_numa=yes
+      ],
+      [AC_MSG_ERROR([--with-numa requries numa.h header files. If numa.h is not in path, define include path in CFLAGS or pass the numa.h include folder for --with-numa parameter.])],
+      [])
+    ])
+
+AC_ARG_WITH([udp-max-size],
+        AC_HELP_STRING([--with-udp-max-size=size], [Size of UDP request/response max size supported. [default=65535]]),
+        [udp_max_size=$withval], [udp_max_size=65535])
+AC_DEFINE_UNQUOTED([KNOT_MAX_UDP_REQRESP_SIZE_BYTES],[$udp_max_size], [Value of udp max message size])
+
+AC_ARG_ENABLE([throttle-dnstap-logs],
+    AS_HELP_STRING([--enable-throttle-dnstap-logs=auto|yes|no], [enable throttling support for dnstap logs [default=auto]]),
+    [enable_throttle_dnstap_logs="$enableval"], [enable_throttle_dnstap_logs=auto])
+
+AS_CASE([$enable_throttle_dnstap_logs],
+   [auto],[
+     AS_IF([test "x$have_atomic8_primitives" = xyes], [
+       AC_DEFINE([ENABLE_THROTTLE_DNSTAP_LOGS], [1], [Define to 1 to enable support for throttling dnstap logs.])
+       enable_throttle_dnstap_logs=yes
+     ],
+     [enable_throttle_dnstap_logs=no])
+   ],
+   [yes],[
+     AS_IF([test "x$have_atomic8_primitives" = xyes], [
+       AC_DEFINE([ENABLE_THROTTLE_DNSTAP_LOGS], [1], [Define to 1 to enable support for throttling dnstap logs.])
+     ],
+     [AC_MSG_ERROR([Throttling support needs __atomic or stdatomic support])])
+   ],
+   [no],[],
+   [*], [AC_MSG_ERROR([Invalid value of --enable-throttle-dnstap-logs.]
+ )])
+
+ AC_ARG_ENABLE([async-query],
+    AS_HELP_STRING([--enable-async-query=yes|no], [Enable asynchronous query handling [default=no]]), [], [enable_async_query=no])
+
+AS_CASE([$enable_async_query],
+   [yes],[
+     AC_DEFINE([ENABLE_ASYNC_QUERY_HANDLING], [], [Enable support for handling queries asynchronously])
+     AS_IF([test "x$have_atomic8_primitives" != "xyes"],
+       [AC_MSG_ERROR([Async query support needs __atomic or stdatomic support])])
+   ],
+   [no],[],
+   [*], [AC_MSG_ERROR([Invalid value of --enable-async-query.]
+ )])
+
+AS_IF([test "x$STATIC_MODULE_delay" = "xyes" -o "x$SHARED_MODULE_delay" = "xyes"],[
+    AS_IF([test "x$enable_async_query" != "xyes"], [
+      AC_MSG_ERROR([delay module requires async query support in knot. Enable with --enable-async-query])
+    ])
+])
+
+AC_ARG_ENABLE([trailing-bytes],
+    AS_HELP_STRING([--enable-trailing-bytes=yes|no], [enable trailing bytes in DNS query [default=no]]),
+    [enable_trailing_bytes="$enableval"], [enable_trailing_bytes=no])
+
+AS_IF([test "$enable_trailing_bytes" = yes], [AC_DEFINE([ENABLE_TRAILING_BYTES], [1], [Define to 1 to enable support for queries with additional trailing 0 bytes.])])
+
+AC_ARG_WITH([unbound],
+        AC_HELP_STRING([--with-unbound=yes|no|unbound_folder], [Build with libunbound api. If unbound.h is not in path, define include path in CFLAGS or pass the unbound.h include folder for this parameter. [default=no]]),
+        [with_unbound=$withval], [with_unbound=no])
+
+AS_CASE([$with_unbound],
+    [no], [],
+    [yes|*], [
+      AS_IF([test "x$with_unbound" != "xyes"],
+      [
+        AC_SUBST(CPPFLAGS, "$CPPFLAGS -I$with_unbound/include")
+        AC_SUBST(LDFLAGS, "$LDFLAGS -L$with_unbound/lib")
+      ])
+      AC_CHECK_HEADER([unbound.h], [], [AC_MSG_ERROR([--with-unbound requries unbound.h header files. If unbound.h is not in path, define include path in CFLAGS or pass the unbound.h include folder for --with-unbound parameter.])])
+      AC_SEARCH_LIBS([ub_resolve_async], [unbound], [],
+        [
+          AC_MSG_ERROR([--with-unbound requries unbound.h header nad library files. If unbound.h is not in path, define include path in CFLAGS or pass the unbound.h include folder for --with-unbound parameter.])
+        ])
+      AC_DEFINE_UNQUOTED([KNOT_ENABLE_UNBOUND],[1], [unbound enabled for this build (1)])
+      with_unbound=yes
+    ])
+
+with_aliasrr=no
+AS_IF([test "x$enable_async_query" = "xyes"] && [test "x$SUPPORTS_MODULE_azuredb" = "xyes"] && [test "x$with_unbound" = "xyes"],
+  [
+    AM_CONDITIONAL([HAVE_ALIASRR], [true])
+    AC_DEFINE_UNQUOTED([KNOT_ENABLE_ALIASRR],[1], [AliasRR enabled for this build (1)])
+    with_aliasrr=yes
+  ],
+  AM_CONDITIONAL([HAVE_ALIASRR], [false]))
+
+# TrafficManager support
+AC_ARG_ENABLE([trafficmanager],
+    AS_HELP_STRING([--enable-trafficmanager=yes|no], [enable TrafficManager module [default=no]]),
+    [enable_trafficmanager="$enableval"], [enable_trafficmanager=no])
+
+libnethost_CFLAGS=
+libnethost_LIBS=
+trafficmanager_CFLAGS=
+AS_IF([test "$enable_daemon" = "no"],[enable_trafficmanager=no])
+AS_IF([test "$enable_trafficmanager" = yes], [
+  NETCOREAPP_VERSION=$(ls /usr/share/dotnet/packs/Microsoft.NETCore.App.Host.linux-x64 | tail -n 1)
+  libnethost_CFLAGS="-I/usr/share/dotnet/packs/Microsoft.NETCore.App.Host.linux-x64/$NETCOREAPP_VERSION/runtimes/linux-x64/native"
+  libnethost_LIBS=""
+  trafficmanager_CFLAGS="-I../microsoft/trafficmanager/PolicyProvider.Rescue.Native/include"
+  AC_SUBST([libnethost_CFLAGS])
+  AC_SUBST([libnethost_LIBS])
+  AC_SUBST([trafficmanager_CFLAGS])
+])
+AS_IF([test "$enable_trafficmanager" = yes], [AC_DEFINE([USE_TRAFFICMANAGER], [1], [Define to 1 to enable TrafficManager module.])])
+AM_CONDITIONAL([USE_TRAFFICMANAGER], [test "$enable_trafficmanager" = yes])
+
 result_msg_base="  Knot DNS $VERSION
 
     Target:   $host_os $host_cpu $endianity
@@ -762,6 +918,8 @@ result_msg_base="  Knot DNS $VERSION
     Storage dir: ${storage_dir}
     Config dir:  ${config_dir}
     Module dir:  ${module_dir}
+    With valgrind memcheck: ${with_memcheck}
+    UDP Max Size: ${udp_max_size}
 
     Static modules: ${static_modules}
     Shared modules: ${shared_modules}
@@ -774,6 +932,11 @@ result_msg_base="  Knot DNS $VERSION
     Use recvmmsg:           ${enable_recvmmsg}
     Use SO_REUSEPORT(_LB):  ${enable_reuseport}
     XDP support:            ${enable_xdp}
+    Async Query Handling:   ${enable_async_query}
+    AzureDB Module:         ${SUPPORTS_MODULE_azuredb}
+    AliasRR Support:        ${with_aliasrr}
+    Unbound library support ${with_unbound}
+    NUMA Support            ${with_numa}
     Socket polling:         ${socket_polling}
     Memory allocator:       ${with_memory_allocator}
     Fast zone parser:       ${enable_fastparser}
@@ -787,6 +950,9 @@ result_msg_base="  Knot DNS $VERSION
     Ed25519 support:        ${enable_ed25519}
     Ed448 support:          ${enable_ed448}
     Reproducible signing:   ${enable_repro_signing}
+    Throttle sup for dnstap ${enable_throttle_dnstap_logs}
+    Allow Trail Query bytes ${enable_trailing_bytes}
+    Traffic Manager         ${enable_trafficmanager}
     Code coverage:          ${enable_code_coverage}
     Sanitizer:              ${with_sanitizer}
     LibFuzzer:              ${with_fuzzer}

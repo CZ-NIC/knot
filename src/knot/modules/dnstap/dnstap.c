@@ -17,18 +17,27 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 
+#ifdef ENABLE_THROTTLE_DNSTAP_LOGS
+#include "knot/common/qps_limiter.h"
+#endif
 #include "contrib/dnstap/dnstap.h"
 #include "contrib/dnstap/dnstap.pb-c.h"
 #include "contrib/dnstap/message.h"
 #include "contrib/dnstap/writer.h"
 #include "contrib/time.h"
 #include "knot/include/module.h"
+#include "dnstapcounter.h"
 
 #define MOD_SINK	"\x04""sink"
 #define MOD_IDENTITY	"\x08""identity"
 #define MOD_VERSION	"\x07""version"
 #define MOD_QUERIES	"\x0B""log-queries"
 #define MOD_RESPONSES	"\x0D""log-responses"
+#define MOD_COMBINED  "\x0F""query-with-resp"
+#ifdef ENABLE_THROTTLE_DNSTAP_LOGS
+#define MOD_QPS_LIMIT "\x09""qps-limit"
+#define MOD_ERR_LIMIT "\x09""err-limit"
+#endif
 
 const yp_item_t dnstap_conf[] = {
 	{ MOD_SINK,      YP_TSTR,  YP_VNONE },
@@ -36,6 +45,11 @@ const yp_item_t dnstap_conf[] = {
 	{ MOD_VERSION,   YP_TSTR,  YP_VNONE },
 	{ MOD_QUERIES,   YP_TBOOL, YP_VBOOL = { true } },
 	{ MOD_RESPONSES, YP_TBOOL, YP_VBOOL = { true } },
+	{ MOD_COMBINED,  YP_TBOOL, YP_VBOOL = { false } },
+#ifdef ENABLE_THROTTLE_DNSTAP_LOGS
+	{ MOD_QPS_LIMIT, YP_TINT,  YP_VINT = { 0, INT32_MAX, 0 } },
+	{ MOD_ERR_LIMIT, YP_TINT,  YP_VINT = { 0, INT32_MAX, 0 } },
+#endif
 	{ NULL }
 };
 
@@ -56,10 +70,14 @@ typedef struct {
 	size_t identity_len;
 	char *version;
 	size_t version_len;
+	bool log_query_with_resp;
+#ifdef ENABLE_THROTTLE_DNSTAP_LOGS
+	qps_limiter_t qps_limiter;
+#endif
 } dnstap_ctx_t;
 
 static knotd_state_t log_message(knotd_state_t state, const knot_pkt_t *pkt,
-                                 knotd_qdata_t *qdata, knotd_mod_t *mod)
+                                 knotd_qdata_t *qdata, knotd_mod_t *mod, struct timespec *tv)
 {
 	assert(pkt && qdata && mod);
 
@@ -73,14 +91,17 @@ static knotd_state_t log_message(knotd_state_t state, const knot_pkt_t *pkt,
 	struct fstrm_iothr_queue *ioq =
 		fstrm_iothr_get_input_queue_idx(ctx->iothread, qdata->params->thread_id);
 
-	/* Unless we want to measure the time it takes to process each query,
-	 * we can treat Q/R times the same. */
-	struct timespec tv = { .tv_sec = time(NULL) };
-
+	void *wire2 = NULL;
+	size_t len_wire2 = 0;
 	/* Determine query / response. */
 	Dnstap__Message__Type msgtype = DNSTAP__MESSAGE__TYPE__AUTH_QUERY;
 	if (knot_wire_get_qr(pkt->wire)) {
 		msgtype = DNSTAP__MESSAGE__TYPE__AUTH_RESPONSE;
+
+		if (ctx->log_query_with_resp) {
+			wire2 = qdata->query->wire;
+			len_wire2 = qdata->query->size;
+		}
 	}
 
 	/* Determine whether we run on UDP/TCP. */
@@ -90,12 +111,11 @@ static knotd_state_t log_message(knotd_state_t state, const knot_pkt_t *pkt,
 	}
 
 	/* Create a dnstap message. */
-	struct sockaddr_storage buff;
 	Dnstap__Message msg;
 	int ret = dt_message_fill(&msg, msgtype,
 	                          (const struct sockaddr *)knotd_qdata_remote_addr(qdata),
-	                          (const struct sockaddr *)knotd_qdata_local_addr(qdata, &buff),
-	                          protocol, pkt->wire, pkt->size, &tv);
+	                          (const struct sockaddr *)knotd_qdata_local_addr(qdata),
+	                          protocol, pkt->wire, pkt->size, tv, wire2, len_wire2, &qdata->query_time);
 	if (ret != KNOT_EOK) {
 		return state;
 	}
@@ -140,16 +160,98 @@ static knotd_state_t dnstap_message_log_query(knotd_state_t state, knot_pkt_t *p
                                               knotd_qdata_t *qdata, knotd_mod_t *mod)
 {
 	assert(qdata);
+	struct timespec tv;
+	clock_gettime(CLOCK_REALTIME_COARSE, &tv);
 
-	return log_message(state, qdata->query, qdata, mod);
+	knotd_mod_stats_incr(
+        mod,
+        qdata->params->thread_id,
+        dnstap_counter_log_emitted,
+        log_emitted_QUERY,
+        1);
+
+	return log_message(state, qdata->query, qdata, mod, &tv);
 }
 
 /*! \brief Submit message - response. */
 static knotd_state_t dnstap_message_log_response(knotd_state_t state, knot_pkt_t *pkt,
                                                  knotd_qdata_t *qdata, knotd_mod_t *mod)
 {
-	return log_message(state, pkt, qdata, mod);
+	struct timespec tv;
+	clock_gettime(CLOCK_REALTIME_COARSE, &tv);
+
+	knotd_mod_stats_incr(
+        mod,
+        qdata->params->thread_id,
+        dnstap_counter_log_emitted,
+        log_emitted_RESPONSE,
+        1);
+
+	return log_message(state, pkt, qdata, mod, &tv);
 }
+
+
+#ifdef ENABLE_THROTTLE_DNSTAP_LOGS
+/*! \brief Submit message - query. */
+static knotd_state_t dnstap_message_log_query_limit(knotd_state_t state, knot_pkt_t *pkt,
+                                              knotd_qdata_t *qdata, knotd_mod_t *mod)
+{
+	struct timespec tv;
+	clock_gettime(CLOCK_REALTIME_COARSE, &tv);
+
+	dnstap_ctx_t *ctx = knotd_mod_ctx(mod);
+	if (qps_limiter_is_allowed(&ctx->qps_limiter, tv.tv_sec, false)) {
+		knotd_mod_stats_incr(
+			mod,
+			qdata->params->thread_id,
+			dnstap_counter_log_emitted,
+			log_emitted_QUERY,
+			1);
+
+		return log_message(state, qdata->query, qdata, mod, &tv);
+	} else {
+		knotd_mod_stats_incr(
+			mod,
+			qdata->params->thread_id,
+			dnstap_counter_log_dropped,
+			log_dropped_QUERY,
+			1);
+
+		return state;
+	}
+}
+
+/*! \brief Submit message - response. */
+static knotd_state_t dnstap_message_log_response_limit(knotd_state_t state, knot_pkt_t *pkt,
+                                                 knotd_qdata_t *qdata, knotd_mod_t *mod)
+{
+	struct timespec tv;
+	clock_gettime(CLOCK_REALTIME_COARSE, &tv);
+
+	bool err = KNOT_RCODE_SERVFAIL == knot_wire_get_rcode(pkt->wire);
+
+	dnstap_ctx_t *ctx = knotd_mod_ctx(mod);
+	if (qps_limiter_is_allowed(&ctx->qps_limiter, tv.tv_sec, err)) {
+		knotd_mod_stats_incr(
+			mod,
+			qdata->params->thread_id,
+			dnstap_counter_log_emitted,
+			log_emitted_RESPONSE,
+			1);
+
+		return log_message(state, pkt, qdata, mod, &tv);
+	} else {
+		knotd_mod_stats_incr(
+			mod,
+			qdata->params->thread_id,
+			dnstap_counter_log_dropped,
+			log_dropped_RESPONSE,
+			1);
+
+		return state;
+	}
+}
+#endif
 
 /*! \brief Create a UNIX socket sink. */
 static struct fstrm_writer* dnstap_unix_writer(const char *path)
@@ -261,6 +363,28 @@ int dnstap_load(knotd_mod_t *mod)
 	conf = knotd_conf_mod(mod, MOD_RESPONSES);
 	const bool log_responses = conf.single.boolean;
 
+#ifdef ENABLE_THROTTLE_DNSTAP_LOGS
+	/* Get QPS_limit. */
+	conf = knotd_conf_mod(mod, MOD_QPS_LIMIT);
+	ctx->qps_limiter.log_qps = conf.single.integer;
+
+	/* Get Err QPS_limit. */
+	conf = knotd_conf_mod(mod, MOD_ERR_LIMIT);
+	ctx->qps_limiter.log_err_qps = conf.single.integer;
+
+	/* Get Log query with resp. */
+	conf = knotd_conf_mod(mod, MOD_COMBINED);
+	ctx->log_query_with_resp = conf.single.boolean;
+
+	bool limit_by_qps = ctx->qps_limiter.log_qps || ctx->qps_limiter.log_err_qps;
+
+	if (limit_by_qps) {
+		if (qps_limiter_init(&ctx->qps_limiter) != KNOT_EOK) {
+			goto fail;
+		}
+	}
+#endif
+
 	/* Initialize the writer and the options. */
 	struct fstrm_writer *writer = dnstap_writer(sink);
 	if (writer == NULL) {
@@ -288,16 +412,31 @@ int dnstap_load(knotd_mod_t *mod)
 
 	/* Hook to the query plan. */
 	if (log_queries) {
-		knotd_mod_hook(mod, KNOTD_STAGE_BEGIN, dnstap_message_log_query);
+		knotd_mod_hook(mod, KNOTD_STAGE_BEGIN,
+#ifdef ENABLE_THROTTLE_DNSTAP_LOGS
+			limit_by_qps ? dnstap_message_log_query_limit :
+#endif
+			dnstap_message_log_query);
 	}
 	if (log_responses) {
-		knotd_mod_hook(mod, KNOTD_STAGE_END, dnstap_message_log_response);
+		knotd_mod_hook(mod, KNOTD_STAGE_END,
+#ifdef ENABLE_THROTTLE_DNSTAP_LOGS
+			limit_by_qps ? dnstap_message_log_response_limit :
+#endif
+			dnstap_message_log_response);
 	}
+
+	if (KNOT_EOK != dnstap_create_counters(mod)) {
+        goto fail;
+    }
 
 	return KNOT_EOK;
 fail:
 	knotd_mod_log(mod, LOG_ERR, "failed to init sink '%s'", sink);
 
+#ifdef ENABLE_THROTTLE_DNSTAP_LOGS
+	qps_limiter_cleanup(&ctx->qps_limiter);
+#endif
 	free(ctx->identity);
 	free(ctx->version);
 	free(ctx);
@@ -308,8 +447,12 @@ fail:
 void dnstap_unload(knotd_mod_t *mod)
 {
 	dnstap_ctx_t *ctx = knotd_mod_ctx(mod);
+	dnstap_delete_counters(mod);
 
 	fstrm_iothr_destroy(&ctx->iothread);
+#ifdef ENABLE_THROTTLE_DNSTAP_LOGS
+	qps_limiter_cleanup(&ctx->qps_limiter);
+#endif
 	free(ctx->identity);
 	free(ctx->version);
 	free(ctx);

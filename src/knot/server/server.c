@@ -43,6 +43,9 @@
 #include "contrib/os.h"
 #include "contrib/sockaddr.h"
 #include "contrib/trim.h"
+#ifdef KNOT_ENABLE_NUMA
+#include <numa.h>
+#endif
 
 #ifdef ENABLE_XDP
 #include <net/if.h>
@@ -1085,7 +1088,25 @@ static int set_handler(server_t *server, int index, unsigned size, runnable_t ru
 
 static int configure_threads(conf_t *conf, server_t *server)
 {
-	int ret = set_handler(server, IO_UDP, conf->cache.srv_udp_threads, udp_master);
+	int ret;
+#ifdef ENABLE_ASYNC_QUERY_HANDLING
+	bool use_numa = conf->cache.numa_enabled;
+#ifdef KNOT_ENABLE_NUMA
+	use_numa = use_numa && (-1 != numa_available());
+#endif
+
+	ret = init_udp_async(conf->cache.udp_srv_async_reqs, use_numa);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	ret = init_tcp_async(conf->cache.tcp_srv_async_reqs, use_numa);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+#endif
+
+	ret = set_handler(server, IO_UDP, conf->cache.srv_udp_threads, udp_master);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}

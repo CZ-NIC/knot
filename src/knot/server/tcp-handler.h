@@ -28,6 +28,18 @@
 
 #define TCP_BACKLOG_SIZE  10 /*!< TCP listen backlog size. */
 
+#ifdef ENABLE_ASYNC_QUERY_HANDLING
+/*!
+ * \brief Initialize tcp async.
+ *
+ * \param pool_size Request pool size.
+ * \param numa_enabled Indicates if numa available.
+ *
+ * \retval KNOT_EOK on success.
+ */
+int init_tcp_async(size_t pool_size, bool numa_enabled);
+#endif
+
 /*!
  * \brief TCP handler thread runnable.
  *
