@@ -219,12 +219,12 @@ bool load_queries(const input_t *input, uint16_t edns_size, uint16_t msgid, size
 	}
 
 	free(bufs);
-	fclose(f);
+	(void)fclose(f);
 	return true;
 
 fail:
 	free_global_payloads();
 	free(bufs);
-	fclose(f);
+	(void)fclose(f);
 	return false;
 }

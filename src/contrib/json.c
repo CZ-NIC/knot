@@ -74,7 +74,7 @@ static void wrap(jsonw_t *w)
 	fputc('\n', w->out);
 	int level = MAX_DEPTH - w->top;
 	for (int i = 0; i < level; i++) {
-		fprintf(w->out, "%s", w->indent);
+		(void)fprintf(w->out, "%s", w->indent);
 	}
 }
 
@@ -95,7 +95,7 @@ static void escaped_print(jsonw_t *w, const char *str, size_t maxlen, bool quote
 		if (c == '\\' || c == '\"') {
 			fputc('\\', w->out);
 		} else if (c == '\0') {
-			fprintf(w->out, "\\u0000");
+			(void)fprintf(w->out, "\\u0000");
 			continue;
 		}
 		fputc(c, w->out);
@@ -116,7 +116,7 @@ static void align_key(jsonw_t *w, const char *key)
 
 	if (key && key[0]) {
 		escaped_print(w, key, SIZE_MAX, true);
-		fprintf(w->out, ": ");
+		(void)fprintf(w->out, ": ");
 	}
 }
 
@@ -153,7 +153,7 @@ void jsonw_null(jsonw_t *w, const char *key)
 	assert(w);
 
 	align_key(w, key);
-	fprintf(w->out, "null");
+	(void)fprintf(w->out, "null");
 }
 
 void jsonw_object(jsonw_t *w, const char *key)
@@ -161,7 +161,7 @@ void jsonw_object(jsonw_t *w, const char *key)
 	assert(w);
 
 	align_key(w, key);
-	fprintf(w->out, "{");
+	(void)fprintf(w->out, "{");
 	start_block(w, BLOCK_OBJECT);
 }
 
@@ -170,7 +170,7 @@ void jsonw_list(jsonw_t *w, const char *key)
 	assert(w);
 
 	align_key(w, key);
-	fprintf(w->out, "[");
+	(void)fprintf(w->out, "[");
 	start_block(w, BLOCK_LIST);
 }
 
@@ -195,7 +195,7 @@ void jsonw_ulong(jsonw_t *w, const char *key, unsigned long value)
 	assert(w);
 
 	align_key(w, key);
-	fprintf(w->out, "%lu", value);
+	(void)fprintf(w->out, "%lu", value);
 }
 
 void jsonw_int(jsonw_t *w, const char *key, int value)
@@ -203,7 +203,7 @@ void jsonw_int(jsonw_t *w, const char *key, int value)
 	assert(w);
 
 	align_key(w, key);
-	fprintf(w->out, "%d", value);
+	(void)fprintf(w->out, "%d", value);
 }
 
 void jsonw_double(jsonw_t *w, const char *key, double value)
@@ -211,7 +211,7 @@ void jsonw_double(jsonw_t *w, const char *key, double value)
 	assert(w);
 
 	align_key(w, key);
-	fprintf(w->out, "%.4f", value);
+	(void)fprintf(w->out, "%.4f", value);
 }
 
 void jsonw_bool(jsonw_t *w, const char *key, bool value)
@@ -219,7 +219,7 @@ void jsonw_bool(jsonw_t *w, const char *key, bool value)
 	assert(w);
 
 	align_key(w, key);
-	fprintf(w->out, "%s", value ? "true" : "false");
+	(void)fprintf(w->out, "%s", value ? "true" : "false");
 }
 
 void jsonw_hex(jsonw_t *w, const char *key, const uint8_t *data, size_t len)
@@ -247,10 +247,10 @@ void jsonw_end(jsonw_t *w)
 
 	switch (top->type) {
 	case BLOCK_OBJECT:
-		fprintf(w->out, "}");
+		(void)fprintf(w->out, "}");
 		break;
 	case BLOCK_LIST:
-		fprintf(w->out, "]");
+		(void)fprintf(w->out, "]");
 		break;
 	}
 }

@@ -163,7 +163,7 @@ static size_t get_resolv_nameservers(list_t *servers, const char *def_port)
 	}
 
 	// Close config file.
-	fclose(f);
+	(void)fclose(f);
 
 	// Return number of servers.
 	return list_size(servers);
