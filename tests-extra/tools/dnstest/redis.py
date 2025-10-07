@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from dnstest.utils import *
 import dnstest.params as params
 import os
@@ -18,15 +20,16 @@ class Redis(object):
         self.proc = None
         self.monitor = None
         self.monitor_log = None
+        self.slave_of = None
 
-        if not os.path.exists(wrk_dir):
-            os.makedirs(wrk_dir)
+        if not os.path.exists(self.wrk_dir):
+            os.makedirs(self.wrk_dir)
 
     def wrk_file(self, filename):
         return os.path.join(self.wrk_dir, filename)
 
     def conf_file(self):
-        return self.wrk_file("redis.conf")
+        return self.wrk_file(f'redis.conf')
 
     def gen_confile(self):
         with open(self.conf_file(), "w") as cf:
@@ -42,6 +45,8 @@ class Redis(object):
             cf.write("tls-cert-file cert.pem" + os.linesep)
             if self.addr != "127.0.0.1" and self.addr != "::1":
                 cf.write("protected-mode no " + os.linesep)
+            if self.slave_of != None:
+                cf.write(f"slaveof {self.slave_of.addr} {self.slave_of.port}")
 
             shutil.copy(os.path.join(params.common_data_dir, "cert", "cert.pem"), self.wrk_dir)
             shutil.copy(os.path.join(params.common_data_dir, "cert", "key.pem"), self.wrk_dir)
@@ -69,3 +74,6 @@ class Redis(object):
         p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         out, _ = p.communicate()
         return out.decode().strip()
+
+    def slaveOf(self, master : Redis):
+        self.slave_of = master

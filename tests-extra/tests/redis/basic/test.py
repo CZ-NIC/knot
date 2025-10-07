@@ -5,10 +5,15 @@
 from dnstest.test import Test
 from dnstest.utils import *
 
-t = Test(redis=True)
+t = Test()
 
 master = t.server("knot")
 slave = t.server("knot")
+
+redis_master = t.backend("redis")
+redis_slave = t.backend("redis")
+
+redis_slave.slaveOf(redis_master)
 
 zones = t.zone("example.com.")
 
@@ -16,11 +21,9 @@ t.link(zones, master)
 t.link(zones, slave)
 
 master.zonefile_sync = "0"
-
 for z in zones:
-    master.zones[z.name].redis_out = "1"
-    slave.zones[z.name].redis_in = "1"
-    slave.zones[z.name].zfile.remove()
+    master.set_backend(redis_master, z, None, "1")
+    slave.set_backend(redis_master, z, "1", None)
 
 t.start()
 
@@ -67,13 +70,13 @@ if uptodate_log != len(zones):
 
 # Add to DB manually. Slave will diverge from master.
 for z in zones:
-    txn = t.redis.cli("knot.upd.begin", z.name, master.zones[z.name].redis_out)
-    r = t.redis.cli("knot.upd.remove", z.name, txn, "example.com. 3600 in soa dns1.example.com. hostmaster.example.com. %d 10800 3600 1209600 7200" % serials3[z.name])
-    r = t.redis.cli("knot.upd.add", z.name, txn, "example.com. 3600 in soa dns1.example.com. hostmaster.example.com. %d 10800 3600 1209600 7200" % (serials3[z.name] + 1))
-    r = t.redis.cli("knot.upd.add", z.name, txn, "txtadd 3600 A 1.2.3.4")
-    r = t.redis.cli("knot.upd.commit", z.name, txn)
+    txn = redis_master.cli("knot.upd.begin", z.name, master.zones[z.name].redis_out)
+    r = redis_master.cli("knot.upd.remove", z.name, txn, "example.com. 3600 in soa dns1.example.com. hostmaster.example.com. %d 10800 3600 1209600 7200" % serials3[z.name])
+    r = redis_master.cli("knot.upd.add", z.name, txn, "example.com. 3600 in soa dns1.example.com. hostmaster.example.com. %d 10800 3600 1209600 7200" % (serials3[z.name] + 1))
+    r = redis_master.cli("knot.upd.add", z.name, txn, "txtadd 3600 A 1.2.3.4")
+    r = redis_master.cli("knot.upd.commit", z.name, txn)
 
-    r = t.redis.cli("knot.upd.load", z.name, master.zones[z.name].redis_out, str(serials3[z.name]))
+    r = redis_master.cli("knot.upd.load", z.name, master.zones[z.name].redis_out, str(serials3[z.name]))
     if not "txtadd" in r:
         set_err("NO TXTADD IN UPD")
 

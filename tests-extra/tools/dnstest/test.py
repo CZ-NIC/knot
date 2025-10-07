@@ -46,7 +46,7 @@ class Test(object):
     rel_time = time.time()
     start_time = 0
 
-    def __init__(self, address=None, tsig=None, stress=True, quic=False, tls=False, redis=False):
+    def __init__(self, address=None, tsig=None, stress=True, quic=False, tls=False):
         if not os.path.exists(Context().out_dir):
             raise Exception("Output directory doesn't exist")
 
@@ -63,15 +63,8 @@ class Test(object):
         else:
             self.addr = Test.LOCAL_ADDR_MULTI[random.choice([4, 6])]
 
-        self.redis = None
-        redis_knotso = repo_file("src", "redis", ".libs", "knot.so")
-        if redis:
-            if params.redis_bin == "":
-                raise Skip("Redis server not available")
-            if redis_knotso is None:
-                raise Skip("Redis knot module not available")
-            self.redis = dnstest.redis.Redis(self.addr, os.path.join(self.out_dir, "redis"),
-                                             params.redis_bin, params.redis_cli, redis_knotso)
+        self.redis_counter = 0
+        self.backends = set()
 
         self.tsig = None
         if tsig != None:
@@ -235,8 +228,6 @@ class Test(object):
             if os.path.isfile(suppressions_file):
                 srv.valgrind.append("--suppressions=%s" % suppressions_file)
 
-        srv.redis = self.redis
-
         self.servers.add(srv)
         return srv
 
@@ -252,6 +243,25 @@ class Test(object):
         servers = [srv for srv in self.servers]
         for server in servers:
             self.server_remove(server)
+
+    def backend(self, backend):
+        if backend == "redis":
+            redis_knotso = repo_file("src", "redis", ".libs", "knot.so")
+            if params.redis_bin == "":
+                raise Skip("Redis server not available")
+            if redis_knotso is None:
+                raise Skip("Redis knot module not available")
+
+            wrk_dir = os.path.join(self.out_dir,"redis", str(self.redis_counter))
+            self.redis_counter += 1
+            _backend = dnstest.redis.Redis(self.addr, wrk_dir, params.redis_bin,
+                                          params.redis_cli, redis_knotso)
+        else:
+            raise Skip(f"Backend '{backend}' is not available")
+
+        self.backends.add(_backend)
+        return _backend
+
 
     def generate_conf(self):
         # Next two loops can't be merged!
@@ -271,10 +281,8 @@ class Test(object):
                 server.xdp_cover_sock = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
                 server.xdp_cover_sock.bind((server.addr, server.xdp_port))
 
-        if self.redis is not None:
-            self.redis.port = self._gen_port()
-            self.redis.tls_port = self._gen_port()
-            self.redis.gen_confile()
+        for backend in self.backends:
+            backend.gen_confile()
 
         for server in self.servers:
             server.gen_confile()
@@ -289,10 +297,14 @@ class Test(object):
         self.start_time = time.monotonic()
         self.start_tries += 1
 
+        for backend in self.backends:
+            backend.port = self._gen_port()
+            backend.tls_port = self._gen_port()
+
         self.generate_conf()
 
-        if self.redis:
-            self.redis.start()
+        for backend in self.backends:
+            backend.start()
 
         def srv_sort(server):
             masters = 0
@@ -327,8 +339,8 @@ class Test(object):
             else:
                 server.stop(check=check)
 
-        if self.redis:
-            self.redis.stop()
+        for backend in self.backends:
+            backend.stop()
 
     def end(self):
         '''Finish testing'''

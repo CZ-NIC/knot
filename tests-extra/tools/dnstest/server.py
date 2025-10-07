@@ -2071,6 +2071,14 @@ class Knot(Server):
                 return
         raise Skip("QUIC support not available")
 
+    def set_backend(self, backend, zone, _in, _out):
+        self.redis = backend
+        if (_in != None):
+            self.zones[zone.name].redis_in = _in
+            self.zones[zone.name].zfile.remove()
+        if (_out != None):
+            self.zones[zone.name].redis_out = _out
+
 class Dummy(Server):
     ''' Dummy name server. '''
 
