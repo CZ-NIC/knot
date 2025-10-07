@@ -373,22 +373,30 @@ static void forward_requests(conf_t *conf, zone_t *zone, list_t *requests)
 
 static void send_update_response(conf_t *conf, zone_t *zone, knot_request_t *req)
 {
-	if (req->resp) {
-		// Sign the response if the secret is known.
-		if (req->sign.tsig_key.secret.size > 0) {
-			knotd_qdata_t qdata;
-			knotd_qdata_extra_t extra;
-			init_qdata_from_request(&qdata, zone, req, NULL, &extra);
-			(void)process_query_sign_response(req->resp, &qdata);
-		}
+	if (req->resp == NULL) {
+		return;
+	}
 
-		if (net_is_stream(req->fd) && req->tls_req_ctx.conn != NULL) {
-			(void)knot_tls_send(req->tls_req_ctx.conn,
-			                    req->resp->wire, req->resp->size);
+	// Sign the response if the secret is known.
+	if (req->sign.tsig_key.secret.size > 0) {
+		knotd_qdata_t qdata;
+		knotd_qdata_extra_t extra;
+		init_qdata_from_request(&qdata, zone, req, NULL, &extra);
+		(void)process_query_sign_response(req->resp, &qdata);
+	}
+
+	if (net_is_stream(req->fd)) {
+		if (req->tls_req_ctx.conn != NULL) {
+			(void)knot_tls_send(req->tls_req_ctx.conn, req->resp->wire,
+			                    req->resp->size);
 			knot_tls_conn_block(req->tls_req_ctx.conn, false);
+		} else {
+			(void)net_dns_tcp_send(req->fd, req->resp->wire, req->resp->size,
+			                       conf->cache.srv_tcp_remote_io_timeout, NULL);
 		}
+	} else {
+		if (req->quic_conn != NULL) {
 #ifdef ENABLE_QUIC
-		else if (req->quic_conn != NULL) {
 			assert(!net_is_stream(req->fd));
 			uint8_t op_buf[KNOT_WIRE_MAX_PKTSIZE];
 			struct iovec out_payload = { .iov_base = op_buf, .iov_len = sizeof(op_buf) };
@@ -410,17 +418,12 @@ static void send_update_response(conf_t *conf, zone_t *zone, knot_request_t *req
 				                     &rpl, 4, KNOT_QUIC_SEND_IGNORE_BLOCKED);
 			}
 			knot_quic_conn_block(req->quic_conn, false);
-		} else // NOTE ties to 'if' below
 #else
-		assert(req->quic_conn == NULL);
+			assert(0);
 #endif // ENABLE_QUIC
-
-		if (net_is_stream(req->fd)) {
-			net_dns_tcp_send(req->fd, req->resp->wire, req->resp->size,
-			                 conf->cache.srv_tcp_remote_io_timeout, NULL);
 		} else {
-			net_dgram_send(req->fd, req->resp->wire, req->resp->size,
-			               &req->remote);
+			(void)net_dgram_send(req->fd, req->resp->wire, req->resp->size,
+			                     &req->remote);
 		}
 	}
 }
