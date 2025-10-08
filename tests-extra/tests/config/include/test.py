@@ -30,6 +30,12 @@ ctl = libknot.control.KnotCtl()
 
 t.start()
 
+knot.use_confdb = True
+knot.gen_confile()
+knot.ctl("conf-import %s" % knot.confile, availability=False)
+knot.stop()
+knot.start()
+
 ctl.connect(os.path.join(knot.dir, "knot.sock"))
 
 ctl.send_block(cmd="conf-begin")
@@ -37,9 +43,11 @@ resp = ctl.receive_block()
 
 ctl.send_block(cmd="conf-set", section="include", data=added_file)
 resp = ctl.receive_block()
-# Cannot commit as it reloads the server without this include!
 
-ctl.send_block(cmd="conf-get", section="zone")
+ctl.send_block(cmd="conf-commit")
+resp = ctl.receive_block()
+
+ctl.send_block(cmd="conf-read", section="zone")
 resp = ctl.receive_block()
 
 isset(ZONE1 in resp['zone'], ZONE1)
@@ -47,14 +55,19 @@ isset(ZONE2 in resp['zone'], ZONE2)
 isset(ZONE3 in resp['zone'], ZONE3)
 isset(ZONE4 in resp['zone'], ZONE4)
 
-ctl.send_block(cmd="conf-commit")
-resp = ctl.receive_block()
-
 ctl.send_block(cmd="conf-read", section="server")
 resp = ctl.receive_block()
 
 isset('tcp-max-clients' in resp['server'], "server section item not set")
 isset('5' in resp['server']['tcp-max-clients'], "server section item value not set")
+
+ctl.send_block(cmd="zone-status")
+resp = ctl.receive_block()
+
+isset(ZONE1 in resp, ZONE1)
+isset(ZONE2 in resp, ZONE2)
+isset(ZONE3 in resp, ZONE3)
+isset(ZONE4 in resp, ZONE4)
 
 ctl.send(libknot.control.KnotCtlType.END)
 ctl.close()

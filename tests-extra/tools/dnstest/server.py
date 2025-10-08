@@ -158,6 +158,7 @@ class Server(object):
         self.start_params = None
         self.ctl_params = None
         self.ctl_params_append = None # The last parameter wins.
+        self.use_confdb = False
 
         self.data_dir = None
 
@@ -2048,8 +2049,12 @@ class Knot(Server):
         s.item_str("quic", "debug")
         s.end()
 
-        self.start_params = ["-c", self.confile]
-        self.ctl_params = ["-c", self.confile, "-t", "15"]
+        if self.use_confdb:
+            conf_params = ["-C", os.path.join(self.dir, "confdb")]
+        else:
+            conf_params = ["-c", self.confile]
+        self.start_params = conf_params
+        self.ctl_params = conf_params + ["-t", "15"]
         if self.ctl_params_append != None:
             self.ctl_params += self.ctl_params_append
 

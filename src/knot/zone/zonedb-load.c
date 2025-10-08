@@ -483,6 +483,26 @@ static knot_zonedb_t *create_zonedb_commit(conf_t *conf, server_t *server)
 		return NULL;
 	}
 
+	assert(conf->io.flags & CONF_IO_FACTIVE);
+	bool include = conf->io.flags & CONF_IO_FDIFF_ZONES;
+
+	// Insert possibly added zones by conf-set include.
+	if (include) {
+		for (conf_iter_t it = conf_iter(conf, C_ZONE); it.code == KNOT_EOK;
+		     conf_iter_next(conf, &it)) {
+			conf_val_t id = conf_iter_id(conf, &it);
+			const knot_dname_t *name = conf_dname(&id);
+			zone_t *zone = knot_zonedb_find(db_new, name);
+			if (zone == NULL) { // Create an included zone.
+				zone = get_zone(conf, name, server, NULL);
+				if (zone == NULL) {
+					continue;
+				}
+				knot_zonedb_insert(db_new, zone);
+			}
+		}
+	}
+
 	if (conf->io.zones != NULL) {
 		trie_it_t *trie_it = trie_it_begin(conf->io.zones);
 		for (; !trie_it_finished(trie_it); trie_it_next(trie_it)) {
