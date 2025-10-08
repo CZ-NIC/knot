@@ -71,12 +71,13 @@ static zone_t *create_zone_from(const knot_dname_t *name, server_t *server)
 	return zone;
 }
 
-static void replan_events(conf_t *conf, zone_t *zone, zone_t *old_zone)
+static void replan_events(conf_t *conf, zone_t *zone, zone_t *old_zone, bool conf_updated)
 {
-	bool conf_updated = false;
-	conf_val_t digest = conf_zone_get(conf, C_ZONEMD_GENERATE, zone->name);
-	if (zone->contents != NULL && !zone_contents_digest_exists(zone->contents, conf_opt(&digest), true)) {
-		conf_updated = true;
+	if (!conf_updated) {
+		conf_val_t digest = conf_zone_get(conf, C_ZONEMD_GENERATE, zone->name);
+		if (zone->contents != NULL && !zone_contents_digest_exists(zone->contents, conf_opt(&digest), true)) {
+			conf_updated = true;
+		}
 	}
 
 	zone->events.ufrozen = old_zone->events.ufrozen;
@@ -729,11 +730,9 @@ static void remove_old_zonedb_commit(conf_t *conf, knot_zonedb_t *db_old, server
 			} else if (!reload_zones && (type & CONF_IO_TRELOAD)) {
 				int ret = zone_reload_modules(conf, server, name);
 				if (ret != KNOT_EOK) {
-					log_zone_error(name, "failed to reload modules (%s)",
+					log_zone_error(name, "failed to reload (%s)",
 					               knot_strerror(ret));
 				}
-				zone_t *zone = knot_zonedb_find(db_new, name);
-				zone_events_schedule_now(zone, ZONE_EVENT_LOAD);
 			}
 		}
 		trie_it_free(trie_it);
@@ -748,11 +747,9 @@ static void remove_old_zonedb_commit(conf_t *conf, knot_zonedb_t *db_old, server
 			}
 			int ret = zone_reload_modules(conf, server, name);
 			if (ret != KNOT_EOK) {
-				log_zone_error(name, "failed to reload modules (%s)",
+				log_zone_error(name, "failed to reload (%s)",
 				               knot_strerror(ret));
 			}
-			zone_t *zone = knot_zonedb_find(db_new, name);
-			zone_events_schedule_now(zone, ZONE_EVENT_LOAD);
 		}
 		knot_zonedb_iter_free(db_it);
 	}
@@ -785,11 +782,9 @@ static void remove_old_zonedb_catalog(conf_t *conf, knot_zonedb_t *db_old, serve
 		case CAT_UPD_PROP:
 			; int ret = zone_reload_modules(conf, server, upd->member);
 			if (ret != KNOT_EOK) {
-				log_zone_error(upd->member, "failed to reload modules (%s)",
+				log_zone_error(upd->member, "failed to reload (%s)",
 				               knot_strerror(ret));
 			}
-			zone = knot_zonedb_find(db_new, upd->member);
-			zone_events_schedule_now(zone, ZONE_EVENT_LOAD);
 			break;
 		default:
 			break;
@@ -820,7 +815,7 @@ static void remove_old_zonedb_full(conf_t *conf, knot_zonedb_t *db_old, server_t
 			zone_t *new_zone = knot_zonedb_find(db_new, zone->name);
 			if (new_zone != NULL) {
 				/* Reload reused zone. */
-				replan_events(conf, new_zone, zone);
+				replan_events(conf, new_zone, zone, false);
 				zone->contents = NULL;
 			}
 		}
@@ -937,7 +932,7 @@ int zone_reload_modules(conf_t *conf, server_t *server, const knot_dname_t *zone
 	zone_t *oldzone = rcu_xchg_pointer(zone, newzone);
 	synchronize_rcu();
 
-	replan_events(conf, newzone, oldzone);
+	replan_events(conf, newzone, oldzone, true);
 
 	assert(newzone->contents == oldzone->contents);
 	oldzone->contents = NULL; // contents have been re-used by newzone
