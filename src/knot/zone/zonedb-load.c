@@ -81,6 +81,7 @@ static void replan_events(conf_t *conf, zone_t *zone, zone_t *old_zone)
 
 	zone->events.ufrozen = old_zone->events.ufrozen;
 	if ((zone_file_updated(conf, old_zone, zone->name) || conf_updated) && !zone_expired(zone)) {
+		zone_notifailed_clear(zone);
 		replan_load_updated(zone, old_zone);
 	} else {
 		zone->zonefile = old_zone->zonefile;

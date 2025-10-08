@@ -194,7 +194,6 @@ void replan_load_current(conf_t *conf, zone_t *zone, zone_t *old_zone)
 
 void replan_load_updated(zone_t *zone, zone_t *old_zone)
 {
-	zone_notifailed_clear(zone);
 	replan_from_zone(zone, old_zone);
 
 	// other events will cascade from load
