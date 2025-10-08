@@ -8,6 +8,13 @@ import subprocess
 import time
 
 class Redis(object):
+    class RedisParams(object):
+        def __init__(self, backend : Redis, instance : int):
+            if (instance <= 0 or instance >= 9):
+                raise ValueError('Instance must be in interval 1 to 8')
+            self.backend = backend
+            self.instance = instance
+
     def __init__(self, addr, wrk_dir, redis_bin, redis_cli, knotso):
         self.addr = addr
         self.port = None
@@ -20,7 +27,7 @@ class Redis(object):
         self.proc = None
         self.monitor = None
         self.monitor_log = None
-        self.slave_of = None
+        self._slave_of = None
 
         if not os.path.exists(self.wrk_dir):
             os.makedirs(self.wrk_dir)
@@ -45,8 +52,12 @@ class Redis(object):
             cf.write("tls-cert-file cert.pem" + os.linesep)
             if self.addr != "127.0.0.1" and self.addr != "::1":
                 cf.write("protected-mode no " + os.linesep)
-            if self.slave_of != None:
-                cf.write(f"slaveof {self.slave_of.addr} {self.slave_of.port}")
+            if self._slave_of != None:
+                # if self.tls_port != None and self._slave_of.tls_port != None:
+                #     cf.write(f"slaveof {self._slave_of.addr} {self._slave_of.tls_port}")
+                # else:
+                #     cf.write(f"slaveof {self._slave_of.addr} {self._slave_of.port}")
+                cf.write(f"slaveof {self._slave_of.addr} {self._slave_of.port}")
 
             shutil.copy(os.path.join(params.common_data_dir, "cert", "cert.pem"), self.wrk_dir)
             shutil.copy(os.path.join(params.common_data_dir, "cert", "key.pem"), self.wrk_dir)
@@ -75,5 +86,8 @@ class Redis(object):
         out, _ = p.communicate()
         return out.decode().strip()
 
-    def slaveOf(self, master : Redis):
-        self.slave_of = master
+    def slave_of(self, master : Redis):
+        self._slave_of = master
+
+    def backend_params(self, instance : int):
+        return Redis.RedisParams(self, instance)

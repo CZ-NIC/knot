@@ -16,7 +16,7 @@ from dnstest.utils import *
 from dnstest.context import Context
 import dnstest.params as params
 import dnstest.server
-import dnstest.redis
+from dnstest.redis import Redis
 import dnstest.keys
 import dnstest.zonefile
 
@@ -254,8 +254,8 @@ class Test(object):
 
             wrk_dir = os.path.join(self.out_dir,"redis", str(self.redis_counter))
             self.redis_counter += 1
-            _backend = dnstest.redis.Redis(self.addr, wrk_dir, params.redis_bin,
-                                          params.redis_cli, redis_knotso)
+            _backend = Redis(self.addr, wrk_dir, params.redis_bin,
+                             params.redis_cli, redis_knotso)
         else:
             raise Skip(f"Backend '{backend}' is not available")
 
@@ -405,16 +405,18 @@ class Test(object):
 
         return zones
 
-    def link(self, zones, master, slave=None, ddns=False, ixfr=False, journal_content="changes"):
+    def link(self, zones, master, slave=None, ddns=False, ixfr=False, journal_content="changes", backend=None):
+        if isinstance(backend, Redis.RedisParams) is True:
+            master.zonefile_sync = "0"
         for zone in zones:
             if master not in self.servers:
                 raise Failed("Server is out of testing scope")
-            master.set_master(zone, slave, ddns, ixfr, journal_content)
+            master.set_master(zone, slave, ddns, ixfr, journal_content, backend)
 
             if slave:
                 if slave not in self.servers:
                     raise Failed("Server is out of testing scope")
-                slave.set_slave(zone, master, ddns, ixfr, journal_content)
+                slave.set_slave(zone, master, ddns, ixfr, journal_content, backend)
 
     def _canonize_record(self, rtype, record):
         ''':-(('''

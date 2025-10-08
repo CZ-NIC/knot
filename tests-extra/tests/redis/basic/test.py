@@ -13,17 +13,11 @@ slave = t.server("knot")
 redis_master = t.backend("redis")
 redis_slave = t.backend("redis")
 
-redis_slave.slaveOf(redis_master)
+redis_slave.slave_of(redis_master)
 
 zones = t.zone("example.com.")
 
-t.link(zones, master)
-t.link(zones, slave)
-
-master.zonefile_sync = "0"
-for z in zones:
-    master.set_backend(redis_master, z, None, "1")
-    slave.set_backend(redis_master, z, "1", None)
+t.link(zones, master, slave, backend=redis_master.backend_params(1))
 
 t.start()
 

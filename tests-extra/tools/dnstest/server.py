@@ -24,6 +24,7 @@ import dnstest.keys
 import dnstest.knsupdate
 from dnstest.libknot import libknot
 import dnstest.module
+from dnstest.redis import Redis
 import dnstest.response
 import dnstest.update
 import distutils.dir_util
@@ -284,7 +285,7 @@ class Server(object):
             xdp = (random.random() < 0.8)
         return self.xdp_port if xdp else self.port
 
-    def set_master(self, zone, slave=None, ddns=False, ixfr=False, journal_content="changes"):
+    def set_master(self, zone, slave=None, ddns=False, ixfr=False, journal_content="changes", backend=None):
         '''Set the server as a master for the zone'''
 
         if zone.name not in self.zones:
@@ -294,10 +295,14 @@ class Server(object):
         else:
             z = self.zones[zone.name]
 
+        if isinstance(backend, Redis.RedisParams) is True:
+            z.redis_out = "1"
+            self.redis = backend.backend
+
         if slave:
             z.slaves.add(slave)
 
-    def set_slave(self, zone, master, ddns=False, ixfr=False, journal_content="changes"):
+    def set_slave(self, zone, master, ddns=False, ixfr=False, journal_content="changes", backend=None):
         '''Set the server as a slave for the zone'''
 
         slave_file = zone.clone(self.dir + "/slave", exists=False)
@@ -308,6 +313,11 @@ class Server(object):
         else:
             z = self.zones[zone.name]
             z.disable_master(slave_file)
+
+        if isinstance(backend, Redis.RedisParams) is True:
+            z.redis_in = "1"
+            z.zfile.remove()
+            self.redis = backend.backend
 
         z.masters.add(master)
 
@@ -2070,14 +2080,6 @@ class Knot(Server):
             if "DoQ support" in line and "no" not in line:
                 return
         raise Skip("QUIC support not available")
-
-    def set_backend(self, backend, zone, _in, _out):
-        self.redis = backend
-        if (_in != None):
-            self.zones[zone.name].redis_in = _in
-            self.zones[zone.name].zfile.remove()
-        if (_out != None):
-            self.zones[zone.name].redis_out = _out
 
 class Dummy(Server):
     ''' Dummy name server. '''
