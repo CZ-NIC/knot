@@ -296,7 +296,7 @@ class Server(object):
             z = self.zones[zone.name]
 
         if isinstance(backend, Redis.RedisParams) is True:
-            z.redis_out = "1"
+            z.redis_out = str(backend.instance)
             self.redis = backend.backend
 
         if slave:
@@ -315,7 +315,7 @@ class Server(object):
             z.disable_master(slave_file)
 
         if isinstance(backend, Redis.RedisParams) is True:
-            z.redis_in = "1"
+            z.redis_in = str(backend.instance)
             z.zfile.remove()
             self.redis = backend.backend
 

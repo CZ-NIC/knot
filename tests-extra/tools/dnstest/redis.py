@@ -53,11 +53,7 @@ class Redis(object):
             if self.addr != "127.0.0.1" and self.addr != "::1":
                 cf.write("protected-mode no " + os.linesep)
             if self._slave_of != None:
-                # if self.tls_port != None and self._slave_of.tls_port != None:
-                #     cf.write(f"slaveof {self._slave_of.addr} {self._slave_of.tls_port}")
-                # else:
-                #     cf.write(f"slaveof {self._slave_of.addr} {self._slave_of.port}")
-                cf.write(f"slaveof {self._slave_of.addr} {self._slave_of.port}")
+                cf.write(f"replicaof {self._slave_of.addr} {self._slave_of.port}")
 
             shutil.copy(os.path.join(params.common_data_dir, "cert", "cert.pem"), self.wrk_dir)
             shutil.copy(os.path.join(params.common_data_dir, "cert", "key.pem"), self.wrk_dir)
