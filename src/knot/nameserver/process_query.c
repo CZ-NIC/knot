@@ -302,7 +302,7 @@ static int answer_edns_init(const knot_pkt_t *query, knot_pkt_t *resp,
 	if (knot_pkt_has_dnssec(query)) {
 		knot_edns_set_do(&qdata->opt_rr);
 	}
-
+#if 0
 	/* Append Microsoft origin scope if requested. */
 	uint8_t *ms_origin_scope_opt = knot_pkt_edns_option(query, KNOT_EDNS_MICROSOFT_ORIGIN_SCOPE_CODE);
 	if (ms_origin_scope_opt) {
@@ -328,7 +328,7 @@ static int answer_edns_init(const knot_pkt_t *query, knot_pkt_t *resp,
 			return ret;
 		}
 	}
-
+#endif
 	/* Append NSID if requested and available. */
 	if (knot_pkt_edns_option(query, KNOT_EDNS_OPTION_NSID) != NULL) {
 		conf_val_t *nsid = &conf()->cache.srv_nsid;
