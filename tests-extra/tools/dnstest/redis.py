@@ -28,6 +28,7 @@ class Redis(object):
         self.monitor = None
         self.monitor_log = None
         self._slave_of = None
+        self._sentinel_of = dict()
 
         if not os.path.exists(self.wrk_dir):
             os.makedirs(self.wrk_dir)
@@ -42,7 +43,8 @@ class Redis(object):
         with open(self.conf_file(), "w") as cf:
             cf.write("dir " + self.wrk_dir + os.linesep)
             cf.write("logfile " + self.wrk_file("redis.log") + os.linesep)
-            cf.write("loadmodule " + self.knotso + os.linesep)
+            if len(self._sentinel_of) == 0:
+                cf.write("loadmodule " + self.knotso + os.linesep)
             cf.write("bind " + self.addr + os.linesep)
             cf.write("port " + str(self.port) + os.linesep)
             cf.write("tls-port " + str(self.tls_port) + os.linesep)
@@ -53,7 +55,17 @@ class Redis(object):
             if self.addr != "127.0.0.1" and self.addr != "::1":
                 cf.write("protected-mode no " + os.linesep)
             if self._slave_of != None:
-                cf.write(f"replicaof {self._slave_of.addr} {self._slave_of.port}")
+                cf.write(f"replicaof {self._slave_of.addr} {self._slave_of.port}{os.linesep}")
+
+            server_idx = 0
+            for server, quorum in self._sentinel_of.items():
+                cf.write(f"sentinel monitor master-{server_idx} {server.addr} {server.port} {quorum}{os.linesep}")
+                cf.write(f"sentinel down-after-milliseconds master-{server_idx} 5000{os.linesep}")
+                cf.write(f"sentinel failover-timeout master-{server_idx} 60000{os.linesep}")
+                cf.write(f"sentinel parallel-syncs master-{server_idx} 1{os.linesep}")
+
+                server_idx += 1
+
 
             shutil.copy(os.path.join(params.common_data_dir, "cert", "cert.pem"), self.wrk_dir)
             shutil.copy(os.path.join(params.common_data_dir, "cert", "key.pem"), self.wrk_dir)
@@ -62,7 +74,10 @@ class Redis(object):
             self.pin = ssearch(out, r'pin-sha256:([^\n]*)')
 
     def start(self):
-        self.proc = subprocess.Popen([ self.redis_bin, self.conf_file() ])
+        prog = [self.redis_bin, self.conf_file()]
+        if len(self._sentinel_of) != 0:
+            prog.append('--sentinel')
+        self.proc = subprocess.Popen(prog)
         time.sleep(0.3)
         monitor_cmd = [ self.redis_cli, "-h", self.addr, "-p", str(self.port), "monitor" ]
         self.monitor_log = open(os.path.join(self.wrk_dir, "monitor.log"), "a")
@@ -83,7 +98,14 @@ class Redis(object):
         return out.decode().strip()
 
     def slave_of(self, master : Redis):
+        if len(self._sentinel_of) != 0:
+            raise AssertionError("can't be sentinel and db at once")
         self._slave_of = master
+    
+    def sentinel_of(self, master : Redis, quorum : int):
+        if self._slave_of is not None:
+            raise AssertionError("can't be sentinel and db at once")
+        self._sentinel_of[master] = quorum
 
     def backend_params(self, instance : int):
         return Redis.RedisParams(self, instance)

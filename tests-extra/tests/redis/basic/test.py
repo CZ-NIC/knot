@@ -10,9 +10,11 @@ t = Test()
 master = t.server("knot")
 slave = t.server("knot")
 
+redis_sentinel = t.backend("redis")
 redis_master = t.backend("redis")
 redis_slave = t.backend("redis")
 
+redis_sentinel.sentinel_of(redis_master, 2)
 redis_slave.slave_of(redis_master)
 
 zones = t.zone("example.com.")
@@ -20,6 +22,18 @@ zones = t.zone("example.com.")
 t.link(zones, master, slave, backend=redis_master.backend_params(1))
 
 t.start()
+
+# Just some demonstration of sentinel usage, remove later
+resp = redis_sentinel.cli("SENTINEL", "MASTERS")
+masters = []
+resp = resp.splitlines()
+for i in range(0, len(resp), 2):
+    if resp[i] == 'name':
+        masters.append(resp[i+1])
+
+if len(masters) != 0:
+    resp = redis_sentinel.cli("SENTINEL", "get-master-addr-by-name", masters[0])
+    pass
 
 master.zones_wait(zones)
 
