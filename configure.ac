@@ -463,6 +463,57 @@ AC_ARG_ENABLE([cap-ng],
   [], [enable_cap_ng=auto]
 )
 
+# FIXME: move out of knot DNS daemon section
+# Build qtest_kdig
+# AC_ARG_ENABLE([qtest],
+#   [AS_HELP_STRING([--enable-qtest=yes|no], [Build QUIC implementation tests (needs QUIC and libcmocka >= 1.1.7) [default: no]])],
+#   [enable_qtest="$enableval"],
+#   [enable_qtest=no]
+# )
+# #
+# AS_CASE([$enable_qtest],
+#   [yes], [PKG_CHECK_MODULES([libcmocka], [libcmocka >= 1.1.7],
+#     [enable_quic=yes],
+#     [AC_MSG_ERROR([libcmocka not found, but --enable-qtest=yes was requested])]),
+#   ],
+#   [no], [],
+#   [*], [AC_MSG_ERROR([Invalid value for --enable-qtest])]
+# )
+#
+# AM_CONDITIONAL([ENABLE_QTEST], [test "x$enable_qtest" != "xno"])
+# AC_SUBST([libcmocka_CFLAGS])
+# AC_SUBST([libcmocka_LIBS])
+#
+# AS_IF([test "x$enable_qtest" != "xno"], [
+#   AC_DEFINE([ENABLE_QTEST], [1], [Define to yes to enable QUIC implementation tests])
+# ])
+
+AC_ARG_ENABLE([qtest],
+  [AS_HELP_STRING([--enable-qtest=yes|no],
+    [Build QUIC implementation tests (needs QUIC and cmocka >= 1.1.7) [default: no]])],
+  [enable_qtest="$enableval"],
+  [enable_qtest=no]
+)
+
+AS_CASE([$enable_qtest],
+  [yes], [
+    PKG_CHECK_MODULES([cmocka], [cmocka >= 1.1.7],
+      [enable_quic=yes],
+      [AC_MSG_ERROR([cmocka not found, but --enable-qtest=yes was requested])]
+    )
+  ],
+  [no], [],
+  [*], [AC_MSG_ERROR([Invalid value for --enable-qtest])]
+)
+
+AM_CONDITIONAL([ENABLE_QTEST], [test "x$enable_qtest" = "xyes"])
+AC_SUBST([cmocka_CFLAGS])
+AC_SUBST([cmocka_LIBS])
+
+AS_IF([test "x$enable_qtest" = "xyes"], [
+  AC_DEFINE([ENABLE_QTEST], [1], [Define to 1 to enable QUIC implementation tests])
+])
+
 # Socket polling method (1/2)
 AC_ARG_WITH([socket-polling],
   AS_HELP_STRING([--with-socket-polling=auto|poll|epoll|kqueue|libkqueue],
@@ -926,6 +977,7 @@ result_msg_base="
     Use SO_REUSEPORT(_LB):  ${enable_reuseport}
     XDP support:            ${enable_xdp}
     DoQ support:            ${enable_quic}
+    QUIC test:              ${enable_qtest}
     Redis support:          ${enable_redis}
     Socket polling:         ${with_socket_polling}
     Atomic support:         ${atomic_type}
