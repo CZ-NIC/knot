@@ -1028,7 +1028,7 @@ static int zone_txn_abort(zone_t *zone, ctl_args_t *args)
 	return ret;
 }
 
-static int zone_serial(zone_t *zone, ctl_args_t *args)
+static int zone_serial_set(zone_t *zone, ctl_args_t *args)
 {
 	int ret = KNOT_EOK;
 	const char *serial_set_str = args->data[KNOT_CTL_IDX_DATA];
@@ -1952,8 +1952,8 @@ static int ctl_zone(ctl_args_t *args, ctl_cmd_t cmd)
 		return zones_apply(args, zone_xfr_freeze);
 	case CTL_ZONE_XFR_THAW:
 		return zones_apply(args, zone_xfr_thaw);
-	case CTL_ZONE_SERIAL:
-		return zones_apply(args, zone_serial);
+	case CTL_ZONE_SERIAL_SET:
+		return zones_apply(args, zone_serial_set);
 	case CTL_ZONE_READ:
 		return zones_apply(args, zone_read);
 	case CTL_ZONE_BEGIN:
@@ -2440,7 +2440,7 @@ static const desc_t cmd_table[] = {
 	[CTL_ZONE_THAW]       = { "zone-thaw",          ctl_zone,         CTL_LOCK_SRV_R },
 	[CTL_ZONE_XFR_FREEZE] = { "zone-xfr-freeze",    ctl_zone,         CTL_LOCK_SRV_R },
 	[CTL_ZONE_XFR_THAW]   = { "zone-xfr-thaw",      ctl_zone,         CTL_LOCK_SRV_R },
-	[CTL_ZONE_SERIAL]     = { "zone-serial",        ctl_zone,         CTL_LOCK_SRV_R },
+	[CTL_ZONE_SERIAL_SET] = { "zone-serial-set",    ctl_zone,         CTL_LOCK_SRV_R },
 
 	[CTL_ZONE_READ]       = { "zone-read",          ctl_zone,         CTL_LOCK_SRV_R },
 	[CTL_ZONE_BEGIN]      = { "zone-begin",         ctl_zone,         CTL_LOCK_SRV_R },
@@ -2451,7 +2451,7 @@ static const desc_t cmd_table[] = {
 	[CTL_ZONE_SET]        = { "zone-set",           ctl_zone,         CTL_LOCK_SRV_R },
 	[CTL_ZONE_UNSET]      = { "zone-unset",         ctl_zone,         CTL_LOCK_SRV_R },
 	[CTL_ZONE_PURGE]      = { "zone-purge",         ctl_zone,         CTL_LOCK_SRV_W },
-	[CTL_ZONE_STATS]      = { "zone-stats",	       ctl_zone,         CTL_LOCK_SRV_R },
+	[CTL_ZONE_STATS]      = { "zone-stats",	        ctl_zone,         CTL_LOCK_SRV_R },
 
 	[CTL_CONF_LIST]       = { "conf-list",          ctl_conf_list,    CTL_LOCK_SRV_R }, // Can either read live conf or conf txn. The latter would deserve CTL_LOCK_SRV_W, but when conf txn exists, all cmds are done by single thread anyway.
 	[CTL_CONF_READ]       = { "conf-read",          ctl_conf_read,    CTL_LOCK_SRV_R },

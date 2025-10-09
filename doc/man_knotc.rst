@@ -244,12 +244,14 @@ Actions
   Show zone statistics counter(s). To print also counters with value 0, use
   force option.
 
-**zone-serial** *zone* [[+]serial]
-  Get current zone SOA serial. If the argument is specified, SOA serial will be set
-  to given value. If the argument is prefixed with *+*, SOA serial will be incremented
-  by the amount. If the zone transaction is opened, both reading and writing of the
-  SOA serial takes place within the transaction. Otherwise, a short-lived transaction
-  is created and committed just for setting new SOA serial.
+**zone-serial-set** *zone* [[**+**]\ *serial*]
+  Set the zone SOA serial to the specified value. If the argument is prefixed with
+  **+**, the serial is incremented by that value (the special constant **MAX**
+  can be used to increment by the maximum allowed value 2147483647).
+  If the zone transaction is open, both reading and writing of the SOA serial
+  occur within that transaction. Otherwise, a short-lived transaction
+  is created and committed solely for setting the new SOA serial.
+  If no argument is specified, the current zone SOA serial is returned.
 
 **conf-init**
   Initialize the configuration database. If the database doesn't exist yet,

@@ -33,7 +33,7 @@
 #define CMD_ZONE_THAW		"zone-thaw"
 #define CMD_ZONE_XFR_FREEZE	"zone-xfr-freeze"
 #define CMD_ZONE_XFR_THAW	"zone-xfr-thaw"
-#define CMD_ZONE_SERIAL		"zone-serial"
+#define CMD_ZONE_SERIAL_SET	"zone-serial-set"
 
 #define CMD_ZONE_READ		"zone-read"
 #define CMD_ZONE_BEGIN		"zone-begin"
