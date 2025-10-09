@@ -199,8 +199,8 @@ AC_ARG_ENABLE([xdp],
    [], [enable_xdp=auto])
 
 AS_CASE([$enable_xdp],
-   [auto], [PKG_CHECK_MODULES([libbpf], [libbpf >= 0.0.6], [enable_xdp=yes], [enable_xdp=no])],
-   [yes], [PKG_CHECK_MODULES([libbpf], [libbpf >= 0.0.6], [enable_xdp=yes],
+   [auto], [PKG_CHECK_MODULES([libbpf], [libbpf = 0.0.6], [enable_xdp=yes], [enable_xdp=no])],
+   [yes], [PKG_CHECK_MODULES([libbpf], [libbpf = 0.0.6], [enable_xdp=yes],
              [PKG_CHECK_MODULES([libelf], [libelf],
                 [AC_CHECK_FUNC([reallocarray],
                    [enable_xdp=embedded
