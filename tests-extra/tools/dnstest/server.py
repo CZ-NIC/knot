@@ -5,6 +5,7 @@ import enum
 import glob
 import inspect
 import ipaddress
+import subprocess
 import psutil
 import re
 import random
@@ -24,7 +25,7 @@ import dnstest.keys
 import dnstest.knsupdate
 from dnstest.libknot import libknot
 import dnstest.module
-from dnstest.redis import Redis
+from dnstest.redis import Redis, RedisEnv
 import dnstest.response
 import dnstest.update
 import distutils.dir_util
@@ -241,7 +242,7 @@ class Server(object):
         self.session_log = None
         self.confile = None
 
-        self.redis = None
+        self.backends = list()
 
         self.binding_errors = 0
 
@@ -285,7 +286,7 @@ class Server(object):
             xdp = (random.random() < 0.8)
         return self.xdp_port if xdp else self.port
 
-    def set_master(self, zone, slave=None, ddns=False, ixfr=False, journal_content="changes", backend=None):
+    def set_master(self, zone, slave=None, ddns=False, ixfr=False, journal_content="changes", backendEnv=None):
         '''Set the server as a master for the zone'''
 
         if zone.name not in self.zones:
@@ -295,14 +296,14 @@ class Server(object):
         else:
             z = self.zones[zone.name]
 
-        if isinstance(backend, Redis.RedisParams) is True:
-            z.redis_out = str(backend.instance)
-            self.redis = backend.backend
+        if backendEnv != None and isinstance(backendEnv, RedisEnv) is True:
+            z.redis_out = str(backendEnv.instance)
+            self.backends.extend(backendEnv.servers)
 
         if slave:
             z.slaves.add(slave)
 
-    def set_slave(self, zone, master, ddns=False, ixfr=False, journal_content="changes", backend=None):
+    def set_slave(self, zone, master, ddns=False, ixfr=False, journal_content="changes", backendEnv=None):
         '''Set the server as a slave for the zone'''
 
         slave_file = zone.clone(self.dir + "/slave", exists=False)
@@ -314,10 +315,10 @@ class Server(object):
             z = self.zones[zone.name]
             z.disable_master(slave_file)
 
-        if isinstance(backend, Redis.RedisParams) is True:
-            z.redis_in = str(backend.instance)
+        if isinstance(backendEnv, RedisEnv) is True:
+            z.redis_in = str(backendEnv.instance)
             z.zfile.remove()
-            self.redis = backend.backend
+            self.backends.extend(backendEnv.servers)
 
         z.masters.add(master)
 
@@ -1897,13 +1898,16 @@ class Knot(Server):
         s.item_str("journal-db-max-size", self.journal_db_size)
         s.item_str("timer-db-max-size", self.timer_db_size)
         s.item_str("catalog-db-max-size", self.catalog_db_size)
-        if self.redis is not None:
-            tls = random.choice([True, False])
-            port = self.redis.tls_port if tls else self.redis.port
-            s.item_str("zone-db-listen", self.redis.addr + "@" + str(port))
-            if tls:
-                s.item_str("zone-db-cert-key", self.redis.pin)
-                s.item_str("zone-db-tls", "on")
+        if len(self.backends) != 0:
+            s.item_list("zone-db-listen", map(lambda b: f"{b.addr}@{b.port}", self.backends))
+            # tls = random.choice([True, False])
+            # s.item_list("zone-db-listen", map(lambda b: f"{b.addr}@{b.tls_port if tls else b.port}", self.backends))
+            # if tls:
+            #         keyfile = os.path.join(self.wrk_dir, "key.pem")
+            #         out = subprocess.check_output(["certtool", "--infile=" + keyfile, "-k"]).rstrip().decode('ascii')
+            #         pin = ssearch(out, r'pin-sha256:([^\n]*)')
+            #         s.item_str("zone-db-cert-key", pin)
+            #         s.item_str("zone-db-tls", "on")
         s.end()
 
         s.begin("template")

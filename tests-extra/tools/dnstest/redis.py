@@ -1,20 +1,15 @@
 from __future__ import annotations
 
-from dnstest.utils import *
-import dnstest.params as params
 import os
 import shutil
 import subprocess
 import time
+from typing import List
+
+import dnstest.params as params
+from dnstest.utils import *
 
 class Redis(object):
-    class RedisParams(object):
-        def __init__(self, backend : Redis, instance : int):
-            if (instance <= 0 or instance >= 9):
-                raise ValueError('Instance must be in interval 1 to 8')
-            self.backend = backend
-            self.instance = instance
-
     def __init__(self, addr, wrk_dir, redis_bin, redis_cli, knotso):
         self.addr = addr
         self.port = None
@@ -109,5 +104,7 @@ class Redis(object):
             raise AssertionError("can't be sentinel and db at once")
         self._sentinel_of[master] = quorum
 
-    def backend_params(self, instance : int):
-        return Redis.RedisParams(self, instance)
+class RedisEnv:
+    def __init__(self, servers : List[Redis], instance : int = 1):
+        self.servers = servers
+        self.instance = instance

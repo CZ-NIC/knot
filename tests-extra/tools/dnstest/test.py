@@ -16,7 +16,7 @@ from dnstest.utils import *
 from dnstest.context import Context
 import dnstest.params as params
 import dnstest.server
-from dnstest.redis import Redis
+from dnstest.redis import Redis, RedisEnv
 import dnstest.keys
 import dnstest.zonefile
 
@@ -405,18 +405,18 @@ class Test(object):
 
         return zones
 
-    def link(self, zones, master, slave=None, ddns=False, ixfr=False, journal_content="changes", backend=None):
-        if isinstance(backend, Redis.RedisParams) is True:
+    def link(self, zones, master, slave=None, ddns=False, ixfr=False, journal_content="changes", backendEnv=None):
+        if backendEnv != None and isinstance(backendEnv, RedisEnv) is True:
             master.zonefile_sync = "0"
         for zone in zones:
             if master not in self.servers:
                 raise Failed("Server is out of testing scope")
-            master.set_master(zone, slave, ddns, ixfr, journal_content, backend)
+            master.set_master(zone, slave, ddns, ixfr, journal_content, backendEnv)
 
             if slave:
                 if slave not in self.servers:
                     raise Failed("Server is out of testing scope")
-                slave.set_slave(zone, master, ddns, ixfr, journal_content, backend)
+                slave.set_slave(zone, master, ddns, ixfr, journal_content, backendEnv)
 
     def _canonize_record(self, rtype, record):
         ''':-(('''
