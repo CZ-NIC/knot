@@ -10,21 +10,28 @@ t = Test()
 master = t.server("knot")
 slave = t.server("knot")
 
-redis_sentinel = t.backend("redis")
-redis_master = t.backend("redis")
-redis_slave = t.backend("redis")
+redis_sentinel_1 = t.backend("redis")
+redis_sentinel_2 = t.backend("redis")
+redis_sentinel_3 = t.backend("redis")
 
-redis_sentinel.sentinel_of(redis_master, 2)
-redis_slave.slave_of(redis_master)
+redis_master_1 = t.backend("redis")
+redis_slave_1 = t.backend("redis")
+
+
+redis_sentinel_1.sentinel_of(redis_master_1, 2)
+redis_sentinel_2.sentinel_of(redis_master_1, 2)
+redis_sentinel_3.sentinel_of(redis_master_1, 2)
+
+redis_slave_1.slave_of(redis_master_1)
 
 zones = t.zone("example.com.")
 
-t.link(zones, master, slave, backend=redis_master.backend_params(1))
+t.link(zones, master, slave, backend=redis_master_1.backend_params(1))
 
 t.start()
 
 # Just some demonstration of sentinel usage, remove later
-resp = redis_sentinel.cli("SENTINEL", "MASTERS")
+resp = redis_sentinel_1.cli("SENTINEL", "MASTERS")
 masters = []
 resp = resp.splitlines()
 for i in range(0, len(resp), 2):
@@ -32,8 +39,23 @@ for i in range(0, len(resp), 2):
         masters.append(resp[i+1])
 
 if len(masters) != 0:
-    resp = redis_sentinel.cli("SENTINEL", "get-master-addr-by-name", masters[0])
-    pass
+    ip_1 = redis_sentinel_1.cli("SENTINEL", "get-master-addr-by-name", masters[0])
+
+redis_master_1.cli("DEBUG", "sleep", "120")
+time.sleep(30)
+
+resp = redis_sentinel_1.cli("SENTINEL", "MASTERS")
+masters = []
+resp = resp.splitlines()
+for i in range(0, len(resp), 2):
+    if resp[i] == 'name':
+        masters.append(resp[i+1])
+
+if len(masters) != 0:
+    ip_2 = redis_sentinel_1.cli("SENTINEL", "get-master-addr-by-name", masters[0])
+# End of demonstration
+
+time.sleep(90)
 
 master.zones_wait(zones)
 
@@ -78,13 +100,13 @@ if uptodate_log != len(zones):
 
 # Add to DB manually. Slave will diverge from master.
 for z in zones:
-    txn = redis_master.cli("knot.upd.begin", z.name, master.zones[z.name].redis_out)
-    r = redis_master.cli("knot.upd.remove", z.name, txn, "example.com. 3600 in soa dns1.example.com. hostmaster.example.com. %d 10800 3600 1209600 7200" % serials3[z.name])
-    r = redis_master.cli("knot.upd.add", z.name, txn, "example.com. 3600 in soa dns1.example.com. hostmaster.example.com. %d 10800 3600 1209600 7200" % (serials3[z.name] + 1))
-    r = redis_master.cli("knot.upd.add", z.name, txn, "txtadd 3600 A 1.2.3.4")
-    r = redis_master.cli("knot.upd.commit", z.name, txn)
+    txn = redis_master_1.cli("knot.upd.begin", z.name, master.zones[z.name].redis_out)
+    r = redis_master_1.cli("knot.upd.remove", z.name, txn, "example.com. 3600 in soa dns1.example.com. hostmaster.example.com. %d 10800 3600 1209600 7200" % serials3[z.name])
+    r = redis_master_1.cli("knot.upd.add", z.name, txn, "example.com. 3600 in soa dns1.example.com. hostmaster.example.com. %d 10800 3600 1209600 7200" % (serials3[z.name] + 1))
+    r = redis_master_1.cli("knot.upd.add", z.name, txn, "txtadd 3600 A 1.2.3.4")
+    r = redis_master_1.cli("knot.upd.commit", z.name, txn)
 
-    r = redis_master.cli("knot.upd.load", z.name, master.zones[z.name].redis_out, str(serials3[z.name]))
+    r = redis_master_1.cli("knot.upd.load", z.name, master.zones[z.name].redis_out, str(serials3[z.name]))
     if not "txtadd" in r:
         set_err("NO TXTADD IN UPD")
 

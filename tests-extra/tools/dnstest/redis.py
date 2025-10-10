@@ -52,6 +52,7 @@ class Redis(object):
             cf.write("tls-auth-clients no" + os.linesep)
             cf.write("tls-key-file key.pem" + os.linesep)
             cf.write("tls-cert-file cert.pem" + os.linesep)
+            cf.write("enable-debug-command local" + os.linesep)
             if self.addr != "127.0.0.1" and self.addr != "::1":
                 cf.write("protected-mode no " + os.linesep)
             if self._slave_of != None:
@@ -60,8 +61,8 @@ class Redis(object):
             server_idx = 0
             for server, quorum in self._sentinel_of.items():
                 cf.write(f"sentinel monitor master-{server_idx} {server.addr} {server.port} {quorum}{os.linesep}")
-                cf.write(f"sentinel down-after-milliseconds master-{server_idx} 5000{os.linesep}")
-                cf.write(f"sentinel failover-timeout master-{server_idx} 60000{os.linesep}")
+                cf.write(f"sentinel down-after-milliseconds master-{server_idx} 1000{os.linesep}")
+                cf.write(f"sentinel failover-timeout master-{server_idx} 6000{os.linesep}")
                 cf.write(f"sentinel parallel-syncs master-{server_idx} 1{os.linesep}")
 
                 server_idx += 1
@@ -78,10 +79,11 @@ class Redis(object):
         if len(self._sentinel_of) != 0:
             prog.append('--sentinel')
         self.proc = subprocess.Popen(prog)
-        time.sleep(0.3)
-        monitor_cmd = [ self.redis_cli, "-h", self.addr, "-p", str(self.port), "monitor" ]
-        self.monitor_log = open(os.path.join(self.wrk_dir, "monitor.log"), "a")
-        self.monitor = subprocess.Popen(monitor_cmd, stdout=self.monitor_log, stderr=self.monitor_log)
+        if len(self._sentinel_of) == 0:
+            time.sleep(0.3)
+            monitor_cmd = [ self.redis_cli, "-h", self.addr, "-p", str(self.port), "monitor" ]
+            self.monitor_log = open(os.path.join(self.wrk_dir, "monitor.log"), "a")
+            self.monitor = subprocess.Popen(monitor_cmd, stdout=self.monitor_log, stderr=self.monitor_log)
 
     def stop(self):
         if self.monitor:
