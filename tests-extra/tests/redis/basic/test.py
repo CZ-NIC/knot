@@ -43,13 +43,13 @@ t.link(zones, master, slave, backendEnv=redis_env)
 
 t.start()
 
-# redis_master.cli("DEBUG", "sleep", "120")
-
 master.zones_wait(zones)
 
 # Test zone stored by master and loaded by slave
 serials = slave.zones_wait(zones)
 t.xfr_diff(master, slave, zones)
+
+redis_master.cli("DEBUG", "sleep", "10")
 
 # Test incremental change stored by master and loaded by slave
 for z in zones:
