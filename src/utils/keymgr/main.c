@@ -192,9 +192,6 @@ static int key_command(int argc, char *argv[], int opt_ind, knot_lmdb_db_t *kasp
 			ret = keymgr_serial_print(&kctx, type);
 			print_ok_on_succes = false;
 		}
-	} else if (same_command(argv[1], "local-serial", false)) {
-		WARN2("deprecated command with no effect");
-		print_ok_on_succes = false;
 	} else if (same_command(argv[1], "set", false)) {
 		CHECK_MISSING_ARG("Key is not specified");
 		knot_kasp_key_t *key2set;
