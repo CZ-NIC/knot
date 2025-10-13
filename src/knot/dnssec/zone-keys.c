@@ -482,7 +482,7 @@ int kdnssec_load_private(knot_kasp_keystore_t *keystores, const char *id,
                          dnssec_key_t *key, const char **name, unsigned *backend)
 {
 	int ret = DNSSEC_ENOENT;
-	for (size_t i = 0; i < keystores[0].count && ret == DNSSEC_ENOENT; i++) {
+	for (size_t i = 0; i < keystores[0].count && (ret == DNSSEC_ENOENT || ret == DNSSEC_NOT_FOUND); i++) {
 		ret = dnssec_keystore_get_private(keystores[i].keystore, id, key);
 		if (ret == KNOT_EOK) {
 			if (name != NULL) {
