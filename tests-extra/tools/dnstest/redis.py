@@ -104,6 +104,14 @@ class Redis(object):
             raise AssertionError("can't be sentinel and db at once")
         self._sentinel_of[master] = quorum
 
+    def get_weight(self):
+        if len(self._sentinel_of) != 0:
+            return 2
+        elif self._slave_of != None:
+            return 1
+        else:
+            return 0
+
 class RedisEnv:
     def __init__(self, servers : List[Redis], instance : int = 1):
         self.servers = servers

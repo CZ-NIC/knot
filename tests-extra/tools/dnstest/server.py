@@ -242,7 +242,7 @@ class Server(object):
         self.session_log = None
         self.confile = None
 
-        self.backends = list()
+        self.backends = set()
 
         self.binding_errors = 0
 
@@ -298,7 +298,7 @@ class Server(object):
 
         if backendEnv != None and isinstance(backendEnv, RedisEnv) is True:
             z.redis_out = str(backendEnv.instance)
-            self.backends.extend(backendEnv.servers)
+            self.backends.update(backendEnv.servers)
 
         if slave:
             z.slaves.add(slave)
@@ -318,7 +318,7 @@ class Server(object):
         if isinstance(backendEnv, RedisEnv) is True:
             z.redis_in = str(backendEnv.instance)
             z.zfile.remove()
-            self.backends.extend(backendEnv.servers)
+            self.backends.update(backendEnv.servers)
 
         z.masters.add(master)
 
@@ -1899,15 +1899,16 @@ class Knot(Server):
         s.item_str("timer-db-max-size", self.timer_db_size)
         s.item_str("catalog-db-max-size", self.catalog_db_size)
         if len(self.backends) != 0:
-            s.item_list("zone-db-listen", map(lambda b: f"{b.addr}@{b.port}", self.backends))
-            # tls = random.choice([True, False])
-            # s.item_list("zone-db-listen", map(lambda b: f"{b.addr}@{b.tls_port if tls else b.port}", self.backends))
-            # if tls:
-            #         keyfile = os.path.join(self.wrk_dir, "key.pem")
-            #         out = subprocess.check_output(["certtool", "--infile=" + keyfile, "-k"]).rstrip().decode('ascii')
-            #         pin = ssearch(out, r'pin-sha256:([^\n]*)')
-            #         s.item_str("zone-db-cert-key", pin)
-            #         s.item_str("zone-db-tls", "on")
+            sorted_backends = sorted(self.backends, key=lambda e: e.get_weight())
+            tls = random.choice([True, False])
+            s.item_list("zone-db-listen", map(lambda b: f"{b.addr}@{b.tls_port if tls else b.port}", sorted_backends))
+            if tls:
+                    master = sorted_backends[0]
+                    keyfile = os.path.join(master.wrk_dir, "key.pem")
+                    out = subprocess.check_output(["certtool", "--infile=" + keyfile, "-k"]).rstrip().decode('ascii')
+                    pin = ssearch(out, r'pin-sha256:([^\n]*)')
+                    s.item_str("zone-db-cert-key", pin)
+                    s.item_str("zone-db-tls", "on")
         s.end()
 
         s.begin("template")
