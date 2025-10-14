@@ -49,7 +49,9 @@ master.zones_wait(zones)
 serials = slave.zones_wait(zones)
 t.xfr_diff(master, slave, zones)
 
-redis_master.cli("DEBUG", "sleep", "10")
+time.sleep(10) # wait for slaves sync snapshot
+freeze_future = redis_master.freeze(60)
+time.sleep(3) # wait for sentinel changes master
 
 # Test incremental change stored by master and loaded by slave
 for z in zones:
@@ -146,4 +148,5 @@ resp.check(rcode="NOERROR", rdata="1::1")
 resp.check(rcode="NOERROR", rdata="1::4")
 resp.check_count(5, "AAAA")
 
+freeze_future.wait()
 t.end()

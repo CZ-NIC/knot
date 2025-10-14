@@ -93,6 +93,10 @@ class Redis(object):
         p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         out, _ = p.communicate()
         return out.decode().strip()
+    
+    def freeze(self, seconds):
+        cmd = [ self.redis_cli, "-h", self.addr, "-p", str(self.port), "DEBUG", "sleep", str(seconds) ]
+        return subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
     def slave_of(self, master : Redis):
         if len(self._sentinel_of) != 0:
