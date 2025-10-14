@@ -121,11 +121,12 @@ child.dnssec(child_zone).dnskey_ttl = 2
 child.dnssec(child_zone).zsk_lifetime = 99999
 child.dnssec(child_zone).ksk_lifetime = 300 # this can be possibly left also infinity
 child.dnssec(child_zone).propagation_delay = 4
-child.dnssec(child_zone).ksk_sbm_check = [ parent ]
-child.dnssec(child_zone).ksk_sbm_check_interval = 2
-child.dnssec(child_zone).ds_push = parent
 child.dnssec(child_zone).ksk_shared = True
 child.dnssec(child_zone).cds_cdnskey_publish = "always"
+
+child.conf_zone(child_zone).ds_push = [ parent.name ]
+child.conf["submission"][child_zone[0].name] = { "parent": [ parent.name ], "check-interval": 2 }
+child.remotes.add(parent)
 
 #t.start()
 t.generate_conf()
@@ -144,7 +145,7 @@ resp.check_count(1, rtype="DS")
 if resp.resp.answer[0].ttl != child.dnssec(child_zone).dnskey_ttl:
     set_err("DS TTL")
 
-child.dnssec(child_zone).ds_push = "" # empty list []
+child.conf_zone(child_zone).ds_push = [ ]
 child.gen_confile()
 child.reload()
 child.ctl("zone-key-rollover %s ksk" % child_zone[0].name)

@@ -79,15 +79,17 @@ def configure_dnssec(server1, master, server2, server3, roll):
     server1.dnssec(zone).enable = True
     server1.dnssec(zone).single_type_signing = (roll == 2)
     server1.dnssec(zone).propagation_delay = 4
-    server1.dnssec(zone).ksk_sbm_timeout = 4
+    server1.conf["submission"][zone[0].name] = { "timeout": 4 }
     server1.dnssec(zone).dnskey_management = "incremental"
     server1.dnssec(zone).delete_delay = 4
     server1.dnssec(zone).cds_cdnskey_publish = ("always" if CDS else "none")
     server1.dnssec(zone).keytag_modulo = "%d/3" % server_mod
     if DNSKEY_MASTER == 1:
-        server1.dnssec(zone).dnskey_sync = [ master ]
+        server1.conf["dnskey-sync"][zone[0].name] = { "remote": [ master.name ] }
+        server1.remotes.add(master)
     else:
-        server1.dnssec(zone).dnskey_sync = [ server2, server3 ] if SIGNERS3 else [ server2 ]
+        server1.conf["dnskey-sync"][zone[0].name] = { "remote": ([ server2.name, server3.name ] if SIGNERS3 else [ server2.name ]) }
+        server1.remotes.update([server2, server3])
 
 t = Test()
 

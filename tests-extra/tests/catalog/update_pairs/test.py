@@ -62,7 +62,7 @@ for z in rzone:
     knot.dnssec(z).signing_threads = "2"
     if not knot.valgrind: # it would be too slow with valgrind
         knot.dnssec(z).nsec3 = True
-        knot.dnssec(z).nsec3_iters = "65000"
+        knot.dnssec(z).nsec3_iterations = "65000"
         knot.dnssec(z).algorithm = "rsasha512"
         knot.dnssec(z).zsk_size = "4096"
 

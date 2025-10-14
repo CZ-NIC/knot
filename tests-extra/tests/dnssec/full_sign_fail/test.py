@@ -16,7 +16,7 @@ for z in zone:
     server.dnssec(z).enable = True
     server.dnssec(z).rrsig_lifetime = 20
     server.dnssec(z).rrsig_refresh = 10
-    server.dnssec(z).rrsig_prerefresh = 4
+    server.dnssec(z).rrsig_pre_refresh = 4
 
 server.journal_max_usage = 128*1024
 

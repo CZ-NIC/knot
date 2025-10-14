@@ -25,8 +25,9 @@ t.link(zones, recver, ddns=True)
 for z in zones:
     sender.dnssec(z).enable = True
     sender.dnssec(z).propagation_delay = 4
-    sender.dnssec(z).dnskey_sync = [ recver ]
+    sender.conf["dnskey-sync"][z.name] = { "remote": [ recver.name ] }
     sender.dnssec(z).keytag_modulo = "0/1"
+sender.remotes.add(recver)
 
 sender.check_quic()
 

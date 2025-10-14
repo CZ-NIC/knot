@@ -58,7 +58,7 @@ def wait_for_count(t, server, rrtype, count, timeout):
         if rtime > timeout:
             break
 
-t = Test()
+t = Test(tsig=False)
 
 parent = t.server("knot")
 parent_zone = t.zone("com.", storage=".")
@@ -66,8 +66,9 @@ t.link(parent_zone, parent)
 
 #parent.dnssec(parent_zone).enable = True
 
+CHILDZ = "example.com."
 child = t.server("knot")
-child_zone = t.zone("example.com.", storage=".")
+child_zone = t.zone(CHILDZ, storage=".")
 t.link(child_zone, child)
 
 def cds_submission():
@@ -86,7 +87,8 @@ child.dnssec(child_zone).dnskey_ttl = 2
 child.dnssec(child_zone).zsk_lifetime = 99999
 child.dnssec(child_zone).ksk_lifetime = 9999
 child.dnssec(child_zone).propagation_delay = 4
-child.dnssec(child_zone).ksk_sbm_check_interval = 2
+
+child.conf["submission"][CHILDZ] = { "check-interval": 2 }
 
 # parameters
 ZONE = "example.com."
@@ -96,7 +98,8 @@ child.zone_wait(child_zone)
 
 cds_submission()
 
-child.dnssec(child_zone).ksk_sbm_check = [ parent ]
+child.conf["submission"][CHILDZ]["parent"] = [ parent.name ]
+child.remotes.add(parent)
 child.dnssec(child_zone).ksk_lifetime = 13
 child.gen_confile()
 
@@ -105,7 +108,7 @@ child.reload()
 wait_for_count(t, child, "DNSKEY", 3, 20) # initiation of KSK rollover means the initial submission was successful
 check_zone(child, child_zone, 3, 2, 0, 1, "KSK rollover start")
 
-child.dnssec(child_zone).ksk_sbm_check = [ ]
+child.conf["submission"][CHILDZ]["parent"] = [ ]
 child.dnssec(child_zone).ksk_lifetime = 150
 child.gen_confile()
 
@@ -115,7 +118,7 @@ t.sleep(6)
 cds_submission()
 t.sleep(1)
 
-child.dnssec(child_zone).ksk_sbm_check = [ parent ]
+child.conf["submission"][CHILDZ]["parent"] = [ parent.name ]
 child.gen_confile()
 
 child.reload()

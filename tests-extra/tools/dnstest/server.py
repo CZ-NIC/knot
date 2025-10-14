@@ -129,8 +129,8 @@ class Server(object):
 
         self.data_dir = None
 
-        self.zone_conf = dict()
-        self.policy_conf = dict()
+        self.conf = { "zone": dict(), "policy": dict(), "submission": dict(), "dnskey-sync": dict() }
+        self.remotes = set()
 
         self.nsid = None
         self.ident = None
@@ -215,7 +215,7 @@ class Server(object):
         return multidict(zones_names(zones), conf_dict)
 
     def conf_zone(self, zones):
-        return self.conf_base(self.zone_conf, zones)
+        return self.conf_base(self.conf["zone"], zones)
 
     def _check_socket(self, proto, port):
         if self.addr.startswith("/"):
@@ -259,8 +259,8 @@ class Server(object):
 
     def set_new_zone(self, name, z):
         self.zones[name] = z
-        self.zone_conf[name] = dict()
-        self.policy_conf[name] = { 'keystore': [], 'keytag_modulo': '0/1', 'ksk_sbm_check': [], "signing-threads": str(random.randint(1,4)) }
+        self.conf["zone"][name] = dict()
+        self.conf["policy"][name] = { 'keystore': [], 'keytag_modulo': '0/1', "signing-threads": str(random.randint(1,4)) }
 
     def set_master(self, zone, slave=None, ddns=False, ixfr=False, journal_content="changes"):
         '''Set the server as a master for the zone'''
@@ -984,7 +984,7 @@ class Server(object):
         distutils.dir_util.copy_tree(zone.key_dir, self.keydir, update=True)
 
     def dnssec(self, zone):
-        return self.conf_base(self.policy_conf, zone)
+        return self.conf_base(self.conf["policy"], zone)
 
     def enable_nsec3(self, zone, **args):
         zone = zone_arg_check(zone)
@@ -1308,10 +1308,15 @@ class Bind(Server):
                 s.item("inline-signing", "yes")
                 s.item("dnssec-policy", z.name)
                 s.item_str("key-directory", self.keydir)
-                if z.dnssec.ksk_sbm_check:
+                if zone in self.conf["submission"] and "parent" in self.conf["submission"][zone]:
                     parents = ""
-                    for parent in z.dnssec.ksk_sbm_check:
-                        parents += "%s port %i; " % (parent.addr, parent.port)
+                    for parent in self.conf["submission"][zone]["parent"]:
+                        parmt = None
+                        for rmt in self.remotes:
+                            if rmt.name == parent:
+                                parmt = rmt
+                        if parmt:
+                            parents += "%s port %i; " % (parmt.addr, parmt.port)
                     s.item("parental-agents", "{ %s}" % parents)
             s.end()
 
@@ -1354,7 +1359,7 @@ class Bind(Server):
                             outf.write(line)
                 #if z.dnssec.nsec3:
                     #n3flag =  1 if z.dnssec.nsec3_opt_out else 0
-                    #n3iters = z.dnssec.nsec3_iters or 0
+                    #n3iters = z.dnssec.nsec3_iterations or 0
                     #outf.write("%s NSEC3PARAM 1 %d %d -\n" % (z.name, n3flag, n3iters)) # this does not work!
 
         super().start(clean, fatal)
@@ -1363,7 +1368,7 @@ class Bind(Server):
             z = self.zones[zname]
             if z.dnssec.nsec3:
                 n3flag =  1 if z.dnssec.nsec3_opt_out else 0
-                n3iters = z.dnssec.nsec3_iters or 0
+                n3iters = z.dnssec.nsec3_iterations or 0
                 self.ctl("signing -nsec3param 1 %d %d - %s" % (n3flag, n3iters, z.name))
 
 class Knot(Server):
@@ -1485,8 +1490,9 @@ class Knot(Server):
                 acl += ", acl_%s" % slave.name
             if slaves:
                 conf.item("notify", "[%s]" % slaves)
-        for remote in self.dnssec(zone).dnskey_sync if self.dnssec(zone).dnskey_sync else []:
-            acl += ", acl_%s_ddns" % remote.name
+        if zone.name in self.conf["dnskey-sync"]:
+            for rmt in self.conf["dnskey-sync"][zone.name]["remote"]:
+                acl += ", acl_%s" % rmt
         if not self.auto_acl:
             conf.item("acl", "[%s]" % acl)
 
@@ -1552,120 +1558,45 @@ class Knot(Server):
         s.item_str("timeout", "15")
         s.end()
 
+        all_remotes = set()
+        for zone in self.zones:
+            z = self.zones[zone]
+            all_remotes.update(z.masters)
+            all_remotes.update(z.slaves)
+        all_remotes.update(self.remotes)
+
         if self.tsig:
             keys = set() # Duplicy check.
             s.begin("key")
             self._key(s, keys, self.tsig_test, "test")
             self._key(s, keys, self.tsig, "local")
-
-            for zone in sorted(self.zones):
-                z = self.zones[zone]
-                z.dnssec = self.dnssec(z)
-                for master in z.masters:
-                    self._key(s, keys, master.tsig, master.name)
-                for slave in z.slaves:
-                    self._key(s, keys, slave.tsig, slave.name)
-                for remote in z.dnssec.dnskey_sync if z.dnssec.dnskey_sync else []:
-                    self._key(s, keys, remote.tsig, remote.name)
+            for rmt in all_remotes:
+                self._key(s, keys, rmt.tsig, rmt.name)
             s.end()
 
-        have_remote = False
-        servers = set() # Duplicity check.
-        for zone in sorted(self.zones):
-            z = self.zones[zone]
-            z.dnssec = self.dnssec(z)
-            for master in z.masters:
-                if master.name not in servers:
-                    if not have_remote:
-                        s.begin("remote")
-                        have_remote = True
-                    s.id_item("id", master.name)
-                    if master.quic_port or master.tls_port:
-                        s.item_str("address", "%s@%s" % (master.addr, master.tls_port or master.quic_port))
-                        s.item_str("tls" if master.tls_port else "quic", "on")
-                        if master.cert_key:
-                            s.item_str("cert-key", master.cert_key)
-                        elif master.cert_hostname:
-                            s.item_list("cert-hostname", master.cert_hostname)
-                        elif master.cert_key_file:
-                            s.item_str("cert-key", master.cert_key_file[3])
-                    else:
-                        if master.addr.startswith("/"):
-                            s.item_str("address", "%s" % master.addr)
-                        else:
-                            s.item_str("address", "%s@%s" % (master.addr, master.query_port()))
-                    if self.tsig:
-                        s.item_str("key", self.tsig.name)
-                    if self.via:
-                        s.item_str("via", self.via)
-                    if master.no_xfr_edns:
-                        s.item_str("no-edns", "on")
-                    servers.add(master.name)
-            for slave in z.slaves:
-                if slave.name not in servers:
-                    if not have_remote:
-                        s.begin("remote")
-                        have_remote = True
-                    s.id_item("id", slave.name)
-                    if slave.quic_port or slave.tls_port:
-                        s.item_str("address", "%s@%s" % (slave.addr, slave.tls_port or slave.quic_port))
-                        s.item_str("tls" if slave.tls_port else "quic", "on")
-                        if slave.cert_key:
-                            s.item_str("cert-key", slave.cert_key)
-                        elif slave.cert_hostname:
-                            s.item_list("cert-hostname", slave.cert_hostname)
-                        elif slave.cert_key_file:
-                            s.item_str("cert-key", slave.cert_key_file[3])
-                    else:
-                        if slave.addr.startswith("/"):
-                            s.item_str("address", "%s" % slave.addr)
-                        else:
-                            s.item_str("address", "%s@%s" % (slave.addr, slave.query_port()))
-                    if self.via:
-                        s.item_str("via", self.via)
-                    if self.tsig:
-                        s.item_str("key", self.tsig.name)
-                    servers.add(slave.name)
-            for parent in z.dnssec.ksk_sbm_check + [ z.dnssec.ds_push ] if z.dnssec.ds_push else z.dnssec.ksk_sbm_check:
-                if isinstance(parent, Server) and parent.name not in servers:
-                    if not have_remote:
-                        s.begin("remote")
-                        have_remote = True
-                    s.id_item("id", parent.name)
-                    if parent.addr.startswith("/"):
-                        s.item_str("address", "%s" % parent.addr)
-                    else:
-                        s.item_str("address", "%s@%s" % (parent.addr, parent.port))
-                    if self.via:
-                        s.item_str("via", self.via)
-                    servers.add(parent.name)
-            for remote in z.dnssec.dnskey_sync if z.dnssec.dnskey_sync else []:
-                if remote.name not in servers:
-                    if not have_remote:
-                        s.begin("remote")
-                        have_remote = True
-                    s.id_item("id", remote.name)
-                    if remote.quic_port or remote.tls_port:
-                        s.item_str("address", "%s@%s" % (remote.addr, remote.tls_port or remote.quic_port))
-                        s.item_str("tls" if remote.tls_port else "quic", "on")
-                        if remote.cert_key:
-                            s.item_str("cert-key", remote.cert_key)
-                        elif remote.cert_hostname:
-                            s.item_list("cert-hostname", remote.cert_hostname)
-                        elif remote.cert_key_file:
-                            s.item_str("cert-key", remote.cert_key_file[3])
-                    else:
-                        if remote.addr.startswith("/"):
-                            s.item_str("address", "%s" % remote.addr)
-                        else:
-                            s.item_str("address", "%s@%s" % (remote.addr, remote.port))
-                    if remote.via:
-                        s.item_str("via", self.via)
-                    if remote.tsig:
-                        s.item_str("key", self.tsig.name)
-                    servers.add(remote.name)
-
-        if have_remote:
+        for rmt in all_remotes:
+            s.begin("remote")
+            s.id_item("id", rmt.name)
+            if rmt.quic_port or rmt.tls_port:
+                s.item_str("address", "%s@%s" % (rmt.addr, rmt.tls_port or rmt.quic_port))
+                s.item_str("tls" if rmt.tls_port else "quic", "on")
+                if rmt.cert_key:
+                    s.item_str("cert-key", rmt.cert_key)
+                elif rmt.cert_hostname:
+                    s.item_list("cert-hostname", rmt.cert_hostname)
+                elif rmt.cert_key_file:
+                    s.item_str("cert-key", rmt.cert_key_file[3])
+            else:
+                if rmt.addr.startswith("/"):
+                    s.item_str("address", "%s" % rmt.addr)
+                else:
+                    s.item_str("address", "%s@%s" % (rmt.addr, rmt.query_port()))
+            if self.tsig:
+                s.item_str("key", self.tsig.name)
+            if self.via:
+                s.item_str("via", self.via)
+            if rmt.no_xfr_edns:
+                s.item_str("no-edns", "on")
             s.end()
 
         s.begin("acl")
@@ -1675,50 +1606,34 @@ class Knot(Server):
             s.item_str("key", self.tsig_test.name)
         s.item("action", "[transfer, notify, update]")
 
-        servers = set() # Duplicity check.
-        for zone in sorted(self.zones):
-            z = self.zones[zone]
-            z.dnssec = self.dnssec(z)
-            for master in z.masters:
-                if master.name not in servers:
-                    s.id_item("id", "acl_%s" % master.name)
-                    if master.addr.startswith("/"):
-                        s.item_str("address", self.addr)
-                    else:
-                        s.item_str("address", master.addr)
-                    if master.tsig:
-                        s.item_str("key", master.tsig.name)
-                    if master.cert_key:
-                        s.item_str("cert-key", master.cert_key)
-                    if master.cert_hostname:
-                        s.item_list("cert-hostname", master.cert_hostname)
-                    s.item("action", "notify")
-                    servers.add(master.name)
-            for slave in z.slaves:
-                if slave.name in servers:
-                    continue
-                s.id_item("id", "acl_%s" % slave.name)
-                if slave.addr.startswith("/"):
-                    s.item_str("address", self.addr)
-                else:
-                    s.item_str("address", slave.addr)
-                if slave.tsig:
-                    s.item_str("key", slave.tsig.name)
-                if slave.cert_key:
-                    s.item_str("cert-key", slave.cert_key)
-                if slave.cert_hostname:
-                    s.item_list("cert-hostname", slave.cert_hostname)
-                s.item("action", "[transfer" + (", update" if z.ddns else "") + "]")
-                servers.add(slave.name)
-            for remote in z.dnssec.dnskey_sync if z.dnssec.dnskey_sync else []:
-                dupl_name = remote.name + "_ddns"
-                if dupl_name in servers:
-                    continue
-                s.id_item("id", "acl_%s" % dupl_name)
-                if remote.tsig:
-                    s.item_str("key", remote.tsig.name)
-                s.item("action", "update")
-                servers.add(dupl_name)
+        for rmt in all_remotes:
+            aclaction = set()
+            for zone in self.zones:
+                z = self.zones[zone]
+                if rmt in z.masters:
+                    aclaction.add("notify")
+                if rmt in z.slaves:
+                    aclaction.add("transfer")
+                    if z.ddns:
+                        aclaction.add("update")
+                if zone in self.conf["dnskey-sync"] and rmt.name in self.conf["dnskey-sync"][zone]["remote"]:
+                    aclaction.add("update")
+
+            if len(aclaction) < 1:
+                continue
+
+            s.id_item("id", "acl_%s" % rmt.name)
+            if rmt.addr.startswith("/"):
+                s.item_str("address", self.addr)
+            else:
+                s.item_str("address", rmt.addr)
+            if rmt.tsig:
+                s.item_str("key", rmt.tsig.name)
+            if rmt.cert_key:
+                s.item_str("cert-key", rmt.cert_key)
+            if rmt.cert_hostname:
+                s.item_list("cert-hostname", rmt.cert_hostname)
+            s.item_list("action", list(aclaction))
         s.end()
 
         if len(self.modules) > 0:
@@ -1731,54 +1646,13 @@ class Knot(Server):
                 for module in z.modules:
                     module.get_conf(s)
 
-        have_sbm = False
-        for zone in sorted(self.zones):
-            z = self.zones[zone]
-            z.dnssec = self.dnssec(z)
-            if not z.dnssec.enable:
-                continue
-            if len(z.dnssec.ksk_sbm_check) < 1 and z.dnssec.ksk_sbm_timeout is None:
-                continue
-            if not have_sbm:
-                s.begin("submission")
-                have_sbm = True
-            s.id_item("id", z.name)
-            parents = ""
-            for parent in z.dnssec.ksk_sbm_check:
-                if parents:
-                    parents += ", "
-                parents += parent.name
-            if parents != "":
-                s.item("parent", "[%s]" % parents)
-            self._str(s, "check-interval", z.dnssec.ksk_sbm_check_interval)
-            if z.dnssec.ksk_sbm_timeout is not None:
-                self._str(s, "timeout", z.dnssec.ksk_sbm_timeout)
-            if z.dnssec.ksk_sbm_delay is not None:
-                self._str(s, "parent-delay", z.dnssec.ksk_sbm_delay)
-        if have_sbm:
-            s.end()
-
-        have_dnskeysync = False
-        for zone in sorted(self.zones):
-            z = self.zones[zone]
-            z.dnssec = self.dnssec(z)
-            if not z.dnssec.enable:
-                continue
-            if z.dnssec.dnskey_sync is None:
-                continue
-            if not have_dnskeysync:
-                s.begin("dnskey-sync")
-                have_dnskeysync = True
-            s.id_item("id", z.name)
-            remotes = ""
-            for remote in z.dnssec.dnskey_sync:
-                if remotes:
-                    remotes += ", "
-                remotes += remote.name
-            if remotes != "":
-                s.item("remote", "[%s]" % remotes)
-        if have_dnskeysync:
-            s.end()
+        for subsection in [ "submission", "dnskey-sync" ]:
+            for zone in self.conf[subsection]:
+                s.begin(subsection)
+                s.id_item("id", zone)
+                for ci, val in self.conf[subsection][z.name].items():
+                    s.item_type(ci.replace("_", "-"), val)
+                s.end()
 
         have_external = False
         for zone in sorted(self.zones):
@@ -1817,29 +1691,16 @@ class Knot(Server):
         for zone in sorted(self.zones):
             z = self.zones[zone]
             z.dnssec = self.dnssec(z)
-            if not z.dnssec.enable and not z.dnssec.validate:
-                continue
-
-            if (z.dnssec.shared_policy_with or z.name) != z.name:
-                continue
-
-            if not have_policy:
-                s.begin("policy")
-                have_policy = True
+            s.begin("policy")
             s.id_item("id", z.name)
-            for ci, val in self.policy_conf[z.name].items():
-                if ci not in [ "enable", "disable", "validate", "shared_policy_with", "rrsig_prerefresh", "nsec3_iters", "nsec3_salt_len", "ksk_sbm_check", "ksk_sbm_timeout", "ksk_sbm_delay", "ksk_sbm_check_interval", "cds_publish", "cds_digesttype", "dnskey_sync", "ds_push" ]:
+            for ci, val in self.conf["policy"][z.name].items():
+                if ci not in [ "enable", "validate", "shared_policy_with" ]:
                     s.item_type(ci.replace("_", "-"), val)
 
-            self._str(s, "rrsig-pre-refresh", z.dnssec.rrsig_prerefresh)
-            self._str(s, "nsec3-iterations", z.dnssec.nsec3_iters)
-            self._str(s, "nsec3-salt-length", z.dnssec.nsec3_salt_len)
-            if len(z.dnssec.ksk_sbm_check) > 0 or z.dnssec.ksk_sbm_timeout is not None:
-                s.item("ksk-submission", z.name)
-            if z.dnssec.dnskey_sync:
-                s.item("dnskey-sync", z.name)
-
-        if have_policy:
+            if zone in self.conf["dnskey-sync"]:
+                s.item("dnskey-sync", zone)
+            if zone in self.conf["submission"]:
+                s.item("ksk-submission", zone)
             s.end()
 
         s.begin("database")
@@ -1901,9 +1762,8 @@ class Knot(Server):
             s.item_str("journal-content", z.journal_content)
 
             # this is weird but for the sake of testing, the cataloged zones inherit dnssec policy from catalog zone
-            if z.dnssec.enable:
-                s.item_str("dnssec-signing", "off" if z.dnssec.disable else "on")
-                s.item_str("dnssec-policy", z.name)
+            s.item_str("dnssec-signing", "on" if z.dnssec.enable else "off")
+            s.item_str("dnssec-policy", z.name)
             for module in z.modules:
                 if module.conf_name == "mod-onlinesign":
                     s.item("module", "[%s]" % module.get_conf_ref())
@@ -1926,14 +1786,13 @@ class Knot(Server):
         s.begin("zone")
         for zone in sorted(self.zones):
             z = self.zones[zone]
-            z.dnssec = self.dnssec(z)
             if z.catalog_role == ZoneCatalogRole.HIDDEN:
                 continue
 
             s.id_item("domain", z.name)
             s.item_str("file", z.zfile.path)
 
-            for ci, val in self.zone_conf[z.name].items():
+            for ci, val in self.conf["zone"][z.name].items():
                 s.item_type(ci.replace("_", "-"), val)
 
             self.config_xfr(z, s)
@@ -1966,18 +1825,10 @@ class Knot(Server):
                 s.item_str("catalog-role", "interpret")
                 s.item("catalog-template", "[ catalog-default, catalog-signed, catalog-unsigned ]")
 
-            if z.dnssec.enable:
-                s.item_str("dnssec-signing", "off" if z.dnssec.disable else "on")
+            s.item_str("dnssec-signing", "on" if self.dnssec(z).enable else "off")
+            s.item_str("dnssec-policy", self.dnssec(z).shared_policy_with or z.name)
 
-            if z.dnssec.enable or z.dnssec.validate:
-                s.item_str("dnssec-policy", z.dnssec.shared_policy_with or z.name)
-
-            self._bool(s, "dnssec-validation", z.dnssec.validate)
-
-            if z.dnssec.ds_push == "":
-                s.item("ds-push", "[ ]")
-            elif z.dnssec.ds_push:
-                self._str(s, "ds-push", z.dnssec.ds_push.name)
+            self._bool(s, "dnssec-validation", self.dnssec(z).validate)
 
             if len(z.modules) > 0:
                 modules = ""

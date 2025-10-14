@@ -239,7 +239,7 @@ def watch_ksk_rollover(t, server, zone, slave, before_keys, after_keys, total_ke
         wait_for_count(t, server, "DNSKEY", after_keys, 14, 20, msg)
     check_zone(server, zone, slave, after_keys, 1, 1, 1, msg)
 
-t = Test()
+t = Test(tsig=False) # the facility of DS Query does not work with TSIG
 
 parent = t.server("knot")
 parent_zone = t.zone("com.", storage=".")
@@ -271,14 +271,13 @@ child.dnssec(child_zone).ksk_lifetime = 300 # this can be possibly left also inf
 child.dnssec(child_zone).delete_delay = DELETE_DELAY
 child.dnssec(child_zone).dnskey_management = "incremental" if INCREMENTAL else "full"
 child.dnssec(child_zone).propagation_delay = 11
-child.dnssec(child_zone).ksk_sbm_check = [ parent ]
-child.dnssec(child_zone).ksk_sbm_check_interval = 2
-child.dnssec(child_zone).ksk_sbm_delay = 6
 child.dnssec(child_zone).ksk_shared = True
 child.dnssec(child_zone).cds_cdnskey_publish = "always"
 if DOUBLE_DS:
     child.dnssec(child_zone).cds_cdnskey_publish = "double-ds"
 child.dnssec(child_zone).cds_digest_type = CDS_DT
+child.conf["submission"][child_zone[0].name] = { "parent": [ parent.name ], "check-interval": 2, "parent-delay": 6 }
+child.remotes.add(parent)
 
 slave.dnssec(child_zone).validate = True
 

@@ -20,10 +20,10 @@ ZONE = zone[0].name
 for z in zone:
     slave.dnssec(z).enable = True
     slave.dnssec(z).nsec3 = True
-    slave.dnssec(z).nsec3_salt_len = 0
+    slave.dnssec(z).nsec3_salt_length = 0
     slave.dnssec(z).rrsig_lifetime = 25 if SCENARIO == 1 else 20
     slave.dnssec(z).rrsig_refresh = 5
-    slave.dnssec(z).rrsig_prerefresh = 1
+    slave.dnssec(z).rrsig_pre_refresh = 1
     slave.dnssec(z).zone_max_ttl = 4
     slave.zones[z.name].journal_content = "all"
 slave.zonefile_sync = "-1"

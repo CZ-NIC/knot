@@ -17,7 +17,7 @@ for z in zones:
     master.dnssec(z).enable = True
     master.dnssec(z).rrsig_lifetime = 40
     master.dnssec(z).rrsig_refresh = 5
-    master.dnssec(z).rrsig_prerefresh = 0
+    master.dnssec(z).rrsig_pre_refresh = 0
     master.dnssec(z).propagation_delay = 0
 
 def send_ddns(server, zone, data):

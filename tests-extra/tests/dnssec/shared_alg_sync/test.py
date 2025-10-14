@@ -32,8 +32,7 @@ knot.zones_wait(zones)
 
 for z in zones:
     check_zone(knot, z, 1 if z.name == z0name else 0, "initial sign")
-    knot.dnssec(z).disable = knot.dnssec(z).enable
-    knot.dnssec(z).enable = True
+    knot.dnssec(z).enable = not knot.dnssec(z).enable
     knot.dnssec(z).algorithm = "ECDSAP384SHA384"
 
 knot.gen_confile()

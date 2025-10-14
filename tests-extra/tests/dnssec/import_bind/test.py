@@ -73,7 +73,7 @@ def knot_dnskey_checks(t, msg, zones, timeout):
             same_dnskey_count(t, bind, knot, knot.zones[z.name], i, msg, timeout)
 
 def clone_policy(zone):
-    knot.policy_conf[zone.name] = copy.copy(bind.policy_conf[zone.name])
+    knot.conf["policy"][zone.name] = copy.copy(bind.conf["policy"][zone.name])
     knot.dnssec(zone).ksk_lifetime -= 2 * int(knot.dnssec(zone).dnskey_ttl)
 
 def knot_import_zone(zone):
@@ -95,8 +95,8 @@ for z in zones:
     bind.dnssec(z).ksk_lifetime = 40
     bind.dnssec(z).rrsig_lifetime = "8"
     bind.dnssec(z).rrsig_refresh = "4"
-    bind.dnssec(z).rrsig_prerefresh = "1"
-    bind.dnssec(z).ksk_sbm_check_interval = 1
+    bind.dnssec(z).rrsig_pre_refresh = "1"
+    bind.conf["submission"][z.name] = { "check-interval": 1 }
 
 t.generate_conf()
 bind.start()

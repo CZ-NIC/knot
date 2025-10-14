@@ -17,8 +17,8 @@ t.link(zones, master, slave)
 for zone in zones:
     master.dnssec(zone).enable = True
     master.dnssec(zone).nsec3 = True
-    master.dnssec(zone).nsec3_iters = 2
-    master.dnssec(zone).nsec3_salt_len = 10
+    master.dnssec(zone).nsec3_iterations = 2
+    master.dnssec(zone).nsec3_salt_length = 10
     master.dnssec(zone).nsec3_opt_out = True
 
 t.start()

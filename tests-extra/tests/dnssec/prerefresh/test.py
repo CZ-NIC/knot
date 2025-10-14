@@ -13,7 +13,7 @@ t.link(zone, master)
 
 master.dnssec(zone).enable = True
 master.dnssec(zone).rrsig_lifetime = 20
-master.dnssec(zone).rrsig_prerefresh = 4
+master.dnssec(zone).rrsig_pre_refresh = 4
 master.dnssec(zone).propagation_delay = 1
 master.dnssec(zone).dnskey_ttl = 1
 
