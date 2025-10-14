@@ -157,6 +157,7 @@ int zone_dump_text(zone_contents_t *zone, zone_skip_t *skip, FILE *file, bool co
 
 	if (comments) {
 		if (fprintf(file, ";; Zone dump (Knot DNS %s)\n", PACKAGE_VERSION) < 0) {
+			free(buf);
 			return knot_map_errno();
 		}
 	}
