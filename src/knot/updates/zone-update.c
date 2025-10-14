@@ -1331,7 +1331,7 @@ int zone_update_foreach(zone_update_t *update, bool additions, rrset_cb_t cb, vo
 	} else if (update->flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) {
 		knot_rrset_t *soa = additions ? update->change.soa_to : update->change.soa_from;
 		zone_contents_t *c = additions ? update->change.add : update->change.remove;
-		int ret = (soa == NULL) ? KNOT_EOK : cb(soa, ctx);
+		int ret = (soa == NULL || update->change.soa_to == NULL) ? KNOT_EOK : cb(soa, ctx);
 		if (ret == KNOT_EOK) {
 			ret = trees_foreach(c->nodes, c->nsec3_nodes, false, cb, ctx);
 		}
