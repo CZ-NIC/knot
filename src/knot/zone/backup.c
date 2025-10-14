@@ -216,7 +216,7 @@ static char *dir_file(const char *dir_name, const char *file_name)
 	return sprintf_alloc("%s/%s", dir_name, basename);
 }
 
-static int backup_key(key_params_t *parm, const knot_dname_t *zname,
+static int backup_key(key_params_t *parm, const knot_dname_t *zname, bool restore,
                       knot_kasp_keystore_t *from, knot_kasp_keystore_t *to)
 {
 	dnssec_key_t *key = NULL;
@@ -226,22 +226,22 @@ static int backup_key(key_params_t *parm, const knot_dname_t *zname,
 	}
 	dnssec_key_set_algorithm(key, parm->algorithm);
 
-	dnssec_keystore_t *to_pem = NULL;
-	for (size_t i = 0; i < to[0].count; i++) {
-		if (to[i].backend == KEYSTORE_BACKEND_PEM) {
-			to_pem = to[i].keystore;
-			break;
-		}
-	}
-
 	unsigned backend;
 	ret = kdnssec_load_private(from, parm->id, key, NULL, &backend);
 	if (ret == DNSSEC_EOK) {
-		if (backend == KEYSTORE_BACKEND_PKCS11 || to_pem == NULL) {
-			log_zone_notice(zname, "private keys from PKCS #11 are not subject of backup/restore, skipping them");
-		} else {
-			ret = dnssec_keystore_set_private(to[0].keystore, key);
+		// If restore, consider only the first configured keystore.
+		assert(to->count > 0);
+		ret = dnssec_keystore_set_private(to[0].keystore, key);
+		backend = restore ? to->backend : backend;
+		if (ret != DNSSEC_EOK && backend == KEYSTORE_BACKEND_PKCS11) {
+			log_zone_notice(zname,
+			                "%s of private key id %s via PKCS #11 not possible, ignoring",
+			                restore ? "restore" : "backup", parm->id);
+			ret = DNSSEC_EOK;
 		}
+	} else if (ret == DNSSEC_ENOENT) {
+		log_zone_notice(zname, "private key id %s not available, ignoring", parm->id);
+		ret = DNSSEC_EOK;
 	}
 
 	dnssec_key_free(key);
@@ -410,7 +410,7 @@ static int backup_keystore(conf_t *conf, zone_t *zone, zone_backup_ctx_t *ctx)
 	WALK_LIST(n, key_params) {
 		key_params_t *parm = n->d;
 		if (ret == KNOT_EOK && !parm->is_pub_only) {
-			ret = backup_key(parm, zone->name, from, to);
+			ret = backup_key(parm, zone->name, ctx->restore_mode, from, to);
 		}
 		free_key_params(parm);
 	}
