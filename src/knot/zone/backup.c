@@ -232,11 +232,11 @@ static int backup_key(key_params_t *parm, const knot_dname_t *zname, bool restor
 		// If restore, consider only the first configured keystore.
 		assert(to->count > 0);
 		ret = dnssec_keystore_set_private(to[0].keystore, key);
-		if (ret != DNSSEC_EOK && !restore && backend == KEYSTORE_BACKEND_PKCS11) {
-			log_zone_notice(zname, "backup of private key with id %s from PKCS #11 not possible, ignoring", parm->id);
-			ret = DNSSEC_EOK;
-		} else if (ret != DNSSEC_EOK && restore && to->backend == KEYSTORE_BACKEND_PKCS11) {
-			log_zone_notice(zname, "restore of private key with id %s to PKCS #11 not possible, ignoring", parm->id);
+		backend = restore ? to->backend : backend;
+		if (ret != DNSSEC_EOK && backend == KEYSTORE_BACKEND_PKCS11) {
+			log_zone_notice(zname,
+			                "%s of PKCS #11 residing private key id %s not possible, ignoring",
+			                restore ? "restore" : "backup", parm->id);
 			ret = DNSSEC_EOK;
 		}
 	} else if (ret == DNSSEC_ENOENT) {
