@@ -24,15 +24,35 @@ void zone_redis_disconnect(struct redisContext *ctx, bool pool_save)
 	return rdb_disconnect(ctx, pool_save);
 }
 
+#include <poll.h>
 bool zone_redis_ping(struct redisContext *ctx)
 {
 	if (ctx == NULL) {
 		return false;
 	}
 
-	redisReply *reply = redisCommand(ctx, "PING");
-	bool res = (reply != NULL &&
-	            reply->type == REDIS_REPLY_STATUS &&
+	if (redisAppendCommand(ctx, "PING") != REDIS_OK) {
+		return false;
+	}
+
+	int done = 0;
+	while (!done) {
+		if (redisBufferWrite(ctx, &done) != REDIS_OK) {
+			return false;
+		}
+	}
+
+	struct pollfd pfd = { .fd = ctx->fd, .events = POLLIN };
+	if (poll(&pfd, 1, 1000) == 0) {
+		return false;
+	}
+
+	redisReply *reply;
+	if (redisGetReply(ctx, (void **)&reply) != REDIS_OK) {
+		return false;
+	}
+
+	bool res = (reply->type == REDIS_REPLY_STATUS &&
 	            strcmp(reply->str, "PONG") == 0);
 
 	freeReplyObject(reply);
@@ -46,9 +66,29 @@ int zone_redis_role(struct redisContext *ctx)
 		return -1;
 	}
 
+	if (redisAppendCommand(ctx, "ROLE") != REDIS_OK) {
+		return -1;
+	}
+
+	int done = 0;
+	while (!done) {
+		if (redisBufferWrite(ctx, &done) != REDIS_OK) {
+			return false;
+		}
+	}
+
+	struct pollfd pfd = { .fd = ctx->fd, .events = POLLIN };
+	if (poll(&pfd, 1, 1000) == 0) {
+		return -1;
+	}
+
+	redisReply *reply;
+	if (redisGetReply(ctx, (void **)&reply) != REDIS_OK) {
+		return -1;
+	}
+
 	int res = -1;
-	redisReply *reply = redisCommand(ctx, "ROLE");
-	if (reply != NULL && reply->type == REDIS_REPLY_ARRAY) {
+	if (reply->type == REDIS_REPLY_ARRAY) {
 		if (strcmp(reply->element[0]->str, "master") == 0) {
 			res = 0;
 		} else if (strcmp(reply->element[0]->str, "sentinel") == 0) {
