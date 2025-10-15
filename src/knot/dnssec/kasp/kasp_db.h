@@ -269,7 +269,7 @@ int kasp_db_set_saved_ttls(knot_lmdb_db_t *db, const knot_dname_t *zone,
  * \brief Initialize KASP database according to conf, if not already.
  *
  * \param db      KASP DB to be initialized.
- * \param conf    COnfiguration to take options from.
+ * \param conf    Configuration to take options from.
  */
 void kasp_db_ensure_init(knot_lmdb_db_t *db, conf_t *conf);
 
