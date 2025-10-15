@@ -189,7 +189,7 @@ static int share_or_generate_key(kdnssec_ctx_t *ctx, kdnssec_generate_flags_t fl
 		borrow_zone = NULL;
 		borrow_key = NULL;
 		if (ret != KNOT_ESEMCHECK) {
-			// all ok, we generated new kay and updated policy-last
+			// all ok, we generated new key and updated policy-last
 			return ret;
 		} else {
 			// another zone updated policy-last key in the meantime
