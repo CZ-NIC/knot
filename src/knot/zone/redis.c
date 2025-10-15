@@ -3,6 +3,7 @@
  *  For more information, see <https://www.knot-dns.cz/>
  */
 
+#include <poll.h>
 #include <string.h>
 
 #include "knot/zone/redis.h"
@@ -24,7 +25,6 @@ void zone_redis_disconnect(struct redisContext *ctx, bool pool_save)
 	return rdb_disconnect(ctx, pool_save);
 }
 
-#include <poll.h>
 bool zone_redis_ping(struct redisContext *ctx)
 {
 	if (ctx == NULL) {
@@ -43,7 +43,7 @@ bool zone_redis_ping(struct redisContext *ctx)
 	}
 
 	struct pollfd pfd = { .fd = ctx->fd, .events = POLLIN };
-	if (poll(&pfd, 1, 1000) == 0) {
+	if (poll(&pfd, 1, 500) == 0) {
 		return false;
 	}
 
@@ -52,8 +52,8 @@ bool zone_redis_ping(struct redisContext *ctx)
 		return false;
 	}
 
-	bool res = (reply->type == REDIS_REPLY_STATUS &&
-	            strcmp(reply->str, "PONG") == 0);
+	bool res = reply->type == REDIS_REPLY_STATUS &&
+	           strcmp(reply->str, "PONG") == 0;
 
 	freeReplyObject(reply);
 
@@ -73,7 +73,7 @@ int zone_redis_role(struct redisContext *ctx)
 	int done = 0;
 	while (!done) {
 		if (redisBufferWrite(ctx, &done) != REDIS_OK) {
-			return false;
+			return -1;
 		}
 	}
 

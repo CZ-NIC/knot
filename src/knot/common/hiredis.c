@@ -336,6 +336,13 @@ redisContext *rdb_connect(conf_t *conf, bool require_master)
 			redisFree(rdb);
 		}
 
+		conf_val_next(&db_listen);
+	}
+
+	conf_val_reset(&db_listen);
+	while (db_listen.code == KNOT_EOK) {
+		struct sockaddr_storage addr = conf_addr(&db_listen, NULL);
+
 		if (rdb_addr_to_str(&addr, addr_str, sizeof(addr_str), &port) != KNOT_EOK ||
 		    (rdb = connect_addr(conf, addr_str, port)) == NULL) {
 			conf_val_next(&db_listen);
