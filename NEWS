@@ -1,3 +1,33 @@
+Knot DNS 3.5.1 (2025-10-16)
+===========================
+
+Features:
+---------
+ - knotc: new command for setting zone SOA serial (see 'zone-serial-set')
+
+Improvements:
+-------------
+ - knotd: zone database listen configuration now accepts a hostname value
+ - knotd: support for specifying multiple zone databases (see 'zone-db-listen')
+ - knotd: added serial parameter to D-Bus event 'external_verify'
+ - libs: upgraded embedded libngtcp2 to 1.16.0
+ - configure: new option for specifying Redis module destination (see '--with-redisdir')
+ - configure: Redis support is fully optional (see '--enable-redis') (Thanks to Nicolas Parlant)
+ - deb,rpm: renamed inappropriate package 'redis-knot' to 'redis-module-knot'
+
+Bugfixes:
+---------
+ - knotd: failed to build on PowerPC and MIPS
+ - knotd: missing some checks for file operations
+ - knotd: zones added via knotc conf-set include not loaded until restart
+ - knotd: zone-diff after zone-begin prints misleading SOA removal
+ - knotd: failed to load from other PEM keystores if PKCS #11 keystore is configured
+ - knotd: failed to restore PKCS #11 keystore #960
+ - knotc: failed to compile on GNU Hurd
+ - keymgr: missing deprecation warning for 'local-serial' command
+ - configure: linked with libhiredis even when configured with --disable-redis
+ - deb,rpm: incorrect destination for Redis module (see 'Database zone backend')
+
 Knot DNS 3.5.0 (2025-09-18)
 ===========================
 
