@@ -124,9 +124,9 @@ child.dnssec(child_zone).propagation_delay = 4
 child.dnssec(child_zone).ksk_shared = True
 child.dnssec(child_zone).cds_cdnskey_publish = "always"
 
-child.conf_zone(child_zone).ds_push = [ parent.name ]
-child.conf["submission"][child_zone[0].name] = { "parent": [ parent.name ], "check-interval": 2 }
-child.remotes.add(parent)
+child.conf_zone(child_zone).ds_push = [ parent ]
+child.conf_ss("submission", child_zone).parent = [ parent ]
+child.conf_ss("submission", child_zone).check_interval = 2
 
 #t.start()
 t.generate_conf()

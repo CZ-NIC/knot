@@ -22,7 +22,7 @@ master.reload()
 slave.zones_wait(zone, serial_init)
 
 # Disable IXFR and check AXFR-style IXFR.
-master.provide_ixfr = False
+master.conf_zone(zone).provide_ixfr = False
 master.gen_confile()
 master.reload()
 master.zones_wait(zone, serial_init)
@@ -30,7 +30,7 @@ master.zones_wait(zone, serial_init)
 t.check_axfr_style_ixfr(master, zone[0].name, serial_init[zone[0].name])
 
 # Enable IXFR and compare with slave.
-master.provide_ixfr = True
+master.conf_zone(zone).provide_ixfr = True
 master.gen_confile()
 master.reload()
 master.zones_wait(zone, serial_init)

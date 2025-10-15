@@ -33,7 +33,7 @@ slave.zones[catz[0].name].journal_content = "all"
 slave.journal_db_size = 200 * 1024 * 1024
 
 if master.valgrind:
-    master.tcp_idle_timeout = 15000
+    master.conf_srv().tcp_idle_timeout = 15000
 
 t.start()
 

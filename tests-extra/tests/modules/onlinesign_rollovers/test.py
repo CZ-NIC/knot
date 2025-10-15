@@ -180,8 +180,8 @@ def cds_submission():
 
 child.zonefile_sync = 24 * 60 * 60
 
-child.conf["submission"][child_zone[0].name] = { "parent": [ parent.name ] }
-child.remotes.add(parent)
+child.conf_ss("submission", child_zone).parent = [ parent ]
+
 child.add_module(child_zone, ModOnlineSign("ECDSAP384SHA384", key_size="384", prop_delay=11, ksc = [ parent ],
                                            ksci = 2, ksk_shared=True, cds_publish="always",
                                            cds_digesttype=random.choice(["sha256", "sha384"])))

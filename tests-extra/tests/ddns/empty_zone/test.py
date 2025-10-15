@@ -22,8 +22,8 @@ if random.choice([False, True]):
     master.zones[ZONE].journal_content = "all"
 
 if random.choice([False, True]):
-    master.zonemd_generate = "zonemd-sha512"
-    slave.zonemd_verify = True
+    master.conf_zone(zone).zonemd_generate = "zonemd-sha512"
+    slave.conf_zone(zone).zonemd_verify = True
 
 t.start()
 

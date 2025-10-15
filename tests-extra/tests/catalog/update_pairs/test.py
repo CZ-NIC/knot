@@ -39,7 +39,7 @@ def check_catalog_db(server, memb_name):
 t = Test()
 
 knot = t.server("knot")
-knot.bg_workers = 4
+knot.conf_srv().background_workers = 4
 
 knot.semantic_check = False
 

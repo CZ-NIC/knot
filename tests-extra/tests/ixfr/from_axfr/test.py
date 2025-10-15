@@ -37,8 +37,8 @@ t.xfr_diff(slave, sub_slave, zone, serial_init)
 
 # test case 2: generate+verify ZONEMD
 
-slave.zonemd_generate = "zonemd-sha384"
-sub_slave.zonemd_verify = True
+slave.conf_zone(zone).zonemd_generate = "zonemd-sha384"
+sub_slave.conf_zone(zone).zonemd_verify = True
 
 slave.gen_confile()
 sub_slave.gen_confile()

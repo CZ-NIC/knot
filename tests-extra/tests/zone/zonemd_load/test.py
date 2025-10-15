@@ -17,8 +17,8 @@ zone = t.zone(ZONE)
 t.link(zone, master, slave)
 
 master.zonefile_sync = -1
-master.zonemd_generate = "zonemd-sha384"
-slave.zonemd_verify = True
+master.conf_zone(zone).zonemd_generate = "zonemd-sha384"
+slave.conf_zone(zone).zonemd_verify = True
 
 VALIDATE_ZONEFILE = random.choice([True, False])
 backup_cnt = 0

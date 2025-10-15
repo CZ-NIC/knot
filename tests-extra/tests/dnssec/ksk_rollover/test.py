@@ -160,9 +160,8 @@ child.dnssec(child_zone).enable = True
 child.dnssec(child_zone).dnskey_ttl = 6
 child.dnssec(child_zone).propagation_delay = 11
 child.dnssec(child_zone).cds_cdnskey_publish = "rollover"
-
-child.conf["submission"][child_zone[0].name] = { "parent": [ parent.name ], "check-interval": 3 }
-child.remotes.add(parent)
+child.conf_ss("submission", child_zone).parent = [ parent ]
+child.conf_ss("submission", child_zone).check_interval = 3
 
 t.start()
 child.zone_wait(child_zone)

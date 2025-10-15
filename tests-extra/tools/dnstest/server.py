@@ -44,9 +44,10 @@ def zones_names(zones):
     return [ z if isinstance(z, str) else z.name for z in zones ]
 
 class multidict(object):
-    def __init__(self, zonenames, allzones):
+    def __init__(self, zonenames, allzones, remotes):
         self.__dict__['zonenames'] = zonenames
         self.__dict__['allzones'] = allzones
+        self.__dict__['remotes'] = remotes
     def __getattr__(self, attr):
         if len(self.__dict__['zonenames']) != 1:
             raise Exception("can't read configuration of multiple zones")
@@ -56,6 +57,16 @@ class multidict(object):
         except KeyError:
             return None
     def __setattr__(self, key, value):
+        if isinstance(value, list) and len(value) > 0:
+            if isinstance(value[0], Server):
+                if self.__dict__['remotes'] is not None:
+                    self.__dict__['remotes'].update(value)
+                value = [ v.name for v in value ]
+        else:
+            if isinstance(value, Server):
+                if self.__dict__['remotes'] is not None:
+                    self.__dict__['remotes'].add(value)
+                value = value.name
         for zn in self.__dict__['zonenames']:
             self.__dict__['allzones'][zn][key] = value
 
@@ -79,7 +90,6 @@ class Zone(object):
         self.ixfr = ixfr
         self.journal_content = journal_content # journal contents
         self.modules = []
-        self.external = None
         self.dnssec = None # TODO temporary, refactor to remove
         self.catalog_role = ZoneCatalogRole.NONE
         self.catalog_gen_name = None # Generated catalog name for this member
@@ -129,7 +139,7 @@ class Server(object):
 
         self.data_dir = None
 
-        self.conf = { "zone": dict(), "policy": dict(), "submission": dict(), "dnskey-sync": dict() }
+        self.conf = { "server": { "server": dict() }, "zone": dict(), "policy": dict(), "submission": dict(), "dnskey-sync": dict(), "external": dict() }
         self.remotes = set()
 
         self.nsid = None
@@ -147,9 +157,6 @@ class Server(object):
         self.cert_hostname = list()
         self.ca_file = str()
         self.cert_key_file = None # quadruple (key_file, cert_file, hostname, pin)
-        self.udp_workers = None
-        self.tcp_workers = None
-        self.bg_workers = None
         self.fixed_port = False
         self.ctlport = None
         self.external = False
@@ -163,23 +170,11 @@ class Server(object):
         self.zones = dict()
 
         self.tcp_reuseport = None
-        self.tcp_remote_io_timeout = None
-        self.tcp_io_timeout = None
-        self.tcp_idle_timeout = None
-        self.quic_idle_close_timeout = None
-        self.udp_max_payload = None
-        self.udp_max_payload_ipv4 = None
-        self.udp_max_payload_ipv6 = None
         self.disable_notify = None
-        self.ddns_master = None
         self.semantic_check = True
         self.zonefile_sync = "1d"
         self.notify_delay = None
-        self.update_delay = None
         self.zonefile_load = None
-        self.zonefile_skip = None
-        self.zonemd_verify = None
-        self.zonemd_generate = None
         self.journal_db_size = 20 * 1024 * 1024
         self.journal_max_usage = 5 * 1024 * 1024
         self.journal_max_depth = 100
@@ -189,8 +184,6 @@ class Server(object):
         self.zone_size_limit = None
         self.auto_acl = None
         self.async_start = None
-        self.provide_ixfr = None
-        self.master_pin_tol = None
         self.quic_log = None
 
         self.inquirer = None
@@ -212,10 +205,20 @@ class Server(object):
         self.binding_errors = 0
 
     def conf_base(self, conf_dict, zones):
-        return multidict(zones_names(zones), conf_dict)
+        zns = zones_names(zones)
+        for z in zns:
+            if z not in conf_dict:
+                conf_dict[z] = dict()
+        return multidict(zns, conf_dict, self.remotes)
 
     def conf_zone(self, zones):
         return self.conf_base(self.conf["zone"], zones)
+
+    def conf_ss(self, subsection, zones):
+        return self.conf_base(self.conf[subsection], zones)
+
+    def conf_srv(self):
+        return self.conf_base(self.conf["server"], ["server"])
 
     def _check_socket(self, proto, port):
         if self.addr.startswith("/"):
@@ -1508,6 +1511,10 @@ class Knot(Server):
         self._on_str_hex(s, "nsid", self.nsid)
         s.item_str("rundir", self.dir)
         s.item_str("pidfile", os.path.join(self.dir, self.pidfile))
+
+        for ci, val in self.conf["server"]["server"].items():
+            s.item_type(ci.replace("_", "-"), val)
+
         if self.addr.startswith("/"):
             s.item_str("listen", "%s" % self.addr)
         else:
@@ -1516,23 +1523,10 @@ class Knot(Server):
             s.item_str("listen-quic", "%s@%s" % (self.addr, self.quic_port))
         if self.tls_port:
             s.item_str("listen-tls", "%s@%s" % (self.addr, self.tls_port))
-        if self.udp_workers:
-            s.item_str("udp-workers", self.udp_workers)
-        if self.tcp_workers:
-            s.item_str("tcp-workers", self.tcp_workers)
-        if self.bg_workers:
-            s.item_str("background-workers", self.bg_workers)
 
         for addr in self.addr_extra:
             s.item_str("listen", "%s@%s" % (addr, self.port))
         self._bool(s, "tcp-reuseport", self.tcp_reuseport)
-        self._str(s, "tcp-remote-io-timeout", self.tcp_remote_io_timeout)
-        self._str(s, "tcp-io-timeout", self.tcp_io_timeout)
-        self._str(s, "tcp-idle-timeout", self.tcp_idle_timeout)
-        self._str(s, "quic-idle-close-timeout", self.quic_idle_close_timeout)
-        self._str(s, "udp-max-payload", self.udp_max_payload)
-        self._str(s, "udp-max-payload-ipv4", self.udp_max_payload_ipv4)
-        self._str(s, "udp-max-payload-ipv6", self.udp_max_payload_ipv6)
         self._str(s, "remote-pool-limit", str(random.randint(0,6)))
         self._str(s, "remote-retry-delay", str(random.choice([0, 1, 5])))
         self._bool(s, "automatic-acl", self.auto_acl)
@@ -1646,29 +1640,13 @@ class Knot(Server):
                 for module in z.modules:
                     module.get_conf(s)
 
-        for subsection in [ "submission", "dnskey-sync" ]:
+        for subsection in [ "submission", "dnskey-sync", "external" ]:
             for zone in self.conf[subsection]:
                 s.begin(subsection)
                 s.id_item("id", zone)
                 for ci, val in self.conf[subsection][z.name].items():
                     s.item_type(ci.replace("_", "-"), val)
                 s.end()
-
-        have_external = False
-        for zone in sorted(self.zones):
-            z = self.zones[zone]
-            if not z.external:
-                continue
-            if not have_external:
-                s.begin("external")
-                have_external = True
-            s.id_item("id", z.name)
-            self._str(s, "timeout", z.external["timeout"])
-            self._str(s, "dump-new-zone", z.external["new"])
-            self._str(s, "dump-removals", z.external["rem"])
-            self._str(s, "dump-additions", z.external["add"])
-        if have_external:
-            s.end()
 
         have_keystore = False
         for zone in sorted(self.zones):
@@ -1726,11 +1704,6 @@ class Knot(Server):
         if self.notify_delay is None:
             self.notify_delay = random.randint(0, 1)
         s.item_str("notify-delay", self.notify_delay)
-        self._str(s, "update-delay", self.update_delay)
-        if self.zonemd_verify:
-            s.item_str("zonemd-verify", "on")
-        if self.zonemd_generate is not None:
-            s.item_str("zonemd-generate", self.zonemd_generate)
         s.item_str("journal-max-usage", self.journal_max_usage)
         s.item_str("journal-max-depth", self.journal_max_depth)
         s.item_str("adjust-threads", str(random.randint(1,4)))
@@ -1797,23 +1770,15 @@ class Knot(Server):
 
             self.config_xfr(z, s)
 
-            self._str(s, "ddns-master", self.ddns_master)
-
             s.item_str("journal-content", z.journal_content)
-            self._bool(s, "provide-ixfr", self.provide_ixfr)
 
-            if z.external:
+            if zone in self.conf["external"]:
                 s.item("external-validation", z.name)
 
             if self.zonefile_load is not None:
                 s.item_str("zonefile-load", self.zonefile_load)
             elif z.ixfr:
                 s.item_str("zonefile-load", "difference")
-
-            if self.zonefile_skip is not None:
-                s.item_list("zonefile-skip", self.zonefile_skip)
-
-            self._str(s, "master-pin-tolerance", self.master_pin_tol)
 
             if z.catalog_role == ZoneCatalogRole.GENERATE:
                 s.item_str("catalog-role", "generate")

@@ -87,8 +87,7 @@ child.dnssec(child_zone).dnskey_ttl = 2
 child.dnssec(child_zone).zsk_lifetime = 99999
 child.dnssec(child_zone).ksk_lifetime = 9999
 child.dnssec(child_zone).propagation_delay = 4
-
-child.conf["submission"][CHILDZ] = { "check-interval": 2 }
+child.conf_ss("submission", child_zone).check_interval = 2
 
 # parameters
 ZONE = "example.com."
@@ -98,8 +97,7 @@ child.zone_wait(child_zone)
 
 cds_submission()
 
-child.conf["submission"][CHILDZ]["parent"] = [ parent.name ]
-child.remotes.add(parent)
+child.conf_ss("submission", child_zone).parent = [ parent ]
 child.dnssec(child_zone).ksk_lifetime = 13
 child.gen_confile()
 
@@ -108,7 +106,7 @@ child.reload()
 wait_for_count(t, child, "DNSKEY", 3, 20) # initiation of KSK rollover means the initial submission was successful
 check_zone(child, child_zone, 3, 2, 0, 1, "KSK rollover start")
 
-child.conf["submission"][CHILDZ]["parent"] = [ ]
+child.conf_ss("submission", child_zone).parent = [ ]
 child.dnssec(child_zone).ksk_lifetime = 150
 child.gen_confile()
 
@@ -118,7 +116,7 @@ t.sleep(6)
 cds_submission()
 t.sleep(1)
 
-child.conf["submission"][CHILDZ]["parent"] = [ parent.name ]
+child.conf_ss("submission", child_zone).parent = [ parent ]
 child.gen_confile()
 
 child.reload()

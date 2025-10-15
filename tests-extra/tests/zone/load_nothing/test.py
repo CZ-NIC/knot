@@ -28,7 +28,7 @@ for z in zone:
     slave.zones[z.name].journal_content = "all"
 slave.zonefile_sync = "-1"
 slave.zonefile_load = "none"
-slave.zonemd_generate = "zonemd-sha384"
+slave.conf_zone(zone).zonemd_generate = "zonemd-sha384"
 
 t.start()
 
@@ -42,7 +42,7 @@ if SCENARIO == 1:
     slave.zones_wait(zone)
 
 if SCENARIO == 2:
-    slave.zonemd_generate = "zonemd-sha512"
+    slave.conf_zone(zone).zonemd_generate = "zonemd-sha512"
     slave.gen_confile()
 
 slave.ctl("reload")

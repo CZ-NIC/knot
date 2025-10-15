@@ -276,8 +276,9 @@ child.dnssec(child_zone).cds_cdnskey_publish = "always"
 if DOUBLE_DS:
     child.dnssec(child_zone).cds_cdnskey_publish = "double-ds"
 child.dnssec(child_zone).cds_digest_type = CDS_DT
-child.conf["submission"][child_zone[0].name] = { "parent": [ parent.name ], "check-interval": 2, "parent-delay": 6 }
-child.remotes.add(parent)
+child.conf_ss("submission", child_zone).parent = [ parent ]
+child.conf_ss("submission", child_zone).check_interval = 2
+child.conf_ss("submission", child_zone).parent_delay = 6
 
 slave.dnssec(child_zone).validate = True
 

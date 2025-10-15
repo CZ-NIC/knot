@@ -15,7 +15,7 @@ t = Test(stress=False)
 ModNoudp.check()
 
 knot = t.server("knot")
-knot.udp_workers = 1
+knot.conf_srv().udp_workers = 1
 
 zone_tc = t.zone("example.")
 zone_notc = t.zone("flags.")

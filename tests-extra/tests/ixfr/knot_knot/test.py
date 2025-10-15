@@ -22,9 +22,9 @@ if master.valgrind:
     master.semantic_check = False
     slave.semantic_check = False
 
-master.tcp_io_timeout = 3000
-slave.tcp_io_timeout = 3000
-slave.tcp_remote_io_timeout = 8000
+master.conf_srv().tcp_io_timeout = 3000
+slave.conf_srv().tcp_io_timeout = 3000
+slave.conf_srv().tcp_remote_io_timeout = 8000
 
 t.start()
 
