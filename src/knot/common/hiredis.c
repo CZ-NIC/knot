@@ -369,8 +369,11 @@ redisContext *rdb_connect(conf_t *conf, bool require_master)
 connected:
 	if (log_enabled_debug()) {
 		bool tcp = rdb->connection_type == REDIS_CONN_TCP;
-		bool tls = rdb->privctx != NULL;
 		bool pool = addr_str[0] == '\0';
+		bool tls = false;
+#ifdef ENABLE_REDIS_TLS
+		tls = rdb->privctx != NULL;
+#endif // ENABLE_REDIS_TLS
 		log_debug("rdb, connected, remote %s%s%.0u%s%s%s",
 		          (tcp ? rdb->tcp.host : rdb->unix_sock.path),
 		          (tcp ? "@" : ""),
