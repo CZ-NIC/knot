@@ -1446,6 +1446,11 @@ The PKCS #11 URI Scheme is defined in :rfc:`7512`.
 
      "pkcs11:token=knot;pin-value=1234 /usr/lib64/pkcs11/libsofthsm2.so"
 
+   If access to a PKCS #11 device (HSM) is controlled by the OS, such as by
+   ``polkit`` utility, and :doc:`knotd<man_knotd>` and related utilites
+   (:doc:`keymgr<man_keymgr>`, :doc:`kzonesign<man_kzonesign>`) are run
+   as a non-root user, the privilege control must be configured accordingly in the OS.
+
 *Default:* :ref:`kasp-db<database_kasp-db>`\ ``/keys``
 
 .. _keystore_ksk-only:
