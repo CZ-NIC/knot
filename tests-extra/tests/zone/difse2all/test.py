@@ -20,13 +20,13 @@ knot = t.server("knot")
 zone = t.zone("example.", storage=".")
 t.link(zone, knot)
 knot.dnssec(zone).enable = True
-knot.zonefile_sync = "-1"
+knot.conf_zone(zone).zonefile_sync = "-1"
 
 t.start()
 serial = knot.zone_wait(zone)
 
-knot.zones[zone[0].name].journal_content = "all"
-knot.zonefile_load = "difference-no-serial"
+knot.conf_zone(zone).journal_content = "all"
+knot.conf_zone(zone).zonefile_load = "difference-no-serial"
 if purge_beforehand:
     knot.ctl("zone-purge -f +expire example.")
 

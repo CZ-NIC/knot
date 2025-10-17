@@ -82,13 +82,12 @@ class ZoneCatalogRole(enum.IntEnum):
 class Zone(object):
     '''DNS zone description'''
 
-    def __init__(self, zone_file, ddns=False, ixfr=False, journal_content="changes"):
+    def __init__(self, zone_file, ddns=False, ixfr=False):
         self.zfile = zone_file
         self.masters = set()
         self.slaves = set()
         self.ddns = ddns
         self.ixfr = ixfr
-        self.journal_content = journal_content # journal contents
         self.modules = []
         self.dnssec = None # TODO temporary, refactor to remove
         self.catalog_role = ZoneCatalogRole.NONE
@@ -172,16 +171,11 @@ class Server(object):
         self.tcp_reuseport = None
         self.disable_notify = None
         self.semantic_check = True
-        self.zonefile_sync = "1d"
         self.notify_delay = None
-        self.zonefile_load = None
         self.journal_db_size = 20 * 1024 * 1024
-        self.journal_max_usage = 5 * 1024 * 1024
-        self.journal_max_depth = 100
         self.timer_db_size = 1 * 1024 * 1024
         self.kasp_db_size = 10 * 1024 * 1024
         self.catalog_db_size = 10 * 1024 * 1024
-        self.zone_size_limit = None
         self.auto_acl = None
         self.async_start = None
         self.quic_log = None
@@ -262,15 +256,15 @@ class Server(object):
 
     def set_new_zone(self, name, z):
         self.zones[name] = z
-        self.conf["zone"][name] = dict()
+        self.conf["zone"][name] = { 'zonefile_sync': "1d" }
         self.conf["policy"][name] = { 'keystore': [], 'keytag_modulo': '0/1', "signing-threads": str(random.randint(1,4)) }
 
-    def set_master(self, zone, slave=None, ddns=False, ixfr=False, journal_content="changes"):
+    def set_master(self, zone, slave=None, ddns=False, ixfr=False):
         '''Set the server as a master for the zone'''
 
         if zone.name not in self.zones:
             master_file = zone.clone(self.dir + "/master")
-            z = Zone(master_file, ddns, ixfr, journal_content)
+            z = Zone(master_file, ddns, ixfr)
             self.set_new_zone(zone.name, z)
         else:
             z = self.zones[zone.name]
@@ -278,13 +272,13 @@ class Server(object):
         if slave:
             z.slaves.add(slave)
 
-    def set_slave(self, zone, master, ddns=False, ixfr=False, journal_content="changes"):
+    def set_slave(self, zone, master, ddns=False, ixfr=False):
         '''Set the server as a slave for the zone'''
 
         slave_file = zone.clone(self.dir + "/slave", exists=False)
 
         if zone.name not in self.zones:
-            z = Zone(slave_file, ddns, ixfr, journal_content)
+            z = Zone(slave_file, ddns, ixfr)
             self.set_new_zone(zone.name, z)
         else:
             z = self.zones[zone.name]
@@ -1397,7 +1391,8 @@ class Knot(Server):
         pass
 
     def flush(self, zone=None, wait=False):
-        params = "-f " if str(self.zonefile_sync)[0] == '-' else ""
+        one_zone = list(self.zones)[0] if zone is None and len(self.zones) > 0 else zone
+        params = "-f " if one_zone is not None and str(self.conf_zone(one_zone).zonefile_sync)[0] == '-' else ""
         if zone:
             self.ctl("%szone-flush %s" % (params, zone.name), wait=wait)
         else:
@@ -1700,12 +1695,9 @@ class Knot(Server):
         s.begin("template")
         s.id_item("id", "default")
         s.item_str("storage", self.dir)
-        s.item_str("zonefile-sync", self.zonefile_sync)
         if self.notify_delay is None:
             self.notify_delay = random.randint(0, 1)
         s.item_str("notify-delay", self.notify_delay)
-        s.item_str("journal-max-usage", self.journal_max_usage)
-        s.item_str("journal-max-depth", self.journal_max_depth)
         s.item_str("adjust-threads", str(random.randint(1,4)))
         if self.semantic_check == "soft":
             self._str(s, "semantic-checks", self.semantic_check)
@@ -1718,8 +1710,6 @@ class Knot(Server):
                     modules += ", "
                 modules += module.get_conf_ref()
             s.item("global-module", "[%s]" % modules)
-        if self.zone_size_limit:
-            s.item("zone-max-size", self.zone_size_limit)
 
         have_catalog = None
         for zone in self.zones:
@@ -1732,7 +1722,7 @@ class Knot(Server):
             s.id_item("id", "catalog-default")
             s.item_str("file", self.dir + "/catalog/%s.zone")
             s.item_str("zonefile-load", "difference")
-            s.item_str("journal-content", z.journal_content)
+            s.item_str("journal-content", self.conf_zone(z).journal_content)
 
             # this is weird but for the sake of testing, the cataloged zones inherit dnssec policy from catalog zone
             s.item_str("dnssec-signing", "on" if z.dnssec.enable else "off")
@@ -1745,13 +1735,13 @@ class Knot(Server):
 
             s.id_item("id", "catalog-signed")
             s.item_str("file", self.dir + "/catalog/%s.zone")
-            s.item_str("journal-content", z.journal_content)
+            s.item_str("journal-content", self.conf_zone(z).journal_content)
             s.item_str("dnssec-signing", "on")
             self.config_xfr(z, s)
 
             s.id_item("id", "catalog-unsigned")
             s.item_str("file", self.dir + "/catalog/%s.zone")
-            s.item_str("journal-content", z.journal_content)
+            s.item_str("journal-content", self.conf_zone(z).journal_content)
             self.config_xfr(z, s)
 
         s.end()
@@ -1770,14 +1760,10 @@ class Knot(Server):
 
             self.config_xfr(z, s)
 
-            s.item_str("journal-content", z.journal_content)
-
             if zone in self.conf["external"]:
                 s.item("external-validation", z.name)
 
-            if self.zonefile_load is not None:
-                s.item_str("zonefile-load", self.zonefile_load)
-            elif z.ixfr:
+            if "zonefile_load" not in self.conf["zone"][zone] and z.ixfr:
                 s.item_str("zonefile-load", "difference")
 
             if z.catalog_role == ZoneCatalogRole.GENERATE:

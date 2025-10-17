@@ -129,12 +129,12 @@ if ON_SLAVE:
     master = t.server("knot")
     t.link(zone, master, knot)
     if not IXFR:
-        master.zones[ZONE].journal_content = "none"
+        master.conf_zone(zone).journal_content = "none"
 else:
     master = t.server("dummy")
     t.link(zone, knot)
 
-knot.zonefile_sync = 24 * 60 * 60
+knot.conf_zone(zone).zonefile_sync = 24 * 60 * 60
 
 # ZSK side
 knot.dnssec(zone).enable = True

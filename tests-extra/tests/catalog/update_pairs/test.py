@@ -47,8 +47,9 @@ catz = t.zone("catalog1.", storage=".")
 rzone = t.zone(".") # to slow down background workers
 rzone[0].update_rnd() # it needs to be larger, slower
 
-t.link(catz, knot, journal_content = "none")
-t.link(rzone, knot, journal_content = "none")
+t.link(catz, knot)
+t.link(rzone, knot)
+knot.conf_zone(catz + rzone).journal_content = "none"
 knot.cat_interpret(catz)
 
 catalog_dir = os.path.join(knot.dir, "catalog")

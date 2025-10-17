@@ -91,7 +91,7 @@ test_not_expired(zone, sub_slave)
 # expire timer difference (normally caused by multi-path propagation)
 # by lowering the expire value while keeping the serial.
 # Journal must be disabled in order to allow mangled SOA serials.
-master.zones["example."].journal_content = "none"
+master.conf_zone(zone).journal_content = "none"
 master.gen_confile()
 master.reload()
 master.ctl("zone-begin example.")

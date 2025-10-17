@@ -17,8 +17,8 @@ zone = t.zone("example.com.")
 t.link(zone, master1)
 t.link(zone, master2)
 
-master1.dnssec(zone[0]).enable = True
-master1.zonefile_sync = -1
+master1.dnssec(zone).enable = True
+master1.conf_zone(zone).zonefile_sync = -1
 
 t.start()
 

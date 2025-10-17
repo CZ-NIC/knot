@@ -19,7 +19,7 @@ if random.choice([False, True]):
     master.dnssec(zone).enable = True
 
 if random.choice([False, True]):
-    master.zones[ZONE].journal_content = "all"
+    master.conf_zone(zone).journal_content = "all"
 
 if random.choice([False, True]):
     master.conf_zone(zone).zonemd_generate = "zonemd-sha512"

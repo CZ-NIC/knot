@@ -112,7 +112,7 @@ child = t.server("knot")
 child_zone = t.zone(ZONE, file_name=child_zf)
 t.link(child_zone, child)
 
-child.zonefile_sync = 24 * 60 * 60
+child.conf_zone(child_zone).zonefile_sync = 24 * 60 * 60
 
 child.dnssec(child_zone).enable = True
 child.dnssec(child_zone).manual = False

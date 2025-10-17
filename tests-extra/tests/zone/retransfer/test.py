@@ -13,7 +13,7 @@ slave = t.server("knot")
 zone = t.zone("example.com.", storage=".")
 t.link(zone, master, slave)
 
-slave.zonefile_sync = 0
+slave.conf_zone(zone).zonefile_sync = 0
 
 # Load newer zone to the slave
 slave.update_zonefile(zone, version="slave")

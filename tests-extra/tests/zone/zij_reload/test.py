@@ -24,8 +24,8 @@ t.sleep(2)
 
 knot.stop()
 
-knot.zones[zone[0].name].journal_content = "all"
-knot.zonefile_load = "none"
+knot.conf_zone(zone).journal_content = "all"
+knot.conf_zone(zone).zonefile_load = "none"
 knot.gen_confile()
 
 knot.zones[zone[0].name].zfile.remove() # just to make sure

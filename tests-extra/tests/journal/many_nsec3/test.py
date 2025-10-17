@@ -19,8 +19,8 @@ t.link(zones, master, slave, ixfr=True)
 
 master.journal_db_size = 200 * 1024 * 1024
 slave.journal_db_size = 200 * 1024 * 1024
-master.journal_max_usage = 100 * 1024 * 1024
-slave.journal_max_usage = 100 * 1024 * 1024
+master.conf_zone(zones).journal_max_usage = 100 * 1024 * 1024
+slave.conf_zone(zones).journal_max_usage = 100 * 1024 * 1024
 
 t.start()
 serial = slave.zones_wait(zones)

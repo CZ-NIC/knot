@@ -48,7 +48,7 @@ knot.dnssec(zone).rrsig_refresh = 2
 knot.dnssec(zone).rrsig_pre_refresh = 1
 knot.dnssec(zone).dnskey_ttl = 1
 knot.dnssec(zone).propagation_delay = 1
-knot.zonefile_sync = "0"
+knot.conf_zone(zone).zonefile_sync = "0"
 
 # install KASP db (one always enabled, one for testing)
 keydir = knot.keydir

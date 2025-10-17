@@ -260,7 +260,7 @@ def cds_submission():
         up.add(ZONE, 7, "DS", rd.to_text())
     up.send("NOERROR")
 
-child.zonefile_sync = 24 * 60 * 60
+child.conf_zone(child_zone).zonefile_sync = 24 * 60 * 60
 
 child.dnssec(child_zone).enable = True
 child.dnssec(child_zone).manual = False

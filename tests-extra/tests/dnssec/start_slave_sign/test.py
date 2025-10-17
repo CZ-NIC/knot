@@ -21,12 +21,11 @@ slave.conf_zone(zone).serial_policy = random.choice(["increment", "unixtime", "d
 
 slave.dnssec(zone).nsec3 = random.choice([False, True])
 
-slave.zonefile_load = random.choice(["none", "whole"])
-for z in zone:
-    slave.zones[z.name].journal_content = random.choice(["all", "none", "changes"])
+slave.conf_zone(zone).zonefile_load = random.choice(["none", "whole"])
+slave.conf_zone(zone).journal_content = random.choice(["all", "none", "changes"])
 
 cold_reload = random.choice([False, True])
-if slave.zonefile_load == "none" and slave.zones[zone[0].name].journal_content != "all":
+if slave.conf_zone(zone[0]).zonefile_load == "none" and slave.conf_zone(zone[0]).journal_content != "all":
     cold_reload = False
 
 t.start()

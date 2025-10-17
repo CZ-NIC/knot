@@ -63,9 +63,9 @@ zf.check_count(1, "AAAA")
 zf.check_count(10, "RRSIG")
 zf.check_count(0, "NSEC")
 
-server.zonefile_sync = "-1"
-server.zonefile_load = "difference-no-serial"
-server.zones[zone[0].name].journal_content = "all"
+server.conf_zone(zone).zonefile_sync = "-1"
+server.conf_zone(zone).zonefile_load = "difference-no-serial"
+server.conf_zone(zone).journal_content = "all"
 server.gen_confile()
 server.reload()
 t.sleep(1)

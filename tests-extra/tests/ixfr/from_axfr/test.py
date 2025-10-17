@@ -18,7 +18,7 @@ slave.conf_zone(zone).ixfr_from_axfr = True
 
 t.start()
 
-serial = master.zones_wait(zone)
+serial = sub_slave.zones_wait(zone)
 serial_init = serial
 
 # update zone with small change

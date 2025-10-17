@@ -13,7 +13,7 @@ zones = t.zone_rnd(5)
 
 t.link(zones, master, slave)
 
-master.zonefile_sync = -1
+master.conf_zone(zones).zonefile_sync = -1
 
 t.start()
 serial = slave.zones_wait(zones)

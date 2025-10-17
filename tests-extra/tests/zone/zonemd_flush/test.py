@@ -70,7 +70,7 @@ if DNSSEC:
         master.dnssec(z).enable = True
         slave.dnssec(z).validate = True
 
-master.zonefile_sync = 0
+master.conf_zone(zone).zonefile_sync = 0
 master.conf_zone(zone).zonemd_generate = "none"
 slave.conf_zone(zone).zonemd_verify = False
 

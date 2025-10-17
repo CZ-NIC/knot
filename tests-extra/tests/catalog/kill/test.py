@@ -17,7 +17,7 @@ t.link(catz + stuckzone, master)
 
 master.cat_interpret(catz)
 
-master.zones[catz[0].name].journal_content = "all"
+master.conf_zone(catz).journal_content = "all"
 
 master.dnssec(stuckzone).enable = True
 master.dnssec(stuckzone).single_type_signing = True

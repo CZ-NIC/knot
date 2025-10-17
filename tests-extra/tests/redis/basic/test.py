@@ -15,7 +15,7 @@ zones = t.zone("example.com.")
 t.link(zones, master)
 t.link(zones, slave)
 
-master.zonefile_sync = "0"
+master.conf_zone(zones).zonefile_sync = "0"
 master.conf_zone(zones).zone_db_output = "1"
 slave.conf_zone(zones).zone_db_input = "1"
 

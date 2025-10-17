@@ -18,7 +18,7 @@ for z in zone:
     server.dnssec(z).rrsig_refresh = 10
     server.dnssec(z).rrsig_pre_refresh = 4
 
-server.journal_max_usage = 128*1024
+server.conf_zone(zone).journal_max_usage = 128*1024
 
 t.start()
 

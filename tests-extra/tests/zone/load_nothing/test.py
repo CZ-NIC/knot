@@ -25,9 +25,10 @@ for z in zone:
     slave.dnssec(z).rrsig_refresh = 5
     slave.dnssec(z).rrsig_pre_refresh = 1
     slave.dnssec(z).zone_max_ttl = 4
-    slave.zones[z.name].journal_content = "all"
-slave.zonefile_sync = "-1"
-slave.zonefile_load = "none"
+
+slave.conf_zone(zone).journal_content = "all"
+slave.conf_zone(zone).zonefile_sync = "-1"
+slave.conf_zone(zone).zonefile_load = "none"
 slave.conf_zone(zone).zonemd_generate = "zonemd-sha384"
 
 t.start()

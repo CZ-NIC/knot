@@ -25,6 +25,8 @@ master = t.server("knot")
 slave = t.server("knot")
 
 t.link(zones, master, slave)
+slave.conf_zone(zones).journal_content = "all"
+slave.conf_zone(zones).zonefile_load = "none"
 
 for z in zones:
     if random.choice([True, False]):
@@ -33,8 +35,6 @@ for z in zones:
         master.dnssec(z).single_type_signing = False
     else:
         master.add_module(z, ModOnlineSign(algorithm="ECDSAP256SHA256"))
-    slave.zones[z.name].journal_content = "all"
-    slave.zonefile_load = "none"
 
 backup_dir = master.dir + "/backup"
 backup_dir2 = master.dir + "/backup2"  # Backup of a backup, for debugging.
