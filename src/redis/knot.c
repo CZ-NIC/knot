@@ -66,6 +66,11 @@ static RedisModuleCommandArg zone_load_txt_info_args[] = {
 };
 
 static RedisModuleCommandArg zone_list_txt_info_args[] = {
+	{"opt", REDISMODULE_ARG_TYPE_PURE_TOKEN, -1, "--instances", NULL, NULL, REDISMODULE_CMD_ARG_OPTIONAL},
+	{ 0 }
+};
+
+static RedisModuleCommandArg zone_info_txt_info_args[] = {
 	{"zone",     REDISMODULE_ARG_TYPE_STRING,     -1, NULL, NULL, NULL, REDISMODULE_CMD_ARG_OPTIONAL},
 	{"instance", REDISMODULE_ARG_TYPE_INTEGER,    -1, NULL, NULL, NULL, REDISMODULE_CMD_ARG_OPTIONAL},
 	{ 0 }
@@ -136,11 +141,11 @@ static const RedisModuleCommandInfo zone_list_txt_info = {
 
 static const RedisModuleCommandInfo zone_info_txt_info = {
 	.version = REDISMODULE_COMMAND_INFO_VERSION,
-	.summary = "List zones stored in the database showing serials and update serials",
+	.summary = "List zones stored in the database showing serials and updates",
 	.complexity = "O(z), where z is the number of zones",
 	.since = "7.0.0",
 	.arity = -1,
-	.args = zone_list_txt_info_args,
+	.args = zone_info_txt_info_args,
 };
 
 static const RedisModuleCommandInfo upd_begin_txt_info = {
