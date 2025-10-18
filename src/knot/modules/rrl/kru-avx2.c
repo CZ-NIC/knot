@@ -20,8 +20,11 @@
 
 // This file has code for new-ish x86 (2015+ usually, Atom 2021+) - AES + AVX2
 #ifdef __clang__
-	#pragma clang attribute push (__attribute__((target("arch=x86-64-v3,aes"))), \
-							apply_to = function)
+	// Force using specific instructions only if target architecture/optimization not specified
+	#if !defined(__AVX2__)
+		#pragma clang attribute push (__attribute__((target("arch=x86-64-v3,aes"))), \
+								apply_to = function)
+	#endif
 #else
 	#pragma GCC push_options
 	#if __GNUC__ >= 11
@@ -41,7 +44,9 @@
 const struct kru_api KRU_AVX2 = KRU_API_INITIALIZER;
 
 #ifdef __clang__
-	#pragma clang attribute pop
+	#if !defined(__AVX2__)
+		#pragma clang attribute pop
+	#endif
 #else
 	#pragma GCC pop_options
 #endif
