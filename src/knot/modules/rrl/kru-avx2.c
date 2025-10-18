@@ -3,16 +3,13 @@
  *  For more information, see <https://www.knot-dns.cz/>
  */
 
-// Checked with clang 5 (2017) and gcc 6 (2016).
+// Checked with clang 12 (2021) and gcc 6 (2016).
 // For other cases we'll rather keep just the generic implementation.
-#if defined(__x86_64__) && (__clang_major__ >= 5 || __GNUC__ >= 6) && !defined(__APPLE__)
+#if defined(__x86_64__) && (__clang_major__ >= 12 || __GNUC__ >= 6) && !defined(__APPLE__)
 
 // This file has code for new-ish x86 (2015+ usually, Atom 2021+) - AES + AVX2
-#if __clang_major__ >= 12
+#ifdef __clang__
 	#pragma clang attribute push (__attribute__((target("arch=x86-64-v3,aes"))), \
-							apply_to = function)
-#elif __clang__
-	#pragma clang attribute push (__attribute__((target("avx2,aes"))), \
 							apply_to = function)
 #else
 	#pragma GCC push_options
