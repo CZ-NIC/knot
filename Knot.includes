@@ -80,7 +80,6 @@ tests-fuzz/check
 tests-fuzz/knotd_wrap
 tests/knot
 tests/knot/semantic_check_data
-tests/libdnssec
 tests/libknot
 tests/libzscanner
 tests/libzscanner/data

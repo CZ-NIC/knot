@@ -1,8 +1,6 @@
 AM_CPPFLAGS = \
 	-include $(top_builddir)/src/config.h	\
 	-I$(top_srcdir)/src			\
-	-I$(top_srcdir)/src/libdnssec		\
-	-I$(top_srcdir)/src/libdnssec/shared	\
 	$(gnutls_CFLAGS)			\
 	$(libkqueue_CFLAGS)			\
 	$(lmdb_CFLAGS)
@@ -21,7 +19,6 @@ endif HAVE_DAEMON
 
 LDADD += \
 	$(top_builddir)/src/libknot.la		\
-	$(top_builddir)/src/libdnssec.la	\
 	$(top_builddir)/src/libcontrib.la       \
 	$(top_builddir)/src/libzscanner.la      \
 	$(gnutls_LIBS)				\
@@ -65,25 +62,6 @@ check_PROGRAMS = \
 	contrib/test_time			\
 	contrib/test_toeplitz			\
 	contrib/test_wire_ctx
-
-check_PROGRAMS += \
-	libdnssec/test_binary			\
-	libdnssec/test_crypto			\
-	libdnssec/test_key			\
-	libdnssec/test_key_algorithm		\
-	libdnssec/test_key_ds			\
-	libdnssec/test_keyid			\
-	libdnssec/test_keystore_pkcs11		\
-	libdnssec/test_keystore_pkcs8		\
-	libdnssec/test_keytag			\
-	libdnssec/test_nsec_bitmap		\
-	libdnssec/test_nsec_hash		\
-	libdnssec/test_random			\
-	libdnssec/test_sign			\
-	libdnssec/test_sign_der			\
-	libdnssec/test_shared_bignum		\
-	libdnssec/test_shared_dname		\
-	libdnssec/test_tsig
 
 if HAVE_DAEMON
 check_PROGRAMS += \
@@ -138,6 +116,23 @@ knot_test_process_query_SOURCES = \
 endif HAVE_DAEMON
 
 check_PROGRAMS += \
+	libknot/test_dnssec_binary		\
+	libknot/test_dnssec_crypto		\
+	libknot/test_dnssec_key			\
+	libknot/test_dnssec_key_algorithm	\
+	libknot/test_dnssec_key_ds		\
+	libknot/test_dnssec_keyid		\
+	libknot/test_dnssec_keystore_pkcs11	\
+	libknot/test_dnssec_keystore_pkcs8	\
+	libknot/test_dnssec_keytag		\
+	libknot/test_dnssec_nsec_bitmap		\
+	libknot/test_dnssec_nsec_hash		\
+	libknot/test_dnssec_random		\
+	libknot/test_dnssec_sign		\
+	libknot/test_dnssec_sign_der		\
+	libknot/test_dnssec_shared_bignum	\
+	libknot/test_dnssec_shared_dname	\
+	libknot/test_dnssec_tsig		\
 	libknot/test_control			\
 	libknot/test_cookies			\
 	libknot/test_db				\
@@ -193,7 +188,7 @@ endif
 endif
 endif HAVE_DAEMON
 
-libdnssec_test_keystore_pkcs11_CPPFLAGS = \
+libknot_test_dnssec_keystore_pkcs11_CPPFLAGS = \
 	$(AM_CPPFLAGS)				\
 	-DLIBDIR='"$(libdir)"'
 
