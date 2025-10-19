@@ -7,8 +7,8 @@
 #include <string.h>
 #include <tap/basic.h>
 
-#include "binary.h"
-#include "error.h"
+#include "libknot/dnssec/binary.h"
+#include "libknot/dnssec/error.h"
 
 typedef struct test_string {
 	const char *encoded;

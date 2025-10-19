@@ -5,7 +5,7 @@
 
 #include <tap/basic.h>
 
-#include "crypto.h"
+#include "libknot/dnssec/crypto.h"
 
 int main(void)
 {

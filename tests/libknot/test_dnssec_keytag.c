@@ -6,9 +6,9 @@
 #include <tap/basic.h>
 #include <stdint.h>
 
-#include "binary.h"
-#include "error.h"
-#include "keytag.h"
+#include "libknot/dnssec/binary.h"
+#include "libknot/dnssec/error.h"
+#include "libknot/dnssec/keytag.h"
 
 int main(void)
 {

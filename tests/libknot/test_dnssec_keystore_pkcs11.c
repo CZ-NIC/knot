@@ -28,7 +28,7 @@
 #define SOFTHSM_CONF_ENV "SOFTHSM2_CONF"
 #define SOFTHSM_UTIL     "softhsm2-util"
 
-#define TOKEN_LABEL "libdnssec-test"
+#define TOKEN_LABEL "libknot-test"
 #define TOKEN_PIN   "1234"
 #define TOKEN_SOPIN "123456"
 

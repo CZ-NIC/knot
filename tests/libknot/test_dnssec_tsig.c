@@ -6,9 +6,9 @@
 #include <tap/basic.h>
 #include <string.h>
 
-#include "binary.h"
-#include "dname.c"
-#include "tsig.h"
+#include "libknot/dnssec/binary.h"
+#include "libknot/dnssec/shared/dname.c"
+#include "libknot/dnssec/tsig.h"
 
 static const dnssec_binary_t payload = {
 	.size = 40,

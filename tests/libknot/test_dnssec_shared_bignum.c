@@ -6,8 +6,8 @@
 #include <tap/basic.h>
 #include <string.h>
 
-#include "bignum.c"
-#include "binary.h"
+#include "libknot/dnssec/binary.h"
+#include "libknot/dnssec/shared/bignum.c"
 
 #define bin_init(array) { .data = array, .size = sizeof(array) }
 

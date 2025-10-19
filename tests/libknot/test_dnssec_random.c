@@ -7,9 +7,9 @@
 #include <string.h>
 #include <tap/basic.h>
 
-#include "crypto.h"
-#include "error.h"
-#include "random.h"
+#include "libknot/dnssec/crypto.h"
+#include "libknot/dnssec/error.h"
+#include "libknot/dnssec/random.h"
 
 int check_buffer(void)
 {

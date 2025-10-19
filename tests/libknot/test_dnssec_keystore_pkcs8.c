@@ -6,9 +6,9 @@
 #include <tap/basic.h>
 #include <tap/files.h>
 
-#include "error.h"
-#include "key.h"
-#include "keystore.h"
+#include "libknot/dnssec/error.h"
+#include "libknot/dnssec/key.h"
+#include "libknot/dnssec/keystore.h"
 
 int main(void)
 {

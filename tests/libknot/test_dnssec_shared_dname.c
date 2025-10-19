@@ -7,7 +7,7 @@
 #include <string.h>
 #include <tap/basic.h>
 
-#include "dname.c"
+#include "libknot/dnssec/shared/dname.c"
 
 static void ok_length(const char *dname, size_t length, const char *info)
 {

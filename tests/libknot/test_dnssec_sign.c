@@ -6,11 +6,11 @@
 #include <string.h>
 #include <tap/basic.h>
 
-#include "binary.h"
-#include "crypto.h"
-#include "error.h"
-#include "key.h"
-#include "sign.h"
+#include "libknot/dnssec/binary.h"
+#include "libknot/dnssec/crypto.h"
+#include "libknot/dnssec/error.h"
+#include "libknot/dnssec/key.h"
+#include "libknot/dnssec/sign.h"
 
 #include "libknot/dnssec/sample_keys.h"
 

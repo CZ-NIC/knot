@@ -9,7 +9,7 @@
 #include <string.h>
 #include <tap/basic.h>
 
-#include "nsec.h"
+#include "libknot/dnssec/nsec.h"
 #include "libknot/descriptor.h"
 
 #define TEST_BITMAP_SIZE 18

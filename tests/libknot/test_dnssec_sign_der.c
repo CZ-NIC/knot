@@ -8,10 +8,10 @@
 #include <string.h>
 #include <stdbool.h>
 
-#include "bignum.c"
-#include "binary.h"
-#include "error.h"
-#include "sign/der.c"
+#include "libknot/dnssec/shared/bignum.c"
+#include "libknot/dnssec/binary.h"
+#include "libknot/dnssec/error.h"
+#include "libknot/dnssec/sign/der.c"
 
 static int binary_eq(const dnssec_binary_t *a, const dnssec_binary_t *b)
 {
