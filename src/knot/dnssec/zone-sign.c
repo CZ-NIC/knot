@@ -7,10 +7,10 @@
 #include <pthread.h>
 #include <sys/types.h>
 
-#include "libdnssec/error.h"
-#include "libdnssec/key.h"
-#include "libdnssec/keytag.h"
-#include "libdnssec/sign.h"
+#include "libknot/dnssec/error.h"
+#include "libknot/dnssec/key.h"
+#include "libknot/dnssec/keytag.h"
+#include "libknot/dnssec/sign.h"
 #include "knot/common/log.h"
 #include "knot/dnssec/key-events.h"
 #include "knot/dnssec/key_records.h"

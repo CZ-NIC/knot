@@ -6,7 +6,7 @@
 #include "knot/query/query.h"
 
 #include "contrib/wire_ctx.h"
-#include "libdnssec/random.h"
+#include "libknot/dnssec/random.h"
 
 void query_init_pkt(knot_pkt_t *pkt)
 {

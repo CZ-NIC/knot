@@ -15,7 +15,7 @@
 #pragma once
 
 #include "libknot/dname.h"
-#include "libdnssec/tsig.h"
+#include "libknot/dnssec/tsig.h"
 
 /*!
  * \brief TSIG key.

@@ -11,7 +11,7 @@
 
 #include "libknot/attribute.h"
 #include "libknot/error.h"
-#include "libdnssec/error.h"
+#include "libknot/dnssec/error.h"
 
 struct error {
 	int code;

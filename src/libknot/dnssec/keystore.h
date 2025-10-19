@@ -22,8 +22,8 @@
 
 #pragma once
 
-#include <libdnssec/binary.h>
-#include <libdnssec/key.h>
+#include "libknot/dnssec/binary.h"
+#include "libknot/dnssec/key.h"
 
 struct dnssec_keystore;
 

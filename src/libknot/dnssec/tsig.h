@@ -17,7 +17,7 @@
 
 #include <stdint.h>
 
-#include <libdnssec/binary.h>
+#include "libknot/dnssec/binary.h"
 
 /*!
  * TSIG algorithms.

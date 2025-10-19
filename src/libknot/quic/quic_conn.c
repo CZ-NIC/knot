@@ -15,7 +15,7 @@
 #include "contrib/openbsd/siphash.h"
 #include "contrib/ucw/heap.h"
 #include "contrib/ucw/lists.h"
-#include "libdnssec/random.h"
+#include "libknot/dnssec/random.h"
 #include "libknot/attribute.h"
 #include "libknot/error.h"
 #include "libknot/quic/tls_common.h"

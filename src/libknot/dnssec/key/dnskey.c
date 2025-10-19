@@ -3,11 +3,11 @@
  *  For more information, see <https://www.knot-dns.cz/>
  */
 
-#include "libdnssec/binary.h"
-#include "libdnssec/error.h"
-#include "libdnssec/key/dnskey.h"
-#include "libdnssec/key/convert.h"
-#include "libdnssec/shared/binary_wire.h"
+#include "libknot/dnssec/binary.h"
+#include "libknot/dnssec/error.h"
+#include "libknot/dnssec/key/dnskey.h"
+#include "libknot/dnssec/key/convert.h"
+#include "libknot/dnssec/shared/binary_wire.h"
 
 /* -- internal API --------------------------------------------------------- */
 

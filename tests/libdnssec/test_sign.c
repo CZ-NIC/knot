@@ -12,7 +12,7 @@
 #include "key.h"
 #include "sign.h"
 
-#include "libdnssec/sample_keys.h"
+#include "libknot/dnssec/sample_keys.h"
 
 static const dnssec_binary_t input_data = {
 	.size = 25,

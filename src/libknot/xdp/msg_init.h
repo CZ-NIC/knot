@@ -10,7 +10,7 @@
 
 #include "libknot/xdp/msg.h"
 #include "libknot/xdp/tcp.h"
-#include "libdnssec/random.h"
+#include "libknot/dnssec/random.h"
 
 inline static bool empty_msg(const knot_xdp_msg_t *msg)
 {

@@ -6,9 +6,9 @@
 #include <gnutls/gnutls.h>
 #include <gnutls/pkcs11.h>
 
-#include "libdnssec/crypto.h"
-#include "libdnssec/p11/p11.h"
-#include "libdnssec/shared/shared.h"
+#include "libknot/dnssec/crypto.h"
+#include "libknot/dnssec/p11/p11.h"
+#include "libknot/dnssec/shared/shared.h"
 
 _public_
 void dnssec_crypto_init(void)

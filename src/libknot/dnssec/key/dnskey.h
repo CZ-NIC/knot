@@ -7,8 +7,8 @@
 
 #include <gnutls/abstract.h>
 
-#include "libdnssec/binary.h"
-#include "libdnssec/error.h"
+#include "libknot/dnssec/binary.h"
+#include "libknot/dnssec/error.h"
 
 /*!
  * DNSKEY RDATA fields offsets.

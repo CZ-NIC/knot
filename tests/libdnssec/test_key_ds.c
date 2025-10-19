@@ -8,10 +8,10 @@
 #include <stddef.h>
 #include <string.h>
 
-#include "libdnssec/crypto.h"
-#include "libdnssec/error.h"
-#include "libdnssec/key.h"
-#include "libdnssec/sample_keys.h"
+#include "libknot/dnssec/crypto.h"
+#include "libknot/dnssec/error.h"
+#include "libknot/dnssec/key.h"
+#include "libknot/dnssec/sample_keys.h"
 
 static void test_key(const char *name, const struct key_parameters *params)
 {

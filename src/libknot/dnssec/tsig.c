@@ -11,10 +11,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "libdnssec/shared/dname.h"
-#include "libdnssec/error.h"
-#include "libdnssec/shared/shared.h"
-#include "libdnssec/tsig.h"
+#include "libknot/dnssec/shared/dname.h"
+#include "libknot/dnssec/error.h"
+#include "libknot/dnssec/shared/shared.h"
+#include "libknot/dnssec/tsig.h"
 
 struct dnssec_tsig_ctx {
 	gnutls_mac_algorithm_t algorithm;

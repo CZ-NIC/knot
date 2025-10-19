@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "libdnssec/binary.h"
+#include "libknot/dnssec/binary.h"
 
 typedef struct key_parameters {
 	// DNSSEC fields

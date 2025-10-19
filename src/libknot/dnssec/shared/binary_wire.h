@@ -8,7 +8,7 @@
 #include <stdlib.h>
 
 #include "contrib/wire_ctx.h"
-#include "libdnssec/binary.h"
+#include "libknot/dnssec/binary.h"
 
 static inline wire_ctx_t binary_init(const dnssec_binary_t *binary)
 {

@@ -5,8 +5,8 @@
 
 #pragma once
 
-#include "libdnssec/key.h"
-#include "libdnssec/sign.h"
+#include "libknot/dnssec/key.h"
+#include "libknot/dnssec/sign.h"
 #include "knot/dnssec/context.h"
 #include "knot/dnssec/zone-keys.h"
 #include "libknot/rrset.h"

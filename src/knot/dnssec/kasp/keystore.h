@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "libdnssec/keystore.h"
+#include "libknot/dnssec/keystore.h"
 
 int keystore_load(const char *config, unsigned backend,
                   const char *kasp_base_path, dnssec_keystore_t **keystore);

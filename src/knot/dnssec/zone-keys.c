@@ -7,7 +7,7 @@
 #include <limits.h>
 #include <stdio.h>
 
-#include "libdnssec/error.h"
+#include "libknot/dnssec/error.h"
 #include "knot/common/log.h"
 #include "knot/dnssec/zone-keys.h"
 #include "libknot/libknot.h"

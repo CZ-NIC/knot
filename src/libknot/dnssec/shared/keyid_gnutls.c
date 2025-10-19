@@ -10,11 +10,11 @@
 #include <string.h>
 
 #include "contrib/string.h"
-#include "libdnssec/binary.h"
-#include "libdnssec/error.h"
-#include "libdnssec/keyid.h"
-#include "libdnssec/shared/keyid_gnutls.h"
-#include "libdnssec/shared/shared.h"
+#include "libknot/dnssec/binary.h"
+#include "libknot/dnssec/error.h"
+#include "libknot/dnssec/keyid.h"
+#include "libknot/dnssec/shared/keyid_gnutls.h"
+#include "libknot/dnssec/shared/shared.h"
 
 /*!
  * Get binary key ID from a key (public or private).

@@ -9,8 +9,8 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "libdnssec/shared/dname.h"
-#include "libdnssec/shared/shared.h"
+#include "libknot/dnssec/shared/dname.h"
+#include "libknot/dnssec/shared/shared.h"
 #include "contrib/tolower.h"
 
 /*!

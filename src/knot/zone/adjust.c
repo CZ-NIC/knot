@@ -8,7 +8,7 @@
 #include "knot/dnssec/zone-nsec.h"
 #include "knot/zone/adds_tree.h"
 #include "knot/zone/measure.h"
-#include "libdnssec/error.h"
+#include "libknot/dnssec/error.h"
 
 static bool node_non_dnssec_exists(const zone_node_t *node)
 {

@@ -6,7 +6,7 @@
 #pragma once
 
 #include <stdint.h>
-#include "libdnssec/nsec.h"
+#include "libknot/dnssec/nsec.h"
 #include "knot/updates/changesets.h"
 #include "knot/updates/zone-update.h"
 #include "knot/zone/contents.h"

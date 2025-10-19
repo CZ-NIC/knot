@@ -5,7 +5,7 @@
 
 #include <urcu.h>
 
-#include "libdnssec/tsig.h"
+#include "libknot/dnssec/tsig.h"
 #include "knot/common/log.h"
 #include "knot/dnssec/rrset-sign.h"
 #include "knot/nameserver/process_query.h"

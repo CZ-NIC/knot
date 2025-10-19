@@ -7,14 +7,14 @@
 #include <pthread.h>
 
 #include "contrib/string.h"
-#include "libdnssec/error.h"
-#include "libdnssec/keyid.h"
-#include "libdnssec/shared/keyid_gnutls.h"
-#include "libdnssec/keystore.h"
-#include "libdnssec/keystore/internal.h"
-#include "libdnssec/p11/p11.h"
-#include "libdnssec/pem.h"
-#include "libdnssec/shared/shared.h"
+#include "libknot/dnssec/error.h"
+#include "libknot/dnssec/keyid.h"
+#include "libknot/dnssec/shared/keyid_gnutls.h"
+#include "libknot/dnssec/keystore.h"
+#include "libknot/dnssec/keystore/internal.h"
+#include "libknot/dnssec/p11/p11.h"
+#include "libknot/dnssec/pem.h"
+#include "libknot/dnssec/shared/shared.h"
 
 #ifdef ENABLE_PKCS11
 

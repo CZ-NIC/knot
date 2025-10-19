@@ -8,8 +8,8 @@
 #include <stdbool.h>
 
 #include "contrib/time.h"
-#include "libdnssec/key.h"
-#include "libdnssec/keystore.h"
+#include "libknot/dnssec/key.h"
+#include "libknot/dnssec/keystore.h"
 #include "knot/conf/conf.h"
 
 /*!

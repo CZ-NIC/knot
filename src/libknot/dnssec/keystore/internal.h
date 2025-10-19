@@ -8,9 +8,9 @@
 #include <gnutls/gnutls.h>
 #include <gnutls/abstract.h>
 
-#include "libdnssec/binary.h"
-#include "libdnssec/key.h"
-#include "libdnssec/keystore.h"
+#include "libknot/dnssec/binary.h"
+#include "libknot/dnssec/key.h"
+#include "libknot/dnssec/keystore.h"
 
 typedef struct keystore_functions {
 	// construction of internal context

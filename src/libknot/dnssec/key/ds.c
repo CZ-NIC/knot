@@ -3,13 +3,13 @@
  *  For more information, see <https://www.knot-dns.cz/>
  */
 
-#include "libdnssec/binary.h"
-#include "libdnssec/error.h"
-#include "libdnssec/key.h"
-#include "libdnssec/key/internal.h"
-#include "libdnssec/shared/dname.h"
-#include "libdnssec/shared/shared.h"
-#include "libdnssec/shared/binary_wire.h"
+#include "libknot/dnssec/binary.h"
+#include "libknot/dnssec/error.h"
+#include "libknot/dnssec/key.h"
+#include "libknot/dnssec/key/internal.h"
+#include "libknot/dnssec/shared/dname.h"
+#include "libknot/dnssec/shared/shared.h"
+#include "libknot/dnssec/shared/binary_wire.h"
 
 #include <gnutls/gnutls.h>
 #include <gnutls/crypto.h>

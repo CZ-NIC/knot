@@ -9,7 +9,7 @@
 #include "knot/dnssec/rrset-sign.h"
 #include "knot/updates/zone-update.h"
 #include "contrib/wire_ctx.h"
-#include "libdnssec/digest.h"
+#include "libknot/dnssec/digest.h"
 #include "libknot/libknot.h"
 
 #define DIGEST_BUF_MIN 4096

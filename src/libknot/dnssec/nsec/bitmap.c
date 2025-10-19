@@ -7,8 +7,8 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "libdnssec/nsec.h"
-#include "libdnssec/shared/shared.h"
+#include "libknot/dnssec/nsec.h"
+#include "libknot/dnssec/shared/shared.h"
 
 #define BITMAP_WINDOW_SIZE 256
 #define BITMAP_WINDOW_BYTES (BITMAP_WINDOW_SIZE/CHAR_BIT)

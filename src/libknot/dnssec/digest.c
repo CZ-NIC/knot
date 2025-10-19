@@ -3,12 +3,12 @@
  *  For more information, see <https://www.knot-dns.cz/>
  */
 
-#include "libdnssec/digest.h"
+#include "libknot/dnssec/digest.h"
 
 #include <gnutls/gnutls.h>
 #include <gnutls/crypto.h>
 
-#include "libdnssec/shared/shared.h"
+#include "libknot/dnssec/shared/shared.h"
 
 struct dnssec_digest_ctx {
 	gnutls_hash_hd_t gtctx;

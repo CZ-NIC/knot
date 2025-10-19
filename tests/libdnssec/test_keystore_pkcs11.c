@@ -14,11 +14,11 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-#include "libdnssec/crypto.h"
-#include "libdnssec/error.h"
-#include "libdnssec/keystore.h"
-#include "libdnssec/sample_keys.h"
-#include "libdnssec/sign.h"
+#include "libknot/dnssec/crypto.h"
+#include "libknot/dnssec/error.h"
+#include "libknot/dnssec/keystore.h"
+#include "libknot/dnssec/sample_keys.h"
+#include "libknot/dnssec/sign.h"
 
 #define ENV_SOFTHSM_DSO  "KNOT_SOFTHSM2_DSO"
 #define ENV_SOFTHSM_UTIL "KNOT_SOFTHSM2_UTIL"

@@ -8,9 +8,9 @@
 #include <gnutls/crypto.h>
 #include <string.h>
 
-#include "libdnssec/error.h"
-#include "libdnssec/nsec.h"
-#include "libdnssec/shared/shared.h"
+#include "libknot/dnssec/error.h"
+#include "libknot/dnssec/nsec.h"
+#include "libknot/dnssec/shared/shared.h"
 
 /*!
  * Compute NSEC3 hash for given data and algorithm.

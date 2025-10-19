@@ -5,7 +5,7 @@
 
 #include <assert.h>
 
-#include "libdnssec/error.h"
+#include "libknot/dnssec/error.h"
 #include "knot/zone/adds_tree.h"
 #include "knot/zone/adjust.h"
 #include "knot/zone/contents.h"

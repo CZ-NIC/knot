@@ -11,7 +11,7 @@
 #include "error.h"
 #include "key.h"
 
-#include "libdnssec/sample_keys.h"
+#include "libknot/dnssec/sample_keys.h"
 
 #define check_attr_scalar(key, type, name, def_val, set_val) { \
 	type value = dnssec_key_get_##name(key); \

@@ -8,11 +8,11 @@
 #include <gnutls/gnutls.h>
 #include <gnutls/x509.h>
 
-#include "libdnssec/binary.h"
-#include "libdnssec/error.h"
-#include "libdnssec/key.h"
-#include "libdnssec/pem.h"
-#include "libdnssec/shared/shared.h"
+#include "libknot/dnssec/binary.h"
+#include "libknot/dnssec/error.h"
+#include "libknot/dnssec/key.h"
+#include "libknot/dnssec/pem.h"
+#include "libknot/dnssec/shared/shared.h"
 
 _public_
 int dnssec_pem_to_x509(const dnssec_binary_t *pem, gnutls_x509_privkey_t *key)

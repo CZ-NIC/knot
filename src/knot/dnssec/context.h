@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "libdnssec/keystore.h"
+#include "libknot/dnssec/keystore.h"
 #include "contrib/spinlock.h"
 #include "contrib/time.h"
 #include "knot/conf/conf.h"

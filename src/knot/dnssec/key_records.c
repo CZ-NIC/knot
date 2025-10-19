@@ -5,8 +5,8 @@
 
 #include "knot/dnssec/key_records.h"
 
-#include "libdnssec/error.h"
-#include "libdnssec/sign.h"
+#include "libknot/dnssec/error.h"
+#include "libknot/dnssec/sign.h"
 #include "knot/dnssec/rrset-sign.h"
 #include "knot/dnssec/zone-sign.h"
 #include "knot/journal/serialization.h"

@@ -6,16 +6,16 @@
 #include <assert.h>
 #include <stdlib.h>
 
-#include "libdnssec/error.h"
-#include "libdnssec/key.h"
-#include "libdnssec/key/algorithm.h"
-#include "libdnssec/key/dnskey.h"
-#include "libdnssec/key/internal.h"
-#include "libdnssec/key/privkey.h"
-#include "libdnssec/keyid.h"
-#include "libdnssec/keystore.h"
-#include "libdnssec/keystore/internal.h"
-#include "libdnssec/shared/shared.h"
+#include "libknot/dnssec/error.h"
+#include "libknot/dnssec/key.h"
+#include "libknot/dnssec/key/algorithm.h"
+#include "libknot/dnssec/key/dnskey.h"
+#include "libknot/dnssec/key/internal.h"
+#include "libknot/dnssec/key/privkey.h"
+#include "libknot/dnssec/keyid.h"
+#include "libknot/dnssec/keystore.h"
+#include "libknot/dnssec/keystore/internal.h"
+#include "libknot/dnssec/shared/shared.h"
 
 /* -- internal API --------------------------------------------------------- */
 

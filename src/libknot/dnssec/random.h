@@ -18,7 +18,7 @@
 #pragma once
 
 #include <stdint.h>
-#include <libdnssec/binary.h>
+#include "libknot/dnssec/binary.h"
 
 /*!
  * Fill a buffer with pseudo-random data.

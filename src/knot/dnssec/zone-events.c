@@ -5,8 +5,8 @@
 
 #include <assert.h>
 
-#include "libdnssec/error.h"
-#include "libdnssec/random.h"
+#include "libknot/dnssec/error.h"
+#include "libknot/dnssec/random.h"
 #include "libknot/libknot.h"
 #include "knot/conf/conf.h"
 #include "knot/common/dbus.h"

@@ -12,7 +12,7 @@
 #include "knot/server/server.h"
 #include "knot/zone/serial.h"
 #include "knot/zone/zone.h"
-#include "libdnssec/keytag.h"
+#include "libknot/dnssec/keytag.h"
 #include "libknot/errcode.h"
 
 #define DNSKEY_SYNC_LOG(priority, zone, remote, flags, fmt, ...) \

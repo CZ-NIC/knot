@@ -18,7 +18,7 @@
 #pragma once
 
 #include <stdint.h>
-#include <libdnssec/binary.h>
+#include "libknot/dnssec/binary.h"
 
 /*!
  * Compute a key tag for a DNSSEC key.

@@ -8,7 +8,7 @@
 #include <urcu.h>
 
 #include "contrib/mempattern.h"
-#include "libdnssec/random.h"
+#include "libknot/dnssec/random.h"
 #include "knot/common/log.h"
 #include "knot/conf/conf.h"
 #include "knot/dnssec/zone-events.h"

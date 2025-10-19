@@ -10,7 +10,7 @@
 
 #include "contrib/strtonum.h"
 #include "knot/dnssec/zone-keys.h"
-#include "libdnssec/crypto.h"
+#include "libknot/dnssec/crypto.h"
 #include "libknot/libknot.h"
 #include "utils/common/msg.h"
 #include "utils/common/params.h"

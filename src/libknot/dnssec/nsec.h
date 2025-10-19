@@ -22,7 +22,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include <libdnssec/binary.h>
+#include "libknot/dnssec/binary.h"
 
 /*!
  * DNSSEC NSEC3 algorithm numbers.

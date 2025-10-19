@@ -8,7 +8,7 @@
 #include <pthread.h>
 
 #include "contrib/atomic.h"
-#include "libdnssec/nsec.h"
+#include "libknot/dnssec/nsec.h"
 #include "libknot/rrtype/nsec3param.h"
 #include "knot/zone/node.h"
 #include "knot/zone/zone-tree.h"

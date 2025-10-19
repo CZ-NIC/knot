@@ -39,8 +39,8 @@ Size (`loads_bits` = log2 length):
 
 #include "./kru.h"
 #include "contrib/macros.h"
-#include "libdnssec/error.h"
-#include "libdnssec/random.h"
+#include "libknot/dnssec/error.h"
+#include "libknot/dnssec/random.h"
 typedef uint64_t hash_t;
 #if USE_AES
 	/// 4-8 rounds should be an OK choice, most likely.

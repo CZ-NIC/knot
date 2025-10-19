@@ -11,14 +11,14 @@
 
 #include "contrib/macros.h"
 #include "contrib/vpool/vpool.h"
-#include "libdnssec/shared/bignum.h"
-#include "libdnssec/error.h"
-#include "libdnssec/key.h"
-#include "libdnssec/key/internal.h"
-#include "libdnssec/shared/shared.h"
-#include "libdnssec/sign.h"
-#include "libdnssec/sign/der.h"
-#include "libdnssec/shared/binary_wire.h"
+#include "libknot/dnssec/shared/bignum.h"
+#include "libknot/dnssec/error.h"
+#include "libknot/dnssec/key.h"
+#include "libknot/dnssec/key/internal.h"
+#include "libknot/dnssec/shared/shared.h"
+#include "libknot/dnssec/sign.h"
+#include "libknot/dnssec/sign/der.h"
+#include "libknot/dnssec/shared/binary_wire.h"
 
 /*!
  * Signature format conversion callback.

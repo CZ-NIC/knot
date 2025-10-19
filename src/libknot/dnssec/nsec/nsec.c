@@ -3,12 +3,12 @@
  *  For more information, see <https://www.knot-dns.cz/>
  */
 
-#include "libdnssec/nsec.h"
-#include "libdnssec/shared/shared.h"
-#include "libdnssec/shared/binary_wire.h"
+#include "libknot/dnssec/nsec.h"
+#include "libknot/dnssec/shared/shared.h"
+#include "libknot/dnssec/shared/binary_wire.h"
 
-#include "libdnssec/binary.h"
-#include "libdnssec/error.h"
+#include "libknot/dnssec/binary.h"
+#include "libknot/dnssec/error.h"
 
 /*!
  * Free NSEC3 parameters.

@@ -9,8 +9,8 @@
 #include <stdio.h>
 #include <stdatomic.h>
 
-#include "libdnssec/crypto.h"
-#include "libdnssec/random.h"
+#include "libknot/dnssec/crypto.h"
+#include "libknot/dnssec/random.h"
 #include "libknot/libknot.h"
 #include "contrib/openbsd/siphash.h"
 #include "contrib/sockaddr.h"

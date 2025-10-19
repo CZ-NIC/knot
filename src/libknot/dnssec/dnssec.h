@@ -11,15 +11,15 @@
 
 #pragma once
 
-#include <libdnssec/binary.h>
-#include <libdnssec/crypto.h>
-#include <libdnssec/error.h>
-#include <libdnssec/key.h>
-#include <libdnssec/keyid.h>
-#include <libdnssec/keystore.h>
-#include <libdnssec/keytag.h>
-#include <libdnssec/nsec.h>
-#include <libdnssec/pem.h>
-#include <libdnssec/random.h>
-#include <libdnssec/sign.h>
-#include <libdnssec/tsig.h>
+#include "libknot/dnssec/binary.h"
+#include "libknot/dnssec/crypto.h"
+#include "libknot/dnssec/error.h"
+#include "libknot/dnssec/key.h"
+#include "libknot/dnssec/keyid.h"
+#include "libknot/dnssec/keystore.h"
+#include "libknot/dnssec/keytag.h"
+#include "libknot/dnssec/nsec.h"
+#include "libknot/dnssec/pem.h"
+#include "libknot/dnssec/random.h"
+#include "libknot/dnssec/sign.h"
+#include "libknot/dnssec/tsig.h"

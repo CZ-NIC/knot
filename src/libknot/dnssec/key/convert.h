@@ -7,8 +7,8 @@
 
 #include <gnutls/abstract.h>
 
-#include "libdnssec/binary.h"
-#include "libdnssec/key.h"
+#include "libknot/dnssec/binary.h"
+#include "libknot/dnssec/key.h"
 
 /*!
  * Encode public key into the format used in DNSKEY RDATA.

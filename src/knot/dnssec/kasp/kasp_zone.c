@@ -6,7 +6,7 @@
 #include "knot/dnssec/kasp/kasp_zone.h"
 #include "knot/dnssec/kasp/keystore.h"
 #include "knot/dnssec/zone-keys.h"
-#include "libdnssec/binary.h"
+#include "libknot/dnssec/binary.h"
 
 // FIXME DNSSEC errors versus knot errors
 

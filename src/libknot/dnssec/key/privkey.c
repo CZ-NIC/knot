@@ -6,15 +6,15 @@
 #include <gnutls/abstract.h>
 #include <gnutls/gnutls.h>
 
-#include "libdnssec/binary.h"
-#include "libdnssec/error.h"
-#include "libdnssec/key/algorithm.h"
-#include "libdnssec/key/convert.h"
-#include "libdnssec/key/dnskey.h"
-#include "libdnssec/key/internal.h"
-#include "libdnssec/key/privkey.h"
-#include "libdnssec/shared/shared.h"
-#include "libdnssec/shared/binary_wire.h"
+#include "libknot/dnssec/binary.h"
+#include "libknot/dnssec/error.h"
+#include "libknot/dnssec/key/algorithm.h"
+#include "libknot/dnssec/key/convert.h"
+#include "libknot/dnssec/key/dnskey.h"
+#include "libknot/dnssec/key/internal.h"
+#include "libknot/dnssec/key/privkey.h"
+#include "libknot/dnssec/shared/shared.h"
+#include "libknot/dnssec/shared/binary_wire.h"
 
 /* -- internal functions --------------------------------------------------- */
 

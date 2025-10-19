@@ -12,13 +12,13 @@
 #include <sys/types.h>
 
 #include "contrib/files.h"
-#include "libdnssec/binary.h"
-#include "libdnssec/error.h"
-#include "libdnssec/keystore.h"
-#include "libdnssec/keystore/internal.h"
-#include "libdnssec/pem.h"
-#include "libdnssec/shared/shared.h"
-#include "libdnssec/shared/keyid_gnutls.h"
+#include "libknot/dnssec/binary.h"
+#include "libknot/dnssec/error.h"
+#include "libknot/dnssec/keystore.h"
+#include "libknot/dnssec/keystore/internal.h"
+#include "libknot/dnssec/pem.h"
+#include "libknot/dnssec/shared/shared.h"
+#include "libknot/dnssec/shared/keyid_gnutls.h"
 
 #define DIR_INIT_MODE 0750
 

@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "libdnssec/binary.h"
+#include "libknot/dnssec/binary.h"
 
 /*
  * The ECDSA signatures in DNSSEC are encoded differently than in X.509

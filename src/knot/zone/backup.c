@@ -28,7 +28,7 @@
 #include "knot/server/server.h"
 #include "knot/zone/backup_dir.h"
 #include "knot/zone/zonefile.h"
-#include "libdnssec/error.h"
+#include "libknot/dnssec/error.h"
 
 // Current backup format version for output. Don't decrease it.
 #define BACKUP_VERSION BACKUP_FORMAT_2  // Starting with release 3.1.0.

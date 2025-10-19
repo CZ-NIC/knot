@@ -20,8 +20,8 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-#include <libdnssec/binary.h>
-#include <libdnssec/key.h>
+#include "libknot/dnssec/binary.h"
+#include "libknot/dnssec/key.h"
 
 struct dnssec_sign_ctx;
 

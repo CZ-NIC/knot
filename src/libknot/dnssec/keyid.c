@@ -6,9 +6,9 @@
 #include <assert.h>
 #include <string.h>
 
-#include "libdnssec/error.h"
-#include "libdnssec/keyid.h"
-#include "libdnssec/shared/shared.h"
+#include "libknot/dnssec/error.h"
+#include "libknot/dnssec/keyid.h"
+#include "libknot/dnssec/shared/shared.h"
 
 #include "contrib/ctype.h"
 #include "contrib/tolower.h"

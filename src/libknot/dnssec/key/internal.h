@@ -8,8 +8,8 @@
 #include <gnutls/abstract.h>
 #include <stdint.h>
 
-#include "libdnssec/key.h"
-#include "libdnssec/shared/dname.h"
+#include "libknot/dnssec/key.h"
+#include "libknot/dnssec/shared/dname.h"
 
 /*!
  * DNSSEC key.

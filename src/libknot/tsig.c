@@ -8,7 +8,7 @@
 
 #include "contrib/getline.h"
 #include "contrib/string.h"
-#include "libdnssec/error.h"
+#include "libknot/dnssec/error.h"
 #include "libknot/attribute.h"
 #include "libknot/errcode.h"
 #include "libknot/tsig.h"

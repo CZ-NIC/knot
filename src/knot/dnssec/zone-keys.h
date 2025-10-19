@@ -6,8 +6,8 @@
 #pragma once
 
 #include "libknot/dynarray.h"
-#include "libdnssec/keystore.h"
-#include "libdnssec/sign.h"
+#include "libknot/dnssec/keystore.h"
+#include "libknot/dnssec/sign.h"
 #include "knot/dnssec/kasp/kasp_zone.h"
 #include "knot/dnssec/kasp/policy.h"
 #include "knot/dnssec/context.h"

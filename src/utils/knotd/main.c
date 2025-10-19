@@ -19,7 +19,7 @@
 #include <cap-ng.h>
 #endif
 
-#include "libdnssec/crypto.h"
+#include "libknot/dnssec/crypto.h"
 #include "libknot/libknot.h"
 #include "contrib/strtonum.h"
 #include "contrib/threads.h"

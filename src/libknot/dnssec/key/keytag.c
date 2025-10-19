@@ -7,10 +7,10 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "libdnssec/binary.h"
-#include "libdnssec/error.h"
-#include "libdnssec/key/dnskey.h"
-#include "libdnssec/shared/shared.h"
+#include "libknot/dnssec/binary.h"
+#include "libknot/dnssec/error.h"
+#include "libknot/dnssec/key/dnskey.h"
+#include "libknot/dnssec/shared/shared.h"
 
 /*!
  * Compute keytag for RSA/MD5 key.

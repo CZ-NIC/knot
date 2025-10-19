@@ -5,8 +5,8 @@
 
 #include <string.h>
 
-#include "libdnssec/error.h"
-#include "libdnssec/shared/shared.h"
+#include "libknot/dnssec/error.h"
+#include "libknot/dnssec/shared/shared.h"
 
 typedef struct error_message_t {
 	int code;

@@ -5,11 +5,11 @@
 
 #include <stdbool.h>
 
-#include "libdnssec/shared/bignum.h"
-#include "libdnssec/binary.h"
-#include "libdnssec/error.h"
-#include "libdnssec/sign/der.h"
-#include "libdnssec/shared/binary_wire.h"
+#include "libknot/dnssec/shared/bignum.h"
+#include "libknot/dnssec/binary.h"
+#include "libknot/dnssec/error.h"
+#include "libknot/dnssec/sign/der.h"
+#include "libknot/dnssec/shared/binary_wire.h"
 
 /*
  * In fact, this is a very tiny subset of ASN.1 encoding format implementation,

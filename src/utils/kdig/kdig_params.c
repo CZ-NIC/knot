@@ -23,8 +23,8 @@
 #include "contrib/strtonum.h"
 #include "contrib/time.h"
 #include "contrib/ucw/lists.h"
-#include "libdnssec/error.h"
-#include "libdnssec/random.h"
+#include "libknot/dnssec/error.h"
+#include "libknot/dnssec/random.h"
 
 #define PROGRAM_NAME "kdig"
 

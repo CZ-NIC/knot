@@ -6,7 +6,7 @@
 #include <assert.h>
 
 #include "contrib/wire_ctx.h"
-#include "libdnssec/error.h"
+#include "libknot/dnssec/error.h"
 #include "knot/dnssec/rrset-sign.h"
 #include "knot/dnssec/zone-sign.h"
 #include "knot/zone/serial.h" // DNS uint32 arithmetics

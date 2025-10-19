@@ -10,14 +10,14 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "libdnssec/shared/bignum.h"
-#include "libdnssec/binary.h"
-#include "libdnssec/error.h"
-#include "libdnssec/key.h"
-#include "libdnssec/key/algorithm.h"
-#include "libdnssec/key/dnskey.h"
-#include "libdnssec/shared/shared.h"
-#include "libdnssec/shared/binary_wire.h"
+#include "libknot/dnssec/shared/bignum.h"
+#include "libknot/dnssec/binary.h"
+#include "libknot/dnssec/error.h"
+#include "libknot/dnssec/key.h"
+#include "libknot/dnssec/key/algorithm.h"
+#include "libknot/dnssec/key/dnskey.h"
+#include "libknot/dnssec/shared/shared.h"
+#include "libknot/dnssec/shared/binary_wire.h"
 
 /* -- wrappers for GnuTLS types -------------------------------------------- */
 

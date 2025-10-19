@@ -8,8 +8,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "libdnssec/p11/p11.h"
-#include "libdnssec/error.h"
+#include "libknot/dnssec/p11/p11.h"
+#include "libknot/dnssec/error.h"
 
 #ifdef ENABLE_PKCS11
 

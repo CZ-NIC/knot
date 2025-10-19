@@ -7,7 +7,7 @@
 
 #include <stdlib.h>
 
-#include "libdnssec/binary.h"
+#include "libknot/dnssec/binary.h"
 #include "contrib/wire_ctx.h"
 
 /*!

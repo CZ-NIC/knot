@@ -17,7 +17,7 @@
 #include <gnutls/gnutls.h>
 #include <gnutls/x509.h>
 
-#include "libdnssec/binary.h"
+#include "libknot/dnssec/binary.h"
 #include "libknot/attribute.h"
 
 /*!

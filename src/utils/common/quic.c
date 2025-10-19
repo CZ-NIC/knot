@@ -40,8 +40,8 @@ void quic_params_clean(quic_params_t *params)
 #include <ngtcp2/ngtcp2_crypto_gnutls.h>
 
 #include "contrib/macros.h"
-#include "libdnssec/error.h"
-#include "libdnssec/random.h"
+#include "libknot/dnssec/error.h"
+#include "libknot/dnssec/random.h"
 #include "libknot/xdp/tcp_iobuf.h"
 #include "utils/common/params.h"
 
