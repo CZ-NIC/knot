@@ -865,7 +865,6 @@ WARN_LOGFILE           = doc/html/doxygen.warn
 # Note: If this tag is empty the current directory is searched.
 
 INPUT                  = doc/doxygen/Doxy.page.h \
-                         src/libdnssec \
                          src/libknot \
                          src/libzscanner \
                          src/knot/include

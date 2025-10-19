@@ -11,7 +11,7 @@ libknotus_la_CPPFLAGS = $(embedded_libngtcp2_CFLAGS) \
                         $(lmdb_CFLAGS)
 libknotus_la_LDFLAGS  = $(AM_LDFLAGS) $(LDFLAG_EXCLUDE_LIBS)
 libknotus_la_LIBADD   = $(libidn2_LIBS) $(libidn_LIBS) $(libnghttp2_LIBS) $(libngtcp2_LIBS)
-libknotus_LIBS        = libknotus.la libknot.la libdnssec.la $(libcontrib_LIBS) \
+libknotus_LIBS        = libknotus.la libknot.la $(libcontrib_LIBS) \
                         $(gnutls_LIBS) $(libedit_LIBS)
 
 if EMBEDDED_LIBNGTCP2
@@ -85,7 +85,7 @@ kdig_LDADD             = $(libknotus_LIBS)
 khost_CPPFLAGS         = $(libknotus_la_CPPFLAGS)
 khost_LDADD            = $(libknotus_LIBS)
 knsec3hash_CPPFLAGS    = $(libknotus_la_CPPFLAGS)
-knsec3hash_LDADD       = libknot.la libdnssec.la $(libcontrib_LIBS)
+knsec3hash_LDADD       = libknot.la $(libcontrib_LIBS)
 knsupdate_CPPFLAGS     = $(libknotus_la_CPPFLAGS)
 knsupdate_LDADD        = $(libknotus_LIBS) libzscanner.la
 
