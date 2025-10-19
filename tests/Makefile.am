@@ -131,7 +131,6 @@ check_PROGRAMS += \
 	libknot/test_dnssec_sign		\
 	libknot/test_dnssec_sign_der		\
 	libknot/test_dnssec_shared_bignum	\
-	libknot/test_dnssec_shared_dname	\
 	libknot/test_dnssec_tsig		\
 	libknot/test_control			\
 	libknot/test_cookies			\

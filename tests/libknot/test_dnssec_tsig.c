@@ -6,8 +6,8 @@
 #include <tap/basic.h>
 #include <string.h>
 
+#include "libknot/dname.h"
 #include "libknot/dnssec/binary.h"
-#include "libknot/dnssec/shared/dname.c"
 #include "libknot/dnssec/tsig.h"
 
 static const dnssec_binary_t payload = {
@@ -82,7 +82,7 @@ static void test_lookup_dname(const uint8_t *dname, int algorithm)
 
 	const uint8_t *reverse = dnssec_tsig_algorithm_to_dname(algorithm);
 	ok((algorithm == DNSSEC_TSIG_UNKNOWN && reverse == NULL) ||
-	   (algorithm != DNSSEC_TSIG_UNKNOWN && dname_equal(reverse, dname)),
+	   (algorithm != DNSSEC_TSIG_UNKNOWN && knot_dname_is_case_equal(reverse, dname)),
 	  "dnssec_tsig_algorithm_to_dname(%d)", algorithm);
 }
 

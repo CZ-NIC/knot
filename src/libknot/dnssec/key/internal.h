@@ -9,7 +9,6 @@
 #include <stdint.h>
 
 #include "libknot/dnssec/key.h"
-#include "libknot/dnssec/shared/dname.h"
 
 /*!
  * DNSSEC key.

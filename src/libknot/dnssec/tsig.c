@@ -11,7 +11,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "libknot/dnssec/shared/dname.h"
+#include "libknot/dname.h"
 #include "libknot/dnssec/error.h"
 #include "libknot/dnssec/shared/shared.h"
 #include "libknot/dnssec/tsig.h"
@@ -71,7 +71,7 @@ static const algorithm_id_t *lookup_algorithm(algorithm_match_cb match,
 static bool match_dname(const algorithm_id_t *algorithm, const void *data)
 {
 	const uint8_t *search = data;
-	return dname_equal(search, (uint8_t *)algorithm->dname);
+	return knot_dname_is_case_equal(search, (uint8_t *)algorithm->dname);
 }
 
 static bool match_name(const algorithm_id_t *algorithm, const void *data)

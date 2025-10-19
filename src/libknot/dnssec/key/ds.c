@@ -3,11 +3,11 @@
  *  For more information, see <https://www.knot-dns.cz/>
  */
 
+#include "libknot/dname.h"
 #include "libknot/dnssec/binary.h"
 #include "libknot/dnssec/error.h"
 #include "libknot/dnssec/key.h"
 #include "libknot/dnssec/key/internal.h"
-#include "libknot/dnssec/shared/dname.h"
 #include "libknot/dnssec/shared/shared.h"
 #include "libknot/dnssec/shared/binary_wire.h"
 
@@ -85,7 +85,7 @@ int dnssec_key_create_ds(const dnssec_key_t *key,
 		return DNSSEC_DS_HASHING_ERROR;
 	}
 
-	if (gnutls_hash(digest, key->dname, dname_length(key->dname)) != 0 ||
+	if (gnutls_hash(digest, key->dname, knot_dname_size(key->dname)) != 0 ||
 	    gnutls_hash(digest, key->rdata.data, key->rdata.size) != 0
 	) {
 		return DNSSEC_DS_HASHING_ERROR;

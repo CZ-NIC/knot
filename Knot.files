@@ -481,8 +481,6 @@ src/libknot/dnssec/sample_keys.h
 src/libknot/dnssec/shared/bignum.c
 src/libknot/dnssec/shared/bignum.h
 src/libknot/dnssec/shared/binary_wire.h
-src/libknot/dnssec/shared/dname.c
-src/libknot/dnssec/shared/dname.h
 src/libknot/dnssec/shared/keyid_gnutls.c
 src/libknot/dnssec/shared/keyid_gnutls.h
 src/libknot/dnssec/shared/shared.h
@@ -736,7 +734,6 @@ tests/libknot/test_dnssec_nsec_bitmap.c
 tests/libknot/test_dnssec_nsec_hash.c
 tests/libknot/test_dnssec_random.c
 tests/libknot/test_dnssec_shared_bignum.c
-tests/libknot/test_dnssec_shared_dname.c
 tests/libknot/test_dnssec_sign.c
 tests/libknot/test_dnssec_sign_der.c
 tests/libknot/test_dnssec_tsig.c

@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "libknot/dname.h"
 #include "libknot/dnssec/binary.h"
 #include "libknot/dnssec/error.h"
 #include "libknot/dnssec/key.h"
@@ -176,12 +177,12 @@ int dnssec_key_set_dname(dnssec_key_t *key, const uint8_t *dname)
 
 	uint8_t *copy = NULL;
 	if (dname) {
-		copy = dname_copy(dname);
+		copy = knot_dname_copy(dname, NULL);
 		if (!copy) {
 			return DNSSEC_ENOMEM;
 		}
 
-		dname_normalize(copy);
+		knot_dname_to_lower(copy);
 	}
 
 	free(key->dname);

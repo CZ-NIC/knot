@@ -66,7 +66,6 @@
 /libknot/test_dnssec_nsec_hash
 /libknot/test_dnssec_random
 /libknot/test_dnssec_shared_bignum
-/libknot/test_dnssec_shared_dname
 /libknot/test_dnssec_sign
 /libknot/test_dnssec_sign_der
 /libknot/test_dnssec_tsig

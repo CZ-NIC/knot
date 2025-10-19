@@ -129,8 +129,6 @@ libknot_la_SOURCES = \
 	libknot/dnssec/shared/bignum.c		\
 	libknot/dnssec/shared/bignum.h		\
 	libknot/dnssec/shared/binary_wire.h	\
-	libknot/dnssec/shared/dname.c		\
-	libknot/dnssec/shared/dname.h		\
 	libknot/dnssec/shared/keyid_gnutls.c	\
 	libknot/dnssec/shared/keyid_gnutls.h	\
 	libknot/dnssec/shared/shared.h		\
