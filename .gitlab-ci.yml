@@ -281,7 +281,7 @@ build:archive:
     - make distcheck V=1 DISTCHECK_CONFIGURE_FLAGS="--disable-static" -j2
     - make html singlehtml
   only:
-    - master
+    - test
     - tags
     - triggers
     - schedules
@@ -302,7 +302,7 @@ pages:
     - mv _build/doc/_build/html public/master/html
     - mv _build/doc/_build/singlehtml public/master/singlehtml
   only:
-    - master
+    - test
   artifacts:
     paths:
       - public
