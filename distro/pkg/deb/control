@@ -14,6 +14,7 @@ Build-Depends:
  automake,
  debhelper (>= 11),
  dh-python,
+ dh-sequence-installsysusers,
  libbpf-dev,
  libcap-ng-dev,
  libedit-dev,
@@ -43,7 +44,6 @@ Vcs-Git: https://gitlab.nic.cz/knot/knot-dns.git
 Package: knot
 Architecture: any
 Depends:
- adduser,
  libdnssec10 (= ${binary:Version}),
  libknot16 (= ${binary:Version}),
  libzscanner5 (= ${binary:Version}),

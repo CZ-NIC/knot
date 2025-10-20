@@ -12,8 +12,6 @@ if test "$1" = "purge"; then
     dpkg-statoverride --remove /var/lib/knot >/dev/null 2>&1 || true
     dpkg-statoverride --remove /etc/knot/knot.conf >/dev/null 2>&1 || true
     dpkg-statoverride --remove /etc/knot >/dev/null 2>&1 || true
-
-    deluser --quiet knot >/dev/null 2>&1 || true
 fi
 
 #DEBHELPER#

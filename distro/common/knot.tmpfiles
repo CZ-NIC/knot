@@ -1,0 +1,3 @@
+d /var/lib/knot       0770 root knot
+d /etc/knot           0750 root knot
+f /etc/knot/knot.conf 0640 root knot
