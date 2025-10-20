@@ -293,6 +293,7 @@ build:archive:
       - _build/doc/_build/singlehtml
 
 pages:
+  <<: *debian_stable
   stage: documentation
   needs:
     - build:archive
