@@ -252,8 +252,8 @@ class Server(object):
 
     def set_new_zone(self, name, z):
         self.zones[name] = z
-        self.conf["zone"][name] = { 'zonefile_sync': "1d", "semantic_checks": True, "notify_delay": random.randint(0, 1) }
-        self.conf["policy"][name] = { 'keystore': [], 'keytag_modulo': '0/1', "signing-threads": str(random.randint(1,4)) }
+        self.conf["zone"][name] = { "zonefile_sync": "1d", "semantic_checks": True, "notify_delay": random.randint(0, 1) }
+        self.conf["policy"][name] = { "keystore": [], "keytag_modulo": "0/1", "signing-threads": random.randint(1, 4) }
 
     def set_master(self, zone, slave=None, ddns=False, ixfr=False):
         '''Set the server as a master for the zone'''
