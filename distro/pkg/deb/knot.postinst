@@ -1,16 +1,14 @@
 #!/bin/sh
 set -e
 
-if [ "$1" = "configure" ]; then
-    if ! getent passwd knot > /dev/null; then
-        adduser --quiet --system --group --no-create-home --home /var/lib/knot knot
-    fi
+# Ensure sysusers.d/tmpfiles.d are applied before statoverride runs
 
+#DEBHELPER#
+
+if [ "$1" = "configure" ]; then
     dpkg-statoverride --list /var/lib/knot >/dev/null 2>&1 || dpkg-statoverride --update --add root knot 0770 /var/lib/knot
     dpkg-statoverride --list /etc/knot/knot.conf >/dev/null 2>&1 || dpkg-statoverride --update --add root knot 0640 /etc/knot/knot.conf
     dpkg-statoverride --list /etc/knot >/dev/null 2>&1 || dpkg-statoverride --update --add root knot 0750 /etc/knot
 fi
-
-#DEBHELPER#
 
 exit 0
