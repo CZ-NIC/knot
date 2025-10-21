@@ -91,7 +91,7 @@ int p11_reinit(void)
 
 int p11_load_module(const char *module)
 {
-	return DNSSEC_NOT_IMPLEMENTED_ERROR;
+	return KNOT_ENOTSUP;
 }
 
 void p11_cleanup(void)

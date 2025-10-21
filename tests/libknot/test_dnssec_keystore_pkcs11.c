@@ -350,7 +350,7 @@ int main(int argc, char *argv[])
 
 	dnssec_keystore_t *store = NULL;
 	int r = dnssec_keystore_init_pkcs11(&store);
-	if (r == DNSSEC_NOT_IMPLEMENTED_ERROR) {
+	if (r == KNOT_ENOTSUP) {
 		skip_all("not supported");
 		goto done;
 	}

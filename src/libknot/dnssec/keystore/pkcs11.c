@@ -380,7 +380,7 @@ int dnssec_keystore_init_pkcs11(dnssec_keystore_t **store_ptr)
 _public_
 int dnssec_keystore_init_pkcs11(dnssec_keystore_t **store_ptr)
 {
-	return DNSSEC_NOT_IMPLEMENTED_ERROR;
+	return KNOT_ENOTSUP;
 }
 
 #endif

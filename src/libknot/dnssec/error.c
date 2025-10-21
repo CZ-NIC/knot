@@ -21,7 +21,7 @@ static const error_message_t ERROR_MESSAGES[] = {
 	{ KNOT_ENOENT,		"no such file or directory" },
 
 	{ DNSSEC_ERROR,			"unspecified error" },
-	{ DNSSEC_NOT_IMPLEMENTED_ERROR,	"not implemented" },
+	{ KNOT_ENOTSUP,	"not implemented" },
 	{ DNSSEC_MALFORMED_DATA,	"malformed data" },
 	{ DNSSEC_NOT_FOUND,		"not found" },
 

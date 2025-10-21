@@ -49,7 +49,7 @@ static int asn1_decode_size(wire_ctx_t *wire, size_t *size)
 	uint8_t byte = wire_ctx_read_u8(wire);
 	if (byte & 0x80) {
 		// long form, we do not need it for DNSSEC
-		return DNSSEC_NOT_IMPLEMENTED_ERROR;
+		return KNOT_ENOTSUP;
 	}
 
 	*size = byte;
@@ -189,12 +189,12 @@ int dss_sig_value_encode(const dnssec_binary_t *r, const dnssec_binary_t *s,
 	// check supported inputs range
 
 	if (r_size > ASN1_MAX_SIZE || s_size > ASN1_MAX_SIZE) {
-		return DNSSEC_NOT_IMPLEMENTED_ERROR;
+		return KNOT_ENOTSUP;
 	}
 
 	size_t seq_size = 2 + r_size + 2 + s_size;
 	if (seq_size > ASN1_MAX_SIZE) {
-		return DNSSEC_NOT_IMPLEMENTED_ERROR;
+		return KNOT_ENOTSUP;
 	}
 
 	// encode result
