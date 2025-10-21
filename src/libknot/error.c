@@ -174,6 +174,9 @@ static const struct error errors[] = {
 	{ KNOT_DNSSEC_ENSEC3_OPTOUT,   "wrong NSEC3 opt-out" },
 	{ KNOT_DNSSEC_EKEYTAG_LIMIT,   "many keys with equal keytag" },
 	{ KNOT_DNSSEC_EXTRA_NSEC,      "superfluous NSEC(3)" },
+	{ KNOT_KEY_EIMPORT,            "failed to import key" },
+	{ KNOT_KEY_EEXPORT,            "failed to export key" },
+	{ KNOT_KEY_EGENERATE,          "failed to generate key" },
 
 	/* Terminator */
 	{ KNOT_ERROR, NULL }

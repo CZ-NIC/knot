@@ -46,7 +46,7 @@ static int public_from_private(gnutls_privkey_t privkey, gnutls_pubkey_t *pubkey
 	result = gnutls_pubkey_import_privkey(new_key, privkey, 0, 0);
 	if (result != GNUTLS_E_SUCCESS) {
 		gnutls_pubkey_deinit(new_key);
-		return DNSSEC_KEY_IMPORT_ERROR;
+		return KNOT_KEY_EIMPORT;
 	}
 
 	*pubkey = new_key;

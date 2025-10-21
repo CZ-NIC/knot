@@ -35,7 +35,7 @@ int dnssec_pem_to_x509(const dnssec_binary_t *pem, gnutls_x509_privkey_t *key)
 	r = gnutls_x509_privkey_import_pkcs8(_key, &data, format, password, flags);
 	if (r != GNUTLS_E_SUCCESS) {
 		gnutls_x509_privkey_deinit(_key);
-		return DNSSEC_PKCS8_IMPORT_ERROR;
+		return KNOT_KEY_EIMPORT;
 	}
 
 	*key = _key;

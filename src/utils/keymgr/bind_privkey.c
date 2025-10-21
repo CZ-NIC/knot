@@ -258,7 +258,7 @@ static int rsa_params_to_pem(const bind_privkey_t *params, dnssec_binary_t *pem)
 
 	result = gnutls_x509_privkey_import_rsa_raw(key, &m, &e, &d, &p, &q, &u);
 	if (result != GNUTLS_E_SUCCESS) {
-		return DNSSEC_KEY_IMPORT_ERROR;
+		return KNOT_KEY_EIMPORT;
 	}
 
 	return dnssec_pem_from_x509(key, pem);
@@ -313,7 +313,7 @@ static int ecdsa_params_to_pem(dnssec_key_t *dnskey, const bind_privkey_t *param
 
 	result = gnutls_x509_privkey_import_ecc_raw(key, curve, &x, &y, &k);
 	if (result != KNOT_EOK) {
-		return DNSSEC_KEY_IMPORT_ERROR;
+		return KNOT_KEY_EIMPORT;
 	}
 
 	gnutls_x509_privkey_fix(key);
@@ -350,7 +350,7 @@ static int eddsa_params_to_pem(dnssec_key_t *dnskey, const bind_privkey_t *param
 
 	result = gnutls_x509_privkey_import_ecc_raw(key, curve, &x, NULL, &k);
 	if (result != KNOT_EOK) {
-		return DNSSEC_KEY_IMPORT_ERROR;
+		return KNOT_KEY_EIMPORT;
 	}
 
 	gnutls_x509_privkey_fix(key);

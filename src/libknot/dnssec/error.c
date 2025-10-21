@@ -25,9 +25,9 @@ static const error_message_t ERROR_MESSAGES[] = {
 	{ KNOT_EMALF,	"malformed data" },
 	{ KNOT_ENOENT,		"not found" },
 
-	{ DNSSEC_PKCS8_IMPORT_ERROR,	"PKCS #8 import error" },
+	{ KNOT_KEY_EIMPORT,	"PKCS #8 import error" },
 	{ DNSSEC_KEY_EXPORT_ERROR,	"key export error" },
-	{ DNSSEC_KEY_IMPORT_ERROR,	"key import error" },
+	{ KNOT_KEY_EIMPORT,	"key import error" },
 	{ DNSSEC_KEY_GENERATE_ERROR,	"key generation error" },
 
 	{ DNSSEC_INVALID_PUBLIC_KEY,	"invalid public key" },

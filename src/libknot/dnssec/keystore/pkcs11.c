@@ -236,7 +236,7 @@ static int import_pem(const dnssec_binary_t *pem,
 	if (gnutls_privkey_import_x509(key, x509_key, 0) != GNUTLS_E_SUCCESS ||
 	    gnutls_pubkey_import_privkey(pubkey, key, 0, 0) != GNUTLS_E_SUCCESS
 	) {
-		r = DNSSEC_KEY_IMPORT_ERROR;
+		r = KNOT_KEY_EIMPORT;
 		goto fail;
 	}
 
@@ -277,13 +277,13 @@ static int pkcs11_import_key(void *_ctx, const dnssec_binary_t *pem, char **id_p
 
 	r = gnutls_pkcs11_copy_x509_privkey2(ctx->url, key, NULL, &gid, 0, flags);
 	if (r != GNUTLS_E_SUCCESS) {
-		return DNSSEC_KEY_IMPORT_ERROR;
+		return KNOT_KEY_EIMPORT;
 	}
 
 	r = gnutls_pkcs11_copy_pubkey(ctx->url, pubkey, NULL, &gid, 0, flags);
 	if (r != GNUTLS_E_SUCCESS) {
 		// note, we result with dangling private key in the token
-		return DNSSEC_KEY_IMPORT_ERROR;
+		return KNOT_KEY_EIMPORT;
 	}
 
 	*id_ptr = bin_to_hex(id.data, id.size, false);

@@ -210,7 +210,7 @@ static int rsa_rdata_to_pubkey(const dnssec_binary_t *rdata, gnutls_pubkey_t key
 
 	int result = gnutls_pubkey_import_rsa_raw(key, &modulus, &exponent);
 	if (result != GNUTLS_E_SUCCESS) {
-		return DNSSEC_KEY_IMPORT_ERROR;
+		return KNOT_KEY_EIMPORT;
 	}
 
 	return KNOT_EOK;
@@ -266,7 +266,7 @@ static int ecdsa_rdata_to_pubkey(const dnssec_binary_t *rdata, gnutls_pubkey_t k
 
 	int result = gnutls_pubkey_import_ecc_raw(key, curve, &point_x, &point_y);
 	if (result != GNUTLS_E_SUCCESS) {
-		return DNSSEC_KEY_IMPORT_ERROR;
+		return KNOT_KEY_EIMPORT;
 	}
 
 	return KNOT_EOK;
@@ -293,7 +293,7 @@ static int eddsa_rdata_to_pubkey(const dnssec_binary_t *rdata, gnutls_pubkey_t k
 
 	int result = gnutls_pubkey_import_ecc_raw(key, curve, &point_x, NULL);
 	if (result != GNUTLS_E_SUCCESS) {
-		return DNSSEC_KEY_IMPORT_ERROR;
+		return KNOT_KEY_EIMPORT;
 	}
 
 	return KNOT_EOK;
