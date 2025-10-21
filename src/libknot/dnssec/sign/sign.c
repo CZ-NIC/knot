@@ -306,7 +306,7 @@ int dnssec_sign_write(dnssec_sign_ctx_t *ctx, dnssec_sign_flags_t flags, dnssec_
 	}
 
 	if (!dnssec_key_can_sign(ctx->key)) {
-		return DNSSEC_NO_PRIVATE_KEY;
+		return KNOT_NO_PRIVATE_KEY;
 	}
 
 	gnutls_datum_t data = {

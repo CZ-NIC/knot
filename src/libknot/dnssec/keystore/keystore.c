@@ -168,7 +168,7 @@ int dnssec_keystore_set_private(dnssec_keystore_t *store, dnssec_key_t *key)
 	}
 
 	if (!key->private_key) {
-		return DNSSEC_NO_PRIVATE_KEY;
+		return KNOT_NO_PRIVATE_KEY;
 	}
 
 	return store->functions->set_private(store->ctx, key->private_key);
