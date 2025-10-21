@@ -18,7 +18,7 @@ static const error_message_t ERROR_MESSAGES[] = {
 
 	{ KNOT_ENOMEM,		"not enough memory" },
 	{ KNOT_EINVAL,		"invalid argument" },
-	{ DNSSEC_ENOENT,		"no such file or directory" },
+	{ KNOT_ENOENT,		"no such file or directory" },
 
 	{ DNSSEC_ERROR,			"unspecified error" },
 	{ DNSSEC_NOT_IMPLEMENTED_ERROR,	"not implemented" },

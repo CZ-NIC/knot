@@ -239,7 +239,7 @@ static int backup_key(key_params_t *parm, const knot_dname_t *zname, bool restor
 			                restore ? "restore" : "backup", parm->id);
 			ret = KNOT_EOK;
 		}
-	} else if (ret == DNSSEC_ENOENT) {
+	} else if (ret == KNOT_ENOENT) {
 		log_zone_notice(zname, "private key id %s not available, ignoring", parm->id);
 		ret = KNOT_EOK;
 	}

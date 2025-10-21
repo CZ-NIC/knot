@@ -308,7 +308,7 @@ static int pkcs11_remove_key(void *_ctx, const char *id)
 	if (r < 0) {
 		return DNSSEC_ERROR;
 	} else if (r == 0) {
-		return DNSSEC_ENOENT;
+		return KNOT_ENOENT;
 	}
 
 	return KNOT_EOK;

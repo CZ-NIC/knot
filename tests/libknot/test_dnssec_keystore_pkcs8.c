@@ -66,7 +66,7 @@ int main(void)
 	dnssec_key_new(&key);
 	dnssec_key_set_algorithm(key, DNSSEC_KEY_ALGORITHM_RSA_SHA256);
 	r = dnssec_keystore_get_private(store, id_A, key);
-	ok(r == DNSSEC_ENOENT, "read removed");
+	ok(r == KNOT_ENOENT, "read removed");
 	dnssec_key_free(key);
 
 	// cleanup
