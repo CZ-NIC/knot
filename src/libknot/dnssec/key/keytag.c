@@ -63,7 +63,7 @@ int dnssec_keytag(const dnssec_binary_t *rdata, uint16_t *keytag)
 	}
 
 	if (!rdata->data || rdata->size < DNSKEY_RDATA_OFFSET_PUBKEY) {
-		return DNSSEC_MALFORMED_DATA;
+		return KNOT_EMALF;
 	}
 
 	uint8_t algorithm = rdata->data[DNSKEY_RDATA_OFFSET_ALGORITHM];

@@ -199,7 +199,7 @@ int knot_error_from_libdnssec(int libdnssec_errcode)
 	switch (libdnssec_errcode) {
 	case DNSSEC_ERROR:
 		return KNOT_ERROR;
-	case DNSSEC_MALFORMED_DATA:
+	case KNOT_EMALF:
 		return KNOT_EMALF;
 	case DNSSEC_NOT_FOUND:
 		return KNOT_ENOENT;

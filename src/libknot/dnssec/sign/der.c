@@ -43,7 +43,7 @@ static int asn1_decode_size(wire_ctx_t *wire, size_t *size)
 	assert(size);
 
 	if (wire_ctx_available(wire) < 1) {
-		return DNSSEC_MALFORMED_DATA;
+		return KNOT_EMALF;
 	}
 
 	uint8_t byte = wire_ctx_read_u8(wire);
@@ -66,7 +66,7 @@ static int asn1_decode_integer(wire_ctx_t *wire, dnssec_binary_t *_value)
 	assert(_value);
 
 	if (!asn1_expect_type(wire, ASN1_TYPE_INTEGER)) {
-		return DNSSEC_MALFORMED_DATA;
+		return KNOT_EMALF;
 	}
 
 	size_t size;
@@ -76,7 +76,7 @@ static int asn1_decode_integer(wire_ctx_t *wire, dnssec_binary_t *_value)
 	}
 
 	if (size == 0 || size > wire_ctx_available(wire)) {
-		return DNSSEC_MALFORMED_DATA;
+		return KNOT_EMALF;
 	}
 
 	dnssec_binary_t value = { .data = wire->position, .size = size };
@@ -137,7 +137,7 @@ int dss_sig_value_decode(const dnssec_binary_t *der,
 	// decode the sequence
 
 	if (!asn1_expect_type(&wire, ASN1_TYPE_SEQUENCE)) {
-		return DNSSEC_MALFORMED_DATA;
+		return KNOT_EMALF;
 	}
 
 	result = asn1_decode_size(&wire, &size);
@@ -146,7 +146,7 @@ int dss_sig_value_decode(const dnssec_binary_t *der,
 	}
 
 	if (size != wire_ctx_available(&wire)) {
-		return DNSSEC_MALFORMED_DATA;
+		return KNOT_EMALF;
 	}
 
 	// decode the 'r' and 's' values
@@ -164,7 +164,7 @@ int dss_sig_value_decode(const dnssec_binary_t *der,
 	}
 
 	if (wire_ctx_available(&wire) != 0) {
-		return DNSSEC_MALFORMED_DATA;
+		return KNOT_EMALF;
 	}
 
 	*r = der_r;

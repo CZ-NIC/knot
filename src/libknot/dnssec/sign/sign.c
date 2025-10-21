@@ -121,7 +121,7 @@ static int ecdsa_x509_to_dnssec(dnssec_sign_ctx_t *ctx,
 	size_t s_size = bignum_size_u(&value_s);
 
 	if (r_size > int_size || s_size > int_size) {
-		return DNSSEC_MALFORMED_DATA;
+		return KNOT_EMALF;
 	}
 
 	result = dnssec_binary_alloc(dnssec, 2 * int_size);

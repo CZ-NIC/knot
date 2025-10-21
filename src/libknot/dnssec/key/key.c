@@ -410,7 +410,7 @@ int dnssec_key_set_rdata(dnssec_key_t *key, const dnssec_binary_t *rdata)
 	}
 
 	if (rdata->size < DNSKEY_RDATA_MIN_SIZE) {
-		return DNSSEC_MALFORMED_DATA;
+		return KNOT_EMALF;
 	}
 
 	if (key->public_key) {

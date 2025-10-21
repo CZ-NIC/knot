@@ -122,7 +122,7 @@ static int pkcs8_dir_read(pkcs8_dir_handle_t *handle, const char *id, dnssec_bin
 	}
 
 	if (size == 0) {
-		return DNSSEC_MALFORMED_DATA;
+		return KNOT_EMALF;
 	}
 
 	// read the stored data
@@ -413,7 +413,7 @@ static int pkcs8_get_private(void *ctx, const char *id, gnutls_privkey_t *key_pt
 	}
 
 	if (size == 0) {
-		return DNSSEC_MALFORMED_DATA;
+		return KNOT_EMALF;
 	}
 
 	// read the stored data

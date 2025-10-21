@@ -112,7 +112,7 @@ static int parse_time(char *string, void *_time)
 
 	char *end = strptime(string, LEGACY_DATE_FORMAT, &tm);
 	if (end == NULL || *end != '\0') {
-		return DNSSEC_MALFORMED_DATA;
+		return KNOT_EMALF;
 	}
 
 	time_t *time = _time;
@@ -158,7 +158,7 @@ static int parse_line(bind_privkey_t *params, char *line, size_t length)
 
 	char *separator = memchr(line, ':', length);
 	if (!separator) {
-		return DNSSEC_MALFORMED_DATA;
+		return KNOT_EMALF;
 	}
 
 	char *key = line;
@@ -170,7 +170,7 @@ static int parse_line(bind_privkey_t *params, char *line, size_t length)
 	strip(&value, &value_length);
 
 	if (key_length == 0 || value_length == 0) {
-		return DNSSEC_MALFORMED_DATA;
+		return KNOT_EMALF;
 	}
 
 	key[key_length] = '\0';
