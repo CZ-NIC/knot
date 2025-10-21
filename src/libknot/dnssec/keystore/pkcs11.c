@@ -200,7 +200,7 @@ static int pkcs11_generate_key(void *_ctx, gnutls_pk_algorithm_t algorithm,
 	int r = gnutls_pkcs11_privkey_generate3(ctx->url, algorithm, bits, label,
 	                                        &gt_cka_id, 0, NULL, 0, flags);
 	if (r != GNUTLS_E_SUCCESS) {
-		return DNSSEC_KEY_GENERATE_ERROR;
+		return KNOT_KEY_EGENERATE;
 	}
 
 	char *id = bin_to_hex(cka_id.data, cka_id.size, false);

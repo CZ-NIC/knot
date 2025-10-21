@@ -181,7 +181,7 @@ static int pem_generate(gnutls_pk_algorithm_t algorithm, unsigned bits,
 
 	r = gnutls_x509_privkey_generate(key, algorithm, bits, 0);
 	if (r != GNUTLS_E_SUCCESS) {
-		return DNSSEC_KEY_GENERATE_ERROR;
+		return KNOT_KEY_EGENERATE;
 	}
 
 	// convert to PEM and export the ID

@@ -28,7 +28,7 @@ static const error_message_t ERROR_MESSAGES[] = {
 	{ KNOT_KEY_EIMPORT,	"PKCS #8 import error" },
 	{ KNOT_KEY_EEXPORT,	"key export error" },
 	{ KNOT_KEY_EIMPORT,	"key import error" },
-	{ DNSSEC_KEY_GENERATE_ERROR,	"key generation error" },
+	{ KNOT_KEY_EGENERATE,	"key generation error" },
 
 	{ DNSSEC_INVALID_PUBLIC_KEY,	"invalid public key" },
 	{ DNSSEC_INVALID_PRIVATE_KEY,	"invalid private key" },
