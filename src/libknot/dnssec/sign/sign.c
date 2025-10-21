@@ -353,7 +353,7 @@ int dnssec_sign_verify(dnssec_sign_ctx_t *ctx, bool sign_cmp, const dnssec_binar
 	}
 
 	if (!dnssec_key_can_verify(ctx->key)) {
-		return DNSSEC_NO_PUBLIC_KEY;
+		return KNOT_NO_PUBLIC_KEY;
 	}
 
 	gnutls_datum_t data = {

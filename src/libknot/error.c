@@ -206,7 +206,7 @@ int knot_error_from_libdnssec(int libdnssec_errcode)
 		return KNOT_EMALF;
 	case KNOT_ENOENT:
 		return KNOT_ENOENT;
-	case DNSSEC_NO_PUBLIC_KEY:
+	case KNOT_NO_PUBLIC_KEY:
 	case DNSSEC_NO_PRIVATE_KEY:
 		return KNOT_DNSSEC_ENOKEY;
 	// EOK, EINVAL, ENOMEM and ENOENT are identical, no need to translate
