@@ -37,7 +37,7 @@ static int key_url(const char *token_uri, const char *key_id, char **url_ptr)
 	assert(url_ptr);
 
 	if (!dnssec_keyid_is_valid(key_id)) {
-		return DNSSEC_INVALID_KEY_ID;
+		return KNOT_INVALID_KEY_ID;
 	}
 
 	size_t token_len = strlen(token_uri);

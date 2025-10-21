@@ -34,7 +34,7 @@ static int keyid_bin(gnutls_x509_privkey_t key, gnutls_pubkey_t pubkey, dnssec_b
 	            : gnutls_pubkey_get_key_id(pubkey, flags, buffer, &size);
 
 	if (r != GNUTLS_E_SUCCESS || size != DNSSEC_KEYID_BINARY_SIZE) {
-		return DNSSEC_INVALID_KEY_ID;
+		return KNOT_INVALID_KEY_ID;
 	}
 
 	assert(size == DNSSEC_KEYID_BINARY_SIZE);

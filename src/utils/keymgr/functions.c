@@ -649,7 +649,7 @@ int keymgr_import_pem(kdnssec_ctx_t *ctx, const char *import_file, int argc, cha
 int keymgr_import_pkcs11(kdnssec_ctx_t *ctx, char *key_id, int argc, char *argv[])
 {
 	if (!dnssec_keyid_is_valid(key_id)) {
-		return DNSSEC_INVALID_KEY_ID;
+		return KNOT_INVALID_KEY_ID;
 	}
 
 	knot_kasp_keystore_t *keystore = knot_store_for_key(ctx->keystores, genkeyargs_ksk(argc, argv));
