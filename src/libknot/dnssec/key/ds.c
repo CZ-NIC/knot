@@ -74,7 +74,7 @@ int dnssec_key_create_ds(const dnssec_key_t *key,
 
 	gnutls_digest_algorithm_t algorithm = lookup_algorithm(ds_algorithm);
 	if (algorithm == GNUTLS_DIG_UNKNOWN) {
-		return DNSSEC_INVALID_DS_ALGORITHM;
+		return KNOT_EALGORITHM;
 	}
 
 	// compute DS hash

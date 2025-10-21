@@ -177,6 +177,7 @@ static const struct error errors[] = {
 	{ KNOT_KEY_EIMPORT,            "failed to import key" },
 	{ KNOT_KEY_EEXPORT,            "failed to export key" },
 	{ KNOT_KEY_EGENERATE,          "failed to generate key" },
+	{ KNOT_EALGORITHM,             "invalid hash algorithm" },
 
 	/* Terminator */
 	{ KNOT_ERROR, NULL }

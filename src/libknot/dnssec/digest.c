@@ -34,7 +34,7 @@ int dnssec_digest_init(dnssec_digest_t algorithm, dnssec_digest_ctx_t **out_ctx)
 
 	gnutls_digest_algorithm_t gtalg = lookup_algorithm(algorithm);
 	if (gtalg == GNUTLS_DIG_UNKNOWN) {
-		return DNSSEC_INVALID_DIGEST_ALGORITHM;
+		return KNOT_EALGORITHM;
 	}
 
 	dnssec_digest_ctx_t *res = malloc(sizeof(*res));

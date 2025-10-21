@@ -93,7 +93,7 @@ int dnssec_nsec3_hash(const dnssec_binary_t *data,
 
 	gnutls_digest_algorithm_t algorithm = algorithm_d2g(params->algorithm);
 	if (algorithm == GNUTLS_DIG_UNKNOWN) {
-		return DNSSEC_INVALID_NSEC3_ALGORITHM;
+		return KNOT_EALGORITHM;
 	}
 
 	return nsec3_hash(algorithm, params->iterations, &params->salt, data, hash);
