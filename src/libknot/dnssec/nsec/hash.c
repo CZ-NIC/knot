@@ -88,7 +88,7 @@ int dnssec_nsec3_hash(const dnssec_binary_t *data,
 		      dnssec_binary_t *hash)
 {
 	if (!data || !params || !hash) {
-		return DNSSEC_EINVAL;
+		return KNOT_EINVAL;
 	}
 
 	gnutls_digest_algorithm_t algorithm = algorithm_d2g(params->algorithm);

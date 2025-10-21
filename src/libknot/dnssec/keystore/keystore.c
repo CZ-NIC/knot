@@ -48,7 +48,7 @@ _public_
 int dnssec_keystore_deinit(dnssec_keystore_t *store)
 {
 	if (!store) {
-		return DNSSEC_EINVAL;
+		return KNOT_EINVAL;
 	}
 
 	dnssec_keystore_close(store);
@@ -63,7 +63,7 @@ _public_
 int dnssec_keystore_init(dnssec_keystore_t *store, const char *config)
 {
 	if (!store) {
-		return DNSSEC_EINVAL;
+		return KNOT_EINVAL;
 	}
 
 	return store->functions->init(store->ctx, config);
@@ -73,7 +73,7 @@ _public_
 int dnssec_keystore_open(dnssec_keystore_t *store, const char *config)
 {
 	if (!store) {
-		return DNSSEC_EINVAL;
+		return KNOT_EINVAL;
 	}
 
 	return store->functions->open(store->ctx, config);
@@ -83,7 +83,7 @@ _public_
 int dnssec_keystore_close(dnssec_keystore_t *store)
 {
 	if (!store) {
-		return DNSSEC_EINVAL;
+		return KNOT_EINVAL;
 	}
 
 	return store->functions->close(store->ctx);
@@ -95,7 +95,7 @@ int dnssec_keystore_generate(dnssec_keystore_t *store,
 			     unsigned bits, const char *label, char **id_ptr)
 {
 	if (!store || !_algorithm || !id_ptr) {
-		return DNSSEC_EINVAL;
+		return KNOT_EINVAL;
 	}
 
 	// prepare parameters
@@ -117,7 +117,7 @@ int dnssec_keystore_import(dnssec_keystore_t *store, const dnssec_binary_t *pem,
 			   char **id_ptr)
 {
 	if (!store || !pem || !id_ptr) {
-		return DNSSEC_EINVAL;
+		return KNOT_EINVAL;
 	}
 
 	return store->functions->import_key(store->ctx, pem, id_ptr);
@@ -127,7 +127,7 @@ _public_
 int dnssec_keystore_remove(dnssec_keystore_t *store, const char *id)
 {
 	if (!store || !id) {
-		return DNSSEC_EINVAL;
+		return KNOT_EINVAL;
 	}
 
 	return store->functions->remove_key(store->ctx, id);
@@ -138,7 +138,7 @@ int dnssec_keystore_get_private(dnssec_keystore_t *store, const char *id,
 				dnssec_key_t *key)
 {
 	if (!store || !id || dnssec_key_get_algorithm(key) == 0 || !key) {
-		return DNSSEC_EINVAL;
+		return KNOT_EINVAL;
 	}
 
 	if (key->private_key) {
@@ -164,7 +164,7 @@ _public_
 int dnssec_keystore_set_private(dnssec_keystore_t *store, dnssec_key_t *key)
 {
 	if (!store || !key) {
-		return DNSSEC_EINVAL;
+		return KNOT_EINVAL;
 	}
 
 	if (!key->private_key) {

@@ -41,7 +41,7 @@ static int str_to_salt(const char *str, dnssec_binary_t *salt)
 		return KNOT_EOK;
 	} else {
 		salt->data = hex_to_bin(str, &salt->size);
-		return (salt->data != NULL ? KNOT_EOK : DNSSEC_EINVAL);
+		return (salt->data != NULL ? KNOT_EOK : KNOT_EINVAL);
 	}
 }
 

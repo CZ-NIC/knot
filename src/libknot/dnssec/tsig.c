@@ -150,7 +150,7 @@ int dnssec_tsig_new(dnssec_tsig_ctx_t **ctx_ptr,
 		    const dnssec_binary_t *key)
 {
 	if (!ctx_ptr || !key) {
-		return DNSSEC_EINVAL;
+		return KNOT_EINVAL;
 	}
 
 	dnssec_tsig_ctx_t *ctx = calloc(1, sizeof(*ctx));
@@ -190,7 +190,7 @@ _public_
 int dnssec_tsig_add(dnssec_tsig_ctx_t *ctx, const dnssec_binary_t *data)
 {
 	if (!ctx || !data) {
-		return DNSSEC_EINVAL;
+		return KNOT_EINVAL;
 	}
 
 	int result = gnutls_hmac(ctx->hash, data->data, data->size);
@@ -222,7 +222,7 @@ _public_
 int dnssec_tsig_write(dnssec_tsig_ctx_t *ctx, uint8_t *mac)
 {
 	if (!ctx || !mac) {
-		return DNSSEC_EINVAL;
+		return KNOT_EINVAL;
 	}
 
 	gnutls_hmac_output(ctx->hash, mac);

@@ -21,7 +21,7 @@ _public_
 int dnssec_key_load_pkcs8(dnssec_key_t *key, const dnssec_binary_t *pem)
 {
 	if (!key || !pem || !pem->data) {
-		return DNSSEC_EINVAL;
+		return KNOT_EINVAL;
 	}
 
 	if (dnssec_key_get_algorithm(key) == 0) {

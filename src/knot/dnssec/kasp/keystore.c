@@ -33,7 +33,7 @@ static char *fix_path(const char *config, const char *base_path)
 int keystore_load(const char *config, unsigned backend,
                   const char *kasp_base_path, dnssec_keystore_t **keystore)
 {
-	int ret = DNSSEC_EINVAL;
+	int ret = KNOT_EINVAL;
 	char *fixed_config = NULL;
 
 	switch (backend) {

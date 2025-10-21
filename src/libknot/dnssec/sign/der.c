@@ -126,7 +126,7 @@ int dss_sig_value_decode(const dnssec_binary_t *der,
 			 dnssec_binary_t *r, dnssec_binary_t *s)
 {
 	if (!der || !der->data || !r || !s) {
-		return DNSSEC_EINVAL;
+		return KNOT_EINVAL;
 	}
 
 	wire_ctx_t wire = binary_init(der);
@@ -180,7 +180,7 @@ int dss_sig_value_encode(const dnssec_binary_t *r, const dnssec_binary_t *s,
 			 dnssec_binary_t *der)
 {
 	if (!r || !r->data || !s || !s->data || !der) {
-		return DNSSEC_EINVAL;
+		return KNOT_EINVAL;
 	}
 
 	size_t r_size = bignum_size_s(r);

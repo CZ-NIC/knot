@@ -104,7 +104,7 @@ static int key_open_write(const char *dir_name, const char *id, int *fd_ptr)
 static int pkcs8_dir_read(pkcs8_dir_handle_t *handle, const char *id, dnssec_binary_t *pem)
 {
 	if (!handle || !id || !pem) {
-		return DNSSEC_EINVAL;
+		return KNOT_EINVAL;
 	}
 
 	// open file and get it's size
@@ -212,7 +212,7 @@ static int pem_generate(gnutls_pk_algorithm_t algorithm, unsigned bits,
 static int pkcs8_ctx_new(void **ctx_ptr)
 {
 	if (!ctx_ptr) {
-		return DNSSEC_EINVAL;
+		return KNOT_EINVAL;
 	}
 
 	pkcs8_dir_handle_t *ctx = calloc(1, sizeof(*ctx));
@@ -233,7 +233,7 @@ static void pkcs8_ctx_free(void *ctx)
 static int pkcs8_init(void *ctx, const char *config)
 {
 	if (!ctx || !config) {
-		return DNSSEC_EINVAL;
+		return KNOT_EINVAL;
 	}
 
 	return make_dir(config, DIR_INIT_MODE, true);
@@ -242,7 +242,7 @@ static int pkcs8_init(void *ctx, const char *config)
 static int pkcs8_open(void *ctx, const char *config)
 {
 	if (!ctx || !config) {
-		return DNSSEC_EINVAL;
+		return KNOT_EINVAL;
 	}
 
 	pkcs8_dir_handle_t *handle = ctx;
@@ -260,7 +260,7 @@ static int pkcs8_open(void *ctx, const char *config)
 static int pkcs8_close(void *ctx)
 {
 	if (!ctx) {
-		return DNSSEC_EINVAL;
+		return KNOT_EINVAL;
 	}
 
 	pkcs8_dir_handle_t *handle = ctx;
@@ -275,7 +275,7 @@ static int pkcs8_generate_key(void *ctx, gnutls_pk_algorithm_t algorithm,
 			      unsigned bits, const char *label, char **id_ptr)
 {
 	if (!ctx || !id_ptr) {
-		return DNSSEC_EINVAL;
+		return KNOT_EINVAL;
 	}
 
 	(void)label;
@@ -321,7 +321,7 @@ static int pkcs8_generate_key(void *ctx, gnutls_pk_algorithm_t algorithm,
 static int pkcs8_import_key(void *ctx, const dnssec_binary_t *pem, char **id_ptr)
 {
 	if (!ctx || !pem || !id_ptr) {
-		return DNSSEC_EINVAL;
+		return KNOT_EINVAL;
 	}
 
 	pkcs8_dir_handle_t *handle = ctx;
@@ -373,7 +373,7 @@ static int pkcs8_import_key(void *ctx, const dnssec_binary_t *pem, char **id_ptr
 static int pkcs8_remove_key(void *ctx, const char *id)
 {
 	if (!ctx || !id) {
-		return DNSSEC_EINVAL;
+		return KNOT_EINVAL;
 	}
 
 	pkcs8_dir_handle_t *handle = ctx;
@@ -393,7 +393,7 @@ static int pkcs8_remove_key(void *ctx, const char *id)
 static int pkcs8_get_private(void *ctx, const char *id, gnutls_privkey_t *key_ptr)
 {
 	if (!ctx || !id || !key_ptr) {
-		return DNSSEC_EINVAL;
+		return KNOT_EINVAL;
 	}
 
 	pkcs8_dir_handle_t *handle = ctx;
@@ -450,7 +450,7 @@ static int pkcs8_get_private(void *ctx, const char *id, gnutls_privkey_t *key_pt
 static int pkcs8_set_private(void *ctx, gnutls_privkey_t key)
 {
 	if (!ctx) {
-		return DNSSEC_EINVAL;
+		return KNOT_EINVAL;
 	}
 
 	_cleanup_binary_ dnssec_binary_t pem = { 0 };

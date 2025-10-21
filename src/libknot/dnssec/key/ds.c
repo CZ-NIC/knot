@@ -61,7 +61,7 @@ int dnssec_key_create_ds(const dnssec_key_t *key,
 			 dnssec_binary_t *rdata_ptr)
 {
 	if (!key || !rdata_ptr) {
-		return DNSSEC_EINVAL;
+		return KNOT_EINVAL;
 	}
 
 	if (!key->dname) {

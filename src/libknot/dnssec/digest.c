@@ -29,7 +29,7 @@ _public_
 int dnssec_digest_init(dnssec_digest_t algorithm, dnssec_digest_ctx_t **out_ctx)
 {
 	if (out_ctx == NULL) {
-		return DNSSEC_EINVAL;
+		return KNOT_EINVAL;
 	}
 
 	gnutls_digest_algorithm_t gtalg = lookup_algorithm(algorithm);
@@ -62,7 +62,7 @@ _public_
 int dnssec_digest(dnssec_digest_ctx_t *ctx, dnssec_binary_t *data)
 {
 	if (ctx == NULL || data == NULL) {
-		return DNSSEC_EINVAL;
+		return KNOT_EINVAL;
 	}
 
 	int r = gnutls_hash(ctx->gtctx, data->data, data->size);
@@ -77,7 +77,7 @@ _public_
 int dnssec_digest_finish(dnssec_digest_ctx_t *ctx, dnssec_binary_t *out)
 {
 	if (ctx == NULL || out == NULL) {
-		return DNSSEC_EINVAL;
+		return KNOT_EINVAL;
 	}
 
 	int r = dnssec_binary_resize(out, ctx->size);

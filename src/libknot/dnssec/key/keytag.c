@@ -59,7 +59,7 @@ _public_
 int dnssec_keytag(const dnssec_binary_t *rdata, uint16_t *keytag)
 {
 	if (!rdata || !keytag) {
-		return DNSSEC_EINVAL;
+		return KNOT_EINVAL;
 	}
 
 	if (!rdata->data || rdata->size < DNSKEY_RDATA_OFFSET_PUBKEY) {

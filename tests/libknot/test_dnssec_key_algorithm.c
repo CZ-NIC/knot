@@ -25,7 +25,7 @@ static void null_range(void)
 	int r;
 
 	r = dnssec_algorithm_key_size_range(algo, NULL, NULL);
-	ok(r == DNSSEC_EINVAL, "dnssec_algorithm_key_size_range() all null");
+	ok(r == KNOT_EINVAL, "dnssec_algorithm_key_size_range() all null");
 	r = dnssec_algorithm_key_size_range(algo, &val, NULL);
 	ok(r == KNOT_EOK && val == 1024, "dnssec_algorithm_key_size_range() min only");
 	r = dnssec_algorithm_key_size_range(algo, NULL, &val);

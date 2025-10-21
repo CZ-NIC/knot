@@ -43,7 +43,7 @@ _public_
 int dnssec_key_new(dnssec_key_t **key_ptr)
 {
 	if (!key_ptr) {
-		return DNSSEC_EINVAL;
+		return KNOT_EINVAL;
 	}
 
 	dnssec_key_t *key = calloc(1, sizeof(*key));
@@ -172,7 +172,7 @@ _public_
 int dnssec_key_set_dname(dnssec_key_t *key, const uint8_t *dname)
 {
 	if (!key) {
-		return DNSSEC_EINVAL;
+		return KNOT_EINVAL;
 	}
 
 	uint8_t *copy = NULL;
@@ -207,7 +207,7 @@ _public_
 int dnssec_key_set_flags(dnssec_key_t *key, uint16_t flags)
 {
 	if (!key) {
-		return DNSSEC_EINVAL;
+		return KNOT_EINVAL;
 	}
 
 	wire_ctx_t wire = binary_init(&key->rdata);
@@ -233,7 +233,7 @@ _public_
 int dnssec_key_set_protocol(dnssec_key_t *key, uint8_t protocol)
 {
 	if (!key) {
-		return DNSSEC_EINVAL;
+		return KNOT_EINVAL;
 	}
 
 	wire_ctx_t wire = binary_init(&key->rdata);
@@ -294,7 +294,7 @@ _public_
 int dnssec_key_set_algorithm(dnssec_key_t *key, uint8_t algorithm)
 {
 	if (!key) {
-		return DNSSEC_EINVAL;
+		return KNOT_EINVAL;
 	}
 
 	if (!can_change_algorithm(key, algorithm)) {
@@ -312,7 +312,7 @@ _public_
 int dnssec_key_get_pubkey(const dnssec_key_t *key, dnssec_binary_t *pubkey)
 {
 	if (!key || !pubkey) {
-		return DNSSEC_EINVAL;
+		return KNOT_EINVAL;
 	}
 
 	wire_ctx_t wire = binary_init(&key->rdata);
@@ -326,7 +326,7 @@ _public_
 int dnssec_key_set_pubkey(dnssec_key_t *key, const dnssec_binary_t *pubkey)
 {
 	if (!key || !pubkey || !pubkey->data) {
-		return DNSSEC_EINVAL;
+		return KNOT_EINVAL;
 	}
 
 	if (key->public_key) {
@@ -384,7 +384,7 @@ _public_
 int dnssec_key_get_keyid(const dnssec_key_t *key, char **id)
 {
 	if (!key || !id) {
-		return DNSSEC_EINVAL;
+		return KNOT_EINVAL;
 	}
 
 	return keyid_pubkey_hex(key->public_key, id);
@@ -394,7 +394,7 @@ _public_
 int dnssec_key_get_rdata(const dnssec_key_t *key, dnssec_binary_t *rdata)
 {
 	if (!key || !rdata) {
-		return DNSSEC_EINVAL;
+		return KNOT_EINVAL;
 	}
 
 	*rdata = key->rdata;
@@ -406,7 +406,7 @@ _public_
 int dnssec_key_set_rdata(dnssec_key_t *key, const dnssec_binary_t *rdata)
 {
 	if (!key || !rdata || !rdata->data) {
-		return DNSSEC_EINVAL;
+		return KNOT_EINVAL;
 	}
 
 	if (rdata->size < DNSKEY_RDATA_MIN_SIZE) {

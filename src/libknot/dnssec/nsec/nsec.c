@@ -34,7 +34,7 @@ int dnssec_nsec3_params_from_rdata(dnssec_nsec3_params_t *params,
                                    const dnssec_binary_t *rdata)
 {
 	if (!params || !rdata || !rdata->data) {
-		return DNSSEC_EINVAL;
+		return KNOT_EINVAL;
 	}
 
 	dnssec_nsec3_params_t new_params = { 0 };

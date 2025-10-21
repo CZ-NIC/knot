@@ -17,7 +17,7 @@ _public_
 int dnssec_binary_alloc(dnssec_binary_t *data, size_t size)
 {
 	if (!data || size == 0) {
-		return DNSSEC_EINVAL;
+		return KNOT_EINVAL;
 	}
 
 	uint8_t *new_data = calloc(1, size);
@@ -46,7 +46,7 @@ _public_
 int dnssec_binary_dup(const dnssec_binary_t *from, dnssec_binary_t *to)
 {
 	if (!from || !to) {
-		return DNSSEC_EINVAL;
+		return KNOT_EINVAL;
 	}
 
 	uint8_t *copy = malloc(from->size);
@@ -66,7 +66,7 @@ _public_
 int dnssec_binary_resize(dnssec_binary_t *data, size_t new_size)
 {
 	if (!data) {
-		return DNSSEC_EINVAL;
+		return KNOT_EINVAL;
 	}
 
 	uint8_t *new_data = realloc(data->data, new_size);
@@ -116,13 +116,13 @@ int dnssec_binary_from_base64(const dnssec_binary_t *base64,
 			      dnssec_binary_t *binary)
 {
 	if (!base64 || !binary) {
-		return DNSSEC_EINVAL;
+		return KNOT_EINVAL;
 	}
 
 	uint8_t *data;
 	int32_t size = knot_base64_decode_alloc(base64->data, base64->size, &data);
 	if (size < 0) {
-		return DNSSEC_EINVAL;
+		return KNOT_EINVAL;
 	}
 
 	binary->data = data;
@@ -136,13 +136,13 @@ int dnssec_binary_to_base64(const dnssec_binary_t *binary,
 			    dnssec_binary_t *base64)
 {
 	if (!binary || !base64) {
-		return DNSSEC_EINVAL;
+		return KNOT_EINVAL;
 	}
 
 	uint8_t *data;
 	int32_t size = knot_base64_encode_alloc(binary->data, binary->size, &data);
 	if (size < 0) {
-		return DNSSEC_EINVAL;
+		return KNOT_EINVAL;
 	}
 
 	base64->data = data;

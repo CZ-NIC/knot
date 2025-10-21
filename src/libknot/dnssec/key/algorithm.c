@@ -117,7 +117,7 @@ int dnssec_algorithm_key_size_range(dnssec_key_algorithm_t algorithm,
 				    unsigned *min_ptr, unsigned *max_ptr)
 {
 	if (!min_ptr && !max_ptr) {
-		return DNSSEC_EINVAL;
+		return KNOT_EINVAL;
 	}
 
 	const struct limits *limits = get_limits(algorithm);

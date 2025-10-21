@@ -19,7 +19,7 @@ _public_
 int dnssec_random_buffer(uint8_t *data, size_t size)
 {
 	if (!data) {
-		return DNSSEC_EINVAL;
+		return KNOT_EINVAL;
 	}
 
 	int result = gnutls_rnd(GNUTLS_RND_RANDOM, data, size);
@@ -35,7 +35,7 @@ _public_
 int dnssec_random_binary(dnssec_binary_t *binary)
 {
 	if (!binary) {
-		return DNSSEC_EINVAL;
+		return KNOT_EINVAL;
 	}
 
 	return dnssec_random_buffer(binary->data, binary->size);

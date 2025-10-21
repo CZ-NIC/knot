@@ -229,7 +229,7 @@ _public_
 int dnssec_sign_new(dnssec_sign_ctx_t **ctx_ptr, const dnssec_key_t *key)
 {
 	if (!ctx_ptr) {
-		return DNSSEC_EINVAL;
+		return KNOT_EINVAL;
 	}
 
 	dnssec_sign_ctx_t *ctx = calloc(1, sizeof(*ctx));
@@ -271,7 +271,7 @@ _public_
 int dnssec_sign_init(dnssec_sign_ctx_t *ctx)
 {
 	if (!ctx) {
-		return DNSSEC_EINVAL;
+		return KNOT_EINVAL;
 	}
 
 	if (vpool_get_buf(&ctx->buffer) != NULL) {
@@ -287,7 +287,7 @@ _public_
 int dnssec_sign_add(dnssec_sign_ctx_t *ctx, const dnssec_binary_t *data)
 {
 	if (!ctx || !data || !data->data) {
-		return DNSSEC_EINVAL;
+		return KNOT_EINVAL;
 	}
 
 	void *result = vpool_insert(&ctx->buffer, vpool_get_length(&ctx->buffer), data->data, data->size);
@@ -302,7 +302,7 @@ _public_
 int dnssec_sign_write(dnssec_sign_ctx_t *ctx, dnssec_sign_flags_t flags, dnssec_binary_t *signature)
 {
 	if (!ctx || !signature) {
-		return DNSSEC_EINVAL;
+		return KNOT_EINVAL;
 	}
 
 	if (!dnssec_key_can_sign(ctx->key)) {
@@ -337,7 +337,7 @@ _public_
 int dnssec_sign_verify(dnssec_sign_ctx_t *ctx, bool sign_cmp, const dnssec_binary_t *signature)
 {
 	if (!ctx || !signature) {
-		return DNSSEC_EINVAL;
+		return KNOT_EINVAL;
 	}
 
 	if (sign_cmp && dnssec_key_can_sign(ctx->key)) {
