@@ -39,7 +39,7 @@ int dnssec_digest_init(dnssec_digest_t algorithm, dnssec_digest_ctx_t **out_ctx)
 
 	dnssec_digest_ctx_t *res = malloc(sizeof(*res));
 	if (res == NULL) {
-		return DNSSEC_ENOMEM;
+		return KNOT_ENOMEM;
 	}
 
 	res->size = gnutls_hash_get_len(gtalg);

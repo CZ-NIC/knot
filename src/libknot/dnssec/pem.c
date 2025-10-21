@@ -26,7 +26,7 @@ int dnssec_pem_to_x509(const dnssec_binary_t *pem, gnutls_x509_privkey_t *key)
 	gnutls_x509_privkey_t _key = NULL;
 	int r = gnutls_x509_privkey_init(&_key);
 	if (r != GNUTLS_E_SUCCESS) {
-		return DNSSEC_ENOMEM;
+		return KNOT_ENOMEM;
 	}
 
 	int format = GNUTLS_X509_FMT_PEM;
@@ -60,7 +60,7 @@ int dnssec_pem_to_privkey(const dnssec_binary_t *pem, gnutls_privkey_t *key)
 	r = gnutls_privkey_init(&key_abs);
 	if (r != GNUTLS_E_SUCCESS) {
 		gnutls_x509_privkey_deinit(key_x509);
-		return DNSSEC_ENOMEM;
+		return KNOT_ENOMEM;
 	}
 
 	int flags = GNUTLS_PRIVKEY_IMPORT_AUTO_RELEASE;
@@ -68,7 +68,7 @@ int dnssec_pem_to_privkey(const dnssec_binary_t *pem, gnutls_privkey_t *key)
 	if (r != GNUTLS_E_SUCCESS) {
 		gnutls_x509_privkey_deinit(key_x509);
 		gnutls_privkey_deinit(key_abs);
-		return DNSSEC_ENOMEM;
+		return KNOT_ENOMEM;
 	}
 
 	*key = key_abs;

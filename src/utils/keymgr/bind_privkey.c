@@ -246,7 +246,7 @@ static int rsa_params_to_pem(const bind_privkey_t *params, dnssec_binary_t *pem)
 	_cleanup_x509_privkey_ gnutls_x509_privkey_t key = NULL;
 	int result = gnutls_x509_privkey_init(&key);
 	if (result != GNUTLS_E_SUCCESS) {
-		return DNSSEC_ENOMEM;
+		return KNOT_ENOMEM;
 	}
 
 	gnutls_datum_t m = binary_to_datum(&params->modulus);
@@ -301,7 +301,7 @@ static int ecdsa_params_to_pem(dnssec_key_t *dnskey, const bind_privkey_t *param
 	_cleanup_x509_privkey_ gnutls_x509_privkey_t key = NULL;
 	int result = gnutls_x509_privkey_init(&key);
 	if (result != GNUTLS_E_SUCCESS) {
-		return DNSSEC_ENOMEM;
+		return KNOT_ENOMEM;
 	}
 
 	gnutls_ecc_curve_t curve = 0;
@@ -339,7 +339,7 @@ static int eddsa_params_to_pem(dnssec_key_t *dnskey, const bind_privkey_t *param
 	_cleanup_x509_privkey_ gnutls_x509_privkey_t key = NULL;
 	int result = gnutls_x509_privkey_init(&key);
 	if (result != GNUTLS_E_SUCCESS) {
-		return DNSSEC_ENOMEM;
+		return KNOT_ENOMEM;
 	}
 
 	gnutls_ecc_curve_t curve = 0;

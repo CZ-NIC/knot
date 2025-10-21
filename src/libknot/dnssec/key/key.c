@@ -48,13 +48,13 @@ int dnssec_key_new(dnssec_key_t **key_ptr)
 
 	dnssec_key_t *key = calloc(1, sizeof(*key));
 	if (!key) {
-		return DNSSEC_ENOMEM;
+		return KNOT_ENOMEM;
 	}
 
 	int r = dnssec_binary_dup(&DNSKEY_RDATA_TEMPLATE, &key->rdata);
 	if (r != KNOT_EOK) {
 		free(key);
-		return DNSSEC_ENOMEM;
+		return KNOT_ENOMEM;
 	}
 
 	*key_ptr = key;
@@ -179,7 +179,7 @@ int dnssec_key_set_dname(dnssec_key_t *key, const uint8_t *dname)
 	if (dname) {
 		copy = knot_dname_copy(dname, NULL);
 		if (!copy) {
-			return DNSSEC_ENOMEM;
+			return KNOT_ENOMEM;
 		}
 
 		knot_dname_to_lower(copy);

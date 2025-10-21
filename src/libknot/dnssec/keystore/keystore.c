@@ -27,7 +27,7 @@ int keystore_create(dnssec_keystore_t **store_ptr,
 
 	dnssec_keystore_t *store = calloc(1, sizeof(*store));
 	if (!store) {
-		return DNSSEC_ENOMEM;
+		return KNOT_ENOMEM;
 	}
 
 	store->functions = functions;
@@ -35,7 +35,7 @@ int keystore_create(dnssec_keystore_t **store_ptr,
 	int result = functions->ctx_new(&store->ctx);
 	if (result != KNOT_EOK) {
 		free(store);
-		return DNSSEC_ENOMEM;
+		return KNOT_ENOMEM;
 	}
 
 	*store_ptr = store;

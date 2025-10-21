@@ -61,7 +61,7 @@ static int keyid_hex(gnutls_x509_privkey_t key, gnutls_pubkey_t pubkey, char **i
 
 	*id = bin_to_hex(bin.data, bin.size, false);
 	if (*id == NULL) {
-		return DNSSEC_ENOMEM;
+		return KNOT_ENOMEM;
 	}
 
 	return KNOT_EOK;

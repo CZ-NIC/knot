@@ -48,13 +48,13 @@ static int key_url(const char *token_uri, const char *key_id, char **url_ptr)
 	size_t len = token_len + 4 + (id_len / 2 * 3);
 	char *url = malloc(len + 1);
 	if (!url) {
-		return DNSSEC_ENOMEM;
+		return KNOT_ENOMEM;
 	}
 
 	size_t prefix = snprintf(url, len, "%s;id=", token_uri);
 	if (prefix != token_len + 4) {
 		free(url);
-		return DNSSEC_ENOMEM;
+		return KNOT_ENOMEM;
 	}
 
 	assert(id_len % 2 == 0);
@@ -87,7 +87,7 @@ static int parse_config(const char *config, char **uri_ptr, char **module_ptr)
 	if (!url || !module) {
 		free(url);
 		free(module);
-		return DNSSEC_ENOMEM;
+		return KNOT_ENOMEM;
 	}
 
 	*uri_ptr = url;
@@ -143,7 +143,7 @@ static int pkcs11_ctx_new(void **ctx_ptr)
 
 	pkcs11_ctx_t *ctx = calloc(1, sizeof(*ctx));
 	if (!ctx) {
-		return DNSSEC_ENOMEM;
+		return KNOT_ENOMEM;
 	}
 
 	*ctx_ptr = ctx;
@@ -205,7 +205,7 @@ static int pkcs11_generate_key(void *_ctx, gnutls_pk_algorithm_t algorithm,
 
 	char *id = bin_to_hex(cka_id.data, cka_id.size, false);
 	if (id == NULL) {
-		return DNSSEC_ENOMEM;
+		return KNOT_ENOMEM;
 	}
 
 	*id_ptr = id;
@@ -229,7 +229,7 @@ static int import_pem(const dnssec_binary_t *pem,
 	if (gnutls_privkey_init(&key) != GNUTLS_E_SUCCESS ||
 	    gnutls_pubkey_init(&pubkey) != GNUTLS_E_SUCCESS
 	) {
-		r = DNSSEC_ENOMEM;
+		r = KNOT_ENOMEM;
 		goto fail;
 	}
 
@@ -288,7 +288,7 @@ static int pkcs11_import_key(void *_ctx, const dnssec_binary_t *pem, char **id_p
 
 	*id_ptr = bin_to_hex(id.data, id.size, false);
 	if (*id_ptr == NULL) {
-		return DNSSEC_ENOMEM;
+		return KNOT_ENOMEM;
 	}
 
 	return KNOT_EOK;
@@ -327,7 +327,7 @@ static int pkcs11_get_private(void *_ctx, const char *id, gnutls_privkey_t *key_
 	gnutls_privkey_t key = NULL;
 	r = gnutls_privkey_init(&key);
 	if (r != GNUTLS_E_SUCCESS) {
-		return DNSSEC_ENOMEM;
+		return KNOT_ENOMEM;
 	}
 
 	r = gnutls_privkey_import_pkcs11_url(key, url);

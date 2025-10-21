@@ -203,7 +203,7 @@ int dss_sig_value_encode(const dnssec_binary_t *r, const dnssec_binary_t *s,
 
 	dnssec_binary_t _der = { 0 };
 	if (dnssec_binary_alloc(&_der, total_size)) {
-		return DNSSEC_ENOMEM;
+		return KNOT_ENOMEM;
 	}
 
 	wire_ctx_t wire = binary_init(&_der);

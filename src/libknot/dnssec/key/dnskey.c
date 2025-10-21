@@ -65,7 +65,7 @@ int dnskey_rdata_to_crypto_key(const dnssec_binary_t *rdata, gnutls_pubkey_t *ke
 	gnutls_pubkey_t key = NULL;
 	int result = gnutls_pubkey_init(&key);
 	if (result != GNUTLS_E_SUCCESS) {
-		return DNSSEC_ENOMEM;
+		return KNOT_ENOMEM;
 	}
 
 	result = convert_dnskey_to_pubkey(algorithm, &rdata_pubkey, key);

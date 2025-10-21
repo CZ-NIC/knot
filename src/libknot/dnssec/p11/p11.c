@@ -50,7 +50,7 @@ int p11_load_module(const char *module)
 
 	char *copy = strdup(module);
 	if (!copy) {
-		return DNSSEC_ENOMEM;
+		return KNOT_ENOMEM;
 	}
 
 	int r = gnutls_pkcs11_add_provider(module, NULL);

@@ -77,7 +77,7 @@ static int key_open(const char *dir_name, const char *id, int flags,
 
 	_cleanup_free_ char *filename = key_path(dir_name, id);
 	if (!filename) {
-		return DNSSEC_ENOMEM;
+		return KNOT_ENOMEM;
 	}
 
 	int fd = open(filename, flags, mode);
@@ -176,7 +176,7 @@ static int pem_generate(gnutls_pk_algorithm_t algorithm, unsigned bits,
 	_cleanup_x509_privkey_ gnutls_x509_privkey_t key = NULL;
 	int r = gnutls_x509_privkey_init(&key);
 	if (r != GNUTLS_E_SUCCESS) {
-		return DNSSEC_ENOMEM;
+		return KNOT_ENOMEM;
 	}
 
 	r = gnutls_x509_privkey_generate(key, algorithm, bits, 0);
@@ -217,7 +217,7 @@ static int pkcs8_ctx_new(void **ctx_ptr)
 
 	pkcs8_dir_handle_t *ctx = calloc(1, sizeof(*ctx));
 	if (!ctx) {
-		return DNSSEC_ENOMEM;
+		return KNOT_ENOMEM;
 	}
 
 	*ctx_ptr = ctx;
@@ -380,7 +380,7 @@ static int pkcs8_remove_key(void *ctx, const char *id)
 
 	_cleanup_free_ char *filename = key_path(handle->dir_name, id);
 	if (!filename) {
-		return DNSSEC_ENOMEM;
+		return KNOT_ENOMEM;
 	}
 
 	if (unlink(filename) == -1) {

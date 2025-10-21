@@ -22,7 +22,7 @@ int dnssec_binary_alloc(dnssec_binary_t *data, size_t size)
 
 	uint8_t *new_data = calloc(1, size);
 	if (!new_data) {
-		return DNSSEC_ENOMEM;
+		return KNOT_ENOMEM;
 	}
 
 	data->data = new_data;
@@ -51,7 +51,7 @@ int dnssec_binary_dup(const dnssec_binary_t *from, dnssec_binary_t *to)
 
 	uint8_t *copy = malloc(from->size);
 	if (copy == NULL) {
-		return DNSSEC_ENOMEM;
+		return KNOT_ENOMEM;
 	}
 
 	memmove(copy, from->data, from->size);
@@ -71,7 +71,7 @@ int dnssec_binary_resize(dnssec_binary_t *data, size_t new_size)
 
 	uint8_t *new_data = realloc(data->data, new_size);
 	if (new_size > 0 && new_data == NULL) {
-		return DNSSEC_ENOMEM;
+		return KNOT_ENOMEM;
 	}
 
 	data->data = new_data;

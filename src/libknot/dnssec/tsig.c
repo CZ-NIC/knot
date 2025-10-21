@@ -155,7 +155,7 @@ int dnssec_tsig_new(dnssec_tsig_ctx_t **ctx_ptr,
 
 	dnssec_tsig_ctx_t *ctx = calloc(1, sizeof(*ctx));
 	if (!ctx) {
-		return DNSSEC_ENOMEM;
+		return KNOT_ENOMEM;
 	}
 
 	ctx->algorithm = algorithm_to_gnutls(algorithm);
