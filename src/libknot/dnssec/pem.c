@@ -98,7 +98,7 @@ int dnssec_pem_from_x509(gnutls_x509_privkey_t key, dnssec_binary_t *pem)
 	dnssec_binary_t _pem = { 0 };
 	int r = try_export_pem(key, &_pem);
 	if (r != GNUTLS_E_SHORT_MEMORY_BUFFER || _pem.size == 0) {
-		return DNSSEC_KEY_EXPORT_ERROR;
+		return KNOT_KEY_EEXPORT;
 	}
 
 	r = dnssec_binary_alloc(&_pem, _pem.size);
@@ -109,7 +109,7 @@ int dnssec_pem_from_x509(gnutls_x509_privkey_t key, dnssec_binary_t *pem)
 	r = try_export_pem(key, &_pem);
 	if (r != GNUTLS_E_SUCCESS) {
 		dnssec_binary_free(&_pem);
-		return DNSSEC_KEY_EXPORT_ERROR;
+		return KNOT_KEY_EEXPORT;
 	}
 
 	*pem = _pem;
@@ -120,7 +120,7 @@ int dnssec_pem_from_x509(gnutls_x509_privkey_t key, dnssec_binary_t *pem)
 static int privkey_export_x509(gnutls_privkey_t key, gnutls_x509_privkey_t *_key)
 {
 	if (gnutls_privkey_export_x509(key, _key) != GNUTLS_E_SUCCESS) {
-		return DNSSEC_KEY_EXPORT_ERROR;
+		return KNOT_KEY_EEXPORT;
 	}
 
 	return KNOT_EOK;

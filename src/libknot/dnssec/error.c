@@ -26,7 +26,7 @@ static const error_message_t ERROR_MESSAGES[] = {
 	{ KNOT_ENOENT,		"not found" },
 
 	{ KNOT_KEY_EIMPORT,	"PKCS #8 import error" },
-	{ DNSSEC_KEY_EXPORT_ERROR,	"key export error" },
+	{ KNOT_KEY_EEXPORT,	"key export error" },
 	{ KNOT_KEY_EIMPORT,	"key import error" },
 	{ DNSSEC_KEY_GENERATE_ERROR,	"key generation error" },
 

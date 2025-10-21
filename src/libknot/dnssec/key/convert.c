@@ -57,12 +57,12 @@ static int rsa_pubkey_to_rdata(gnutls_pubkey_t key, dnssec_binary_t *rdata)
 
 	int result = gnutls_pubkey_get_pk_rsa_raw(key, &modulus, &exponent);
 	if (result != GNUTLS_E_SUCCESS) {
-		return DNSSEC_KEY_EXPORT_ERROR;
+		return KNOT_KEY_EEXPORT;
 	}
 
 	size_t exponent_size = bignum_size_u_datum(&exponent);
 	if (exponent_size > UINT8_MAX) {
-		return DNSSEC_KEY_EXPORT_ERROR;
+		return KNOT_KEY_EEXPORT;
 	}
 
 	size_t modulus_size = bignum_size_u_datum(&modulus);
@@ -118,7 +118,7 @@ static int ecdsa_pubkey_to_rdata(gnutls_pubkey_t key, dnssec_binary_t *rdata)
 
 	int result = gnutls_pubkey_get_pk_ecc_raw(key, &curve, &point_x, &point_y);
 	if (result != GNUTLS_E_SUCCESS) {
-		return DNSSEC_KEY_EXPORT_ERROR;
+		return KNOT_KEY_EEXPORT;
 	}
 
 	size_t point_size = ecdsa_curve_point_size(curve);
@@ -152,7 +152,7 @@ static int eddsa_pubkey_to_rdata(gnutls_pubkey_t key, dnssec_binary_t *rdata)
 
 	int result = gnutls_pubkey_get_pk_ecc_raw(key, &curve, &point_x, NULL);
 	if (result != GNUTLS_E_SUCCESS) {
-		return DNSSEC_KEY_EXPORT_ERROR;
+		return KNOT_KEY_EEXPORT;
 	}
 
 	size_t point_size = eddsa_curve_point_size(curve);
