@@ -330,7 +330,7 @@ int dnssec_key_set_pubkey(dnssec_key_t *key, const dnssec_binary_t *pubkey)
 	}
 
 	if (key->public_key) {
-		return DNSSEC_KEY_ALREADY_PRESENT;
+		return KNOT_EEXIST;
 	}
 
 	if (dnssec_key_get_algorithm(key) == 0) {
@@ -414,7 +414,7 @@ int dnssec_key_set_rdata(dnssec_key_t *key, const dnssec_binary_t *rdata)
 	}
 
 	if (key->public_key) {
-		return DNSSEC_KEY_ALREADY_PRESENT;
+		return KNOT_EEXIST;
 	}
 
 	gnutls_pubkey_t new_pubkey = NULL;

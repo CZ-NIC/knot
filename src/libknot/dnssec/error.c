@@ -39,7 +39,7 @@ static const error_message_t ERROR_MESSAGES[] = {
 
 	{ KNOT_NO_PUBLIC_KEY,		"no public key" },
 	{ KNOT_NO_PRIVATE_KEY,	"no private key" },
-	{ DNSSEC_KEY_ALREADY_PRESENT,	"key already present" },
+	{ KNOT_EEXIST,	"key already present" },
 
 	{ DNSSEC_SIGN_INIT_ERROR,	"signing initialization error" },
 	{ DNSSEC_SIGN_ERROR,		"signing error" },

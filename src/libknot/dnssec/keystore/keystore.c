@@ -142,7 +142,7 @@ int dnssec_keystore_get_private(dnssec_keystore_t *store, const char *id,
 	}
 
 	if (key->private_key) {
-		return DNSSEC_KEY_ALREADY_PRESENT;
+		return KNOT_EEXIST;
 	}
 
 	gnutls_privkey_t privkey = NULL;

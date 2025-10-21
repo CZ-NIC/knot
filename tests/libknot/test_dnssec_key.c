@@ -61,7 +61,7 @@ static void test_public_key(const key_parameters_t *params)
 	ok(r == KNOT_EOK, "set public key (succeeds)");
 
 	r = dnssec_key_set_pubkey(key, &params->public_key);
-	ok(r == DNSSEC_KEY_ALREADY_PRESENT,
+	ok(r == KNOT_EEXIST,
 	   "set public key (fails, already present)");
 
 	dnssec_binary_t rdata = { 0 };

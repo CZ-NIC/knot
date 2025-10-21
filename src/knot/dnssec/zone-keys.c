@@ -522,7 +522,7 @@ static int load_private_keys(kdnssec_ctx_t *ctx, zone_keyset_t *keyset)
 		int ret = kdnssec_load_private(ctx->keystores, key->id, key->key, NULL, NULL);
 		switch (ret) {
 		case KNOT_EOK:
-		case DNSSEC_KEY_ALREADY_PRESENT:
+		case KNOT_EEXIST:
 			break;
 		default:
 			ret = knot_error_from_libdnssec(ret);
