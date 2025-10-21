@@ -74,8 +74,8 @@ static int compute_digest(const uint8_t *wire, size_t wire_len,
 	}
 
 	dnssec_tsig_ctx_t *ctx = NULL;
-	int result = dnssec_tsig_new(&ctx, key->algorithm, &key->secret);
-	if (result != DNSSEC_EOK) {
+	int ret = dnssec_tsig_new(&ctx, key->algorithm, &key->secret);
+	if (ret != KNOT_EOK) {
 		return KNOT_TSIG_EBADSIG;
 	}
 

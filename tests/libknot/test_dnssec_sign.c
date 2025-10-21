@@ -87,37 +87,37 @@ static void check_key(const key_parameters_t *key_data, const dnssec_binary_t *d
 
 	dnssec_key_t *key = NULL;
 	r = dnssec_key_new(&key);
-	ok(r == DNSSEC_EOK && key != NULL, "create key");
+	ok(r == KNOT_EOK && key != NULL, "create key");
 	r = dnssec_key_set_rdata(key, &key_data->rdata);
-	ok(r == DNSSEC_EOK, "set RDATA");
+	ok(r == KNOT_EOK, "set RDATA");
 
 	// check validation on static signature
 
 	dnssec_sign_ctx_t *ctx = NULL;
 	r = dnssec_sign_new(&ctx, key);
-	ok(r == DNSSEC_EOK, "create signing context");
+	ok(r == KNOT_EOK, "create signing context");
 	r = dnssec_sign_add(ctx, data);
-	ok(r == DNSSEC_EOK, "add data to be signed");
+	ok(r == KNOT_EOK, "add data to be signed");
 	r = dnssec_sign_verify(ctx, false, signature);
-	ok(r == DNSSEC_EOK, "signature verified");
+	ok(r == KNOT_EOK, "signature verified");
 
 	// create new signature and self-validate
 
 	r = dnssec_key_load_pkcs8(key, &key_data->pem);
-	ok(r == DNSSEC_EOK, "load private key");
+	ok(r == KNOT_EOK, "load private key");
 
 	if (signature_match) {
 		r = dnssec_sign_init(ctx);
-		ok(r == DNSSEC_EOK, "reinitialize context");
+		ok(r == KNOT_EOK, "reinitialize context");
 		r = dnssec_sign_add(ctx, data);
-		ok(r == DNSSEC_EOK, "add data to be signed");
+		ok(r == KNOT_EOK, "add data to be signed");
 		dnssec_binary_t new_signature = { 0 };
 		r = dnssec_sign_write(ctx, DNSSEC_SIGN_NORMAL, &new_signature);
-		ok(r == DNSSEC_EOK, "write the signature");
+		ok(r == KNOT_EOK, "write the signature");
 		ok(dnssec_binary_cmp(signature, &new_signature) == 0,
 		   "signature exact match");
 		r = dnssec_sign_verify(ctx, false, &new_signature);
-		ok(r == DNSSEC_EOK, "reverify the new signature");
+		ok(r == KNOT_EOK, "reverify the new signature");
 		dnssec_binary_free(&new_signature);
 	}
 
@@ -126,36 +126,36 @@ static void check_key(const key_parameters_t *key_data, const dnssec_binary_t *d
 	dnssec_binary_t tmp = { 0 };
 
 	r = dnssec_sign_init(ctx);
-	ok(r == DNSSEC_EOK, "reinitialize context");
+	ok(r == KNOT_EOK, "reinitialize context");
 
 	tmp = binary_set_string("bind");
 	r = dnssec_sign_add(ctx, &tmp);
-	ok(r == DNSSEC_EOK, "add data (1)");
+	ok(r == KNOT_EOK, "add data (1)");
 
 	r = dnssec_sign_init(ctx);
-	ok(r == DNSSEC_EOK, "reinitialize context");
+	ok(r == KNOT_EOK, "reinitialize context");
 
 	tmp = binary_set_string("knot");
 	r = dnssec_sign_add(ctx, &tmp);
-	ok(r == DNSSEC_EOK, "add data (2)");
+	ok(r == KNOT_EOK, "add data (2)");
 
 	tmp = binary_set_string(" is the best");
 	r = dnssec_sign_add(ctx, &tmp);
-	ok(r == DNSSEC_EOK, "add data (3)");
+	ok(r == KNOT_EOK, "add data (3)");
 
 	dnssec_binary_t new_signature = { 0 };
 	r = dnssec_sign_write(ctx, DNSSEC_SIGN_NORMAL, &new_signature);
-	ok(r == DNSSEC_EOK, "write signature");
+	ok(r == KNOT_EOK, "write signature");
 
 	r = dnssec_sign_init(ctx);
-	ok(r == DNSSEC_EOK, "reinitialize context");
+	ok(r == KNOT_EOK, "reinitialize context");
 
 	tmp = binary_set_string("knot is the best");
 	r = dnssec_sign_add(ctx, &tmp);
-	ok(r == DNSSEC_EOK, "add data (4)");
+	ok(r == KNOT_EOK, "add data (4)");
 
 	r = dnssec_sign_verify(ctx, false, &new_signature);
-	ok(r == DNSSEC_EOK, "verify signature");
+	ok(r == KNOT_EOK, "verify signature");
 
 	dnssec_binary_free(&new_signature);
 

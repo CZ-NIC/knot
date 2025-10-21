@@ -91,7 +91,7 @@ typedef struct dnssec_tsig_ctx dnssec_tsig_ctx_t;
  * \param[in]  algorithm  TSIG algorithm.
  * \param[in]  key        Shared key to be used for signing.
  *
- * \return Error code, DNSSEC_EOK if successful.
+ * \return Error code, KNOT_EOK if successful.
  */
 int dnssec_tsig_new(dnssec_tsig_ctx_t **ctx, dnssec_tsig_algorithm_t algorithm,
 		    const dnssec_binary_t *key);
@@ -109,7 +109,7 @@ void dnssec_tsig_free(dnssec_tsig_ctx_t *ctx);
  * \param ctx   TSIG signing context.
  * \param data  Data to be signed.
  *
- * \return Error code, DNSSEC_EOK if successful.
+ * \return Error code, KNOT_EOK if successful.
  */
 int dnssec_tsig_add(dnssec_tsig_ctx_t *ctx, const dnssec_binary_t *data);
 
@@ -137,7 +137,7 @@ size_t dnssec_tsig_algorithm_size(dnssec_tsig_algorithm_t algorithm);
  * \param[in]  ctx  TSIG signing context.
  * \param[out] mac  Resulting TSIG signature.
  *
- * \return Error code, DNSSEC_EOK if successful.
+ * \return Error code, KNOT_EOK if successful.
  */
 int dnssec_tsig_write(dnssec_tsig_ctx_t *ctx, uint8_t *mac);
 

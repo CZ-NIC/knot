@@ -80,7 +80,7 @@ static int parse_algorithm(char *string, void *_algorithm)
 	uint8_t *algorithm = _algorithm;
 	int r = str_to_u8(string, algorithm);
 
-	return (r == KNOT_EOK ? DNSSEC_EOK : DNSSEC_INVALID_KEY_ALGORITHM);
+	return (r == KNOT_EOK ? KNOT_EOK : DNSSEC_INVALID_KEY_ALGORITHM);
 }
 
 /*!
@@ -118,7 +118,7 @@ static int parse_time(char *string, void *_time)
 	time_t *time = _time;
 	*time = timegm(&tm);
 
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }
 
 /* -- key parsing ---------------------------------------------------------- */
@@ -191,7 +191,7 @@ static int parse_line(bind_privkey_t *params, char *line, size_t length)
 
 	// ignore unknown attributes
 
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }
 
 int bind_privkey_parse(const char *filename, bind_privkey_t *params_ptr)
@@ -208,7 +208,7 @@ int bind_privkey_parse(const char *filename, bind_privkey_t *params_ptr)
 	ssize_t read = 0;
 	while ((read = getline(&line, &size, file)) != -1) {
 		int r = parse_line(&params, line, read);
-		if (r != DNSSEC_EOK) {
+		if (r != KNOT_EOK) {
 			bind_privkey_free(&params);
 			return r;
 		}
@@ -216,7 +216,7 @@ int bind_privkey_parse(const char *filename, bind_privkey_t *params_ptr)
 
 	*params_ptr = params;
 
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }
 
 /* -- freeing -------------------------------------------------------------- */
@@ -312,7 +312,7 @@ static int ecdsa_params_to_pem(dnssec_key_t *dnskey, const bind_privkey_t *param
 	gnutls_datum_t k = binary_to_datum(&params->private_key);
 
 	result = gnutls_x509_privkey_import_ecc_raw(key, curve, &x, &y, &k);
-	if (result != DNSSEC_EOK) {
+	if (result != KNOT_EOK) {
 		return DNSSEC_KEY_IMPORT_ERROR;
 	}
 
@@ -349,7 +349,7 @@ static int eddsa_params_to_pem(dnssec_key_t *dnskey, const bind_privkey_t *param
 	gnutls_datum_t k = binary_to_datum(&params->private_key);
 
 	result = gnutls_x509_privkey_import_ecc_raw(key, curve, &x, NULL, &k);
-	if (result != DNSSEC_EOK) {
+	if (result != KNOT_EOK) {
 		return DNSSEC_KEY_IMPORT_ERROR;
 	}
 

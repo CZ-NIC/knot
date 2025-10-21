@@ -51,7 +51,7 @@ static int public_from_private(gnutls_privkey_t privkey, gnutls_pubkey_t *pubkey
 
 	*pubkey = new_key;
 
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }
 
 /*!
@@ -69,7 +69,7 @@ static int create_public_key(gnutls_privkey_t privkey,
 
 	gnutls_pubkey_t pubkey = NULL;
 	int result = public_from_private(privkey, &pubkey);
-	if (result != DNSSEC_EOK) {
+	if (result != KNOT_EOK) {
 		return result;
 	}
 
@@ -77,14 +77,14 @@ static int create_public_key(gnutls_privkey_t privkey,
 
 	_cleanup_binary_ dnssec_binary_t rdata_pubkey = { 0 };
 	result = convert_pubkey_to_dnskey(pubkey, &rdata_pubkey);
-	if (result != DNSSEC_EOK) {
+	if (result != KNOT_EOK) {
 		gnutls_pubkey_deinit(pubkey);
 		return result;
 	}
 
 	size_t rdata_size = DNSKEY_RDATA_OFFSET_PUBKEY + rdata_pubkey.size;
 	result = dnssec_binary_resize(rdata, rdata_size);
-	if (result != DNSSEC_EOK) {
+	if (result != KNOT_EOK) {
 		gnutls_pubkey_deinit(pubkey);
 		return result;
 	}
@@ -98,7 +98,7 @@ static int create_public_key(gnutls_privkey_t privkey,
 
 	*pubkey_ptr = pubkey;
 
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }
 
 /* -- internal API --------------------------------------------------------- */
@@ -118,12 +118,12 @@ int key_set_private_key(dnssec_key_t *key, gnutls_privkey_t privkey)
 
 	if (!key->public_key) {
 		int r = create_public_key(privkey, &key->public_key, &key->rdata);
-		if (r != DNSSEC_EOK) {
+		if (r != KNOT_EOK) {
 			return r;
 		}
 	}
 
 	key->private_key = privkey;
 
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }

@@ -224,7 +224,7 @@ static void init_random_cid(ngtcp2_cid *cid, size_t len)
 		len = SERVER_DEFAULT_SCIDLEN;
 	}
 
-	if (dnssec_random_buffer(cid->data, len) != DNSSEC_EOK) {
+	if (dnssec_random_buffer(cid->data, len) != KNOT_EOK) {
 		cid->datalen = 0;
 	} else {
 		cid->datalen = len;
@@ -530,7 +530,7 @@ static int conn_new(ngtcp2_conn **pconn, const ngtcp2_path *path, const ngtcp2_c
 		params.retry_scid_present = 1;
 		params.retry_scid = *scid;
 	}
-	if (dnssec_random_buffer(params.stateless_reset_token, NGTCP2_STATELESS_RESET_TOKENLEN) != DNSSEC_EOK) {
+	if (dnssec_random_buffer(params.stateless_reset_token, NGTCP2_STATELESS_RESET_TOKENLEN) != KNOT_EOK) {
 		return KNOT_ERROR;
 	}
 

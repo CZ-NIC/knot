@@ -1077,7 +1077,7 @@ static int opt_cookie(const char *arg, void *query)
 		q->cc.len = KNOT_EDNS_COOKIE_CLNT_SIZE;
 
 		int ret = dnssec_random_buffer(q->cc.data, q->cc.len);
-		if (ret != DNSSEC_EOK) {
+		if (ret != KNOT_EOK) {
 			return knot_error_from_libdnssec(ret);
 		}
 	}

@@ -64,7 +64,7 @@ int dnssec_nsec3_params_from_rdata(dnssec_nsec3_params_t *params,
 
 	*params = new_params;
 
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }
 
 _public_

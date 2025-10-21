@@ -68,7 +68,7 @@ static int rsa_pubkey_to_rdata(gnutls_pubkey_t key, dnssec_binary_t *rdata)
 	size_t modulus_size = bignum_size_u_datum(&modulus);
 
 	result = dnssec_binary_alloc(rdata, 1 + exponent_size + modulus_size);
-	if (result != DNSSEC_EOK) {
+	if (result != KNOT_EOK) {
 		return result;
 	}
 
@@ -78,7 +78,7 @@ static int rsa_pubkey_to_rdata(gnutls_pubkey_t key, dnssec_binary_t *rdata)
 	wire_write_bignum_datum(&wire, modulus_size, &modulus);
 	assert(wire_ctx_offset(&wire) == rdata->size);
 
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }
 
 /*!
@@ -127,7 +127,7 @@ static int ecdsa_pubkey_to_rdata(gnutls_pubkey_t key, dnssec_binary_t *rdata)
 	}
 
 	result = dnssec_binary_alloc(rdata, 2 * point_size);
-	if (result != DNSSEC_EOK) {
+	if (result != KNOT_EOK) {
 		return result;
 	}
 
@@ -136,7 +136,7 @@ static int ecdsa_pubkey_to_rdata(gnutls_pubkey_t key, dnssec_binary_t *rdata)
 	wire_write_bignum_datum(&wire, point_size, &point_y);
 	assert(wire_ctx_offset(&wire) == rdata->size);
 
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }
 
 /*!
@@ -161,7 +161,7 @@ static int eddsa_pubkey_to_rdata(gnutls_pubkey_t key, dnssec_binary_t *rdata)
 	}
 
 	result = dnssec_binary_alloc(rdata, point_size);
-	if (result != DNSSEC_EOK) {
+	if (result != KNOT_EOK) {
 		return result;
 	}
 
@@ -169,7 +169,7 @@ static int eddsa_pubkey_to_rdata(gnutls_pubkey_t key, dnssec_binary_t *rdata)
 	wire_write_bignum_datum(&wire, point_size, &point_x);
 	assert(wire_ctx_offset(&wire) == rdata->size);
 
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }
 
 /* -- crypto to DNSSEC ------------------------------------------------------*/
@@ -213,7 +213,7 @@ static int rsa_rdata_to_pubkey(const dnssec_binary_t *rdata, gnutls_pubkey_t key
 		return DNSSEC_KEY_IMPORT_ERROR;
 	}
 
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }
 
 /*!
@@ -269,7 +269,7 @@ static int ecdsa_rdata_to_pubkey(const dnssec_binary_t *rdata, gnutls_pubkey_t k
 		return DNSSEC_KEY_IMPORT_ERROR;
 	}
 
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }
 
 /*!
@@ -296,7 +296,7 @@ static int eddsa_rdata_to_pubkey(const dnssec_binary_t *rdata, gnutls_pubkey_t k
 		return DNSSEC_KEY_IMPORT_ERROR;
 	}
 
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }
 
 /* -- internal API --------------------------------------------------------- */

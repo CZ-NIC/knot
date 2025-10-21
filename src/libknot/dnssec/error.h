@@ -24,7 +24,7 @@
  * Library error codes.
  */
 enum dnssec_error {
-	DNSSEC_EOK = 0,
+	KNOT_EOK = 0,
 
 	DNSSEC_ENOMEM = -ENOMEM,
 	DNSSEC_EINVAL = -EINVAL,

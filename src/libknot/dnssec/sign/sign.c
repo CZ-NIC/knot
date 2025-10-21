@@ -27,7 +27,7 @@
  * \param from  Data in source format.
  * \param to    Allocated data in target format.
  *
- * \return Error code, DNSSEC_EOK if successful.
+ * \return Error code, KNOT_EOK if successful.
  */
 typedef int (*signature_convert_cb)(dnssec_sign_ctx_t *ctx,
 				    const dnssec_binary_t *from,
@@ -112,7 +112,7 @@ static int ecdsa_x509_to_dnssec(dnssec_sign_ctx_t *ctx,
 	dnssec_binary_t value_s = { 0 };
 
 	int result = dss_sig_value_decode(x509, &value_r, &value_s);
-	if (result != DNSSEC_EOK) {
+	if (result != KNOT_EOK) {
 		return result;
 	}
 
@@ -125,7 +125,7 @@ static int ecdsa_x509_to_dnssec(dnssec_sign_ctx_t *ctx,
 	}
 
 	result = dnssec_binary_alloc(dnssec, 2 * int_size);
-	if (result != DNSSEC_EOK) {
+	if (result != KNOT_EOK) {
 		return result;
 	}
 
@@ -134,7 +134,7 @@ static int ecdsa_x509_to_dnssec(dnssec_sign_ctx_t *ctx,
 	bignum_write(&wire, int_size, &value_s);
 	assert(wire_ctx_offset(&wire) == dnssec->size);
 
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }
 
 static int ecdsa_dnssec_to_x509(dnssec_sign_ctx_t *ctx,
@@ -245,14 +245,14 @@ int dnssec_sign_new(dnssec_sign_ctx_t **ctx_ptr, const dnssec_key_t *key)
 	const uint8_t algo_raw = dnssec_key_get_algorithm(key);
 	ctx->sign_algorithm = algo_dnssec2gnutls((dnssec_key_algorithm_t)algo_raw);
 	int result = dnssec_sign_init(ctx);
-	if (result != DNSSEC_EOK) {
+	if (result != KNOT_EOK) {
 		free(ctx);
 		return result;
 	}
 
 	*ctx_ptr = ctx;
 
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }
 
 _public_
@@ -280,7 +280,7 @@ int dnssec_sign_init(dnssec_sign_ctx_t *ctx)
 		vpool_init(&ctx->buffer, 1024, 0);
 	}
 
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }
 
 _public_
@@ -295,7 +295,7 @@ int dnssec_sign_add(dnssec_sign_ctx_t *ctx, const dnssec_binary_t *data)
 		return DNSSEC_SIGN_ERROR;
 	}
 
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }
 
 _public_
@@ -346,7 +346,7 @@ int dnssec_sign_verify(dnssec_sign_ctx_t *ctx, bool sign_cmp, const dnssec_binar
 		if (ret == KNOT_EOK) {
 			ret = dnssec_binary_cmp(&sign, signature)
 			      ? DNSSEC_INVALID_SIGNATURE
-			      : DNSSEC_EOK;
+			      : KNOT_EOK;
 		}
 		dnssec_binary_free(&sign);
 		return ret;
@@ -363,7 +363,7 @@ int dnssec_sign_verify(dnssec_sign_ctx_t *ctx, bool sign_cmp, const dnssec_binar
 
 	_cleanup_binary_ dnssec_binary_t bin_raw = { 0 };
 	int result = ctx->functions->dnssec_to_x509(ctx, signature, &bin_raw);
-	if (result != DNSSEC_EOK) {
+	if (result != KNOT_EOK) {
 		return result;
 	}
 
@@ -379,5 +379,5 @@ int dnssec_sign_verify(dnssec_sign_ctx_t *ctx, bool sign_cmp, const dnssec_binar
 		return DNSSEC_ERROR;
 	}
 
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }

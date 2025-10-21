@@ -48,7 +48,7 @@ int keystore_load(const char *config, unsigned backend,
 	default:
 		assert(0);
 	}
-	if (ret != DNSSEC_EOK) {
+	if (ret != KNOT_EOK) {
 		free(fixed_config);
 		return knot_error_from_libdnssec(ret);
 	}
@@ -59,7 +59,7 @@ int keystore_load(const char *config, unsigned backend,
 	}
 
 	ret = dnssec_keystore_init(*keystore, fixed_config);
-	if (ret != DNSSEC_EOK) {
+	if (ret != KNOT_EOK) {
 		free(fixed_config);
 		dnssec_keystore_deinit(*keystore);
 		*keystore = NULL;
@@ -68,7 +68,7 @@ int keystore_load(const char *config, unsigned backend,
 
 	ret = dnssec_keystore_open(*keystore, fixed_config);
 	free(fixed_config);
-	if (ret != DNSSEC_EOK) {
+	if (ret != KNOT_EOK) {
 		dnssec_keystore_deinit(*keystore);
 		*keystore = NULL;
 		return knot_error_from_libdnssec(ret);

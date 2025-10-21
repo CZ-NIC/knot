@@ -117,7 +117,7 @@ static int sign_ctx_add_self(dnssec_sign_ctx_t *ctx, const uint8_t *rdata)
 	header.size = RRSIG_RDATA_SIGNER_OFFSET;
 
 	result = dnssec_sign_add(ctx, &header);
-	if (result != DNSSEC_EOK) {
+	if (result != KNOT_EOK) {
 		return result;
 	}
 
@@ -235,7 +235,7 @@ static int rrsigs_create_rdata(knot_rrset_t *rrsigs, dnssec_sign_ctx_t *ctx,
 
 	dnssec_binary_t signature = { 0 };
 	res = dnssec_sign_write(ctx, sign_flags, &signature);
-	if (res != DNSSEC_EOK) {
+	if (res != KNOT_EOK) {
 		return res;
 	}
 	assert(signature.size > 0);

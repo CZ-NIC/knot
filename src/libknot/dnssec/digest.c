@@ -49,7 +49,7 @@ int dnssec_digest_init(dnssec_digest_t algorithm, dnssec_digest_ctx_t **out_ctx)
 	}
 
 	*out_ctx = res;
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }
 
 static void digest_ctx_free(dnssec_digest_ctx_t *ctx)
@@ -70,7 +70,7 @@ int dnssec_digest(dnssec_digest_ctx_t *ctx, dnssec_binary_t *data)
 		digest_ctx_free(ctx);
 		return DNSSEC_DIGEST_ERROR;
 	}
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }
 
 _public_
@@ -90,5 +90,5 @@ int dnssec_digest_finish(dnssec_digest_ctx_t *ctx, dnssec_binary_t *out)
 	gnutls_hash_output(ctx->gtctx, out->data);
 
 	digest_ctx_free(ctx);
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }

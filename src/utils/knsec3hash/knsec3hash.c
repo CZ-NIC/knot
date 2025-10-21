@@ -38,10 +38,10 @@ static int str_to_salt(const char *str, dnssec_binary_t *salt)
 {
 	if (strcmp(str, "-") == 0) {
 		salt->size = 0;
-		return DNSSEC_EOK;
+		return KNOT_EOK;
 	} else {
 		salt->data = hex_to_bin(str, &salt->size);
-		return (salt->data != NULL ? DNSSEC_EOK : DNSSEC_EINVAL);
+		return (salt->data != NULL ? KNOT_EOK : DNSSEC_EINVAL);
 	}
 }
 
@@ -67,7 +67,7 @@ static bool parse_nsec3_params(dnssec_nsec3_params_t *params, const char *salt_s
 
 	dnssec_binary_t salt = { 0 };
 	r = str_to_salt(salt_str, &salt);
-	if (r != DNSSEC_EOK) {
+	if (r != KNOT_EOK) {
 		ERR2("invalid salt (%s)", knot_strerror(r));
 		return false;
 	}
@@ -148,7 +148,7 @@ int main(int argc, char *argv[])
 	dname.size = knot_dname_size(dname.data);
 
 	int r = dnssec_nsec3_hash(&dname, &nsec3_params, &digest);
-	if (r != DNSSEC_EOK) {
+	if (r != KNOT_EOK) {
 		ERR2("cannot compute NSEC3 hash (%s)", knot_strerror(r));
 		goto fail;
 	}

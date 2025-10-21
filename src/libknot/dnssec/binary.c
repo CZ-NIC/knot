@@ -28,7 +28,7 @@ int dnssec_binary_alloc(dnssec_binary_t *data, size_t size)
 	data->data = new_data;
 	data->size = size;
 
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }
 
 _public_
@@ -59,7 +59,7 @@ int dnssec_binary_dup(const dnssec_binary_t *from, dnssec_binary_t *to)
 	to->size = from->size;
 	to->data = copy;
 
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }
 
 _public_
@@ -77,7 +77,7 @@ int dnssec_binary_resize(dnssec_binary_t *data, size_t new_size)
 	data->data = new_data;
 	data->size = new_size;
 
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }
 
 _public_
@@ -128,7 +128,7 @@ int dnssec_binary_from_base64(const dnssec_binary_t *base64,
 	binary->data = data;
 	binary->size = size;
 
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }
 
 _public_
@@ -148,5 +148,5 @@ int dnssec_binary_to_base64(const dnssec_binary_t *binary,
 	base64->data = data;
 	base64->size = size;
 
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }

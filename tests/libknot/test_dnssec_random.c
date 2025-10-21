@@ -21,7 +21,7 @@ int check_buffer(void)
 
 	for (int i = 0; i < 10; i++) {
 		int result = dnssec_random_buffer(buffer, buffer_size);
-		if (result != DNSSEC_EOK) {
+		if (result != KNOT_EOK) {
 			return 1;
 		}
 

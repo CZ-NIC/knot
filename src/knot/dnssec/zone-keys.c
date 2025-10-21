@@ -521,7 +521,7 @@ static int load_private_keys(kdnssec_ctx_t *ctx, zone_keyset_t *keyset)
 		}
 		int ret = kdnssec_load_private(ctx->keystores, key->id, key->key, NULL, NULL);
 		switch (ret) {
-		case DNSSEC_EOK:
+		case KNOT_EOK:
 		case DNSSEC_KEY_ALREADY_PRESENT:
 			break;
 		default:
@@ -734,7 +734,7 @@ zone_sign_ctx_t *zone_sign_ctx(const zone_keyset_t *keyset, const kdnssec_ctx_t 
 		}
 
 		ret = dnssec_sign_new(&ctx->sign_ctxs[i], ctx->keys[i].key);
-		if (ret != DNSSEC_EOK) {
+		if (ret != KNOT_EOK) {
 			zone_sign_ctx_free(ctx);
 			return NULL;
 		}
@@ -757,7 +757,7 @@ zone_sign_ctx_t *zone_validation_ctx(const kdnssec_ctx_t *dnssec_ctx)
 	ctx->dnssec_ctx = dnssec_ctx;
 	for (size_t i = 0; i < ctx->count; i++) {
 		int ret = dnssec_sign_new(&ctx->sign_ctxs[i], dnssec_ctx->zone->keys[i].key);
-		if (ret != DNSSEC_EOK) {
+		if (ret != KNOT_EOK) {
 			zone_sign_ctx_free(ctx);
 			return NULL;
 		}
@@ -794,17 +794,17 @@ int dnssec_key_from_rdata(dnssec_key_t **key, const knot_dname_t *owner,
 
 	dnssec_key_t *new_key = NULL;
 	int ret = dnssec_key_new(&new_key);
-	if (ret != DNSSEC_EOK) {
+	if (ret != KNOT_EOK) {
 		return knot_error_from_libdnssec(ret);
 	}
 	ret = dnssec_key_set_rdata(new_key, &binary_key);
-	if (ret != DNSSEC_EOK) {
+	if (ret != KNOT_EOK) {
 		dnssec_key_free(new_key);
 		return knot_error_from_libdnssec(ret);
 	}
 	if (owner != NULL) {
 		ret = dnssec_key_set_dname(new_key, owner);
-		if (ret != DNSSEC_EOK) {
+		if (ret != KNOT_EOK) {
 			dnssec_key_free(new_key);
 			return knot_error_from_libdnssec(ret);
 		}

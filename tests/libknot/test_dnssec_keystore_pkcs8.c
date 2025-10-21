@@ -23,25 +23,25 @@ int main(void)
 
 	dnssec_keystore_t *store = NULL;
 	int r = dnssec_keystore_init_pkcs8(&store);
-	ok(r == DNSSEC_EOK, "dnssec_keystore_init_pkcs8()");
+	ok(r == KNOT_EOK, "dnssec_keystore_init_pkcs8()");
 
 	r = dnssec_keystore_init(store, dir);
-	ok(r == DNSSEC_EOK, "init");
+	ok(r == KNOT_EOK, "init");
 
 	r = dnssec_keystore_open(store, dir);
-	ok(r == DNSSEC_EOK, "open");
+	ok(r == KNOT_EOK, "open");
 
 	// writing new content
 
 	char *id_A = NULL;
 	r = dnssec_keystore_generate(store, DNSSEC_KEY_ALGORITHM_RSA_SHA256,
 	                             1024, NULL, &id_A);
-	ok(r == DNSSEC_EOK, "generate A");
+	ok(r == KNOT_EOK, "generate A");
 
 	char *id_B = NULL;
 	r = dnssec_keystore_generate(store, DNSSEC_KEY_ALGORITHM_RSA_SHA256,
 	                             1024, NULL, &id_B);
-	ok(r == DNSSEC_EOK, "generate B");
+	ok(r == KNOT_EOK, "generate B");
 
 	// reading existing content
 
@@ -49,19 +49,19 @@ int main(void)
 	dnssec_key_new(&key);
 	dnssec_key_set_algorithm(key, DNSSEC_KEY_ALGORITHM_RSA_SHA256);
 	r = dnssec_keystore_get_private(store, id_A, key);
-	ok(r == DNSSEC_EOK, "read A");
+	ok(r == KNOT_EOK, "read A");
 	dnssec_key_free(key);
 
 	dnssec_key_new(&key);
 	dnssec_key_set_algorithm(key, DNSSEC_KEY_ALGORITHM_RSA_SHA256);
 	r = dnssec_keystore_get_private(store, id_B, key);
-	ok(r == DNSSEC_EOK, "read B");
+	ok(r == KNOT_EOK, "read B");
 	dnssec_key_free(key);
 
 	// content removal
 
 	r = dnssec_keystore_remove(store, id_A);
-	ok(r == DNSSEC_EOK, "remove A");
+	ok(r == KNOT_EOK, "remove A");
 
 	dnssec_key_new(&key);
 	dnssec_key_set_algorithm(key, DNSSEC_KEY_ALGORITHM_RSA_SHA256);
@@ -75,10 +75,10 @@ int main(void)
 	free(id_B);
 
 	r = dnssec_keystore_close(store);
-	ok(r == DNSSEC_EOK, "close");
+	ok(r == KNOT_EOK, "close");
 
 	r = dnssec_keystore_deinit(store);
-	ok(r == DNSSEC_EOK, "deinit");
+	ok(r == KNOT_EOK, "deinit");
 
 	test_rm_rf(dir);
 	free(dir);

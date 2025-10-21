@@ -26,7 +26,7 @@
  * \param[in]  rdata   DNSKEY RDATA.
  * \param[out] keytag  Computed keytag.
  *
- * \return Error code, DNSSEC_EOK of successful.
+ * \return Error code, KNOT_EOK of successful.
  */
 int dnssec_keytag(const dnssec_binary_t *rdata, uint16_t *keytag);
 

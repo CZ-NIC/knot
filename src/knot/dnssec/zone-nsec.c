@@ -61,7 +61,7 @@ int knot_create_nsec3_owner(uint8_t *out, size_t out_size,
 	dnssec_binary_t hash = { 0 };
 
 	int ret = dnssec_nsec3_hash(&data, params, &hash);
-	if (ret != DNSSEC_EOK) {
+	if (ret != KNOT_EOK) {
 		return knot_error_from_libdnssec(ret);
 	}
 
@@ -163,7 +163,7 @@ static bool nsec3param_valid(const knot_rdataset_t *rrs,
 
 	dnssec_nsec3_params_t parsed = { 0 };
 	int r = dnssec_nsec3_params_from_rdata(&parsed, &rdata);
-	if (r != DNSSEC_EOK) {
+	if (r != KNOT_EOK) {
 		return false;
 	}
 

@@ -30,15 +30,15 @@ int dnssec_key_load_pkcs8(dnssec_key_t *key, const dnssec_binary_t *pem)
 
 	gnutls_privkey_t privkey = NULL;
 	int r = dnssec_pem_to_privkey(pem, &privkey);
-	if (r != DNSSEC_EOK) {
+	if (r != KNOT_EOK) {
 		return r;
 	}
 
 	r = key_set_private_key(key, privkey);
-	if (r != DNSSEC_EOK) {
+	if (r != KNOT_EOK) {
 		gnutls_privkey_deinit(privkey);
 		return r;
 	}
 
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }

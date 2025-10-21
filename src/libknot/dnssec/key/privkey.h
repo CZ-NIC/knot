@@ -19,6 +19,6 @@
  * \param key      DNSSEC key to be updated.
  * \param privkey  Private key to be set.
  *
- * \return Error code, DNSSEC_EOK if successful.
+ * \return Error code, KNOT_EOK if successful.
  */
 int key_set_private_key(dnssec_key_t *key, gnutls_privkey_t privkey);

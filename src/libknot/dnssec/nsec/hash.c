@@ -33,7 +33,7 @@ static int nsec3_hash(gnutls_digest_algorithm_t algorithm, int iterations,
 	}
 
 	int result = dnssec_binary_resize(hash, hash_size);
-	if (result != DNSSEC_EOK) {
+	if (result != KNOT_EOK) {
 		return result;
 	}
 
@@ -63,7 +63,7 @@ static int nsec3_hash(gnutls_digest_algorithm_t algorithm, int iterations,
 		in_size = hash->size;
 	}
 
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }
 
 /*!

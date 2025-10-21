@@ -73,5 +73,5 @@ int dnssec_keytag(const dnssec_binary_t *rdata, uint16_t *keytag)
 		*keytag = keytag_current(rdata);
 	}
 
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }

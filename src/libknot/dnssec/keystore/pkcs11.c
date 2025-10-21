@@ -68,7 +68,7 @@ static int key_url(const char *token_uri, const char *key_id, char **url_ptr)
 	url[len] = '\0';
 
 	*url_ptr = url;
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }
 
 /*!
@@ -93,7 +93,7 @@ static int parse_config(const char *config, char **uri_ptr, char **module_ptr)
 	*uri_ptr = url;
 	*module_ptr = module;
 
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }
 
 /*!
@@ -105,7 +105,7 @@ static int safe_open(const char *config, char **url_ptr)
 	char *module = NULL;
 
 	int r = parse_config(config, &url, &module);
-	if (r != DNSSEC_EOK) {
+	if (r != KNOT_EOK) {
 		return r;
 	}
 
@@ -125,7 +125,7 @@ static int safe_open(const char *config, char **url_ptr)
 
 	*url_ptr = url;
 
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }
 
 /* -- internal API --------------------------------------------------------- */
@@ -148,7 +148,7 @@ static int pkcs11_ctx_new(void **ctx_ptr)
 
 	*ctx_ptr = ctx;
 
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }
 
 static void pkcs11_ctx_free(void *ctx)
@@ -183,7 +183,7 @@ static int pkcs11_close(void *_ctx)
 	free(ctx->url);
 	clear_struct(ctx);
 
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }
 
 static int pkcs11_generate_key(void *_ctx, gnutls_pk_algorithm_t algorithm,
@@ -210,7 +210,7 @@ static int pkcs11_generate_key(void *_ctx, gnutls_pk_algorithm_t algorithm,
 
 	*id_ptr = id;
 
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }
 
 static int import_pem(const dnssec_binary_t *pem,
@@ -222,7 +222,7 @@ static int import_pem(const dnssec_binary_t *pem,
 	gnutls_pubkey_t pubkey = NULL;
 
 	int r = dnssec_pem_to_x509(pem, &x509_key);
-	if (r != DNSSEC_EOK) {
+	if (r != KNOT_EOK) {
 		goto fail;
 	}
 
@@ -243,7 +243,7 @@ static int import_pem(const dnssec_binary_t *pem,
 fail:
 	gnutls_privkey_deinit(key);
 
-	if (r == DNSSEC_EOK) {
+	if (r == KNOT_EOK) {
 		*key_ptr = x509_key;
 		*pubkey_ptr = pubkey;
 	} else {
@@ -262,13 +262,13 @@ static int pkcs11_import_key(void *_ctx, const dnssec_binary_t *pem, char **id_p
 	_cleanup_pubkey_ gnutls_pubkey_t pubkey = NULL;
 
 	int r = import_pem(pem, &key, &pubkey);
-	if (r != DNSSEC_EOK) {
+	if (r != KNOT_EOK) {
 		return r;
 	}
 
 	_cleanup_binary_ dnssec_binary_t id = { 0 };
 	r = keyid_x509(key, &id);
-	if (r != DNSSEC_EOK) {
+	if (r != KNOT_EOK) {
 		return r;
 	}
 
@@ -291,7 +291,7 @@ static int pkcs11_import_key(void *_ctx, const dnssec_binary_t *pem, char **id_p
 		return DNSSEC_ENOMEM;
 	}
 
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }
 
 static int pkcs11_remove_key(void *_ctx, const char *id)
@@ -300,7 +300,7 @@ static int pkcs11_remove_key(void *_ctx, const char *id)
 
 	_cleanup_free_ char *url = NULL;
 	int r = key_url(ctx->url, id, &url);
-	if (r != DNSSEC_EOK) {
+	if (r != KNOT_EOK) {
 		return r;
 	}
 
@@ -311,7 +311,7 @@ static int pkcs11_remove_key(void *_ctx, const char *id)
 		return DNSSEC_ENOENT;
 	}
 
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }
 
 static int pkcs11_get_private(void *_ctx, const char *id, gnutls_privkey_t *key_ptr)
@@ -320,7 +320,7 @@ static int pkcs11_get_private(void *_ctx, const char *id, gnutls_privkey_t *key_
 
 	_cleanup_free_ char *url = NULL;
 	int r = key_url(ctx->url, id, &url);
-	if (r != DNSSEC_EOK) {
+	if (r != KNOT_EOK) {
 		return r;
 	}
 
@@ -338,14 +338,14 @@ static int pkcs11_get_private(void *_ctx, const char *id, gnutls_privkey_t *key_
 
 	*key_ptr = key;
 
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }
 
 static int pkcs11_set_private(void *ctx, gnutls_privkey_t key)
 {
 	_cleanup_binary_ dnssec_binary_t pem = { 0 };
 	int r = dnssec_pem_from_privkey(key, &pem);
-	if (r != DNSSEC_EOK) {
+	if (r != KNOT_EOK) {
 		return r;
 	}
 

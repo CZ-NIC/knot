@@ -29,7 +29,7 @@ static void test_parsing(void)
 
 	dnssec_nsec3_params_t params = { 0 };
 	int result = dnssec_nsec3_params_from_rdata(&params, &RDATA);
-	ok(result == DNSSEC_EOK, "dnssec_nsec3_params_from_rdata()");
+	ok(result == KNOT_EOK, "dnssec_nsec3_params_from_rdata()");
 
 	ok(params.algorithm == 1, "algorithm");
 	ok(params.flags == 0, "flags");
@@ -64,7 +64,7 @@ static void test_hashing(void)
 	dnssec_binary_t hash = { 0 };
 
 	int result = dnssec_nsec3_hash(&dname, &params, &hash);
-	ok(result == DNSSEC_EOK, "dnssec_nsec3_hash()");
+	ok(result == KNOT_EOK, "dnssec_nsec3_hash()");
 
 	ok(hash.size == expected.size && hash.data != NULL &&
 	   memcmp(hash.data, expected.data, expected.size) == 0,
@@ -79,7 +79,7 @@ static void test_clear(void)
 	dnssec_nsec3_params_t params = { 0 };
 
 	int result = dnssec_nsec3_params_from_rdata(&params, &RDATA);
-	ok(result == DNSSEC_EOK, "dnssec_nsec3_params_from_rdata()");
+	ok(result == KNOT_EOK, "dnssec_nsec3_params_from_rdata()");
 
 	ok(memcmp(&params, &empty, sizeof(dnssec_nsec3_params_t)) != 0,
 	   "non-empty after dnssec_nsec3_params_from_rdata()");

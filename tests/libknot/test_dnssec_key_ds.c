@@ -40,7 +40,7 @@ static void test_key(const char *name, const struct key_parameters *params)
 
 		const dnssec_binary_t *expect = (void *)params + dt->params_offset;
 
-		ok(r == DNSSEC_EOK &&
+		ok(r == KNOT_EOK &&
 		   ds.size == expect->size &&
 		   memcmp(ds.data, expect->data, ds.size) == 0,
 		   "dnssec_key_create_ds() for %s/%s", name, dt->name);
@@ -76,7 +76,7 @@ static void test_errors(const struct key_parameters *params)
 	is_int(DNSSEC_INVALID_DS_ALGORITHM, r, "dnssec_key_create_ds() unsupported algorithm");
 
 	r = dnssec_key_create_ds(key, DNSSEC_KEY_DIGEST_SHA1, &ds);
-	is_int(DNSSEC_EOK, r, "dnssec_key_create_ds() valid parameters");
+	is_int(KNOT_EOK, r, "dnssec_key_create_ds() valid parameters");
 
 	dnssec_binary_free(&ds);
 	dnssec_key_free(key);

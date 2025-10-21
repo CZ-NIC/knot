@@ -27,7 +27,7 @@
  * \param[out] s    Value 's' of the signature, will point to the data in DER.
  * \param[out] r    Value 'r' of the signature, will point to the data in DER.
  *
- * \return Error code, DNSSEC_EOK if successful.
+ * \return Error code, KNOT_EOK if successful.
  */
 int dss_sig_value_decode(const dnssec_binary_t *der,
 			 dnssec_binary_t *r, dnssec_binary_t *s);
@@ -39,7 +39,7 @@ int dss_sig_value_decode(const dnssec_binary_t *der,
  * \param[in]  r    Value 'r' of the signature.
  * \param[out] der  X.509 signature, the content will be allocated.
  *
- * \return Error code, DNSSEC_EOK if successful.
+ * \return Error code, KNOT_EOK if successful.
  */
 int dss_sig_value_encode(const dnssec_binary_t *r, const dnssec_binary_t *s,
 			 dnssec_binary_t *der);

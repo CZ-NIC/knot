@@ -20,7 +20,7 @@ static int pkcs11_modules_count = 0;
 
 static int map_result(int gnutls_result)
 {
-	return gnutls_result == GNUTLS_E_SUCCESS ? DNSSEC_EOK : DNSSEC_ERROR;
+	return gnutls_result == GNUTLS_E_SUCCESS ? KNOT_EOK : DNSSEC_ERROR;
 }
 
 int p11_init(void)
@@ -39,7 +39,7 @@ int p11_load_module(const char *module)
 {
 	for (int i = 0; i < pkcs11_modules_count; i++) {
 		if (strcmp(pkcs11_modules[i], module) == 0) {
-			return DNSSEC_EOK;
+			return KNOT_EOK;
 		}
 	}
 
@@ -62,7 +62,7 @@ int p11_load_module(const char *module)
 	pkcs11_modules[pkcs11_modules_count] = copy;
 	pkcs11_modules_count += 1;
 
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }
 
 void p11_cleanup(void)
@@ -81,12 +81,12 @@ void p11_cleanup(void)
 
 int p11_init(void)
 {
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }
 
 int p11_reinit(void)
 {
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }
 
 int p11_load_module(const char *module)

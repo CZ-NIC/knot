@@ -218,24 +218,24 @@ static void create_dnskeys(dnssec_keystore_t *keystore,
 
 	dnssec_key_t *p11_key = NULL;
 	r = dnssec_key_new(&p11_key);
-	ok(r == DNSSEC_EOK && p11_key != NULL, MSG_PKCS11 " dnssec_key_new()");
+	ok(r == KNOT_EOK && p11_key != NULL, MSG_PKCS11 " dnssec_key_new()");
 
 	r = dnssec_key_set_algorithm(p11_key, algorithm);
-	ok(r == DNSSEC_EOK, MSG_PKCS11 " dnssec_key_set_algorithm()");
+	ok(r == KNOT_EOK, MSG_PKCS11 " dnssec_key_set_algorithm()");
 
 	r = dnssec_keystore_get_private(keystore, id, p11_key);
-	ok(r == DNSSEC_EOK, MSG_PKCS11 " dnssec_keystore_get_private()");
+	ok(r == KNOT_EOK, MSG_PKCS11 " dnssec_keystore_get_private()");
 
 	// construct software public key
 
 	dnssec_key_t *soft_key = NULL;
 	r = dnssec_key_new(&soft_key);
-	ok(r == DNSSEC_EOK && soft_key != NULL, MSG_SOFTWARE " dnssec_key_new()");
+	ok(r == KNOT_EOK && soft_key != NULL, MSG_SOFTWARE " dnssec_key_new()");
 
 	dnssec_binary_t rdata = { 0 };
 	dnssec_key_get_rdata(p11_key, &rdata);
 	r = dnssec_key_set_rdata(soft_key, &rdata);
-	ok(r == DNSSEC_EOK, MSG_SOFTWARE " dnssec_key_set_rdata()");
+	ok(r == KNOT_EOK, MSG_SOFTWARE " dnssec_key_set_rdata()");
 
 	*p11_key_ptr = p11_key;
 	*soft_key_ptr = soft_key;
@@ -264,24 +264,24 @@ static void test_sign(dnssec_key_t *p11_key, dnssec_key_t *soft_key)
 
 	dnssec_sign_ctx_t *ctx = NULL;
 	r = dnssec_sign_new(&ctx, p11_key);
-	ok(r == DNSSEC_EOK, MSG_PKCS11 " dnssec_sign_init() ");
+	ok(r == KNOT_EOK, MSG_PKCS11 " dnssec_sign_init() ");
 
 	r = dnssec_sign_add(ctx, &input);
-	ok(r == DNSSEC_EOK, MSG_PKCS11 " dnssec_sign_add()");
+	ok(r == KNOT_EOK, MSG_PKCS11 " dnssec_sign_add()");
 
 	r = dnssec_sign_write(ctx, DNSSEC_SIGN_NORMAL, &sign);
-	ok(r == DNSSEC_EOK, MSG_PKCS11 " dnssec_sign_write()");
+	ok(r == KNOT_EOK, MSG_PKCS11 " dnssec_sign_write()");
 
 	// PKCS #11 key verification
 
 	r = dnssec_sign_init(ctx);
-	ok(r == DNSSEC_EOK, MSG_PKCS11 " dnssec_sign_init()");
+	ok(r == KNOT_EOK, MSG_PKCS11 " dnssec_sign_init()");
 
 	r = dnssec_sign_add(ctx, &input);
-	ok(r == DNSSEC_EOK, MSG_PKCS11 " dnssec_sign_add()");
+	ok(r == KNOT_EOK, MSG_PKCS11 " dnssec_sign_add()");
 
 	r = dnssec_sign_verify(ctx, false, &sign);
-	ok(r == DNSSEC_EOK, MSG_PKCS11 " dnssec_sign_verify()");
+	ok(r == KNOT_EOK, MSG_PKCS11 " dnssec_sign_verify()");
 
 	// software verification
 
@@ -289,13 +289,13 @@ static void test_sign(dnssec_key_t *p11_key, dnssec_key_t *soft_key)
 	ctx = NULL;
 
 	r = dnssec_sign_new(&ctx, soft_key);
-	ok(r == DNSSEC_EOK, MSG_SOFTWARE " dnssec_sign_init()");
+	ok(r == KNOT_EOK, MSG_SOFTWARE " dnssec_sign_init()");
 
 	r = dnssec_sign_add(ctx, &input);
-	ok(r == DNSSEC_EOK, MSG_SOFTWARE " dnssec_sign_add()");
+	ok(r == KNOT_EOK, MSG_SOFTWARE " dnssec_sign_add()");
 
 	r = dnssec_sign_verify(ctx, false, &sign);
-	ok(r == DNSSEC_EOK, MSG_SOFTWARE " dnssec_sign_verify()");
+	ok(r == KNOT_EOK, MSG_SOFTWARE " dnssec_sign_verify()");
 
 	dnssec_binary_free(&sign);
 	dnssec_sign_free(ctx);
@@ -327,13 +327,13 @@ static void test_algorithm(dnssec_keystore_t *store,
 
 	r = dnssec_keystore_generate(store, params->algorithm, params->bit_size,
 	                             NULL, &id_generate);
-	ok(r == DNSSEC_EOK && id_generate != NULL, "dnssec_keystore_generate()");
+	ok(r == KNOT_EOK && id_generate != NULL, "dnssec_keystore_generate()");
 	test_key_use(store, params->algorithm, id_generate);
 
 	diag("algorithm %d, imported key", params->algorithm);
 
 	r = dnssec_keystore_import(store, &params->pem, &id_import);
-	ok(r == DNSSEC_EOK && id_import != NULL, "dnssec_keystore_import()");
+	ok(r == KNOT_EOK && id_import != NULL, "dnssec_keystore_import()");
 	test_key_use(store, params->algorithm, id_import);
 
 	free(id_generate);
@@ -354,7 +354,7 @@ int main(int argc, char *argv[])
 		skip_all("not supported");
 		goto done;
 	}
-	ok(r == DNSSEC_EOK && store, "dnssec_keystore_init_pkcs11()");
+	ok(r == KNOT_EOK && store, "dnssec_keystore_init_pkcs11()");
 
 	char *dso_name = libsofthsm_dso();
 	if (!dso_name) {
@@ -380,10 +380,10 @@ int main(int argc, char *argv[])
 	// key store access
 
 	r = dnssec_keystore_init(store, config);
-	ok(r == DNSSEC_EOK, "dnssec_keystore_init()");
+	ok(r == KNOT_EOK, "dnssec_keystore_init()");
 
 	r = dnssec_keystore_open(store, config);
-	ok(r == DNSSEC_EOK, "dnssec_keystore_open()");
+	ok(r == KNOT_EOK, "dnssec_keystore_open()");
 
 	// key manipulation
 
@@ -399,7 +399,7 @@ int main(int argc, char *argv[])
 	}
 
 	r = dnssec_keystore_close(store);
-	ok(r == DNSSEC_EOK, "dnssec_keystore_close()");
+	ok(r == KNOT_EOK, "dnssec_keystore_close()");
 done:
 	dnssec_keystore_deinit(store);
 	dnssec_crypto_cleanup();

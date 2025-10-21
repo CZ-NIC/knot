@@ -14,7 +14,7 @@ static void ok_range(dnssec_key_algorithm_t algo,
 {
 	unsigned min = 0, max = 0;
 	int r = dnssec_algorithm_key_size_range(algo, &min, &max);
-	ok(r == DNSSEC_EOK && min == exp_min && max == exp_max,
+	ok(r == KNOT_EOK && min == exp_min && max == exp_max,
 	   "dnssec_algorithm_key_size_range() for %s", name);
 }
 
@@ -27,9 +27,9 @@ static void null_range(void)
 	r = dnssec_algorithm_key_size_range(algo, NULL, NULL);
 	ok(r == DNSSEC_EINVAL, "dnssec_algorithm_key_size_range() all null");
 	r = dnssec_algorithm_key_size_range(algo, &val, NULL);
-	ok(r == DNSSEC_EOK && val == 1024, "dnssec_algorithm_key_size_range() min only");
+	ok(r == KNOT_EOK && val == 1024, "dnssec_algorithm_key_size_range() min only");
 	r = dnssec_algorithm_key_size_range(algo, NULL, &val);
-	ok(r == DNSSEC_EOK && val == 4096, "dnssec_algorithm_key_size_range() max only");
+	ok(r == KNOT_EOK && val == 4096, "dnssec_algorithm_key_size_range() max only");
 }
 
 static void check_borders(void)

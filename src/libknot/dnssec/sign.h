@@ -43,7 +43,7 @@ typedef struct dnssec_sign_ctx dnssec_sign_ctx_t;
  * \param ctx_ptr  Pointer to context to be allocated.
  * \param key      DNSSEC key to be used.
  *
- * \return Error code, DNSSEC_EOK if successful.
+ * \return Error code, KNOT_EOK if successful.
  */
 int dnssec_sign_new(dnssec_sign_ctx_t **ctx_ptr, const dnssec_key_t *key);
 
@@ -59,7 +59,7 @@ void dnssec_sign_free(dnssec_sign_ctx_t *ctx);
  *
  * \param ctx  Signing context.
  *
- * \return Error code, DNSSEC_EOK if successful.
+ * \return Error code, KNOT_EOK if successful.
  */
 int dnssec_sign_init(dnssec_sign_ctx_t *ctx);
 
@@ -69,7 +69,7 @@ int dnssec_sign_init(dnssec_sign_ctx_t *ctx);
  * \param ctx   Signing context.
  * \param data  Data to be signed.
  *
- * \return Error code, DNSSEC_EOK if successful.
+ * \return Error code, KNOT_EOK if successful.
  */
 int dnssec_sign_add(dnssec_sign_ctx_t *ctx, const dnssec_binary_t *data);
 
@@ -80,7 +80,7 @@ int dnssec_sign_add(dnssec_sign_ctx_t *ctx, const dnssec_binary_t *data);
  * \param flags      Additional flags to be used for signing.
  * \param signature  Signature to be allocated and written.
  *
- * \return Error code, DNSSEC_EOK if successful.
+ * \return Error code, KNOT_EOK if successful.
  */
 int dnssec_sign_write(dnssec_sign_ctx_t *ctx, dnssec_sign_flags_t flags,
                       dnssec_binary_t *signature);
@@ -94,7 +94,7 @@ int dnssec_sign_write(dnssec_sign_ctx_t *ctx, dnssec_sign_flags_t flags,
  * \param signature  Signature to be verified.
  *
  * \return Error code.
- * \retval DNSSEC_EOK                Validation successful, valid signature.
+ * \retval KNOT_EOK                Validation successful, valid signature.
  * \retval DNSSEC_INVALID_SIGNATURE  Validation successful, invalid signature.
  */
 int dnssec_sign_verify(dnssec_sign_ctx_t *ctx, bool sign_cmp,

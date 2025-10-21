@@ -26,7 +26,7 @@
  * \param data  Pointer to the output buffer.
  * \param size  Size of the output buffer.
  *
- * \return Error code, DNSSEC_EOK if successful.
+ * \return Error code, KNOT_EOK if successful.
  */
 int dnssec_random_buffer(uint8_t *data, size_t size);
 
@@ -35,7 +35,7 @@ int dnssec_random_buffer(uint8_t *data, size_t size);
  *
  * \param data  Preallocated binary structure to be filled.
  *
- * \return Error code, DNSSEC_EOK if successful.
+ * \return Error code, KNOT_EOK if successful.
  */
 int dnssec_random_binary(dnssec_binary_t *data);
 

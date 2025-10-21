@@ -100,7 +100,7 @@ int dnssec_key_create_ds(const dnssec_key_t *key,
 
 	dnssec_binary_t rdata = { 0 };
 	r = dnssec_binary_alloc(&rdata, 4 + digest_size);
-	if (r != DNSSEC_EOK) {
+	if (r != KNOT_EOK) {
 		return r;
 	}
 
@@ -113,5 +113,5 @@ int dnssec_key_create_ds(const dnssec_key_t *key,
 
 	*rdata_ptr = rdata;
 
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }

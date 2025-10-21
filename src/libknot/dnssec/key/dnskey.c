@@ -21,7 +21,7 @@ int dnskey_rdata_set_pubkey(dnssec_binary_t *rdata, const dnssec_binary_t *pubke
 
 	size_t new_size = DNSKEY_RDATA_OFFSET_PUBKEY + pubkey->size;
 	int result = dnssec_binary_resize(rdata, new_size);
-	if (result != DNSSEC_EOK) {
+	if (result != KNOT_EOK) {
 		return result;
 	}
 
@@ -30,7 +30,7 @@ int dnskey_rdata_set_pubkey(dnssec_binary_t *rdata, const dnssec_binary_t *pubke
 	binary_write(&wire, pubkey);
 	assert(wire_ctx_offset(&wire) == rdata->size);
 
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }
 
 /*!
@@ -69,12 +69,12 @@ int dnskey_rdata_to_crypto_key(const dnssec_binary_t *rdata, gnutls_pubkey_t *ke
 	}
 
 	result = convert_dnskey_to_pubkey(algorithm, &rdata_pubkey, key);
-	if (result != DNSSEC_EOK) {
+	if (result != KNOT_EOK) {
 		gnutls_pubkey_deinit(key);
 		return result;
 	}
 
 	*key_ptr = key;
 
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }

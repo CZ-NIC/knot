@@ -52,14 +52,14 @@ int dnssec_key_new(dnssec_key_t **key_ptr)
 	}
 
 	int r = dnssec_binary_dup(&DNSKEY_RDATA_TEMPLATE, &key->rdata);
-	if (r != DNSSEC_EOK) {
+	if (r != KNOT_EOK) {
 		free(key);
 		return DNSSEC_ENOMEM;
 	}
 
 	*key_ptr = key;
 
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }
 
 /*!
@@ -123,9 +123,9 @@ dnssec_key_t *dnssec_key_dup(const dnssec_key_t *key)
 
 	dnssec_key_t *dup = NULL;
 
-	if (dnssec_key_new(&dup) != DNSSEC_EOK ||
-	    dnssec_key_set_dname(dup, key->dname) != DNSSEC_EOK ||
-	    dnssec_key_set_rdata(dup, &key->rdata) != DNSSEC_EOK
+	if (dnssec_key_new(&dup) != KNOT_EOK ||
+	    dnssec_key_set_dname(dup, key->dname) != KNOT_EOK ||
+	    dnssec_key_set_rdata(dup, &key->rdata) != KNOT_EOK
 	) {
 		dnssec_key_free(dup);
 		return NULL;
@@ -188,7 +188,7 @@ int dnssec_key_set_dname(dnssec_key_t *key, const uint8_t *dname)
 	free(key->dname);
 	key->dname = copy;
 
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }
 
 _public_
@@ -214,7 +214,7 @@ int dnssec_key_set_flags(dnssec_key_t *key, uint16_t flags)
 	wire_ctx_set_offset(&wire, DNSKEY_RDATA_OFFSET_FLAGS);
 	wire_ctx_write_u16(&wire, flags);
 
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }
 
 _public_
@@ -240,7 +240,7 @@ int dnssec_key_set_protocol(dnssec_key_t *key, uint8_t protocol)
 	wire_ctx_set_offset(&wire, DNSKEY_RDATA_OFFSET_PROTOCOL);
 	wire_ctx_write_u8(&wire, protocol);
 
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }
 
 /* -- restricted attributes ------------------------------------------------ */
@@ -305,7 +305,7 @@ int dnssec_key_set_algorithm(dnssec_key_t *key, uint8_t algorithm)
 	wire_ctx_set_offset(&wire, DNSKEY_RDATA_OFFSET_ALGORITHM);
 	wire_ctx_write_u8(&wire, algorithm);
 
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }
 
 _public_
@@ -319,7 +319,7 @@ int dnssec_key_get_pubkey(const dnssec_key_t *key, dnssec_binary_t *pubkey)
 	wire_ctx_set_offset(&wire, DNSKEY_RDATA_OFFSET_PUBKEY);
 	binary_available(&wire, pubkey);
 
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }
 
 _public_
@@ -338,17 +338,17 @@ int dnssec_key_set_pubkey(dnssec_key_t *key, const dnssec_binary_t *pubkey)
 	}
 
 	int result = dnskey_rdata_set_pubkey(&key->rdata, pubkey);
-	if (result != DNSSEC_EOK) {
+	if (result != KNOT_EOK) {
 		return result;
 	}
 
 	result = dnskey_rdata_to_crypto_key(&key->rdata, &key->public_key);
-	if (result != DNSSEC_EOK) {
+	if (result != KNOT_EOK) {
 		key->rdata.size = DNSKEY_RDATA_OFFSET_PUBKEY; // downsize
 		return result;
 	}
 
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }
 
 _public_
@@ -399,7 +399,7 @@ int dnssec_key_get_rdata(const dnssec_key_t *key, dnssec_binary_t *rdata)
 
 	*rdata = key->rdata;
 
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }
 
 _public_
@@ -419,12 +419,12 @@ int dnssec_key_set_rdata(dnssec_key_t *key, const dnssec_binary_t *rdata)
 
 	gnutls_pubkey_t new_pubkey = NULL;
 	int result = dnskey_rdata_to_crypto_key(rdata, &new_pubkey);
-	if (result != DNSSEC_EOK) {
+	if (result != KNOT_EOK) {
 		return result;
 	}
 
 	result = dnssec_binary_resize(&key->rdata, rdata->size);
-	if (result != DNSSEC_EOK) {
+	if (result != KNOT_EOK) {
 		gnutls_pubkey_deinit(new_pubkey);
 		return result;
 	}
@@ -433,7 +433,7 @@ int dnssec_key_set_rdata(dnssec_key_t *key, const dnssec_binary_t *rdata)
 	memmove(key->rdata.data, rdata->data, rdata->size);
 	key->public_key = new_pubkey;
 
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }
 
 /* -- key presence checking ------------------------------------------------ */

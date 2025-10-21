@@ -104,7 +104,7 @@ bool dnssec_algorithm_reproducible(dnssec_key_algorithm_t algorithm, bool enable
  * The protocol field of the key is set to 3 (DNSSEC).
  * The flags field of the key is set to 256 (zone key, no SEP).
  *
- * \return Error code, DNSSEC_EOK if successful.
+ * \return Error code, KNOT_EOK if successful.
  */
 int dnssec_key_new(dnssec_key_t **key);
 
@@ -252,7 +252,7 @@ bool dnssec_key_can_verify(const dnssec_key_t *key);
  * \param[out] min        Minimal size of the private key (can be NULL).
  * \param[out] max        Maximal size of the private key (can be NULL).
  *
- * \return DNSSEC_EOK for valid parameters.
+ * \return KNOT_EOK for valid parameters.
  */
 int dnssec_algorithm_key_size_range(dnssec_key_algorithm_t algorithm,
 				    unsigned *min, unsigned *max);
@@ -290,7 +290,7 @@ bool dnssec_algorithm_digest_support(dnssec_key_digest_t algorithm);
  * \param[in]  digest  Digest algorithm to be used.
  * \param[out] rdata   Allocated DS RDATA.
  *
- * \return Error code, DNSSEC_EOK if successful.
+ * \return Error code, KNOT_EOK if successful.
  */
 int dnssec_key_create_ds(const dnssec_key_t *key, dnssec_key_digest_t digest,
 			 dnssec_binary_t *rdata);

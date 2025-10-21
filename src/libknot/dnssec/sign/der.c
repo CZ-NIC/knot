@@ -54,7 +54,7 @@ static int asn1_decode_size(wire_ctx_t *wire, size_t *size)
 
 	*size = byte;
 
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }
 
 /*!
@@ -71,7 +71,7 @@ static int asn1_decode_integer(wire_ctx_t *wire, dnssec_binary_t *_value)
 
 	size_t size;
 	int result = asn1_decode_size(wire, &size);
-	if (result != DNSSEC_EOK) {
+	if (result != KNOT_EOK) {
 		return result;
 	}
 
@@ -90,7 +90,7 @@ static int asn1_decode_integer(wire_ctx_t *wire, dnssec_binary_t *_value)
 
 	*_value = value;
 
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }
 
 /*!
@@ -141,7 +141,7 @@ int dss_sig_value_decode(const dnssec_binary_t *der,
 	}
 
 	result = asn1_decode_size(&wire, &size);
-	if (result != DNSSEC_EOK) {
+	if (result != KNOT_EOK) {
 		return result;
 	}
 
@@ -153,13 +153,13 @@ int dss_sig_value_decode(const dnssec_binary_t *der,
 
 	dnssec_binary_t der_r;
 	result = asn1_decode_integer(&wire, &der_r);
-	if (result != DNSSEC_EOK) {
+	if (result != KNOT_EOK) {
 		return result;
 	}
 
 	dnssec_binary_t der_s;
 	result = asn1_decode_integer(&wire, &der_s);
-	if (result != DNSSEC_EOK) {
+	if (result != KNOT_EOK) {
 		return result;
 	}
 
@@ -170,7 +170,7 @@ int dss_sig_value_decode(const dnssec_binary_t *der,
 	*r = der_r;
 	*s = der_s;
 
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }
 
 /*!
@@ -214,5 +214,5 @@ int dss_sig_value_encode(const dnssec_binary_t *r, const dnssec_binary_t *s,
 
 	*der = _der;
 
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }

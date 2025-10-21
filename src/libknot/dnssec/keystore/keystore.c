@@ -33,13 +33,13 @@ int keystore_create(dnssec_keystore_t **store_ptr,
 	store->functions = functions;
 
 	int result = functions->ctx_new(&store->ctx);
-	if (result != DNSSEC_EOK) {
+	if (result != KNOT_EOK) {
 		free(store);
 		return DNSSEC_ENOMEM;
 	}
 
 	*store_ptr = store;
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }
 
 /* -- public API ----------------------------------------------------------- */
@@ -56,7 +56,7 @@ int dnssec_keystore_deinit(dnssec_keystore_t *store)
 
 	free(store);
 
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }
 
 _public_
@@ -147,17 +147,17 @@ int dnssec_keystore_get_private(dnssec_keystore_t *store, const char *id,
 
 	gnutls_privkey_t privkey = NULL;
 	int r = store->functions->get_private(store->ctx, id, &privkey);
-	if (r != DNSSEC_EOK) {
+	if (r != KNOT_EOK) {
 		return r;
 	}
 
 	r = key_set_private_key(key, privkey);
-	if (r != DNSSEC_EOK) {
+	if (r != KNOT_EOK) {
 		gnutls_privkey_deinit(privkey);
 		return r;
 	}
 
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }
 
 _public_

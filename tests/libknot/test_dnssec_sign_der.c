@@ -27,7 +27,7 @@ static int binary_eq(const dnssec_binary_t *a, const dnssec_binary_t *b)
 	dnssec_binary_t __out_s = { 0 }; \
 	dnssec_binary_t __out_r = { 0 }; \
 	int _result = dss_sig_value_decode(&__der, &__out_r, &__out_s); \
-	ok(_result == DNSSEC_EOK && \
+	ok(_result == KNOT_EOK && \
 	   binary_eq(&__r, &__out_r) && \
 	   binary_eq(&__s, &__out_s), \
 	   "decode ok, " message)
@@ -37,7 +37,7 @@ static int binary_eq(const dnssec_binary_t *a, const dnssec_binary_t *b)
 	dnssec_binary_t __out_r = { 0 }; \
 	dnssec_binary_t __out_s = { 0 }; \
 	int _result = dss_sig_value_decode(&__der, &__out_r, &__out_s); \
-	ok(_result != DNSSEC_EOK, \
+	ok(_result != KNOT_EOK, \
 	   "decode fail, " message)
 
 #define ENCODE_OK(r, s, der, message) \
@@ -46,7 +46,7 @@ static int binary_eq(const dnssec_binary_t *a, const dnssec_binary_t *b)
 	dnssec_binary_t __der = { .data = der, .size = sizeof(der) }; \
 	dnssec_binary_t __out_der = { 0 }; \
 	int _result = dss_sig_value_encode(&__r, &__s, &__out_der); \
-	ok(_result == DNSSEC_EOK && \
+	ok(_result == KNOT_EOK && \
 	   binary_eq(&__der, &__out_der), \
 	   "encode ok, " message); \
 	dnssec_binary_free(&__out_der)
@@ -56,7 +56,7 @@ static int binary_eq(const dnssec_binary_t *a, const dnssec_binary_t *b)
 	dnssec_binary_t __s = { .data = s, .size = sizeof(s) }; \
 	dnssec_binary_t __out_der = { 0 }; \
 	int _result = dss_sig_value_encode(&__r, &__s, &__out_der); \
-	ok(_result != DNSSEC_EOK, \
+	ok(_result != KNOT_EOK, \
 	   "encode fail, " message); \
 	dnssec_binary_free(&__out_der)
 

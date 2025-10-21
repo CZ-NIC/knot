@@ -14,7 +14,7 @@ typedef struct error_message_t {
 } error_message_t;
 
 static const error_message_t ERROR_MESSAGES[] = {
-	{ DNSSEC_EOK,			"no error" },
+	{ KNOT_EOK,			"no error" },
 
 	{ DNSSEC_ENOMEM,		"not enough memory" },
 	{ DNSSEC_EINVAL,		"invalid argument" },

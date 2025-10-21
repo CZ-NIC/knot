@@ -132,7 +132,7 @@ int dnssec_algorithm_key_size_range(dnssec_key_algorithm_t algorithm,
 		*max_ptr = limits->max;
 	}
 
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }
 
 _public_

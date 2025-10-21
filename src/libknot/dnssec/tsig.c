@@ -172,7 +172,7 @@ int dnssec_tsig_new(dnssec_tsig_ctx_t **ctx_ptr,
 
 	*ctx_ptr = ctx;
 
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }
 
 _public_
@@ -198,7 +198,7 @@ int dnssec_tsig_add(dnssec_tsig_ctx_t *ctx, const dnssec_binary_t *data)
 		return DNSSEC_SIGN_ERROR;
 	}
 
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }
 
 _public_
@@ -227,5 +227,5 @@ int dnssec_tsig_write(dnssec_tsig_ctx_t *ctx, uint8_t *mac)
 
 	gnutls_hmac_output(ctx->hash, mac);
 
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }

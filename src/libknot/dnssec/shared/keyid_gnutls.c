@@ -39,13 +39,13 @@ static int keyid_bin(gnutls_x509_privkey_t key, gnutls_pubkey_t pubkey, dnssec_b
 
 	assert(size == DNSSEC_KEYID_BINARY_SIZE);
 	r = dnssec_binary_resize(id, size);
-	if (r != DNSSEC_EOK) {
+	if (r != KNOT_EOK) {
 		return r;
 	}
 
 	memcpy(id->data, buffer, size);
 
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }
 
 /*!
@@ -55,7 +55,7 @@ static int keyid_hex(gnutls_x509_privkey_t key, gnutls_pubkey_t pubkey, char **i
 {
 	_cleanup_binary_ dnssec_binary_t bin = { 0 };
 	int r = keyid_bin(key, pubkey, &bin);
-	if (r != DNSSEC_EOK) {
+	if (r != KNOT_EOK) {
 		return r;
 	}
 
@@ -64,7 +64,7 @@ static int keyid_hex(gnutls_x509_privkey_t key, gnutls_pubkey_t pubkey, char **i
 		return DNSSEC_ENOMEM;
 	}
 
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }
 
 int keyid_x509(gnutls_x509_privkey_t key, dnssec_binary_t *id)

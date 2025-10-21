@@ -28,7 +28,7 @@ int dnssec_random_buffer(uint8_t *data, size_t size)
 		return DNSSEC_ERROR;
 	}
 
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }
 
 _public_

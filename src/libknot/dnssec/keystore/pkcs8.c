@@ -62,7 +62,7 @@ static int file_size(int fd, size_t *size)
 	assert(offset >= 0);
 	*size = offset;
 
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }
 
 /*!
@@ -87,7 +87,7 @@ static int key_open(const char *dir_name, const char *id, int flags,
 
 	*fd_ptr = fd;
 
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }
 
 static int key_open_read(const char *dir_name, const char *id, int *fd_ptr)
@@ -111,13 +111,13 @@ static int pkcs8_dir_read(pkcs8_dir_handle_t *handle, const char *id, dnssec_bin
 
 	_cleanup_close_ int file = -1;
 	int result = key_open_read(handle->dir_name, id, &file);
-	if (result != DNSSEC_EOK) {
+	if (result != KNOT_EOK) {
 		return result;
 	}
 
 	size_t size = 0;
 	result = file_size(file, &size);
-	if (result != DNSSEC_EOK) {
+	if (result != KNOT_EOK) {
 		return result;
 	}
 
@@ -129,7 +129,7 @@ static int pkcs8_dir_read(pkcs8_dir_handle_t *handle, const char *id, dnssec_bin
 
 	dnssec_binary_t read_pem = { 0 };
 	result = dnssec_binary_alloc(&read_pem, size);
-	if (result != DNSSEC_EOK) {
+	if (result != KNOT_EOK) {
 		return result;
 	}
 
@@ -142,7 +142,7 @@ static int pkcs8_dir_read(pkcs8_dir_handle_t *handle, const char *id, dnssec_bin
 	assert(read_count == read_pem.size);
 	*pem = read_pem;
 
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }
 
 static bool key_is_duplicate(int open_error, pkcs8_dir_handle_t *handle,
@@ -158,7 +158,7 @@ static bool key_is_duplicate(int open_error, pkcs8_dir_handle_t *handle,
 
 	_cleanup_binary_ dnssec_binary_t old = { 0 };
 	int r = pkcs8_dir_read(handle, id, &old);
-	if (r != DNSSEC_EOK) {
+	if (r != KNOT_EOK) {
 		return false;
 	}
 
@@ -188,7 +188,7 @@ static int pem_generate(gnutls_pk_algorithm_t algorithm, unsigned bits,
 
 	dnssec_binary_t _pem = { 0 };
 	r = dnssec_pem_from_x509(key, &_pem);
-	if (r != DNSSEC_EOK) {
+	if (r != KNOT_EOK) {
 		return r;
 	}
 
@@ -196,7 +196,7 @@ static int pem_generate(gnutls_pk_algorithm_t algorithm, unsigned bits,
 
 	char *_id = NULL;
 	r = keyid_x509_hex(key, &_id);
-	if (r != DNSSEC_EOK) {
+	if (r != KNOT_EOK) {
 		dnssec_binary_free(&_pem);
 		return r;
 	}
@@ -204,7 +204,7 @@ static int pem_generate(gnutls_pk_algorithm_t algorithm, unsigned bits,
 	*id = _id;
 	*pem = _pem;
 
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }
 
 /* -- internal API --------------------------------------------------------- */
@@ -222,7 +222,7 @@ static int pkcs8_ctx_new(void **ctx_ptr)
 
 	*ctx_ptr = ctx;
 
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }
 
 static void pkcs8_ctx_free(void *ctx)
@@ -254,7 +254,7 @@ static int pkcs8_open(void *ctx, const char *config)
 
 	handle->dir_name = path;
 
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }
 
 static int pkcs8_close(void *ctx)
@@ -268,7 +268,7 @@ static int pkcs8_close(void *ctx)
 	free(handle->dir_name);
 	memset(handle, 0, sizeof(*handle));
 
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }
 
 static int pkcs8_generate_key(void *ctx, gnutls_pk_algorithm_t algorithm,
@@ -287,7 +287,7 @@ static int pkcs8_generate_key(void *ctx, gnutls_pk_algorithm_t algorithm,
 	char *id = NULL;
 	_cleanup_binary_ dnssec_binary_t pem = { 0 };
 	int r = pem_generate(algorithm, bits, &pem, &id);
-	if (r != DNSSEC_EOK) {
+	if (r != KNOT_EOK) {
 		return r;
 	}
 
@@ -295,9 +295,9 @@ static int pkcs8_generate_key(void *ctx, gnutls_pk_algorithm_t algorithm,
 
 	_cleanup_close_ int file = -1;
 	r = key_open_write(handle->dir_name, id, &file);
-	if (r != DNSSEC_EOK) {
+	if (r != KNOT_EOK) {
 		if (key_is_duplicate(r, handle, id, &pem)) {
-			return DNSSEC_EOK;
+			return KNOT_EOK;
 		}
 		return r;
 	}
@@ -315,7 +315,7 @@ static int pkcs8_generate_key(void *ctx, gnutls_pk_algorithm_t algorithm,
 
 	*id_ptr = id;
 
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }
 
 static int pkcs8_import_key(void *ctx, const dnssec_binary_t *pem, char **id_ptr)
@@ -331,12 +331,12 @@ static int pkcs8_import_key(void *ctx, const dnssec_binary_t *pem, char **id_ptr
 	char *id = NULL;
 	_cleanup_x509_privkey_ gnutls_x509_privkey_t key = NULL;
 	int r = dnssec_pem_to_x509(pem, &key);
-	if (r != DNSSEC_EOK) {
+	if (r != KNOT_EOK) {
 		return r;
 	}
 
 	r = keyid_x509_hex(key, &id);
-	if (r != DNSSEC_EOK) {
+	if (r != KNOT_EOK) {
 		return r;
 	}
 
@@ -344,10 +344,10 @@ static int pkcs8_import_key(void *ctx, const dnssec_binary_t *pem, char **id_ptr
 
 	_cleanup_close_ int file = -1;
 	r = key_open_write(handle->dir_name, id, &file);
-	if (r != DNSSEC_EOK) {
+	if (r != KNOT_EOK) {
 		if (key_is_duplicate(r, handle, id, pem)) {
 			*id_ptr = id;
-			return DNSSEC_EOK;
+			return KNOT_EOK;
 		}
 		free(id);
 		return r;
@@ -367,7 +367,7 @@ static int pkcs8_import_key(void *ctx, const dnssec_binary_t *pem, char **id_ptr
 
 	*id_ptr = id;
 
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }
 
 static int pkcs8_remove_key(void *ctx, const char *id)
@@ -387,7 +387,7 @@ static int pkcs8_remove_key(void *ctx, const char *id)
 		return dnssec_errno_to_error(errno);
 	}
 
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }
 
 static int pkcs8_get_private(void *ctx, const char *id, gnutls_privkey_t *key_ptr)
@@ -402,13 +402,13 @@ static int pkcs8_get_private(void *ctx, const char *id, gnutls_privkey_t *key_pt
 
 	_cleanup_close_ int file = -1;
 	int r = key_open_read(handle->dir_name, id, &file);
-	if (r != DNSSEC_EOK) {
+	if (r != KNOT_EOK) {
 		return r;
 	}
 
 	size_t size = 0;
 	r = file_size(file, &size);
-	if (r != DNSSEC_EOK) {
+	if (r != KNOT_EOK) {
 		return r;
 	}
 
@@ -420,7 +420,7 @@ static int pkcs8_get_private(void *ctx, const char *id, gnutls_privkey_t *key_pt
 
 	_cleanup_binary_ dnssec_binary_t pem = { 0 };
 	r = dnssec_binary_alloc(&pem, size);
-	if (r != DNSSEC_EOK) {
+	if (r != KNOT_EOK) {
 		return r;
 	}
 
@@ -436,7 +436,7 @@ static int pkcs8_get_private(void *ctx, const char *id, gnutls_privkey_t *key_pt
 
 	gnutls_privkey_t key = NULL;
 	r = dnssec_pem_to_privkey(&pem, &key);
-	if (r != DNSSEC_EOK) {
+	if (r != KNOT_EOK) {
 		return r;
 	}
 
@@ -444,7 +444,7 @@ static int pkcs8_get_private(void *ctx, const char *id, gnutls_privkey_t *key_pt
 
 	*key_ptr = key;
 
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }
 
 static int pkcs8_set_private(void *ctx, gnutls_privkey_t key)
@@ -455,7 +455,7 @@ static int pkcs8_set_private(void *ctx, gnutls_privkey_t key)
 
 	_cleanup_binary_ dnssec_binary_t pem = { 0 };
 	int r = dnssec_pem_from_privkey(key, &pem);
-	if (r != DNSSEC_EOK) {
+	if (r != KNOT_EOK) {
 		return r;
 	}
 

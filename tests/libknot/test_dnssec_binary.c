@@ -41,14 +41,14 @@ static void test_base64(void)
 		dnssec_binary_t binary = { 0 };
 
 		int r = dnssec_binary_from_base64(&base64, &binary);
-		ok(r == DNSSEC_EOK &&
+		ok(r == KNOT_EOK &&
 		   binary.size == ts->decoded_size &&
 		   (binary.size == 0 || memcmp(binary.data, ts->decoded, binary.size) == 0),
 		   "dnssec_binary_from_base64() for '%s'", ts->encoded);
 
 		dnssec_binary_t encoded = { 0 };
 		r = dnssec_binary_to_base64(&binary, &encoded);
-		ok(r == DNSSEC_EOK &&
+		ok(r == KNOT_EOK &&
 		   encoded.size == ts->encoded_size &&
 		   memcmp(encoded.data, ts->encoded, encoded.size) == 0,
 		   "dnssec_binary_to_base64() for '%s'", ts->encoded);
@@ -64,7 +64,7 @@ static void test_dup(void)
 	dnssec_binary_t dst = { 0 };
 
 	int r = dnssec_binary_dup(&src, &dst);
-	ok(r == DNSSEC_EOK &&
+	ok(r == KNOT_EOK &&
 	   src.size == dst.size && memcmp(src.data, dst.data, src.size) == 0,
 	   "dnssec_binary_dup()");
 

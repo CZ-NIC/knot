@@ -40,7 +40,7 @@ int dnssec_pem_to_x509(const dnssec_binary_t *pem, gnutls_x509_privkey_t *key)
 
 	*key = _key;
 
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }
 
 _public_
@@ -52,7 +52,7 @@ int dnssec_pem_to_privkey(const dnssec_binary_t *pem, gnutls_privkey_t *key)
 
 	gnutls_x509_privkey_t key_x509 = NULL;
 	int r = dnssec_pem_to_x509(pem, &key_x509);
-	if (r != DNSSEC_EOK) {
+	if (r != KNOT_EOK) {
 		return r;
 	}
 
@@ -73,7 +73,7 @@ int dnssec_pem_to_privkey(const dnssec_binary_t *pem, gnutls_privkey_t *key)
 
 	*key = key_abs;
 
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }
 
 static int try_export_pem(gnutls_x509_privkey_t key, dnssec_binary_t *pem)
@@ -102,7 +102,7 @@ int dnssec_pem_from_x509(gnutls_x509_privkey_t key, dnssec_binary_t *pem)
 	}
 
 	r = dnssec_binary_alloc(&_pem, _pem.size);
-	if (r != DNSSEC_EOK) {
+	if (r != KNOT_EOK) {
 		return r;
 	}
 
@@ -114,7 +114,7 @@ int dnssec_pem_from_x509(gnutls_x509_privkey_t key, dnssec_binary_t *pem)
 
 	*pem = _pem;
 
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }
 
 static int privkey_export_x509(gnutls_privkey_t key, gnutls_x509_privkey_t *_key)
@@ -123,7 +123,7 @@ static int privkey_export_x509(gnutls_privkey_t key, gnutls_x509_privkey_t *_key
 		return DNSSEC_KEY_EXPORT_ERROR;
 	}
 
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }
 
 _public_
@@ -136,17 +136,17 @@ int dnssec_pem_from_privkey(gnutls_privkey_t key, dnssec_binary_t *pem)
 	_cleanup_x509_privkey_ gnutls_x509_privkey_t _key = NULL;
 
 	int r = privkey_export_x509(key, &_key);
-	if (r != DNSSEC_EOK) {
+	if (r != KNOT_EOK) {
 		return r;
 	}
 
 	dnssec_binary_t _pem = { 0 };
 	r = dnssec_pem_from_x509(_key, &_pem);
-	if (r != DNSSEC_EOK) {
+	if (r != KNOT_EOK) {
 		return r;
 	}
 
 	*pem = _pem;
 
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }
