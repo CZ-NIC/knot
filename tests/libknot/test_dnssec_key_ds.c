@@ -66,7 +66,7 @@ static void test_errors(const struct key_parameters *params)
 
 	dnssec_key_set_dname(key, params->name);
 	r = dnssec_key_create_ds(key, DNSSEC_KEY_DIGEST_SHA1, &ds);
-	is_int(DNSSEC_INVALID_PUBLIC_KEY, r, "dnssec_key_create_ds() no public key");
+	is_int(KNOT_INVALID_PUBLIC_KEY, r, "dnssec_key_create_ds() no public key");
 
 	dnssec_key_set_rdata(key, &params->rdata);
 	r = dnssec_key_create_ds(key, DNSSEC_KEY_DIGEST_SHA1, NULL);

@@ -210,9 +210,9 @@ int knot_error_from_libdnssec(int libdnssec_errcode)
 	case DNSSEC_NO_PRIVATE_KEY:
 		return KNOT_DNSSEC_ENOKEY;
 	// EOK, EINVAL, ENOMEM and ENOENT are identical, no need to translate
-	case DNSSEC_INVALID_PUBLIC_KEY ... DNSSEC_INVALID_KEY_NAME:
+	case KNOT_INVALID_PUBLIC_KEY ... DNSSEC_INVALID_KEY_NAME:
 		return libdnssec_errcode
-		       - DNSSEC_INVALID_PUBLIC_KEY + KNOT_INVALID_PUBLIC_KEY;
+		       - KNOT_INVALID_PUBLIC_KEY + KNOT_INVALID_PUBLIC_KEY;
 	default:
 		return libdnssec_errcode;
 	}

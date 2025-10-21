@@ -123,7 +123,7 @@ static int ecdsa_pubkey_to_rdata(gnutls_pubkey_t key, dnssec_binary_t *rdata)
 
 	size_t point_size = ecdsa_curve_point_size(curve);
 	if (point_size == 0) {
-		return DNSSEC_INVALID_PUBLIC_KEY;
+		return KNOT_INVALID_PUBLIC_KEY;
 	}
 
 	result = dnssec_binary_alloc(rdata, 2 * point_size);
@@ -157,7 +157,7 @@ static int eddsa_pubkey_to_rdata(gnutls_pubkey_t key, dnssec_binary_t *rdata)
 
 	size_t point_size = eddsa_curve_point_size(curve);
 	if (point_size == 0) {
-		return DNSSEC_INVALID_PUBLIC_KEY;
+		return KNOT_INVALID_PUBLIC_KEY;
 	}
 
 	result = dnssec_binary_alloc(rdata, point_size);
@@ -183,7 +183,7 @@ static int rsa_rdata_to_pubkey(const dnssec_binary_t *rdata, gnutls_pubkey_t key
 	assert(key);
 
 	if (rdata->size == 0) {
-		return DNSSEC_INVALID_PUBLIC_KEY;
+		return KNOT_INVALID_PUBLIC_KEY;
 	}
 
 	wire_ctx_t ctx = binary_init(rdata);
@@ -192,7 +192,7 @@ static int rsa_rdata_to_pubkey(const dnssec_binary_t *rdata, gnutls_pubkey_t key
 
 	uint8_t exponent_size = wire_ctx_read_u8(&ctx);
 	if (exponent_size == 0 || wire_ctx_available(&ctx) < exponent_size) {
-		return DNSSEC_INVALID_PUBLIC_KEY;
+		return KNOT_INVALID_PUBLIC_KEY;
 	}
 
 	gnutls_datum_t exponent = wire_take_datum(&ctx, exponent_size);
@@ -201,7 +201,7 @@ static int rsa_rdata_to_pubkey(const dnssec_binary_t *rdata, gnutls_pubkey_t key
 
 	size_t modulus_size = wire_ctx_available(&ctx);
 	if (modulus_size == 0) {
-		return DNSSEC_INVALID_PUBLIC_KEY;
+		return KNOT_INVALID_PUBLIC_KEY;
 	}
 
 	gnutls_datum_t modulus = wire_take_datum(&ctx, modulus_size);
@@ -252,7 +252,7 @@ static int ecdsa_rdata_to_pubkey(const dnssec_binary_t *rdata, gnutls_pubkey_t k
 
 	gnutls_ecc_curve_t curve = ecdsa_curve_from_rdata_size(rdata->size);
 	if (curve == GNUTLS_ECC_CURVE_INVALID) {
-		return DNSSEC_INVALID_PUBLIC_KEY;
+		return KNOT_INVALID_PUBLIC_KEY;
 	}
 
 	// parse points
@@ -282,7 +282,7 @@ static int eddsa_rdata_to_pubkey(const dnssec_binary_t *rdata, gnutls_pubkey_t k
 
 	gnutls_ecc_curve_t curve = eddsa_curve_from_rdata_size(rdata->size);
 	if (curve == GNUTLS_ECC_CURVE_INVALID) {
-		return DNSSEC_INVALID_PUBLIC_KEY;
+		return KNOT_INVALID_PUBLIC_KEY;
 	}
 
 	wire_ctx_t ctx = binary_init(rdata);
@@ -311,7 +311,7 @@ int convert_pubkey_to_dnskey(gnutls_pubkey_t key, dnssec_binary_t *rdata)
 
 	int algorithm = gnutls_pubkey_get_pk_algorithm(key, NULL);
 	if (algorithm < 0) {
-		return DNSSEC_INVALID_PUBLIC_KEY;
+		return KNOT_INVALID_PUBLIC_KEY;
 	}
 
 	switch ((gnutls_pk_algorithm_t)algorithm) {

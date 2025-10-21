@@ -54,7 +54,7 @@ int dnskey_rdata_to_crypto_key(const dnssec_binary_t *rdata, gnutls_pubkey_t *ke
 	wire_ctx_set_offset(&wire, DNSKEY_RDATA_OFFSET_PROTOCOL);
 	protocol = wire_ctx_read_u8(&wire);
 	if (!(flags_hi & 0x1) || protocol != 0x3) {
-		return DNSSEC_INVALID_PUBLIC_KEY;
+		return KNOT_INVALID_PUBLIC_KEY;
 	}
 
 	wire_ctx_set_offset(&wire, DNSKEY_RDATA_OFFSET_ALGORITHM);

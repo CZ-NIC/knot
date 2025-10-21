@@ -69,7 +69,7 @@ int dnssec_key_create_ds(const dnssec_key_t *key,
 	}
 
 	if (!key->public_key){
-		return DNSSEC_INVALID_PUBLIC_KEY;
+		return KNOT_INVALID_PUBLIC_KEY;
 	}
 
 	gnutls_digest_algorithm_t algorithm = lookup_algorithm(ds_algorithm);
