@@ -376,7 +376,7 @@ int dnssec_sign_verify(dnssec_sign_ctx_t *ctx, bool sign_cmp, const dnssec_binar
 	if (result == GNUTLS_E_PK_SIG_VERIFY_FAILED) {
 		return DNSSEC_INVALID_SIGNATURE;
 	} else if (result < 0) {
-		return DNSSEC_ERROR;
+		return KNOT_ERROR;
 	}
 
 	return KNOT_EOK;

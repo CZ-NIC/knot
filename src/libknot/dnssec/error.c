@@ -20,7 +20,7 @@ static const error_message_t ERROR_MESSAGES[] = {
 	{ KNOT_EINVAL,		"invalid argument" },
 	{ KNOT_ENOENT,		"no such file or directory" },
 
-	{ DNSSEC_ERROR,			"unspecified error" },
+	{ KNOT_ERROR,			"unspecified error" },
 	{ KNOT_ENOTSUP,	"not implemented" },
 	{ KNOT_EMALF,	"malformed data" },
 	{ KNOT_ENOENT,		"not found" },

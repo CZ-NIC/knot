@@ -20,7 +20,7 @@ static int pkcs11_modules_count = 0;
 
 static int map_result(int gnutls_result)
 {
-	return gnutls_result == GNUTLS_E_SUCCESS ? KNOT_EOK : DNSSEC_ERROR;
+	return gnutls_result == GNUTLS_E_SUCCESS ? KNOT_EOK : KNOT_ERROR;
 }
 
 int p11_init(void)

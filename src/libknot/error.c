@@ -201,7 +201,7 @@ _public_
 int knot_error_from_libdnssec(int libdnssec_errcode)
 {
 	switch (libdnssec_errcode) {
-	case DNSSEC_ERROR:
+	case KNOT_ERROR:
 		return KNOT_ERROR;
 	case KNOT_EMALF:
 		return KNOT_EMALF;

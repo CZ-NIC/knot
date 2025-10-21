@@ -306,7 +306,7 @@ static int pkcs11_remove_key(void *_ctx, const char *id)
 
 	r = gnutls_pkcs11_delete_url(url, GNUTLS_PKCS11_OBJ_FLAG_LOGIN);
 	if (r < 0) {
-		return DNSSEC_ERROR;
+		return KNOT_ERROR;
 	} else if (r == 0) {
 		return KNOT_ENOENT;
 	}
