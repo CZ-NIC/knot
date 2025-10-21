@@ -65,7 +65,7 @@ int dnssec_key_create_ds(const dnssec_key_t *key,
 	}
 
 	if (!key->dname) {
-		return DNSSEC_INVALID_KEY_NAME;
+		return KNOT_INVALID_KEY_NAME;
 	}
 
 	if (!key->public_key){

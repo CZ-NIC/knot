@@ -35,7 +35,7 @@ static const error_message_t ERROR_MESSAGES[] = {
 	{ KNOT_INVALID_KEY_ALGORITHM,	"invalid key algorithm" },
 	{ KNOT_INVALID_KEY_SIZE,	"invalid key size" },
 	{ KNOT_INVALID_KEY_ID,	"invalid key ID" },
-	{ DNSSEC_INVALID_KEY_NAME,	"invalid key name" },
+	{ KNOT_INVALID_KEY_NAME,	"invalid key name" },
 
 	{ DNSSEC_NO_PUBLIC_KEY,		"no public key" },
 	{ DNSSEC_NO_PRIVATE_KEY,	"no private key" },
