@@ -106,7 +106,7 @@ int dnssec_keystore_generate(dnssec_keystore_t *store,
 	}
 
 	if (!dnssec_algorithm_key_size_check(_algorithm, bits)) {
-		return DNSSEC_INVALID_KEY_SIZE;
+		return KNOT_INVALID_KEY_SIZE;
 	}
 
 	return store->functions->generate_key(store->ctx, algorithm, bits, label, id_ptr);
