@@ -249,7 +249,7 @@ static int pkcs8_open(void *ctx, const char *config)
 
 	char *path = realpath(config, NULL);
 	if (!path) {
-		return DNSSEC_NOT_FOUND;
+		return KNOT_ENOENT;
 	}
 
 	handle->dir_name = path;

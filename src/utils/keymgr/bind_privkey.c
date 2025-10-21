@@ -198,7 +198,7 @@ int bind_privkey_parse(const char *filename, bind_privkey_t *params_ptr)
 {
 	_cleanup_fclose_ FILE *file = fopen(filename, "r");
 	if (!file) {
-		return DNSSEC_NOT_FOUND;
+		return KNOT_ENOENT;
 	}
 
 	bind_privkey_t params = *params_ptr;

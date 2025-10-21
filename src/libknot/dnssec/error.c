@@ -23,7 +23,7 @@ static const error_message_t ERROR_MESSAGES[] = {
 	{ DNSSEC_ERROR,			"unspecified error" },
 	{ KNOT_ENOTSUP,	"not implemented" },
 	{ KNOT_EMALF,	"malformed data" },
-	{ DNSSEC_NOT_FOUND,		"not found" },
+	{ KNOT_ENOENT,		"not found" },
 
 	{ DNSSEC_PKCS8_IMPORT_ERROR,	"PKCS #8 import error" },
 	{ DNSSEC_KEY_EXPORT_ERROR,	"key export error" },

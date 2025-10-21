@@ -201,7 +201,7 @@ int knot_error_from_libdnssec(int libdnssec_errcode)
 		return KNOT_ERROR;
 	case KNOT_EMALF:
 		return KNOT_EMALF;
-	case DNSSEC_NOT_FOUND:
+	case KNOT_ENOENT:
 		return KNOT_ENOENT;
 	case DNSSEC_NO_PUBLIC_KEY:
 	case DNSSEC_NO_PRIVATE_KEY:
