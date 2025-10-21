@@ -102,7 +102,7 @@ int dnssec_keystore_generate(dnssec_keystore_t *store,
 
 	gnutls_pk_algorithm_t algorithm = algorithm_to_gnutls(_algorithm);
 	if (algorithm == GNUTLS_PK_UNKNOWN) {
-		return DNSSEC_INVALID_KEY_ALGORITHM;
+		return KNOT_INVALID_KEY_ALGORITHM;
 	}
 
 	if (!dnssec_algorithm_key_size_check(_algorithm, bits)) {

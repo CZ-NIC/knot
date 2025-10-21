@@ -161,7 +161,7 @@ int dnssec_tsig_new(dnssec_tsig_ctx_t **ctx_ptr,
 	ctx->algorithm = algorithm_to_gnutls(algorithm);
 	if (ctx->algorithm == GNUTLS_MAC_UNKNOWN) {
 		free(ctx);
-		return DNSSEC_INVALID_KEY_ALGORITHM;
+		return KNOT_INVALID_KEY_ALGORITHM;
 	}
 
 	int result = gnutls_hmac_init(&ctx->hash, ctx->algorithm, key->data, key->size);

@@ -122,7 +122,7 @@ int dnssec_algorithm_key_size_range(dnssec_key_algorithm_t algorithm,
 
 	const struct limits *limits = get_limits(algorithm);
 	if (!limits) {
-		return DNSSEC_INVALID_KEY_ALGORITHM;
+		return KNOT_INVALID_KEY_ALGORITHM;
 	}
 
 	if (min_ptr) {

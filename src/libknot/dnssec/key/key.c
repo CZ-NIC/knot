@@ -298,7 +298,7 @@ int dnssec_key_set_algorithm(dnssec_key_t *key, uint8_t algorithm)
 	}
 
 	if (!can_change_algorithm(key, algorithm)) {
-		return DNSSEC_INVALID_KEY_ALGORITHM;
+		return KNOT_INVALID_KEY_ALGORITHM;
 	}
 
 	wire_ctx_t wire = binary_init(&key->rdata);
@@ -334,7 +334,7 @@ int dnssec_key_set_pubkey(dnssec_key_t *key, const dnssec_binary_t *pubkey)
 	}
 
 	if (dnssec_key_get_algorithm(key) == 0) {
-		return DNSSEC_INVALID_KEY_ALGORITHM;
+		return KNOT_INVALID_KEY_ALGORITHM;
 	}
 
 	int result = dnskey_rdata_set_pubkey(&key->rdata, pubkey);

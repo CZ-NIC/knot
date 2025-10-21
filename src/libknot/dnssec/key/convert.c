@@ -321,7 +321,7 @@ int convert_pubkey_to_dnskey(gnutls_pubkey_t key, dnssec_binary_t *rdata)
 #ifdef HAVE_ED448
 	case GNUTLS_PK_EDDSA_ED448: return eddsa_pubkey_to_rdata(key, rdata);
 #endif
-	default: return DNSSEC_INVALID_KEY_ALGORITHM;
+	default: return KNOT_INVALID_KEY_ALGORITHM;
 	}
 }
 
@@ -343,6 +343,6 @@ int convert_dnskey_to_pubkey(uint8_t algorithm, const dnssec_binary_t *rdata,
 #ifdef HAVE_ED448
 	case GNUTLS_PK_EDDSA_ED448: return eddsa_rdata_to_pubkey(rdata, key);
 #endif
-	default: return DNSSEC_INVALID_KEY_ALGORITHM;
+	default: return KNOT_INVALID_KEY_ALGORITHM;
 	}
 }

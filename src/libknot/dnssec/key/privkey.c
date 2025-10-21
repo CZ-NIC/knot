@@ -113,7 +113,7 @@ int key_set_private_key(dnssec_key_t *key, gnutls_privkey_t privkey)
 	assert(key->private_key == NULL);
 
 	if (!valid_algorithm(key, privkey)) {
-		return DNSSEC_INVALID_KEY_ALGORITHM;
+		return KNOT_INVALID_KEY_ALGORITHM;
 	}
 
 	if (!key->public_key) {

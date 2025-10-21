@@ -25,7 +25,7 @@ int dnssec_key_load_pkcs8(dnssec_key_t *key, const dnssec_binary_t *pem)
 	}
 
 	if (dnssec_key_get_algorithm(key) == 0) {
-		return DNSSEC_INVALID_KEY_ALGORITHM;
+		return KNOT_INVALID_KEY_ALGORITHM;
 	}
 
 	gnutls_privkey_t privkey = NULL;

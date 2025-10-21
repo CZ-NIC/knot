@@ -50,7 +50,7 @@ static void test_public_key(const key_parameters_t *params)
 	// create from parameters
 
 	r = dnssec_key_set_pubkey(key, &params->public_key);
-	ok(r == DNSSEC_INVALID_KEY_ALGORITHM,
+	ok(r == KNOT_INVALID_KEY_ALGORITHM,
 	   "set public key (fails, no algorithm set)");
 
 	check_attr_scalar(key, uint16_t, flags,     256, params->flags);

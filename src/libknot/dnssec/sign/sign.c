@@ -239,7 +239,7 @@ int dnssec_sign_new(dnssec_sign_ctx_t **ctx_ptr, const dnssec_key_t *key)
 	ctx->functions = get_functions(key);
 	if (ctx->functions == NULL) {
 		free(ctx);
-		return DNSSEC_INVALID_KEY_ALGORITHM;
+		return KNOT_INVALID_KEY_ALGORITHM;
 	}
 
 	const uint8_t algo_raw = dnssec_key_get_algorithm(key);

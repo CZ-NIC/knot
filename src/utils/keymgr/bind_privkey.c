@@ -80,7 +80,7 @@ static int parse_algorithm(char *string, void *_algorithm)
 	uint8_t *algorithm = _algorithm;
 	int r = str_to_u8(string, algorithm);
 
-	return (r == KNOT_EOK ? KNOT_EOK : DNSSEC_INVALID_KEY_ALGORITHM);
+	return (r == KNOT_EOK ? KNOT_EOK : KNOT_INVALID_KEY_ALGORITHM);
 }
 
 /*!
@@ -376,7 +376,7 @@ int bind_privkey_to_pem(dnssec_key_t *key, bind_privkey_t *params, dnssec_binary
 #endif
 		return eddsa_params_to_pem(key, params, pem);
 	default:
-		return DNSSEC_INVALID_KEY_ALGORITHM;
+		return KNOT_INVALID_KEY_ALGORITHM;
 	}
 }
 
