@@ -210,6 +210,9 @@ class Server(object):
     def conf_srv(self):
         return self.conf_base(self.conf["server"], ["server"])
 
+    def conf_defaults(self, zone_name):
+        return { "zone": dict() }
+
     def _check_socket(self, proto, port):
         if self.addr.startswith("/"):
             ux_socket = True
@@ -252,8 +255,9 @@ class Server(object):
 
     def set_new_zone(self, name, z):
         self.zones[name] = z
-        self.conf["zone"][name] = { "zonefile_sync": "1d", "semantic_checks": True, "notify_delay": random.randint(0, 1) }
-        self.conf["policy"][name] = { "keystore": [], "keytag_modulo": "0/1", "signing-threads": random.randint(1, 4) }
+        cd = self.conf_defaults(name)
+        for subsection in cd:
+            self.conf[subsection].update(cd[subsection])
 
     def set_master(self, zone, slave=None, ddns=False, ixfr=False):
         '''Set the server as a master for the zone'''
@@ -1385,6 +1389,12 @@ class Knot(Server):
 
     def wait_function(self, wait=False): # needed for compatibility with Bind class
         pass
+
+    def conf_defaults(self, zone_name):
+        cd = { "zone": dict(), "policy": dict() }
+        cd["zone"][zone_name] = { "zonefile_sync": "1d", "semantic_checks": True, "notify_delay": random.randint(0, 1) }
+        cd["policy"][zone_name] = { "keystore": [], "keytag_modulo": '0/1', "signing-threads": random.randint(1,4) }
+        return cd
 
     def flush(self, zone=None, wait=False):
         one_zone = list(self.zones)[0] if zone is None and len(self.zones) > 0 else zone
