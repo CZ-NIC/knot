@@ -64,13 +64,13 @@ static int params2dnskey(const knot_dname_t *dname, key_params_t *params,
 	dnssec_key_t *key = NULL;
 	ret = dnssec_key_new(&key);
 	if (ret != KNOT_EOK) {
-		return knot_error_from_libdnssec(ret);
+		return ret;
 	}
 
 	ret = dnssec_key_set_dname(key, dname);
 	if (ret != KNOT_EOK) {
 		dnssec_key_free(key);
-		return knot_error_from_libdnssec(ret);
+		return ret;
 	}
 
 	dnssec_key_set_algorithm(key, params->algorithm);
@@ -78,7 +78,7 @@ static int params2dnskey(const knot_dname_t *dname, key_params_t *params,
 	ret = dnssec_key_set_pubkey(key, &params->public_key);
 	if (ret != KNOT_EOK) {
 		dnssec_key_free(key);
-		return knot_error_from_libdnssec(ret);
+		return ret;
 	}
 
 	ret = dnskey_guess_flags(key, params->keytag);

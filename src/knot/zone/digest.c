@@ -109,7 +109,7 @@ int zone_contents_digest(const zone_contents_t *contents, int algorithm,
 	int ret = dnssec_digest_init(algorithm, &ctx.digest_ctx);
 	if (ret != KNOT_EOK) {
 		free(ctx.buf);
-		return knot_error_from_libdnssec(ret);
+		return ret;
 	}
 
 	zone_tree_t *conts = contents->nodes;

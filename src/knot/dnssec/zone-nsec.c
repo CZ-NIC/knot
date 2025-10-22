@@ -62,7 +62,7 @@ int knot_create_nsec3_owner(uint8_t *out, size_t out_size,
 
 	int ret = dnssec_nsec3_hash(&data, params, &hash);
 	if (ret != KNOT_EOK) {
-		return knot_error_from_libdnssec(ret);
+		return ret;
 	}
 
 	ret = knot_nsec3_hash_to_dname(out, out_size, hash.data, hash.size, zone_apex);

@@ -525,7 +525,6 @@ static int load_private_keys(kdnssec_ctx_t *ctx, zone_keyset_t *keyset)
 		case KNOT_EEXIST:
 			break;
 		default:
-			ret = knot_error_from_libdnssec(ret);
 			log_zone_error(ctx->zone->dname,
 			               "DNSSEC, key %d, failed to load private key (%s)",
 			               dnssec_key_get_keytag(key->key), knot_strerror(ret));
@@ -685,7 +684,6 @@ int zone_key_calculate_ds(zone_key_t *for_key, dnssec_key_digest_t digesttype,
 	if (for_key->precomputed_ds.data == NULL || for_key->precomputed_digesttype != digesttype) {
 		dnssec_binary_free(&for_key->precomputed_ds);
 		ret = dnssec_key_create_ds(for_key->key, digesttype, &for_key->precomputed_ds);
-		ret = knot_error_from_libdnssec(ret);
 		for_key->precomputed_digesttype = digesttype;
 	}
 
@@ -795,18 +793,18 @@ int dnssec_key_from_rdata(dnssec_key_t **key, const knot_dname_t *owner,
 	dnssec_key_t *new_key = NULL;
 	int ret = dnssec_key_new(&new_key);
 	if (ret != KNOT_EOK) {
-		return knot_error_from_libdnssec(ret);
+		return ret;
 	}
 	ret = dnssec_key_set_rdata(new_key, &binary_key);
 	if (ret != KNOT_EOK) {
 		dnssec_key_free(new_key);
-		return knot_error_from_libdnssec(ret);
+		return ret;
 	}
 	if (owner != NULL) {
 		ret = dnssec_key_set_dname(new_key, owner);
 		if (ret != KNOT_EOK) {
 			dnssec_key_free(new_key);
-			return knot_error_from_libdnssec(ret);
+			return ret;
 		}
 	}
 

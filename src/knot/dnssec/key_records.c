@@ -183,7 +183,7 @@ int key_records_sign(const zone_key_t *key, key_records_t *r, const kdnssec_ctx_
 	dnssec_sign_ctx_t *sign_ctx;
 	int ret = dnssec_sign_new(&sign_ctx, key->key);
 	if (ret != KNOT_EOK) {
-		ret = knot_error_from_libdnssec(ret);
+		return ret;
 	}
 
 	if (!knot_rrset_empty(&r->dnskey) && knot_zone_sign_use_key(key, &r->dnskey)) {

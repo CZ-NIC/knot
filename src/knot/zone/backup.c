@@ -222,7 +222,7 @@ static int backup_key(key_params_t *parm, const knot_dname_t *zname, bool restor
 	dnssec_key_t *key = NULL;
 	int ret = dnssec_key_new(&key);
 	if (ret != KNOT_EOK) {
-		return knot_error_from_libdnssec(ret);
+		return ret;
 	}
 	dnssec_key_set_algorithm(key, parm->algorithm);
 
@@ -245,7 +245,7 @@ static int backup_key(key_params_t *parm, const knot_dname_t *zname, bool restor
 	}
 
 	dnssec_key_free(key);
-	return knot_error_from_libdnssec(ret);
+	return ret;
 }
 
 static conf_val_t get_zone_policy(conf_t *conf, const knot_dname_t *zone)

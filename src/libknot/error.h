@@ -25,15 +25,4 @@
  */
 const char *knot_strerror(int code);
 
-/*!
- * \brief Translates error code from libdnssec into libknot.
- *
- * This is just temporary until everything from libdnssec moved to libknot.
- *
- * \param libdnssec_errcode Error code from libdnssec
- *
- * \return Error code.
- */
-int knot_error_from_libdnssec(int libdnssec_errcode);
-
 /*! @} */
