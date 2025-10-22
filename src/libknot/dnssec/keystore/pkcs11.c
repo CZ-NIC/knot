@@ -78,7 +78,7 @@ static int parse_config(const char *config, char **uri_ptr, char **module_ptr)
 {
 	const char *space = strchr(config, ' ');
 	if (!space) {
-		return DNSSEC_KEYSTORE_INVALID_CONFIG;
+		return KNOT_P11_ECONFIG;
 	}
 
 	char *url = strndup(config, space - config);

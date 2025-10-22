@@ -51,7 +51,7 @@ static const error_message_t ERROR_MESSAGES[] = {
 	{ DNSSEC_INVALID_DS_ALGORITHM,	"invalid DS algorithm" },
 	{ KNOT_ECRYPTO,	"DS hashing error" },
 
-	{ DNSSEC_KEYSTORE_INVALID_CONFIG,  "invalid KASP keystore configuration" },
+	{ KNOT_EINVAL,  "invalid KASP keystore configuration" },
 
 	{ DNSSEC_P11_FAILED_TO_LOAD_MODULE, "failed to load PKCS #11 module" },
 	{ DNSSEC_P11_TOO_MANY_MODULES,      "too many PKCS #11 modules loaded" },
