@@ -29,7 +29,7 @@ static int nsec3_hash(gnutls_digest_algorithm_t algorithm, int iterations,
 
 	int hash_size = gnutls_hash_get_len(algorithm);
 	if (hash_size <= 0) {
-		return DNSSEC_NSEC3_HASHING_ERROR;
+		return KNOT_ECRYPTO;
 	}
 
 	int result = dnssec_binary_resize(hash, hash_size);
@@ -40,7 +40,7 @@ static int nsec3_hash(gnutls_digest_algorithm_t algorithm, int iterations,
 	_cleanup_hash_ gnutls_hash_hd_t digest = NULL;
 	result = gnutls_hash_init(&digest, algorithm);
 	if (result < 0) {
-		return DNSSEC_NSEC3_HASHING_ERROR;
+		return KNOT_ECRYPTO;
 	}
 
 	const uint8_t *in = data->data;
@@ -49,12 +49,12 @@ static int nsec3_hash(gnutls_digest_algorithm_t algorithm, int iterations,
 	for (int i = 0; i <= iterations; i++) {
 		result = gnutls_hash(digest, in, in_size);
 		if (result < 0) {
-			return DNSSEC_NSEC3_HASHING_ERROR;
+			return KNOT_ECRYPTO;
 		}
 
 		result = gnutls_hash(digest, salt->data, salt->size);
 		if (result < 0) {
-			return DNSSEC_NSEC3_HASHING_ERROR;
+			return KNOT_ECRYPTO;
 		}
 
 		gnutls_hash_output(digest, hash->data);

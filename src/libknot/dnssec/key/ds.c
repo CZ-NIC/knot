@@ -82,20 +82,20 @@ int dnssec_key_create_ds(const dnssec_key_t *key,
 	_cleanup_hash_ gnutls_hash_hd_t digest = NULL;
 	int r = gnutls_hash_init(&digest, algorithm);
 	if (r < 0) {
-		return DNSSEC_DS_HASHING_ERROR;
+		return KNOT_ECRYPTO;
 	}
 
 	if (gnutls_hash(digest, key->dname, knot_dname_size(key->dname)) != 0 ||
 	    gnutls_hash(digest, key->rdata.data, key->rdata.size) != 0
 	) {
-		return DNSSEC_DS_HASHING_ERROR;
+		return KNOT_ECRYPTO;
 	}
 
 	// build DS RDATA
 
 	int digest_size = gnutls_hash_get_len(algorithm);
 	if (digest_size == 0) {
-		return DNSSEC_DS_HASHING_ERROR;
+		return KNOT_ECRYPTO;
 	}
 
 	dnssec_binary_t rdata = { 0 };

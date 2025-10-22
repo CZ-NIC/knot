@@ -46,10 +46,10 @@ static const error_message_t ERROR_MESSAGES[] = {
 	{ DNSSEC_INVALID_SIGNATURE,	"invalid signature" },
 
 	{ DNSSEC_INVALID_NSEC3_ALGORITHM, "invalid NSEC3 algorithm" },
-	{ DNSSEC_NSEC3_HASHING_ERROR,	"NSEC3 hashing error" },
+	{ KNOT_ECRYPTO,	"NSEC3 hashing error" },
 
 	{ DNSSEC_INVALID_DS_ALGORITHM,	"invalid DS algorithm" },
-	{ DNSSEC_DS_HASHING_ERROR,	"DS hashing error" },
+	{ KNOT_ECRYPTO,	"DS hashing error" },
 
 	{ DNSSEC_KEYSTORE_INVALID_CONFIG,  "invalid KASP keystore configuration" },
 
@@ -58,7 +58,7 @@ static const error_message_t ERROR_MESSAGES[] = {
 	{ DNSSEC_P11_TOKEN_NOT_AVAILABLE,   "PKCS #11 token not available" },
 
 	{ DNSSEC_INVALID_DIGEST_ALGORITHM,  "invalid digest algorithm" },
-	{ DNSSEC_DIGEST_ERROR,              "digest error" },
+	{ KNOT_ECRYPTO,              "digest error" },
 
 	{ 0 }
 };

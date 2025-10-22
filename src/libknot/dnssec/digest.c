@@ -45,7 +45,7 @@ int dnssec_digest_init(dnssec_digest_t algorithm, dnssec_digest_ctx_t **out_ctx)
 	res->size = gnutls_hash_get_len(gtalg);
 	if (res->size == 0 || gnutls_hash_init(&res->gtctx, gtalg) < 0) {
 		free(res);
-		return DNSSEC_DIGEST_ERROR;
+		return KNOT_ECRYPTO;
 	}
 
 	*out_ctx = res;
@@ -68,7 +68,7 @@ int dnssec_digest(dnssec_digest_ctx_t *ctx, dnssec_binary_t *data)
 	int r = gnutls_hash(ctx->gtctx, data->data, data->size);
 	if (r != 0) {
 		digest_ctx_free(ctx);
-		return DNSSEC_DIGEST_ERROR;
+		return KNOT_ECRYPTO;
 	}
 	return KNOT_EOK;
 }
