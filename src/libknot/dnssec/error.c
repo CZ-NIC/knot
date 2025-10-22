@@ -54,7 +54,7 @@ static const error_message_t ERROR_MESSAGES[] = {
 	{ KNOT_EINVAL,  "invalid KASP keystore configuration" },
 
 	{ KNOT_P11_ELOAD, "failed to load PKCS #11 module" },
-	{ DNSSEC_P11_TOO_MANY_MODULES,      "too many PKCS #11 modules loaded" },
+	{ KNOT_ERANGE,      "too many PKCS #11 modules loaded" },
 	{ DNSSEC_P11_TOKEN_NOT_AVAILABLE,   "PKCS #11 token not available" },
 
 	{ DNSSEC_INVALID_DIGEST_ALGORITHM,  "invalid digest algorithm" },

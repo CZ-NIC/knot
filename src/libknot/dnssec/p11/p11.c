@@ -45,7 +45,7 @@ int p11_load_module(const char *module)
 
 	assert(pkcs11_modules_count <= PKCS11_MODULES_MAX);
 	if (pkcs11_modules_count == PKCS11_MODULES_MAX) {
-		return DNSSEC_P11_TOO_MANY_MODULES;
+		return KNOT_ERANGE;
 	}
 
 	char *copy = strdup(module);
