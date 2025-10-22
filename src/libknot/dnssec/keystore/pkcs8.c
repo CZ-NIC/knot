@@ -52,11 +52,11 @@ static int file_size(int fd, size_t *size)
 {
 	off_t offset = lseek(fd, 0, SEEK_END);
 	if (offset == -1) {
-		return dnssec_errno_to_error(errno);
+		return knot_map_errno();
 	}
 
 	if (lseek(fd, 0, SEEK_SET) == -1) {
-		return dnssec_errno_to_error(errno);
+		return knot_map_errno();
 	}
 
 	assert(offset >= 0);
@@ -82,7 +82,7 @@ static int key_open(const char *dir_name, const char *id, int flags,
 
 	int fd = open(filename, flags, mode);
 	if (fd == -1) {
-		return dnssec_errno_to_error(errno);
+		return knot_map_errno();
 	}
 
 	*fd_ptr = fd;
@@ -136,7 +136,7 @@ static int pkcs8_dir_read(pkcs8_dir_handle_t *handle, const char *id, dnssec_bin
 	ssize_t read_count = read(file, read_pem.data, read_pem.size);
 	if (read_count == -1) {
 		dnssec_binary_free(&read_pem);
-		return dnssec_errno_to_error(errno);
+		return knot_map_errno();
 	}
 
 	assert(read_count == read_pem.size);
@@ -152,7 +152,7 @@ static bool key_is_duplicate(int open_error, pkcs8_dir_handle_t *handle,
 	assert(id);
 	assert(pem);
 
-	if (open_error != dnssec_errno_to_error(EEXIST)) {
+	if (open_error != KNOT_EEXIST) {
 		return false;
 	}
 
@@ -306,7 +306,7 @@ static int pkcs8_generate_key(void *ctx, gnutls_pk_algorithm_t algorithm,
 
 	ssize_t wrote_count = write(file, pem.data, pem.size);
 	if (wrote_count == -1) {
-		return dnssec_errno_to_error(errno);
+		return knot_map_errno();
 	}
 
 	assert(wrote_count == pem.size);
@@ -358,7 +358,7 @@ static int pkcs8_import_key(void *ctx, const dnssec_binary_t *pem, char **id_ptr
 	ssize_t wrote_count = write(file, pem->data, pem->size);
 	if (wrote_count == -1) {
 		free(id);
-		return dnssec_errno_to_error(errno);
+		return knot_map_errno();
 	}
 
 	assert(wrote_count == pem->size);
@@ -384,7 +384,7 @@ static int pkcs8_remove_key(void *ctx, const char *id)
 	}
 
 	if (unlink(filename) == -1) {
-		return dnssec_errno_to_error(errno);
+		return knot_map_errno();
 	}
 
 	return KNOT_EOK;
@@ -427,7 +427,7 @@ static int pkcs8_get_private(void *ctx, const char *id, gnutls_privkey_t *key_pt
 	ssize_t read_count = read(file, pem.data, pem.size);
 	if (read_count == -1) {
 		dnssec_binary_free(&pem);
-		return dnssec_errno_to_error(errno);
+		return knot_map_errno();
 	}
 
 	assert(read_count == pem.size);
