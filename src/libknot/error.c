@@ -181,6 +181,7 @@ static const struct error errors[] = {
 	{ KNOT_EALGORITHM,             "invalid hash algorithm" },
 	{ KNOT_ECRYPTO,                "crypto operation failed" },
 	{ KNOT_P11_ELOAD,              "failed to load PKCS #11 module" },
+	{ KNOT_P11_ETOKEN,             "PKCS #11 token not available" },
 	{ KNOT_P11_ECONFIG,            "invalid PKCS #11 configuration" },
 
 	/* Terminator */

@@ -120,7 +120,7 @@ static int safe_open(const char *config, char **url_ptr)
 	r = gnutls_pkcs11_token_get_flags(url, &flags);
 	if (r != GNUTLS_E_SUCCESS) {
 		free(url);
-		return DNSSEC_P11_TOKEN_NOT_AVAILABLE;
+		return KNOT_P11_ETOKEN;
 	}
 
 	*url_ptr = url;
