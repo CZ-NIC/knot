@@ -16,7 +16,7 @@
 #pragma once
 
 #include "libknot/dnssec/binary.h"
-#include "libknot/dnssec/error.h"
+#include "libknot/errcode.h"
 
 typedef enum {
 	DNSSEC_DIGEST_INVALID = 0,

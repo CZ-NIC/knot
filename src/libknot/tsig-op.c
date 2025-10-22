@@ -8,7 +8,7 @@
 #include <time.h>
 #include <stdint.h>
 
-#include "libknot/dnssec/error.h"
+#include "libknot/errcode.h"
 #include "libknot/dnssec/tsig.h"
 #include "libknot/attribute.h"
 #include "libknot/tsig-op.h"

@@ -8,7 +8,7 @@
 #include "libknot/dnssec/shared/binary_wire.h"
 
 #include "libknot/dnssec/binary.h"
-#include "libknot/dnssec/error.h"
+#include "libknot/errcode.h"
 
 /*!
  * Free NSEC3 parameters.

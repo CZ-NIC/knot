@@ -5,7 +5,6 @@
 
 #include "knot/dnssec/key_records.h"
 
-#include "libknot/dnssec/error.h"
 #include "libknot/dnssec/sign.h"
 #include "knot/dnssec/rrset-sign.h"
 #include "knot/dnssec/zone-sign.h"

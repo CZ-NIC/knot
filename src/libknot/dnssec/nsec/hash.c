@@ -8,7 +8,7 @@
 #include <gnutls/crypto.h>
 #include <string.h>
 
-#include "libknot/dnssec/error.h"
+#include "libknot/errcode.h"
 #include "libknot/dnssec/nsec.h"
 #include "libknot/dnssec/shared/shared.h"
 

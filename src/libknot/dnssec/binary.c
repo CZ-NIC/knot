@@ -8,7 +8,7 @@
 
 #include "contrib/base64.h"
 #include "libknot/dnssec/binary.h"
-#include "libknot/dnssec/error.h"
+#include "libknot/errcode.h"
 #include "libknot/dnssec/shared/shared.h"
 
 /* -- public API ----------------------------------------------------------- */

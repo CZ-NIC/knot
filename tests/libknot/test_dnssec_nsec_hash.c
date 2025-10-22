@@ -7,7 +7,7 @@
 #include <tap/basic.h>
 
 #include "libknot/dnssec/crypto.h"
-#include "libknot/dnssec/error.h"
+#include "libknot/errcode.h"
 #include "libknot/dnssec/nsec.h"
 
 static const dnssec_binary_t RDATA = { .size = 9, .data = (uint8_t []) {

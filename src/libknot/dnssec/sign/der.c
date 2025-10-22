@@ -7,7 +7,7 @@
 
 #include "libknot/dnssec/shared/bignum.h"
 #include "libknot/dnssec/binary.h"
-#include "libknot/dnssec/error.h"
+#include "libknot/errcode.h"
 #include "libknot/dnssec/sign/der.h"
 #include "libknot/dnssec/shared/binary_wire.h"
 

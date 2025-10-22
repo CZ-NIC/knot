@@ -8,7 +8,7 @@
 #include <tap/basic.h>
 
 #include "libknot/dnssec/crypto.h"
-#include "libknot/dnssec/error.h"
+#include "libknot/errcode.h"
 #include "libknot/dnssec/random.h"
 
 int check_buffer(void)

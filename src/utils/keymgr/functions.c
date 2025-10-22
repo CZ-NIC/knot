@@ -21,7 +21,6 @@
 #include "contrib/strtonum.h"
 #include "contrib/tolower.h"
 #include "contrib/wire_ctx.h"
-#include "libknot/dnssec/error.h"
 #include "libknot/dnssec/keyid.h"
 #include "libknot/dnssec/shared/shared.h"
 #include "knot/dnssec/kasp/policy.h"

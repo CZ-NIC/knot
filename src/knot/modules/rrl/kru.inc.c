@@ -39,7 +39,7 @@ Size (`loads_bits` = log2 length):
 
 #include "./kru.h"
 #include "contrib/macros.h"
-#include "libknot/dnssec/error.h"
+#include "libknot/errcode.h"
 #include "libknot/dnssec/random.h"
 typedef uint64_t hash_t;
 #if USE_AES

@@ -15,7 +15,6 @@
 #include "utils/common/netio.h"
 #include "utils/common/params.h"
 #include "utils/common/resolv.h"
-#include "libknot/descriptor.h"
 #include "libknot/libknot.h"
 #include "contrib/base64.h"
 #include "contrib/sockaddr.h"
@@ -23,8 +22,6 @@
 #include "contrib/strtonum.h"
 #include "contrib/time.h"
 #include "contrib/ucw/lists.h"
-#include "libknot/dnssec/error.h"
-#include "libknot/dnssec/random.h"
 
 #define PROGRAM_NAME "kdig"
 

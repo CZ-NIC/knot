@@ -8,7 +8,7 @@
 
 #include "libknot/dnssec/binary.h"
 #include "libknot/dnssec/crypto.h"
-#include "libknot/dnssec/error.h"
+#include "libknot/errcode.h"
 #include "libknot/dnssec/key.h"
 #include "libknot/dnssec/sample_keys.h"
 

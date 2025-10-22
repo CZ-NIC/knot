@@ -9,7 +9,7 @@
 #include <gnutls/x509.h>
 
 #include "libknot/dnssec/binary.h"
-#include "libknot/dnssec/error.h"
+#include "libknot/errcode.h"
 #include "libknot/dnssec/key.h"
 #include "libknot/dnssec/pem.h"
 #include "libknot/dnssec/shared/shared.h"

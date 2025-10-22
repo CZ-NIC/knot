@@ -12,7 +12,7 @@
 #include "contrib/macros.h"
 #include "contrib/vpool/vpool.h"
 #include "libknot/dnssec/shared/bignum.h"
-#include "libknot/dnssec/error.h"
+#include "libknot/errcode.h"
 #include "libknot/dnssec/key.h"
 #include "libknot/dnssec/key/internal.h"
 #include "libknot/dnssec/shared/shared.h"

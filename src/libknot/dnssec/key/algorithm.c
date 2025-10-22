@@ -5,7 +5,7 @@
 
 #include <gnutls/gnutls.h>
 
-#include "libknot/dnssec/error.h"
+#include "libknot/errcode.h"
 #include "libknot/dnssec/key.h"
 #include "libknot/dnssec/key/algorithm.h"
 #include "libknot/dnssec/shared/shared.h"

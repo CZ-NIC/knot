@@ -6,7 +6,7 @@
 #include <tap/basic.h>
 #include <tap/files.h>
 
-#include "libknot/dnssec/error.h"
+#include "libknot/errcode.h"
 #include "libknot/dnssec/key.h"
 #include "libknot/dnssec/keystore.h"
 

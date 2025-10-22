@@ -15,7 +15,7 @@
 #include <unistd.h>
 
 #include "libknot/dnssec/crypto.h"
-#include "libknot/dnssec/error.h"
+#include "libknot/errcode.h"
 #include "libknot/dnssec/keystore.h"
 #include "libknot/dnssec/sample_keys.h"
 #include "libknot/dnssec/sign.h"

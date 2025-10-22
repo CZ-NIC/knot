@@ -7,7 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "libknot/dnssec/error.h"
+#include "libknot/errcode.h"
 #include "libknot/dnssec/keyid.h"
 
 static void test_keyid_is_valid_run(const char *param, bool should_ok)

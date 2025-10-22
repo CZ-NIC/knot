@@ -24,7 +24,7 @@
 #include "contrib/sockaddr.h"
 #include "contrib/ucw/lists.h"
 #include "libknot/endian.h"
-#include "libknot/dnssec/error.h"
+#include "libknot/errcode.h"
 #include "libknot/dnssec/random.h"
 #include "libknot/attribute.h"
 #include "libknot/endian.h"

@@ -8,7 +8,6 @@
 #include "contrib/ctype.h"
 #include "contrib/strtonum.h"
 #include "libknot/dnssec/binary.h"
-#include "libknot/dnssec/error.h"
 #include "libknot/dnssec/pem.h"
 #include "libknot/dnssec/shared/shared.h"
 #include "utils/keymgr/bind_privkey.h"

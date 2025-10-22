@@ -5,7 +5,7 @@
 
 #include <tap/basic.h>
 
-#include "libknot/dnssec/error.h"
+#include "libknot/errcode.h"
 #include "libknot/dnssec/key.h"
 
 static void ok_range(dnssec_key_algorithm_t algo,

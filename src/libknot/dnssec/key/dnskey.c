@@ -4,7 +4,7 @@
  */
 
 #include "libknot/dnssec/binary.h"
-#include "libknot/dnssec/error.h"
+#include "libknot/errcode.h"
 #include "libknot/dnssec/key/dnskey.h"
 #include "libknot/dnssec/key/convert.h"
 #include "libknot/dnssec/shared/binary_wire.h"

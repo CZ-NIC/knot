@@ -9,7 +9,7 @@
 #include <string.h>
 
 #include "libknot/dnssec/p11/p11.h"
-#include "libknot/dnssec/error.h"
+#include "libknot/errcode.h"
 
 #ifdef ENABLE_PKCS11
 

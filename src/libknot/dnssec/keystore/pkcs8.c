@@ -13,7 +13,7 @@
 
 #include "contrib/files.h"
 #include "libknot/dnssec/binary.h"
-#include "libknot/dnssec/error.h"
+#include "libknot/errcode.h"
 #include "libknot/dnssec/keystore.h"
 #include "libknot/dnssec/keystore/internal.h"
 #include "libknot/dnssec/pem.h"

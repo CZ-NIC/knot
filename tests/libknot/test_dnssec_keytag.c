@@ -7,7 +7,7 @@
 #include <stdint.h>
 
 #include "libknot/dnssec/binary.h"
-#include "libknot/dnssec/error.h"
+#include "libknot/errcode.h"
 #include "libknot/dnssec/keytag.h"
 
 int main(void)

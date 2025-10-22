@@ -11,7 +11,7 @@
 
 #include "contrib/string.h"
 #include "libknot/dnssec/binary.h"
-#include "libknot/dnssec/error.h"
+#include "libknot/errcode.h"
 #include "libknot/dnssec/keyid.h"
 #include "libknot/dnssec/shared/keyid_gnutls.h"
 #include "libknot/dnssec/shared/shared.h"
