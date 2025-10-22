@@ -442,7 +442,6 @@ src/libknot/dnssec/crypto.c
 src/libknot/dnssec/crypto.h
 src/libknot/dnssec/digest.c
 src/libknot/dnssec/digest.h
-src/libknot/dnssec/dnssec.h
 src/libknot/dnssec/key.h
 src/libknot/dnssec/key/algorithm.c
 src/libknot/dnssec/key/algorithm.h

@@ -41,7 +41,6 @@ nobase_include_libknot_HEADERS = \
 	libknot/dnssec/binary.h			\
 	libknot/dnssec/crypto.h			\
 	libknot/dnssec/digest.h			\
-	libknot/dnssec/dnssec.h			\
 	libknot/dnssec/key.h			\
 	libknot/dnssec/keyid.h			\
 	libknot/dnssec/keystore.h		\
