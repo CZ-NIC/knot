@@ -37,25 +37,21 @@ def zone_arg_check(zone):
         return zone[0]
     return zone
 
-def zones_names(zones):
-    # Consume either names or zones objects, return list of names
-    if not isinstance(zones, list):
-        zones = [ zones ]
-    return [ z if isinstance(z, str) else z.name for z in zones ]
-
-class multidict(object):
-    def __init__(self, zonenames, allzones, remotes):
-        self.__dict__['zonenames'] = zonenames
-        self.__dict__['allzones'] = allzones
+class conf_multidict(object):
+    def __init__(self, conf_ids, conf_section, remotes):
+        self.__dict__['conf_ids'] = conf_ids
+        self.__dict__['conf_section'] = conf_section
         self.__dict__['remotes'] = remotes
+
     def __getattr__(self, attr):
-        if len(self.__dict__['zonenames']) != 1:
-            raise Exception("can't read configuration of multiple zones")
-        zn = self.__dict__['zonenames'][0]
+        if len(self.__dict__['conf_ids']) != 1:
+            raise Exception("can't read configuration of multiple objects")
+        id = self.__dict__['conf_ids'][0]
         try:
-            return self.__dict__['allzones'][zn][attr]
+            return self.__dict__['conf_section'][id][attr]
         except KeyError:
             return None
+
     def __setattr__(self, key, value):
         if isinstance(value, list) and len(value) > 0:
             if isinstance(value[0], Server):
@@ -67,8 +63,8 @@ class multidict(object):
                 if self.__dict__['remotes'] is not None:
                     self.__dict__['remotes'].add(value)
                 value = value.name
-        for zn in self.__dict__['zonenames']:
-            self.__dict__['allzones'][zn][key] = value
+        for id in self.__dict__['conf_ids']:
+            self.__dict__['conf_section'][id][key] = value
 
 class ZoneCatalogRole(enum.IntEnum):
     """Zone catalog roles."""
@@ -139,7 +135,12 @@ class Server(object):
 
         self.data_dir = None
 
-        self.conf = { "server": { "server": dict() }, "zone": dict(), "policy": dict(), "submission": dict(), "dnskey-sync": dict(), "external": dict() }
+        self.conf = { "server": { "server": dict() },
+                      "zone": dict(),
+                      "policy": dict(),
+                      "submission": dict(),
+                      "dnskey-sync": dict(),
+                      "external": dict() }
         self.remotes = set()
 
         self.nsid = None
@@ -159,7 +160,7 @@ class Server(object):
         self.cert_key_file = None # quadruple (key_file, cert_file, hostname, pin)
         self.fixed_port = False
         self.ctlport = None
-        self.external = False
+        self.external = False # Means an externally running server
         self.ctlkey = None
         self.ctlkeyfile = None
         self.tsig = None
@@ -194,18 +195,21 @@ class Server(object):
 
         self.binding_errors = 0
 
-    def conf_base(self, conf_dict, zones):
-        zns = zones_names(zones)
-        for z in zns:
-            if z not in conf_dict:
-                conf_dict[z] = dict()
-        return multidict(zns, conf_dict, self.remotes)
+    def conf_base(self, conf_section, conf_ids):
+        if not isinstance(conf_ids, list):
+            conf_ids = [ conf_ids ]
+        ids = [ id if isinstance(id, str) else id.name for id in conf_ids ]
+
+        for id in ids:
+            if id not in conf_section:
+                conf_section[id] = dict()
+        return conf_multidict(ids, conf_section, self.remotes)
 
     def conf_zone(self, zones):
         return self.conf_base(self.conf["zone"], zones)
 
-    def conf_ss(self, subsection, zones):
-        return self.conf_base(self.conf[subsection], zones)
+    def conf_ss(self, subsection, ids):
+        return self.conf_base(self.conf[subsection], ids)
 
     def conf_srv(self):
         return self.conf_base(self.conf["server"], ["server"])
@@ -981,7 +985,7 @@ class Server(object):
         distutils.dir_util.copy_tree(zone.key_dir, self.keydir, update=True)
 
     def dnssec(self, zone):
-        return self.conf_base(self.conf["policy"], zone)
+        return self.conf_ss("policy", zone)
 
     def enable_nsec3(self, zone, **args):
         zone = zone_arg_check(zone)
@@ -1393,7 +1397,7 @@ class Knot(Server):
     def conf_defaults(self, zone_name):
         cd = { "zone": dict(), "policy": dict() }
         cd["zone"][zone_name] = { "zonefile_sync": "1d", "semantic_checks": True, "notify_delay": random.randint(0, 1) }
-        cd["policy"][zone_name] = { "keystore": [], "keytag_modulo": '0/1', "signing-threads": random.randint(1,4) }
+        cd["policy"][zone_name] = { "keystore": [], "keytag_modulo": '0/1', "signing-threads": random.randint(1, 4) }
         return cd
 
     def flush(self, zone=None, wait=False):
