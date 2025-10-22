@@ -95,7 +95,7 @@ int dnssec_sign_write(dnssec_sign_ctx_t *ctx, dnssec_sign_flags_t flags,
  *
  * \return Error code.
  * \retval KNOT_EOK                Validation successful, valid signature.
- * \retval DNSSEC_INVALID_SIGNATURE  Validation successful, invalid signature.
+ * \retval KNOT_INVALID_SIGNATURE  Validation successful, invalid signature.
  */
 int dnssec_sign_verify(dnssec_sign_ctx_t *ctx, bool sign_cmp,
                        const dnssec_binary_t *signature);

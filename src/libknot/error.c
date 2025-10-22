@@ -160,6 +160,7 @@ static const struct error errors[] = {
 	{ KNOT_INVALID_KEY_SIZE,       "invalid key size" },
 	{ KNOT_INVALID_KEY_ID,         "invalid key ID" },
 	{ KNOT_INVALID_KEY_NAME,       "invalid key name" },
+	{ KNOT_INVALID_SIGNATURE,      "invalid signature" },
 	{ KNOT_NO_PUBLIC_KEY,          "no public key" },
 	{ KNOT_NO_PRIVATE_KEY,         "no private key" },
 	{ KNOT_NO_READY_KEY,           "no key ready for submission" },

@@ -99,7 +99,7 @@ bool knot_synth_rrsig_exists(uint16_t type, const knot_rdataset_t *rrsig_rrs);
  * \param skip_crypto All RRSIGs in this node have been verified, just check validity.
  *
  * \return Error code, KNOT_EOK if successful and the signature is valid.
- * \retval KNOT_DNSSEC_EINVALID_SIGNATURE  The signature is invalid.
+ * \retval KNOT_INVALID_SIGNATURE  The signature is invalid.
  */
 int knot_check_signature(const knot_rrset_t *covered,
                          const knot_rrset_t *rrsigs, size_t pos,

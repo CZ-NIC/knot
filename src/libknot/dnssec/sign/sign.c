@@ -148,7 +148,7 @@ static int ecdsa_dnssec_to_x509(dnssec_sign_ctx_t *ctx,
 	size_t int_size = ecdsa_sign_integer_size(ctx);
 
 	if (dnssec->size != 2 * int_size) {
-		return DNSSEC_INVALID_SIGNATURE;
+		return KNOT_INVALID_SIGNATURE;
 	}
 
 	const dnssec_binary_t value_r = { .size = int_size, .data = dnssec->data };
@@ -345,7 +345,7 @@ int dnssec_sign_verify(dnssec_sign_ctx_t *ctx, bool sign_cmp, const dnssec_binar
 		int ret = dnssec_sign_write(ctx, DNSSEC_SIGN_REPRODUCIBLE, &sign);
 		if (ret == KNOT_EOK) {
 			ret = dnssec_binary_cmp(&sign, signature)
-			      ? DNSSEC_INVALID_SIGNATURE
+			      ? KNOT_INVALID_SIGNATURE
 			      : KNOT_EOK;
 		}
 		dnssec_binary_free(&sign);
@@ -374,7 +374,7 @@ int dnssec_sign_verify(dnssec_sign_ctx_t *ctx, bool sign_cmp, const dnssec_binar
 					    ctx->sign_algorithm,
 					    0, &data, &raw);
 	if (result == GNUTLS_E_PK_SIG_VERIFY_FAILED) {
-		return DNSSEC_INVALID_SIGNATURE;
+		return KNOT_INVALID_SIGNATURE;
 	} else if (result < 0) {
 		return KNOT_ERROR;
 	}

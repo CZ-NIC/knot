@@ -380,7 +380,7 @@ int knot_check_signature(const knot_rrset_t *covered,
 
 	if (!(dnssec_ctx->policy->unsafe & UNSAFE_EXPIRED) &&
 	    is_expired_signature(rrsig, dnssec_ctx->now, refresh)) {
-		return DNSSEC_INVALID_SIGNATURE;
+		return KNOT_INVALID_SIGNATURE;
 	}
 
 	if (skip_crypto) {
