@@ -235,8 +235,6 @@ const char *knot_strerror(int code)
 		// FALLTHROUGH
 	case KNOT_ERROR_MIN ... KNOT_EOK:
 		msg = lookup_message(code); break;
-	case DNSSEC_ERROR_MIN ... DNSSEC_ERROR_MAX:
-		msg = dnssec_strerror(code); break;
 	case MDB_KEYEXIST ... MDB_LAST_ERRCODE:
 		msg = mdb_strerror(code); break;
 	default:

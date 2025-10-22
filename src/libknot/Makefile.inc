@@ -42,7 +42,6 @@ nobase_include_libknot_HEADERS = \
 	libknot/dnssec/crypto.h			\
 	libknot/dnssec/digest.h			\
 	libknot/dnssec/dnssec.h			\
-	libknot/dnssec/error.h			\
 	libknot/dnssec/key.h			\
 	libknot/dnssec/keyid.h			\
 	libknot/dnssec/keystore.h		\
@@ -100,7 +99,6 @@ libknot_la_SOURCES = \
 	libknot/dnssec/binary.c			\
 	libknot/dnssec/crypto.c			\
 	libknot/dnssec/digest.c			\
-	libknot/dnssec/error.c			\
 	libknot/dnssec/key/algorithm.c		\
 	libknot/dnssec/key/algorithm.h		\
 	libknot/dnssec/key/convert.c		\
