@@ -113,7 +113,7 @@ static int safe_open(const char *config, char **url_ptr)
 	free(module);
 	if (r != GNUTLS_E_SUCCESS) {
 		free(url);
-		return DNSSEC_P11_FAILED_TO_LOAD_MODULE;
+		return KNOT_P11_ELOAD;
 	}
 
 	unsigned int flags = 0;

@@ -180,6 +180,7 @@ static const struct error errors[] = {
 	{ KNOT_KEY_EGENERATE,          "failed to generate key" },
 	{ KNOT_EALGORITHM,             "invalid hash algorithm" },
 	{ KNOT_ECRYPTO,                "crypto operation failed" },
+	{ KNOT_P11_ELOAD,              "failed to load PKCS #11 module" },
 	{ KNOT_P11_ECONFIG,            "invalid PKCS #11 configuration" },
 
 	/* Terminator */

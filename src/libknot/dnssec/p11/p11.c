@@ -56,7 +56,7 @@ int p11_load_module(const char *module)
 	int r = gnutls_pkcs11_add_provider(module, NULL);
 	if (r != GNUTLS_E_SUCCESS) {
 		free(copy);
-		return DNSSEC_P11_FAILED_TO_LOAD_MODULE;
+		return KNOT_P11_ELOAD;
 	}
 
 	pkcs11_modules[pkcs11_modules_count] = copy;
