@@ -167,7 +167,7 @@ int dnssec_tsig_new(dnssec_tsig_ctx_t **ctx_ptr,
 	int result = gnutls_hmac_init(&ctx->hash, ctx->algorithm, key->data, key->size);
 	if (result != 0) {
 		free(ctx);
-		return DNSSEC_SIGN_INIT_ERROR;
+		return KNOT_ECRYPTO;
 	}
 
 	*ctx_ptr = ctx;
