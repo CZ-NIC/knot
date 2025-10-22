@@ -42,7 +42,7 @@ static const error_message_t ERROR_MESSAGES[] = {
 	{ KNOT_EEXIST,	"key already present" },
 
 	{ KNOT_ECRYPTO,	"signing initialization error" },
-	{ DNSSEC_SIGN_ERROR,		"signing error" },
+	{ KNOT_ECRYPTO,		"signing error" },
 	{ DNSSEC_INVALID_SIGNATURE,	"invalid signature" },
 
 	{ DNSSEC_INVALID_NSEC3_ALGORITHM, "invalid NSEC3 algorithm" },

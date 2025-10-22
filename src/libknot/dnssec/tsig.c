@@ -195,7 +195,7 @@ int dnssec_tsig_add(dnssec_tsig_ctx_t *ctx, const dnssec_binary_t *data)
 
 	int result = gnutls_hmac(ctx->hash, data->data, data->size);
 	if (result != 0) {
-		return DNSSEC_SIGN_ERROR;
+		return KNOT_ECRYPTO;
 	}
 
 	return KNOT_EOK;

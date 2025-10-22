@@ -292,7 +292,7 @@ int dnssec_sign_add(dnssec_sign_ctx_t *ctx, const dnssec_binary_t *data)
 
 	void *result = vpool_insert(&ctx->buffer, vpool_get_length(&ctx->buffer), data->data, data->size);
 	if (result == NULL) {
-		return DNSSEC_SIGN_ERROR;
+		return KNOT_ECRYPTO;
 	}
 
 	return KNOT_EOK;
@@ -325,7 +325,7 @@ int dnssec_sign_write(dnssec_sign_ctx_t *ctx, dnssec_sign_flags_t flags, dnssec_
 					       ctx->sign_algorithm,
 					       gnutls_flags, &data, &raw);
 	if (result < 0) {
-		return DNSSEC_SIGN_ERROR;
+		return KNOT_ECRYPTO;
 	}
 
 	dnssec_binary_t bin_raw = binary_from_datum(&raw);
