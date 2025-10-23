@@ -162,6 +162,10 @@ Use `@` as `OWNER` if you want to denote `ZONE` itself as the owner.
 * `zone-stats([ZONE], [SECTION, [ITEM]], [FLAGS="F"])`
   + `SECTION` stores the module, `ITEM` stores the counter
   + the `F` flag specifies to include 0 counters in server's response
+* `zone-serial-set([ZONE], [FLAGS="F"], [TYPE="+"|"=", DATA])`
+  + the `F` flag forces serial change, when semantic checks would otherwise fail
+  + the `TYPE` section controls, whether the serial is *increased* (+) or *set*
+    (=) to the value provided in `DATA`.
 
 #### Configuration
 
