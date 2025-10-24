@@ -1027,6 +1027,7 @@ static const knot_lookup_t opts[] = {
 	{ C_DNSSEC_SIGNING,    YP_TBOOL, YP_VNONE }, \
 	{ C_DNSSEC_VALIDATION, YP_TBOOL, YP_VNONE }, \
 	{ C_SERIAL_MODULO,     YP_TSTR,  YP_VSTR = { "0/1" } }, \
+	{ C_ZONEMD_VERIFY,     YP_TBOOL, YP_VNONE }, \
 	{ C_CATALOG_ROLE,      YP_TOPT,  YP_VOPT = { opts, 0 } }, \
 	{ C_CATALOG_TPL,       YP_TREF,  YP_VREF = { C_RMT } }, \
 	{ C_COMMENT,           YP_TSTR,  YP_VNONE },
