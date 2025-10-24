@@ -15,8 +15,8 @@
 #include "knot/updates/acl.h"
 #include "knot/zone/zone-load.h"
 #include "libknot/rrtype/opt.h"
-#include "libdnssec/tsig.h"
-#include "libdnssec/key.h"
+#include "libknot/dnssec/tsig.h"
+#include "libknot/dnssec/key.h"
 
 #define HOURS(x)	((x) * 3600)
 #define DAYS(x)		((x) * HOURS(24))

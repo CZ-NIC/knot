@@ -8,7 +8,7 @@
 #include <stdint.h>
 #include <time.h>
 
-#include "libdnssec/binary.h"
+#include "libknot/dnssec/binary.h"
 #include "knot/dnssec/kasp/policy.h"
 
 /*!

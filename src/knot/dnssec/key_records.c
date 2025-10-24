@@ -5,8 +5,7 @@
 
 #include "knot/dnssec/key_records.h"
 
-#include "libdnssec/error.h"
-#include "libdnssec/sign.h"
+#include "libknot/dnssec/sign.h"
 #include "knot/dnssec/rrset-sign.h"
 #include "knot/dnssec/zone-sign.h"
 #include "knot/journal/serialization.h"
@@ -182,8 +181,8 @@ int key_records_sign(const zone_key_t *key, key_records_t *r, const kdnssec_ctx_
 {
 	dnssec_sign_ctx_t *sign_ctx;
 	int ret = dnssec_sign_new(&sign_ctx, key->key);
-	if (ret != DNSSEC_EOK) {
-		ret = knot_error_from_libdnssec(ret);
+	if (ret != KNOT_EOK) {
+		return ret;
 	}
 
 	if (!knot_rrset_empty(&r->dnskey) && knot_zone_sign_use_key(key, &r->dnskey)) {

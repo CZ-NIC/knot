@@ -6,7 +6,6 @@
 #include <assert.h>
 
 #include "contrib/wire_ctx.h"
-#include "libdnssec/error.h"
 #include "knot/dnssec/rrset-sign.h"
 #include "knot/dnssec/zone-sign.h"
 #include "knot/zone/serial.h" // DNS uint32 arithmetics
@@ -117,7 +116,7 @@ static int sign_ctx_add_self(dnssec_sign_ctx_t *ctx, const uint8_t *rdata)
 	header.size = RRSIG_RDATA_SIGNER_OFFSET;
 
 	result = dnssec_sign_add(ctx, &header);
-	if (result != DNSSEC_EOK) {
+	if (result != KNOT_EOK) {
 		return result;
 	}
 
@@ -235,7 +234,7 @@ static int rrsigs_create_rdata(knot_rrset_t *rrsigs, dnssec_sign_ctx_t *ctx,
 
 	dnssec_binary_t signature = { 0 };
 	res = dnssec_sign_write(ctx, sign_flags, &signature);
-	if (res != DNSSEC_EOK) {
+	if (res != KNOT_EOK) {
 		return res;
 	}
 	assert(signature.size > 0);
@@ -380,7 +379,7 @@ int knot_check_signature(const knot_rrset_t *covered,
 
 	if (!(dnssec_ctx->policy->unsafe & UNSAFE_EXPIRED) &&
 	    is_expired_signature(rrsig, dnssec_ctx->now, refresh)) {
-		return DNSSEC_INVALID_SIGNATURE;
+		return KNOT_INVALID_SIGNATURE;
 	}
 
 	if (skip_crypto) {

@@ -10,7 +10,7 @@
 #include "knot/nameserver/log.h"
 #include "knot/nameserver/tsig_ctx.h"
 #include "knot/zone/serial.h"
-#include "libdnssec/random.h"
+#include "libknot/dnssec/random.h"
 #include "libknot/libknot.h"
 
 #define NOTIFY_IN_LOG(priority, qdata, fmt...) \

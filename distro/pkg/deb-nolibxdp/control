@@ -41,7 +41,6 @@ Package: knot
 Architecture: any
 Depends:
  adduser,
- libdnssec10 (= ${binary:Version}),
  libknot16 (= ${binary:Version}),
  libzscanner5 (= ${binary:Version}),
  ${misc:Depends},
@@ -63,7 +62,6 @@ Description: Authoritative DNS server
 Package: libknot16
 Architecture: any
 Depends:
- libdnssec10 (= ${binary:Version}),
  ${misc:Depends},
  ${shlibs:Depends},
 Section: libs
@@ -89,24 +87,9 @@ Description: DNS zone-parsing shared library from Knot DNS
  registry and hence is well suited to run anything from the root
  zone, the top-level domain, to many smaller standard domain names.
 
-Package: libdnssec10
-Architecture: any
-Depends:
- ${misc:Depends},
- ${shlibs:Depends},
-Section: libs
-Description: DNSSEC shared library from Knot DNS
- This package provides a DNSSEC shared library used by Knot DNS
- and Knot Resolver.
- .
- Knot DNS is developed by CZ.NIC Labs, the R&D department of .CZ
- registry and hence is well suited to run anything from the root
- zone, the top-level domain, to many smaller standard domain names.
-
 Package: libknot-dev
 Architecture: any
 Depends:
- libdnssec10 (= ${binary:Version}),
  libgnutls28-dev,
  libknot16 (= ${binary:Version}),
  libzscanner5 (= ${binary:Version}),
@@ -123,7 +106,6 @@ Description: Development files for Knot DNS shared libraries
 Package: knot-dnsutils
 Architecture: any
 Depends:
- libdnssec10 (= ${binary:Version}),
  libknot16 (= ${binary:Version}),
  libzscanner5 (= ${binary:Version}),
  ${misc:Depends},
@@ -141,7 +123,6 @@ Description: DNS clients from Knot DNS
 Package: knot-dnssecutils
 Architecture: any
 Depends:
- libdnssec10 (= ${binary:Version}),
  libknot16 (= ${binary:Version}),
  libzscanner5 (= ${binary:Version}),
  ${misc:Depends},
@@ -160,7 +141,6 @@ Description: DNSSEC tools
 Package: knot-host
 Architecture: any
 Depends:
- libdnssec10 (= ${binary:Version}),
  libknot16 (= ${binary:Version}),
  libzscanner5 (= ${binary:Version}),
  ${misc:Depends},
@@ -175,7 +155,6 @@ Description: Simple DNS client
 Package: knot-keymgr
 Architecture: any
 Depends:
- libdnssec10 (= ${binary:Version}),
  libknot16 (= ${binary:Version}),
  libzscanner5 (= ${binary:Version}),
  ${misc:Depends},

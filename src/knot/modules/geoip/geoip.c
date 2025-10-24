@@ -17,7 +17,7 @@
 #include "contrib/sockaddr.h"
 #include "contrib/string.h"
 #include "contrib/strtonum.h"
-#include "libdnssec/random.h"
+#include "libknot/dnssec/random.h"
 #include "libzscanner/scanner.h"
 
 #define MOD_CONFIG_FILE	"\x0B""config-file"

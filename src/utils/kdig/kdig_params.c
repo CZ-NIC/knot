@@ -15,7 +15,6 @@
 #include "utils/common/netio.h"
 #include "utils/common/params.h"
 #include "utils/common/resolv.h"
-#include "libknot/descriptor.h"
 #include "libknot/libknot.h"
 #include "contrib/base64.h"
 #include "contrib/sockaddr.h"
@@ -23,8 +22,6 @@
 #include "contrib/strtonum.h"
 #include "contrib/time.h"
 #include "contrib/ucw/lists.h"
-#include "libdnssec/error.h"
-#include "libdnssec/random.h"
 
 #define PROGRAM_NAME "kdig"
 
@@ -1077,8 +1074,8 @@ static int opt_cookie(const char *arg, void *query)
 		q->cc.len = KNOT_EDNS_COOKIE_CLNT_SIZE;
 
 		int ret = dnssec_random_buffer(q->cc.data, q->cc.len);
-		if (ret != DNSSEC_EOK) {
-			return knot_error_from_libdnssec(ret);
+		if (ret != KNOT_EOK) {
+			return ret;
 		}
 	}
 

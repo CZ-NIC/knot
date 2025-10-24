@@ -13,7 +13,7 @@
 #include "knot/dnssec/policy.h"
 #include "knot/dnssec/zone-keys.h"
 #include "knot/zone/serial.h"
-#include "libdnssec/random.h"
+#include "libknot/dnssec/random.h"
 
 static bool not_removed(const knot_kasp_key_t *key, knot_time_t now)
 {

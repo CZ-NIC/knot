@@ -14,9 +14,9 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 
-#include "libdnssec/binary.h"
-#include "libdnssec/key.h"
-#include "libdnssec/keytag.h"
+#include "libknot/dnssec/binary.h"
+#include "libknot/dnssec/key.h"
+#include "libknot/dnssec/keytag.h"
 #include "libknot/attribute.h"
 #include "libknot/rrset-dump.h"
 #include "libknot/codes.h"

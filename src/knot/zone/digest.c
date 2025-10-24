@@ -9,7 +9,7 @@
 #include "knot/dnssec/rrset-sign.h"
 #include "knot/updates/zone-update.h"
 #include "contrib/wire_ctx.h"
-#include "libdnssec/digest.h"
+#include "libknot/dnssec/digest.h"
 #include "libknot/libknot.h"
 
 #define DIGEST_BUF_MIN 4096
@@ -107,9 +107,9 @@ int zone_contents_digest(const zone_contents_t *contents, int algorithm,
 	}
 
 	int ret = dnssec_digest_init(algorithm, &ctx.digest_ctx);
-	if (ret != DNSSEC_EOK) {
+	if (ret != KNOT_EOK) {
 		free(ctx.buf);
-		return knot_error_from_libdnssec(ret);
+		return ret;
 	}
 
 	zone_tree_t *conts = contents->nodes;

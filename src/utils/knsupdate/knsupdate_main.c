@@ -5,7 +5,7 @@
 
 #include <stdlib.h>
 
-#include "libdnssec/crypto.h"
+#include "libknot/dnssec/crypto.h"
 #include "utils/knsupdate/knsupdate_exec.h"
 #include "utils/knsupdate/knsupdate_params.h"
 #include "libknot/libknot.h"

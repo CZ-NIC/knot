@@ -7,7 +7,6 @@
 #include <limits.h>
 #include <stdio.h>
 
-#include "libdnssec/error.h"
 #include "knot/common/log.h"
 #include "knot/dnssec/zone-keys.h"
 #include "libknot/libknot.h"
@@ -259,8 +258,8 @@ int kdnssec_delete_key(kdnssec_ctx_t *ctx, knot_kasp_key_t *key_ptr)
 	}
 
 	if (!key_still_used_in_keystore && !key_ptr->is_pub_only) {
-		ret = DNSSEC_ENOENT;
-		for (size_t i = 0; i < ctx->keystores[0].count && ret == DNSSEC_ENOENT; i++) {
+		ret = KNOT_ENOENT;
+		for (size_t i = 0; i < ctx->keystores[0].count && ret == KNOT_ENOENT; i++) {
 			ret = dnssec_keystore_remove(ctx->keystores[i].keystore, key_ptr->id);
 		}
 		if (ret != KNOT_EOK) {
@@ -481,8 +480,8 @@ static int walk_algorithms(kdnssec_ctx_t *ctx, zone_keyset_t *keyset)
 int kdnssec_load_private(knot_kasp_keystore_t *keystores, const char *id,
                          dnssec_key_t *key, const char **name, unsigned *backend)
 {
-	int ret = DNSSEC_ENOENT;
-	for (size_t i = 0; i < keystores[0].count && (ret == DNSSEC_ENOENT || ret == DNSSEC_NOT_FOUND); i++) {
+	int ret = KNOT_ENOENT;
+	for (size_t i = 0; i < keystores[0].count && (ret == KNOT_ENOENT); i++) {
 		ret = dnssec_keystore_get_private(keystores[i].keystore, id, key);
 		if (ret == KNOT_EOK) {
 			if (name != NULL) {
@@ -521,11 +520,10 @@ static int load_private_keys(kdnssec_ctx_t *ctx, zone_keyset_t *keyset)
 		}
 		int ret = kdnssec_load_private(ctx->keystores, key->id, key->key, NULL, NULL);
 		switch (ret) {
-		case DNSSEC_EOK:
-		case DNSSEC_KEY_ALREADY_PRESENT:
+		case KNOT_EOK:
+		case KNOT_EEXIST:
 			break;
 		default:
-			ret = knot_error_from_libdnssec(ret);
 			log_zone_error(ctx->zone->dname,
 			               "DNSSEC, key %d, failed to load private key (%s)",
 			               dnssec_key_get_keytag(key->key), knot_strerror(ret));
@@ -685,7 +683,6 @@ int zone_key_calculate_ds(zone_key_t *for_key, dnssec_key_digest_t digesttype,
 	if (for_key->precomputed_ds.data == NULL || for_key->precomputed_digesttype != digesttype) {
 		dnssec_binary_free(&for_key->precomputed_ds);
 		ret = dnssec_key_create_ds(for_key->key, digesttype, &for_key->precomputed_ds);
-		ret = knot_error_from_libdnssec(ret);
 		for_key->precomputed_digesttype = digesttype;
 	}
 
@@ -734,7 +731,7 @@ zone_sign_ctx_t *zone_sign_ctx(const zone_keyset_t *keyset, const kdnssec_ctx_t 
 		}
 
 		ret = dnssec_sign_new(&ctx->sign_ctxs[i], ctx->keys[i].key);
-		if (ret != DNSSEC_EOK) {
+		if (ret != KNOT_EOK) {
 			zone_sign_ctx_free(ctx);
 			return NULL;
 		}
@@ -757,7 +754,7 @@ zone_sign_ctx_t *zone_validation_ctx(const kdnssec_ctx_t *dnssec_ctx)
 	ctx->dnssec_ctx = dnssec_ctx;
 	for (size_t i = 0; i < ctx->count; i++) {
 		int ret = dnssec_sign_new(&ctx->sign_ctxs[i], dnssec_ctx->zone->keys[i].key);
-		if (ret != DNSSEC_EOK) {
+		if (ret != KNOT_EOK) {
 			zone_sign_ctx_free(ctx);
 			return NULL;
 		}
@@ -794,19 +791,19 @@ int dnssec_key_from_rdata(dnssec_key_t **key, const knot_dname_t *owner,
 
 	dnssec_key_t *new_key = NULL;
 	int ret = dnssec_key_new(&new_key);
-	if (ret != DNSSEC_EOK) {
-		return knot_error_from_libdnssec(ret);
+	if (ret != KNOT_EOK) {
+		return ret;
 	}
 	ret = dnssec_key_set_rdata(new_key, &binary_key);
-	if (ret != DNSSEC_EOK) {
+	if (ret != KNOT_EOK) {
 		dnssec_key_free(new_key);
-		return knot_error_from_libdnssec(ret);
+		return ret;
 	}
 	if (owner != NULL) {
 		ret = dnssec_key_set_dname(new_key, owner);
-		if (ret != DNSSEC_EOK) {
+		if (ret != KNOT_EOK) {
 			dnssec_key_free(new_key);
-			return knot_error_from_libdnssec(ret);
+			return ret;
 		}
 	}
 

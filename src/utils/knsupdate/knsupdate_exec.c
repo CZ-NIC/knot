@@ -10,7 +10,7 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-#include "libdnssec/random.h"
+#include "libknot/dnssec/random.h"
 #include "utils/knsupdate/knsupdate_exec.h"
 #include "utils/knsupdate/knsupdate_interactive.h"
 #include "utils/common/exec.h"

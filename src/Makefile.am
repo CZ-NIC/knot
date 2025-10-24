@@ -16,7 +16,6 @@ noinst_LTLIBRARIES =
 pkgconfig_DATA =
 
 include $(srcdir)/contrib/Makefile.inc
-include $(srcdir)/libdnssec/Makefile.inc
 include $(srcdir)/libknot/Makefile.inc
 include $(srcdir)/libzscanner/Makefile.inc
 include $(srcdir)/knot/Makefile.inc

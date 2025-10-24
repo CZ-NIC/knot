@@ -40,8 +40,7 @@ void quic_params_clean(quic_params_t *params)
 #include <ngtcp2/ngtcp2_crypto_gnutls.h>
 
 #include "contrib/macros.h"
-#include "libdnssec/error.h"
-#include "libdnssec/random.h"
+#include "libknot/dnssec/random.h"
 #include "libknot/xdp/tcp_iobuf.h"
 #include "utils/common/params.h"
 
@@ -162,7 +161,7 @@ static int get_new_connection_id_cb(ngtcp2_conn *conn, ngtcp2_cid *cid,
 
 	quic_ctx_t *ctx = (quic_ctx_t *)user_data;
 
-	if (dnssec_random_buffer(cid->data, cidlen) != DNSSEC_EOK) {
+	if (dnssec_random_buffer(cid->data, cidlen) != KNOT_EOK) {
 		return NGTCP2_ERR_CALLBACK_FAILURE;
 	}
 	cid->datalen = cidlen;
@@ -403,7 +402,7 @@ int quic_generate_secret(uint8_t *buf, size_t buflen)
 	assert(buf != NULL && buflen > 0 && buflen <= 32);
 	uint8_t rand[16], hash[32];
 	int ret = dnssec_random_buffer(rand, sizeof(rand));
-	if (ret != DNSSEC_EOK) {
+	if (ret != KNOT_EOK) {
 		return KNOT_ERROR;
 	}
 	ret = gnutls_hash_fast(GNUTLS_DIG_SHA256, rand, sizeof(rand), hash);
@@ -475,12 +474,12 @@ int quic_ctx_connect(quic_ctx_t *ctx, int sockfd, struct addrinfo *dst_addr)
 	ngtcp2_cid dcid, scid;
 	scid.datalen = NGTCP2_MAX_CIDLEN;
 	int ret = dnssec_random_buffer(scid.data, scid.datalen);
-	if (ret != DNSSEC_EOK) {
+	if (ret != KNOT_EOK) {
 		return ret;
 	}
 	dcid.datalen = 18;
 	ret = dnssec_random_buffer(dcid.data, dcid.datalen);
-	if (ret != DNSSEC_EOK) {
+	if (ret != KNOT_EOK) {
 		return ret;
 	}
 

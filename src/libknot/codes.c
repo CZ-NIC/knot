@@ -7,7 +7,7 @@
 #include "libknot/codes.h"
 #include "libknot/consts.h"
 #include "libknot/rrtype/opt.h"
-#include "libdnssec/key.h"
+#include "libknot/dnssec/key.h"
 
 _public_
 const knot_lookup_t knot_opcode_names[] = {

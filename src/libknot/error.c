@@ -11,7 +11,6 @@
 
 #include "libknot/attribute.h"
 #include "libknot/error.h"
-#include "libdnssec/error.h"
 
 struct error {
 	int code;
@@ -160,6 +159,7 @@ static const struct error errors[] = {
 	{ KNOT_INVALID_KEY_SIZE,       "invalid key size" },
 	{ KNOT_INVALID_KEY_ID,         "invalid key ID" },
 	{ KNOT_INVALID_KEY_NAME,       "invalid key name" },
+	{ KNOT_INVALID_SIGNATURE,      "invalid signature" },
 	{ KNOT_NO_PUBLIC_KEY,          "no public key" },
 	{ KNOT_NO_PRIVATE_KEY,         "no private key" },
 	{ KNOT_NO_READY_KEY,           "no key ready for submission" },
@@ -174,6 +174,14 @@ static const struct error errors[] = {
 	{ KNOT_DNSSEC_ENSEC3_OPTOUT,   "wrong NSEC3 opt-out" },
 	{ KNOT_DNSSEC_EKEYTAG_LIMIT,   "many keys with equal keytag" },
 	{ KNOT_DNSSEC_EXTRA_NSEC,      "superfluous NSEC(3)" },
+	{ KNOT_KEY_EIMPORT,            "failed to import key" },
+	{ KNOT_KEY_EEXPORT,            "failed to export key" },
+	{ KNOT_KEY_EGENERATE,          "failed to generate key" },
+	{ KNOT_EALGORITHM,             "invalid hash algorithm" },
+	{ KNOT_ECRYPTO,                "crypto operation failed" },
+	{ KNOT_P11_ELOAD,              "failed to load PKCS #11 module" },
+	{ KNOT_P11_ETOKEN,             "PKCS #11 token not available" },
+	{ KNOT_P11_ECONFIG,            "invalid PKCS #11 configuration" },
 
 	/* Terminator */
 	{ KNOT_ERROR, NULL }
@@ -194,28 +202,6 @@ static const char *lookup_message(int code)
 }
 
 _public_
-int knot_error_from_libdnssec(int libdnssec_errcode)
-{
-	switch (libdnssec_errcode) {
-	case DNSSEC_ERROR:
-		return KNOT_ERROR;
-	case DNSSEC_MALFORMED_DATA:
-		return KNOT_EMALF;
-	case DNSSEC_NOT_FOUND:
-		return KNOT_ENOENT;
-	case DNSSEC_NO_PUBLIC_KEY:
-	case DNSSEC_NO_PRIVATE_KEY:
-		return KNOT_DNSSEC_ENOKEY;
-	// EOK, EINVAL, ENOMEM and ENOENT are identical, no need to translate
-	case DNSSEC_INVALID_PUBLIC_KEY ... DNSSEC_INVALID_KEY_NAME:
-		return libdnssec_errcode
-		       - DNSSEC_INVALID_PUBLIC_KEY + KNOT_INVALID_PUBLIC_KEY;
-	default:
-		return libdnssec_errcode;
-	}
-}
-
-_public_
 const char *knot_strerror(int code)
 {
 	const char *msg;
@@ -226,8 +212,6 @@ const char *knot_strerror(int code)
 		// FALLTHROUGH
 	case KNOT_ERROR_MIN ... KNOT_EOK:
 		msg = lookup_message(code); break;
-	case DNSSEC_ERROR_MIN ... DNSSEC_ERROR_MAX:
-		msg = dnssec_strerror(code); break;
 	case MDB_KEYEXIST ... MDB_LAST_ERRCODE:
 		msg = mdb_strerror(code); break;
 	default:

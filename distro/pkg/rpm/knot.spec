@@ -404,20 +404,16 @@ getent passwd knot >/dev/null || \
 %license COPYING
 %doc NEWS
 %doc README.md
-%{_libdir}/libdnssec.so.*
 %{_libdir}/libknot.so.*
 %{_libdir}/libzscanner.so.*
 
 %files devel
-%{_includedir}/libdnssec
 %{_includedir}/knot
 %{_includedir}/libknot
 %{_includedir}/libzscanner
-%{_libdir}/libdnssec.so
 %{_libdir}/libknot.so
 %{_libdir}/libzscanner.so
 %{_libdir}/pkgconfig/knotd.pc
-%{_libdir}/pkgconfig/libdnssec.pc
 %{_libdir}/pkgconfig/libknot.pc
 %{_libdir}/pkgconfig/libzscanner.pc
 

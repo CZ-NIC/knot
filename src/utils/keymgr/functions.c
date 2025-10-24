@@ -21,9 +21,8 @@
 #include "contrib/strtonum.h"
 #include "contrib/tolower.h"
 #include "contrib/wire_ctx.h"
-#include "libdnssec/error.h"
-#include "libdnssec/keyid.h"
-#include "libdnssec/shared/shared.h"
+#include "libknot/dnssec/keyid.h"
+#include "libknot/dnssec/shared/shared.h"
 #include "knot/dnssec/kasp/policy.h"
 #include "knot/dnssec/key-events.h"
 #include "knot/dnssec/rrset-sign.h"
@@ -342,7 +341,7 @@ int bind_pubkey_parse(const char *filename, dnssec_key_t **key_ptr)
 {
 	dnssec_key_t *key = NULL;
 	int result = dnssec_key_new(&key);
-	if (result != DNSSEC_EOK) {
+	if (result != KNOT_EOK) {
 		return KNOT_ENOMEM;
 	}
 
@@ -440,13 +439,13 @@ int keymgr_import_bind(kdnssec_ctx_t *ctx, const char *import_file, bool pub_onl
 
 		ret = bind_privkey_parse(privname, &bpriv);
 		free(privname);
-		if (ret != DNSSEC_EOK) {
+		if (ret != KNOT_EOK) {
 			goto fail;
 		}
 
 		dnssec_binary_t pem = { 0 };
 		ret = bind_privkey_to_pem(key, &bpriv, &pem);
-		if (ret != DNSSEC_EOK) {
+		if (ret != KNOT_EOK) {
 			bind_privkey_free(&bpriv);
 			goto fail;
 		}
@@ -457,14 +456,14 @@ int keymgr_import_bind(kdnssec_ctx_t *ctx, const char *import_file, bool pub_onl
 
 		ret = dnssec_keystore_import(keystore->keystore, &pem, &keyid);
 		dnssec_binary_free(&pem);
-		if (ret != DNSSEC_EOK) {
+		if (ret != KNOT_EOK) {
 			goto fail;
 		}
 	} else {
 		timing.publish = ctx->now;
 
 		ret = dnssec_key_get_keyid(key, &keyid);
-		if (ret != DNSSEC_EOK) {
+		if (ret != KNOT_EOK) {
 			goto fail;
 		}
 	}
@@ -497,7 +496,7 @@ int keymgr_import_bind(kdnssec_ctx_t *ctx, const char *import_file, bool pub_onl
 fail:
 	dnssec_key_free(key);
 	free(keyid);
-	return knot_error_from_libdnssec(ret);
+	return ret;
 }
 
 static void err_import_key(char *keyid, const char *file)
@@ -564,7 +563,7 @@ static int import_key(kdnssec_ctx_t *ctx, unsigned backend, const char *param,
 		// alloc memory
 		dnssec_binary_t pem = { 0 };
 		ret = dnssec_binary_alloc(&pem, fsize);
-		if (ret != DNSSEC_EOK) {
+		if (ret != KNOT_EOK) {
 			close(fd);
 			err_import_key("", param);
 			goto fail;
@@ -583,7 +582,7 @@ static int import_key(kdnssec_ctx_t *ctx, unsigned backend, const char *param,
 		// put pem to keystore
 		ret = dnssec_keystore_import(keystore->keystore, &pem, &keyid);
 		dnssec_binary_free(&pem);
-		if (ret != DNSSEC_EOK) {
+		if (ret != KNOT_EOK) {
 			err_import_key(keyid, param);
 			goto fail;
 		}
@@ -594,11 +593,11 @@ static int import_key(kdnssec_ctx_t *ctx, unsigned backend, const char *param,
 
 	// create dnssec key
 	ret = dnssec_key_new(&key);
-	if (ret != DNSSEC_EOK) {
+	if (ret != KNOT_EOK) {
 		goto fail;
 	}
 	ret = dnssec_key_set_dname(key, ctx->zone->dname);
-	if (ret != DNSSEC_EOK) {
+	if (ret != KNOT_EOK) {
 		goto fail;
 	}
 	dnssec_key_set_flags(key, dnskey_flags(flags & DNSKEY_GENERATE_SEP_ON));
@@ -606,7 +605,7 @@ static int import_key(kdnssec_ctx_t *ctx, unsigned backend, const char *param,
 
 	// fill key structure from keystore (incl. pubkey from privkey computation)
 	ret = kdnssec_load_private(ctx->keystores, keyid, key, NULL, NULL);
-	if (ret != DNSSEC_EOK) {
+	if (ret != KNOT_EOK) {
 		err_import_key(keyid, "");
 		goto fail;
 	}
@@ -638,7 +637,7 @@ static int import_key(kdnssec_ctx_t *ctx, unsigned backend, const char *param,
 fail:
 	dnssec_key_free(key);
 	free(keyid);
-	return knot_error_from_libdnssec(ret);
+	return ret;
 }
 
 int keymgr_import_pem(kdnssec_ctx_t *ctx, const char *import_file, int argc, char *argv[])
@@ -649,7 +648,7 @@ int keymgr_import_pem(kdnssec_ctx_t *ctx, const char *import_file, int argc, cha
 int keymgr_import_pkcs11(kdnssec_ctx_t *ctx, char *key_id, int argc, char *argv[])
 {
 	if (!dnssec_keyid_is_valid(key_id)) {
-		return DNSSEC_INVALID_KEY_ID;
+		return KNOT_INVALID_KEY_ID;
 	}
 
 	knot_kasp_keystore_t *keystore = knot_store_for_key(ctx->keystores, genkeyargs_ksk(argc, argv));
@@ -779,22 +778,22 @@ int keymgr_generate_tsig(const char *tsig_name, const char *alg_name, int bits)
 
 	_cleanup_binary_ dnssec_binary_t key = { 0 };
 	int r = dnssec_binary_alloc(&key, bits / CHAR_BIT);
-	if (r != DNSSEC_EOK) {
+	if (r != KNOT_EOK) {
 		ERR2("failed to allocate memory");
-		return knot_error_from_libdnssec(r);
+		return r;
 	}
 
 	r = gnutls_rnd(GNUTLS_RND_KEY, key.data, key.size);
 	if (r != 0) {
 		ERR2("failed to generate secret the key");
-		return knot_error_from_libdnssec(r);
+		return r;
 	}
 
 	_cleanup_binary_ dnssec_binary_t key_b64 = { 0 };
 	r = dnssec_binary_to_base64(&key, &key_b64);
-	if (r != DNSSEC_EOK) {
+	if (r != KNOT_EOK) {
 		ERR2("failed to convert the key to Base64");
-		return knot_error_from_libdnssec(r);
+		return r;
 	}
 
 	print_tsig(alg, tsig_name, &key_b64);
@@ -1081,8 +1080,8 @@ static key_info_t key_missing(kdnssec_ctx_t *ctx, const knot_kasp_key_t *key)
 {
 	key_info_t out = { .ks_count = ctx->keystores[0].count };
 	out.missing = !key->is_pub_only &&
-	              DNSSEC_EOK != kdnssec_load_private(ctx->keystores, key->id,
-	                                                 key->key, &out.ks_name, &out.backend);
+	              KNOT_EOK != kdnssec_load_private(ctx->keystores, key->id,
+	                                               key->key, &out.ks_name, &out.backend);
 	return out;
 }
 
@@ -1171,8 +1170,8 @@ static int create_and_print_ds(const knot_dname_t *zone_name,
 {
 	_cleanup_binary_ dnssec_binary_t rdata = { 0 };
 	int r = dnssec_key_create_ds(key, digest, &rdata);
-	if (r != DNSSEC_EOK) {
-		return knot_error_from_libdnssec(r);
+	if (r != KNOT_EOK) {
+		return r;
 	}
 
 	return print_ds(zone_name, &rdata);
@@ -1208,9 +1207,9 @@ int keymgr_generate_dnskey(const knot_dname_t *dname, const knot_kasp_key_t *key
 
 	dnssec_binary_t pubkey = { 0 };
 	int ret = dnssec_key_get_pubkey(dnskey, &pubkey);
-	if (ret != DNSSEC_EOK) {
+	if (ret != KNOT_EOK) {
 		free(name);
-		return knot_error_from_libdnssec(ret);
+		return ret;
 	}
 
 	uint8_t *base64_output = NULL;

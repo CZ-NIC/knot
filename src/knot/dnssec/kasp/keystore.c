@@ -7,7 +7,6 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "libdnssec/error.h"
 #include "knot/dnssec/kasp/keystore.h"
 #include "knot/conf/schema.h"
 #include "libknot/error.h"
@@ -33,7 +32,7 @@ static char *fix_path(const char *config, const char *base_path)
 int keystore_load(const char *config, unsigned backend,
                   const char *kasp_base_path, dnssec_keystore_t **keystore)
 {
-	int ret = DNSSEC_EINVAL;
+	int ret = KNOT_EINVAL;
 	char *fixed_config = NULL;
 
 	switch (backend) {
@@ -48,9 +47,9 @@ int keystore_load(const char *config, unsigned backend,
 	default:
 		assert(0);
 	}
-	if (ret != DNSSEC_EOK) {
+	if (ret != KNOT_EOK) {
 		free(fixed_config);
-		return knot_error_from_libdnssec(ret);
+		return ret;
 	}
 	if (fixed_config == NULL) {
 		dnssec_keystore_deinit(*keystore);
@@ -59,19 +58,19 @@ int keystore_load(const char *config, unsigned backend,
 	}
 
 	ret = dnssec_keystore_init(*keystore, fixed_config);
-	if (ret != DNSSEC_EOK) {
+	if (ret != KNOT_EOK) {
 		free(fixed_config);
 		dnssec_keystore_deinit(*keystore);
 		*keystore = NULL;
-		return knot_error_from_libdnssec(ret);
+		return ret;
 	}
 
 	ret = dnssec_keystore_open(*keystore, fixed_config);
 	free(fixed_config);
-	if (ret != DNSSEC_EOK) {
+	if (ret != KNOT_EOK) {
 		dnssec_keystore_deinit(*keystore);
 		*keystore = NULL;
-		return knot_error_from_libdnssec(ret);
+		return ret;
 	}
 
 	return KNOT_EOK;

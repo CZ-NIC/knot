@@ -13,7 +13,7 @@
 #include "libknot/xdp/tcp_iobuf.h"
 #include "libknot/attribute.h"
 #include "libknot/error.h"
-#include "libdnssec/random.h"
+#include "libknot/dnssec/random.h"
 #include "contrib/macros.h"
 #include "contrib/openbsd/siphash.h"
 #include "contrib/ucw/lists.h"

@@ -12,7 +12,7 @@
 #include "contrib/atomic.h"
 #include "contrib/threads.h"
 #include "contrib/string.h"
-#include "libdnssec/random.h"
+#include "libknot/dnssec/random.h"
 
 #define BADCOOKIE_CTR_INIT	1
 

@@ -19,7 +19,7 @@
 #include "contrib/string.c"
 #include "contrib/time.c"
 #include "contrib/ucw/mempool.c"
-#include "libdnssec/key/keytag.c"
+#include "libknot/dnssec/key/keytag.c"
 #include "libknot/codes.c"
 #include "libknot/descriptor.c"
 #include "libknot/dname.c"

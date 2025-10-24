@@ -10,7 +10,7 @@
 #include <stdint.h>
 #include <time.h>
 
-#include "libdnssec/tsig.h"
+#include "libknot/dnssec/tsig.h"
 #include "libknot/attribute.h"
 #include "libknot/rrtype/tsig.h"
 #include "libknot/consts.h"

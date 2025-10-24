@@ -19,7 +19,6 @@ CODE_COVERAGE_HTML = coverage.html
 CODE_COVERAGE_DIRS =		\
 	src/contrib		\
 	src/knot		\
-	src/libdnssec		\
 	src/libknot		\
 	src/libzscanner
 

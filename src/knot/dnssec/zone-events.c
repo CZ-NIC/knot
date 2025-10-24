@@ -5,8 +5,6 @@
 
 #include <assert.h>
 
-#include "libdnssec/error.h"
-#include "libdnssec/random.h"
 #include "libknot/libknot.h"
 #include "knot/conf/conf.h"
 #include "knot/common/dbus.h"
@@ -41,13 +39,13 @@ static int generate_salt(dnssec_binary_t *salt, uint16_t length)
 	if (length > 0) {
 		int r = dnssec_binary_alloc(&new_salt, length);
 		if (r != KNOT_EOK) {
-			return knot_error_from_libdnssec(r);
+			return r;
 		}
 
 		r = dnssec_random_binary(&new_salt);
 		if (r != KNOT_EOK) {
 			dnssec_binary_free(&new_salt);
-			return knot_error_from_libdnssec(r);
+			return r;
 		}
 	}
 

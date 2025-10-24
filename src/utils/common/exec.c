@@ -7,7 +7,7 @@
 #include <stdlib.h>
 #include <time.h>
 
-#include "libdnssec/random.h"
+#include "libknot/dnssec/random.h"
 #include "utils/common/exec.h"
 #include "utils/common/msg.h"
 #include "utils/common/netio.h"

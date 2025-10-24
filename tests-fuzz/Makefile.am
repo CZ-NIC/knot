@@ -37,7 +37,6 @@ knotd_stdio_CPPFLAGS =				\
 knotd_stdio_LDADD = \
 	$(top_builddir)/src/libknotd.la		\
 	$(top_builddir)/src/libknot.la		\
-	$(top_builddir)/src/libdnssec.la	\
 	$(top_builddir)/src/libcontrib.la	\
 	$(top_builddir)/src/libzscanner.la	\
 	$(cap_ng_LIBS)				\
@@ -61,7 +60,6 @@ fuzz_packet_SOURCES    = fuzz_packet.c
 fuzz_packet_CPPFLAGS   = $(AM_CPPFLAGS)
 fuzz_packet_LDADD      = \
 	$(top_builddir)/src/libknot.la		\
-	$(top_builddir)/src/libdnssec.la	\
 	$(top_builddir)/src/libcontrib.la	\
 	$(lmdb_LIBS)
 
@@ -74,7 +72,6 @@ fuzz_dname_to_str_SOURCES  = fuzz_dname_to_str.c
 fuzz_dname_to_str_CPPFLAGS = $(AM_CPPFLAGS)
 fuzz_dname_to_str_LDADD    = \
 	$(top_builddir)/src/libknot.la		\
-	$(top_builddir)/src/libdnssec.la	\
 	$(top_builddir)/src/libcontrib.la	\
 	$(lmdb_LIBS)
 
@@ -82,7 +79,6 @@ fuzz_dname_from_str_SOURCES  = fuzz_dname_from_str.c
 fuzz_dname_from_str_CPPFLAGS = $(AM_CPPFLAGS)
 fuzz_dname_from_str_LDADD    = \
 	$(top_builddir)/src/libknot.la		\
-	$(top_builddir)/src/libdnssec.la	\
 	$(top_builddir)/src/libcontrib.la	\
 	$(lmdb_LIBS)
 

@@ -21,7 +21,7 @@
 #include <linux/udp.h>
 #endif
 
-#include "libdnssec/key.h"
+#include "libknot/dnssec/key.h"
 #include "knot/catalog/catalog_db.h"
 #include "knot/conf/tools.h"
 #include "knot/conf/conf.h"

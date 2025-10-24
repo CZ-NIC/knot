@@ -7,10 +7,9 @@
 
 #include "contrib/ctype.h"
 #include "contrib/strtonum.h"
-#include "libdnssec/binary.h"
-#include "libdnssec/error.h"
-#include "libdnssec/pem.h"
-#include "libdnssec/shared/shared.h"
+#include "libknot/dnssec/binary.h"
+#include "libknot/dnssec/pem.h"
+#include "libknot/dnssec/shared/shared.h"
 #include "utils/keymgr/bind_privkey.h"
 
 /* -- private key params conversion ---------------------------------------- */
@@ -80,7 +79,7 @@ static int parse_algorithm(char *string, void *_algorithm)
 	uint8_t *algorithm = _algorithm;
 	int r = str_to_u8(string, algorithm);
 
-	return (r == KNOT_EOK ? DNSSEC_EOK : DNSSEC_INVALID_KEY_ALGORITHM);
+	return (r == KNOT_EOK ? KNOT_EOK : KNOT_INVALID_KEY_ALGORITHM);
 }
 
 /*!
@@ -112,13 +111,13 @@ static int parse_time(char *string, void *_time)
 
 	char *end = strptime(string, LEGACY_DATE_FORMAT, &tm);
 	if (end == NULL || *end != '\0') {
-		return DNSSEC_MALFORMED_DATA;
+		return KNOT_EMALF;
 	}
 
 	time_t *time = _time;
 	*time = timegm(&tm);
 
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }
 
 /* -- key parsing ---------------------------------------------------------- */
@@ -158,7 +157,7 @@ static int parse_line(bind_privkey_t *params, char *line, size_t length)
 
 	char *separator = memchr(line, ':', length);
 	if (!separator) {
-		return DNSSEC_MALFORMED_DATA;
+		return KNOT_EMALF;
 	}
 
 	char *key = line;
@@ -170,7 +169,7 @@ static int parse_line(bind_privkey_t *params, char *line, size_t length)
 	strip(&value, &value_length);
 
 	if (key_length == 0 || value_length == 0) {
-		return DNSSEC_MALFORMED_DATA;
+		return KNOT_EMALF;
 	}
 
 	key[key_length] = '\0';
@@ -191,14 +190,14 @@ static int parse_line(bind_privkey_t *params, char *line, size_t length)
 
 	// ignore unknown attributes
 
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }
 
 int bind_privkey_parse(const char *filename, bind_privkey_t *params_ptr)
 {
 	_cleanup_fclose_ FILE *file = fopen(filename, "r");
 	if (!file) {
-		return DNSSEC_NOT_FOUND;
+		return KNOT_ENOENT;
 	}
 
 	bind_privkey_t params = *params_ptr;
@@ -208,7 +207,7 @@ int bind_privkey_parse(const char *filename, bind_privkey_t *params_ptr)
 	ssize_t read = 0;
 	while ((read = getline(&line, &size, file)) != -1) {
 		int r = parse_line(&params, line, read);
-		if (r != DNSSEC_EOK) {
+		if (r != KNOT_EOK) {
 			bind_privkey_free(&params);
 			return r;
 		}
@@ -216,7 +215,7 @@ int bind_privkey_parse(const char *filename, bind_privkey_t *params_ptr)
 
 	*params_ptr = params;
 
-	return DNSSEC_EOK;
+	return KNOT_EOK;
 }
 
 /* -- freeing -------------------------------------------------------------- */
@@ -246,7 +245,7 @@ static int rsa_params_to_pem(const bind_privkey_t *params, dnssec_binary_t *pem)
 	_cleanup_x509_privkey_ gnutls_x509_privkey_t key = NULL;
 	int result = gnutls_x509_privkey_init(&key);
 	if (result != GNUTLS_E_SUCCESS) {
-		return DNSSEC_ENOMEM;
+		return KNOT_ENOMEM;
 	}
 
 	gnutls_datum_t m = binary_to_datum(&params->modulus);
@@ -258,7 +257,7 @@ static int rsa_params_to_pem(const bind_privkey_t *params, dnssec_binary_t *pem)
 
 	result = gnutls_x509_privkey_import_rsa_raw(key, &m, &e, &d, &p, &q, &u);
 	if (result != GNUTLS_E_SUCCESS) {
-		return DNSSEC_KEY_IMPORT_ERROR;
+		return KNOT_KEY_EIMPORT;
 	}
 
 	return dnssec_pem_from_x509(key, pem);
@@ -301,7 +300,7 @@ static int ecdsa_params_to_pem(dnssec_key_t *dnskey, const bind_privkey_t *param
 	_cleanup_x509_privkey_ gnutls_x509_privkey_t key = NULL;
 	int result = gnutls_x509_privkey_init(&key);
 	if (result != GNUTLS_E_SUCCESS) {
-		return DNSSEC_ENOMEM;
+		return KNOT_ENOMEM;
 	}
 
 	gnutls_ecc_curve_t curve = 0;
@@ -312,8 +311,8 @@ static int ecdsa_params_to_pem(dnssec_key_t *dnskey, const bind_privkey_t *param
 	gnutls_datum_t k = binary_to_datum(&params->private_key);
 
 	result = gnutls_x509_privkey_import_ecc_raw(key, curve, &x, &y, &k);
-	if (result != DNSSEC_EOK) {
-		return DNSSEC_KEY_IMPORT_ERROR;
+	if (result != KNOT_EOK) {
+		return KNOT_KEY_EIMPORT;
 	}
 
 	gnutls_x509_privkey_fix(key);
@@ -339,7 +338,7 @@ static int eddsa_params_to_pem(dnssec_key_t *dnskey, const bind_privkey_t *param
 	_cleanup_x509_privkey_ gnutls_x509_privkey_t key = NULL;
 	int result = gnutls_x509_privkey_init(&key);
 	if (result != GNUTLS_E_SUCCESS) {
-		return DNSSEC_ENOMEM;
+		return KNOT_ENOMEM;
 	}
 
 	gnutls_ecc_curve_t curve = 0;
@@ -349,8 +348,8 @@ static int eddsa_params_to_pem(dnssec_key_t *dnskey, const bind_privkey_t *param
 	gnutls_datum_t k = binary_to_datum(&params->private_key);
 
 	result = gnutls_x509_privkey_import_ecc_raw(key, curve, &x, NULL, &k);
-	if (result != DNSSEC_EOK) {
-		return DNSSEC_KEY_IMPORT_ERROR;
+	if (result != KNOT_EOK) {
+		return KNOT_KEY_EIMPORT;
 	}
 
 	gnutls_x509_privkey_fix(key);
@@ -376,7 +375,7 @@ int bind_privkey_to_pem(dnssec_key_t *key, bind_privkey_t *params, dnssec_binary
 #endif
 		return eddsa_params_to_pem(key, params, pem);
 	default:
-		return DNSSEC_INVALID_KEY_ALGORITHM;
+		return KNOT_INVALID_KEY_ALGORITHM;
 	}
 }
 

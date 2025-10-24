@@ -7,7 +7,7 @@
 
 #include "knot/dnssec/kasp/kasp_db.h"
 #include "knot/zone/contents.h"
-#include "libdnssec/keystore.h"
+#include "libknot/dnssec/keystore.h"
 
 typedef struct {
 	knot_dname_t *dname;

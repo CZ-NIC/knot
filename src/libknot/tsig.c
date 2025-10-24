@@ -8,7 +8,7 @@
 
 #include "contrib/getline.h"
 #include "contrib/string.h"
-#include "libdnssec/error.h"
+#include "libknot/errcode.h"
 #include "libknot/attribute.h"
 #include "libknot/errcode.h"
 #include "libknot/tsig.h"
@@ -166,7 +166,7 @@ int knot_tsig_key_copy(knot_tsig_key_t *dst, const knot_tsig_key_t *src)
 		return KNOT_ENOMEM;
 	}
 
-	if (dnssec_binary_dup(&src->secret, &copy.secret) != DNSSEC_EOK) {
+	if (dnssec_binary_dup(&src->secret, &copy.secret) != KNOT_EOK) {
 		knot_tsig_key_deinit(&copy);
 		return KNOT_ENOMEM;
 	}

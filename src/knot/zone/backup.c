@@ -28,7 +28,6 @@
 #include "knot/server/server.h"
 #include "knot/zone/backup_dir.h"
 #include "knot/zone/zonefile.h"
-#include "libdnssec/error.h"
 
 // Current backup format version for output. Don't decrease it.
 #define BACKUP_VERSION BACKUP_FORMAT_2  // Starting with release 3.1.0.
@@ -221,31 +220,31 @@ static int backup_key(key_params_t *parm, const knot_dname_t *zname, bool restor
 {
 	dnssec_key_t *key = NULL;
 	int ret = dnssec_key_new(&key);
-	if (ret != DNSSEC_EOK) {
-		return knot_error_from_libdnssec(ret);
+	if (ret != KNOT_EOK) {
+		return ret;
 	}
 	dnssec_key_set_algorithm(key, parm->algorithm);
 
 	unsigned backend;
 	ret = kdnssec_load_private(from, parm->id, key, NULL, &backend);
-	if (ret == DNSSEC_EOK) {
+	if (ret == KNOT_EOK) {
 		// If restore, consider only the first configured keystore.
 		assert(to->count > 0);
 		ret = dnssec_keystore_set_private(to[0].keystore, key);
 		backend = restore ? to->backend : backend;
-		if (ret != DNSSEC_EOK && backend == KEYSTORE_BACKEND_PKCS11) {
+		if (ret != KNOT_EOK && backend == KEYSTORE_BACKEND_PKCS11) {
 			log_zone_notice(zname,
 			                "%s of private key id %s via PKCS #11 not possible, ignoring",
 			                restore ? "restore" : "backup", parm->id);
-			ret = DNSSEC_EOK;
+			ret = KNOT_EOK;
 		}
-	} else if (ret == DNSSEC_ENOENT) {
+	} else if (ret == KNOT_ENOENT) {
 		log_zone_notice(zname, "private key id %s not available, ignoring", parm->id);
-		ret = DNSSEC_EOK;
+		ret = KNOT_EOK;
 	}
 
 	dnssec_key_free(key);
-	return knot_error_from_libdnssec(ret);
+	return ret;
 }
 
 static conf_val_t get_zone_policy(conf_t *conf, const knot_dname_t *zone)

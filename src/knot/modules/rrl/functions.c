@@ -12,7 +12,7 @@
 #include "contrib/musl/inet_ntop.h"
 #include "contrib/sockaddr.h"
 #include "contrib/time.h"
-#include "libdnssec/random.h"
+#include "libknot/dnssec/random.h"
 
 // CIDR block prefix lengths for v4/v6 (hardcoded also in unit tests).
 #define RRL_V4_PREFIXES  (uint8_t[])       {  18,  20, 24, 32 }

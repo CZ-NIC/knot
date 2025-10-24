@@ -9,7 +9,7 @@
 #include <tap/basic.h>
 
 #include "contrib/strtonum.h"
-#include "libdnssec/error.h"
+#include "libknot/errcode.h"
 #include "libknot/attribute.h"
 
 static void test_u8(const char *in, uint8_t expected, int errcode)

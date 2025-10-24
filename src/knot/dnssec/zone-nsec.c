@@ -5,7 +5,6 @@
 
 #include <assert.h>
 
-#include "libdnssec/error.h"
 #include "libknot/descriptor.h"
 #include "libknot/rrtype/nsec3.h"
 #include "libknot/rrtype/soa.h"
@@ -61,8 +60,8 @@ int knot_create_nsec3_owner(uint8_t *out, size_t out_size,
 	dnssec_binary_t hash = { 0 };
 
 	int ret = dnssec_nsec3_hash(&data, params, &hash);
-	if (ret != DNSSEC_EOK) {
-		return knot_error_from_libdnssec(ret);
+	if (ret != KNOT_EOK) {
+		return ret;
 	}
 
 	ret = knot_nsec3_hash_to_dname(out, out_size, hash.data, hash.size, zone_apex);
@@ -163,7 +162,7 @@ static bool nsec3param_valid(const knot_rdataset_t *rrs,
 
 	dnssec_nsec3_params_t parsed = { 0 };
 	int r = dnssec_nsec3_params_from_rdata(&parsed, &rdata);
-	if (r != DNSSEC_EOK) {
+	if (r != KNOT_EOK) {
 		return false;
 	}
 

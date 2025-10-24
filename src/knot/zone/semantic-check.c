@@ -7,8 +7,6 @@
 
 #include "knot/zone/semantic-check.h"
 
-#include "libdnssec/error.h"
-#include "libdnssec/key.h"
 #include "contrib/string.h"
 #include "libknot/libknot.h"
 #include "knot/dnssec/key-events.h"

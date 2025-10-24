@@ -7,17 +7,12 @@
 #include <pthread.h>
 #include <sys/types.h>
 
-#include "libdnssec/error.h"
-#include "libdnssec/key.h"
-#include "libdnssec/keytag.h"
-#include "libdnssec/sign.h"
 #include "knot/common/log.h"
 #include "knot/dnssec/key-events.h"
 #include "knot/dnssec/key_records.h"
 #include "knot/dnssec/rrset-sign.h"
 #include "knot/dnssec/zone-sign.h"
 #include "libknot/libknot.h"
-#include "libknot/dynarray.h"
 #include "contrib/wire_ctx.h"
 
 typedef struct {

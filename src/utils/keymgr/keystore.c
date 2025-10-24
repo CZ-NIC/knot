@@ -10,13 +10,8 @@
 #include "contrib/color.h"
 #include "contrib/spinlock.h"
 #include "contrib/time.h"
-#include "libdnssec/error.h"
-#include "libdnssec/key/algorithm.h"
-#include "libdnssec/key/privkey.h"
-#include "libdnssec/random.h"
-#include "libdnssec/sample_keys.h"
-#include "libdnssec/sign.h"
-#include "libknot/errcode.h"
+#include "libknot/libknot.h"
+#include "libknot/dnssec/sample_keys.h"
 #include "knot/conf/conf.h"
 #include "knot/dnssec/kasp/kasp_zone.h"
 #include "knot/server/dthreads.h"
@@ -41,18 +36,18 @@ static int create_dnskeys(dnssec_keystore_t *keystore, const char *id,
                           dnssec_key_t **test_key_ptr, dnssec_key_t **ref_key_ptr)
 {
 	dnssec_key_t *test_key = NULL;
-	if (dnssec_key_new(&test_key) != DNSSEC_EOK ||
-	    dnssec_key_set_algorithm(test_key, algorithm) != DNSSEC_EOK ||
-	    dnssec_keystore_get_private(keystore, id, test_key) != DNSSEC_EOK) {
+	if (dnssec_key_new(&test_key) != KNOT_EOK ||
+	    dnssec_key_set_algorithm(test_key, algorithm) != KNOT_EOK ||
+	    dnssec_keystore_get_private(keystore, id, test_key) != KNOT_EOK) {
 		dnssec_key_free(test_key);
 		return KNOT_ERROR;
 	}
 
 	dnssec_binary_t rdata;
 	dnssec_key_t *ref_key = NULL;
-	if (dnssec_key_new(&ref_key) != DNSSEC_EOK ||
-	    dnssec_key_get_rdata(test_key, &rdata) != DNSSEC_EOK ||
-	    dnssec_key_set_rdata(ref_key, &rdata) != DNSSEC_EOK) {
+	if (dnssec_key_new(&ref_key) != KNOT_EOK ||
+	    dnssec_key_get_rdata(test_key, &rdata) != KNOT_EOK ||
+	    dnssec_key_set_rdata(ref_key, &rdata) != KNOT_EOK) {
 		dnssec_key_free(test_key);
 		dnssec_key_free(ref_key);
 		return KNOT_ERROR;
@@ -74,17 +69,17 @@ static int test_sign(dnssec_key_t *test_key, dnssec_key_t *ref_key)
 	dnssec_binary_t sign = { 0 };
 
 	dnssec_sign_ctx_t *ctx = NULL;
-	if (dnssec_sign_new(&ctx, test_key) != DNSSEC_EOK ||
-	    dnssec_sign_add(ctx, &input) != DNSSEC_EOK ||
-	    dnssec_sign_write(ctx, DNSSEC_SIGN_NORMAL, &sign) != DNSSEC_EOK) {
+	if (dnssec_sign_new(&ctx, test_key) != KNOT_EOK ||
+	    dnssec_sign_add(ctx, &input) != KNOT_EOK ||
+	    dnssec_sign_write(ctx, DNSSEC_SIGN_NORMAL, &sign) != KNOT_EOK) {
 		dnssec_binary_free(&sign);
 		dnssec_sign_free(ctx);
 		return KNOT_ERROR;
 	}
 
-	if (dnssec_sign_init(ctx) != DNSSEC_EOK ||
-	    dnssec_sign_add(ctx, &input) != DNSSEC_EOK ||
-	    dnssec_sign_verify(ctx, false, &sign) != DNSSEC_EOK) {
+	if (dnssec_sign_init(ctx) != KNOT_EOK ||
+	    dnssec_sign_add(ctx, &input) != KNOT_EOK ||
+	    dnssec_sign_verify(ctx, false, &sign) != KNOT_EOK) {
 		dnssec_binary_free(&sign);
 		dnssec_sign_free(ctx);
 		return KNOT_ERROR;
@@ -93,9 +88,9 @@ static int test_sign(dnssec_key_t *test_key, dnssec_key_t *ref_key)
 	dnssec_sign_free(ctx);
 	ctx = NULL;
 
-	if (dnssec_sign_new(&ctx, ref_key) != DNSSEC_EOK ||
-	    dnssec_sign_add(ctx, &input) != DNSSEC_EOK ||
-	    dnssec_sign_verify(ctx, false, &sign) != DNSSEC_EOK) {
+	if (dnssec_sign_new(&ctx, ref_key) != KNOT_EOK ||
+	    dnssec_sign_add(ctx, &input) != KNOT_EOK ||
+	    dnssec_sign_verify(ctx, false, &sign) != KNOT_EOK) {
 		dnssec_binary_free(&sign);
 		dnssec_sign_free(ctx);
 		return KNOT_ERROR;
@@ -142,19 +137,19 @@ static void test_algorithm(dnssec_keystore_t *store,
 	char *id = NULL;
 	int ret = dnssec_keystore_generate(store, params->algorithm,
 	                                   params->bit_size, NULL, &id);
-	if (ret == DNSSEC_EOK) {
+	if (ret == KNOT_EOK) {
 		res.generate = true;
 
 		ret = test_key_use(store, id, params->algorithm);
 		res.use = (ret == KNOT_EOK);
 
 		ret = dnssec_keystore_remove(store, id);
-		res.remove = (ret == DNSSEC_EOK);
+		res.remove = (ret == KNOT_EOK);
 		free(id);
 	}
 
 	ret = dnssec_keystore_import(store, &params->pem, &id);
-	if (ret == DNSSEC_EOK) {
+	if (ret == KNOT_EOK) {
 		res.import = true;
 
 		ret = test_key_use(store, id, params->algorithm);
@@ -166,9 +161,9 @@ static void test_algorithm(dnssec_keystore_t *store,
 
 		ret = dnssec_keystore_remove(store, id);
 		if (res.generate) {
-			res.remove &= (ret == DNSSEC_EOK);
+			res.remove &= (ret == KNOT_EOK);
 		} else {
-			res.remove = (ret == DNSSEC_EOK);
+			res.remove = (ret == KNOT_EOK);
 		}
 		free(id);
 	}
@@ -275,10 +270,10 @@ static int bench(dthread_t *dt)
 	knot_spin_lock(&data->lock);
 	int ret = dnssec_keystore_generate(store, params->algorithm,
 	                                   params->bit_size, NULL, &id);
-	if (ret != DNSSEC_EOK ||
-	    dnssec_key_new(&test_key) != DNSSEC_EOK ||
-	    dnssec_key_set_algorithm(test_key, params->algorithm) != DNSSEC_EOK ||
-	    dnssec_keystore_get_private(store, id, test_key) != DNSSEC_EOK) {
+	if (ret != KNOT_EOK ||
+	    dnssec_key_new(&test_key) != KNOT_EOK ||
+	    dnssec_key_set_algorithm(test_key, params->algorithm) != KNOT_EOK ||
+	    dnssec_keystore_get_private(store, id, test_key) != KNOT_EOK) {
 		goto finish;
 	}
 	knot_spin_unlock(&data->lock);
@@ -296,9 +291,9 @@ static int bench(dthread_t *dt)
 	while (result->time < BENCH_TIME) {
 		dnssec_binary_t sign = { 0 };
 		dnssec_sign_ctx_t *ctx = NULL;
-		if (dnssec_sign_new(&ctx, test_key) != DNSSEC_EOK ||
-		    dnssec_sign_add(ctx, &input) != DNSSEC_EOK ||
-		    dnssec_sign_write(ctx, DNSSEC_SIGN_NORMAL, &sign) != DNSSEC_EOK) {
+		if (dnssec_sign_new(&ctx, test_key) != KNOT_EOK ||
+		    dnssec_sign_add(ctx, &input) != KNOT_EOK ||
+		    dnssec_sign_write(ctx, DNSSEC_SIGN_NORMAL, &sign) != KNOT_EOK) {
 			dnssec_binary_free(&sign);
 			dnssec_sign_free(ctx);
 			result->time = 0;

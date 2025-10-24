@@ -15,7 +15,7 @@
 #include "knot/updates/ddns.h"
 #include "knot/zone/digest.h"
 #include "knot/zone/zone.h"
-#include "libdnssec/random.h"
+#include "libknot/dnssec/random.h"
 #include "libknot/libknot.h"
 #include "libknot/quic/quic_conn.h"
 #include "libknot/quic/quic.h"

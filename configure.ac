@@ -17,7 +17,6 @@ AC_CANONICAL_HOST
 # Update library versions
 # https://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html
 KNOT_LIB_VERSION([libknot],    16, 0, 0)
-KNOT_LIB_VERSION([libdnssec],  10, 0, 0)
 KNOT_LIB_VERSION([libzscanner], 5, 0, 0)
 
 AC_SUBST([KNOT_VERSION_MAJOR], knot_VERSION_MAJOR)
@@ -25,7 +24,6 @@ AC_SUBST([KNOT_VERSION_MINOR], knot_VERSION_MINOR)
 AC_SUBST([KNOT_VERSION_PATCH], knot_VERSION_PATCH)
 
 AC_CONFIG_FILES([src/libknot/version.h
-                 src/libdnssec/version.h
                  src/libzscanner/version.h])
 
 # Automatically update release date based on NEWS
@@ -68,7 +66,6 @@ PKG_PROG_PKG_CONFIG
 m4_ifdef([PKG_INSTALLDIR], [PKG_INSTALLDIR], [AC_SUBST([pkgconfigdir], ['${libdir}/pkgconfig'])])
 AC_CONFIG_FILES([src/knotd.pc
                  src/libknot.pc
-                 src/libdnssec.pc
                  src/libzscanner.pc
                  ])
 
