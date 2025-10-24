@@ -15,7 +15,7 @@ t = Test()
 master = t.server("knot")
 signer = t.server("knot")
 slave = t.server("knot")
-ZONE = "example.com."
+ZONE = "example."
 zones = t.zone(ZONE)
 
 t.link(zones, master, signer)
