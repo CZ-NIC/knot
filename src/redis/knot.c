@@ -205,6 +205,8 @@ static int zone_begin_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int arg
 	ARG_INST_TXT(argv[2], txn);
 
 	zone_begin_txt_format(ctx, &origin, &txn);
+	
+	RedisModule_ReplicateVerbatim(ctx);
 	return REDISMODULE_OK;
 }
 
@@ -237,6 +239,8 @@ static int zone_store_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int arg
 	ARG_DATA(argv[3], data_len, zone_data, "zone data");
 
 	zone_store_txt_format(ctx, &origin, &txn, zone_data, data_len);
+
+	RedisModule_ReplicateVerbatim(ctx);
 	return REDISMODULE_OK;
 }
 
@@ -281,6 +285,8 @@ static int zone_commit_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int ar
 	ARG_TXN_TXT(argv[2], txn);
 
 	zone_commit(ctx, &origin, &txn);
+
+	RedisModule_ReplicateVerbatim(ctx);
 	return REDISMODULE_OK;
 }
 
@@ -297,6 +303,8 @@ static int zone_commit_bin(RedisModuleCtx *ctx, RedisModuleString **argv, int ar
 	ARG_TXN(argv[2], txn);
 
 	zone_commit(ctx, &origin, &txn);
+
+	RedisModule_ReplicateVerbatim(ctx);
 	return REDISMODULE_OK;
 }
 
@@ -309,6 +317,8 @@ static int zone_abort_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int arg
 	ARG_TXN_TXT(argv[2], txn);
 
 	zone_abort(ctx, &origin, &txn);
+
+	RedisModule_ReplicateVerbatim(ctx);
 	return REDISMODULE_OK;
 }
 
@@ -325,6 +335,8 @@ static int zone_abort_bin(RedisModuleCtx *ctx, RedisModuleString **argv, int arg
 	ARG_TXN(argv[2], txn);
 
 	zone_abort(ctx, &origin, &txn);
+
+	RedisModule_ReplicateVerbatim(ctx);
 	return REDISMODULE_OK;
 }
 
@@ -341,6 +353,8 @@ static int zone_exists_bin(RedisModuleCtx *ctx, RedisModuleString **argv, int ar
 	ARG_INST(argv[2], txn);
 
 	zone_exists(ctx, &origin, &txn);
+
+	RedisModule_ReplicateVerbatim(ctx);
 	return REDISMODULE_OK;
 }
 
@@ -371,6 +385,8 @@ static int zone_load_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int argc
 
 	zone_load(ctx, &origin, &txn, (argc >= 4) ? &owner : NULL,
 	          (argc >= 5) ? &rtype : NULL, mode);
+
+	RedisModule_ReplicateVerbatim(ctx);
 	return REDISMODULE_OK;
 }
 
@@ -402,6 +418,8 @@ static int zone_load_bin(RedisModuleCtx *ctx, RedisModuleString **argv, int argc
 
 	zone_load(ctx, &origin, &txn, (argc >= 4) ? &owner : NULL,
 	          (argc >= 5) ? &rtype : NULL, DUMP_BIN);
+
+	RedisModule_ReplicateVerbatim(ctx);
 	return REDISMODULE_OK;
 }
 
@@ -414,6 +432,8 @@ static int zone_purge_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int arg
 	ARG_INST_TXT(argv[2], txn);
 
 	zone_purge_v(ctx, &origin, &txn);
+
+	RedisModule_ReplicateVerbatim(ctx);
 	return REDISMODULE_OK;
 }
 
@@ -430,6 +450,8 @@ static int zone_purge_bin(RedisModuleCtx *ctx, RedisModuleString **argv, int arg
 	ARG_INST(argv[2], txn);
 
 	zone_purge_v(ctx, &origin, &txn);
+
+	RedisModule_ReplicateVerbatim(ctx);
 	return REDISMODULE_OK;
 }
 
@@ -439,6 +461,8 @@ static int zone_list_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int argc
 	ARG_OPT_TXT(instances, "instances", false, true);
 
 	zone_list(ctx, instances, true);
+
+	RedisModule_ReplicateVerbatim(ctx);
 	return REDISMODULE_OK;
 }
 
@@ -449,6 +473,8 @@ static int zone_list_bin(RedisModuleCtx *ctx, RedisModuleString **argv, int argc
 	}
 
 	zone_list(ctx, true, false);
+
+	RedisModule_ReplicateVerbatim(ctx);
 	return REDISMODULE_OK;
 }
 
@@ -461,6 +487,8 @@ static int upd_begin_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int argc
 	ARG_INST_TXT(argv[2], txn);
 
 	upd_begin_txt_format(ctx, &origin, &txn);
+
+	RedisModule_ReplicateVerbatim(ctx);
 	return REDISMODULE_OK;
 }
 
@@ -477,6 +505,8 @@ static int upd_begin_bin(RedisModuleCtx *ctx, RedisModuleString **argv, int argc
 	ARG_INST(argv[2], txn);
 
 	upd_begin_bin_format(ctx, &origin, &txn);
+
+	RedisModule_ReplicateVerbatim(ctx);
 	return REDISMODULE_OK;
 }
 
@@ -500,6 +530,8 @@ static int upd_add_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 	};
 
 	run_scanner(&s_ctx, &origin, zone_data, data_len);
+
+	RedisModule_ReplicateVerbatim(ctx);
 	return REDISMODULE_OK;
 }
 
@@ -538,6 +570,8 @@ static int upd_add_bin(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 	};
 
 	upd_add_bin_format(ctx, &origin, &txn, &owner, ttl, rtype, &rdataset);
+
+	RedisModule_ReplicateVerbatim(ctx);
 	return REDISMODULE_OK;
 }
 
@@ -561,6 +595,8 @@ static int upd_remove_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int arg
 	};
 
 	run_scanner(&s_ctx, &origin, zone_data, data_len);
+
+	RedisModule_ReplicateVerbatim(ctx);
 	return REDISMODULE_OK;
 }
 
@@ -599,6 +635,8 @@ static int upd_remove_bin(RedisModuleCtx *ctx, RedisModuleString **argv, int arg
 	};
 
 	upd_remove_bin_format(ctx, &origin, &txn, &owner, ttl, rtype, &rdataset);
+
+	RedisModule_ReplicateVerbatim(ctx);
 	return REDISMODULE_OK;
 }
 
@@ -611,6 +649,8 @@ static int upd_commit_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int arg
 	ARG_TXN_TXT(argv[2], txn);
 
 	upd_commit(ctx, &origin, &txn);
+
+	RedisModule_ReplicateVerbatim(ctx);
 	return REDISMODULE_OK;
 }
 
@@ -627,6 +667,8 @@ static int upd_commit_bin(RedisModuleCtx *ctx, RedisModuleString **argv, int arg
 	ARG_TXN(argv[2], txn)
 
 	upd_commit(ctx, &origin, &txn);
+
+	RedisModule_ReplicateVerbatim(ctx);
 	return REDISMODULE_OK;
 }
 
@@ -639,6 +681,8 @@ static int upd_abort_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int argc
 	ARG_TXN_TXT(argv[2], txn);
 
 	upd_abort_v(ctx, &origin, &txn);
+
+	RedisModule_ReplicateVerbatim(ctx);
 	return REDISMODULE_OK;
 }
 
@@ -655,6 +699,8 @@ static int upd_abort_bin(RedisModuleCtx *ctx, RedisModuleString **argv, int argc
 	ARG_TXN(argv[2], txn)
 
 	upd_abort_v(ctx, &origin, &txn);
+
+	RedisModule_ReplicateVerbatim(ctx);
 	return REDISMODULE_OK;
 }
 
@@ -685,6 +731,8 @@ static int upd_diff_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 
 	upd_diff(ctx, &origin, &txn, (argc >= 4) ? &owner : NULL,
 	         (argc >= 5) ? &rtype : NULL, mode);
+
+	RedisModule_ReplicateVerbatim(ctx);
 	return REDISMODULE_OK;
 }
 
@@ -716,6 +764,8 @@ static int upd_diff_bin(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 
 	upd_diff(ctx, &origin, &txn, (argc >= 4) ? &owner : NULL,
 	         (argc >= 5) ? &rtype : NULL, DUMP_BIN);
+
+	RedisModule_ReplicateVerbatim(ctx);
 	return REDISMODULE_OK;
 }
 
@@ -749,6 +799,8 @@ static int upd_load_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 
 	upd_load(ctx, &origin, &txn, serial, (argc >= 5) ? &owner : NULL,
 	         (argc >= 6) ? &rtype : NULL, mode);
+
+	RedisModule_ReplicateVerbatim(ctx);
 	return REDISMODULE_OK;
 }
 
@@ -783,6 +835,8 @@ static int upd_load_bin(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 
 	upd_load(ctx, &origin, &txn, serial, (argc >= 5) ? &owner : NULL,
 	         (argc >= 6) ? &rtype : NULL, DUMP_BIN);
+
+	RedisModule_ReplicateVerbatim(ctx);
 	return REDISMODULE_OK;
 }
 

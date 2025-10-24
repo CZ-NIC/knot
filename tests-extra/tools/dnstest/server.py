@@ -297,7 +297,7 @@ class Server(object):
             z = self.zones[zone.name]
 
         if backendEnv != None and isinstance(backendEnv, RedisEnv) is True:
-            z.redis_out = str(backendEnv.instance)
+            # z.redis_out = str(backendEnv.instance)
             self.backends.update(backendEnv.servers)
 
         if slave:

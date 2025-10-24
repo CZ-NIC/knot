@@ -18,7 +18,14 @@ redis_env = RedisEnv([redis_master], 1)
 
 zones = t.zone("example.com.")
 
-t.link(zones, master, slave, backendEnv=redis_env)
+t.link(zones, master, backendEnv=redis_env)
+t.link(zones, slave, backendEnv=redis_env)
+
+master.zonefile_sync = "0"
+for z in zones:
+    master.zones[z.name].redis_out = "1"
+    slave.zones[z.name].redis_in = "1"
+    slave.zones[z.name].zfile.remove()
 
 t.start()
 

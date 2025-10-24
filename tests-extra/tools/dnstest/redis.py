@@ -48,6 +48,7 @@ class Redis(object):
             cf.write("tls-key-file key.pem" + os.linesep)
             cf.write("tls-cert-file cert.pem" + os.linesep)
             cf.write("enable-debug-command local" + os.linesep)
+            cf.write("repl-ping-replica-period 1" + os.linesep)
             if self.addr != "127.0.0.1" and self.addr != "::1":
                 cf.write("protected-mode no " + os.linesep)
             if self._slave_of != None:
