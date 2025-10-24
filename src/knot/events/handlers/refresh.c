@@ -108,6 +108,7 @@ struct refresh_data {
 	bool ixfr_by_one;                 //!< Allow only single changeset within IXFR.
 	bool ixfr_from_axfr;              //!< Diff computation of incremental update from AXFR allowed.
 	bool reverse_or_include;          //!< Auto reverse generation or subzone inclusion configured.
+	bool ignore_zonemd;               //!< Ignore apex ZONEMD in incomming IXFR as it is overwritten anyway.
 	uint32_t expire_timer;            //!< Result: expire timer from answer EDNS.
 
 	// internal state, initialize with zeroes:
@@ -841,6 +842,10 @@ static int ixfr_step(const knot_rrset_t *rr, struct refresh_data *data)
 	case IXFR_SOA_DEL:
 		return ixfr_solve_soa_del(rr, data);
 	case IXFR_DEL:
+		if (data->ignore_zonemd && rr->type == KNOT_RRTYPE_ZONEMD &&
+		    knot_dname_is_equal(rr->owner, data->zone->name)) {
+			return KNOT_EOK;
+		}
 		return ixfr_solve_del(rr, change, data->mm);
 	case IXFR_SOA_ADD:
 		return ixfr_solve_soa_add(rr, change, data->mm);
@@ -1355,6 +1360,7 @@ typedef struct {
 	bool ixfr_from_axfr;
 	bool reverse_or_include;
 	bool more_xfr;
+	bool ignore_zonemd;
 } try_refresh_ctx_t;
 
 static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master,
@@ -1393,6 +1399,8 @@ static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master,
 		.ixfr_by_one = trctx->ixfr_by_one,
 		.ixfr_from_axfr = trctx->ixfr_from_axfr,
 	        .reverse_or_include = trctx->reverse_or_include,
+	        .ignore_zonemd = trctx->ignore_zonemd,
+	        // TODO refactor refresh_data and try_refresh_ctx_t so that this cross-assignment is not necessary for simple fields
 	};
 
 	knot_requestor_t requestor;
@@ -1466,6 +1474,8 @@ int event_refresh(conf_t *conf, zone_t *zone)
 
 	conf_val_t val = conf_zone_get(conf, C_IXFR_BY_ONE, zone->name);
 	trctx.ixfr_by_one = conf_bool(&val);
+	val = conf_zone_get(conf, C_ZONEMD_GENERATE, zone->name);
+	trctx.ignore_zonemd = (conf_opt(&val) != ZONE_DIGEST_NONE);
 	val = conf_zone_get(conf, C_IXFR_FROM_AXFR, zone->name);
 	trctx.ixfr_from_axfr = conf_bool(&val);
 
