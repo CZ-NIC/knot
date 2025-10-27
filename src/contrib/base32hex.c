@@ -78,8 +78,11 @@ int32_t knot_base32hex_encode(const uint8_t  *in,
 	if (in == NULL || out == NULL) {
 		return KNOT_EINVAL;
 	}
-	if (in_len > MAX_B32_BIN_DATA_LEN || out_len < ((in_len + 4) / 5) * 8) {
+	if (in_len > MAX_B32_BIN_DATA_LEN) {
 		return KNOT_ERANGE;
+	}
+	if (out_len < ((in_len + 4) / 5) * 8) {
+		return KNOT_ESPACE; // NOTE it is essential to return KNOT_ESPACE when output buffer overflows because this is directly called in rrset_dump and there is a realloc/retry mechanism in KNOT_ESPACE case.
 	}
 
 	uint8_t		rest_len = in_len % 5;
@@ -191,8 +194,11 @@ int32_t knot_base32hex_decode(const uint8_t  *in,
 	if (in == NULL || out == NULL) {
 		return KNOT_EINVAL;
 	}
-	if (in_len > INT32_MAX || out_len < ((in_len + 7) / 8) * 5) {
+	if (in_len > INT32_MAX) {
 		return KNOT_ERANGE;
+	}
+	if (out_len < ((in_len + 7) / 8) * 5) {
+		return KNOT_ESPACE;
 	}
 	if ((in_len % 8) != 0) {
 		return KNOT_BASE32HEX_ESIZE;

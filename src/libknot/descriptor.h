@@ -196,7 +196,8 @@ const knot_rdata_descriptor_t *knot_get_obsolete_rdata_descriptor(const uint16_t
  * \param out_len Length of the output buffer.
  *
  * \retval Length of output string.
- * \retval -1 if error.
+ * \retval KNOT_ESPACE if output buffer not large enough.
+ * \return KNOT_E* if other error.
  */
 int knot_rrtype_to_string(const uint16_t rrtype,
                           char           *out,
@@ -208,8 +209,7 @@ int knot_rrtype_to_string(const uint16_t rrtype,
  * \param name Mnemonic string to be converted.
  * \param num  Output variable.
  *
- * \retval  0 if OK.
- * \retval -1 if error.
+ * \return KNOT_E*
  */
 int knot_rrtype_from_string(const char *name, uint16_t *num);
 
@@ -221,7 +221,8 @@ int knot_rrtype_from_string(const char *name, uint16_t *num);
  * \param out_len Length of the output buffer.
  *
  * \retval Length of output string.
- * \retval -1 if error.
+ * \retval KNOT_ESPACE if output buffer not large enough.
+ * \return KNOT_E* if other error.
  */
 int knot_rrclass_to_string(const uint16_t rrclass,
                            char           *out,
@@ -233,8 +234,7 @@ int knot_rrclass_to_string(const uint16_t rrclass,
  * \param name Mnemonic string to be converted.
  * \param num  Output variable.
  *
- * \retval  0 if OK.
- * \retval -1 if error.
+ * \return KNOT_E*
  */
 int knot_rrclass_from_string(const char *name, uint16_t *num);
 
@@ -292,7 +292,8 @@ bool knot_rrtype_should_be_lowercased(const uint16_t type);
  * \param out_len  The available size of the buffer.
  *
  * \retval Length of output string.
- * \retval -1 if error.
+ * \retval KNOT_ESPACE if output buffer not large enough.
+ * \return KNOT_E* if other error.
  */
 int knot_opt_code_to_string(const uint16_t code, char *out, const size_t out_len);
 
