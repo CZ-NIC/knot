@@ -228,7 +228,7 @@ command has the same syntax as ``zone-read``.
 
 .. WARNING::
    If a zone transaction is open, all zone events that modify the zone
-   (e.g. DNSSEC signing) are blocked until the transaction is eithe committed
+   (e.g. DNSSEC signing) are blocked until the transaction is either committed
    or aborted. It is therefore advisable to finish the transaction quickly and
    commit without delay.
 
