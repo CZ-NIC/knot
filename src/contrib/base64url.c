@@ -80,8 +80,11 @@ int32_t knot_base64url_encode(const uint8_t  *in,
 	if (in == NULL || out == NULL) {
 		return KNOT_EINVAL;
 	}
-	if (in_len > MAX_BIN_DATA_LEN || out_len < ((in_len + 2) / 3) * 4) {
+	if (in_len > MAX_BIN_DATA_LEN) {
 		return KNOT_ERANGE;
+	}
+	if (out_len < ((in_len + 2) / 3) * 4) {
+		return KNOT_ESPACE;
 	}
 
 	uint8_t		rest_len = in_len % 3;
@@ -170,8 +173,11 @@ int32_t knot_base64url_decode(const uint8_t  *in,
 		}
 	}
 
-	if (in_len > INT32_MAX || out_len < ((in_len + 3) / 4) * 3) {
+	if (in_len > INT32_MAX) {
 		return KNOT_ERANGE;
+	}
+	if (out_len < ((in_len + 3) / 4) * 3) {
+		return KNOT_ESPACE;
 	}
 
 	const uint8_t	*stop = in + in_len;

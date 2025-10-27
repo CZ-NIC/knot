@@ -743,6 +743,7 @@ tests/libknot/test_pkt.c
 tests/libknot/test_probe.c
 tests/libknot/test_rdata.c
 tests/libknot/test_rdataset.c
+tests/libknot/test_rrset-dump.c
 tests/libknot/test_rrset-wire.c
 tests/libknot/test_rrset.c
 tests/libknot/test_tsig.c
