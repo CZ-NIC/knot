@@ -23,7 +23,8 @@
  * \param out_len	Size of output buffer.
  *
  * \retval >=0		length of output string.
- * \retval KNOT_E*	if error.
+ * \retval KNOT_ESPACE	if output buffer is not large enough.
+ * \return KNOT_E*	if other error.
  */
 int32_t knot_base64url_encode(const uint8_t  *in,
                               const uint32_t in_len,
@@ -62,7 +63,8 @@ int32_t knot_base64url_encode_alloc(const uint8_t  *in,
  * \param out_len	Size of output buffer.
  *
  * \retval >=0		length of output data.
- * \retval KNOT_E*	if error.
+ * \retval KNOT_ESPACE	if output buffer is not large enough.
+ * \return KNOT_E*	if other error.
  */
 int32_t knot_base64url_decode(const uint8_t  *in,
                               uint32_t       in_len,

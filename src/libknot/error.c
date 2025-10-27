@@ -101,6 +101,8 @@ static const struct error errors[] = {
 	{ KNOT_EMODINVAL,    "invalid module" },
 	{ KNOT_EEXTERNAL,    "external validation failed" },
 	{ KNOT_ERDB,         "zone database error" },
+	{ KNOT_ENOTYPE,      "no such RR type" },
+	{ KNOT_ENOCLASS,     "no such CLASS" },
 
 	{ KNOT_GENERAL_ERROR, "unknown general error" },
 

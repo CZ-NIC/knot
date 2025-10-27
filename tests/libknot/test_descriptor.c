@@ -9,6 +9,7 @@
 #include <tap/basic.h>
 
 #include "libknot/descriptor.h"
+#include "libknot/errcode.h"
 
 #define BUF_LEN 256
 
@@ -31,7 +32,7 @@ int main(int argc, char *argv[])
 	   "get TYPE0 descriptor 2. item type");
 
 	ret = knot_rrtype_to_string(0, name, BUF_LEN);
-	ok(ret != -1, "get TYPE0 ret");
+	ok(ret > 0, "get TYPE0 ret");
 	ok(strcmp(name, "TYPE0") == 0, "get TYPE0 name");
 
 	// 2. A
@@ -43,7 +44,7 @@ int main(int argc, char *argv[])
 	   "get A descriptor 2. item type");
 
 	ret = knot_rrtype_to_string(1, name, BUF_LEN);
-	ok(ret != -1, "get A ret");
+	ok(ret > 0, "get A ret");
 	ok(strcmp(name, "A") == 0, "get A name");
 
 	// 3. CNAME
@@ -55,7 +56,7 @@ int main(int argc, char *argv[])
 	   "get CNAME descriptor 2. item type");
 
 	ret = knot_rrtype_to_string(5, name, BUF_LEN);
-	ok(ret != -1, "get CNAME ret");
+	ok(ret > 0, "get CNAME ret");
 	ok(strcmp(name, "CNAME") == 0, "get CNAME name");
 
 	// 4. TYPE38 (A6)
@@ -67,7 +68,7 @@ int main(int argc, char *argv[])
 	   "get TYPE38 descriptor 2. item type");
 
 	ret = knot_rrtype_to_string(38, name, BUF_LEN);
-	ok(ret != -1, "get TYPE38 ret");
+	ok(ret > 0, "get TYPE38 ret");
 	ok(strcmp(name, "TYPE38") == 0, "get TYPE38 name");
 
 	// 5. ANY
@@ -79,7 +80,7 @@ int main(int argc, char *argv[])
 	   "get ANY descriptor 2. item type");
 
 	ret = knot_rrtype_to_string(255, name, BUF_LEN);
-	ok(ret != -1, "get ANY ret");
+	ok(ret > 0, "get ANY ret");
 	ok(strcmp(name, "ANY") == 0, "get ANY name");
 
 	// 6. TYPE65535
@@ -91,121 +92,121 @@ int main(int argc, char *argv[])
 	   "get TYPE65535 descriptor 2. item type");
 
 	ret = knot_rrtype_to_string(65535, name, BUF_LEN);
-	ok(ret != -1, "get TYPE65535 ret");
+	ok(ret > 0, "get TYPE65535 ret");
 	ok(strcmp(name, "TYPE65535") == 0, "get TYPE65535 name");
 
 	// Class num to string:
 	// 7. CLASS0
 	ret = knot_rrclass_to_string(0, name, BUF_LEN);
-	ok(ret != -1, "get CLASS0 ret");
+	ok(ret > 0, "get CLASS0 ret");
 	ok(strcmp(name, "CLASS0") == 0, "get CLASS0 name");
 
 	// 8. IN
 	ret = knot_rrclass_to_string(1, name, BUF_LEN);
-	ok(ret != -1, "get IN ret");
+	ok(ret > 0, "get IN ret");
 	ok(strcmp(name, "IN") == 0, "get IN name");
 
 	// 9. ANY
 	ret = knot_rrclass_to_string(255, name, BUF_LEN);
-	ok(ret != -1, "get ANY ret");
+	ok(ret > 0, "get ANY ret");
 	ok(strcmp(name, "ANY") == 0, "get ANY name");
 
 	// 10. CLASS65535
 	ret = knot_rrclass_to_string(65535, name, BUF_LEN);
-	ok(ret != -1, "get CLASS65535 ret");
+	ok(ret > 0, "get CLASS65535 ret");
 	ok(strcmp(name, "CLASS65535") == 0, "get CLASS65535 name");
 
 	// String to type num:
 	// 11. A
 	ret = knot_rrtype_from_string("A", &num);
-	ok(ret != -1, "get A num ret");
+	ok(ret == KNOT_EOK, "get A num ret");
 	ok(num == 1, "get A num");
 
 	// 12. a
 	ret = knot_rrtype_from_string("a", &num);
-	ok(ret != -1, "get a num ret");
+	ok(ret == KNOT_EOK, "get a num ret");
 	ok(num == 1, "get a num");
 
 	// 13. AaAa
 	ret = knot_rrtype_from_string("AaAa", &num);
-	ok(ret != -1, "get AaAa num ret");
+	ok(ret == KNOT_EOK, "get AaAa num ret");
 	ok(num == 28, "get AaAa num");
 
 	// 14. ""
 	ret = knot_rrtype_from_string("", &num);
-	ok(ret == -1, "get "" num ret");
+	ok(ret == KNOT_ENOTYPE, "get "" num ret");
 
 	// 15. DUMMY
 	ret = knot_rrtype_from_string("DUMMY", &num);
-	ok(ret == -1, "get DUMMY num ret");
+	ok(ret == KNOT_ENOTYPE, "get DUMMY num ret");
 
 	// 16. TypE33
 	ret = knot_rrtype_from_string("TypE33", &num);
-	ok(ret != -1, "get TypE33 num ret");
+	ok(ret == KNOT_EOK, "get TypE33 num ret");
 	ok(num == 33, "get TypE33 num");
 
 	// 17. TYPE
 	ret = knot_rrtype_from_string("TYPE", &num);
-	ok(ret == -1, "get TYPE num ret");
+	ok(ret == KNOT_ENOTYPE, "get TYPE num ret");
 
 	// 18. TYPE0
 	ret = knot_rrtype_from_string("TYPE0", &num);
-	ok(ret != -1, "get TYPE0 num ret");
+	ok(ret == KNOT_EOK, "get TYPE0 num ret");
 	ok(num == 0, "get TYPE0 num");
 
 	// 19. TYPE65535
 	ret = knot_rrtype_from_string("TYPE65535", &num);
-	ok(ret != -1, "get TYPE65535 num ret");
+	ok(ret == KNOT_EOK, "get TYPE65535 num ret");
 	ok(num == 65535, "get TYPE65535 num");
 
 	// 20. TYPE65536
 	ret = knot_rrtype_from_string("TYPE65536", &num);
-	ok(ret == -1, "get TYPE65536 num ret");
+	ok(ret == KNOT_ENOTYPE, "get TYPE65536 num ret");
 
 	// String to class num:
 	// 21. In
 	ret = knot_rrclass_from_string("In", &num);
-	ok(ret != -1, "get In num ret");
+	ok(ret == KNOT_EOK, "get In num ret");
 	ok(num == 1, "get In num");
 	ret = knot_rrclass_from_string("Internet", &num);
-	ok(ret != -1, "get In num ret");
+	ok(ret == KNOT_EOK, "get In num ret");
 	ok(num == 1, "get In num");
 
 	// 22. ANY
 	ret = knot_rrclass_from_string("ANY", &num);
-	ok(ret != -1, "get ANY num ret");
+	ok(ret == KNOT_EOK, "get ANY num ret");
 	ok(num == 255, "get ANY num");
 
 	// 23. ""
 	ret = knot_rrclass_from_string("", &num);
-	ok(ret == -1, "get "" num ret");
+	ok(ret == KNOT_ENOCLASS, "get "" num ret");
 
 	// 24. DUMMY
 	ret = knot_rrclass_from_string("DUMMY", &num);
-	ok(ret == -1, "get DUMMY num ret");
+	ok(ret == KNOT_ENOCLASS, "get DUMMY num ret");
 
 	// 25. CLass33
 	ret = knot_rrclass_from_string("CLass33", &num);
-	ok(ret != -1, "get CLass33 num ret");
+	ok(ret == KNOT_EOK, "get CLass33 num ret");
 	ok(num == 33, "get CLass33 num");
 
 	// 26. CLASS
 	ret = knot_rrclass_from_string("CLASS", &num);
-	ok(ret == -1, "get CLASS num ret");
+	ok(ret == KNOT_ENOCLASS, "get CLASS num ret");
 
 	// 27. CLASS0
 	ret = knot_rrclass_from_string("CLASS0", &num);
-	ok(ret != -1, "get CLASS0 num ret");
+	ok(ret == KNOT_EOK, "get CLASS0 num ret");
 	ok(num == 0, "get CLASS0 num");
 
 	// 28. CLASS65535
 	ret = knot_rrclass_from_string("CLASS65535", &num);
-	ok(ret != -1, "get CLASS65535 num ret");
+	ok(ret == KNOT_EOK, "get CLASS65535 num ret");
 	ok(num == 65535, "get CLASS65535 num");
 
 	// 29. CLASS65536
 	ret = knot_rrclass_from_string("CLASS65536", &num);
-	ok(ret == -1, "get CLASS65536 num ret");
+	ok(ret == KNOT_ENOCLASS, "get CLASS65536 num ret");
 
 	// Get obsolete descriptor:
 	// 30. TYPE0
@@ -242,13 +243,22 @@ int main(int argc, char *argv[])
 	ok(descr->block_types[1] == KNOT_RDATA_WF_END,
 	   "get TYPE38 descriptor 2. item type");
 
-	// knot_rrtype_to_string invalid output buffer size
+	// knot_rrtype_to_string NULL output buffer
 	ret = knot_rrtype_to_string(1, NULL, 0);
-	ok(ret == -1, "knot_rrtype_to_string: invalid output buffer size");
+	ok(ret == KNOT_EINVAL, "knot_rrtype_to_string: NULL output buffer");
+
+	// knot_rrclass_to_string NULL output buffer
+	ret = knot_rrclass_to_string(1, NULL, 0);
+	ok(ret == KNOT_EINVAL, "knot_rrclass_to_string: NULL output buffer");
+
+	char dummy_buf[1] = { 0 };
+	// knot_rrtype_to_string invalid output buffer size
+	ret = knot_rrtype_to_string(1, dummy_buf, 1);
+	ok(ret == KNOT_ESPACE, "knot_rrtype_to_string: invalid output buffer size");
 
 	// knot_rrclass_to_string invalid output buffer size
-	ret = knot_rrclass_to_string(1, NULL, 0);
-	ok(ret == -1, "knot_rrclass_to_string: invalid output buffer size");
+	ret = knot_rrclass_to_string(1, dummy_buf, 1);
+	ok(ret == KNOT_ESPACE, "knot_rrclass_to_string: invalid output buffer size");
 
 	// knot_rrtype_is_metatype
 	ok(knot_rrtype_is_metatype(0) == 0,

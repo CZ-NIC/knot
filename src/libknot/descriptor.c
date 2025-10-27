@@ -9,6 +9,7 @@
 
 #include "libknot/attribute.h"
 #include "libknot/descriptor.h"
+#include "libknot/errcode.h"
 
 /*!
  * \brief Table with supported DNS classes.
@@ -197,7 +198,7 @@ int knot_rrtype_to_string(const uint16_t rrtype,
                           const size_t   out_len)
 {
 	if (out == NULL) {
-		return -1;
+		return KNOT_EINVAL;
 	}
 
 	int ret;
@@ -211,7 +212,7 @@ int knot_rrtype_to_string(const uint16_t rrtype,
 	}
 
 	if (ret <= 0 || (size_t)ret >= out_len) {
-		return -1;
+		return KNOT_ESPACE; // NOTE it is essential to return KNOT_ESPACE when output buffer overflows because this is directly called in rrset_dump and there is a realloc/retry mechanism in KNOT_ESPACE case.
 	} else {
 		return ret;
 	}
@@ -221,7 +222,7 @@ _public_
 int knot_rrtype_from_string(const char *name, uint16_t *num)
 {
 	if (name == NULL || num == NULL) {
-		return -1;
+		return KNOT_EINVAL;
 	}
 
 	int i;
@@ -233,13 +234,13 @@ int knot_rrtype_from_string(const char *name, uint16_t *num)
 		if (rdata_descriptors[i].type_name != NULL &&
 		    strcasecmp(rdata_descriptors[i].type_name, name) == 0) {
 			*num = i;
-			return 0;
+			return KNOT_EOK;
 		}
 	}
 
 	// Type name must begin with TYPE.
 	if (strncasecmp(name, "TYPE", 4) != 0) {
-		return -1;
+		return KNOT_ENOTYPE;
 	} else {
 		name += 4;
 	}
@@ -247,11 +248,11 @@ int knot_rrtype_from_string(const char *name, uint16_t *num)
 	// The rest must be a number.
 	n = strtoul(name, &end, 10);
 	if (end == name || *end != '\0' || n > UINT16_MAX) {
-		return -1;
+		return KNOT_ENOTYPE;
 	}
 
 	*num = n;
-	return 0;
+	return KNOT_EOK;
 }
 
 _public_
@@ -260,7 +261,7 @@ int knot_rrclass_to_string(const uint16_t rrclass,
                            const size_t   out_len)
 {
 	if (out == NULL) {
-		return -1;
+		return KNOT_EINVAL;
 	}
 
 	int ret;
@@ -272,7 +273,7 @@ int knot_rrclass_to_string(const uint16_t rrclass,
 	}
 
 	if (ret <= 0 || (size_t)ret >= out_len) {
-		return -1;
+		return KNOT_ESPACE;
 	} else {
 		return ret;
 	}
@@ -282,7 +283,7 @@ _public_
 int knot_rrclass_from_string(const char *name, uint16_t *num)
 {
 	if (name == NULL || num == NULL) {
-		return -1;
+		return KNOT_EINVAL;
 	}
 
 	int i;
@@ -295,13 +296,13 @@ int knot_rrclass_from_string(const char *name, uint16_t *num)
 		if ((row[0] != NULL && strcasecmp(row[0], name) == 0) ||
 		    (row[1] != NULL && strcasecmp(row[1], name) == 0)) {
 			*num = i;
-			return 0;
+			return KNOT_EOK;
 		}
 	}
 
 	// Class name must begin with CLASS.
 	if (strncasecmp(name, "CLASS", 5) != 0) {
-		return -1;
+		return KNOT_ENOCLASS;
 	} else {
 		name += 5;
 	}
@@ -309,11 +310,11 @@ int knot_rrclass_from_string(const char *name, uint16_t *num)
 	// The rest must be a number.
 	n = strtoul(name, &end, 10);
 	if (end == name || *end != '\0' || n > UINT16_MAX) {
-		return -1;
+		return KNOT_ENOCLASS;
 	}
 
 	*num = n;
-	return 0;
+	return KNOT_EOK;
 }
 
 _public_
@@ -382,7 +383,7 @@ _public_
 int knot_opt_code_to_string(const uint16_t code, char *out, const size_t out_len)
 {
 	if (out == NULL) {
-		return -1;
+		return KNOT_EINVAL;
 	}
 
 	const char *name = NULL;
@@ -412,7 +413,7 @@ int knot_opt_code_to_string(const uint16_t code, char *out, const size_t out_len
 	}
 
 	if (ret <= 0 || (size_t)ret >= out_len) {
-		return -1;
+		return KNOT_ESPACE;
 	} else {
 		return ret;
 	}
