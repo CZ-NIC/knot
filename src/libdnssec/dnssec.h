@@ -13,6 +13,7 @@
 
 #include <libdnssec/binary.h>
 #include <libdnssec/crypto.h>
+#include <libdnssec/digest.h>
 #include <libdnssec/error.h>
 #include <libdnssec/key.h>
 #include <libdnssec/keyid.h>
