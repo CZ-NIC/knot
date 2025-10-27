@@ -101,7 +101,7 @@ unsigned long pid_check_and_create(void)
 	pid_t pid = pid_read(pidfile);
 
 	/* Check PID for existence and liveness. */
-	if (pid > 0 && pid_running(pid)) {
+	if (pid > 0 && pid_running(pid) && !pid_current(pid)) {
 		log_fatal("server PID found, already running");
 		free(pidfile);
 		return 0;
@@ -134,6 +134,11 @@ void pid_cleanup(void)
 		(void)unlink(pidfile);
 		free(pidfile);
 	}
+}
+
+bool pid_current(pid_t pid)
+{
+	return pid == getpid();
 }
 
 bool pid_running(pid_t pid)
