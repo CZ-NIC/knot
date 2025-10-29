@@ -13,7 +13,9 @@ ModOnlineSign.check()
 
 knot = t.server("knot")
 zones = t.zone_rnd(4, dnssec=False, records=5)
-t.link(zones, knot, journal_content="none")
+t.link(zones, knot)
+
+knot.conf_zone(zones).journal_content = "none"
 knot.add_module(zones[0], ModOnlineSign())
 knot.add_module(zones[1], ModOnlineSign("ECDSAP384SHA384", key_size="384"))
 knot.dnssec(zones[2]).enable = True

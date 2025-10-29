@@ -13,17 +13,14 @@ zone = t.zone_rnd(1, records=100, dnssec=False)
 
 t.link(zone, master, slave)
 
-for z in master.zones:
-    slave.zones[z].journal_content = "none"
-
-for z in slave.zones:
-    slave.zones[z].journal_content = "all"
-
 slave.max_journal_usage = 150 * 1024
 
-master.zonefile_sync = "0"
-slave.zonefile_sync = "-1"
-slave.zonefile_load = "none"
+master.conf_zone(zone).zonefile_sync = "0"
+master.conf_zone(zone).journal_content = "none"
+
+slave.conf_zone(zone).zonefile_sync = "-1"
+slave.conf_zone(zone).zonefile_load = "none"
+slave.conf_zone(zone).journal_content = "all"
 
 master.dnssec(zone).enable = "true"
 

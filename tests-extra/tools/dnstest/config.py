@@ -31,6 +31,28 @@ class KnotConf(object):
         self.conf += ', '.join(str(value) for value in values)
         self.conf += "]\n"
 
+    def item_list_str(self, name, values):
+        self.conf += "        %s: [ \"" % name
+        self.conf += '\", \"'.join(str(value) for value in values)
+        self.conf += "\" ]\n"
+
+    def item_type(self, name, value):
+        if value is None:
+            return
+        elif isinstance(value, bool):
+            self.item(name, "on" if value else "off")
+        elif isinstance(value, str):
+            self.item_str(name, value)
+        elif isinstance(value, list):
+            if len(value) < 1:
+                return
+            elif isinstance(value[0], str):
+                self.item_list_str(name, value)
+            else:
+                self.item_list(name, value)
+        else:
+            self.item(name, value)
+
     def id_item(self, name, value):
         if not self.first_item:
             self.conf += "\n"

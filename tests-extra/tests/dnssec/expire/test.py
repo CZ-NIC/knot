@@ -17,7 +17,7 @@ for z in zones:
     master.dnssec(z).enable = True
     master.dnssec(z).rrsig_lifetime = 10
     master.dnssec(z).rrsig_refresh = 1
-    master.dnssec(z).rrsig_prerefresh = 1
+    master.dnssec(z).rrsig_pre_refresh = 1
 
 t.start()
 

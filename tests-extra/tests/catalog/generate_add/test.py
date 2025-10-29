@@ -32,8 +32,6 @@ t = Test()
 master = t.server("knot")
 slave = t.server("knot")
 
-master.zonefile_sync = "0" # Not needed, just to ensure catalog with up-to-date zone file.
-
 (cat0, memb0) = add_catalog(t, master, slave)
 
 t.start()

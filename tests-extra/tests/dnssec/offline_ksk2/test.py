@@ -56,7 +56,7 @@ ZONE = "example.com."
 zone = t.zone(ZONE)
 t.link(zone, knot)
 
-knot.zonefile_sync = 24 * 60 * 60
+knot.conf_zone(zone).zonefile_sync = 24 * 60 * 60
 
 # ZSK side
 knot.dnssec(zone).enable = True

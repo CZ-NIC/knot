@@ -57,7 +57,10 @@ t = Test(stress=False)
 
 master = t.server("knot")
 zones = t.zone("example.")
-t.link(zones, master, journal_content="all")
+
+t.link(zones, master)
+
+master.conf_zone(zones).journal_content = "all"
 
 t.start()
 

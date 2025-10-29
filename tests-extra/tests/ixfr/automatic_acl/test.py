@@ -25,10 +25,10 @@ master = t.server("knot", tsig=TSIG)
 slave = t.server("knot", tsig=TSIG)
 zones = t.zone("example.com.")
 
-master.auto_acl = MASTER_AUTO
-slave.auto_acl = SLAVE_AUTO
-
 t.link(zones, master, slave, ixfr=True)
+
+master.conf_srv().automatic_acl = MASTER_AUTO
+slave.conf_srv().automatic_acl = SLAVE_AUTO
 
 t.start()
 

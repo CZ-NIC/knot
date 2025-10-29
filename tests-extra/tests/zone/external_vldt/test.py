@@ -39,16 +39,16 @@ def log_count_expect(server, pattern, expct):
 ZONE = zone[0].name
 LOG = "for external validation"
 
-slave.async_start = True
-slave.zones[ZONE].external = { "timeout": "10",
-                               "new": dump_file(slave, "new"),
-                               "rem": dump_file(slave, "diff"),
-                               "add": dump_file(slave, "diff") }
+slave.conf_srv().async_start = True
+slave.conf_ss("external", zone).timeout = 10
+slave.conf_ss("external", zone).dump_new_zone  = dump_file(slave, "new")
+slave.conf_ss("external", zone).dump_removals  = dump_file(slave, "diff")
+slave.conf_ss("external", zone).dump_additions = dump_file(slave, "diff")
 
 def check_diff_types(types):
-    check_zf_types(slave.zones[ZONE].external["add"], types)
+    check_zf_types(slave.conf_ss("external", zone).dump_additions, types)
 
-master.notify_delay = 0
+master.conf_zone(zone).notify_delay = 0
 master.dnssec(zone[0]).enable = False
 
 t.start()
@@ -94,7 +94,7 @@ up.send()
 serial = master.zone_wait(zone, serial)
 t.sleep(2)
 log_count_expect(slave, LOG, 3)
-t.sleep(int(slave.zones[ZONE].external["timeout"]))
+t.sleep(int(slave.conf_ss("external", zone).timeout))
 resp = slave.dig(ZONE, "SOA")
 resp.check_soa_serial(serial - 2)
 
@@ -125,7 +125,7 @@ up.add("gibon", 3600, "AAAA", "1::1")
 up.send()
 serial = master.zone_wait(zone, serial)
 
-slave.zonemd_generate = "zonemd-sha512"
+slave.conf_zone(zone).zonemd_generate = "zonemd-sha512"
 slave.gen_confile()
 t.sleep(2)
 ctl.send_block(cmd="zone-thaw", zone=ZONE)

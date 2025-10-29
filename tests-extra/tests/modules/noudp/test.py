@@ -15,7 +15,6 @@ t = Test(stress=False)
 ModNoudp.check()
 
 knot = t.server("knot")
-knot.udp_workers = 1
 
 zone_tc = t.zone("example.")
 zone_notc = t.zone("flags.")
@@ -23,6 +22,8 @@ zone_50_50 = t.zone(".")
 zones = zone_tc + zone_notc + zone_50_50
 
 t.link(zones, knot)
+
+knot.conf_srv().udp_workers = 1
 
 knot.add_module(zone_tc,    ModNoudp())
 knot.add_module(zone_notc,  ModNoudp(allow_rate=1))
