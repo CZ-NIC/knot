@@ -32,8 +32,8 @@ void pid_cleanup(void);
  *
  * \param pid Process ID.
  *
- * \retval 1 if running.
- * \retval 0 if not running (or error).
+ * \retval true if running.
+ * \retval false if not running (or error).
  */
 bool pid_running(pid_t pid);
 
