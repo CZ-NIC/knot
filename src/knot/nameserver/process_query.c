@@ -723,7 +723,7 @@ bool process_query_acl_check(conf_t *conf, acl_action_t action,
 	default:                     tls_session = NULL;
 	}
 
-	if (action != ACL_ACTION_UPDATE) {
+	if (conf->cache.srv_auto_acl && action != ACL_ACTION_UPDATE) {
 		// ACL_ACTION_QUERY is used for SOA/refresh query.
 		assert(action == ACL_ACTION_QUERY || action == ACL_ACTION_NOTIFY ||
 		       action == ACL_ACTION_TRANSFER);
