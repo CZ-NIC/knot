@@ -229,7 +229,7 @@ slave.ctl("conf-commit", custom_parm=confsock)
 t.sleep(3)
 try:
     resp = slave.dig("version.catalog1.", "TXT", tsig=True)
-    resp.check(rcode="REFUSED")
+    resp.check(rcode="NOTAUTH")
 except:
     pass
 
