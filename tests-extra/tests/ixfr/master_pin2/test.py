@@ -52,7 +52,7 @@ for m in [ masterA, masterB ]:
     m.dnssec(zones).enable = True
     m.conf_zone(zones).journal_content = "all"
 
-masterB.zones[zone.name].serial_modulo = str(-PIN)
+masterB.conf_zone(zones).serial_modulo = str(-PIN)
 
 t.start()
 
