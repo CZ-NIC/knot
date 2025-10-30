@@ -713,17 +713,6 @@ bool process_query_acl_check(conf_t *conf, acl_action_t action,
 		tsig.algorithm = knot_tsig_rdata_alg(query->tsig_rr);
 	}
 
-	/* Log ACL details. */
-	char addr_str[SOCKADDR_STRLEN];
-	if (sockaddr_tostr(addr_str, sizeof(addr_str), query_source) <= 0) {
-		addr_str[0] = '\0';
-	}
-	knot_dname_txt_storage_t key_name;
-	if (knot_dname_to_str(key_name, tsig.name, sizeof(key_name)) == NULL) {
-		key_name[0] = '\0';
-	}
-	const knot_lookup_t *act = knot_lookup_by_id((knot_lookup_t *)acl_actions, action);
-
 	bool automatic = false;
 	bool allowed = false;
 
@@ -752,6 +741,16 @@ bool process_query_acl_check(conf_t *conf, acl_action_t action,
 	}
 
 	if (log_enabled_debug()) {
+		char addr_str[SOCKADDR_STRLEN];
+		if (sockaddr_tostr(addr_str, sizeof(addr_str), query_source) <= 0) {
+			addr_str[0] = '\0';
+		}
+		knot_dname_txt_storage_t key_name;
+		if (knot_dname_to_str(key_name, tsig.name, sizeof(key_name)) == NULL) {
+			key_name[0] = '\0';
+		}
+		const knot_lookup_t *act = knot_lookup_by_id((knot_lookup_t *)acl_actions, action);
+
 		int pin_size = 0;
 		uint8_t bin_pin[KNOT_TLS_PIN_LEN], pin[2 * KNOT_TLS_PIN_LEN];
 		size_t bin_pin_size = sizeof(bin_pin);
