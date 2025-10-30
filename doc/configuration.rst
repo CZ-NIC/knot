@@ -633,8 +633,7 @@ It can be configured using all the standard options (but for example
 DNSSEC signing is useless as the zone won't be queried by clients), including primary/secondary configuration
 and ACLs. A catalog zone is indicated by setting the option
 :ref:`zone_catalog-role`. Standard DNS queries to a catalog zone are answered
-with REFUSED as though the zone doesn't exist unless there is a matching ACL
-rule for action transfer configured.
+with NOTAUTH unless there is a matching ACL rule for action at least ``query`` configured.
 The name of the catalog zone is arbitrary. It's possible to configure
 multiple catalog zones.
 
