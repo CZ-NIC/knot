@@ -103,8 +103,10 @@ static zone_t *create_zone_reload(conf_t *conf, const knot_dname_t *name,
 	zone->contents = old_zone->contents;
 	zone_set_flag(zone, zone_get_flag(old_zone, ~0, false));
 
+	zone_timers_lock(zone);
 	zone->timers = old_zone->timers;
 	zone_timers_sanitize(conf, zone);
+	zone_timers_unlock(zone, true);
 
 	if (old_zone->control_update != NULL) {
 		log_zone_warning(old_zone->name, "control transaction aborted");
@@ -128,6 +130,7 @@ static zone_t *create_zone_new(conf_t *conf, const knot_dname_t *name,
 		return NULL;
 	}
 
+	zone_timers_lock(zone);
 	int ret = zone_timers_read(&server->timerdb, name, &zone->timers);
 	if (ret != KNOT_EOK && ret != KNOT_ENODB && ret != KNOT_ENOENT) {
 		log_zone_error(zone->name, "failed to load persistent timers (%s)",
@@ -137,6 +140,7 @@ static zone_t *create_zone_new(conf_t *conf, const knot_dname_t *name,
 	}
 
 	zone_timers_sanitize(conf, zone);
+	zone_timers_unlock(zone, false);
 
 	conf_val_t role_val = conf_zone_get(conf, C_CATALOG_ROLE, name);
 	unsigned role = conf_opt(&role_val);
@@ -144,11 +148,13 @@ static zone_t *create_zone_new(conf_t *conf, const knot_dname_t *name,
 		conf_val_t catz = conf_zone_get(conf, C_CATALOG_ZONE, name);
 		assert(catz.code == KNOT_EOK); // conf consistency checked in conf/tools.c
 		zone->catalog_gen = knot_dname_copy(conf_dname(&catz), NULL);
+		zone_timers_lock(zone);
 		if (zone->timers.catalog_member == 0) {
 			zone->timers.catalog_member = time(NULL);
 			ret = zone_timers_write(&zone->server->timerdb, zone->name,
 			                        &zone->timers);
 		}
+		zone_timers_unlock(zone, false); // false since it has been written immediately
 		if (ret != KNOT_EOK || zone->catalog_gen == NULL) {
 			log_zone_error(zone->name, "failed to initialize catalog member zone (%s)",
 			               knot_strerror(KNOT_ENOMEM));
@@ -226,8 +232,10 @@ static void zone_purge(conf_t *conf, zone_t *zone)
 static zone_contents_t *zone_expire(zone_t *zone, bool zonedb_cow)
 {
 	if (!zonedb_cow) {
+		zone_timers_lock(zone);
 		zone->timers.next_expire = time(NULL);
 		zone->timers.next_refresh = zone->timers.next_expire;
+		zone_timers_unlock(zone, true);
 	}
 	return zone_switch_contents(zone, NULL);
 }

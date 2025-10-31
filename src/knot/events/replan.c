@@ -90,6 +90,7 @@ void replan_from_timers(conf_t *conf, zone_t *zone)
 	assert(zone);
 
 	time_t now = time(NULL);
+	zone_timers_lock(zone);
 
 	time_t refresh = TIME_CANCEL;
 	if (zone_is_slave(conf, zone)) {
@@ -151,6 +152,8 @@ void replan_from_timers(conf_t *conf, zone_t *zone)
 			ds_push = TIME_IGNORE;
 		}
 	}
+
+	zone_timers_unlock(zone, false);
 
 	zone_events_schedule_at(zone,
 	                        ZONE_EVENT_REFRESH, refresh,

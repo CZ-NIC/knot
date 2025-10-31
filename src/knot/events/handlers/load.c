@@ -483,11 +483,13 @@ load_end:
 	}
 
 	char expires_in[32] = "";
+	zone_timers_lock(zone);
 	if (zone->timers.next_expire > 0) {
 		(void)snprintf(expires_in, sizeof(expires_in),
 		               ", expires in %u seconds",
 		               (uint32_t)MAX(zone->timers.next_expire - time(NULL), 0));
 	}
+	zone_timers_unlock(zone, false);
 
 	log_zone_info(zone->name, "loaded, serial %s -> %u%s, %zu bytes%s",
 	              old_serial_str, middle_serial, new_serial_str, zone->contents->size, expires_in);
@@ -503,9 +505,13 @@ load_end:
 
 	replan_from_timers(conf, zone);
 
-	if (!zone_timers_serial_notified(&zone->timers, new_serial)) {
+	zone_timers_lock(zone);
+	bool notified = zone_timers_serial_notified(&zone->timers, new_serial);
+	zone_timers_unlock(zone, false);
+	if (!notified) {
 		zone_schedule_notify(conf, zone, 0);
 	}
+
 	zone_redis_disconnect(db_ctx, true);
 	zone_skip_free(&skip);
 	zone->started = true;

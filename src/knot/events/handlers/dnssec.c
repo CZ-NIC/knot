@@ -40,7 +40,9 @@ void event_dnssec_reschedule(conf_t *conf, zone_t *zone,
 	log_dnssec_next(zone->name, (time_t)refresh_at);
 
 	if (refresh->plan_ds_check) {
+		zone_timers_lock(zone);
 		zone->timers.next_ds_check = now;
+		zone_timers_unlock(zone, true);
 	}
 
 	unsigned jitter = dnskey_sync_jitter(conf, zone);

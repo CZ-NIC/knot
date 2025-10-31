@@ -35,8 +35,10 @@ int event_expire(conf_t *conf, zone_t *zone)
 
 	zone_set_last_master(zone, NULL);
 
+	zone_timers_lock(zone);
 	zone->timers.next_expire = time(NULL);
 	zone->timers.next_refresh = zone->timers.next_expire;
+	zone_timers_unlock(zone, true);
 	replan_from_timers(conf, zone);
 
 	return KNOT_EOK;

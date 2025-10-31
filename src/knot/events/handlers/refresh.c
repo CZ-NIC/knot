@@ -218,6 +218,7 @@ static void finalize_timers_base(struct refresh_data *data, bool also_expire)
 	uint32_t soa_refresh = knot_soa_refresh(soa->rdata);
 	limit_timer(conf, zone->name, &soa_refresh, "refresh",
 	            C_REFRESH_MIN_INTERVAL, C_REFRESH_MAX_INTERVAL);
+	zone_timers_lock(zone);
 	zone->timers.next_refresh = now + soa_refresh;
 	zone->timers.last_refresh_ok = true;
 
@@ -232,6 +233,7 @@ static void finalize_timers_base(struct refresh_data *data, bool also_expire)
 		            C_EXPIRE_MAX_INTERVAL);
 		zone->timers.next_expire = now + data->expire_timer;
 	}
+	zone_timers_unlock(zone, true);
 }
 
 static void finalize_timers(struct refresh_data *data)
@@ -246,11 +248,13 @@ static void finalize_timers_noexpire(struct refresh_data *data)
 
 static void fill_expires_in(char *expires_in, size_t size, const struct refresh_data *data)
 {
+	zone_timers_lock(data->zone);
 	assert(!data->zone->is_catalog_flag || data->zone->timers.next_expire == 0);
 	if (data->zone->timers.next_expire > 0 && data->expire_timer > 0) {
 		(void)snprintf(expires_in, size,
 		               ", expires in %u seconds", data->expire_timer);
 	}
+	zone_timers_unlock(data->zone, false);
 }
 
 static void xfr_log_publish(const struct refresh_data *data,
@@ -1080,6 +1084,8 @@ static bool wait4pinned_master(struct refresh_data *data)
 	}
 
 	time_t now = time(NULL);
+	bool res = true;
+	zone_timers_lock(data->zone);
 	// Starting countdown for master transition.
 	if (data->zone->timers.master_pin_hit == 0) {
 		data->zone->timers.master_pin_hit = now;
@@ -1087,14 +1093,15 @@ static bool wait4pinned_master(struct refresh_data *data)
 	// Switch to a new master.
 	} else if (data->zone->timers.master_pin_hit + data->fallback->pin_tol <= now) {
 		data->xfr_type = XFR_TYPE_AXFR;
-		return false;
+		res = false;
 	// Replan the refresh to the moment when the pin tolerance times out.
 	} else {
 		zone_events_schedule_at(data->zone, ZONE_EVENT_REFRESH,
 		                        data->zone->timers.master_pin_hit + data->fallback->pin_tol);
 	}
+	zone_timers_unlock(data->zone, true);
 
-	return true;
+	return res;
 }
 
 static int soa_query_consume(knot_layer_t *layer, knot_pkt_t *pkt)
@@ -1505,6 +1512,7 @@ int event_refresh(conf_t *conf, zone_t *zone)
 		limit_timer(conf, zone->name, &next, "retry",
 		            C_RETRY_MIN_INTERVAL, C_RETRY_MAX_INTERVAL);
 		time_t now = time(NULL);
+		zone_timers_lock(zone);
 		zone->timers.next_refresh = now + next;
 		zone->timers.last_refresh_ok = false;
 
@@ -1513,11 +1521,13 @@ int event_refresh(conf_t *conf, zone_t *zone)
 		localtime_r(&zone->timers.next_refresh, &time_gm);
 		strftime(time_str, sizeof(time_str), KNOT_LOG_TIME_FORMAT, &time_gm);
 
+		uint32_t expire_timer = zone->timers.next_expire - now;
+		zone_timers_unlock(zone, true);
 		char expires_in[32] = "";
 		if (!zone->is_catalog_flag) {
 			struct refresh_data data = {
 				.zone = zone,
-				.expire_timer = zone->timers.next_expire - now,
+				.expire_timer = expire_timer,
 			};
 			fill_expires_in(expires_in, sizeof(expires_in), &data);
 		}

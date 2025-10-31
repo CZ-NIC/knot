@@ -18,6 +18,7 @@ int event_ds_check(conf_t *conf, zone_t *zone)
 	ret = knot_parent_ds_query(conf, &ctx, zone->server,
 	                           conf->cache.srv_tcp_remote_io_timeout);
 
+	zone_timers_lock(zone);
 	zone->timers.next_ds_check = 0;
 	switch (ret) {
 	case KNOT_NO_READY_KEY:
@@ -32,6 +33,7 @@ int event_ds_check(conf_t *conf, zone_t *zone)
 			zone_events_schedule_at(zone, ZONE_EVENT_DS_CHECK, next_check);
 		}
 	}
+	zone_timers_unlock(zone, true);
 
 	kdnssec_ctx_deinit(&ctx);
 

@@ -886,8 +886,10 @@ int knot_zone_sign_update_dnskeys(zone_update_t *update,
 
 	if (dnssec_ctx->policy->ds_push && node_rrtype_exists(ch.add->apex, KNOT_RRTYPE_CDS)) {
 		// there is indeed a change to CDS
+		zone_timers_lock(update->zone);
 		update->zone->timers.next_ds_push = time(NULL) + dnssec_ctx->policy->propagation_delay;
 		zone_events_schedule_at(update->zone, ZONE_EVENT_DS_PUSH, update->zone->timers.next_ds_push);
+		zone_timers_unlock(update->zone, true);
 	}
 
 	ret = zone_update_apply_changeset(update, &ch);

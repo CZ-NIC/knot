@@ -264,7 +264,7 @@ const knot_rdataset_t *zone_soa(const zone_t *zone);
 uint32_t zone_soa_expire(const zone_t *zone);
 
 /*! \brief Check if zone is expired according to timers. */
-bool zone_expired(const zone_t *zone);
+bool zone_expired(zone_t *zone);
 
 /*!
  * \brief Set default timers for new zones or invalidate if not valid.

@@ -494,11 +494,15 @@ int zone_backup(conf_t *conf, zone_t *zone)
 			return ret;
 		}
 		if (ctx->restore_mode) {
+			zone_timers_lock(zone);
 			ret = zone_timers_read(&ctx->bck_timer_db, zone->name, &zone->timers);
 			zone_timers_sanitize(conf, zone);
+			zone_timers_unlock(zone, true);
 			zone->zonefile.bootstrap_cnt = 0;
 		} else {
+			zone_timers_lock(zone);
 			ret = zone_timers_write(&ctx->bck_timer_db, zone->name, &zone->timers);
+			zone_timers_unlock(zone, false);
 		}
 		if (ret != KNOT_EOK) {
 			LOG_MARK_FAIL("timers");

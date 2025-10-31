@@ -16,10 +16,13 @@
 #define LAST_SIGNED_SERIAL_FOUND (1 << 0)
 #define LAST_SIGNED_SERIAL_VALID (1 << 1)
 
+struct zone;
+
 /*!
  * \brief Persistent zone timers.
  */
 struct zone_timers {
+	bool modified;                 //!< Metadata: if this struct has been modified since last write.
 	uint32_t soa_expire;           //!< SOA expire value. DEPRECATED
 	time_t last_flush;             //!< Last zone file synchronization.
 	time_t last_refresh;           //!< Last successful zone refresh attempt. DEPRECATED
@@ -88,6 +91,16 @@ int zone_timers_write_all(knot_lmdb_db_t *db, knot_zonedb_t *zonedb);
  * \return KNOT_E*
  */
 int zone_timers_sweep(knot_lmdb_db_t *db, sweep_cb keep_zone, void *cb_data);
+
+/*!
+ * \brief Lock mutex relevant for modifying timers struct.
+ */
+void zone_timers_lock(struct zone *zone);
+
+/*!
+ * \brief Unlock relevant mutex and optionally set flag indicating potential modification took place.
+ */
+void zone_timers_unlock(struct zone *zone, bool modified);
 
 /*!
  * \brief Tell if the specified serial has already been notified according to timers.

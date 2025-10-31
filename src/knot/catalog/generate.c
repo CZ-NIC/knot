@@ -66,7 +66,9 @@ void catalog_generate_rem(conf_t *conf, zone_t *zone, knot_zonedb_t *db_new)
 		return;
 	}
 	assert(catz->cat_members != NULL); // if this failed to allocate, catz wasn't added to zonedb
+	zone_timers_lock(zone);
 	knot_dname_t *owner = catalog_member_owner(zone->name, cg, zone->timers.catalog_member);
+	zone_timers_unlock(zone, false);
 	if (owner == NULL) {
 		catz->cat_members->error = KNOT_ENOENT;
 		return;
@@ -98,7 +100,9 @@ void catalog_generate_add(conf_t *conf, zone_t *zone, knot_zonedb_t *db_new, boo
 		log_zone_error(zone->name, "member zone belongs to non-generated catalog zone");
 		return;
 	}
+	zone_timers_lock(zone);
 	knot_dname_t *owner = catalog_member_owner(zone->name, cg, zone->timers.catalog_member);
+	zone_timers_unlock(zone, false);
 	if (owner == NULL) {
 		catz->cat_members->error = KNOT_ENOENT;
 		return;

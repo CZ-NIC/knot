@@ -140,12 +140,14 @@ static int flush_journal(conf_t *conf, zone_t *zone, bool allow_empty_zone, bool
 
 flush_journal_replan:
 	/* Plan next journal flush after proper period. */
+	zone_timers_lock(zone);
 	zone->timers.last_flush = time(NULL);
 	if (sync_timeout > 0) {
 		time_t next_flush = zone->timers.last_flush + sync_timeout;
 		zone_events_schedule_at(zone, ZONE_EVENT_FLUSH, (time_t)0,
 		                              ZONE_EVENT_FLUSH, next_flush);
 	}
+	zone_timers_unlock(zone, true);
 
 	return ret;
 }
@@ -298,6 +300,7 @@ int selective_zone_purge(conf_t *conf, zone_t *zone, purge_flag_t params)
 	// Purge the zone timers.
 	if (params & PURGE_ZONE_TIMERS) {
 		bool member = (zone->catalog_gen != NULL);
+		zone_timers_lock(zone);
 		zone->timers = (zone_timers_t) {
 			.catalog_member = member ? zone->timers.catalog_member : 0
 		};
@@ -309,6 +312,7 @@ int selective_zone_purge(conf_t *conf, zone_t *zone, purge_flag_t params)
 			                        dname_cmp_sweep_wrap, zone->name);
 		}
 		zone_timers_sanitize(conf, zone);
+		zone_timers_unlock(zone, true);
 		zone->zonefile.bootstrap_cnt = 0;
 		RETURN_IF_FAILED("timers", KNOT_ENOENT);
 	}
@@ -559,12 +563,14 @@ void zone_set_last_master(zone_t *zone, const struct sockaddr_storage *addr)
 		return;
 	}
 
+	zone_timers_lock(zone);
 	if (addr == NULL) {
 		memset(&zone->timers.last_master, 0, sizeof(zone->timers.last_master));
 	} else {
 		memcpy(&zone->timers.last_master, addr, sizeof(zone->timers.last_master));
 	}
 	zone->timers.master_pin_hit = 0;
+	zone_timers_unlock(zone, true);
 }
 
 static void set_flag(zone_t *zone, zone_flag_t flag, bool remove)
@@ -624,15 +630,16 @@ uint32_t zone_soa_expire(const zone_t *zone)
 	return soa == NULL ? 0 : knot_soa_expire(soa->rdata);
 }
 
-bool zone_expired(const zone_t *zone)
+bool zone_expired(zone_t *zone)
 {
 	if (!zone) {
 		return false;
 	}
 
-	const zone_timers_t *timers = &zone->timers;
-
-	return timers->next_expire > 0 && timers->next_expire <= time(NULL);
+	zone_timers_lock(zone);
+	bool res = zone->timers.next_expire > 0 && zone->timers.next_expire <= time(NULL);
+	zone_timers_unlock(zone, false);
+	return res;
 }
 
 static void time_set_default(time_t *time, time_t value)
@@ -894,21 +901,26 @@ int zone_get_master_serial(zone_t *zone, uint32_t *serial)
 
 void zone_set_lastsigned_serial(zone_t *zone, uint32_t serial)
 {
+	zone_timers_lock(zone);
 	zone->timers.last_signed_serial = serial;
 	zone->timers.last_signed_s_flags = LAST_SIGNED_SERIAL_FOUND | LAST_SIGNED_SERIAL_VALID;
+	zone_timers_unlock(zone, true);
 }
 
 int zone_get_lastsigned_serial(zone_t *zone, uint32_t *serial)
 {
+	int ret = KNOT_EOK;
+	zone_timers_lock(zone);
 	if (!(zone->timers.last_signed_s_flags & LAST_SIGNED_SERIAL_FOUND)) {
 		// backwards compatibility: it used to be stored in KASP DB, moved to timers for performance
-		return kasp_db_load_serial(zone_kaspdb(zone), zone->name, KASPDB_SERIAL_LASTSIGNED, serial);
+		ret = kasp_db_load_serial(zone_kaspdb(zone), zone->name, KASPDB_SERIAL_LASTSIGNED, serial);
+	} else if (!(zone->timers.last_signed_s_flags & LAST_SIGNED_SERIAL_VALID)) {
+		ret = KNOT_ENOENT;
+	} else {
+		*serial = zone->timers.last_signed_serial;
 	}
-	if (!(zone->timers.last_signed_s_flags & LAST_SIGNED_SERIAL_VALID)) {
-		return KNOT_ENOENT;
-	}
-	*serial = zone->timers.last_signed_serial;
-	return KNOT_EOK;
+	zone_timers_unlock(zone, false);
+	return ret;
 }
 
 int slave_zone_serial(zone_t *zone, conf_t *conf, uint32_t *serial)

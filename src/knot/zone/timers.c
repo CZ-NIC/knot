@@ -235,6 +235,17 @@ int zone_timers_sweep(knot_lmdb_db_t *db, sweep_cb keep_zone, void *cb_data)
 	return txn.ret;
 }
 
+void zone_timers_lock(struct zone *zone)
+{
+	pthread_mutex_lock(&zone->preferred_lock); // this mutex seems OK to be reused for this
+}
+
+void zone_timers_unlock(struct zone *zone, bool modified)
+{
+	zone->timers.modified = zone->timers.modified || modified;
+	pthread_mutex_unlock(&zone->preferred_lock);
+}
+
 bool zone_timers_serial_notified(const zone_timers_t *timers, uint32_t serial)
 {
 	return (timers->last_notified_serial & LAST_NOTIFIED_SERIAL_VALID) &&
