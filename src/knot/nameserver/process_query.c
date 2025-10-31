@@ -497,15 +497,6 @@ static int prepare_answer(knot_pkt_t *query, knot_pkt_t *resp, knot_layer_t *ctx
 		qdata->extra->contents = qdata->extra->zone->contents;
 	}
 
-	/* Allow normal queries to catalog only if allowed by ACL. */
-	if (qdata->extra->zone != NULL && qdata->extra->zone->is_catalog_flag &&
-	    query_type(query) == KNOTD_QUERY_TYPE_NORMAL) {
-		if (!process_query_acl_check(conf(), ACL_ACTION_TRANSFER, qdata)) {
-			qdata->extra->zone = NULL;
-			qdata->extra->contents = NULL;
-		}
-	}
-
 	return KNOT_EOK;
 }
 
@@ -713,17 +704,6 @@ bool process_query_acl_check(conf_t *conf, acl_action_t action,
 		tsig.algorithm = knot_tsig_rdata_alg(query->tsig_rr);
 	}
 
-	/* Log ACL details. */
-	char addr_str[SOCKADDR_STRLEN];
-	if (sockaddr_tostr(addr_str, sizeof(addr_str), query_source) <= 0) {
-		addr_str[0] = '\0';
-	}
-	knot_dname_txt_storage_t key_name;
-	if (knot_dname_to_str(key_name, tsig.name, sizeof(key_name)) == NULL) {
-		key_name[0] = '\0';
-	}
-	const knot_lookup_t *act = knot_lookup_by_id((knot_lookup_t *)acl_actions, action);
-
 	bool automatic = false;
 	bool allowed = false;
 
@@ -734,7 +714,7 @@ bool process_query_acl_check(conf_t *conf, acl_action_t action,
 	default:                     tls_session = NULL;
 	}
 
-	if (action != ACL_ACTION_UPDATE) {
+	if (conf->cache.srv_auto_acl && action != ACL_ACTION_UPDATE) {
 		// ACL_ACTION_QUERY is used for SOA/refresh query.
 		assert(action == ACL_ACTION_QUERY || action == ACL_ACTION_NOTIFY ||
 		       action == ACL_ACTION_TRANSFER);
@@ -752,6 +732,16 @@ bool process_query_acl_check(conf_t *conf, acl_action_t action,
 	}
 
 	if (log_enabled_debug()) {
+		char addr_str[SOCKADDR_STRLEN];
+		if (sockaddr_tostr(addr_str, sizeof(addr_str), query_source) <= 0) {
+			addr_str[0] = '\0';
+		}
+		knot_dname_txt_storage_t key_name;
+		if (knot_dname_to_str(key_name, tsig.name, sizeof(key_name)) == NULL) {
+			key_name[0] = '\0';
+		}
+		const knot_lookup_t *act = knot_lookup_by_id((knot_lookup_t *)acl_actions, action);
+
 		int pin_size = 0;
 		uint8_t bin_pin[KNOT_TLS_PIN_LEN], pin[2 * KNOT_TLS_PIN_LEN];
 		size_t bin_pin_size = sizeof(bin_pin);

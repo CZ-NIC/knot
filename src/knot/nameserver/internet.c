@@ -715,6 +715,8 @@ knot_layer_state_t internet_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 		if (ret != KNOT_EOK) {
 			return KNOT_STATE_FAIL;
 		}
+	} else if (qdata->extra->zone->is_catalog_flag) {
+		NS_NEED_AUTH(qdata, ACL_ACTION_QUERY);
 	}
 
 	/* Check if the zone is not empty or expired. */
