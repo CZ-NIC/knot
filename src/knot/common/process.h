@@ -28,12 +28,22 @@ unsigned long pid_check_and_create(void);
 void pid_cleanup(void);
 
 /*!
+ * \brief Return true if the PID is the one of the current process.
+ *
+ * \param pid Process ID.
+ *
+ * \retval true if the same.
+ * \retval false if different.
+ */
+bool pid_current(pid_t pid);
+
+/*!
  * \brief Return true if the PID is running.
  *
  * \param pid Process ID.
  *
- * \retval 1 if running.
- * \retval 0 if not running (or error).
+ * \retval true if running.
+ * \retval false if not running (or error).
  */
 bool pid_running(pid_t pid);
 
