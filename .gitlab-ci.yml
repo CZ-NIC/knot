@@ -209,12 +209,16 @@ test:debian:amd64:
 build:debian:arm64:
   <<: *debian_stable_arm64
   <<: *build_job
+  only:
+    - branches@knot/knot-dns # don't run on forked projects
 
 test:debian:arm64:
   <<: *debian_stable_arm64
   <<: *test_job
   dependencies:
     - build:debian:arm64
+  only:
+    - branches@knot/knot-dns # don't run on forked projects
 
 build:debian:unstable:amd64:
   <<: *debian_unstable
