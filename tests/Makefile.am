@@ -147,6 +147,7 @@ check_PROGRAMS += \
 	libknot/test_rdata			\
 	libknot/test_rdataset			\
 	libknot/test_rrset			\
+	libknot/test_rrset-dump			\
 	libknot/test_rrset-wire			\
 	libknot/test_tsig			\
 	libknot/test_yparser			\

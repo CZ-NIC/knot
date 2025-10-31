@@ -31,7 +31,7 @@ int main(int argc, char *argv[])
 	ret = knot_base64_encode(in, MAX_BIN_DATA_LEN + 1, out, BUF_LEN);
 	is_int(KNOT_ERANGE, ret, "knot_base64_encode: input buffer too large");
 	ret = knot_base64_encode(in, BUF_LEN, out, BUF_LEN);
-	is_int(KNOT_ERANGE, ret, "knot_base64_encode: output buffer too small");
+	is_int(KNOT_ESPACE, ret, "knot_base64_encode: output buffer too small");
 
 	ret = knot_base64_encode_alloc(NULL, 0, &out3);
 	is_int(KNOT_EINVAL, ret, "knot_base64_encode_alloc: NULL input buffer");
@@ -47,7 +47,7 @@ int main(int argc, char *argv[])
 	ret = knot_base64_decode(in, UINT32_MAX, out, BUF_LEN);
 	is_int(KNOT_ERANGE, ret, "knot_base64_decode: input buffer too large");
 	ret = knot_base64_decode(in, BUF_LEN, out, 0);
-	is_int(KNOT_ERANGE, ret, "knot_base64_decode: output buffer too small");
+	is_int(KNOT_ESPACE, ret, "knot_base64_decode: output buffer too small");
 
 	ret = knot_base64_decode_alloc(NULL, 0, &out3);
 	is_int(KNOT_EINVAL, ret, "knot_base64_decode_alloc: NULL input buffer");
