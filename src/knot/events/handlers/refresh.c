@@ -1088,6 +1088,10 @@ static bool wait4pinned_master(struct refresh_data *data)
 	} else if (data->zone->timers.master_pin_hit + data->fallback->pin_tol <= now) {
 		data->xfr_type = XFR_TYPE_AXFR;
 		return false;
+	// Replan the refresh to the moment when the pin tolerance times out.
+	} else {
+		zone_events_schedule_at(data->zone, ZONE_EVENT_REFRESH,
+		                        data->zone->timers.master_pin_hit + data->fallback->pin_tol);
 	}
 
 	return true;

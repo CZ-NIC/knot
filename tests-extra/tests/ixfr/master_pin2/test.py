@@ -52,11 +52,26 @@ for m in [ masterA, masterB ]:
     m.dnssec(zones).enable = True
     m.conf_zone(zones).journal_content = "all"
 
-masterB.zones[zone.name].serial_modulo = str(-PIN)
+masterA.conf_zone(zones).notify_delay = "0"  # Disable even the small random value tests use.
+masterB.conf_zone(zones).notify_delay = "0"  #
+masterB.conf_zone(zones).serial_modulo = str(-PIN)
 
 t.start()
 
+ma_serials0 = masterA.zones_wait(zones)
+mb_serials0 = masterB.zones_wait(zones)
+slave.zones_wait(zones)
+
+# Align the masters before the testing starts.
+slave.ctl("zone-freeze", wait=True)
 serials0 = slave.zones_wait(zones)
+masterA.ctl("zone-sign")
+masterB.ctl("zone-sign")
+masterA.zones_wait(zones, ma_serials0)
+masterB.zones_wait(zones, mb_serials0)
+slave.ctl("zone-thaw")
+
+serials0 = slave.zones_wait(zones, serials0)
 
 for m in [ masterA, masterB ]:
     up = m.update(zone)
@@ -79,6 +94,7 @@ masterA.ctl("zone-thaw")
 
 t.sleep(4)
 
+# May fail occasionally, for details see this commit's message.
 check_cur(masterA, masterB)
 
 RUNNING = False
