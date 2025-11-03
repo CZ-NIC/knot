@@ -1370,7 +1370,7 @@
 		fhold; fgoto err_line;
 	}
 
-	type_num =
+	type_num_ :=
 	    ( "A"i          %{ type_num(KNOT_RRTYPE_A, &rdata_tail); }
 	    | "NS"i         %{ type_num(KNOT_RRTYPE_NS, &rdata_tail); }
 	    | "CNAME"i      %{ type_num(KNOT_RRTYPE_CNAME, &rdata_tail); }
@@ -1419,9 +1419,11 @@
 	    | "CAA"i        %{ type_num(KNOT_RRTYPE_CAA, &rdata_tail); }
 	    | "SVCB"i       %{ type_num(KNOT_RRTYPE_SVCB, &rdata_tail); }
 	    | "HTTPS"i      %{ type_num(KNOT_RRTYPE_HTTPS, &rdata_tail); }
+	    | "DSYNC"i      %{ type_num(KNOT_RRTYPE_DSYNC, &rdata_tail); }
 	    | "WALLET"i     %{ type_num(KNOT_RRTYPE_WALLET, &rdata_tail); }
 	    | "TYPE"i      . num16 # TYPE0-TYPE65535.
-	    ) $!_type_error;
+	    ) $!_type_error %_ret . all_wchar;
+	type_num = alnum ${ fhold; fcall type_num_; };
 	# END
 
 	# BEGIN - Bitmap processing
@@ -1486,6 +1488,7 @@
 	    | "CAA"i        %{ window_add_bit(KNOT_RRTYPE_CAA, s); }
 	    | "SVCB"i       %{ window_add_bit(KNOT_RRTYPE_SVCB, s); }
 	    | "HTTPS"i      %{ window_add_bit(KNOT_RRTYPE_HTTPS, s); }
+	    | "DSYNC"i      %{ window_add_bit(KNOT_RRTYPE_DSYNC, s); }
 	    | "WALLET"i     %{ window_add_bit(KNOT_RRTYPE_WALLET, s); }
 	    | "TYPE"i      . type_bitmap # TYPE0-TYPE65535.
 	    );
@@ -1883,6 +1886,10 @@
 		WARN(ZS_BAD_CERT_TYPE);
 		fhold; fgoto err_line;
 	}
+	action _dsync_scheme_error {
+		WARN(ZS_BAD_DSYNC_SCHEME);
+		fhold; fgoto err_line;
+	}
 
 	dns_alg_ :=
 		( number                %_num8_write
@@ -1919,6 +1926,12 @@
 		| "OID"i     %_write16_254
 		) $!_cert_type_error %_ret . all_wchar;
 	cert_type = alnum ${ fhold; fcall cert_type_; };
+
+	dsync_scheme_ :=
+		( number       %_num8_write
+		| "NOTIFY"i    %_write8_1
+		) $!_dsync_scheme_error %_ret . all_wchar;
+	dsync_scheme = alnum ${ fhold; fcall dsync_scheme_; };
 	# END
 
 	# BEGIN - Rdata processing
@@ -2063,6 +2076,10 @@
 		(num16 . sep . r_dname . svcb_params)
 		$!_r_data_error %_ret . all_wchar;
 
+	r_data_dsync :=
+		(type_num . sep . dsync_scheme . sep . num16 . sep . r_dname )
+		$!_r_data_error %_ret . all_wchar;
+
 	action _text_r_data {
 		fhold;
 		switch (s->r_type) {
@@ -2147,6 +2164,8 @@
 		case KNOT_RRTYPE_SVCB:
 		case KNOT_RRTYPE_HTTPS:
 			fcall r_data_svcb;
+		case KNOT_RRTYPE_DSYNC:
+			fcall r_data_dsync;
 		default:
 			WARN(ZS_CANNOT_TEXT_DATA);
 			fgoto err_line;
@@ -2202,6 +2221,7 @@
 		case KNOT_RRTYPE_CAA:
 		case KNOT_RRTYPE_SVCB:
 		case KNOT_RRTYPE_HTTPS:
+		case KNOT_RRTYPE_DSYNC:
 		case KNOT_RRTYPE_WALLET:
 			fcall nonempty_hex_r_data;
 		// Next types can have empty rdata.
@@ -2287,6 +2307,7 @@
 		| "CAA"i        %{ s->r_type = KNOT_RRTYPE_CAA; }
 		| "SVCB"i       %{ s->r_type = KNOT_RRTYPE_SVCB; }
 		| "HTTPS"i      %{ s->r_type = KNOT_RRTYPE_HTTPS; }
+		| "DSYNC"i      %{ s->r_type = KNOT_RRTYPE_DSYNC; }
 		| "WALLET"i     %{ s->r_type = KNOT_RRTYPE_WALLET; }
 		| "TYPE"i      . type_number
 		) $!_r_type_error;
