@@ -133,11 +133,11 @@ int event_notify(conf_t *conf, zone_t *zone)
 {
 	assert(zone);
 
-	bool failed = false;
-
 	if (zone_contents_is_empty(zone->contents)) {
-		return KNOT_EOK;
+		return KNOT_EEMPTYZONE;
 	}
+
+	bool failed = false;
 
 	// NOTIFY content
 	int timeout = conf->cache.srv_tcp_remote_io_timeout;

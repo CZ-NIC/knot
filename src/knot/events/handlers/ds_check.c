@@ -8,6 +8,12 @@
 
 int event_ds_check(conf_t *conf, zone_t *zone)
 {
+	assert(zone);
+
+	if (zone_contents_is_empty(zone->contents)) {
+		return KNOT_EEMPTYZONE;
+	}
+
 	kdnssec_ctx_t ctx = { 0 };
 
 	int ret = kdnssec_ctx_init(conf, &ctx, zone->name, zone_kaspdb(zone), NULL);

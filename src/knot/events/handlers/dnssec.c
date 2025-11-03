@@ -58,6 +58,10 @@ int event_dnssec(conf_t *conf, zone_t *zone)
 {
 	assert(zone);
 
+	if (zone_contents_is_empty(zone->contents)) {
+		return KNOT_EEMPTYZONE;
+	}
+
 	zone_sign_reschedule_t resch = { 0 };
 	zone_sign_roll_flags_t r_flags = KEY_ROLL_ALLOW_ALL;
 	int sign_flags = 0;

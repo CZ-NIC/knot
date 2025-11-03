@@ -11,11 +11,10 @@
 
 int event_flush(conf_t *conf, zone_t *zone)
 {
-	assert(conf);
 	assert(zone);
 
 	if (zone_contents_is_empty(zone->contents)) {
-		return KNOT_EOK;
+		return KNOT_EEMPTYZONE;
 	}
 
 	return zone_flush_journal(conf, zone, true);

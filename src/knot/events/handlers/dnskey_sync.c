@@ -360,7 +360,7 @@ int event_dnskey_sync(conf_t *conf, zone_t *zone)
 	assert(zone);
 
 	if (zone_contents_is_empty(zone->contents)) {
-		return KNOT_EOK;
+		return KNOT_EEMPTYZONE;
 	}
 
 	int timeout = conf->cache.srv_tcp_remote_io_timeout;
