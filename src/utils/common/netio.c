@@ -17,6 +17,10 @@
 #include <sys/uio.h>
 #endif
 
+#ifdef __APPLE__
+#include <AvailabilityMacros.h>
+#endif
+
 #include "utils/common/netio.h"
 #include "utils/common/msg.h"
 #include "utils/common/tls.h"
@@ -347,7 +351,7 @@ static int fastopen_connect(int sockfd, const struct addrinfo *srv)
 #if defined( __FreeBSD__)
 	const int enable = 1;
 	return setsockopt(sockfd, IPPROTO_TCP, TCP_FASTOPEN, &enable, sizeof(enable));
-#elif defined(__APPLE__)
+#elif defined(__APPLE__) && (MAC_OS_X_VERSION_MIN_REQUIRED >= 101100)
 	// connection is performed lazily when first data are sent
 	struct sa_endpoints ep = {0};
 	ep.sae_dstaddr = srv->ai_addr;
