@@ -31,7 +31,8 @@ Now let's walk through this configuration step by step:
 - The :ref:`server_listen` statement in the :ref:`server section<Server section>`
   defines where the server will listen for incoming connections.
   We have defined the server to listen on all available IPv4 and IPv6 addresses,
-  all on port 53.
+  all on port 53. Note that if a resolver is already running on the host, it must
+  be turned off or reconfigured so it does not compete for the port.
 - The :ref:`zone section` defines the zones that the server will
   serve. In this case, we defined one zone named *example.com* which is stored
   in the zone file :file:`/var/lib/knot/zones/example.com.zone`.
