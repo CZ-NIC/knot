@@ -1370,7 +1370,7 @@
 		fhold; fgoto err_line;
 	}
 
-	type_num =
+	type_num_ :=
 	    ( "A"i          %{ type_num(KNOT_RRTYPE_A, &rdata_tail); }
 	    | "NS"i         %{ type_num(KNOT_RRTYPE_NS, &rdata_tail); }
 	    | "CNAME"i      %{ type_num(KNOT_RRTYPE_CNAME, &rdata_tail); }
@@ -1422,14 +1422,8 @@
 	    | "DSYNC"i      %{ type_num(KNOT_RRTYPE_DSYNC, &rdata_tail); }
 	    | "WALLET"i     %{ type_num(KNOT_RRTYPE_WALLET, &rdata_tail); }
 	    | "TYPE"i      . num16 # TYPE0-TYPE65535.
-	    ) $!_type_error;
-
-	# Reduced list of RR types in order to reduce the total number of states.
-	type_num_dsync =
-	    ( "CDS"i        %{ type_num(KNOT_RRTYPE_CDS, &rdata_tail); }
-	    | "CSYNC"i      %{ type_num(KNOT_RRTYPE_CSYNC, &rdata_tail); }
-	    | "TYPE"i      . num16 # TYPE0-TYPE65535.
-	    ) $!_type_error;
+	    ) $!_type_error %_ret . all_wchar;
+	type_num = alnum ${ fhold; fcall type_num_; };
 	# END
 
 	# BEGIN - Bitmap processing
@@ -2083,7 +2077,7 @@
 		$!_r_data_error %_ret . all_wchar;
 
 	r_data_dsync :=
-		(type_num_dsync . sep . dsync_scheme . sep . num16 . sep . r_dname )
+		(type_num . sep . dsync_scheme . sep . num16 . sep . r_dname )
 		$!_r_data_error %_ret . all_wchar;
 
 	action _text_r_data {
