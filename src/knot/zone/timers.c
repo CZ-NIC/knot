@@ -38,9 +38,7 @@
  */
 enum timer_id {
 	TIMER_INVALID        = 0,
-	TIMER_SOA_EXPIRE     = 0x80, // DEPRECATED
 	TIMER_LAST_FLUSH     = 0x81,
-	TIMER_LAST_REFRESH   = 0x82, // DEPRECATED
 	TIMER_NEXT_REFRESH   = 0x83,
 	TIMER_NEXT_DS_CHECK  = 0x85,
 	TIMER_NEXT_DS_PUSH   = 0x86,
@@ -88,9 +86,7 @@ static int deserialize_timers(zone_timers_t *timers_ptr,
 		case TIMER_NEXT_EXPIRE:    timers.next_expire = value; break;
 		case TIMER_MASTER_PIN_HIT: timers.master_pin_hit = value; break;
 		case TIMER_LAST_SIGNED:
-			timers.last_signed_serial = (value & 0xffffffffLLU);
-			timers.last_signed_s_flags = LAST_SIGNED_SERIAL_FOUND;
-			timers.last_signed_s_flags |= (value >> 32) & LAST_SIGNED_SERIAL_VALID;
+			timers.last_signed_serial = (value & 0x1ffffffffLLU) | LAST_SIGNED_SERIAL_FOUND;
 			break;
 		default:                   break; // ignore
 		}
@@ -124,7 +120,7 @@ static void txn_write_timers(knot_lmdb_txn_t *txn, const knot_dname_t *zone,
 		TIMER_NEXT_DS_PUSH,  (uint64_t)timers->next_ds_push,
 		TIMER_CATALOG_MEMBER,(uint64_t)timers->catalog_member,
 		TIMER_NEXT_EXPIRE,   (uint64_t)timers->next_expire,
-		TIMER_LAST_SIGNED,   (uint64_t)timers->last_signed_serial | (((uint64_t)timers->last_signed_s_flags) << 32),
+		TIMER_LAST_SIGNED,   (uint64_t)timers->last_signed_serial,
 		TIMER_MASTER_PIN_HIT,(uint64_t)timers->master_pin_hit, // those items should be last two
 		TIMER_LAST_MASTER,   &timers->last_master, sizeof(timers->last_master));
 	knot_lmdb_insert(txn, &k, &v);

@@ -893,20 +893,19 @@ int zone_get_master_serial(zone_t *zone, uint32_t *serial)
 
 void zone_set_lastsigned_serial(zone_t *zone, uint32_t serial)
 {
-	zone->timers.last_signed_serial = serial;
-	zone->timers.last_signed_s_flags = LAST_SIGNED_SERIAL_FOUND | LAST_SIGNED_SERIAL_VALID;
+	zone->timers.last_signed_serial = (uint64_t)serial | LAST_SIGNED_SERIAL_FOUND | LAST_SIGNED_SERIAL_VALID;
 }
 
 int zone_get_lastsigned_serial(zone_t *zone, uint32_t *serial)
 {
-	if (!(zone->timers.last_signed_s_flags & LAST_SIGNED_SERIAL_FOUND)) {
+	if (!(zone->timers.last_signed_serial & LAST_SIGNED_SERIAL_FOUND)) {
 		// backwards compatibility: it used to be stored in KASP DB, moved to timers for performance
 		return kasp_db_load_serial(zone_kaspdb(zone), zone->name, KASPDB_SERIAL_LASTSIGNED, serial);
 	}
-	if (!(zone->timers.last_signed_s_flags & LAST_SIGNED_SERIAL_VALID)) {
+	if (!(zone->timers.last_signed_serial & LAST_SIGNED_SERIAL_VALID)) {
 		return KNOT_ENOENT;
 	}
-	*serial = zone->timers.last_signed_serial;
+	*serial = zone->timers.last_signed_serial & 0xffffffffLLU;
 	return KNOT_EOK;
 }
 
