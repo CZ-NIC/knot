@@ -220,14 +220,18 @@ static zone_t *create_zone(conf_t *conf, const knot_dname_t *name, server_t *ser
 
 static void zone_purge(conf_t *conf, zone_t *zone)
 {
+	zone_timers_begin(zone);
 	(void)selective_zone_purge(conf, zone, PURGE_ZONE_ALL);
+	zone_timers_commit(zone);
 }
 
 static zone_contents_t *zone_expire(zone_t *zone, bool zonedb_cow)
 {
 	if (!zonedb_cow) {
+		zone_timers_begin(zone);
 		zone->timers->next_expire = time(NULL);
 		zone->timers->next_refresh = zone->timers->next_expire;
+		zone_timers_commit(zone);
 	}
 	return zone_switch_contents(zone, NULL);
 }
