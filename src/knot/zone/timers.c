@@ -38,9 +38,7 @@
  */
 enum timer_id {
 	TIMER_INVALID        = 0,
-	TIMER_SOA_EXPIRE     = 0x80, // DEPRECATED
 	TIMER_LAST_FLUSH     = 0x81,
-	TIMER_LAST_REFRESH   = 0x82, // DEPRECATED
 	TIMER_NEXT_REFRESH   = 0x83,
 	TIMER_NEXT_DS_CHECK  = 0x85,
 	TIMER_NEXT_DS_PUSH   = 0x86,
@@ -78,9 +76,7 @@ static int deserialize_timers(zone_timers_t *timers_ptr,
 		}
 		uint64_t value = wire_ctx_read_u64(&wire);
 		switch (id) {
-		case TIMER_SOA_EXPIRE:     timers.soa_expire = value; break;
 		case TIMER_LAST_FLUSH:     timers.last_flush = value; break;
-		case TIMER_LAST_REFRESH:   timers.last_refresh = value; break;
 		case TIMER_NEXT_REFRESH:   timers.next_refresh = value; break;
 		case TIMER_LAST_REFR_OK:   timers.last_refresh_ok = value; break;
 		case TIMER_LAST_NOTIFIED:  timers.last_notified_serial = value; break;
@@ -173,12 +169,6 @@ int zone_timers_read(knot_lmdb_db_t *db, const knot_dname_t *zone,
 		deserialize_timers(timers, txn.cur_val.mv_data, txn.cur_val.mv_size);
 	}
 	knot_lmdb_abort(&txn);
-
-	// backward compatibility
-	// For catalog zones, next_expire is cleaned up later by zone_timers_sanitize().
-	if (timers->next_expire == 0 && timers->last_refresh > 0) {
-		timers->next_expire = timers->last_refresh + timers->soa_expire;
-	}
 
 	return txn.ret;
 }
