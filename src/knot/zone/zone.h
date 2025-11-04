@@ -100,8 +100,9 @@ typedef struct zone
 	} zonefile;
 
 	/*! \brief Zone events. */
-	zone_timers_t *timers;      //!< Persistent zone timers.
-	zone_events_t events;      //!< Zone events timers.
+	zone_timers_t *timers;        //!< Persistent zone timers.
+	zone_timers_t *timers_static; //!< An instance of zone_timers structure which is safe to read from anywhere under rcu_read_lock.
+	zone_events_t events;         //!< Zone events timers.
 
 	/*! \brief Track unsuccessful NOTIFY targets. */
 	notifailed_rmt_dynarray_t notifailed;
@@ -284,6 +285,9 @@ bool zone_expired(const zone_t *zone);
  * \brief Set default timers for new zones or invalidate if not valid.
  */
 void zone_timers_sanitize(conf_t *conf, zone_t *zone);
+
+int zone_timers_begin(zone_t *zone);
+void zone_timers_commit(zone_t *zone);
 
 typedef struct {
 	bool address;     //!< Fallback to next remote address is required.
