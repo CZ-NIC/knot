@@ -170,6 +170,7 @@ zone_t* zone_new(const knot_dname_t *name)
 		free(zone);
 		return NULL;
 	}
+	zone->timers_static = zone->timers;
 
 	// DDNS
 	pthread_mutex_init(&zone->ddns_lock, NULL);
@@ -663,7 +664,7 @@ bool zone_expired(const zone_t *zone)
 		return false;
 	}
 
-	return zone->timers->next_expire > 0 && zone->timers->next_expire <= time(NULL);
+	return zone->timers_static->next_expire > 0 && zone->timers_static->next_expire <= time(NULL);
 }
 
 static void time_set_default(time_t *time, time_t value)
@@ -697,6 +698,45 @@ void zone_timers_sanitize(conf_t *conf, zone_t *zone)
 		zone->timers->next_refresh = 0;
 		zone->timers->last_refresh_ok = false;
 		zone->timers->next_expire = 0;
+	}
+}
+
+int zone_timers_begin(zone_t *zone)
+{
+	assert(zone->timers == zone->timers_static);
+	zone->timers = malloc(sizeof(*zone->timers));
+	if (zone->timers == NULL) {
+		zone->timers = zone->timers_static;
+		return KNOT_ENOMEM;
+	}
+	memcpy(zone->timers, zone->timers_static, sizeof(*zone->timers));
+	return KNOT_EOK;
+}
+
+typedef struct {
+	struct rcu_head rcuhead;
+	zone_timers_t *timers;
+} zone_timers_cleanup_t;
+
+static void timers_cleanup(struct rcu_head *head)
+{
+	zone_timers_cleanup_t *cleanup = (zone_timers_cleanup_t *)head;
+	free(cleanup->timers);
+	free(cleanup);
+}
+
+void zone_timers_commit(zone_t *zone)
+{
+	if (zone->timers_static == zone->timers) {
+		return;
+	}
+
+	zone_timers_t *old_static = rcu_xchg_pointer(&zone->timers_static, zone->timers);
+
+	zone_timers_cleanup_t *cleanup = calloc(1, sizeof(*cleanup));
+	if (cleanup != NULL) {
+		cleanup->timers = old_static;
+		call_rcu((struct rcu_head *)cleanup, timers_cleanup);
 	}
 }
 
@@ -925,8 +965,12 @@ int zone_get_master_serial(zone_t *zone, uint32_t *serial)
 
 void zone_set_lastsigned_serial(zone_t *zone, uint32_t serial)
 {
+	bool extra_txn = (zone->control_update != NULL && zone->timers == zone->timers_static && zone_timers_begin(zone) == KNOT_EOK); // zone_update_commit() is not within a zone event in case of control_update
 	zone->timers->last_signed_serial = serial;
 	zone->timers->last_signed_s_flags = LAST_SIGNED_SERIAL_FOUND | LAST_SIGNED_SERIAL_VALID;
+	if (extra_txn) {
+		zone_timers_commit(zone);
+	}
 }
 
 int zone_get_lastsigned_serial(zone_t *zone, uint32_t *serial)
