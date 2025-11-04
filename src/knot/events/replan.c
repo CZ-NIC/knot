@@ -115,7 +115,7 @@ void replan_from_timers(conf_t *conf, zone_t *zone)
 		conf_val_t val = conf_zone_get(conf, C_ZONEFILE_SYNC, zone->name);
 		int64_t sync_timeout = conf_int(&val);
 		if (sync_timeout > 0) {
-			flush = zone->timers.last_flush + sync_timeout;
+			flush = (int64_t)zone->timers.last_flush + sync_timeout;
 		}
 	}
 

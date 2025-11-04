@@ -1504,13 +1504,13 @@ int event_refresh(conf_t *conf, zone_t *zone)
 
 		limit_timer(conf, zone->name, &next, "retry",
 		            C_RETRY_MIN_INTERVAL, C_RETRY_MAX_INTERVAL);
-		time_t now = time(NULL);
-		zone->timers.next_refresh = now + next;
+		time_t now = time(NULL), next_refresh = now + next;
+		zone->timers.next_refresh = next_refresh;
 		zone->timers.last_refresh_ok = false;
 
 		char time_str[64] = { 0 };
 		struct tm time_gm = { 0 };
-		localtime_r(&zone->timers.next_refresh, &time_gm);
+		localtime_r(&next_refresh, &time_gm);
 		strftime(time_str, sizeof(time_str), KNOT_LOG_TIME_FORMAT, &time_gm);
 
 		char expires_in[32] = "";

@@ -226,8 +226,9 @@ static void zone_purge(conf_t *conf, zone_t *zone)
 static zone_contents_t *zone_expire(zone_t *zone, bool zonedb_cow)
 {
 	if (!zonedb_cow) {
-		zone->timers.next_expire = time(NULL);
-		zone->timers.next_refresh = zone->timers.next_expire;
+		time_t now = time(NULL);
+		zone->timers.next_expire = now;
+		zone->timers.next_refresh = now;
 	}
 	return zone_switch_contents(zone, NULL);
 }

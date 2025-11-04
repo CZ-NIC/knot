@@ -635,7 +635,7 @@ bool zone_expired(const zone_t *zone)
 	return timers->next_expire > 0 && timers->next_expire <= time(NULL);
 }
 
-static void time_set_default(time_t *time, time_t value)
+static void time_set_default(uint64_t *time, uint64_t value)
 {
 	assert(time);
 
@@ -649,7 +649,7 @@ void zone_timers_sanitize(conf_t *conf, zone_t *zone)
 	assert(conf);
 	assert(zone);
 
-	time_t now = time(NULL);
+	uint64_t now = time(NULL);
 
 	// assume now if we don't know when we flushed
 	time_set_default(&zone->timers.last_flush, now);

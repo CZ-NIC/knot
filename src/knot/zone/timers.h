@@ -20,17 +20,17 @@
  * \brief Persistent zone timers.
  */
 struct zone_timers {
-	time_t last_flush;             //!< Last zone file synchronization.
-	time_t next_refresh;           //!< Next zone refresh attempt.
-	uint64_t last_signed_serial;   //!< SOA serial of last signed zone version; (1<<32) if valid and (1<<33) if found.
-	bool last_refresh_ok;          //!< Last zone refresh attempt was successful.
-	uint64_t last_notified_serial; //!< SOA serial of last successful NOTIFY; (1<<32) if valid.
-	time_t next_ds_check;          //!< Next parent DS check.
-	time_t next_ds_push;           //!< Next DDNS to parent zone with updated DS record.
-	time_t catalog_member;         //!< This catalog member zone created.
-	time_t next_expire;            //!< Timestamp of the zone to expire.
+	uint64_t last_flush;             //!< Last zone file synchronization.
+	uint64_t next_refresh;           //!< Next zone refresh attempt.
+	uint64_t last_signed_serial;     //!< SOA serial of last signed zone version; (1<<32) if valid and (1<<33) if found.
+	bool last_refresh_ok;            //!< Last zone refresh attempt was successful.
+	uint64_t last_notified_serial;   //!< SOA serial of last successful NOTIFY; (1<<32) if valid.
+	uint64_t next_ds_check;          //!< Next parent DS check.
+	uint64_t next_ds_push;           //!< Next DDNS to parent zone with updated DS record.
+	uint64_t catalog_member;         //!< This catalog member zone created.
+	uint64_t next_expire;            //!< Timestamp of the zone to expire.
 	struct sockaddr_in6 last_master; //!< Address of pinned master (used last time).
-	time_t master_pin_hit;         //!< Fist occurence of another master more updated than the pinned one.
+	uint64_t master_pin_hit;         //!< Fist occurence of another master more updated than the pinned one.
 };
 
 typedef struct zone_timers zone_timers_t;
