@@ -20,9 +20,7 @@
  * \brief Persistent zone timers.
  */
 struct zone_timers {
-	uint32_t soa_expire;           //!< SOA expire value. DEPRECATED
 	time_t last_flush;             //!< Last zone file synchronization.
-	time_t last_refresh;           //!< Last successful zone refresh attempt. DEPRECATED
 	time_t next_refresh;           //!< Next zone refresh attempt.
 	uint32_t last_signed_serial;   //!< SOA serial of last signed zone version.
 	uint8_t last_signed_s_flags;   //!< If last signed serial detected and valid;
