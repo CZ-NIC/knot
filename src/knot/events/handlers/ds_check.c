@@ -24,7 +24,7 @@ int event_ds_check(conf_t *conf, zone_t *zone)
 	ret = knot_parent_ds_query(conf, &ctx, zone->server,
 	                           conf->cache.srv_tcp_remote_io_timeout);
 
-	zone->timers.next_ds_check = 0;
+	zone->timers->next_ds_check = 0;
 	switch (ret) {
 	case KNOT_NO_READY_KEY:
 		break;
@@ -34,7 +34,7 @@ int event_ds_check(conf_t *conf, zone_t *zone)
 	default:
 		if (ctx.policy->ksk_sbm_check_interval > 0) {
 			time_t next_check = time(NULL) + ctx.policy->ksk_sbm_check_interval;
-			zone->timers.next_ds_check = next_check;
+			zone->timers->next_ds_check = next_check;
 			zone_events_schedule_at(zone, ZONE_EVENT_DS_CHECK, next_check);
 		}
 	}

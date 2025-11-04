@@ -100,7 +100,7 @@ typedef struct zone
 	} zonefile;
 
 	/*! \brief Zone events. */
-	zone_timers_t timers;      //!< Persistent zone timers.
+	zone_timers_t *timers;      //!< Persistent zone timers.
 	zone_events_t events;      //!< Zone events timers.
 
 	/*! \brief Track unsuccessful NOTIFY targets. */
