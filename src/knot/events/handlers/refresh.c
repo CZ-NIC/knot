@@ -199,7 +199,7 @@ static void consume_edns_expire(struct refresh_data *data, knot_pkt_t *pkt, bool
 	if (expire_opt != NULL && knot_edns_opt_get_length(expire_opt) == sizeof(uint32_t)) {
 		uint32_t edns_expire = knot_wire_read_u32(knot_edns_opt_get_data(expire_opt));
 		data->expire_timer = strictly_follow ? edns_expire :
-				     MAX(edns_expire, data->zone->timers.next_expire - time(NULL));
+				     MAX(edns_expire, data->zone->timers->next_expire - time(NULL));
 	}
 }
 
@@ -218,19 +218,19 @@ static void finalize_timers_base(struct refresh_data *data, bool also_expire)
 	uint32_t soa_refresh = knot_soa_refresh(soa->rdata);
 	limit_timer(conf, zone->name, &soa_refresh, "refresh",
 	            C_REFRESH_MIN_INTERVAL, C_REFRESH_MAX_INTERVAL);
-	zone->timers.next_refresh = now + soa_refresh;
-	zone->timers.last_refresh_ok = true;
+	zone->timers->next_refresh = now + soa_refresh;
+	zone->timers->last_refresh_ok = true;
 
 	if (zone->is_catalog_flag) {
 		// It's already zero in most cases.
-		zone->timers.next_expire = 0;
+		zone->timers->next_expire = 0;
 	} else if (also_expire) {
 		limit_timer(conf, zone->name, &data->expire_timer, "expire",
 		            // Limit min if not received as EDNS Expire.
 		            data->expire_timer == knot_soa_expire(soa->rdata) ?
 			      C_EXPIRE_MIN_INTERVAL : 0,
 		            C_EXPIRE_MAX_INTERVAL);
-		zone->timers.next_expire = now + data->expire_timer;
+		zone->timers->next_expire = now + data->expire_timer;
 	}
 }
 
@@ -246,8 +246,8 @@ static void finalize_timers_noexpire(struct refresh_data *data)
 
 static void fill_expires_in(char *expires_in, size_t size, const struct refresh_data *data)
 {
-	assert(!data->zone->is_catalog_flag || data->zone->timers.next_expire == 0);
-	if (data->zone->timers.next_expire > 0 && data->expire_timer > 0) {
+	assert(!data->zone->is_catalog_flag || data->zone->timers->next_expire == 0);
+	if (data->zone->timers->next_expire > 0 && data->expire_timer > 0) {
 		(void)snprintf(expires_in, size,
 		               ", expires in %u seconds", data->expire_timer);
 	}
@@ -1074,24 +1074,24 @@ static bool wait4pinned_master(struct refresh_data *data)
 	} else if (data->fallback->trying_last) {
 		return false;
 	// Pinned master expected but not yet set, force AXFR (e.g. dropped timers).
-	} else if (data->zone->timers.last_master.sin6_family == AF_UNSPEC) {
+	} else if (data->zone->timers->last_master.sin6_family == AF_UNSPEC) {
 		data->xfr_type = XFR_TYPE_AXFR;
 		return false;
 	}
 
 	time_t now = time(NULL);
 	// Starting countdown for master transition.
-	if (data->zone->timers.master_pin_hit == 0) {
-		data->zone->timers.master_pin_hit = now;
+	if (data->zone->timers->master_pin_hit == 0) {
+		data->zone->timers->master_pin_hit = now;
 		zone_events_schedule_at(data->zone, ZONE_EVENT_REFRESH, now + data->fallback->pin_tol);
 	// Switch to a new master.
-	} else if (data->zone->timers.master_pin_hit + data->fallback->pin_tol <= now) {
+	} else if (data->zone->timers->master_pin_hit + data->fallback->pin_tol <= now) {
 		data->xfr_type = XFR_TYPE_AXFR;
 		return false;
 	// Replan the refresh to the moment when the pin tolerance times out.
 	} else {
 		zone_events_schedule_at(data->zone, ZONE_EVENT_REFRESH,
-		                        data->zone->timers.master_pin_hit + data->fallback->pin_tol);
+		                        data->zone->timers->master_pin_hit + data->fallback->pin_tol);
 	}
 
 	return true;
@@ -1505,19 +1505,19 @@ int event_refresh(conf_t *conf, zone_t *zone)
 		limit_timer(conf, zone->name, &next, "retry",
 		            C_RETRY_MIN_INTERVAL, C_RETRY_MAX_INTERVAL);
 		time_t now = time(NULL);
-		zone->timers.next_refresh = now + next;
-		zone->timers.last_refresh_ok = false;
+		zone->timers->next_refresh = now + next;
+		zone->timers->last_refresh_ok = false;
 
 		char time_str[64] = { 0 };
 		struct tm time_gm = { 0 };
-		localtime_r(&zone->timers.next_refresh, &time_gm);
+		localtime_r(&zone->timers->next_refresh, &time_gm);
 		strftime(time_str, sizeof(time_str), KNOT_LOG_TIME_FORMAT, &time_gm);
 
 		char expires_in[32] = "";
 		if (!zone->is_catalog_flag) {
 			struct refresh_data data = {
 				.zone = zone,
-				.expire_timer = zone->timers.next_expire - now,
+				.expire_timer = zone->timers->next_expire - now,
 			};
 			fill_expires_in(expires_in, sizeof(expires_in), &data);
 		}
