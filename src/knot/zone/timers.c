@@ -199,7 +199,7 @@ int zone_timers_write(knot_lmdb_db_t *db, const knot_dname_t *zone,
 
 static void txn_zone_write(zone_t *z, knot_lmdb_txn_t *txn)
 {
-	txn_write_timers(txn, z->name, z->timers);
+	txn_write_timers(txn, z->name, z->timers_static);
 }
 
 int zone_timers_write_all(knot_lmdb_db_t *db, knot_zonedb_t *zonedb)
