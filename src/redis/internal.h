@@ -668,6 +668,7 @@ static void zone_begin_txt_format(RedisModuleCtx *ctx, const arg_dname_t *origin
 	if (e.ret != KNOT_EOK) {
 		RedisModule_ReplyWithError(ctx, e.what);
 	} else {
+		RedisModule_ReplicateVerbatim(ctx);
 		RedisModule_ReplyWithLongLong(ctx, serialize_transaction(txn));
 	}
 }
@@ -678,6 +679,7 @@ static void zone_begin_bin_format(RedisModuleCtx *ctx, const arg_dname_t *origin
 	if (e.ret != KNOT_EOK) {
 		RedisModule_ReplyWithError(ctx, e.what);
 	} else {
+		RedisModule_ReplicateVerbatim(ctx);
 		RedisModule_ReplyWithStringBuffer(ctx, (const char *)txn, sizeof(*txn));
 	}
 }
@@ -716,10 +718,10 @@ static void upd_begin_txt_format(RedisModuleCtx *ctx, const arg_dname_t *origin,
 	exception_t e = upd_begin(ctx, origin, txn);
 	if (e.ret != KNOT_EOK) {
 		RedisModule_ReplyWithError(ctx, e.what);
-		return;
+	} else {
+		RedisModule_ReplicateVerbatim(ctx);
+		RedisModule_ReplyWithLongLong(ctx, serialize_transaction(txn));
 	}
-
-	RedisModule_ReplyWithLongLong(ctx, serialize_transaction(txn));
 }
 
 static void upd_begin_bin_format(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t *txn)
@@ -727,10 +729,10 @@ static void upd_begin_bin_format(RedisModuleCtx *ctx, const arg_dname_t *origin,
 	exception_t e = upd_begin(ctx, origin, txn);
 	if (e.ret != KNOT_EOK) {
 		RedisModule_ReplyWithError(ctx, e.what);
-		return;
+	} else {
+		RedisModule_ReplicateVerbatim(ctx);
+		RedisModule_ReplyWithStringBuffer(ctx, (const char *)txn, sizeof(*txn));
 	}
-
-	RedisModule_ReplyWithStringBuffer(ctx, (const char *)txn, sizeof(*txn));
 }
 
 static upd_meta_k upd_meta_get_when_open(RedisModuleCtx *ctx, const arg_dname_t *origin,
@@ -892,6 +894,7 @@ static void upd_add_bin_format(RedisModuleCtx *ctx, const arg_dname_t *origin,
 	if (e.ret != KNOT_EOK) {
 		RedisModule_ReplyWithError(ctx, e.what);
 	} else {
+		RedisModule_ReplicateVerbatim(ctx);
 		RedisModule_ReplyWithSimpleString(ctx, RDB_RETURN_OK);
 	}
 }
@@ -905,6 +908,7 @@ static void upd_remove_bin_format(RedisModuleCtx *ctx, const arg_dname_t *origin
 	if (e.ret != KNOT_EOK) {
 		RedisModule_ReplyWithError(ctx, e.what);
 	} else {
+		RedisModule_ReplicateVerbatim(ctx);
 		RedisModule_ReplyWithSimpleString(ctx, RDB_RETURN_OK);
 	}
 }
@@ -1024,6 +1028,7 @@ static void zone_store_bin_format(RedisModuleCtx *ctx, const arg_dname_t *origin
 		return;
 	}
 
+	RedisModule_ReplicateVerbatim(ctx);
 	RedisModule_ReplyWithSimpleString(ctx, RDB_RETURN_OK);
 }
 
@@ -1043,6 +1048,7 @@ static void run_scanner(scanner_ctx_t *s_ctx, const arg_dname_t *origin,
 	}
 	zs_deinit(&s);
 
+	RedisModule_ReplicateVerbatim(s_ctx->ctx);
 	RedisModule_ReplyWithSimpleString(s_ctx->ctx, RDB_RETURN_OK);
 }
 
@@ -1288,6 +1294,7 @@ static void zone_purge_v(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn
 	if (e.ret != KNOT_EOK) {
 		RedisModule_ReplyWithError(ctx, RDB_EEVENT);
 	} else {
+		RedisModule_ReplicateVerbatim(ctx);
 		RedisModule_ReplyWithSimpleString(ctx, RDB_RETURN_OK);
 	}
 }
@@ -1621,6 +1628,7 @@ static void zone_commit(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_
 	RedisModule_FreeString(ctx, value);
 	RedisModule_CloseKey(zones_index);
 
+	RedisModule_ReplicateVerbatim(ctx);
 	commit_event(ctx, RDB_EVENT_ZONE, origin, txn->instance, serial);
 	RedisModule_ReplyWithSimpleString(ctx, RDB_RETURN_OK);
 }
@@ -1645,6 +1653,7 @@ static void zone_abort(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t
 
 	int ret = delete_zone_index(ctx, origin, txn);
 	if (ret == KNOT_EOK) {
+		RedisModule_ReplicateVerbatim(ctx);
 		RedisModule_ReplyWithSimpleString(ctx, RDB_RETURN_OK);
 	} else if (ret == KNOT_EEXIST) {
 		RedisModule_ReplyWithError(ctx, RDB_EZONE);
@@ -1894,6 +1903,7 @@ static void upd_abort_v(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_
 	if (e.ret != KNOT_EOK) {
 		RedisModule_ReplyWithError(ctx, e.what);
 	} else {
+		RedisModule_ReplicateVerbatim(ctx);
 		RedisModule_ReplyWithSimpleString(ctx, RDB_RETURN_OK);
 	}
 }
@@ -2213,6 +2223,7 @@ static void upd_commit(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t
 	if (e.ret != KNOT_EOK) {
 		RedisModule_ReplyWithError(ctx, e.what);
 	} else {
+		RedisModule_ReplicateVerbatim(ctx);
 		RedisModule_ReplyWithSimpleString(ctx, RDB_RETURN_OK);
 	}
 }
@@ -2396,6 +2407,4 @@ static void upd_load(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t *
 		counter++;
 	}
 	RedisModule_ReplySetArrayLength(ctx, counter);
-
-	return;
 }
