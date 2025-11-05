@@ -1305,35 +1305,24 @@ static void zone_list_cb(RedisModuleKey *key, RedisModuleString *zone_name,
                          RedisModuleString *mask, void *privdata)
 {
 	scan_ctx_t *sctx = privdata;
+
 	if (sctx->txt) {
+		char buf[KNOT_DNAME_TXT_MAXLEN + INSTANCE_MAX * 3];
+
 		size_t len;
 		const char *dname = RedisModule_StringPtrLen(zone_name, &len);
-		char buf[KNOT_DNAME_TXT_MAXLEN + TXN_MAX * 3];
-		if (knot_dname_to_str(buf, (knot_dname_t *)dname, sizeof(buf)) == NULL) {
-			sctx->ret = KNOT_EMALF;
-			RedisModule_ReplyWithError(sctx->ctx, RDB_ECORRUPTED);
-			++(sctx->count);
-			return;
-		}
-		char *buf_ptr = buf + knot_dname_size((knot_dname_t *)dname) - 1;
-		size_t mask_len = 0;
-		const uint8_t *mask_p = (const uint8_t *)RedisModule_StringPtrLen(mask, &mask_len);
-		if (mask_len != sizeof(uint8_t)) {
-			sctx->ret = KNOT_EMALF;
-			RedisModule_ReplyWithError(sctx->ctx, RDB_ECORRUPTED);
-			++(sctx->count);
-			return;
-		}
+		RedisModule_Assert(knot_dname_to_str(buf, (knot_dname_t *)dname, sizeof(buf)) != NULL);
+
 		if (sctx->instances) {
-			int count = 0;
-			for (int it = 0; it < TXN_MAX; ++it) {
-				const char separator = (count) ? ',' : ':';
-				if ((*mask_p) & (1 << it)) {
-					*(buf_ptr++) = separator;
-					*(buf_ptr++) = ' ';
-					*(buf_ptr++) = '0' + it + 1;
-					*buf_ptr = '\0';
-					count++;
+			const uint8_t *mask_p = (const uint8_t *)RedisModule_StringPtrLen(mask, &len);
+			RedisModule_Assert(len == sizeof(uint8_t));
+
+			bool first = true;
+			for (unsigned inst = 1; inst <= INSTANCE_MAX; ++inst) {
+				if ((*mask_p) & (1 << (inst - 1))) {
+					char item[] = { first ? ':' : ',', ' ', '0' + inst, '\0' };
+					strlcat(buf, item, sizeof(buf));
+					first = false;
 				}
 			}
 		}
@@ -1347,30 +1336,36 @@ static void zone_list_cb(RedisModuleKey *key, RedisModuleString *zone_name,
 			RedisModule_ReplyWithString(sctx->ctx, zone_name);
 		}
 	}
+
 	++(sctx->count);
 }
 
 static void zone_list(RedisModuleCtx *ctx, bool instances, bool txt)
 {
-	RedisModuleKey *zones_index = get_zones_index(ctx, REDISMODULE_READ);
-	if (zones_index == NULL) {
-		RedisModule_ReplyWithEmptyArray(ctx);
-		return;
-	}
-
-	RedisModule_ReplyWithArray(ctx, REDISMODULE_POSTPONED_ARRAY_LEN);
-
 	scan_ctx_t sctx = {
 		.ctx = ctx,
 		.txt = txt,
 		.instances = instances
 	};
 
+	RedisModuleKey *zones_index = get_zones_index(ctx, REDISMODULE_READ);
+	if (zones_index == NULL) {
+		RedisModule_ReplyWithError(ctx, RDB_EALLOC);
+		return;
+	}
 	RedisModuleScanCursor *cursor = RedisModule_ScanCursorCreate();
+	if (cursor == NULL) {
+		RedisModule_CloseKey(zones_index);
+		RedisModule_ReplyWithError(ctx, RDB_EALLOC);
+		return;
+	}
+
+	RedisModule_ReplyWithArray(ctx, REDISMODULE_POSTPONED_ARRAY_LEN);
 	while (RedisModule_ScanKey(zones_index, cursor, zone_list_cb, &sctx) && sctx.ret == KNOT_EOK);
 	RedisModule_ReplySetArrayLength(ctx, sctx.count);
-	RedisModule_CloseKey(zones_index);
+
 	RedisModule_ScanCursorDestroy(cursor);
+	RedisModule_CloseKey(zones_index);
 }
 
 exception_t zone_info_serial(RedisModuleCtx *ctx, size_t *counter, const arg_dname_t *origin,
