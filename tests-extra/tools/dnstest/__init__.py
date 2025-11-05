@@ -7,6 +7,7 @@ __all__ = [
     "libknot",
     "module",
     "params",
+    "redis",
     "response",
     "server",
     "test",

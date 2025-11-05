@@ -193,7 +193,7 @@ class Server(object):
         self.session_log = None
         self.confile = None
 
-        self.redis = None
+        self.redis_backends = list()
 
         self.binding_errors = 0
 
@@ -1694,12 +1694,11 @@ class Knot(Server):
         s.item_str("timer-db-max-size", self.timer_db_size)
         s.item_str("timer-db-sync", random.choice(["shutdown", "immediate", "5", "3600"]))
         s.item_str("catalog-db-max-size", self.catalog_db_size)
-        if self.redis is not None:
-            tls = random.choice([True, False])
-            port = self.redis.tls_port if tls else self.redis.port
-            s.item_str("zone-db-listen", self.redis.addr + "@" + str(port))
-            if tls:
-                s.item_str("zone-db-cert-key", self.redis.pin)
+        if len(self.redis_backends) > 0:
+            s.item_list("zone-db-listen", map(lambda b: f"{b.addr}@{b.tls_port if b.tls else b.port}",
+                                              self.redis_backends))
+            if list(self.redis_backends)[0].tls:
+                s.item_list("zone-db-cert-key", map(lambda b: f"{b.pin}", self.redis_backends))
                 s.item_str("zone-db-tls", "on")
         s.end()
 
@@ -1807,6 +1806,17 @@ class Knot(Server):
             self.ctl_params += self.ctl_params_append
 
         return s.conf
+
+    def db_out(self, zones, redis_list, instance):
+        for z in zones:
+            self.conf_zone(z).zone_db_output = str(instance)
+        self.redis_backends = redis_list
+
+    def db_in(self, zones, redis_list, instance):
+        for z in zones:
+            self.conf_zone(z).zone_db_input = str(instance)
+            self.zones[z.name].zfile.remove()
+        self.redis_backends = redis_list
 
     def ctl_sock_rnd(self, name_only=False):
         sockname = random.choice(["knot.sock", "knot2.sock"])

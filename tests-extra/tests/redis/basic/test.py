@@ -2,10 +2,11 @@
 
 '''Test master-slave-like replication using Redis database.'''
 
+import random
 from dnstest.test import Test
 from dnstest.utils import *
 
-t = Test(redis=True)
+t = Test()
 
 master = t.server("knot")
 slave = t.server("knot")
@@ -15,12 +16,10 @@ zones = t.zone("example.com.")
 t.link(zones, master)
 t.link(zones, slave)
 
-master.conf_zone(zones).zonefile_sync = "0"
-master.conf_zone(zones).zone_db_output = "1"
-slave.conf_zone(zones).zone_db_input = "1"
+redis_master = t.backend("redis", tls=random.choice([True, False]))
 
-for z in zones:
-    slave.zones[z.name].zfile.remove()
+master.db_out(zones, [redis_master], 1)
+slave.db_in(zones, [redis_master], 1)
 
 t.start()
 
@@ -67,13 +66,13 @@ if uptodate_log != len(zones):
 
 # Add to DB manually. Slave will diverge from master.
 for z in zones:
-    txn = t.redis.cli("knot.upd.begin", z.name, master.conf_zone(z).zone_db_output)
-    r = t.redis.cli("knot.upd.remove", z.name, txn, "example.com. 3600 in soa dns1.example.com. hostmaster.example.com. %d 10800 3600 1209600 7200" % serials3[z.name])
-    r = t.redis.cli("knot.upd.add", z.name, txn, "example.com. 3600 in soa dns1.example.com. hostmaster.example.com. %d 10800 3600 1209600 7200" % (serials3[z.name] + 1))
-    r = t.redis.cli("knot.upd.add", z.name, txn, "txtadd 3600 A 1.2.3.4")
-    r = t.redis.cli("knot.upd.commit", z.name, txn)
+    txn = redis_master.cli("knot.upd.begin", z.name, master.conf_zone(z).zone_db_output)
+    r = redis_master.cli("knot.upd.remove", z.name, txn, "example.com. 3600 in soa dns1.example.com. hostmaster.example.com. %d 10800 3600 1209600 7200" % serials3[z.name])
+    r = redis_master.cli("knot.upd.add", z.name, txn, "example.com. 3600 in soa dns1.example.com. hostmaster.example.com. %d 10800 3600 1209600 7200" % (serials3[z.name] + 1))
+    r = redis_master.cli("knot.upd.add", z.name, txn, "txtadd 3600 A 1.2.3.4")
+    r = redis_master.cli("knot.upd.commit", z.name, txn)
 
-    r = t.redis.cli("knot.upd.load", z.name, master.conf_zone(z).zone_db_output, str(serials3[z.name]))
+    r = redis_master.cli("knot.upd.load", z.name, master.conf_zone(z).zone_db_output, str(serials3[z.name]))
     if not "txtadd" in r:
         set_err("NO TXTADD IN UPD")
 
