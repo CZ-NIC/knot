@@ -259,29 +259,37 @@ def test_zone_purge():
 def test_zone_list():
     env = Env(moduleArgs=['max-event-age', '60', 'default-ttl', '3600'])
 
-    # First zone
+    # first zone
     txn = env.cmd('KNOT.ZONE.BEGIN', 'example.com', 1)
     env.cmd('KNOT.ZONE.STORE', 'example.com', txn, "@ IN SOA ns.icann.org. noc.dns.icann.org. ( 1 7200  3600 1209600 3600 )")
     env.cmd('KNOT.ZONE.COMMIT', 'example.com', txn)
 
-    resp = env.cmd('KNOT.ZONE.LIST', txn_get_instance(txn))
-    env.assertEqual(len(resp), 1, message="Failed to purge zone")
+    resp = env.cmd('KNOT.ZONE.LIST')
+    env.assertEqual(len(resp), 1, message="Failed to list zones")
 
-    # Rewrite zone
+    # rewrite zone
     txn = env.cmd('KNOT.ZONE.BEGIN', 'example.com', 1)
     env.cmd('KNOT.ZONE.STORE', 'example.com', txn, "@ IN SOA ns.icann.org. noc.dns.icann.org. ( 1 7200  3600 1209600 3600 )")
     env.cmd('KNOT.ZONE.COMMIT', 'example.com', txn)
 
-    resp = env.cmd('KNOT.ZONE.LIST', txn_get_instance(txn))
-    env.assertEqual(len(resp), 1, message="Failed to purge zone")
+    resp = env.cmd('KNOT.ZONE.LIST')
+    env.assertEqual(len(resp), 1, message="Failed to list zones")
 
-    # Second zone
+    # second zone
     txn = env.cmd('KNOT.ZONE.BEGIN', 'example.net', 1)
     env.cmd('KNOT.ZONE.STORE', 'example.net', txn, "@ IN SOA ns.icann.org. noc.dns.icann.org. ( 1 7200  3600 1209600 3600 )")
     env.cmd('KNOT.ZONE.COMMIT', 'example.net', txn)
 
-    resp = env.cmd('KNOT.ZONE.LIST', txn_get_instance(txn))
-    env.assertEqual(len(resp), 2, message="Failed to purge zone")
+    resp = env.cmd('KNOT.ZONE.LIST')
+    env.assertEqual(len(resp), 2, message="Failed to list zones")
+
+    LIST = [
+        b'example.com.: 1',
+        b'example.net.: 1'
+    ]
+
+    resp = env.cmd('KNOT.ZONE.LIST', '--instances')
+    env.assertEqual(resp, LIST, message="Failed to list zones with instances")
 
     # zone info
     INFO = [
