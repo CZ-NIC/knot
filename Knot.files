@@ -268,6 +268,7 @@ src/knot/events/handlers/flush.c
 src/knot/events/handlers/freeze_thaw.c
 src/knot/events/handlers/load.c
 src/knot/events/handlers/notify.c
+src/knot/events/handlers/purge.c
 src/knot/events/handlers/refresh.c
 src/knot/events/handlers/update.c
 src/knot/events/handlers/validate.c

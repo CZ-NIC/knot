@@ -40,6 +40,9 @@ typedef enum {
 	ZONE_USER_FLUSH     = 1 << 8, /*!< User-triggered flush. */
 	ZONE_LAST_SIGN_OK   = 1 << 9, /*!< Last full-sign event finished OK. */
 	ZONE_PREF_MASTER_2X = 1 << 10, /*!< Preferred master has been overwritten at least once. */
+
+	ZONE_FLAG_MAX       = 1 << 19, /*!< Maximal usable flag below purge_flag_t. */
+	ZONE_FLAG_TYPESIZE  = 1 << 30, /*!< Enforces the compiler to use 32-bit variable for this enum. */
 } zone_flag_t;
 
 /*!
@@ -50,16 +53,19 @@ knot_dynarray_declare(notifailed_rmt, notifailed_rmt_hash, DYNARRAY_VISIBILITY_N
 
 /*!
  * \brief Zone purging parameter flags.
+ *
+ * \warning Note they are and must be mutually exclusive with zone_flag_t so that they can be stored in zone->flags.
  */
 typedef enum {
-	PURGE_ZONE_BEST     = 1 << 0, /*!< Best effort -- continue on failures. */
-	PURGE_ZONE_LOG      = 1 << 1, /*!< Log a purged zone even if requested less. */
-	PURGE_ZONE_NOSYNC   = 1 << 2, /*!< Remove even zone files with disabled syncing. */
-	PURGE_ZONE_TIMERS   = 1 << 3, /*!< Purge the zone timers. */
-	PURGE_ZONE_ZONEFILE = 1 << 4, /*!< Purge the zone file. */
-	PURGE_ZONE_JOURNAL  = 1 << 5, /*!< Purge the zone journal. */
-	PURGE_ZONE_KASPDB   = 1 << 6, /*!< Purge KASP DB. */
-	PURGE_ZONE_CATALOG  = 1 << 7, /*!< Purge the catalog. */
+	PURGE_ZONE_BEST     = 1 << 20, /*!< Best effort -- continue on failures. */
+	PURGE_ZONE_LOG      = 1 << 21, /*!< Log a purged zone even if requested less. */
+	PURGE_ZONE_NOSYNC   = 1 << 22, /*!< Remove even zone files with disabled syncing. */
+	PURGE_ZONE_TIMERS   = 1 << 23, /*!< Purge the zone timers. */
+	PURGE_ZONE_ZONEFILE = 1 << 24, /*!< Purge the zone file. */
+	PURGE_ZONE_JOURNAL  = 1 << 25, /*!< Purge the zone journal. */
+	PURGE_ZONE_KASPDB   = 1 << 26, /*!< Purge KASP DB. */
+	PURGE_ZONE_CATALOG  = 1 << 27, /*!< Purge the catalog. */
+	PURGE_ZONE_EXPIRE   = 1 << 28, /*!< Expire the zone, free contents. */
 } purge_flag_t;
 
 /*!< All data. */
@@ -68,6 +74,9 @@ typedef enum {
 
 /*!< Standard purge (respect C_ZONEFILE_SYNC param). */
 #define PURGE_ZONE_ALL   (PURGE_ZONE_DATA | PURGE_ZONE_BEST | PURGE_ZONE_LOG)
+
+/*!< All purge-related flags. */
+#define PURGE_ZONE_FLAGS (PURGE_ZONE_ALL | PURGE_ZONE_NOSYNC | PURGE_ZONE_EXPIRE)
 
 /*!
  * \brief Structure for holding DNS zone.
@@ -186,6 +195,11 @@ void zone_reset(conf_t *conf, zone_t *zone);
  * \return        KNOT_E*
  */
 int selective_zone_purge(conf_t *conf, zone_t *zone, purge_flag_t params);
+
+/*!
+ * \brief Expire zone, NULL and free zone->contents, clear CTL txn, expire timers, replan events.
+ */
+void zone_perform_expire(conf_t *conf, zone_t *zone);
 
 /*!
  * \brief Clears possible control update transaction.

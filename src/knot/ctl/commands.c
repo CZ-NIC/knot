@@ -1811,31 +1811,17 @@ static int orphans_purge(ctl_args_t *args)
 
 static int zone_purge(zone_t *zone, ctl_args_t *args)
 {
-	if (MATCH_OR_FILTER(args, CTL_FILTER_PURGE_EXPIRE)) {
-		// Abort possible editing transaction.
-		int ret = zone_txn_abort(zone, args);
-		if (ret != KNOT_EOK && ret != KNOT_TXN_ENOTEXISTS) {
-			log_zone_error(zone->name,
-			               "failed to abort pending transaction (%s)",
-			               knot_strerror(ret));
-			return ret;
-		}
-
-		// Expire the zone.
-		// No ret, KNOT_EOK is the only return value from event_expire().
-		(void)zone_events_schedule_blocking(zone, ZONE_EVENT_EXPIRE, true);
-	}
-
 	const purge_flag_t params =
 		MATCH_OR_FILTER(args, CTL_FILTER_PURGE_TIMERS)   * PURGE_ZONE_TIMERS |
 		MATCH_OR_FILTER(args, CTL_FILTER_PURGE_ZONEFILE) * PURGE_ZONE_ZONEFILE |
 		MATCH_OR_FILTER(args, CTL_FILTER_PURGE_JOURNAL)  * PURGE_ZONE_JOURNAL |
 		MATCH_OR_FILTER(args, CTL_FILTER_PURGE_KASPDB)   * PURGE_ZONE_KASPDB |
 		MATCH_OR_FILTER(args, CTL_FILTER_PURGE_CATALOG)  * PURGE_ZONE_CATALOG |
+		MATCH_OR_FILTER(args, CTL_FILTER_PURGE_EXPIRE)   * PURGE_ZONE_EXPIRE |
 		PURGE_ZONE_NOSYNC; // Purge even zonefiles with disabled syncing.
 
-	// Purge the requested zone data.
-	return selective_zone_purge(conf(), zone, params);
+	zone_set_flag(zone, (zone_flag_t)params);
+	return schedule_trigger(zone, args, ZONE_EVENT_PURGE, true);
 }
 
 int ctl_dump_ctr(stats_dump_params_t *params, stats_dump_ctx_t *ctx)
