@@ -52,6 +52,8 @@ static int upd_add_rem(const knot_rrset_t *rr, bool add, void *ctx)
 
 int event_load(conf_t *conf, zone_t *zone)
 {
+	assert(zone);
+
 	zone_update_t up = { 0 };
 	zone_contents_t *journal_conts = NULL, *zf_conts = NULL;
 	bool old_contents_exist = (zone->contents != NULL), zone_in_journal_exists = false;

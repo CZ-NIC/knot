@@ -10,6 +10,12 @@
 
 int event_validate(conf_t *conf, zone_t *zone)
 {
+	assert(zone);
+
+	if (zone_contents_is_empty(zone->contents)) {
+		return KNOT_EEMPTYZONE;
+	}
+
 	zone_update_t fake_upd = {
 		.zone = zone,
 		.new_cont = zone->contents,
