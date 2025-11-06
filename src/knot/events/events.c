@@ -31,6 +31,7 @@ static const event_info_t EVENT_INFO[] = {
 	{ ZONE_EVENT_REFRESH,      event_refresh,     "refresh" },
 	{ ZONE_EVENT_UPDATE,       event_update,      "update" },
 	{ ZONE_EVENT_EXPIRE,       event_expire,      "expiration" },
+	{ ZONE_EVENT_PURGE,        event_purge,       "purge" },
 	{ ZONE_EVENT_FLUSH,        event_flush,       "flush" },
 	{ ZONE_EVENT_BACKUP,       event_backup,      "backup/restore" },
 	{ ZONE_EVENT_NOTIFY,       event_notify,      "notify" },
@@ -68,6 +69,7 @@ bool ufreeze_applies(zone_event_type_t type)
 	case ZONE_EVENT_LOAD:
 	case ZONE_EVENT_REFRESH:
 	case ZONE_EVENT_UPDATE:
+	case ZONE_EVENT_PURGE:
 	case ZONE_EVENT_FLUSH:
 	case ZONE_EVENT_DNSSEC:
 	case ZONE_EVENT_DS_CHECK:

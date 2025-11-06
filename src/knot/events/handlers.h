@@ -17,6 +17,8 @@ int event_refresh(conf_t *conf, zone_t *zone);
 int event_update(conf_t *conf, zone_t *zone);
 /*! \brief Empties in-memory zone contents. */
 int event_expire(conf_t *conf, zone_t *zone);
+/*! \brief Expires the zone and purges metadata based on zone->flags. */
+int event_purge(conf_t *conf, zone_t *zone);
 /*! \brief Flushes zone contents into text file. */
 int event_flush(conf_t *conf, zone_t *zone);
 /*! \brief Backs up zone contents, metadata, keys, etc to a directory. */
