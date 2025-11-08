@@ -356,7 +356,7 @@ redisContext *rdb_connect(conf_t *conf, bool require_master)
 			goto connected;
 		} else if (role == 2) { // Sentinel
 			if (get_master(rdb, addr_str, sizeof(addr_str), &port) == KNOT_EOK &&
-			    (rdb = connect_addr(conf, addr_str, port)) == KNOT_EOK) {
+			    (rdb = connect_addr(conf, addr_str, port)) != NULL) {
 				goto connected;
 			}
 		}
