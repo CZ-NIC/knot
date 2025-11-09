@@ -942,7 +942,7 @@ static int rdb_listener_run(struct dthread *thread)
 		if (s->rdb_ctx == NULL) {
 			s->rdb_ctx = rdb_connect(conf(), false);
 			if (s->rdb_ctx == NULL) {
-				log_error("rdb, failed to connect");
+				log_error("rdb, failed to connect to read events");
 				sleep(2);
 				continue;
 			} else if (!rdb_compatible(s->rdb_ctx)) {
@@ -951,8 +951,9 @@ static int rdb_listener_run(struct dthread *thread)
 			}
 		}
 
+		// Note the timeout should be lower than the TLS timeout (see hiredis_attach_gnutls())
 		redisReply *reply = redisCommand(s->rdb_ctx, "XREAD BLOCK %d STREAMS %b %s",
-		                                 10000, RDB_EVENT_KEY, strlen(RDB_EVENT_KEY), since);
+		                                 4000, RDB_EVENT_KEY, strlen(RDB_EVENT_KEY), since);
 		if (reply == NULL) {
 			if (thread->state & ThreadDead) {
 				break;
@@ -960,6 +961,8 @@ static int rdb_listener_run(struct dthread *thread)
 			if (s->rdb_ctx->err != REDIS_OK) {
 				log_error("rdb, failed to read events (%s)", s->rdb_ctx->errstr);
 			}
+			rdb_disconnect(s->rdb_ctx, false);
+			s->rdb_ctx = NULL;
 			sleep(2);
 			continue;
 		}
