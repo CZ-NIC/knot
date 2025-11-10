@@ -71,15 +71,11 @@ static ssize_t knot_redis_tls_read(struct redisContext *ctx, char *buff, size_t 
 	int ret = knot_tls_recv(tls_ctx->conn, buff, size);
 	if (ret >= 0) {
 		return ret;
-	} else if (ret == KNOT_EBADCERT ||
-	           ret == KNOT_NET_ERECV ||
-	           ret == KNOT_NET_ECONNECT ||
-	           ret == KNOT_NET_EHSHAKE ||
-	           ret == KNOT_ETIMEOUT
-	) {
+	} else if (ret == KNOT_NET_EAGAIN) {
+		return 0;
+	} else {
 		return -1;
 	}
-	return 0;
 }
 
 static ssize_t knot_redis_tls_write(struct redisContext *ctx)
@@ -89,15 +85,11 @@ static ssize_t knot_redis_tls_write(struct redisContext *ctx)
 	int ret = knot_tls_send(tls_ctx->conn, ctx->obuf, sdslen(ctx->obuf));
 	if (ret >= 0) {
 		return ret;
-	} else if (ret == KNOT_EBADCERT ||
-	           ret == KNOT_NET_ESEND ||
-	           ret == KNOT_NET_ECONNECT ||
-	           ret == KNOT_NET_EHSHAKE ||
-	           ret == KNOT_ETIMEOUT
-	) {
+	} else if (ret == KNOT_NET_EAGAIN) {
+		return 0;
+	} else {
 		return -1;
 	}
-	return 0;
 }
 
 static int hiredis_attach_gnutls(redisContext *ctx, struct knot_creds *local_creds,
