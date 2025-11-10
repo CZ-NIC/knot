@@ -133,6 +133,7 @@ class Server(object):
         self.start_params = None
         self.ctl_params = None
         self.ctl_params_append = None # The last parameter wins.
+        self.backtrace_running = False
         self.use_confdb = False
 
         self.data_dir = None
@@ -506,6 +507,10 @@ class Server(object):
             set_err("ASSERT")
 
     def backtrace(self):
+        if self.backtrace_running:
+            check_log("Warning: simultaneous backtrace invoked, ignoring")
+        self.backtrace_running = True
+
         if self.valgrind:
             check_log("BACKTRACE %s" % self.name)
 
@@ -522,6 +527,7 @@ class Server(object):
                 detail_log("!Failed to get backtrace")
 
             detail_log(SEP)
+        self.backtrace_running = False
 
     def stop(self, check=True):
         if Context().test.stress and self.inquirer:
