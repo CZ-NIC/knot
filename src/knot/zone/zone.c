@@ -1015,3 +1015,18 @@ int slave_zone_serial(zone_t *zone, conf_t *conf, uint32_t *serial)
 
 	return ret;
 }
+
+time_t zone_bootstrap_next(uint8_t *count)
+{
+	// Let the increment gradually grow in a sensible way.
+	time_t increment = 5 * (*count) * (*count);
+
+	if (increment < 7200) { // two hours
+		(*count)++;
+	} else {
+		increment = 7200;
+	}
+
+	// Add a random delay to prevent burst refresh.
+	return increment + dnssec_random_uint16_t() % 30;
+}

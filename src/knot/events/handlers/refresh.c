@@ -143,21 +143,6 @@ static bool serial_is_current(uint32_t local_serial, uint32_t remote_serial)
 	return (serial_compare(local_serial, remote_serial) & SERIAL_MASK_GEQ);
 }
 
-static time_t bootstrap_next(uint8_t *count)
-{
-	// Let the increment gradually grow in a sensible way.
-	time_t increment = 5 * (*count) * (*count);
-
-	if (increment < 7200) { // two hours
-		(*count)++;
-	} else {
-		increment = 7200;
-	}
-
-	// Add a random delay to prevent burst refresh.
-	return increment + dnssec_random_uint16_t() % 30;
-}
-
 static void limit_timer(conf_t *conf, const knot_dname_t *zone, uint32_t *timer,
                         const char *tm_name, const yp_name_t *low, const yp_name_t *upp)
 {
@@ -1500,7 +1485,7 @@ int event_refresh(conf_t *conf, zone_t *zone)
 		if (soa) {
 			next = knot_soa_retry(soa->rdata);
 		} else {
-			next = bootstrap_next(&zone->zonefile.bootstrap_cnt);
+			next = zone_bootstrap_next(&zone->zonefile.bootstrap_cnt);
 		}
 
 		limit_timer(conf, zone->name, &next, "retry",
