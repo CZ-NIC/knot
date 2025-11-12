@@ -138,6 +138,7 @@ static redisContext *connect_addr(conf_t *conf, const char *addr_str, int port)
 		log_debug("rdb, failed to connect, remote %s%s%.0u (%s)",
 		          addr_str, (port != 0 ? "@" : ""), port,
 		          (rdb != NULL ? rdb->errstr : "no reply"));
+		redisFree(rdb);
 		return NULL;
 	}
 
@@ -347,7 +348,9 @@ redisContext *rdb_connect(conf_t *conf, bool require_master)
 		} else if (role == 1 && !require_master) { // Replica
 			goto connected;
 		} else if (role == 2) { // Sentinel
-			if (get_master(rdb, addr_str, sizeof(addr_str), &port) == KNOT_EOK &&
+			int ret = get_master(rdb, addr_str, sizeof(addr_str), &port);
+			redisFree(rdb);
+			if (ret == KNOT_EOK &&
 			    (rdb = connect_addr(conf, addr_str, port)) != NULL) {
 				goto connected;
 			}
