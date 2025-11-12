@@ -1029,5 +1029,5 @@ time_t zone_bootstrap_next(uint8_t *count)
 	}
 
 	// Add a random delay to prevent burst refresh.
-	return increment + dnssec_random_uint16_t() % 30;
+	return increment + dnssec_random_uint16_t() % MIN(30, (1 + *count) * 5);
 }
