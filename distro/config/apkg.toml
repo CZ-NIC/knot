@@ -9,7 +9,7 @@ archive_url = "https://secure.nic.cz/files/knot-dns/knot-{{ version }}.tar.xz"
 signature_url = "https://secure.nic.cz/files/knot-dns/knot-{{ version }}.tar.xz.asc"
 
 [apkg]
-compat = 3
+compat = 6
 
 [[distro.aliases]]
 name = "deb-nolibxdp"
