@@ -29,7 +29,8 @@ def detect_ddns_deadlock(server):
     lastline=""
     with open(server.fout, "r") as fl:
         for line in fl:
-            lastline = line
+            if "persistent" not in line:
+                lastline = line
 
     #detect recent (any) activity in the logfile so that servers settle down before equivalence test
     if now_hms(0) in lastline:

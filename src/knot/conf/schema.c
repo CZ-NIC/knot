@@ -176,6 +176,13 @@ static const knot_lookup_t journal_modes[] = {
 	{ 0, NULL }
 };
 
+static const knot_lookup_t timer_db_sync[] = {
+	{ TIMER_DB_SYNC_IMMEDIATE, "immediate" },
+	{ TIMER_DB_SYNC_NEVER,     "never" },
+	{ TIMER_DB_SYNC_SHUTDOWN,  "shutdown" },
+	{ 0, NULL }
+};
+
 static const knot_lookup_t catalog_roles[] = {
 	{ CATALOG_ROLE_NONE,      "none" },
 	{ CATALOG_ROLE_INTERPRET, "interpret" },
@@ -310,6 +317,8 @@ static const yp_item_t desc_database[] = {
 	{ C_TIMER_DB,              YP_TSTR,  YP_VSTR = { "timers" } },
 	{ C_TIMER_DB_MAX_SIZE,     YP_TINT,  YP_VINT = { MEGA(1), VIRT_MEM_LIMIT(GIGA(100)),
 	                                                 MEGA(100), YP_SSIZE } },
+	{ C_TIMER_DB_SYNC,         YP_TOPTINT, YP_VOPTINT = { 1, UINT32_MAX, TIMER_DB_SYNC_SHUTDOWN,
+	                                                      YP_STIME, 0, timer_db_sync } },
 	{ C_CATALOG_DB,            YP_TSTR,  YP_VSTR = { "catalog" } },
 	{ C_CATALOG_DB_MAX_SIZE,   YP_TINT,  YP_VINT = { MEGA(5), VIRT_MEM_LIMIT(GIGA(100)),
 	                                                 VIRT_MEM_LIMIT(GIGA(20)), YP_SSIZE } },
