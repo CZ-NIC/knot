@@ -12,20 +12,20 @@
 #include "libknot/dname.h"
 #include "knot/journal/knot_lmdb.h"
 
-#define LAST_NOTIFIED_SERIAL_VALID (1LLU << 32)
-#define LAST_SIGNED_SERIAL_FOUND (1 << 0)
-#define LAST_SIGNED_SERIAL_VALID (1 << 1)
+#define LAST_SIGNED_SERIAL_FOUND   (1 << 1)
+#define LAST_SIGNED_SERIAL_VALID   (1 << 2)
+#define LAST_NOTIFIED_SERIAL_VALID (1 << 3)
+#define LAST_REFRESH_OK            (1 << 4)
 
 /*!
  * \brief Persistent zone timers.
  */
 struct zone_timers {
+	uint32_t flags;                //!< Various flags.
 	time_t last_flush;             //!< Last zone file synchronization.
 	time_t next_refresh;           //!< Next zone refresh attempt.
 	uint32_t last_signed_serial;   //!< SOA serial of last signed zone version.
-	uint8_t last_signed_s_flags;   //!< If last signed serial detected and valid;
-	bool last_refresh_ok;          //!< Last zone refresh attempt was successful.
-	uint64_t last_notified_serial; //!< SOA serial of last successful NOTIFY; (1<<32) if none.
+	uint32_t last_notified_serial; //!< SOA serial of last successful NOTIFY.
 	time_t next_ds_check;          //!< Next parent DS check.
 	time_t next_ds_push;           //!< Next DDNS to parent zone with updated DS record.
 	time_t catalog_member;         //!< This catalog member zone created.

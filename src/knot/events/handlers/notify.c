@@ -111,7 +111,8 @@ static int send_notify(conf_t *conf, zone_t *zone, const knot_rrset_t *soa,
 		NOTIFY_OUT_LOG(LOG_INFO, zone->name, slave,
 		               requestor.layer.flags,
 		               "%sserial %u", log_retry, knot_soa_serial(soa->rrs.rdata));
-		zone->timers->last_notified_serial = (knot_soa_serial(soa->rrs.rdata) | LAST_NOTIFIED_SERIAL_VALID);
+		zone->timers->last_notified_serial = knot_soa_serial(soa->rrs.rdata);
+		zone->timers->flags |= LAST_NOTIFIED_SERIAL_VALID;
 	} else if (knot_pkt_ext_rcode(req->resp) == 0) {
 		NOTIFY_OUT_LOG(LOG_WARNING, zone->name, slave,
 		               requestor.layer.flags,
