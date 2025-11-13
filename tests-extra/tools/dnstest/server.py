@@ -1692,6 +1692,7 @@ class Knot(Server):
         s.item_str("kasp-db-max-size", self.kasp_db_size)
         s.item_str("journal-db-max-size", self.journal_db_size)
         s.item_str("timer-db-max-size", self.timer_db_size)
+        s.item_str("timer-db-sync", random.choice(["shutdown", "immediate", "5", "3600"]))
         s.item_str("catalog-db-max-size", self.catalog_db_size)
         if self.redis is not None:
             tls = random.choice([True, False])
