@@ -219,7 +219,7 @@ static void finalize_timers_base(struct refresh_data *data, bool also_expire)
 	limit_timer(conf, zone->name, &soa_refresh, "refresh",
 	            C_REFRESH_MIN_INTERVAL, C_REFRESH_MAX_INTERVAL);
 	zone->timers->next_refresh = now + soa_refresh;
-	zone->timers->last_refresh_ok = true;
+	zone->timers->flags |= LAST_REFRESH_OK;
 
 	if (zone->is_catalog_flag) {
 		// It's already zero in most cases.
@@ -1506,7 +1506,7 @@ int event_refresh(conf_t *conf, zone_t *zone)
 		            C_RETRY_MIN_INTERVAL, C_RETRY_MAX_INTERVAL);
 		time_t now = time(NULL);
 		zone->timers->next_refresh = now + next;
-		zone->timers->last_refresh_ok = false;
+		zone->timers->flags &= ~LAST_REFRESH_OK;
 
 		char time_str[64] = { 0 };
 		struct tm time_gm = { 0 };
