@@ -982,6 +982,31 @@ static int rdb_listener_run(struct dthread *thread)
 }
 #endif // ENABLE_REDIS
 
+static int timer_db_do_sync(struct dthread *thread)
+{
+	server_t *s = thread->data;
+	int ret = KNOT_EOK;
+
+	while (thread->state & ThreadActive) {
+		ret = zone_timers_write_all(&s->timerdb, s->zone_db);
+		if (ret == KNOT_EOK) {
+			log_info("updated persistent timer DB");
+		} else {
+			log_error("failed to update persistent timer DB (%s)", knot_strerror(ret));
+		}
+
+		conf_val_t val = conf_get(conf(), C_DB, C_TIMER_DB_SYNC);
+		switch (conf_opt(&val)) {
+		case TIMER_DB_SYNC_CONTINUOUS:  sleep(1);     break;
+		case TIMER_DB_SYNC_EACH_MINUTE: sleep(60);    break;
+		case TIMER_DB_SYNC_EACH_HOUR:   sleep(3600);  break;
+ 		default: return KNOT_EOK;
+		}
+	}
+
+	return KNOT_EOK;
+}
+
 int server_init(server_t *server, int bg_workers)
 {
 	if (server == NULL) {
@@ -1012,8 +1037,22 @@ int server_init(server_t *server, int bg_workers)
 	}
 #endif // ENABLE_REDIS
 
+	conf_val_t timers_sync = conf_get(conf(), C_DB, C_TIMER_DB_SYNC);
+	if (conf_opt(&timers_sync) >= TIMER_DB_SYNC_CONTINUOUS) {
+		server->timerdb_sync = dt_create(1, timer_db_do_sync, NULL, server);
+		if (server->timerdb_sync == NULL) {
+			dt_stop(server->rdb_events);
+			dt_delete(&server->rdb_events);
+			worker_pool_destroy(server->workers);
+			evsched_deinit(&server->sched);
+			return KNOT_ENOMEM;
+		}
+	}
+
 	int ret = catalog_update_init(&server->catalog_upd);
 	if (ret != KNOT_EOK) {
+		dt_stop(server->timerdb_sync);
+		dt_delete(&server->timerdb_sync);
 		dt_stop(server->rdb_events);
 		dt_delete(&server->rdb_events);
 		worker_pool_destroy(server->workers);
@@ -1057,7 +1096,8 @@ void server_deinit(server_t *server)
 	zone_backups_deinit(&server->backup_ctxs);
 
 	/* Save zone timers. */
-	if (server->zone_db != NULL) {
+	conf_val_t val = conf_get(conf(), C_DB, C_TIMER_DB_SYNC);
+	if (conf_opt(&val) != TIMER_DB_SYNC_NEVER && conf_opt(&val) != TIMER_DB_SYNC_IMMEDIATE && server->zone_db != NULL) {
 		log_info("updating persistent timer DB");
 		int ret = zone_timers_write_all(&server->timerdb, server->zone_db);
 		if (ret != KNOT_EOK) {
@@ -1071,6 +1111,9 @@ void server_deinit(server_t *server)
 
 	/* Free threads and event handlers. */
 	worker_pool_destroy(server->workers);
+
+	/* Free eventual timer DB syncing thread. */
+	dt_delete(&server->timerdb_sync);
 
 	/* Free optional zone DB event thread. */
 	dt_delete(&server->rdb_events);
@@ -1190,6 +1233,9 @@ int server_start(server_t *server, bool answering)
 
 	/* Start workers. */
 	worker_pool_start(server->workers);
+
+	/* Start timer DB syncing thread. */
+	dt_start(server->timerdb_sync);
 
 	/* Start zone DB event loop. */
 	dt_start(server->rdb_events);
@@ -1582,6 +1628,8 @@ void server_stop(server_t *server)
 	evsched_stop(&server->sched);
 	/* Mark the server is shutting down. */
 	server->state |= ServerShutting;
+	/* Stop timer DB syncing thread */
+	dt_stop(server->timerdb_sync);
 	/* Interrupt background workers. */
 	worker_pool_stop(server->workers);
 
