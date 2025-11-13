@@ -695,7 +695,7 @@ void zone_timers_sanitize(conf_t *conf, zone_t *zone)
 	} else {
 		// invalidate if we don't have a master
 		zone->timers->next_refresh = 0;
-		zone->timers->last_refresh_ok = false;
+		zone->timers->flags &= ~LAST_REFRESH_OK;
 		zone->timers->next_expire = 0;
 	}
 }
@@ -966,7 +966,7 @@ void zone_set_lastsigned_serial(zone_t *zone, uint32_t serial)
 {
 	bool extra_txn = (zone->control_update != NULL && zone->timers == zone->timers_static && zone_timers_begin(zone) == KNOT_EOK); // zone_update_commit() is not within a zone event in case of control_update
 	zone->timers->last_signed_serial = serial;
-	zone->timers->last_signed_s_flags = LAST_SIGNED_SERIAL_FOUND | LAST_SIGNED_SERIAL_VALID;
+	zone->timers->flags |= LAST_SIGNED_SERIAL_FOUND | LAST_SIGNED_SERIAL_VALID;
 	if (extra_txn) {
 		zone_timers_commit(zone);
 	}
@@ -974,11 +974,11 @@ void zone_set_lastsigned_serial(zone_t *zone, uint32_t serial)
 
 int zone_get_lastsigned_serial(zone_t *zone, uint32_t *serial)
 {
-	if (!(zone->timers->last_signed_s_flags & LAST_SIGNED_SERIAL_FOUND)) {
+	if (!(zone->timers->flags & LAST_SIGNED_SERIAL_FOUND)) {
 		// backwards compatibility: it used to be stored in KASP DB, moved to timers for performance
 		return kasp_db_load_serial(zone_kaspdb(zone), zone->name, KASPDB_SERIAL_LASTSIGNED, serial);
 	}
-	if (!(zone->timers->last_signed_s_flags & LAST_SIGNED_SERIAL_VALID)) {
+	if (!(zone->timers->flags & LAST_SIGNED_SERIAL_VALID)) {
 		return KNOT_ENOENT;
 	}
 	*serial = zone->timers->last_signed_serial;

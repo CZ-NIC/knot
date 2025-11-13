@@ -53,6 +53,15 @@ enum timer_id {
 
 #define TIMER_SIZE (sizeof(uint8_t) + sizeof(uint64_t))
 
+inline static void set_flag(zone_timers_t *t, uint32_t flag, uint32_t on)
+{
+	if (on) {
+		t->flags |= flag;
+	} else {
+		t->flags &= ~flag;
+	}
+}
+
 /*!
  * \brief Deserialize timers from a binary buffer.
  *
@@ -78,8 +87,11 @@ static int deserialize_timers(zone_timers_t *timers_ptr,
 		switch (id) {
 		case TIMER_LAST_FLUSH:     timers.last_flush = value; break;
 		case TIMER_NEXT_REFRESH:   timers.next_refresh = value; break;
-		case TIMER_LAST_REFR_OK:   timers.last_refresh_ok = value; break;
-		case TIMER_LAST_NOTIFIED:  timers.last_notified_serial = value; break;
+		case TIMER_LAST_REFR_OK:   set_flag(&timers, LAST_REFRESH_OK, value); break;
+		case TIMER_LAST_NOTIFIED:
+			timers.last_notified_serial = (value & 0xffffffffLLU);
+			set_flag(&timers, LAST_NOTIFIED_SERIAL_VALID, (value >> 32));
+			break;
 		case TIMER_NEXT_DS_CHECK:  timers.next_ds_check = value; break;
 		case TIMER_NEXT_DS_PUSH:   timers.next_ds_push = value; break;
 		case TIMER_CATALOG_MEMBER: timers.catalog_member = value; break;
@@ -87,8 +99,8 @@ static int deserialize_timers(zone_timers_t *timers_ptr,
 		case TIMER_MASTER_PIN_HIT: timers.master_pin_hit = value; break;
 		case TIMER_LAST_SIGNED:
 			timers.last_signed_serial = (value & 0xffffffffLLU);
-			timers.last_signed_s_flags = LAST_SIGNED_SERIAL_FOUND;
-			timers.last_signed_s_flags |= (value >> 32) & LAST_SIGNED_SERIAL_VALID;
+			timers.flags |= LAST_SIGNED_SERIAL_FOUND;
+			set_flag(&timers, LAST_SIGNED_SERIAL_VALID, (value >> 32));
 			break;
 		default:                   break; // ignore
 		}
@@ -116,13 +128,13 @@ static void txn_write_timers(knot_lmdb_txn_t *txn, const knot_dname_t *zone,
 	MDB_val v = knot_lmdb_make_key(format,
 		TIMER_LAST_FLUSH,    (uint64_t)timers->last_flush,
 		TIMER_NEXT_REFRESH,  (uint64_t)timers->next_refresh,
-		TIMER_LAST_REFR_OK,  (uint64_t)timers->last_refresh_ok,
-		TIMER_LAST_NOTIFIED, timers->last_notified_serial,
+		TIMER_LAST_REFR_OK,  (uint64_t)(bool)(timers->flags & LAST_REFRESH_OK),
+		TIMER_LAST_NOTIFIED, (uint64_t)timers->last_notified_serial | (((uint64_t)(bool)(timers->flags & LAST_NOTIFIED_SERIAL_VALID)) << 32),
 		TIMER_NEXT_DS_CHECK, (uint64_t)timers->next_ds_check,
 		TIMER_NEXT_DS_PUSH,  (uint64_t)timers->next_ds_push,
 		TIMER_CATALOG_MEMBER,(uint64_t)timers->catalog_member,
 		TIMER_NEXT_EXPIRE,   (uint64_t)timers->next_expire,
-		TIMER_LAST_SIGNED,   (uint64_t)timers->last_signed_serial | (((uint64_t)timers->last_signed_s_flags) << 32),
+		TIMER_LAST_SIGNED,   (uint64_t)timers->last_signed_serial | (((uint64_t)(bool)(timers->flags & LAST_SIGNED_SERIAL_VALID)) << 32),
 		TIMER_MASTER_PIN_HIT,(uint64_t)timers->master_pin_hit, // those items should be last two
 		TIMER_LAST_MASTER,   &timers->last_master, sizeof(timers->last_master));
 	knot_lmdb_insert(txn, &k, &v);
@@ -227,6 +239,6 @@ int zone_timers_sweep(knot_lmdb_db_t *db, sweep_cb keep_zone, void *cb_data)
 
 bool zone_timers_serial_notified(const zone_timers_t *timers, uint32_t serial)
 {
-	return (timers->last_notified_serial & LAST_NOTIFIED_SERIAL_VALID) &&
-	       ((uint32_t)timers->last_notified_serial == serial);
+	return (timers->flags & LAST_NOTIFIED_SERIAL_VALID) &&
+	       (timers->last_notified_serial == serial);
 }
