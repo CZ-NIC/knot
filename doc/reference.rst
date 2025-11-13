@@ -1212,6 +1212,7 @@ Configuration of databases for zone contents, DNSSEC metadata, or event timers.
      kasp-db-max-size: SIZE
      timer-db: STR
      timer-db-max-size: SIZE
+     timer-db-sync: never | shutdown | immediately | continuous | each-minute | each-hour
      catalog-db: str
      catalog-db-max-size: SIZE
      zone-db-listen: ADDR[@INT] | STR[@INT] ...
@@ -1320,6 +1321,24 @@ The hard limit for the timer database maximum size.
    This value also influences server's usage of virtual memory.
 
 *Default:* ``100M`` (100 MiB)
+
+.. _database_timer-db-sync:
+
+timer-db-sync
+-------------
+
+Specifies when the zone timers shall be written into persistent Timer Database.
+
+Possible values:
+
+- ``never`` - Never, the zone timers are cleared upon server restart.
+- ``shutdown`` - Once when the server is shut down.
+- ``immediate`` - For each zone separately whenever their timers are modified. (Might slow down zones' events if many configured.)
+- ``continuous`` - Special thread continously iterating through the set of configured zones and writing timers.
+- ``each-minute`` - Similarly, but with one-minute interval between iterations.
+- ``each-hour`` - Similarly, but with one-hour interval between iterations.
+
+*Default:* ``shutdown``
 
 .. _database_catalog-db:
 

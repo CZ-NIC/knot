@@ -982,6 +982,31 @@ static int rdb_listener_run(struct dthread *thread)
 }
 #endif // ENABLE_REDIS
 
+static int timer_db_do_sync(struct dthread *thread)
+{
+	server_t *s = thread->data;
+	int ret = KNOT_EOK;
+
+	while (thread->state & ThreadActive) {
+		ret = zone_timers_write_all(&s->timerdb, s->zone_db);
+		if (ret == KNOT_EOK) {
+			log_info("updated persistent timer DB");
+		} else {
+			log_error("failed to update persistent timer DB (%s)", knot_strerror(ret));
+		}
+
+		conf_val_t val = conf_get(conf(), C_DB, C_TIMER_DB_SYNC);
+		switch (conf_opt(&val)) {
+		case TIMER_DB_SYNC_CONTINUOUS:  sleep(1);     break;
+		case TIMER_DB_SYNC_EACH_MINUTE: sleep(60);    break;
+		case TIMER_DB_SYNC_EACH_HOUR:   sleep(3600);  break; // NOTE the sleep() may be interrupted by any signal, including SIGALRM during dt_stop() in case of server_stop() or server_reconfigure()
+ 		default: return KNOT_EOK;
+		}
+	}
+
+	return KNOT_EOK;
+}
+
 int server_init(server_t *server, int bg_workers)
 {
 	if (server == NULL) {
@@ -1057,7 +1082,8 @@ void server_deinit(server_t *server)
 	zone_backups_deinit(&server->backup_ctxs);
 
 	/* Save zone timers. */
-	if (server->zone_db != NULL) {
+	conf_val_t val = conf_get(conf(), C_DB, C_TIMER_DB_SYNC);
+	if (conf_opt(&val) != TIMER_DB_SYNC_NEVER && conf_opt(&val) != TIMER_DB_SYNC_IMMEDIATE && server->zone_db != NULL) {
 		log_info("updating persistent timer DB");
 		int ret = zone_timers_write_all(&server->timerdb, server->zone_db);
 		if (ret != KNOT_EOK) {
@@ -1071,6 +1097,9 @@ void server_deinit(server_t *server)
 
 	/* Free threads and event handlers. */
 	worker_pool_destroy(server->workers);
+
+	/* Free eventual timer DB syncing thread. */
+	dt_delete(&server->timerdb_sync);
 
 	/* Free optional zone DB event thread. */
 	dt_delete(&server->rdb_events);
@@ -1190,6 +1219,9 @@ int server_start(server_t *server, bool answering)
 
 	/* Start workers. */
 	worker_pool_start(server->workers);
+
+	/* Start timer DB syncing thread. NOTE ignoring return code including KNOT_EINVAL when disabled (NULL). */
+	dt_start(server->timerdb_sync);
 
 	/* Start zone DB event loop. */
 	dt_start(server->rdb_events);
@@ -1582,6 +1614,8 @@ void server_stop(server_t *server)
 	evsched_stop(&server->sched);
 	/* Mark the server is shutting down. */
 	server->state |= ServerShutting;
+	/* Stop timer DB syncing thread */
+	dt_stop(server->timerdb_sync);
 	/* Interrupt background workers. */
 	worker_pool_stop(server->workers);
 
@@ -1653,6 +1687,23 @@ static int reconfigure_timer_db(conf_t *conf, server_t *server)
 	conf_val_t timer_size = conf_db_param(conf, C_TIMER_DB_MAX_SIZE);
 	int ret = knot_lmdb_reconfigure(&server->timerdb, timer_dir, conf_int(&timer_size), 0);
 	free(timer_dir);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	conf_val_t timers_sync = conf_get(conf, C_DB, C_TIMER_DB_SYNC);
+	bool should_sync = (conf_opt(&timers_sync) >= TIMER_DB_SYNC_CONTINUOUS);
+	bool exists_sync = (server->timerdb_sync != NULL);
+	if (should_sync && !exists_sync) {
+                server->timerdb_sync = dt_create(1, timer_db_do_sync, NULL, server);
+		if (server->timerdb_sync == NULL) {
+			return KNOT_ENOMEM;
+		}
+	} else if (!should_sync && exists_sync) {
+		dt_stop(server->timerdb_sync);
+		dt_delete(&server->timerdb_sync);
+	}
+
 	return ret;
 }
 

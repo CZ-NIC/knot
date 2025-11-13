@@ -8,6 +8,8 @@
 #include "contrib/wire_ctx.h"
 #include "knot/zone/zonedb.h"
 
+#include <urcu.h>
+
 /*
  * # Timer database
  *
@@ -205,10 +207,12 @@ int zone_timers_write(knot_lmdb_db_t *db, const knot_dname_t *zone,
 
 static void txn_zone_write(zone_t *z, knot_lmdb_txn_t *txn)
 {
+	rcu_read_lock();
 	zone_timers_t *t = z->timers_static;
 	if (t->flags & TIMERS_MODIFIED) {
 		txn_write_timers(txn, z->name, t);
 	}
+	rcu_read_unlock();
 }
 
 int zone_timers_write_all(knot_lmdb_db_t *db, knot_zonedb_t *zonedb)
