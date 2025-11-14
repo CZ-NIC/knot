@@ -87,7 +87,7 @@ int main(int argc, char *argv[])
 
 	// create TCP client
 
-	int client = net_connected_socket(SOCK_STREAM, &addr, NULL, false);
+	int client = net_connected_socket(SOCK_STREAM, &addr, NULL);
 	ok(client >= 0, "client: connect to server");
 
 	int optval = 8192;
@@ -114,7 +114,7 @@ int main(int argc, char *argv[])
 	for (size_t i = 0; i < sizeof(sndbuf); i++) {
 		sndbuf[i] = i;
 	}
-	r = net_dns_tcp_send(client, sndbuf, sizeof(sndbuf), TIMEOUT, NULL);
+	r = net_dns_tcp_send(client, sndbuf, sizeof(sndbuf), TIMEOUT);
 	ok(r == sizeof(sndbuf), "client: net_dns_tcp_send() with short-write");
 
 	// receive message

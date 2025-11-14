@@ -67,8 +67,7 @@ static int request_ensure_connected(knot_request_t *request, bool *reused_fd, in
 
 	request->fd = net_connected_socket(sock_type,
 	                                   &request->remote,
-	                                   &request->source,
-	                                   request->flags & KNOT_REQUEST_TFO);
+	                                   &request->source);
 	if (request->fd < 0) {
 		if (request->fd == KNOT_ETIMEOUT) {
 			knot_unreachable_add(global_unreachables, &request->remote,
@@ -128,8 +127,6 @@ static int request_send(knot_request_t *request, int timeout_ms, bool *reused_fd
 	knot_pkt_t *query = request->query;
 	uint8_t *wire = query->wire;
 	size_t wire_len = query->size;
-	struct sockaddr_storage *tfo_addr = (request->flags & KNOT_REQUEST_TFO) ?
-	                                    &request->remote : NULL;
 
 	/* Send query. */
 	if (use_tls(request)) {
@@ -143,8 +140,7 @@ static int request_send(knot_request_t *request, int timeout_ms, bool *reused_fd
 		assert(0);
 #endif // ENABLE_QUIC
 	} else if (use_tcp(request)) {
-		ret = net_dns_tcp_send(request->fd, wire, wire_len, timeout_ms,
-		                       tfo_addr);
+		ret = net_dns_tcp_send(request->fd, wire, wire_len, timeout_ms);
 		if (ret == KNOT_ETIMEOUT) { // Includes establishing conn which times out.
 			knot_unreachable_add(global_unreachables, &request->remote,
 			                     &request->source);

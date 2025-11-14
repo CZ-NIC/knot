@@ -175,9 +175,6 @@ static void init_cache(
 	val = conf_get(conf, C_SRV, C_TCP_RMT_IO_TIMEOUT);
 	conf->cache.srv_tcp_remote_io_timeout = infinite_adjust(conf_int(&val));
 
-	val = conf_get(conf, C_SRV, C_TCP_FASTOPEN);
-	conf->cache.srv_tcp_fastopen = conf_bool(&val);
-
 	conf->cache.srv_quic_max_clients = running_quic_clients;
 
 	conf->cache.srv_quic_idle_close = running_quic_idle;

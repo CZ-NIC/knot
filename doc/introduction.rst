@@ -73,7 +73,6 @@ Remarkable module extensions:
 
 Remarkable supported networking features:
 
-* TCP Fast Open (client and server)
 * Opportunistic, strict, and mutual authentication profiles over TLS 1.3 or QUIC
 * High-performance UDP, TCP, and QUIC through AF_XDP processing (on Linux 4.18+)
 * SO_REUSEPORT (on Linux) or SO_REUSEPORT_LB (on FreeBSD 12.0+) on UDP and by choice on TCP

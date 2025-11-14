@@ -20,8 +20,6 @@
 #include "contrib/sockaddr.h"
 #include "contrib/ucw/mempool.h"
 
-bool TFO = false;
-
 /* @note Purpose of this test is not to verify process_answer functionality,
  *       but simply if the requesting/receiving works, so mirror is okay. */
 static int reset(knot_layer_t *ctx) { return KNOT_STATE_PRODUCE; }
@@ -61,7 +59,7 @@ static void *responder_thread(void *arg)
 			break;
 		}
 		knot_wire_set_qr(buf);
-		net_dns_tcp_send(client, buf, len, -1, NULL);
+		net_dns_tcp_send(client, buf, len, -1);
 		close(client);
 	}
 
@@ -79,7 +77,7 @@ static knot_request_t *make_query(knot_requestor_t *requestor,
 	static const knot_dname_t *root = (uint8_t *)"";
 	knot_pkt_put_question(pkt, root, KNOT_CLASS_IN, KNOT_RRTYPE_SOA);
 
-	knot_request_flag_t flags = TFO ? KNOT_REQUEST_TFO: KNOT_REQUEST_NONE;
+	knot_request_flag_t flags = KNOT_REQUEST_NONE;
 
 	return knot_request_make_generic(requestor->mm, dst, src, pkt, NULL,
 	                                 NULL, NULL, NULL, NULL, flags);
@@ -111,18 +109,6 @@ static void test_connected(knot_requestor_t *requestor,
 
 int main(int argc, char *argv[])
 {
-#if defined(__linux__)
-	FILE *fd = fopen("/proc/sys/net/ipv4/tcp_fastopen", "r");
-	if (fd != NULL) {
-		int val = fgetc(fd);
-		fclose(fd);
-		// 0 - disabled, 1 - server TFO (client fallbacks),
-		// 2 - client TFO, 3 - both
-		if (val == '1' || val == '3') {
-			TFO = true;
-		}
-	}
-#endif
 	plan_lazy();
 
 	knot_mm_t mm;
@@ -152,11 +138,6 @@ int main(int argc, char *argv[])
 	ret = listen(responder_fd, 10);
 	ok(ret == 0, "check listen return");
 
-	if (TFO) {
-		ret = net_bound_tfo(responder_fd, 10);
-		ok(ret == KNOT_EOK, "check bound TFO return");
-	}
-
 	pthread_t thread;
 	pthread_create(&thread, 0, responder_thread, &responder_fd);
 
@@ -164,9 +145,9 @@ int main(int argc, char *argv[])
 	test_connected(&requestor, &server, &client);
 
 	/* Terminate responder. */
-	int conn = net_connected_socket(SOCK_STREAM, &server, NULL, false);
+	int conn = net_connected_socket(SOCK_STREAM, &server, NULL);
 	assert(conn > 0);
-	conn = net_dns_tcp_send(conn, (uint8_t *)"", 1, TIMEOUT, NULL);
+	conn = net_dns_tcp_send(conn, (uint8_t *)"", 1, TIMEOUT);
 	assert(conn > 0);
 	pthread_join(thread, NULL);
 	close(responder_fd);
