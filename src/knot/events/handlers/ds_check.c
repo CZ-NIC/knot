@@ -25,6 +25,8 @@ int event_ds_check(conf_t *conf, zone_t *zone)
 	                           conf->cache.srv_tcp_remote_io_timeout);
 
 	zone->timers->next_ds_check = 0;
+	zone->timers->flags |= TIMERS_MODIFIED;
+
 	switch (ret) {
 	case KNOT_NO_READY_KEY:
 		break;

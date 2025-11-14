@@ -219,7 +219,7 @@ static void finalize_timers_base(struct refresh_data *data, bool also_expire)
 	limit_timer(conf, zone->name, &soa_refresh, "refresh",
 	            C_REFRESH_MIN_INTERVAL, C_REFRESH_MAX_INTERVAL);
 	zone->timers->next_refresh = now + soa_refresh;
-	zone->timers->flags |= LAST_REFRESH_OK;
+	zone->timers->flags |= LAST_REFRESH_OK | TIMERS_MODIFIED;
 
 	if (zone->is_catalog_flag) {
 		// It's already zero in most cases.
@@ -1083,6 +1083,7 @@ static bool wait4pinned_master(struct refresh_data *data)
 	// Starting countdown for master transition.
 	if (data->zone->timers->master_pin_hit == 0) {
 		data->zone->timers->master_pin_hit = now;
+		data->zone->timers->flags |= TIMERS_MODIFIED;
 		zone_events_schedule_at(data->zone, ZONE_EVENT_REFRESH, now + data->fallback->pin_tol);
 	// Switch to a new master.
 	} else if (data->zone->timers->master_pin_hit + data->fallback->pin_tol <= now) {
@@ -1507,6 +1508,7 @@ int event_refresh(conf_t *conf, zone_t *zone)
 		time_t now = time(NULL);
 		zone->timers->next_refresh = now + next;
 		zone->timers->flags &= ~LAST_REFRESH_OK;
+		zone->timers->flags |= TIMERS_MODIFIED;
 
 		char time_str[64] = { 0 };
 		struct tm time_gm = { 0 };
