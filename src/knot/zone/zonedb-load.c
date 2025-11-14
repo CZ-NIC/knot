@@ -146,6 +146,7 @@ static zone_t *create_zone_new(conf_t *conf, const knot_dname_t *name,
 		zone->catalog_gen = knot_dname_copy(conf_dname(&catz), NULL);
 		if (zone->timers->catalog_member == 0) {
 			zone->timers->catalog_member = time(NULL);
+			zone->timers->flags |= TIMERS_MODIFIED;
 			ret = zone_timers_write(&zone->server->timerdb, zone->name,
 			                        zone->timers);
 		}
@@ -231,6 +232,7 @@ static zone_contents_t *zone_expire(zone_t *zone, bool zonedb_cow)
 		zone_timers_begin(zone);
 		zone->timers->next_expire = time(NULL);
 		zone->timers->next_refresh = zone->timers->next_expire;
+		zone->timers->flags |= TIMERS_MODIFIED;
 		zone_timers_commit(zone);
 	}
 	return zone_switch_contents(zone, NULL);
