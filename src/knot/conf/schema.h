@@ -153,7 +153,6 @@
 #define C_STORAGE		"\x07""storage"
 #define C_TARGET		"\x06""target"
 #define C_TCP			"\x03""tcp"
-#define C_TCP_FASTOPEN		"\x0C""tcp-fastopen"
 #define C_TCP_IDLE_CLOSE	"\x16""tcp-idle-close-timeout"
 #define C_TCP_IDLE_RESET	"\x16""tcp-idle-reset-timeout"
 #define C_TCP_IDLE_TIMEOUT	"\x10""tcp-idle-timeout"

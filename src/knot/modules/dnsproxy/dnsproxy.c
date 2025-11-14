@@ -12,7 +12,6 @@
 
 #define MOD_REMOTE		"\x06""remote"
 #define MOD_ADDRESS		"\x07""address"
-#define MOD_TCP_FASTOPEN	"\x0C""tcp-fastopen"
 #define MOD_TIMEOUT		"\x07""timeout"
 #define MOD_FALLBACK		"\x08""fallback"
 #define MOD_CATCH_NXDOMAIN	"\x0E""catch-nxdomain"
@@ -23,7 +22,6 @@ const yp_item_t dnsproxy_conf[] = {
 	{ MOD_TIMEOUT,        YP_TINT,  YP_VINT = { 0, INT32_MAX, 500 } },
 	{ MOD_ADDRESS,        YP_TNET,  YP_VNONE, YP_FMULTI },
 	{ MOD_FALLBACK,       YP_TBOOL, YP_VBOOL = { true } },
-	{ MOD_TCP_FASTOPEN,   YP_TBOOL, YP_VNONE },
 	{ MOD_CATCH_NXDOMAIN, YP_TBOOL, YP_VNONE },
 	{ NULL }
 };
