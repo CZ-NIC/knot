@@ -12,6 +12,7 @@
 #include "libknot/dname.h"
 #include "knot/journal/knot_lmdb.h"
 
+#define TIMERS_MODIFIED            (1 << 0)
 #define LAST_SIGNED_SERIAL_FOUND   (1 << 1)
 #define LAST_SIGNED_SERIAL_VALID   (1 << 2)
 #define LAST_NOTIFIED_SERIAL_VALID (1 << 3)
@@ -64,7 +65,7 @@ int zone_timers_read(knot_lmdb_db_t *db, const knot_dname_t *zone,
  * \return KNOT_E*
  */
 int zone_timers_write(knot_lmdb_db_t *db, const knot_dname_t *zone,
-                      const zone_timers_t *timers);
+                      zone_timers_t *timers);
 
 /*!
  * \brief Write timers for all zones.

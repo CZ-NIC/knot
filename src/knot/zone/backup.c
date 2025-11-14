@@ -499,6 +499,7 @@ int zone_backup(conf_t *conf, zone_t *zone)
 			zone_timers_sanitize(conf, zone);
 			zone->zonefile.bootstrap_cnt = 0;
 		} else {
+			zone->timers->flags |= TIMERS_MODIFIED; // otherwise the write is skipped!
 			ret = zone_timers_write(&ctx->bck_timer_db, zone->name, zone->timers);
 		}
 		if (ret != KNOT_EOK) {

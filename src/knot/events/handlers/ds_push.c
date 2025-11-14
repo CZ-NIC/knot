@@ -249,6 +249,7 @@ int event_ds_push(conf_t *conf, zone_t *zone)
 			zone_events_schedule_at(zone, ZONE_EVENT_DS_PUSH, next_push);
 			zone->timers->next_ds_push = next_push;
 		}
+		zone->timers->flags |= TIMERS_MODIFIED;
 
 		conf_mix_iter_next(&iter);
 	}

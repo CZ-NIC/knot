@@ -117,8 +117,11 @@ static int deserialize_timers(zone_timers_t *timers_ptr,
 }
 
 static void txn_write_timers(knot_lmdb_txn_t *txn, const knot_dname_t *zone,
-                             const zone_timers_t *timers)
+                             zone_timers_t *timers)
 {
+	if (!(timers->flags & TIMERS_MODIFIED)) { // TODO move this conditional to txn_zone_write, as it is also in zone_timers_write. Here temporarily to avoid git conflicts.
+		return;
+	}
 	const char *format = (timers->last_master.sin6_family == AF_INET ||
 	                      timers->last_master.sin6_family == AF_INET6) ?
 	                     "TTTTTTTTTTBD" :
@@ -139,6 +142,10 @@ static void txn_write_timers(knot_lmdb_txn_t *txn, const knot_dname_t *zone,
 		TIMER_LAST_MASTER,   &timers->last_master, sizeof(timers->last_master));
 	knot_lmdb_insert(txn, &k, &v);
 	free(v.mv_data);
+
+	if (txn->ret == KNOT_EOK) {
+		timers->flags &= ~TIMERS_MODIFIED;
+	}
 }
 
 
@@ -186,10 +193,10 @@ int zone_timers_read(knot_lmdb_db_t *db, const knot_dname_t *zone,
 }
 
 int zone_timers_write(knot_lmdb_db_t *db, const knot_dname_t *zone,
-                      const zone_timers_t *timers)
+                      zone_timers_t *timers)
 {
 	int ret = knot_lmdb_open(db);
-	if (ret != KNOT_EOK) {
+	if (ret != KNOT_EOK || !(timers->flags & TIMERS_MODIFIED)) {
 		return ret;
 	}
 	knot_lmdb_txn_t txn = { 0 };

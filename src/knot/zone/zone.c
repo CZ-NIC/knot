@@ -141,6 +141,7 @@ static int flush_journal(conf_t *conf, zone_t *zone, bool allow_empty_zone, bool
 flush_journal_replan:
 	/* Plan next journal flush after proper period. */
 	zone->timers->last_flush = time(NULL);
+	zone->timers->flags |= TIMERS_MODIFIED;
 	if (sync_timeout > 0) {
 		time_t next_flush = zone->timers->last_flush + sync_timeout;
 		zone_events_schedule_at(zone, ZONE_EVENT_FLUSH, (time_t)0,
@@ -309,6 +310,7 @@ int selective_zone_purge(conf_t *conf, zone_t *zone, purge_flag_t params)
 		time_t member = (zone->catalog_gen != NULL ? zone->timers->catalog_member : 0);
 		memset(zone->timers, 0, sizeof(*zone->timers));
 		zone->timers->catalog_member = member;
+		zone->timers->flags |= TIMERS_MODIFIED;
 
 		if (member) {
 			ret = zone_timers_write(&zone->server->timerdb, zone->name,
@@ -390,6 +392,7 @@ void zone_perform_expire(conf_t *conf, zone_t *zone)
 
 	zone->timers->next_expire = time(NULL);
 	zone->timers->next_refresh = zone->timers->next_expire;
+	zone->timers->flags |= TIMERS_MODIFIED;
 	replan_from_timers(conf, zone);
 }
 
@@ -599,6 +602,7 @@ void zone_set_last_master(zone_t *zone, const struct sockaddr_storage *addr)
 		memcpy(&zone->timers->last_master, addr, sizeof(zone->timers->last_master));
 	}
 	zone->timers->master_pin_hit = 0;
+	zone->timers->flags |= TIMERS_MODIFIED;
 }
 
 static void set_flag(zone_t *zone, zone_flag_t flag, bool remove)
@@ -682,6 +686,7 @@ void zone_timers_sanitize(conf_t *conf, zone_t *zone)
 	assert(zone);
 
 	time_t now = time(NULL);
+	zone_timers_t prev = *zone->timers;
 
 	// assume now if we don't know when we flushed
 	time_set_default(&zone->timers->last_flush, now);
@@ -697,6 +702,10 @@ void zone_timers_sanitize(conf_t *conf, zone_t *zone)
 		zone->timers->next_refresh = 0;
 		zone->timers->flags &= ~LAST_REFRESH_OK;
 		zone->timers->next_expire = 0;
+	}
+
+	if (memcmp(&prev, zone->timers, sizeof(prev)) != 0) {
+		zone->timers->flags |= TIMERS_MODIFIED;
 	}
 }
 
@@ -966,7 +975,7 @@ void zone_set_lastsigned_serial(zone_t *zone, uint32_t serial)
 {
 	bool extra_txn = (zone->control_update != NULL && zone->timers == zone->timers_static && zone_timers_begin(zone) == KNOT_EOK); // zone_update_commit() is not within a zone event in case of control_update
 	zone->timers->last_signed_serial = serial;
-	zone->timers->flags |= LAST_SIGNED_SERIAL_FOUND | LAST_SIGNED_SERIAL_VALID;
+	zone->timers->flags |= LAST_SIGNED_SERIAL_FOUND | LAST_SIGNED_SERIAL_VALID | TIMERS_MODIFIED;
 	if (extra_txn) {
 		zone_timers_commit(zone);
 	}
