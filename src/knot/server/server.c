@@ -11,7 +11,6 @@
 #include <gnutls/x509.h>
 #include <string.h>
 #include <sys/types.h>   // OpenBSD
-#include <netinet/tcp.h> // TCP_FASTOPEN
 #include <sys/resource.h>
 
 #include "libknot/libknot.h"
@@ -511,14 +510,6 @@ static iface_t *server_init_iface(struct sockaddr_storage *addr, bool tls,
 				warn_cbpf = false;
 			}
 		}
-
-		/* Try to enable TCP Fast Open. */
-		ret = net_bound_tfo(sock, TCP_BACKLOG_SIZE);
-		if (ret != KNOT_EOK && ret != KNOT_ENOTSUP && warn_flag_misc) {
-			log_warning("failed to enable TCP Fast Open on %s (%s)",
-			            addr_str, knot_strerror(ret));
-			warn_flag_misc = false;
-		}
 	}
 
 	return new_if;
@@ -536,16 +527,6 @@ static void log_sock_conf(conf_t *conf)
 	if (conf->cache.srv_socket_affinity) {
 		strlcat(buf, ", socket affinity", sizeof(buf));
 	}
-#endif
-#if defined(TCP_FASTOPEN)
-	if (buf[0] != '\0') {
-		strlcat(buf, ", ", sizeof(buf));
-	}
-	strlcat(buf, "incoming", sizeof(buf));
-	if (conf->cache.srv_tcp_fastopen) {
-		strlcat(buf, "/outgoing", sizeof(buf));
-	}
-	strlcat(buf, " TCP Fast Open", sizeof(buf));
 #endif
 	if (buf[0] != '\0') {
 		log_info("using %s", buf);

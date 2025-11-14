@@ -7,7 +7,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <sys/types.h>   // OpenBSD
-#include <netinet/tcp.h> // TCP_FASTOPEN
+#include <netinet/tcp.h>
 #include <netinet/in.h>
 #include <poll.h>
 #include <stdbool.h>
@@ -232,30 +232,8 @@ int net_bound_socket(int type, const struct sockaddr_storage *addr,
 	return sock;
 }
 
-static int tfo_connect(int sock, const struct sockaddr_storage *addr)
-{
-#if defined(__linux__)
-	/* connect() will be called implicitly with sendmsg(). */
-	return KNOT_EOK;
-#elif defined(__FreeBSD__)
-	return sockopt_enable(sock, IPPROTO_TCP, TCP_FASTOPEN);
-#elif defined(__APPLE__)
-	/* Connection is performed lazily when first data is sent. */
-	sa_endpoints_t ep = {
-		.sae_dstaddr = (const struct sockaddr *)addr,
-		.sae_dstaddrlen = sockaddr_len(addr)
-	};
-	int flags =  CONNECT_DATA_IDEMPOTENT | CONNECT_RESUME_ON_READ_WRITE;
-
-	int ret = connectx(sock, &ep, SAE_ASSOCID_ANY, flags, NULL, 0, NULL, NULL);
-	return (ret == 0 ? KNOT_EOK : knot_map_errno());
-#else
-	return KNOT_ENOTSUP;
-#endif
-}
-
 int net_connected_socket(int type, const struct sockaddr_storage *dst_addr,
-                         const struct sockaddr_storage *src_addr, bool tfo)
+                         const struct sockaddr_storage *src_addr)
 {
 	if (dst_addr == NULL) {
 		return KNOT_EINVAL;
@@ -278,40 +256,15 @@ int net_connected_socket(int type, const struct sockaddr_storage *dst_addr,
 	}
 
 	/* Connect to destination. */
-	if (tfo && net_is_stream(sock)) {
-		int ret = tfo_connect(sock, dst_addr);
-		if (ret != KNOT_EOK) {
-			close(sock);
-			return ret;
-		}
-	} else {
-		int ret = connect(sock, (const struct sockaddr *)dst_addr,
-		                  sockaddr_len(dst_addr));
-		if (ret != 0 && errno != EINPROGRESS) {
-			ret = knot_map_errno();
-			close(sock);
-			return ret;
-		}
+	int ret = connect(sock, (const struct sockaddr *)dst_addr,
+	                  sockaddr_len(dst_addr));
+	if (ret != 0 && errno != EINPROGRESS) {
+		ret = knot_map_errno();
+		close(sock);
+		return ret;
 	}
 
 	return sock;
-}
-
-int net_bound_tfo(int sock, int backlog)
-{
-#if defined(TCP_FASTOPEN)
-#if defined(__APPLE__)
-	if (backlog > 0) {
-		backlog = 1; // just on-off switch on macOS
-	}
-#endif
-	if (setsockopt(sock, IPPROTO_TCP, TCP_FASTOPEN, &backlog, sizeof(backlog)) != 0) {
-		return knot_map_errno();
-	}
-
-	return KNOT_EOK;
-#endif
-	return KNOT_ENOTSUP;
 }
 
 int net_cmsg_ecn_enable(int sock, int family)
@@ -635,23 +588,6 @@ static ssize_t recv_data(int sock, struct msghdr *msg, bool oneshot, int *timeou
 	return io_exec(&RECV_IO, sock, msg, oneshot, timeout_ptr);
 }
 
-static ssize_t send_process_tfo(int fd, struct msghdr *msg, int timeout_ms)
-{
-#if defined(__linux__)
-	int ret = sendmsg(fd, msg, MSG_FASTOPEN);
-	if (ret != 0 && errno == EINPROGRESS) {
-		if (poll_one(fd, POLLOUT, timeout_ms) != 1) {
-			errno = ETIMEDOUT;
-			return -1;
-		}
-		ret = sendmsg(fd, msg, MSG_NOSIGNAL);
-	}
-	return ret;
-#else
-	return sendmsg(fd, msg, MSG_NOSIGNAL);
-#endif
-}
-
 static ssize_t send_process(int fd, struct msghdr *msg, int timeout_ms)
 {
 	return sendmsg(fd, msg, MSG_NOSIGNAL);
@@ -662,18 +598,14 @@ static int send_wait(int fd, int timeout_ms)
 	return poll_one(fd, POLLOUT, timeout_ms);
 }
 
-static ssize_t send_data(int sock, struct msghdr *msg, int *timeout_ptr, bool tfo)
+static ssize_t send_data(int sock, struct msghdr *msg, int *timeout_ptr)
 {
 	static const struct io SEND_IO = {
 		.process = send_process,
 		.wait = send_wait
 	};
-	static const struct io SEND_IO_TFO = {
-		.process = send_process_tfo,
-		.wait = send_wait
-	};
 
-	return io_exec(tfo ? &SEND_IO_TFO : &SEND_IO, sock, msg, false, timeout_ptr);
+	return io_exec(&SEND_IO, sock, msg, false, timeout_ptr);
 }
 
 /* -- generic stream and datagram I/O -------------------------------------- */
@@ -696,7 +628,7 @@ ssize_t net_base_send(int sock, const uint8_t *buffer, size_t size,
 		.msg_iovlen = 1
 	};
 
-	int ret = send_data(sock, &msg, &timeout_ms, false);
+	int ret = send_data(sock, &msg, &timeout_ms);
 	if (ret < 0) {
 		return ret;
 	} else if (ret != size) {
@@ -732,7 +664,7 @@ ssize_t net_msg_send(int sock, struct msghdr *msg, int timeout_ms)
 	if (msg->msg_iovlen != 1) {
 		return KNOT_EINVAL;
 	}
-	int ret = send_data(sock, msg, &timeout_ms, false);
+	int ret = send_data(sock, msg, &timeout_ms);
 	if (ret < 0) {
 		return ret;
 	} else if (ret != msg->msg_iov->iov_len) {
@@ -770,8 +702,7 @@ ssize_t net_stream_recv(int sock, uint8_t *buffer, size_t size, int timeout_ms)
 
 /* -- DNS specific I/O ----------------------------------------------------- */
 
-ssize_t net_dns_tcp_send(int sock, const uint8_t *buffer, size_t size, int timeout_ms,
-                         struct sockaddr_storage *tfo_addr)
+ssize_t net_dns_tcp_send(int sock, const uint8_t *buffer, size_t size, int timeout_ms)
 {
 	if (sock < 0 || buffer == NULL || size > UINT16_MAX) {
 		return KNOT_EINVAL;
@@ -789,13 +720,11 @@ ssize_t net_dns_tcp_send(int sock, const uint8_t *buffer, size_t size, int timeo
 	}
 	};
 	struct msghdr msg = {
-		.msg_name = (void *)tfo_addr,
-		.msg_namelen = tfo_addr ? sizeof(*tfo_addr) : 0,
 		.msg_iov = iov,
 		.msg_iovlen = 2
 	};
 
-	ssize_t ret = send_data(sock, &msg, &timeout_ms, tfo_addr != NULL);
+	ssize_t ret = send_data(sock, &msg, &timeout_ms);
 	if (ret < 0) {
 		return ret;
 	}

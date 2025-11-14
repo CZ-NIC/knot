@@ -153,7 +153,6 @@
 #define C_STORAGE		"\x07""storage"
 #define C_TARGET		"\x06""target"
 #define C_TCP			"\x03""tcp"
-#define C_TCP_FASTOPEN		"\x0C""tcp-fastopen"
 #define C_TCP_IDLE_CLOSE	"\x16""tcp-idle-close-timeout"
 #define C_TCP_IDLE_RESET	"\x16""tcp-idle-reset-timeout"
 #define C_TCP_IDLE_TIMEOUT	"\x10""tcp-idle-timeout"
@@ -203,6 +202,9 @@
 #define C_ZONE_MAX_TTL		"\x0C""zone-max-ttl"
 #define C_ZSK_LIFETIME		"\x0C""zsk-lifetime"
 #define C_ZSK_SIZE		"\x08""zsk-size"
+
+// Legacy items.
+#define C_TCP_FASTOPEN		"\x0C""tcp-fastopen"
 
 #define CONF_DNS_PORT		53
 #define CONF_DNS_TLS_PORT	853

@@ -6,7 +6,6 @@ server:
   udp-workers: 1
   async-start: off
   tcp-reuseport: false
-  tcp-fastopen: "true"
   socket-affinity: on
   tcp-idle-timeout: 1
   quic-idle-close-timeout: 1s
@@ -25,6 +24,7 @@ server:
 xdp:
   listen: ::1
   listen: lo
+  tcp: "true"
   tcp-idle-close-timeout: 1d
   tcp-inbuf-max-size: 1G
 log:

@@ -202,7 +202,7 @@ static int tcp_handle(tcp_context_t *tcp, knotd_qdata_params_t *params,
 				sent = knot_tls_send(params->tls_conn, ans->wire, ans->size);
 			} else {
 				sent = net_dns_tcp_send(params->socket, ans->wire, ans->size,
-				                        tcp->io_timeout, NULL);
+				                        tcp->io_timeout);
 			}
 			if (sent != ans->size) {
 				tcp_log_error(params->remote, "send", sent, tcp->server);

@@ -901,7 +901,6 @@ static void test_conf_io_list(void)
 	      "server.tcp-remote-io-timeout\n"
 	      "server.tcp-max-clients\n"
 	      "server.tcp-reuseport\n"
-	      "server.tcp-fastopen\n"
 	      "server.quic-max-clients\n"
 	      "server.quic-idle-close-timeout\n"
 	      "server.quic-outbuf-max-size\n"
@@ -968,7 +967,6 @@ static const yp_item_t desc_server[] = {
 	{ C_TCP_RMT_IO_TIMEOUT,	  YP_TINT,  YP_VNONE },
 	{ C_TCP_MAX_CLIENTS,	  YP_TINT,  YP_VNONE },
 	{ C_TCP_REUSEPORT,	  YP_TBOOL, YP_VNONE },
-	{ C_TCP_FASTOPEN,	  YP_TBOOL, YP_VNONE },
 	{ C_QUIC_MAX_CLIENTS,	  YP_TINT,  YP_VNONE },
 	{ C_QUIC_IDLE_CLOSE,	  YP_TINT,  YP_VNONE },
 	{ C_QUIC_OUTBUF_MAX_SIZE, YP_TINT,  YP_VNONE },
