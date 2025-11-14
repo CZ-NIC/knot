@@ -19,12 +19,11 @@
 typedef enum {
 	KNOT_REQUEST_NONE = 0,       /*!< Empty flag. */
 	KNOT_REQUEST_UDP  = 1 << 0,  /*!< Use UDP for requests. */
-	KNOT_REQUEST_TFO  = 1 << 1,  /*!< Enable TCP Fast Open for requests. */
-	KNOT_REQUEST_KEEP = 1 << 2,  /*!< Keep upstream TCP connection in pool for later reuse. */
-	KNOT_REQUEST_QUIC = 1 << 3,  /*!< Use QUIC/UDP for requests. */
-	KNOT_REQUEST_TLS  = 1 << 4,  /*!< Use DoT for requests. */
-	KNOT_REQUEST_FWD  = 1 << 5,  /*!< Forwarded message, don't modify (TSIG, PADDING). */
-	KNOT_REQUEST_NEW  = 1 << 6,  /*!< Ensure a new TCP connection is established. */
+	KNOT_REQUEST_KEEP = 1 << 1,  /*!< Keep upstream TCP connection in pool for later reuse. */
+	KNOT_REQUEST_QUIC = 1 << 2,  /*!< Use QUIC/UDP for requests. */
+	KNOT_REQUEST_TLS  = 1 << 3,  /*!< Use DoT for requests. */
+	KNOT_REQUEST_FWD  = 1 << 4,  /*!< Forwarded message, don't modify (TSIG, PADDING). */
+	KNOT_REQUEST_NEW  = 1 << 5,  /*!< Ensure a new TCP connection is established. */
 } knot_request_flag_t;
 
 typedef enum {

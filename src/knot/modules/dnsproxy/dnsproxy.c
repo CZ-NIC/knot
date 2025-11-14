@@ -44,7 +44,6 @@ typedef struct {
 	knotd_conf_t via;
 	knotd_conf_t addr;
 	bool fallback;
-	bool tfo;
 	bool catch_nxdomain;
 	int timeout;
 } dnsproxy_t;
@@ -90,8 +89,6 @@ static int fwd(dnsproxy_t *proxy, knot_pkt_t *pkt, knotd_qdata_t *qdata, int add
 	knot_request_flag_t flags = KNOT_REQUEST_NONE;
 	if (udp) {
 		flags = KNOT_REQUEST_UDP;
-	} else if (proxy->tfo) {
-		flags = KNOT_REQUEST_TFO;
 	}
 
 	if (query->tsig_rr != NULL) {
@@ -188,7 +185,10 @@ int dnsproxy_load(knotd_mod_t *mod)
 	proxy->fallback = conf.single.boolean;
 
 	conf = knotd_conf_mod(mod, MOD_TCP_FASTOPEN);
-	proxy->tfo = conf.single.boolean;
+	if (conf.count > 0) {
+		knotd_mod_log(mod, LOG_NOTICE,
+		        "'tcp-fastopen' is obsolete and has no effect");
+	}
 
 	conf = knotd_conf_mod(mod, MOD_CATCH_NXDOMAIN);
 	proxy->catch_nxdomain = conf.single.boolean;

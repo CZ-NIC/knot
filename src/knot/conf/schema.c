@@ -223,7 +223,6 @@ static const yp_item_t desc_server[] = {
 	{ C_TCP_RMT_IO_TIMEOUT,   YP_TINT,  YP_VINT = { 0, INT32_MAX, 5000 } },
 	{ C_TCP_MAX_CLIENTS,      YP_TINT,  YP_VINT = { 0, INT32_MAX, YP_NIL } },
 	{ C_TCP_REUSEPORT,        YP_TBOOL, YP_VNONE },
-	{ C_TCP_FASTOPEN,         YP_TBOOL, YP_VNONE },
 	{ C_QUIC_MAX_CLIENTS,     YP_TINT,  YP_VINT = { 128, INT32_MAX, 10000 } },
 	{ C_QUIC_OUTBUF_MAX_SIZE, YP_TINT,  YP_VINT = { MEGA(1), SSIZE_MAX, MEGA(100), YP_SSIZE } },
 	{ C_QUIC_IDLE_CLOSE,      YP_TINT,  YP_VINT = { 1, INT32_MAX, 4, YP_STIME } },
@@ -253,6 +252,8 @@ static const yp_item_t desc_server[] = {
 	{ C_LISTEN_QUIC,          YP_TADDR, YP_VADDR = { CONF_DNS_TLS_PORT }, YP_FMULTI, { check_listen } },
 	{ C_LISTEN_TLS,           YP_TADDR, YP_VADDR = { CONF_DNS_TLS_PORT }, YP_FMULTI, { check_listen } },
 	{ C_COMMENT,              YP_TSTR,  YP_VNONE },
+	/* Legacy items.*/
+	{ C_TCP_FASTOPEN,         YP_TBOOL, YP_VNONE, YP_FNONE, { legacy_item } },
 	{ NULL }
 };
 

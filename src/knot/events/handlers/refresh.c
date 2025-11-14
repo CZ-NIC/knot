@@ -1412,7 +1412,7 @@ static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master,
 		return KNOT_ENOMEM;
 	}
 
-	knot_request_flag_t flags = conf->cache.srv_tcp_fastopen ? KNOT_REQUEST_TFO : 0;
+	knot_request_flag_t flags = 0;
 	if (data.edns.no_edns) {
 		flags |= KNOT_REQUEST_NEW;
 	}
