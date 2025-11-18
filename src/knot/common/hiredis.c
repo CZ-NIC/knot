@@ -354,6 +354,8 @@ redisContext *rdb_connect(conf_t *conf, bool require_master)
 			    (rdb = connect_addr(conf, addr_str, port)) != NULL) {
 				goto connected;
 			}
+		} else {
+			redisFree(rdb);
 		}
 
 		conf_val_next(&db_listen);
