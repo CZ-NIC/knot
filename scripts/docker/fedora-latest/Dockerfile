@@ -13,6 +13,7 @@ RUN dnf -y install \
 	'pkgconfig' \
 	'pkgconfig(lmdb)' \
 	'pkgconfig(gnutls)' \
+	'pkgconfig(hiredis)' \
 	'pkgconfig(libbpf)' \
 	'pkgconfig(libcap-ng)' \
 	'pkgconfig(libedit)' \
