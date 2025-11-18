@@ -37,18 +37,6 @@ redisContextFuncs redisContextGnuTLSFuncs = {
 	.write = knot_redis_tls_write
 };
 
-static void ctx_deinit(redis_tls_ctx_t *ctx)
-{
-	if (ctx != NULL) {
-		if (ctx->tls != NULL) {
-			knot_creds_free(ctx->tls->creds);
-			knot_tls_ctx_free(ctx->tls);
-		}
-		knot_creds_free(ctx->local_creds);
-		hi_free(ctx);
-	}
-}
-
 static void knot_redis_tls_close(redisContext *ctx)
 {
 	redis_tls_ctx_t *tls_ctx = ctx->privctx;
@@ -61,7 +49,15 @@ static void knot_redis_tls_close(redisContext *ctx)
 
 static void knot_redis_tls_free(void *privctx)
 {
-	ctx_deinit((redis_tls_ctx_t *)privctx);
+	redis_tls_ctx_t *tls_ctx = privctx;
+	if (tls_ctx != NULL) {
+		if (tls_ctx->tls != NULL) {
+			knot_creds_free(tls_ctx->tls->creds);
+			knot_tls_tls_ctx_free(tls_ctx->tls);
+		}
+		knot_creds_free(tls_ctx->local_creds);
+		hi_free(tls_ctx);
+	}
 }
 
 static ssize_t knot_redis_tls_read(struct redisContext *ctx, char *buff, size_t size)
@@ -103,17 +99,21 @@ static int hiredis_attach_gnutls(redisContext *ctx, struct knot_creds *local_cre
 
 	privctx->tls = knot_tls_ctx_new(creds, 5000, 2000, KNOT_TLS_CLIENT);
 	if (privctx->tls == NULL) {
-		ctx_deinit(privctx);
+		hi_free(privctx);
 		return KNOT_EINVAL;
 	}
 
 	privctx->conn = knot_tls_conn_new(privctx->tls, ctx->fd);
 	if (privctx->conn == NULL) {
-		ctx_deinit(privctx);
+		knot_tls_ctx_free(privctx->tls);
+		hi_free(privctx);
 		return KNOT_ECONN;
 	}
 
 	if (knot_tls_handshake(privctx->conn, true) != KNOT_EOK) {
+		knot_tls_conn_del(privctx->conn);
+		knot_tls_ctx_free(privctx->tls);
+		hi_free(privctx);
 		return KNOT_ECONN;
 	}
 
