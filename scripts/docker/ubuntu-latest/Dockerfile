@@ -17,6 +17,7 @@ RUN apt-get -y install \
 	libedit-dev \
 	libfstrm-dev \
 	libgnutls28-dev \
+	libhiredis-dev \
 	libidn2-dev \
 	liblmdb-dev \
 	libmaxminddb-dev \

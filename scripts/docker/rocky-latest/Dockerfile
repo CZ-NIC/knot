@@ -12,6 +12,7 @@ RUN dnf -y --enablerepo crb install \
 	'pkgconfig' \
 	'pkgconfig(lmdb)' \
 	'pkgconfig(gnutls)' \
+	'pkgconfig(hiredis)' \
 	'pkgconfig(libbpf)' \
 	'pkgconfig(libcap-ng)' \
 	'pkgconfig(libedit)' \
