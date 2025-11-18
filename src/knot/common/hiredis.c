@@ -53,7 +53,7 @@ static void knot_redis_tls_free(void *privctx)
 	if (tls_ctx != NULL) {
 		if (tls_ctx->tls != NULL) {
 			knot_creds_free(tls_ctx->tls->creds);
-			knot_tls_tls_ctx_free(tls_ctx->tls);
+			knot_tls_ctx_free(tls_ctx->tls);
 		}
 		knot_creds_free(tls_ctx->local_creds);
 		hi_free(tls_ctx);
