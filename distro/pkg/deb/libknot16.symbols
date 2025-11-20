@@ -284,6 +284,8 @@ libknot.so.16 libknot16 #MINVER#
  yp_int_to_txt@Base 3.5.0
  yp_item_to_bin@Base 3.5.0
  yp_item_to_txt@Base 3.5.0
+ yp_optint_to_bin@Base 3.5.2
+ yp_optint_to_txt@Base 3.5.2
  yp_option_to_bin@Base 3.5.0
  yp_option_to_txt@Base 3.5.0
  yp_parse@Base 3.5.0
