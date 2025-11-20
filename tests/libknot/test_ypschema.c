@@ -25,6 +25,7 @@
 #define C_REF		"\x09""reference"
 #define C_GRP		"\x05""group"
 #define C_MULTIGRP	"\x0B""multi-group"
+#define C_OPTINT	"\x06""optint"
 
 static const yp_item_t group[] = {
 	{ C_INT, YP_TINT, YP_VINT = { 0, 100, YP_NIL } },
@@ -43,7 +44,13 @@ static const knot_lookup_t opts[] = {
 	{ 1,   "one" },
 	{ 10,  "ten" },
 	{ 0, NULL }
-	};
+};
+
+static const knot_lookup_t optints[] = {
+	{  1000,  "opt1" },
+	{ -2000,  "opt2" },
+	{ 0, NULL }
+};
 
 static const yp_item_t static_schema[] = {
 	{ C_OPT,      YP_TOPT,   YP_VOPT = { opts } },
@@ -53,6 +60,7 @@ static const yp_item_t static_schema[] = {
 	{ C_MULTIGRP, YP_TGRP,   YP_VGRP = { multi_group }, YP_FMULTI },
 	{ C_REF,      YP_TREF,   YP_VREF = { C_MULTIGRP } },
 	{ C_DATA,     YP_TDATA,  YP_VNONE },
+	{ C_OPTINT,   YP_TOPTINT,YP_VOPTINT = { -2, 1000, -10, YP_STIME, 0, optints } },
 	{ NULL }
 };
 

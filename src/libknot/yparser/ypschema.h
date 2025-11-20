@@ -52,6 +52,7 @@ struct wire_ctx;
 #define YP_VDATA	.var.d
 #define YP_VREF		.var.r
 #define YP_VGRP		.var.g
+#define YP_VOPTINT	.var.i
 
 /*! Schema item name is a char string with a leading byte (string length). */
 typedef char yp_name_t;
@@ -71,6 +72,7 @@ typedef enum {
 	YP_TDATA,     /*!< Customized data. */
 	YP_TREF,      /*!< Reference to another item. */
 	YP_TGRP,      /*!< Group of sub-items. */
+	YP_TOPTINT,   /*!< Option from the list or integer. */
 } yp_type_t;
 
 /*! Schema item flags. */
@@ -121,6 +123,8 @@ typedef union {
 		yp_style_t unit;
 		/*! Alternative default value. */
 		int64_t dflt_alt;
+		/*! List of options if OPTINT. */
+		struct knot_lookup const *opts;
 	} i;
 	/*! Boolean variables. */
 	struct {

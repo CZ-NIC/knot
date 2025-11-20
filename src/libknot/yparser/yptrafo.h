@@ -265,12 +265,14 @@ int yp_addr_range_to_txt(
 
 int yp_option_to_bin(
 	YP_TXT_BIN_PARAMS,
-	const struct knot_lookup *opts
+	const struct knot_lookup *opts,
+	bool extended
 );
 
 int yp_option_to_txt(
 	YP_BIN_TXT_PARAMS,
-	const struct knot_lookup *opts
+	const struct knot_lookup *opts,
+	bool extended
 );
 
 int yp_dname_to_bin(
@@ -295,6 +297,20 @@ int yp_base64_to_bin(
 
 int yp_base64_to_txt(
 	YP_BIN_TXT_PARAMS
+);
+
+int yp_optint_to_bin(
+	YP_TXT_BIN_PARAMS,
+	int64_t min,
+	int64_t max,
+	const knot_lookup_t *opts,
+	yp_style_t style
+);
+
+int yp_optint_to_txt(
+	YP_BIN_TXT_PARAMS,
+	const knot_lookup_t *opts,
+	yp_style_t style
 );
 
 /*! @} */

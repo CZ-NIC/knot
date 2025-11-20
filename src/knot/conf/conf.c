@@ -605,8 +605,10 @@ int64_t conf_int_alt(
 {
 	assert(val != NULL && val->item != NULL);
 	assert(val->item->type == YP_TINT ||
+	       val->item->type == YP_TOPTINT ||
 	       (val->item->type == YP_TREF &&
-	        val->item->var.r.ref->var.g.id->type == YP_TINT));
+	        (val->item->var.r.ref->var.g.id->type == YP_TINT ||
+	         val->item->var.r.ref->var.g.id->type == YP_TOPTINT)));
 
 	if (val->code == KNOT_EOK) {
 		conf_val(val);

@@ -297,6 +297,27 @@ static void ref_test(const char *txt, bool val)
 	ok(memcmp(txt, t, t_len) == 0, "compare");
 }
 
+static void optint_test(const char *txt, int64_t num, yp_style_t s,
+                        int64_t min, int64_t max, const knot_lookup_t *opts)
+{
+	int ret;
+	uint8_t b[64];
+	size_t b_len = sizeof(b);
+	char t[64];
+	size_t t_len = sizeof(t);
+	yp_item_t i = { NULL, YP_TOPTINT, YP_VOPTINT = { min, max, 0, s, 0, opts } };
+
+	diag("optint \"%s\":", txt);
+	ret = yp_item_to_bin(&i, txt, strlen(txt), b, &b_len);
+	is_int(KNOT_EOK, ret, "txt to bin");
+	ok(yp_int(b) == num, "compare");
+	ret = yp_item_to_txt(&i, b, b_len, t, &t_len, s | YP_SNOQUOTE);
+	is_int(KNOT_EOK, ret, "bin to txt");
+	ok(strlen(t) == t_len, "txt ret length");
+	ok(strlen(txt) == t_len, "txt length");
+	ok(memcmp(txt, t, t_len) == 0, "compare");
+}
+
 int main(int argc, char *argv[])
 {
 	plan_lazy();
@@ -400,6 +421,22 @@ int main(int argc, char *argv[])
 
 	/* Ref tests. */
 	ref_test("on", true);
+
+	/* Optint tests. */
+	static const knot_lookup_t optints[] = {
+		{ 0,         "opt1" },
+		{ -1,        "opt2" },
+		{ INT32_MIN, "opt3" },
+		{ 0,         NULL }
+	};
+	int64_t optmin = -1000000, optmax = 10000;
+	optint_test("-1000000", -1000000, YP_SNONE, optmin, optmax, optints);
+	optint_test("-2", -2, YP_SNONE, optmin, optmax, optints);
+	optint_test("1", 1, YP_SNONE, optmin, optmax, optints);
+	optint_test("1h", 3600, YP_STIME, optmin, optmax, optints);
+	optint_test("opt1", 0, YP_STIME, optmin, optmax, optints);
+	optint_test("opt2", -1, YP_STIME, optmin, optmax, optints);
+	optint_test("opt3", INT32_MIN, YP_STIME, optmin, optmax, optints);
 
 	return 0;
 }

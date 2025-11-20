@@ -724,14 +724,19 @@ int yp_addr_range_to_txt(
 _public_
 int yp_option_to_bin(
 	YP_TXT_BIN_PARAMS,
-	const knot_lookup_t *opts)
+	const knot_lookup_t *opts,
+	bool extended)
 {
 	YP_CHECK_PARAMS_BIN;
 
 	while (opts->name != NULL) {
 		if (YP_LEN == strlen(opts->name) &&
 		    strncasecmp((char *)in->position, opts->name, YP_LEN) == 0) {
-			wire_ctx_write_u8(out, opts->id);
+			if (extended) {
+				wire_ctx_write_u64(out, opts->id);
+			} else {
+				wire_ctx_write_u8(out, opts->id);
+			}
 			wire_ctx_skip(in, YP_LEN);
 			YP_CHECK_RET;
 		}
@@ -744,9 +749,10 @@ int yp_option_to_bin(
 _public_
 int yp_option_to_txt(
 	YP_BIN_TXT_PARAMS,
-	const knot_lookup_t *opts)
+	const knot_lookup_t *opts,
+	bool extended)
 {
-	uint8_t id = wire_ctx_read_u8(in);
+	int64_t id = extended ? wire_ctx_read_u64(in) : wire_ctx_read_u8(in);
 
 	while (opts->name != NULL) {
 		if (id == opts->id) {
@@ -956,6 +962,41 @@ int yp_base64_to_txt(
 }
 
 _public_
+int yp_optint_to_bin(
+	YP_TXT_BIN_PARAMS,
+	int64_t min,
+	int64_t max,
+	const knot_lookup_t *opts,
+	yp_style_t style)
+{
+	YP_CHECK_PARAMS_BIN;
+
+	const char first = *in->position;
+	if (is_digit(first) || first == '-') {
+		return yp_int_to_bin(in, out, stop, min, max, style);
+	} else {
+		return yp_option_to_bin(in, out, stop, opts, true);
+	}
+}
+
+_public_
+int yp_optint_to_txt(
+	YP_BIN_TXT_PARAMS,
+	const knot_lookup_t *opts,
+	yp_style_t style)
+{
+	YP_CHECK_PARAMS_TXT;
+
+	size_t offset = wire_ctx_offset(in);
+	if (yp_option_to_txt(in, out, opts, true) == KNOT_EOK) {
+		return KNOT_EOK;
+	} else {
+		wire_ctx_set_offset(in, offset);
+		return yp_int_to_txt(in, out, style);
+	}
+}
+
+_public_
 int yp_item_to_bin(
 	const yp_item_t *item,
 	const char *txt,
@@ -982,7 +1023,7 @@ int yp_item_to_bin(
 		ret = yp_bool_to_bin(&in, &out, NULL);
 		break;
 	case YP_TOPT:
-		ret = yp_option_to_bin(&in, &out, NULL, item->var.o.opts);
+		ret = yp_option_to_bin(&in, &out, NULL, item->var.o.opts, false);
 		break;
 	case YP_TSTR:
 		ret = yp_str_to_bin(&in, &out, NULL);
@@ -1011,6 +1052,11 @@ int yp_item_to_bin(
 		                     (char *)in.position, wire_ctx_available(&in),
 		                     out.position, &ref_len);
 		wire_ctx_skip(&out, ref_len);
+		break;
+	case YP_TOPTINT:
+		ret = yp_optint_to_bin(&in, &out, NULL, item->var.i.min,
+		                       item->var.i.max, item->var.i.opts,
+		                       item->var.i.unit);
 		break;
 	default:
 		ret = KNOT_EOK;
@@ -1061,7 +1107,7 @@ int yp_item_to_txt(
 		ret = yp_bool_to_txt(&in, &out);
 		break;
 	case YP_TOPT:
-		ret = yp_option_to_txt(&in, &out, item->var.o.opts);
+		ret = yp_option_to_txt(&in, &out, item->var.o.opts, false);
 		break;
 	case YP_TSTR:
 		ret = yp_str_to_txt(&in, &out);
@@ -1091,6 +1137,9 @@ int yp_item_to_txt(
 		                     (char *)out.position,
 		                     &ref_len, style | YP_SNOQUOTE);
 		wire_ctx_skip(&out, ref_len);
+		break;
+	case YP_TOPTINT:
+		ret = yp_optint_to_txt(&in, &out, item->var.i.opts, item->var.i.unit & style);
 		break;
 	default:
 		ret = KNOT_EOK;

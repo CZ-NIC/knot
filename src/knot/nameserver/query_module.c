@@ -473,6 +473,9 @@ static void set_val(yp_type_t type, knotd_conf_val_t *item, conf_val_t *val)
 	case YP_TDATA:
 		item->data = conf_data(val, &item->data_len);
 		break;
+	case YP_TOPTINT:
+		item->integer = conf_int(val);
+		break;
 	default:
 		return;
 	}
