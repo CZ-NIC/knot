@@ -747,11 +747,11 @@ void zone_timers_commit(zone_t *zone)
 		call_rcu((struct rcu_head *)cleanup, timers_cleanup);
 	}
 
-	conf_val_t timers_sync = conf_get(conf(), C_DB, C_TIMER_DB_SYNC);
-	if (conf_opt(&timers_sync) == TIMER_DB_SYNC_IMMEDIATE) {
+	if (conf()->cache.db_timer_db_sync == TIMER_DB_SYNC_IMMEDIATE) {
 		int ret = zone_timers_write(&zone->server->timerdb, zone->name, zone->timers);
 		if (ret != KNOT_EOK) {
-			log_zone_error(zone->name, "failed to update persistent timers (%s)", knot_strerror(ret));
+			log_zone_error(zone->name, "failed to update persistent timers (%s)",
+			               knot_strerror(ret));
 		}
 	}
 }

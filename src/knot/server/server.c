@@ -994,14 +994,8 @@ static int timer_db_do_sync(struct dthread *thread)
 		} else {
 			log_error("failed to update persistent timer DB (%s)", knot_strerror(ret));
 		}
-
-		conf_val_t val = conf_get(conf(), C_DB, C_TIMER_DB_SYNC);
-		switch (conf_opt(&val)) {
-		case TIMER_DB_SYNC_CONTINUOUS:  sleep(1);     break;
-		case TIMER_DB_SYNC_EACH_MINUTE: sleep(60);    break;
-		case TIMER_DB_SYNC_EACH_HOUR:   sleep(3600);  break; // NOTE the sleep() may be interrupted by any signal, including SIGALRM during dt_stop() in case of server_stop() or server_reconfigure()
- 		default: return KNOT_EOK;
-		}
+		assert(conf()->cache.db_timer_db_sync > 0);
+		sleep(conf()->cache.db_timer_db_sync); // NOTE the sleep() may be interrupted by any signal, including SIGALRM during dt_stop() in case of server_stop() or server_reconfigure()
 	}
 
 	return KNOT_EOK;
@@ -1082,13 +1076,13 @@ void server_deinit(server_t *server)
 	zone_backups_deinit(&server->backup_ctxs);
 
 	/* Save zone timers. */
-	conf_val_t val = conf_get(conf(), C_DB, C_TIMER_DB_SYNC);
-	if (conf_opt(&val) != TIMER_DB_SYNC_NEVER && conf_opt(&val) != TIMER_DB_SYNC_IMMEDIATE && server->zone_db != NULL) {
+	bool should_sync = (conf()->cache.db_timer_db_sync == TIMER_DB_SYNC_SHUTDOWN);
+	if (should_sync && server->zone_db != NULL) {
 		log_info("updating persistent timer DB");
 		int ret = zone_timers_write_all(&server->timerdb, server->zone_db);
 		if (ret != KNOT_EOK) {
 			log_warning("failed to update persistent timer DB (%s)",
-				    knot_strerror(ret));
+			            knot_strerror(ret));
 		}
 	}
 
@@ -1691,11 +1685,10 @@ static int reconfigure_timer_db(conf_t *conf, server_t *server)
 		return ret;
 	}
 
-	conf_val_t timers_sync = conf_get(conf, C_DB, C_TIMER_DB_SYNC);
-	bool should_sync = (conf_opt(&timers_sync) >= TIMER_DB_SYNC_CONTINUOUS);
+	bool should_sync = (conf->cache.db_timer_db_sync > 0);
 	bool exists_sync = (server->timerdb_sync != NULL);
 	if (should_sync && !exists_sync) {
-                server->timerdb_sync = dt_create(1, timer_db_do_sync, NULL, server);
+		server->timerdb_sync = dt_create(1, timer_db_do_sync, NULL, server);
 		if (server->timerdb_sync == NULL) {
 			return KNOT_ENOMEM;
 		}

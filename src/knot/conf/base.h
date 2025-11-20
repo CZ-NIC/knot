@@ -150,6 +150,7 @@ typedef struct {
 		uint32_t xdp_tcp_idle_close;
 		uint32_t xdp_tcp_idle_reset;
 		uint32_t xdp_tcp_idle_resend;
+		int32_t db_timer_db_sync;
 		size_t srv_quic_max_clients;
 		size_t srv_quic_obuf_max_size;
 		const uint8_t *srv_nsid_data;

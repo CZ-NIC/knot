@@ -883,6 +883,7 @@ static void test_conf_io_list(void)
 	ref = "server\n"
 	      "xdp\n"
 	      "control\n"
+	      "database\n"
 	      "remote\n"
 	      "template\n"
 	      "zone\n"
@@ -1013,6 +1014,11 @@ static const yp_item_t desc_remote[] = {
 	{ NULL }
 };
 
+static const yp_item_t desc_database[] = {
+	{ C_TIMER_DB_SYNC, YP_TOPTINT, YP_VNONE },
+	{ NULL }
+};
+
 static const knot_lookup_t opts[] = {
 	{ 1, "opt1" },
 	{ 2, "opt2" },
@@ -1048,6 +1054,7 @@ const yp_item_t test_schema[] = {
 	{ C_SRV,  YP_TGRP, YP_VGRP = { desc_server } },
 	{ C_XDP,  YP_TGRP, YP_VGRP = { desc_xdp } },
 	{ C_CTL,  YP_TGRP, YP_VGRP = { desc_control } },
+	{ C_DB,   YP_TGRP, YP_VGRP = { desc_database } },
 	{ C_RMT,  YP_TGRP, YP_VGRP = { desc_remote }, YP_FMULTI, { check_remote } },
 	{ C_TPL,  YP_TGRP, YP_VGRP = { desc_template }, YP_FMULTI, { check_template } },
 	{ C_ZONE, YP_TGRP, YP_VGRP = { desc_zone }, YP_FMULTI, { check_zone } },

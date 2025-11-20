@@ -280,6 +280,9 @@ static void init_cache(
 		conf->cache.srv_has_version = false;
 		conf->cache.srv_version = "Knot DNS " PACKAGE_VERSION;
 	}
+
+	val = conf_get(conf, C_DB, C_TIMER_DB_SYNC);
+	conf->cache.db_timer_db_sync = conf_int(&val);
 }
 
 int conf_new(
