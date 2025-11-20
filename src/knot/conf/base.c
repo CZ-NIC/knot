@@ -1171,6 +1171,9 @@ static void export_type(jsonw_t *w, const yp_item_t *item)
 			jsonw_str(w, "type", "string");
 		);
 		break;
+	case YP_TOPTINT:
+		// TODO
+		break;
 	default:
 		assert(0);
 		break;
