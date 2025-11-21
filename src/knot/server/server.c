@@ -985,17 +985,18 @@ static int rdb_listener_run(struct dthread *thread)
 static int timer_db_do_sync(struct dthread *thread)
 {
 	server_t *s = thread->data;
-	int ret = KNOT_EOK;
 
 	while (thread->state & ThreadActive) {
-		ret = zone_timers_write_all(&s->timerdb, s->zone_db);
+		int ret = zone_timers_write_all(&s->timerdb, s->zone_db);
 		if (ret == KNOT_EOK) {
 			log_info("updated persistent timer DB");
 		} else {
 			log_error("failed to update persistent timer DB (%s)", knot_strerror(ret));
 		}
 		assert(conf()->cache.db_timer_db_sync > 0);
-		sleep(conf()->cache.db_timer_db_sync); // NOTE the sleep() may be interrupted by any signal, including SIGALRM during dt_stop() in case of server_stop() or server_reconfigure()
+		/* NOTE the following sleep() may be interrupted by any signal, including
+		   SIGALRM during dt_stop() in case of server_stop() or server_reconfigure(). */
+		sleep(conf()->cache.db_timer_db_sync);
 	}
 
 	return KNOT_EOK;
@@ -1076,7 +1077,8 @@ void server_deinit(server_t *server)
 	zone_backups_deinit(&server->backup_ctxs);
 
 	/* Save zone timers. */
-	bool should_sync = (conf()->cache.db_timer_db_sync == TIMER_DB_SYNC_SHUTDOWN);
+	bool should_sync = (conf()->cache.db_timer_db_sync == TIMER_DB_SYNC_SHUTDOWN ||
+	                    conf()->cache.db_timer_db_sync > 0);
 	if (should_sync && server->zone_db != NULL) {
 		log_info("updating persistent timer DB");
 		int ret = zone_timers_write_all(&server->timerdb, server->zone_db);

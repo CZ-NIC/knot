@@ -750,7 +750,7 @@ void zone_timers_commit(zone_t *zone)
 	if (conf()->cache.db_timer_db_sync == TIMER_DB_SYNC_IMMEDIATE) {
 		int ret = zone_timers_write(&zone->server->timerdb, zone->name, zone->timers);
 		if (ret != KNOT_EOK) {
-			log_zone_error(zone->name, "failed to update persistent timers (%s)",
+			log_zone_error(zone->name, "failed to update persistent timer DB (%s)",
 			               knot_strerror(ret));
 		}
 	}

@@ -1331,10 +1331,12 @@ Specifies when zone timers should be written to the persistent timer database.
 
 Possible values:
 
-- ``never`` – Never; zone timers are cleared upon server restart.
+- ``never`` – Never written.
 - ``shutdown`` – Written once when the server is shut down.
-- ``immediate`` – Each zone writes its timers whenever they are modified. (Might slow down zones' events if many configured.)
-- INT – A dedicated thread continuously iterates through the configured zones and writes their timers at the specified interval (in seconds).
+- ``immediate`` – Each zone writes its timers whenever they are modified.
+  This mode might slow down zones' events if many zones are configured.
+- `INT` – A dedicated thread continuously iterates through the configured zones
+  and writes their timers at the specified interval (in seconds).
 
 *Default:* ``shutdown``
 
