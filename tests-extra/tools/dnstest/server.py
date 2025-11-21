@@ -15,6 +15,7 @@ import dns.message
 import dns.query
 import dns.update
 from subprocess import Popen, PIPE, check_call, CalledProcessError, check_output, run, DEVNULL
+from dnstest.keystore import KnotPkcs11SoftHSM, KnotPkcs11SoftHSMWrapper
 from dnstest.utils import *
 from dnstest.context import Context
 import dnstest.config
@@ -27,7 +28,7 @@ import dnstest.module
 import dnstest.response
 import dnstest.update
 import distutils.dir_util
-from shutil import copyfile
+from shutil import copyfile, move
 
 def zone_arg_check(zone):
     # Convert one item list to single object.
@@ -192,6 +193,7 @@ class Server(object):
         self.valgrind_log = None
         self.session_log = None
         self.confile = None
+        self.softhsm = None
 
         self.redis = None
 
@@ -331,6 +333,25 @@ class Server(object):
                 break
             time.sleep(0.5)
 
+    def init_softhsm2_keystore(self):
+        if self.softhsm and not os.path.isdir(self.softhsm):
+            os.makedirs(self.softhsm + "/tokens/")
+            with open(self.softhsm + "/softhsm.conf", "w") as softhsm_config_file:
+                softhsm_config = (
+                    f"directories.tokendir = {self.softhsm}/tokens/\n"
+                     "objectstore.backend = file\n"
+                     "log.level = INFO\n"
+                )
+                softhsm_config_file.write(softhsm_config)
+            for ks in self.softhsm_keystores:
+                create_storage_process = Popen(
+                    ['softhsm2-util', '--init-token', '--free', f'--label={ks.keystore.token}', f'--pin={ks.keystore.passwd}', '--so-pin=12345', f'--module={ks.keystore.so_path}'],
+                    stdout=open(self.softhsm + "/stdout", mode='a'),
+                    stderr=open(self.softhsm + "/stderr", mode='a'),
+                    env=dict(os.environ,
+                             SOFTHSM2_CONF=self.softhsm + "/softhsm.conf"))
+                create_storage_process.wait()
+
     def start_server(self, clean=False):
         '''Start the server'''
         mode = "w" if clean else "a"
@@ -348,12 +369,19 @@ class Server(object):
             if os.path.isfile(self.ferr):
                 copyfile(self.ferr, self.ferr + str(int(time.time())))
 
+            if clean and os.path.isdir(self.softhsm):
+                move(self.softhsm, self.softhsm + str(int(time.time())))
+            if len(self.softhsm_keystores) > 0:
+               self.init_softhsm2_keystore()
+
             if self.daemon_bin != None:
                 self.proc = Popen(self.valgrind + [self.daemon_bin] + \
                                   self.start_params,
                                   stdout=open(self.fout, mode=mode),
                                   stderr=open(self.ferr, mode=mode),
-                                  env=dict(os.environ, SSLKEYLOGFILE=self.session_log))
+                                  env=dict(os.environ,
+                                           SSLKEYLOGFILE=self.session_log,
+                                           SOFTHSM2_CONF=self.softhsm + "/softhsm.conf"))
 
             if self.valgrind:
                 time.sleep(Server.START_WAIT_VALGRIND)
@@ -423,6 +451,16 @@ class Server(object):
         if read_result:
             with open(self.dir + "/call.out", "r") as f:
                 return f.readlines()[-1]
+
+    def backup_zone(self, backup_dir, zonename):
+        self.ctl("zone-backup +backupdir %s %s" % (backup_dir, zonename), wait=True)
+        if os.path.isdir(self.softhsm):
+            shutil.copytree(self.softhsm, backup_dir + "/softhsm")
+
+    def restore_zone(self, backup_dir, zonename):
+        if os.path.isdir(backup_dir + "/softhsm"):
+            shutil.copytree(backup_dir + "/softhsm", self.softhsm, dirs_exist_ok=True)
+        self.ctl("zone-restore +backupdir %s %s" % (backup_dir, zonename), wait=True)
 
     def reload(self):
         self.ctl("reload")
@@ -1390,6 +1428,7 @@ class Knot(Server):
         self.includes = set()
         self.binding_fail = "cannot bind address"
         self.pidfile = "knot.pid"
+        self.softhsm_keystores = set()
 
     def listening(self):
         tcp = super()._check_socket("tcp", self.port)
@@ -1662,11 +1701,15 @@ class Knot(Server):
             if not have_keystore:
                 s.begin("keystore")
                 have_keystore = True
+            #TODO these will dupe if you use same keystore for multiple zones
             for ks in z.dnssec.keystore:
-                s.id_item("id", ks)
-                s.item("config", ks)
-                if ks.endswith("ksk"):
-                    s.item("ksk-only", "on")
+                if isinstance(ks, KnotPkcs11SoftHSM):
+                    self.softhsm_keystores.add(KnotPkcs11SoftHSMWrapper(ks))
+                s.id_item("id", ks.id)
+                s.item_type("config", ks.config)
+                s.item_type("backend", ks.backend)
+                if ks.ksk_only: s.item_type("ksk-only", ks.ksk_only)
+                if ks.key_label: s.item_type("key-label", ks.key_label)
         if have_keystore:
             s.end()
 
@@ -1678,7 +1721,11 @@ class Knot(Server):
             s.id_item("id", z.name)
             for ci, val in self.conf["policy"][z.name].items():
                 if ci not in [ "enable", "shared_policy_with" ]:
-                    s.item_type(ci.replace("_", "-"), val)
+                    if ci == 'keystore':
+                        value = [ v.id for v in val ]
+                    else:
+                        value = val
+                    s.item_type(ci.replace("_", "-"), value)
 
             if zone in self.conf["dnskey-sync"]:
                 s.item("dnskey-sync", zone)
