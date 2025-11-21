@@ -733,7 +733,7 @@ static void timers_cleanup(struct rcu_head *head)
 	free(cleanup);
 }
 
-void zone_timers_commit(zone_t *zone)
+void zone_timers_commit(conf_t *conf, zone_t *zone)
 {
 	if (zone->timers_static == zone->timers) {
 		return;
@@ -747,7 +747,7 @@ void zone_timers_commit(zone_t *zone)
 		call_rcu((struct rcu_head *)cleanup, timers_cleanup);
 	}
 
-	if (conf()->cache.db_timer_db_sync == TIMER_DB_SYNC_IMMEDIATE) {
+	if (conf->cache.db_timer_db_sync == TIMER_DB_SYNC_IMMEDIATE) {
 		int ret = zone_timers_write(&zone->server->timerdb, zone->name, zone->timers);
 		if (ret != KNOT_EOK) {
 			log_zone_error(zone->name, "failed to update persistent timer DB (%s)",
@@ -979,13 +979,13 @@ int zone_get_master_serial(zone_t *zone, uint32_t *serial)
 	return kasp_db_load_serial(zone_kaspdb(zone), zone->name, KASPDB_SERIAL_MASTER, serial);
 }
 
-void zone_set_lastsigned_serial(zone_t *zone, uint32_t serial)
+void zone_set_lastsigned_serial(conf_t *conf, zone_t *zone, uint32_t serial)
 {
 	bool extra_txn = (zone->control_update != NULL && zone->timers == zone->timers_static && zone_timers_begin(zone) == KNOT_EOK); // zone_update_commit() is not within a zone event in case of control_update
 	zone->timers->last_signed_serial = serial;
 	zone->timers->flags |= LAST_SIGNED_SERIAL_FOUND | LAST_SIGNED_SERIAL_VALID | TIMERS_MODIFIED;
 	if (extra_txn) {
-		zone_timers_commit(zone);
+		zone_timers_commit(conf, zone);
 	}
 }
 
