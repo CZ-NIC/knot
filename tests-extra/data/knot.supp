@@ -33,3 +33,21 @@
    ...
    fun:allocate_stack
 }
+
+{
+   libgnutls/p11_load_module
+   Memcheck:Leak
+   match-leak-kinds: definite,reachable
+   fun:*alloc
+   ...
+   fun:gnutls_pkcs11_add_provider
+}
+
+{
+   libstdc++/exit
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:malloc
+   ...
+   fun:exit
+}
