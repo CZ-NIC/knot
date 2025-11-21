@@ -223,17 +223,17 @@ static void zone_purge(conf_t *conf, zone_t *zone)
 {
 	zone_timers_begin(zone);
 	(void)selective_zone_purge(conf, zone, PURGE_ZONE_ALL);
-	zone_timers_commit(zone);
+	zone_timers_commit(conf, zone);
 }
 
-static zone_contents_t *zone_expire(zone_t *zone, bool zonedb_cow)
+static zone_contents_t *zone_expire(conf_t *conf, zone_t *zone, bool zonedb_cow)
 {
 	if (!zonedb_cow) {
 		zone_timers_begin(zone);
 		zone->timers->next_expire = time(NULL);
 		zone->timers->next_refresh = zone->timers->next_expire;
 		zone->timers->flags |= TIMERS_MODIFIED;
-		zone_timers_commit(zone);
+		zone_timers_commit(conf, zone);
 	}
 	return zone_switch_contents(zone, NULL);
 }
@@ -269,7 +269,7 @@ static zone_t *reuse_member_zone(zone_t *zone, server_t *server, conf_t *conf,
 		case CAT_UPD_UNIQ:
 			zone_purge(conf, zone);
 			knot_sem_wait(&zone->cow_lock);
-			ptrlist_add(expired_contents, zone_expire(zone, false), NULL);
+			ptrlist_add(expired_contents, zone_expire(conf, zone, false), NULL);
 			knot_sem_post(&zone->cow_lock);
 			// FALLTHROUGH
 		case CAT_UPD_PROP:
@@ -595,7 +595,7 @@ static knot_zonedb_t *create_zonedb_catalog(conf_t *conf, server_t *server,
 			if (upd->type == CAT_UPD_UNIQ && zone != NULL) {
 				zone_purge(conf, zone);
 				knot_sem_wait(&zone->cow_lock);
-				ptrlist_add(expired_contents, zone_expire(zone, true), NULL);
+				ptrlist_add(expired_contents, zone_expire(conf, zone, true), NULL);
 				knot_sem_post(&zone->cow_lock);
 			}
 			zone_t *old = knot_zonedb_find(db_old, upd->member);

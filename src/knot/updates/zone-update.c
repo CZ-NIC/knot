@@ -1211,7 +1211,7 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 	}
 
 	if (dnssec) {
-		zone_set_lastsigned_serial(update->zone, zone_contents_serial(update->new_cont));
+		zone_set_lastsigned_serial(conf, update->zone, zone_contents_serial(update->new_cont));
 
 		if ((update->flags & UPDATE_SIGNED_FULL)) {
 			zone_set_flag(update->zone, ZONE_LAST_SIGN_OK);

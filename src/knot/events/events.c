@@ -229,7 +229,7 @@ static void event_wrap(worker_task_t *task)
 	if (ret == KNOT_EOK) {
 		/* Execute the event callback. */
 		ret = info->callback(conf, zone);
-		zone_timers_commit(zone);
+		zone_timers_commit(conf, zone);
 		conf_free(conf);
 	}
 
