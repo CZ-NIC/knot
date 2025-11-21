@@ -192,6 +192,7 @@ class Server(object):
         self.valgrind_log = None
         self.session_log = None
         self.confile = None
+        self.softhsm_conf = str()
 
         self.redis_backends = list()
 
@@ -353,7 +354,9 @@ class Server(object):
                                   self.start_params,
                                   stdout=open(self.fout, mode=mode),
                                   stderr=open(self.ferr, mode=mode),
-                                  env=dict(os.environ, SSLKEYLOGFILE=self.session_log))
+                                  env=dict(os.environ,
+                                           SSLKEYLOGFILE=self.session_log,
+                                           SOFTHSM2_CONF=self.softhsm_conf))
 
             if self.valgrind:
                 time.sleep(Server.START_WAIT_VALGRIND)
@@ -1663,10 +1666,13 @@ class Knot(Server):
                 s.begin("keystore")
                 have_keystore = True
             for ks in z.dnssec.keystore:
-                s.id_item("id", ks)
-                s.item("config", ks)
-                if ks.endswith("ksk"):
-                    s.item("ksk-only", "on")
+                s.id_item("id", ks.id)
+                s.item_type("config", ks.config())
+                s.item_type("backend", ks.backend())
+                if ks.ksk_only:
+                    s.item_type("ksk-only", ks.ksk_only)
+                if ks.key_label:
+                    s.item_type("key-label", ks.key_label)
         if have_keystore:
             s.end()
 
@@ -1677,9 +1683,11 @@ class Knot(Server):
             s.begin("policy")
             s.id_item("id", z.name)
             for ci, val in self.conf["policy"][z.name].items():
-                if ci not in [ "enable", "shared_policy_with" ]:
+                if ci not in [ "enable", "shared_policy_with", "keystore" ]:
                     s.item_type(ci.replace("_", "-"), val)
 
+            if len(z.dnssec.keystore or []) > 0:
+                s.item_list("keystore", [ v.id for v in z.dnssec.keystore ])
             if zone in self.conf["dnskey-sync"]:
                 s.item("dnskey-sync", zone)
             if zone in self.conf["submission"]:

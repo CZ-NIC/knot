@@ -13,6 +13,7 @@ ldnsutils
 lsof
 gawk
 objdump
+softhsm2
 (valgrind)
 (gdb)
 
