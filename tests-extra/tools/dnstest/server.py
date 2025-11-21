@@ -192,8 +192,11 @@ class Server(object):
         self.valgrind_log = None
         self.session_log = None
         self.confile = None
+        self.softhsm = None
 
         self.redis = None
+
+        self.enable_softhsm = False
 
         self.binding_errors = 0
 
@@ -348,18 +351,38 @@ class Server(object):
             if os.path.isfile(self.ferr):
                 copyfile(self.ferr, self.ferr + str(int(time.time())))
 
+            if self.enable_softhsm \
+               and self.softhsm \
+               and not os.path.isfile(self.softhsm + "softhsm.conf"):
+                softhsm_config = f"directories.tokendir = {self.softhsm}tokens/\n" + \
+                    "objectstore.backend = file\n" + \
+                    "log.level = INFO"
+                os.makedirs(self.softhsm + "/tokens/")
+                with open(self.softhsm + "softhsm.conf", "w") as softhsm_config_file:
+                    softhsm_config_file.write(softhsm_config)
+                create_storage_process = Popen(
+                    ['softhsm2-util', '--init-token', '--slot=0', '--label="knot"', '--pin=1234', '--so-pin=12345', '--module=/usr/lib/x86_64-linux-gnu/softhsm/libsofthsm2.so'],
+                    stdout=open(self.softhsm + "cout", mode=mode),
+                    stderr=open(self.softhsm + "cerr", mode=mode),
+                    env=dict(os.environ,
+                             SOFTHSM2_CONF=self.softhsm + "softhsm.conf")
+                )
+                create_storage_process.wait()
+
             if self.daemon_bin != None:
                 self.proc = Popen(self.valgrind + [self.daemon_bin] + \
                                   self.start_params,
                                   stdout=open(self.fout, mode=mode),
                                   stderr=open(self.ferr, mode=mode),
-                                  env=dict(os.environ, SSLKEYLOGFILE=self.session_log))
+                                  env=dict(os.environ,
+                                           SSLKEYLOGFILE=self.session_log,
+                                           SOFTHSM2_CONF=self.softhsm + "softhsm.conf"))
 
             if self.valgrind:
                 time.sleep(Server.START_WAIT_VALGRIND)
             else:
                 time.sleep(Server.START_WAIT)
-        except OSError:
+        except OSError as e:
             raise Failed("Can't start server='%s'" % self.name)
 
         # Start inquirer if enabled.
@@ -1662,11 +1685,13 @@ class Knot(Server):
             if not have_keystore:
                 s.begin("keystore")
                 have_keystore = True
+            # TODO it might repeat.. due multiple zones has same keystore (??)
             for ks in z.dnssec.keystore:
-                s.id_item("id", ks)
-                s.item("config", ks)
-                if ks.endswith("ksk"):
-                    s.item("ksk-only", "on")
+                s.id_item("id", ks['id'])
+                s.item_type("config", ks['config'])
+                s.item_type("backend", ks['backend'])
+                if 'ksk-only' in ks: s.item_type("ksk-only", ks['ksk-only'])
+                if 'key-label' in ks: s.item_type("key-label", ks['key-label'])
         if have_keystore:
             s.end()
 
@@ -1678,7 +1703,11 @@ class Knot(Server):
             s.id_item("id", z.name)
             for ci, val in self.conf["policy"][z.name].items():
                 if ci not in [ "enable", "shared_policy_with" ]:
-                    s.item_type(ci.replace("_", "-"), val)
+                    if ci == 'keystore':
+                        value = [ v['id'] for v in val ]
+                    else:
+                        value = val
+                    s.item_type(ci.replace("_", "-"), value)
 
             if zone in self.conf["dnskey-sync"]:
                 s.item("dnskey-sync", zone)

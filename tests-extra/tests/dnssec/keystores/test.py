@@ -7,6 +7,7 @@ Check of multi-keystore operation.
 import os
 import random
 import shutil
+from dnstest.keystore import KnotPEM, KnotPkcs11SoftHSM
 from dnstest.utils import *
 from dnstest.keys import Keymgr
 from dnstest.test import Test
@@ -25,17 +26,30 @@ server = t.server("knot")
 zone = t.zone("catalog.") # has zero TTL => faster key rollovers
 t.link(zone, server)
 
+pkcs11 = random.choice([True, False])
+server.enable_softhsm = True
+# if pkcs11:
+#     keys1 = KnotPkcs11SoftHSM("keys1", "knot1", "1234")
+#     keys2 = KnotPkcs11SoftHSM("keys2", "knot2", "1234")
+# else:
+#     keys1 = KnotPEM("keys1")
+#     keys2 = KnotPEM("keys2")
+
+keys1 = KnotPkcs11SoftHSM("keys1", "knot", "1234", "/usr/lib/x86_64-linux-gnu/softhsm/libsofthsm2.so", key_label=True)
+# keys1 = KnotPEM("keys1")
+keys2 = KnotPEM("keys2")
+
 server.dnssec(zone).enable = True
 server.dnssec(zone).propagation_delay = 1
-server.dnssec(zone).keystore = [ "keys1", "keys2" ]
+server.dnssec(zone).keystore = [ keys1.config, keys2.config ]
 
 t.start()
 serial = server.zone_wait(zone)
 
-check_key_count(server, "keys1", 2)
-check_key_count(server, "keys2", 0)
+check_key_count(server, keys1.id, 2)
+check_key_count(server, keys2.id, 0)
 
-server.dnssec(zone).keystore = [ "keys2", "keys1" ]
+server.dnssec(zone).keystore = [ keys2.config, keys1.config ]
 server.gen_confile()
 server.reload()
 server.ctl("zone-key-rollover %s zsk" % zone[0].name)
@@ -43,17 +57,17 @@ server.ctl("zone-key-rollover %s zsk" % zone[0].name)
 serial += 2 # wait for three increments which is whole ZSK rollover
 serial = server.zone_wait(zone, serial)
 
-check_key_count(server, "keys1", 1)
-check_key_count(server, "keys2", 1)
+check_key_count(server, keys1.id, 1)
+check_key_count(server, keys2.id, 1)
 
 backup_dir = os.path.join(server.dir, "backup1")
 server.ctl("zone-backup +backupdir %s %s" % (backup_dir, zone[0].name), wait=True)
-shutil.rmtree(os.path.join(server.keydir, "keys1"))
-shutil.rmtree(os.path.join(server.keydir, "keys2"))
+# shutil.rmtree(os.path.join(server.keydir, keys1.id))
+shutil.rmtree(os.path.join(server.keydir, keys2.id))
 server.ctl("zone-restore +backupdir %s %s" % (backup_dir, zone[0].name), wait=True)
 
-check_key_count(server, "keys1", 0)
-check_key_count(server, "keys2", 2) # restore puts all keys to first configured keystore no matter where they were at backup
+check_key_count(server, keys1.id, 0)
+check_key_count(server, keys2.id, 2) # restore puts all keys to first configured keystore no matter where they were at backup
 
 server.ctl("zone-sign %s" % zone[0].name, wait=True) # check that signing still works after restore
 serial = server.zone_wait(zone, serial)
@@ -61,53 +75,59 @@ serial = server.zone_wait(zone, serial)
 server.flush(zone[0], wait=True)
 server.zone_verify(zone[0])
 
-server.dnssec(zone).keystore = [ "keys0ksk", "keys1", "keys2" ]
+# if pkcs11:
+#     keys0ksk = KnotPkcs11SoftHSM("keys0ksk", "knot3", "1234", ksk_only=True)
+# else:
+#     keys0ksk = KnotPEM("keys0ksk")
+keys0ksk = KnotPEM("keys0ksk")
+
+server.dnssec(zone).keystore = [ keys0ksk.config, keys1.config, keys2.config ]
 server.gen_confile()
 server.reload()
 
 server.ctl("zone-key-rollover %s ksk" % zone[0].name)
 serial += 1 # wait for two increments
 serial = server.zone_wait(zone, serial)
-check_key_count(server, "keys0ksk", 1)
-check_key_count(server, "keys1", 0)
-check_key_count(server, "keys2", 2)
+check_key_count(server, keys0ksk.id, 1)
+check_key_count(server, keys1.id, 0)
+check_key_count(server, keys2.id, 2)
 
 server.ctl("zone-ksk-submitted %s" % zone[0].name)
 serial = server.zone_wait(zone, serial)
-check_key_count(server, "keys0ksk", 1)
-check_key_count(server, "keys1", 0)
-check_key_count(server, "keys2", 1)
+check_key_count(server, keys0ksk.id, 1)
+check_key_count(server, keys1.id, 0)
+check_key_count(server, keys2.id, 1)
 
 server.ctl("zone-key-rollover %s zsk" % zone[0].name)
 serial += 2 # wait for three increments which is whole ZSK rollover
 serial = server.zone_wait(zone, serial)
-check_key_count(server, "keys0ksk", 1)
-check_key_count(server, "keys1", 1)
-check_key_count(server, "keys2", 0)
+check_key_count(server, keys0ksk.id, 1)
+check_key_count(server, keys1.id, 1)
+check_key_count(server, keys2.id, 0)
 
 Keymgr.run_check(server.confile, zone[0].name, "generate", "ksk=yes")
-check_key_count(server, "keys0ksk", 2)
-check_key_count(server, "keys1", 1)
+check_key_count(server, keys0ksk.id, 2)
+check_key_count(server, keys1.id, 1)
 
 Keymgr.run_check(server.confile, zone[0].name, "generate", "ksk=no")
-check_key_count(server, "keys0ksk", 2)
-check_key_count(server, "keys1", 2)
+check_key_count(server, keys0ksk.id, 2)
+check_key_count(server, keys1.id, 2)
 
 Keymgr.run_check(server.confile, zone[0].name, "import-bind", os.path.join(t.data_dir, "Kcatalog.+013+07147.key"))
-check_key_count(server, "keys0ksk", 2)
-check_key_count(server, "keys1", 3)
+check_key_count(server, keys0ksk.id, 2)
+check_key_count(server, keys1.id, 3)
 
 Keymgr.run_check(server.confile, zone[0].name, "import-bind", os.path.join(t.data_dir, "Kcatalog.+013+18635.key"))
-check_key_count(server, "keys0ksk", 3)
-check_key_count(server, "keys1", 3)
+check_key_count(server, keys0ksk.id, 3)
+check_key_count(server, keys1.id, 3)
 
 Keymgr.run_check(server.confile, zone[0].name, "import-pem", os.path.join(t.data_dir, "8329a00d5dceefdcbbf7b8a3cdf61fe944c51d6f.pem"), "ksk=yes")
-check_key_count(server, "keys0ksk", 4)
-check_key_count(server, "keys1", 3)
+check_key_count(server, keys0ksk.id, 4)
+check_key_count(server, keys1.id, 3)
 
 Keymgr.run_check(server.confile, zone[0].name, "import-pem", os.path.join(t.data_dir, "894d4240398f459f59f4a99cd4c5b658c9a62d54.pem"), "ksk=no")
-check_key_count(server, "keys0ksk", 4)
-check_key_count(server, "keys1", 4)
-check_key_count(server, "keys2", 0)
+check_key_count(server, keys0ksk.id, 4)
+check_key_count(server, keys1.id, 4)
+check_key_count(server, keys2.id, 0)
 
 t.end()

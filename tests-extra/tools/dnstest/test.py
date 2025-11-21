@@ -210,6 +210,7 @@ class Test(object):
         srv.session_log = srv.dir + "/secrets.log"
         srv.quic_log = srv.dir + "/quic.log"
         srv.confile = srv.dir + "/%s.conf" % srv.name
+        srv.softhsm = srv.dir + "/softhsm/"
 
         xdp_enable = (params.xdp and xdp_enable and \
                       server == "knot" and \
