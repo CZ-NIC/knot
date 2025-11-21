@@ -287,7 +287,7 @@ bool zone_expired(const zone_t *zone);
 void zone_timers_sanitize(conf_t *conf, zone_t *zone);
 
 int zone_timers_begin(zone_t *zone);
-void zone_timers_commit(zone_t *zone);
+void zone_timers_commit(conf_t *conf, zone_t *zone);
 
 typedef struct {
 	bool address;     //!< Fallback to next remote address is required.
@@ -331,7 +331,7 @@ int zone_set_master_serial(zone_t *zone, uint32_t serial);
 
 int zone_get_master_serial(zone_t *zone, uint32_t *serial);
 
-void zone_set_lastsigned_serial(zone_t *zone, uint32_t serial);
+void zone_set_lastsigned_serial(conf_t *conf, zone_t *zone, uint32_t serial);
 
 int zone_get_lastsigned_serial(zone_t *zone, uint32_t *serial);
 
