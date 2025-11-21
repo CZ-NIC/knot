@@ -4,6 +4,9 @@
 
 from dnstest.utils import *
 from dnstest.test import Test
+from dnstest.keystore import KnotPkcs11SoftHSM
+
+softhsm_params = KnotPkcs11SoftHSM("softhsm", "knot", "1234")
 
 CHANGE_COUNT = 9
 
@@ -52,6 +55,7 @@ t.link(zone, nsec3_master, nsec3_slave)
 
 # Enable autosigning
 nsec_master.dnssec(zone).enable = True
+nsec_master.dnssec(zone).keystore = [ softhsm_params.config ]
 
 nsec3_master.dnssec(zone).enable = True
 nsec3_master.dnssec(zone).nsec3 = True

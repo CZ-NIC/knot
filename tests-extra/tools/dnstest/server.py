@@ -1662,11 +1662,13 @@ class Knot(Server):
             if not have_keystore:
                 s.begin("keystore")
                 have_keystore = True
+            # TODO it might repeat.. due multiple zones has same keystore (??)
             for ks in z.dnssec.keystore:
-                s.id_item("id", ks)
-                s.item("config", ks)
-                if ks.endswith("ksk"):
-                    s.item("ksk-only", "on")
+                s.id_item("id", ks['id'])
+                s.item_type("config", ks['config'])
+                s.item_type("backend", ks['backend'])
+                if 'ksk-only' in ks: s.item_type("ksk-only", ks['ksk-only'])
+                if 'ksk-label' in ks: s.item_type("ksk-label", ks['ksk-label'])
         if have_keystore:
             s.end()
 
@@ -1678,7 +1680,11 @@ class Knot(Server):
             s.id_item("id", z.name)
             for ci, val in self.conf["policy"][z.name].items():
                 if ci not in [ "enable", "shared_policy_with" ]:
-                    s.item_type(ci.replace("_", "-"), val)
+                    if ci == 'keystore':
+                        value = [ v['id'] for v in val ]
+                    else:
+                        value = val
+                    s.item_type(ci.replace("_", "-"), value)
 
             if zone in self.conf["dnskey-sync"]:
                 s.item("dnskey-sync", zone)
