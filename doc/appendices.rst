@@ -16,77 +16,74 @@ indicates which algorithms and operations have been observed to work. Please
 notice minimal GnuTLS library version required for particular algorithm
 support.
 
-.. |yes|     replace:: **yes**
-.. |no|      replace:: no
-.. |unknown| replace:: ?
-
 .. list-table::
    :header-rows: 1
    :stub-columns: 1
 
    * -
-     - Key generate
-     - Key import
-     - ED25519 256-bit
-     - ECDSA 256-bit
-     - ECDSA 384-bit
-     - RSA 1024-bit
-     - RSA 2048-bit
-     - RSA 4096-bit
+     - Generate
+     - Import
+     - ED25519
+     - ECDSA
+     - RSA
+     - Last tested
    * - `Feitian ePass 2003 <https://www.ftsafe.com/Products/PKI/Standard>`_
-     - |yes|
-     - |no|
-     - |no|
-     - |no|
-     - |no|
-     - |yes|
-     - |yes|
-     - |no|
+     - yes
+     - n/a
+     - n/a
+     - n/a
+     - | 1024
+       | 2048
+     - 2017-07
    * - `SafeNet Network HSM (Luna SA 4) <https://safenet.gemalto.com/data-encryption/hardware-security-modules-hsms/luna-hsms-key-management/luna-sa-network-hsm/>`_
-     - |yes|
-     - |no|
-     - |no|
-     - |no|
-     - |no|
-     - |yes|
-     - |yes|
-     - |yes|
+     - yes
+     - n/a
+     - n/a
+     - n/a
+     - | 1024
+       | 2048
+       | 4096
+     - 2017-07
    * - `SoftHSM 2.0 <https://www.opendnssec.org/softhsm/>`_ [#fn-softhsm]_
-     - |yes|
-     - |yes|
-     - |yes|
-     - |yes|
-     - |yes|
-     - |yes|
-     - |yes|
-     - |yes|
+     - yes
+     - yes
+     - | 256
+     - | 256
+       | 384
+     - | 1024
+       | 2048
+       | 4096
+     - 2021-09
    * - `Trustway Proteccio NetHSM <https://atos.net/en/solutions/cyber-security/data-protection-and-governance/hardware-security-module-trustway-proteccio-nethsm>`_
-     - |yes|
+     - yes
      - ECDSA only
-     - |no|
-     - |yes|
-     - |yes|
-     - |yes|
-     - |yes|
-     - |yes|
+     - n/a
+     - | 256
+       | 384
+     - | 1024
+       | 2048
+       | 4096
+     - 2019-03
    * - `Ultra Electronics CIS Keyper Plus (Model 9860-2) <https://www.ultra.group/our-business-units/intelligence-communications/cyber/key-management/#acc-keyperplus>`_
-     - |yes|
+     - yes
      - RSA only
-     - |no|
-     - |yes|
-     - |yes|
-     - |yes|
-     - |yes|
-     - |yes|
+     - n/a
+     - | 256
+       | 384
+     - | 1024
+       | 2048
+       | 4096
+     - 2020-01
    * - `Utimaco SecurityServer (V4) <https://hsm.utimaco.com/products-hardware-security-modules/general-purpose-hsm/securityserver-cse/>`_ [#fn-utimaco]_
-     - |yes|
-     - |yes|
-     - |no|
-     - |yes|
-     - |yes|
-     - |yes|
-     - |yes|
-     - |yes|
+     - yes
+     - yes
+     - n/a
+     - | 256
+       | 384
+     - | 1024
+       | 2048
+       | 4096
+     - 2018-09
 
 .. in progress: key ID checks have to be disabled in code
    * - `Yubikey NEO <https://www.yubico.com/products/yubikey-hardware/yubikey-neo/>`_
