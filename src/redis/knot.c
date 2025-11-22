@@ -295,13 +295,15 @@ static int zone_commit_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int ar
 	rdb_txn_t txn;
 	ARG_TXN_TXT(argv[2], txn);
 
-	zone_commit(ctx, &origin, &txn);
+	RedisModuleStreamID stream_id = { 0 };
+
+	zone_commit(ctx, &origin, &txn, &stream_id);
 	return REDISMODULE_OK;
 }
 
 static int zone_commit_bin(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 {
-	if (argc != 3) {
+	if (argc < 3) {
 		return RedisModule_WrongArity(ctx);
 	}
 
@@ -311,7 +313,12 @@ static int zone_commit_bin(RedisModuleCtx *ctx, RedisModuleString **argv, int ar
 	rdb_txn_t txn;
 	ARG_TXN(argv[2], txn);
 
-	zone_commit(ctx, &origin, &txn);
+	RedisModuleStreamID stream_id = { 0 };
+	if (argc > 3) {
+		ARG_STREAM_ID(argv[3], stream_id);
+	}
+
+	zone_commit(ctx, &origin, &txn, &stream_id);
 	return REDISMODULE_OK;
 }
 
@@ -641,13 +648,15 @@ static int upd_commit_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int arg
 	rdb_txn_t txn;
 	ARG_TXN_TXT(argv[2], txn);
 
-	upd_commit(ctx, &origin, &txn);
+	RedisModuleStreamID stream_id = { 0 };
+
+	upd_commit(ctx, &origin, &txn, &stream_id);
 	return REDISMODULE_OK;
 }
 
 static int upd_commit_bin(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 {
-	if (argc != 3) {
+	if (argc < 3) {
 		return RedisModule_WrongArity(ctx);
 	}
 
@@ -657,7 +666,12 @@ static int upd_commit_bin(RedisModuleCtx *ctx, RedisModuleString **argv, int arg
 	rdb_txn_t txn;
 	ARG_TXN(argv[2], txn)
 
-	upd_commit(ctx, &origin, &txn);
+	RedisModuleStreamID stream_id = { 0 };
+	if (argc > 3) {
+		ARG_STREAM_ID(argv[3], stream_id);
+	}
+
+	upd_commit(ctx, &origin, &txn, &stream_id);
 	return REDISMODULE_OK;
 }
 
