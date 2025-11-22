@@ -266,9 +266,9 @@ enum {
 };
 
 enum {
+	TIMER_DB_SYNC_IMMEDIATE =  0,
 	TIMER_DB_SYNC_NEVER     = -1,
 	TIMER_DB_SYNC_SHUTDOWN  = -2,
-	TIMER_DB_SYNC_IMMEDIATE = -3,
 };
 
 enum {

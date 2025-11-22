@@ -1336,7 +1336,7 @@ Possible values:
 - ``immediate`` – Each zone writes its timers whenever they are modified.
   This mode might slow down zones' events if many zones are configured.
 - `INT` – A dedicated thread continuously iterates through the configured zones
-  and writes their timers at the specified interval (in seconds).
+  and writes their timers at the specified non-zero interval (in seconds).
 
 *Default:* ``shutdown``
 

@@ -993,7 +993,10 @@ static int timer_db_do_sync(struct dthread *thread)
 		} else {
 			log_error("failed to update persistent timer DB (%s)", knot_strerror(ret));
 		}
-		assert(conf()->cache.db_timer_db_sync > 0);
+
+		if (conf()->cache.db_timer_db_sync <= 0) {
+			break;
+		}
 		/* NOTE the following sleep() may be interrupted by any signal, including
 		   SIGALRM during dt_stop() in case of server_stop() or server_reconfigure(). */
 		sleep(conf()->cache.db_timer_db_sync);

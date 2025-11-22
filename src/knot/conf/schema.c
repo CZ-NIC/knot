@@ -177,9 +177,9 @@ static const knot_lookup_t journal_modes[] = {
 };
 
 static const knot_lookup_t timer_db_sync[] = {
+	{ TIMER_DB_SYNC_IMMEDIATE, "immediate" },
 	{ TIMER_DB_SYNC_NEVER,     "never" },
 	{ TIMER_DB_SYNC_SHUTDOWN,  "shutdown" },
-	{ TIMER_DB_SYNC_IMMEDIATE, "immediate" },
 	{ 0, NULL }
 };
 
