@@ -1086,8 +1086,8 @@ void server_deinit(server_t *server)
 		log_info("updating persistent timer DB");
 		int ret = zone_timers_write_all(&server->timerdb, server->zone_db);
 		if (ret != KNOT_EOK) {
-			log_warning("failed to update persistent timer DB (%s)",
-			            knot_strerror(ret));
+			log_error("failed to update persistent timer DB (%s)",
+			          knot_strerror(ret));
 		}
 	}
 
