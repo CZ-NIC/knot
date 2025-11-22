@@ -13,7 +13,7 @@ slave1 = t.server("knot")
 slave2 = t.server("knot")
 
 ZONE = "example.com"
-zones = t.zone(ZONE)
+zones = t.zone(ZONE, storage=".")
 
 t.link(zones, master)
 t.link(zones, slave1)
@@ -29,12 +29,19 @@ redis_slave1.slave_of(redis_master)
 redis_slave2.slave_of(redis_master)
 redis_sentinel.sentinel_of(redis_master, 1)
 
-zone_write_instances = random.choice([  [redis_sentinel], [redis_master, redis_slave1, redis_slave2], [redis_sentinel, redis_master, redis_slave1, redis_slave2] ])
+zone_write_instances = random.choice([
+    [redis_sentinel],
+    [redis_master, redis_slave1, redis_slave2],
+    [redis_sentinel, redis_master, redis_slave1, redis_slave2]
+])
 master.db_out(zones, zone_write_instances, 1)
 slave1.db_in(zones,  [redis_slave1], 1)
 slave2.db_in(zones,  [redis_slave1, redis_slave2], 1)
 
 t.start()
+
+# Give sentinel some time to discover the replicas
+t.sleep(10)
 
 # Initial synchronization
 serial_init = slave1.zones_wait(zones)
@@ -57,10 +64,12 @@ for i in range(10): # usualy just 2x
         t.sleep(2)
         continue
     break
-serial = slave2.zones_wait(zones, serial)
-redis_slave1.start() # Put replica2 to operation
+slave2.zones_wait(zones, serial)
+redis_slave1.start() # Put replica2 into operation
+serial = slave1.zones_wait(zones, serial)
 
-t.sleep(11) # up to 10 seconds till sentinel tells redis_slave1 that redis_slave2 is now the master
+# Give replica1 some time to get in sync with replica2
+t.sleep(5)
 
 # Clog the replica2/new_master and update new master to replica1
 redis_slave2.freeze(15).wait()
@@ -70,5 +79,14 @@ serial = slave2.zones_wait(zones, serial)
 
 t.xfr_diff(master, slave1, zones, serial_init)
 t.xfr_diff(master, slave2, zones, serial_init)
+
+# Add to DB manually.
+txn = redis_slave1.cli("knot.upd.begin", ZONE, "1")
+redis_slave1.cli("knot.upd.add", ZONE, txn, "test TXT test")
+redis_slave1.cli("knot.upd.commit", ZONE, txn)
+slave1.zones_wait(zones, serial)
+serial = slave2.zones_wait(zones, serial)
+
+t.xfr_diff(slave1, slave2, zones, serial_init)
 
 t.end()
