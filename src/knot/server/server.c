@@ -900,6 +900,8 @@ static void rdb_process_event(redisReply *reply, knot_zonedb_t *zone_db,
 	switch (type) {
 	case RDB_EVENT_ZONE:
 	case RDB_EVENT_UPD:
+		log_zone_debug(zone->name, "rdb, event %s %s, serial %u",
+		               since, (type == RDB_EVENT_ZONE ? "zone" : "update"), serial);
 		zone_schedule_update(conf(), zone, ZONE_EVENT_LOAD);
 		break;
 	default:
