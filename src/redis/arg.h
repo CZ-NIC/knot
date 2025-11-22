@@ -129,7 +129,8 @@ typedef struct {
 
 #define ARG_NUM(arg, out, name) { \
 	long long val; \
-	long long max = (1ULL << (sizeof(out) * 8)) - 1; \
+	uint8_t shift = sizeof(out) < 8 ? sizeof(out) * 8 : 63; \
+	long long max = (1ULL << shift) - 1; \
 	if (RedisModule_StringToLongLong(arg, &val) != REDISMODULE_OK || val > max) { \
 		return RedisModule_ReplyWithError(ctx, RDB_E("invalid " name)); \
 	} \

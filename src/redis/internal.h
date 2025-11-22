@@ -188,7 +188,7 @@ static bool zone_txn_is_open(RedisModuleCtx *ctx, const arg_dname_t *origin, con
 }
 
 static void commit_event(RedisModuleCtx *ctx, rdb_event_t type, const arg_dname_t *origin,
-                         uint8_t instance, uint32_t serial)
+                         uint8_t instance, uint32_t serial, uint64_t *stream_id)
 {
 	RedisModuleString *keyname = RedisModule_CreateString(ctx, RDB_EVENT_KEY, strlen(RDB_EVENT_KEY));
 	RedisModuleKey *stream_key = RedisModule_OpenKey(ctx, keyname, REDISMODULE_READ | REDISMODULE_WRITE);
@@ -213,8 +213,11 @@ static void commit_event(RedisModuleCtx *ctx, rdb_event_t type, const arg_dname_
 		NULL,
 	};
 
-	RedisModuleStreamID ts;
-	int ret = RedisModule_StreamAdd(stream_key, REDISMODULE_STREAM_ADD_AUTOID, &ts, events, 4);
+	if (*stream_id == 0) {
+		*stream_id = RedisModule_Milliseconds();
+	}
+	RedisModuleStreamID ts = { .ms = *stream_id };
+	int ret = RedisModule_StreamAdd(stream_key, 0, &ts, events, 4);
 
 	for (RedisModuleString **event = events; *event != NULL; event++) {
 		RedisModule_FreeString(ctx, *event);
@@ -1561,7 +1564,8 @@ static exception_t zone_meta_active_exchange(RedisModuleCtx *ctx, zone_meta_k ke
 	raise(e);
 }
 
-static void zone_commit(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t *txn)
+static void zone_commit(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t *txn,
+                        uint64_t *stream_id)
 {
 	zone_meta_k meta_key = zone_meta_get_when_open(ctx, origin, txn, REDISMODULE_READ | REDISMODULE_WRITE);
 	if (meta_key == NULL) {
@@ -1628,8 +1632,12 @@ static void zone_commit(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_
 	RedisModule_FreeString(ctx, value);
 	RedisModule_CloseKey(zones_index);
 
-	RedisModule_ReplicateVerbatim(ctx);
-	commit_event(ctx, RDB_EVENT_ZONE, origin, txn->instance, serial);
+	commit_event(ctx, RDB_EVENT_ZONE, origin, txn->instance, serial, stream_id);
+
+	// Replicate with explicit ID so replicas use the same ID
+	RedisModule_Replicate(ctx, RDB_CMD_ZONE_COMMIT, "bbl", (char *)origin->data,
+	                      origin->len, txn, sizeof(*txn), *stream_id);
+
 	RedisModule_ReplyWithSimpleString(ctx, RDB_RETURN_OK);
 }
 
@@ -2031,7 +2039,8 @@ static exception_t upd_trim_history(RedisModuleCtx *ctx, const arg_dname_t *orig
 	return_ok;
 }
 
-static void upd_commit(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t *upd_txn)
+static void upd_commit(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t *upd_txn,
+                       uint64_t *stream_id)
 {
 	upd_meta_k meta_key = upd_meta_get_when_open(ctx, origin, upd_txn, REDISMODULE_READ | REDISMODULE_WRITE);
 	if (meta_key == NULL) {
@@ -2219,11 +2228,14 @@ static void upd_commit(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t
 	upd_meta_unlock(ctx, meta_key, upd_txn->id);
 	RedisModule_CloseKey(meta_key);
 
-	commit_event(ctx, RDB_EVENT_UPD, origin, upd_txn->instance, serial_new);
+	commit_event(ctx, RDB_EVENT_UPD, origin, upd_txn->instance, serial_new, stream_id);
+
 	if (e.ret != KNOT_EOK) {
 		RedisModule_ReplyWithError(ctx, e.what);
 	} else {
-		RedisModule_ReplicateVerbatim(ctx);
+		// Replicate with explicit ID so replicas use the same ID
+		RedisModule_Replicate(ctx, RDB_CMD_UPD_COMMIT, "bbl", (char *)origin->data,
+		                      origin->len, upd_txn, sizeof(*upd_txn), *stream_id);
 		RedisModule_ReplyWithSimpleString(ctx, RDB_RETURN_OK);
 	}
 }
