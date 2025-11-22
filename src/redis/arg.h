@@ -129,7 +129,8 @@ typedef struct {
 
 #define ARG_NUM(arg, out, name) { \
 	long long val; \
-	long long max = (1ULL << (sizeof(out) * 8)) - 1; \
+	uint8_t shift = sizeof(out) < 8 ? sizeof(out) * 8 : 63; \
+	long long max = (1ULL << shift) - 1; \
 	if (RedisModule_StringToLongLong(arg, &val) != REDISMODULE_OK || val > max) { \
 		return RedisModule_ReplyWithError(ctx, RDB_E("invalid " name)); \
 	} \
@@ -139,6 +140,17 @@ typedef struct {
 #define ARG_DATA(arg, out_len, out, name) { \
 	if ((out = (uint8_t *)RedisModule_StringPtrLen(arg, &out_len)) == NULL) { \
 		return RedisModule_ReplyWithError(ctx, RDB_E("invalid " name)); \
+	} \
+}
+
+#define ARG_STREAM_ID(arg, out) { \
+	size_t len; \
+	const uint8_t *ptr = (const uint8_t *)RedisModule_StringPtrLen(arg, &len); \
+	wire_ctx_t w = wire_ctx_init_const(ptr, len); \
+	out.ms = wire_ctx_read_u64(&w); \
+	out.seq = wire_ctx_read_u64(&w); \
+	if (w.error != KNOT_EOK || wire_ctx_available(&w) != 0) { \
+		return RedisModule_ReplyWithError(ctx, RDB_E("invalid stream ID")); \
 	} \
 }
 
@@ -172,9 +184,13 @@ typedef struct {
 	} \
 }
 
+#define WIRE_STREAM_ID(id) \
+	(RedisModuleStreamID){ .ms = htobe64(id->ms), .seq = htobe64(id->seq) }; \
+	RedisModule_Assert(sizeof(RedisModuleStreamID) == 16);
+
 static knot_dname_t *dname_from_str(const char *ptr, size_t len, uint8_t *out, arg_dname_t *origin)
 {
-	assert(ptr != NULL && out != NULL);
+	RedisModule_Assert(ptr != NULL && out != NULL);
 
 	if (knot_dname_from_str(out, ptr, KNOT_DNAME_MAXLEN) == NULL) {
 		return NULL;
