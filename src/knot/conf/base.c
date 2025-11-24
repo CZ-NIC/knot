@@ -1175,7 +1175,28 @@ static void export_type(jsonw_t *w, const yp_item_t *item)
 		);
 		break;
 	case YP_TOPTINT:
-		// TODO
+		SINGLE_OR_ARRAY(
+			jsonw_list(w, "anyOf");
+			jsonw_object(w, NULL);
+			jsonw_str(w, "$ref", "#/$defs/int");
+			jsonw_end(w);
+			jsonw_object(w, NULL);
+			jsonw_str(w, "$ref", "#/$defs/int_time");
+			jsonw_end(w);
+			jsonw_object(w, NULL);
+			jsonw_str(w, "$ref", "#/$defs/int_size");
+			jsonw_end(w);
+			jsonw_object(w, NULL);
+			jsonw_str(w, "type", "string");
+			jsonw_list(w, "enum");
+			for (const knot_lookup_t *o = item->var.i.opts;
+			     o->name != NULL; ++o) {
+				jsonw_str(w, NULL, o->name);
+			}
+			jsonw_end(w);
+			jsonw_end(w);
+			jsonw_end(w);
+		);
 		break;
 	default:
 		assert(0);
