@@ -691,6 +691,7 @@ const filter_desc_t zone_purge_filters[] = {
 	{ "+zonefile", CTL_FILTER_PURGE_ZONEFILE },
 	{ "+journal",  CTL_FILTER_PURGE_JOURNAL },
 	{ "+timers",   CTL_FILTER_PURGE_TIMERS },
+	{ "+keys",     CTL_FILTER_PURGE_KEYS },
 	{ "+kaspdb",   CTL_FILTER_PURGE_KASPDB },
 	{ "+catalog",  CTL_FILTER_PURGE_CATALOG },
 	{ "+orphan",   CTL_FILTER_PURGE_ORPHAN },
