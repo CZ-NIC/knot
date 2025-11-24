@@ -237,6 +237,20 @@ int kdnssec_share_key(kdnssec_ctx_t *ctx, const knot_dname_t *from_zone, const c
 	return ret;
 }
 
+int kdnssec_delete_from_keystores(knot_kasp_keystore_t *keystores, char *key_id, bool thorough)
+{
+	int ret = KNOT_ENOENT;
+	bool found = false;
+
+	for (size_t i = 0;
+	     i < keystores[0].count && (ret == KNOT_ENOENT || (thorough && ret == KNOT_EOK)); i++) {
+		ret = dnssec_keystore_remove(keystores[i].keystore, key_id);
+		found |= (ret == KNOT_EOK);
+	}
+
+	return (found && ret == KNOT_ENOENT) ? KNOT_EOK : ret;
+}
+
 int kdnssec_delete_key(kdnssec_ctx_t *ctx, knot_kasp_key_t *key_ptr)
 {
 	assert(ctx);
@@ -258,10 +272,7 @@ int kdnssec_delete_key(kdnssec_ctx_t *ctx, knot_kasp_key_t *key_ptr)
 	}
 
 	if (!key_still_used_in_keystore && !key_ptr->is_pub_only) {
-		ret = KNOT_ENOENT;
-		for (size_t i = 0; i < ctx->keystores[0].count && ret == KNOT_ENOENT; i++) {
-			ret = dnssec_keystore_remove(ctx->keystores[i].keystore, key_ptr->id);
-		}
+		ret = kdnssec_delete_from_keystores(ctx->keystores, key_ptr->id, false);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
