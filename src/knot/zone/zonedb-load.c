@@ -103,7 +103,7 @@ static zone_t *create_zone_reload(conf_t *conf, const knot_dname_t *name,
 	zone->contents = old_zone->contents;
 	zone_set_flag(zone, zone_get_flag(old_zone, ~0, false));
 
-	zone->timers = old_zone->timers;
+	memcpy(zone->timers, old_zone->timers, sizeof(*zone->timers));
 	zone_timers_sanitize(conf, zone);
 
 	if (old_zone->control_update != NULL) {
@@ -128,7 +128,7 @@ static zone_t *create_zone_new(conf_t *conf, const knot_dname_t *name,
 		return NULL;
 	}
 
-	int ret = zone_timers_read(&server->timerdb, name, &zone->timers);
+	int ret = zone_timers_read(&server->timerdb, name, zone->timers);
 	if (ret != KNOT_EOK && ret != KNOT_ENODB && ret != KNOT_ENOENT) {
 		log_zone_error(zone->name, "failed to load persistent timers (%s)",
 		               knot_strerror(ret));
@@ -144,10 +144,11 @@ static zone_t *create_zone_new(conf_t *conf, const knot_dname_t *name,
 		conf_val_t catz = conf_zone_get(conf, C_CATALOG_ZONE, name);
 		assert(catz.code == KNOT_EOK); // conf consistency checked in conf/tools.c
 		zone->catalog_gen = knot_dname_copy(conf_dname(&catz), NULL);
-		if (zone->timers.catalog_member == 0) {
-			zone->timers.catalog_member = time(NULL);
+		if (zone->timers->catalog_member == 0) {
+			zone->timers->catalog_member = time(NULL);
+			zone->timers->flags |= TIMERS_MODIFIED;
 			ret = zone_timers_write(&zone->server->timerdb, zone->name,
-			                        &zone->timers);
+			                        zone->timers);
 		}
 		if (ret != KNOT_EOK || zone->catalog_gen == NULL) {
 			log_zone_error(zone->name, "failed to initialize catalog member zone (%s)",
@@ -220,14 +221,19 @@ static zone_t *create_zone(conf_t *conf, const knot_dname_t *name, server_t *ser
 
 static void zone_purge(conf_t *conf, zone_t *zone)
 {
+	zone_timers_begin(zone);
 	(void)selective_zone_purge(conf, zone, PURGE_ZONE_ALL);
+	zone_timers_commit(conf, zone);
 }
 
-static zone_contents_t *zone_expire(zone_t *zone, bool zonedb_cow)
+static zone_contents_t *zone_expire(conf_t *conf, zone_t *zone, bool zonedb_cow)
 {
 	if (!zonedb_cow) {
-		zone->timers.next_expire = time(NULL);
-		zone->timers.next_refresh = zone->timers.next_expire;
+		zone_timers_begin(zone);
+		zone->timers->next_expire = time(NULL);
+		zone->timers->next_refresh = zone->timers->next_expire;
+		zone->timers->flags |= TIMERS_MODIFIED;
+		zone_timers_commit(conf, zone);
 	}
 	return zone_switch_contents(zone, NULL);
 }
@@ -263,7 +269,7 @@ static zone_t *reuse_member_zone(zone_t *zone, server_t *server, conf_t *conf,
 		case CAT_UPD_UNIQ:
 			zone_purge(conf, zone);
 			knot_sem_wait(&zone->cow_lock);
-			ptrlist_add(expired_contents, zone_expire(zone, false), NULL);
+			ptrlist_add(expired_contents, zone_expire(conf, zone, false), NULL);
 			knot_sem_post(&zone->cow_lock);
 			// FALLTHROUGH
 		case CAT_UPD_PROP:
@@ -589,7 +595,7 @@ static knot_zonedb_t *create_zonedb_catalog(conf_t *conf, server_t *server,
 			if (upd->type == CAT_UPD_UNIQ && zone != NULL) {
 				zone_purge(conf, zone);
 				knot_sem_wait(&zone->cow_lock);
-				ptrlist_add(expired_contents, zone_expire(zone, true), NULL);
+				ptrlist_add(expired_contents, zone_expire(conf, zone, true), NULL);
 				knot_sem_post(&zone->cow_lock);
 			}
 			zone_t *old = knot_zonedb_find(db_old, upd->member);

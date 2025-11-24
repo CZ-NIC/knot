@@ -169,6 +169,7 @@
 #define C_TIMER			"\x05""timer"
 #define C_TIMER_DB		"\x08""timer-db"
 #define C_TIMER_DB_MAX_SIZE	"\x11""timer-db-max-size"
+#define C_TIMER_DB_SYNC		"\x0D""timer-db-sync"
 #define C_TLS			"\x03""tls"
 #define C_TPL			"\x08""template"
 #define C_UDP			"\x03""udp"
@@ -262,6 +263,12 @@ enum {
 enum {
 	JOURNAL_MODE_ROBUST = 0, // Robust journal DB disk synchronization.
 	JOURNAL_MODE_ASYNC  = 1, // Asynchronous journal DB disk synchronization.
+};
+
+enum {
+	TIMER_DB_SYNC_IMMEDIATE =  0,
+	TIMER_DB_SYNC_NEVER     = -1,
+	TIMER_DB_SYNC_SHUTDOWN  = -2,
 };
 
 enum {

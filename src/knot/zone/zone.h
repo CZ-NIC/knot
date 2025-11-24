@@ -100,8 +100,9 @@ typedef struct zone
 	} zonefile;
 
 	/*! \brief Zone events. */
-	zone_timers_t timers;      //!< Persistent zone timers.
-	zone_events_t events;      //!< Zone events timers.
+	zone_timers_t *timers;        //!< Persistent zone timers.
+	zone_timers_t *timers_static; //!< An instance of zone_timers structure which is safe to read from anywhere under rcu_read_lock.
+	zone_events_t events;         //!< Zone events timers.
 
 	/*! \brief Track unsuccessful NOTIFY targets. */
 	notifailed_rmt_dynarray_t notifailed;
@@ -285,6 +286,9 @@ bool zone_expired(const zone_t *zone);
  */
 void zone_timers_sanitize(conf_t *conf, zone_t *zone);
 
+int zone_timers_begin(zone_t *zone);
+void zone_timers_commit(conf_t *conf, zone_t *zone);
+
 typedef struct {
 	bool address;     //!< Fallback to next remote address is required.
 	bool remote;      //!< Fallback to next remote server is required.
@@ -327,7 +331,7 @@ int zone_set_master_serial(zone_t *zone, uint32_t serial);
 
 int zone_get_master_serial(zone_t *zone, uint32_t *serial);
 
-void zone_set_lastsigned_serial(zone_t *zone, uint32_t serial);
+void zone_set_lastsigned_serial(conf_t *conf, zone_t *zone, uint32_t serial);
 
 int zone_get_lastsigned_serial(zone_t *zone, uint32_t *serial);
 

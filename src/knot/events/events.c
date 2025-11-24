@@ -217,14 +217,19 @@ static void event_wrap(worker_task_t *task)
 
 	const event_info_t *info = get_event_info(type);
 
-	/* Create a configuration copy just for this event. */
+	/* Create a configuration and timers copy just for this event. */
 	conf_t *conf;
 	rcu_read_lock();
 	int ret = conf_clone(&conf);
 	rcu_read_unlock();
 	if (ret == KNOT_EOK) {
+		ret = zone_timers_begin(zone);
+	}
+
+	if (ret == KNOT_EOK) {
 		/* Execute the event callback. */
 		ret = info->callback(conf, zone);
+		zone_timers_commit(conf, zone);
 		conf_free(conf);
 	}
 

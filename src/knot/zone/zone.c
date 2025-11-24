@@ -140,9 +140,10 @@ static int flush_journal(conf_t *conf, zone_t *zone, bool allow_empty_zone, bool
 
 flush_journal_replan:
 	/* Plan next journal flush after proper period. */
-	zone->timers.last_flush = time(NULL);
+	zone->timers->last_flush = time(NULL);
+	zone->timers->flags |= TIMERS_MODIFIED;
 	if (sync_timeout > 0) {
-		time_t next_flush = zone->timers.last_flush + sync_timeout;
+		time_t next_flush = zone->timers->last_flush + sync_timeout;
 		zone_events_schedule_at(zone, ZONE_EVENT_FLUSH, (time_t)0,
 		                              ZONE_EVENT_FLUSH, next_flush);
 	}
@@ -163,6 +164,14 @@ zone_t* zone_new(const knot_dname_t *name)
 		free(zone);
 		return NULL;
 	}
+
+	zone->timers = calloc(1, sizeof(*zone->timers));
+	if (zone->timers == NULL) {
+		knot_dname_free(zone->name, NULL);
+		free(zone);
+		return NULL;
+	}
+	zone->timers_static = zone->timers;
 
 	// DDNS
 	pthread_mutex_init(&zone->ddns_lock, NULL);
@@ -247,6 +256,7 @@ void zone_free(zone_t **zone_ptr)
 
 	ATOMIC_DEINIT(zone->backup_ctx);
 
+	free(zone->timers);
 	free(zone);
 	*zone_ptr = NULL;
 }
@@ -297,13 +307,14 @@ int selective_zone_purge(conf_t *conf, zone_t *zone, purge_flag_t params)
 
 	// Purge the zone timers.
 	if (params & PURGE_ZONE_TIMERS) {
-		bool member = (zone->catalog_gen != NULL);
-		zone->timers = (zone_timers_t) {
-			.catalog_member = member ? zone->timers.catalog_member : 0
-		};
+		time_t member = (zone->catalog_gen != NULL ? zone->timers->catalog_member : 0);
+		memset(zone->timers, 0, sizeof(*zone->timers));
+		zone->timers->catalog_member = member;
+		zone->timers->flags |= TIMERS_MODIFIED;
+
 		if (member) {
 			ret = zone_timers_write(&zone->server->timerdb, zone->name,
-			                        &zone->timers);
+			                        zone->timers);
 		} else {
 			ret = zone_timers_sweep(&zone->server->timerdb,
 			                        dname_cmp_sweep_wrap, zone->name);
@@ -379,8 +390,9 @@ void zone_perform_expire(conf_t *conf, zone_t *zone)
 
 	zone_set_last_master(zone, NULL);
 
-	zone->timers.next_expire = time(NULL);
-	zone->timers.next_refresh = zone->timers.next_expire;
+	zone->timers->next_expire = time(NULL);
+	zone->timers->next_refresh = zone->timers->next_expire;
+	zone->timers->flags |= TIMERS_MODIFIED;
 	replan_from_timers(conf, zone);
 }
 
@@ -585,11 +597,12 @@ void zone_set_last_master(zone_t *zone, const struct sockaddr_storage *addr)
 	}
 
 	if (addr == NULL) {
-		memset(&zone->timers.last_master, 0, sizeof(zone->timers.last_master));
+		memset(&zone->timers->last_master, 0, sizeof(zone->timers->last_master));
 	} else {
-		memcpy(&zone->timers.last_master, addr, sizeof(zone->timers.last_master));
+		memcpy(&zone->timers->last_master, addr, sizeof(zone->timers->last_master));
 	}
-	zone->timers.master_pin_hit = 0;
+	zone->timers->master_pin_hit = 0;
+	zone->timers->flags |= TIMERS_MODIFIED;
 }
 
 static void set_flag(zone_t *zone, zone_flag_t flag, bool remove)
@@ -655,9 +668,7 @@ bool zone_expired(const zone_t *zone)
 		return false;
 	}
 
-	const zone_timers_t *timers = &zone->timers;
-
-	return timers->next_expire > 0 && timers->next_expire <= time(NULL);
+	return zone->timers_static->next_expire > 0 && zone->timers_static->next_expire <= time(NULL);
 }
 
 static void time_set_default(time_t *time, time_t value)
@@ -675,22 +686,73 @@ void zone_timers_sanitize(conf_t *conf, zone_t *zone)
 	assert(zone);
 
 	time_t now = time(NULL);
+	zone_timers_t prev = *zone->timers;
 
 	// assume now if we don't know when we flushed
-	time_set_default(&zone->timers.last_flush, now);
+	time_set_default(&zone->timers->last_flush, now);
 
 	if (zone_is_slave(conf, zone)) {
 		// assume now if we don't know
-		time_set_default(&zone->timers.next_refresh, now);
+		time_set_default(&zone->timers->next_refresh, now);
 		if (zone->is_catalog_flag) {
-			zone->timers.next_expire = 0;
+			zone->timers->next_expire = 0;
 		}
 	} else {
 		// invalidate if we don't have a master
-		zone->timers.last_refresh = 0;
-		zone->timers.next_refresh = 0;
-		zone->timers.last_refresh_ok = false;
-		zone->timers.next_expire = 0;
+		zone->timers->next_refresh = 0;
+		zone->timers->flags &= ~LAST_REFRESH_OK;
+		zone->timers->next_expire = 0;
+	}
+
+	if (memcmp(&prev, zone->timers, sizeof(prev)) != 0) {
+		zone->timers->flags |= TIMERS_MODIFIED;
+	}
+}
+
+int zone_timers_begin(zone_t *zone)
+{
+	assert(zone->timers == zone->timers_static);
+	zone->timers = malloc(sizeof(*zone->timers));
+	if (zone->timers == NULL) {
+		zone->timers = zone->timers_static;
+		return KNOT_ENOMEM;
+	}
+	memcpy(zone->timers, zone->timers_static, sizeof(*zone->timers));
+	return KNOT_EOK;
+}
+
+typedef struct {
+	struct rcu_head rcuhead;
+	zone_timers_t *timers;
+} zone_timers_cleanup_t;
+
+static void timers_cleanup(struct rcu_head *head)
+{
+	zone_timers_cleanup_t *cleanup = (zone_timers_cleanup_t *)head;
+	free(cleanup->timers);
+	free(cleanup);
+}
+
+void zone_timers_commit(conf_t *conf, zone_t *zone)
+{
+	if (zone->timers_static == zone->timers) {
+		return;
+	}
+
+	zone_timers_t *old_static = rcu_xchg_pointer(&zone->timers_static, zone->timers);
+
+	zone_timers_cleanup_t *cleanup = calloc(1, sizeof(*cleanup));
+	if (cleanup != NULL) {
+		cleanup->timers = old_static;
+		call_rcu((struct rcu_head *)cleanup, timers_cleanup);
+	}
+
+	if (conf->cache.db_timer_db_sync == TIMER_DB_SYNC_IMMEDIATE) {
+		int ret = zone_timers_write(&zone->server->timerdb, zone->name, zone->timers);
+		if (ret != KNOT_EOK) {
+			log_zone_error(zone->name, "failed to update persistent timer DB (%s)",
+			               knot_strerror(ret));
+		}
 	}
 }
 
@@ -760,7 +822,7 @@ int zone_master_try(conf_t *conf, zone_t *zone, zone_master_cb callback,
 				preferred_2x = (zone->flags & ZONE_PREF_MASTER_2X);
 			}
 			if (pin_tolerance > 0 &&
-			    sockaddr_net_match(&remote.addr, (struct sockaddr_storage *)&zone->timers.last_master, -1)) {
+			    sockaddr_net_match(&remote.addr, (struct sockaddr_storage *)&zone->timers->last_master, -1)) {
 				last_id = conf_str(iter.id);
 				last = *iter.id;
 				last_idx = idx;
@@ -917,22 +979,26 @@ int zone_get_master_serial(zone_t *zone, uint32_t *serial)
 	return kasp_db_load_serial(zone_kaspdb(zone), zone->name, KASPDB_SERIAL_MASTER, serial);
 }
 
-void zone_set_lastsigned_serial(zone_t *zone, uint32_t serial)
+void zone_set_lastsigned_serial(conf_t *conf, zone_t *zone, uint32_t serial)
 {
-	zone->timers.last_signed_serial = serial;
-	zone->timers.last_signed_s_flags = LAST_SIGNED_SERIAL_FOUND | LAST_SIGNED_SERIAL_VALID;
+	bool extra_txn = (zone->control_update != NULL && zone->timers == zone->timers_static && zone_timers_begin(zone) == KNOT_EOK); // zone_update_commit() is not within a zone event in case of control_update
+	zone->timers->last_signed_serial = serial;
+	zone->timers->flags |= LAST_SIGNED_SERIAL_FOUND | LAST_SIGNED_SERIAL_VALID | TIMERS_MODIFIED;
+	if (extra_txn) {
+		zone_timers_commit(conf, zone);
+	}
 }
 
 int zone_get_lastsigned_serial(zone_t *zone, uint32_t *serial)
 {
-	if (!(zone->timers.last_signed_s_flags & LAST_SIGNED_SERIAL_FOUND)) {
+	if (!(zone->timers->flags & LAST_SIGNED_SERIAL_FOUND)) {
 		// backwards compatibility: it used to be stored in KASP DB, moved to timers for performance
 		return kasp_db_load_serial(zone_kaspdb(zone), zone->name, KASPDB_SERIAL_LASTSIGNED, serial);
 	}
-	if (!(zone->timers.last_signed_s_flags & LAST_SIGNED_SERIAL_VALID)) {
+	if (!(zone->timers->flags & LAST_SIGNED_SERIAL_VALID)) {
 		return KNOT_ENOENT;
 	}
-	*serial = zone->timers.last_signed_serial;
+	*serial = zone->timers->last_signed_serial;
 	return KNOT_EOK;
 }
 

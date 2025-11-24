@@ -15,9 +15,9 @@
 #include "libknot/error.h"
 
 static const zone_timers_t MOCK_TIMERS = {
+	.flags = LAST_SIGNED_SERIAL_FOUND | LAST_SIGNED_SERIAL_VALID | TIMERS_MODIFIED,
 	.last_flush     = 1474559960,
 	.next_refresh   = 1474559961,
-	.last_refresh_ok = true,
 	.last_notified_serial = 123456,
 	.next_ds_check  = 1474559962,
 	.next_ds_push   = 1474559963,
@@ -26,15 +26,14 @@ static const zone_timers_t MOCK_TIMERS = {
 	.last_master    = { .sin6_family = AF_INET, .sin6_port = 53 },
 	.master_pin_hit = 1474559966,
 	.last_signed_serial = 12354678,
-	.last_signed_s_flags = LAST_SIGNED_SERIAL_FOUND | LAST_SIGNED_SERIAL_VALID,
 };
 
 static bool timers_eq(const zone_timers_t *val, const zone_timers_t *ref)
 {
 	return	val->last_flush == ref->last_flush &&
+		val->flags == ref->flags &&
 		val->next_refresh == ref->next_refresh &&
-		val->last_refresh_ok == ref->last_refresh_ok &&
-		val->last_notified_serial == ref->last_notified_serial &&
+		(val->last_notified_serial == ref->last_notified_serial || !(val->flags & LAST_NOTIFIED_SERIAL_VALID)) &&
 		val->next_ds_check == ref->next_ds_check &&
 		val->next_ds_push == ref->next_ds_push &&
 		val->catalog_member == ref->catalog_member &&
@@ -42,8 +41,7 @@ static bool timers_eq(const zone_timers_t *val, const zone_timers_t *ref)
 		sockaddr_cmp((struct sockaddr_storage *)&val->last_master,
 		             (struct sockaddr_storage *)&ref->last_master, false) == 0 &&
 		val->master_pin_hit == ref->master_pin_hit &&
-		(val->last_signed_s_flags & LAST_SIGNED_SERIAL_VALID) == (ref->last_signed_s_flags & LAST_SIGNED_SERIAL_VALID) &&
-		(val->last_signed_serial == ref->last_signed_serial || !(val->last_signed_s_flags & LAST_SIGNED_SERIAL_VALID));
+		(val->last_signed_serial == ref->last_signed_serial || !(val->flags & LAST_SIGNED_SERIAL_VALID));
 }
 
 static bool keep_all(const knot_dname_t *zone, void *data)
@@ -67,7 +65,7 @@ int main(int argc, char *argv[])
 	}
 
 	const knot_dname_t *zone = (uint8_t *)"\x7""example""\x3""com";
-	struct zone_timers timers = MOCK_TIMERS;
+	struct zone_timers timers = MOCK_TIMERS, timers2 = { 0 };
 
 	// Create database
 	knot_lmdb_db_t _db = { 0 }, *db = &_db;
@@ -84,21 +82,20 @@ int main(int argc, char *argv[])
 	is_int(KNOT_EOK, ret, "zone_timers_write()");
 
 	// Read timers
-	memset(&timers, 0, sizeof(timers));
-	ret = zone_timers_read(db, zone, &timers);
+	ret = zone_timers_read(db, zone, &timers2);
 	ok(ret == KNOT_EOK, "zone_timers_read()");
-	ok(timers_eq(&timers, &MOCK_TIMERS), "inconsistent timers");
+	ok(timers_eq(&timers2, &timers), "inconsistent timers");
 
 	// Sweep none
 	ret = zone_timers_sweep(db, keep_all, NULL);
 	is_int(KNOT_EOK, ret, "zone_timers_sweep() none");
-	ret = zone_timers_read(db, zone, &timers);
+	ret = zone_timers_read(db, zone, &timers2);
 	is_int(KNOT_EOK, ret, "zone_timers_read()");
 
 	// Sweep all
 	ret = zone_timers_sweep(db, remove_all, NULL);
 	is_int(KNOT_EOK, ret, "zone_timers_sweep() all");
-	ret = zone_timers_read(db, zone, &timers);
+	ret = zone_timers_read(db, zone, &timers2);
 	is_int(KNOT_ENOENT, ret, "zone_timers_read() nonexistent");
 
 	// Clean up.

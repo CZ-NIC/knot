@@ -353,7 +353,7 @@ static int answer_edns_put(knot_pkt_t *resp, knotd_qdata_t *qdata)
 	if (knot_pkt_edns_option(qdata->query, KNOT_EDNS_OPTION_EXPIRE) != NULL &&
 	    qdata->extra->contents != NULL && !qdata->extra->zone->is_catalog_flag) {
 		knot_time_t expire = knot_time_min(ATOMIC_GET(qdata->extra->contents->dnssec_expire),
-		                                   qdata->extra->zone->timers.next_expire);
+		                                   qdata->extra->zone->timers_static->next_expire);
 		uint32_t timer;
 		if (expire == 0) {
 			timer = zone_soa_expire(qdata->extra->zone);

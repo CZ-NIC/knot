@@ -94,8 +94,8 @@ void replan_from_timers(conf_t *conf, zone_t *zone)
 
 	time_t refresh = TIME_CANCEL;
 	if (zone_is_slave(conf, zone)) {
-		refresh = zone->timers.next_refresh;
-		if (zone->contents == NULL && zone->timers.last_refresh_ok) { // zone disappeared w/o expiry
+		refresh = zone->timers->next_refresh;
+		if (zone->contents == NULL && (zone->timers->flags & LAST_REFRESH_OK)) { // zone disappeared w/o expiry
 			refresh = now;
 		}
 		if (refresh == 0) { // sanitize in case of concurrent purge event
@@ -108,7 +108,7 @@ void replan_from_timers(conf_t *conf, zone_t *zone)
 	time_t expire = TIME_IGNORE;
 	if (zone_is_slave(conf, zone) && zone->contents != NULL) {
 		expire_pre = TIME_CANCEL;
-		expire = zone->timers.next_expire;
+		expire = zone->timers->next_expire;
 	}
 
 	time_t flush = TIME_IGNORE;
@@ -116,7 +116,7 @@ void replan_from_timers(conf_t *conf, zone_t *zone)
 		conf_val_t val = conf_zone_get(conf, C_ZONEFILE_SYNC, zone->name);
 		int64_t sync_timeout = conf_int(&val);
 		if (sync_timeout > 0) {
-			flush = zone->timers.last_flush + sync_timeout;
+			flush = zone->timers->last_flush + sync_timeout;
 		}
 	}
 
@@ -143,11 +143,11 @@ void replan_from_timers(conf_t *conf, zone_t *zone)
 			}
 		}
 
-		ds_check = zone->timers.next_ds_check;
+		ds_check = zone->timers->next_ds_check;
 		if (ds_check == 0) {
 			ds_check = TIME_IGNORE;
 		}
-		ds_push = zone->timers.next_ds_push;
+		ds_push = zone->timers->next_ds_push;
 		if (ds_push == 0) {
 			ds_push = TIME_IGNORE;
 		}
