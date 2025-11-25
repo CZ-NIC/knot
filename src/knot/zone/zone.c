@@ -343,6 +343,16 @@ int selective_zone_purge(conf_t *conf, zone_t *zone, purge_flag_t params)
 		RETURN_IF_FAILED("journal", KNOT_ENOENT);
 	}
 
+	// Purge keys and related metadata.
+	if (params & PURGE_ZONE_KEYS) {
+		ret = knot_lmdb_open(zone_kaspdb(zone));
+		if (ret == KNOT_EOK) {
+			ret = kasp_db_delete_keys(zone_kaspdb(zone), zone->name,
+			                          false, !exit_immediately);
+		}
+		RETURN_IF_FAILED("keys", KNOT_ENOENT);
+	}
+
 	// Purge KASP DB.
 	if (params & PURGE_ZONE_KASPDB) {
 		ret = knot_lmdb_open(zone_kaspdb(zone));
