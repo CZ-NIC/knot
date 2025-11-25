@@ -23,8 +23,10 @@ typedef enum {
 	KASPDBKEY_SAVED_TTLS = 0x8,
 } keyclass_t;
 
-static const keyclass_t zone_related_classes[] = {
+#define NUM_KEY_CLASSES 1   // Count of DNSSEC key related classes.
+static const keyclass_t related_classes[] = {
 	KASPDBKEY_PARAMS,
+	// Key related classes above this line.
 	KASPDBKEY_NSEC3SALT,
 	KASPDBKEY_NSEC3TIME,
 	KASPDBKEY_MASTERSERIAL,
@@ -32,12 +34,15 @@ static const keyclass_t zone_related_classes[] = {
 	KASPDBKEY_OFFLINE_RECORDS,
 	KASPDBKEY_SAVED_TTLS,
 };
-static const size_t zone_related_classes_size = sizeof(zone_related_classes) / sizeof(*zone_related_classes);
+static const size_t related_classes_size = sizeof(related_classes) / sizeof(*related_classes);
 
-static const keyclass_t key_related_classes[] = {
-	KASPDBKEY_PARAMS,
-};
-static const size_t key_related_classes_size = sizeof(key_related_classes) / sizeof(*key_related_classes);
+// DNSSEC key metadata.
+static const keyclass_t *key_related_classes = related_classes;
+static const size_t key_related_classes_size = NUM_KEY_CLASSES;
+
+// Zone related classes (but not DNSSEC key metadata).
+static const keyclass_t *zone_related_classes = related_classes + key_related_classes_size;
+static const size_t zone_related_classes_size = related_classes_size - key_related_classes_size;
 
 static bool is_zone_related_class(uint8_t class)
 {
@@ -260,7 +265,7 @@ int kasp_db_delete_key(knot_lmdb_db_t *db, const knot_dname_t *zone_name, const 
 
 int kasp_db_delete_all(knot_lmdb_db_t *db, const knot_dname_t *zone)
 {
-	MDB_val prefix = make_key_str(KASPDBKEY_PARAMS, zone, NULL);
+	MDB_val prefix = make_key_str(zone_related_classes[0], zone, NULL);
 	knot_lmdb_txn_t txn = { 0 };
 	knot_lmdb_begin(db, &txn, true);
 	for (size_t i = 0; i < zone_related_classes_size && prefix.mv_data != NULL; i++) {
@@ -600,7 +605,7 @@ static int kasp_db_backup_generic(const knot_dname_t *zone, knot_lmdb_db_t *db, 
 		prefixes[i] = make_key_str(classes[i], zone, NULL);
 	}
 
-	if (classes == zone_related_classes) {
+	if (classes_size == related_classes_size) {
 		// we copy all policy-last records, that doesn't harm
 		prefixes[n_prefs++] = knot_lmdb_make_key("B", KASPDBKEY_POLICYLAST);
 	}
@@ -616,7 +621,7 @@ static int kasp_db_backup_generic(const knot_dname_t *zone, knot_lmdb_db_t *db, 
 int kasp_db_backup(const knot_dname_t *zone, knot_lmdb_db_t *db, knot_lmdb_db_t *backup_db)
 {
 	return kasp_db_backup_generic(zone, db, backup_db,
-	                              zone_related_classes, zone_related_classes_size);
+	                              related_classes, related_classes_size);
 }
 
 int kasp_db_backup_keys(const knot_dname_t *zone, knot_lmdb_db_t *db, knot_lmdb_db_t *backup_db)
