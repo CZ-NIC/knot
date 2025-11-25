@@ -74,8 +74,8 @@ typedef enum {
 #define PURGE_ZONE_DATA  (PURGE_ZONE_TIMERS | PURGE_ZONE_ZONEFILE | PURGE_ZONE_JOURNAL | \
                           PURGE_ZONE_KASPDB | PURGE_ZONE_CATALOG)
 
-/*!< Standard purge (respect C_ZONEFILE_SYNC param). */
-#define PURGE_ZONE_ALL   (PURGE_ZONE_DATA | PURGE_ZONE_BEST | PURGE_ZONE_LOG)
+/*!< Standard purge (including keys; respect C_ZONEFILE_SYNC param). */
+#define PURGE_ZONE_ALL   (PURGE_ZONE_DATA | PURGE_ZONE_KEYS | PURGE_ZONE_BEST | PURGE_ZONE_LOG)
 
 /*!< All purge-related flags. */
 #define PURGE_ZONE_FLAGS (PURGE_ZONE_ALL | PURGE_ZONE_NOSYNC | PURGE_ZONE_EXPIRE)
