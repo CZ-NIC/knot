@@ -58,6 +58,18 @@ int kasp_db_get_key_algorithm(knot_lmdb_db_t *db, const knot_dname_t *zone_name,
 int kasp_db_delete_key(knot_lmdb_db_t *db, const knot_dname_t *zone_name, const char *key_id, bool *still_used);
 
 /*!
+ * \brief Remove all keys from zone. Delete them if no zone has them anymore.
+ *
+ * \param db            KASP db
+ * \param zone_name     zone to remove from
+ * \param orphan        if true, remove keys of a non-existent zone (orphans)
+ * \param best          continue with other keys even if one key fails
+ *
+ * \return KNOT_E*
+ */
+int kasp_db_delete_keys(knot_lmdb_db_t *db, const knot_dname_t *zone_name, bool orphan, bool best);
+
+/*!
  * \brief Remove all zone's keys from DB, including nsec3param, but exluding keys related to
  *        zone's DNSSEC keys (i.e. DNSSEC keys metadata).
  *
@@ -78,6 +90,17 @@ int kasp_db_delete_all(knot_lmdb_db_t *db, const knot_dname_t *zone_name);
  * \return KNOT_E*
  */
 int kasp_db_sweep(knot_lmdb_db_t *db, sweep_cb keep_zone, void *cb_data);
+
+/*!
+ * \brief Selectively delete keys an their related data from the database.
+ *
+ * \param db         KASP database.
+ * \param keep_zone  Filtering callback.
+ * \param cb_data    Data passed to callback function.
+ *
+ * \return KNOT_E*
+ */
+int kasp_db_sweep_keys(knot_lmdb_db_t *db, sweep_cb keep_zone, void *cb_data);
 
 /*!
  * \brief List all zones that have at least one key in KASP db.
