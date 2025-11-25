@@ -28,7 +28,7 @@ sudo apt-get install \
 #### Install optional packages:
 ```bash
 sudo apt-get install \
-  libcap-ng-dev libsystemd-dev libidn2-dev libprotobuf-c-dev protobuf-c-compiler libfstrm-dev libmaxminddb-dev libnghttp2-dev libbpf-dev libxdp-dev libmnl-dev python3-sphinx python3-sphinx-panels softhsm2
+  libcap-ng-dev libsystemd-dev libidn2-dev libprotobuf-c-dev protobuf-c-compiler protobuf-compiler libfstrm-dev libmaxminddb-dev libnghttp2-dev libbpf-dev libxdp-dev libmnl-dev python3-sphinx python3-sphinx-panels softhsm2
 ```
 
 ### Fedora like distributions
