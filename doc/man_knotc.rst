@@ -235,12 +235,13 @@ Actions
 **zone-purge** *zone*... [**+orphan**] [*filter*...]
   Purge zone data, zone file, journal, timers, and/or KASP data of specified zones.
   Available filters are **+expire**, **+zonefile**, **+journal**, **+timers**,
-  **+kaspdb**, and **+catalog**. If no filter is specified, all filters are enabled.
-  If the zone is no longer configured, add **+orphan** parameter (zone file cannot
-  be purged in this case). When purging orphans, always check the server log for
-  possible errors. For proper operation, it's necessary to prevent ongoing changes
-  to the zone and triggering of zone related events during purge; use of
-  **zone-freeze** is advisable. This command always requires the force option. (#)
+  **+keys**, **+kaspdb**, and **+catalog**. If no filter is specified, all filters
+  are enabled, except for **+keys**, which must be listed explicitly. If the zone is
+  no longer configured, add **+orphan** parameter (zone file cannot be purged in this
+  case). When purging orphans, always check the server log for possible errors. For proper
+  operation, it's necessary to prevent ongoing changes to the zone and triggering of zone
+  related events during purge; use of **zone-freeze** is advisable. This command always
+  requires the force option. (#)
 
 **zone-stats** *zone* [*module*\ [\ **.**\ *counter*\ ]]
   Show zone statistics counter(s). To print also counters with value 0, use

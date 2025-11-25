@@ -1645,8 +1645,8 @@ static int purge_orphan_member_cb(const knot_dname_t *member, const knot_dname_t
 	orphan->server = server;
 
 	const purge_flag_t params =
-		PURGE_ZONE_TIMERS | PURGE_ZONE_JOURNAL | PURGE_ZONE_KASPDB |
-		PURGE_ZONE_BEST | PURGE_ZONE_LOG;
+		PURGE_ZONE_TIMERS | PURGE_ZONE_JOURNAL | PURGE_ZONE_KEYS |
+		PURGE_ZONE_KASPDB | PURGE_ZONE_BEST | PURGE_ZONE_LOG;
 
 	int ret = selective_zone_purge(conf(), orphan, params);
 	free(orphan);
@@ -1726,6 +1726,13 @@ static int orphans_purge(ctl_args_t *args)
 	bool failed = false;
 
 	if (args->data[KNOT_CTL_IDX_ZONE] == NULL) {
+		// Purge keys. (It needs to be requested explicitly.)
+		if (MATCH_AND_FILTER(args, CTL_FILTER_PURGE_KEYS)) {
+			ret = kasp_db_sweep_keys(&args->server->kaspdb,
+			                         zone_exists, args->server->zone_db);
+			log_if_orphans_error(NULL, ret, "keys", &failed);
+		}
+
 		// Purge KASP DB.
 		if (only_orphan || MATCH_AND_FILTER(args, CTL_FILTER_PURGE_KASPDB)) {
 			ret = kasp_db_sweep(&args->server->kaspdb,
@@ -1772,6 +1779,14 @@ static int orphans_purge(ctl_args_t *args)
 			knot_dname_to_lower(zone_name);
 
 			if (!zone_exists(zone_name, args->server->zone_db)) {
+				// Purge keys. (It needs to be requested explicitly.)
+				if (MATCH_AND_FILTER(args, CTL_FILTER_PURGE_KEYS)) {
+					if (knot_lmdb_open(&args->server->kaspdb) == KNOT_EOK) {
+						ret = kasp_db_delete_keys(&args->server->kaspdb, zone_name, true, false);
+						log_if_orphans_error(zone_name, ret, "keys", &failed);
+					}
+				}
+
 				// Purge KASP DB.
 				if (only_orphan || MATCH_AND_FILTER(args, CTL_FILTER_PURGE_KASPDB)) {
 					if (knot_lmdb_open(&args->server->kaspdb) == KNOT_EOK) {
@@ -1832,6 +1847,8 @@ static int zone_purge(zone_t *zone, ctl_args_t *args)
 		MATCH_OR_FILTER(args, CTL_FILTER_PURGE_KASPDB)   * PURGE_ZONE_KASPDB |
 		MATCH_OR_FILTER(args, CTL_FILTER_PURGE_CATALOG)  * PURGE_ZONE_CATALOG |
 		MATCH_OR_FILTER(args, CTL_FILTER_PURGE_EXPIRE)   * PURGE_ZONE_EXPIRE |
+		// Keys purge must be requested explicitly.
+		MATCH_AND_FILTER(args, CTL_FILTER_PURGE_KEYS)    * PURGE_ZONE_KEYS |
 		PURGE_ZONE_NOSYNC; // Purge even zonefiles with disabled syncing.
 
 	zone_set_flag(zone, (zone_flag_t)params);
