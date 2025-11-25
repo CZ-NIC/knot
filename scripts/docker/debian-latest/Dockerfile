@@ -33,6 +33,7 @@ RUN apt-get -y install \
 	locales-all \
 	pkg-config \
 	protobuf-c-compiler \
+	protobuf-compiler \
 	python3-sphinx \
 	python3-sphinx-panels \
 	texlive \
