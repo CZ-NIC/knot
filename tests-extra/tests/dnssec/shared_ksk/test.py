@@ -61,7 +61,7 @@ check_ksks(knot, zones0 + zones_add1, zones0[1])
 
 # now purge zones keys in order to create dangling policy_last
 for z in zones0:
-    knot.ctl("zone-purge -f +kaspdb " + z.name)
+    knot.ctl("zone-purge -f +keys " + z.name)
 
 zones_add2 = t.zone_rnd(5, dnssec=False, records=10)
 add_shared(t, knot, zones_add2, zones0[0])
