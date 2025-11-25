@@ -148,7 +148,14 @@ int main(int argc, char *argv[])
 	ret = kasp_db_delete_all(db, zone2);
 	is_int(KNOT_EOK, ret, "kasp_db: delete all");
 	ret = kasp_db_list_keys(db, zone2, &l);
-	is_int(KNOT_ENOENT, ret, "kasp_db: delete all deleted keys");
+	is_int(KNOT_EOK, ret, "kasp_db: do not delete keys");
+	is_int(2, list_size(&l), "kasp_db: list keys reports two keys 2");
+	params = ((ptrnode_t *)TAIL(l))->d;
+	ok(params_eq(params, &params2), "kasp_db: key params equal 3");
+	free_params
+	params = ((ptrnode_t *)HEAD(l))->d;
+	free_params
+	ptrlist_deep_free(&l, NULL);
 	ret = kasp_db_load_nsec3salt(db, zone2, &salt2, &time);
 	is_int(KNOT_ENOENT, ret, "kasp_db: delete all removed nsec3salt");
 	dnssec_binary_free(&salt2);
