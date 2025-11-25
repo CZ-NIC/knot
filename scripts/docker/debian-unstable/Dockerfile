@@ -29,4 +29,5 @@ RUN apt-get -y install \
 	libxdp-dev \
 	locales-all \
 	pkg-config \
-	protobuf-c-compiler
+	protobuf-c-compiler \
+	protobuf-compiler

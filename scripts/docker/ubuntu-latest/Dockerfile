@@ -30,6 +30,7 @@ RUN apt-get -y install \
 	libxdp-dev \
 	pkg-config \
 	protobuf-c-compiler \
+	protobuf-compiler \
 	python3-sphinx \
 	texlive \
 	texlive-font-utils \
