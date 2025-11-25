@@ -11,6 +11,7 @@
 #include "contrib/strtonum.h"
 #include "contrib/wire_ctx.h"
 #include "knot/dnssec/key_records.h"
+#include "knot/dnssec/zone-keys.h"
 
 typedef enum {
 	KASPDBKEY_PARAMS = 0x1,
@@ -57,6 +58,11 @@ static bool is_zone_related_class(uint8_t class)
 static bool is_zone_related(const MDB_val *key)
 {
 	return is_zone_related_class(*(uint8_t *)key->mv_data);
+}
+
+static bool is_key_related(const MDB_val *key)
+{
+	return (*(uint8_t *)key->mv_data == KASPDBKEY_PARAMS);
 }
 
 static MDB_val make_key_str(keyclass_t kclass, const knot_dname_t *dname, const char *str)
@@ -262,6 +268,67 @@ int kasp_db_delete_key(knot_lmdb_db_t *db, const knot_dname_t *zone_name, const 
 	return txn.ret;
 }
 
+int kasp_db_delete_keys(knot_lmdb_db_t *db, const knot_dname_t *zone_name, bool orphan, bool best)
+{
+	int ret;
+	knot_kasp_keystore_t *keystores;
+	kdnssec_ctx_t ctx = { 0 };
+
+	if (orphan) {
+		ret = init_all_keystores(conf(), &keystores);
+	} else {
+		ret = kdnssec_ctx_init(conf(), &ctx, zone_name, db, NULL);
+		keystores = ctx.keystores;
+	}
+
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	knot_lmdb_txn_t txn_r = { 0 };
+	knot_lmdb_begin(db, &txn_r, false);
+
+	MDB_val prefix = make_key_str(KASPDBKEY_PARAMS, zone_name, NULL);
+	knot_lmdb_txn_t txn = { 0 };
+	knot_lmdb_begin(db, &txn, true);
+	knot_lmdb_foreach(&txn, &prefix) {
+		char *key_id = NULL;
+		if (!unmake_key_str(&txn.cur_key, &key_id)) {
+			continue;
+		}
+
+		size_t count = keyid_inuse(&txn_r, key_id, NULL);
+		assert(count > 0);
+		if (count == 1) {
+			ret = kdnssec_delete_from_keystores(keystores, key_id,
+			                                    orphan ? NULL : zone_name, true);
+			ret = (ret == KNOT_ENOENT) ? KNOT_EOK : ret;
+			if (ret != KNOT_EOK) {
+				// Note: it isn't sure that there still is a key to delete.
+				free(key_id);
+				if (best) {
+					continue;
+				} else {
+					break;
+				}
+			}
+		}
+		knot_lmdb_del_cur(&txn);
+		free(key_id);
+	}
+
+	knot_lmdb_commit(&txn);
+	knot_lmdb_abort(&txn_r);
+	free(prefix.mv_data);
+
+	if (orphan) {
+		deinit_all_keystores(&keystores);
+	} else {
+		kdnssec_ctx_deinit(&ctx);
+	}
+
+	return (ret == KNOT_EOK) ? txn.ret : ret;
+}
 
 int kasp_db_delete_all(knot_lmdb_db_t *db, const knot_dname_t *zone)
 {
@@ -296,6 +363,54 @@ int kasp_db_sweep(knot_lmdb_db_t *db, sweep_cb keep_zone, void *cb_data)
 	}
 	knot_lmdb_commit(&txn);
 	return txn.ret;
+}
+
+int kasp_db_sweep_keys(knot_lmdb_db_t *db, sweep_cb keep_zone, void *cb_data)
+{
+	if (knot_lmdb_exists(db) == KNOT_ENODB) {
+		return KNOT_EOK;
+	}
+	int ret = knot_lmdb_open(db);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	knot_kasp_keystore_t *keystores = NULL;
+	ret = init_all_keystores(conf(), &keystores);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	knot_lmdb_txn_t txn_r = { 0 };
+	knot_lmdb_begin(db, &txn_r, false);
+
+	knot_lmdb_txn_t txn = { 0 };
+	knot_lmdb_begin(db, &txn, true);
+	knot_lmdb_forwhole(&txn) {
+		if (is_key_related(&txn.cur_key) &&
+		    !keep_zone((const knot_dname_t *)txn.cur_key.mv_data + 1, cb_data)) {
+			char *key_id = NULL;
+			bool key_ok = unmake_key_str(&txn.cur_key, &key_id);
+			size_t count = keyid_inuse(&txn_r, key_id, NULL);
+			assert(count > 0);
+			if (key_ok && count == 1) {
+				ret = kdnssec_delete_from_keystores(keystores, key_id, NULL, true);
+				ret = (ret == KNOT_ENOENT) ? KNOT_EOK : ret;
+				if (ret != KNOT_EOK) {
+					// Note: it isn't sure that there still is a key to delete.
+					free(key_id);
+					break;
+				}
+			}
+			knot_lmdb_del_cur(&txn);
+			free(key_id);
+		}
+	}
+
+	knot_lmdb_commit(&txn);
+	knot_lmdb_abort(&txn_r);
+	deinit_all_keystores(&keystores);
+	return (ret == KNOT_EOK) ? txn.ret : ret;
 }
 
 int kasp_db_list_zones(knot_lmdb_db_t *db, list_t *zones)
