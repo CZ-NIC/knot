@@ -5,7 +5,7 @@
 
 #include <stdint.h>
 
-#include "libknot/libknot.h"
+#include "libknot/packet/pkt.h"
 
 int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 {
