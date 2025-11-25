@@ -11,6 +11,7 @@
 .libs/
 .deps/
 .dirstamp
+/scripts/showkey/showkey
 /tmp
 /Knot.creator.user*
 /Knot.cflags
