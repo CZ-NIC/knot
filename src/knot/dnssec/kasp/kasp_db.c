@@ -223,23 +223,23 @@ int kasp_db_get_key_algorithm(knot_lmdb_db_t *db, const knot_dname_t *zone_name,
 	return ret;
 }
 
-static bool keyid_inuse(knot_lmdb_txn_t *txn, const char *key_id, key_params_t **params)
+static size_t keyid_inuse(knot_lmdb_txn_t *txn, const char *key_id, key_params_t **params)
 {
+	size_t count = 0;
 	uint8_t pf = KASPDBKEY_PARAMS;
 	MDB_val prefix = { sizeof(pf), &pf };
 	knot_lmdb_foreach(txn, &prefix) {
 		char *found_id = NULL;
 		if (unmake_key_str(&txn->cur_key, &found_id) &&
 		    strcmp(found_id, key_id) == 0) {
+			count++;
 			if (params != NULL) {
 				*params = txn2params(txn);
 			}
-			free(found_id);
-			return true;
 		}
 		free(found_id);
 	}
-	return false;
+	return count;
 }
 
 
@@ -250,7 +250,7 @@ int kasp_db_delete_key(knot_lmdb_db_t *db, const knot_dname_t *zone_name, const 
 	knot_lmdb_begin(db, &txn, true);
 	knot_lmdb_del_prefix(&txn, &search);
 	if (still_used != NULL) {
-		*still_used = keyid_inuse(&txn, key_id, NULL);
+		*still_used = (keyid_inuse(&txn, key_id, NULL) > 0);
 	}
 	knot_lmdb_commit(&txn);
 	free(search.mv_data);
