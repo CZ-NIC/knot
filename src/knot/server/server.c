@@ -900,6 +900,8 @@ static void rdb_process_event(redisReply *reply, knot_zonedb_t *zone_db,
 	switch (type) {
 	case RDB_EVENT_ZONE:
 	case RDB_EVENT_UPD:
+		log_zone_debug(zone->name, "rdb, event %s %s, serial %u",
+		               since, (type == RDB_EVENT_ZONE ? "zone" : "update"), serial);
 		zone_schedule_update(conf(), zone, ZONE_EVENT_LOAD);
 		break;
 	default:
@@ -936,13 +938,16 @@ static int rdb_listener_run(struct dthread *thread)
 	server_t *s = thread->data;
 
 	s->rdb_ctx = NULL;
+
+	const uint64_t prop_delay = 60; // Maximum considered propagation delay to all replicas.
 	char since[RDB_TIMESTAMP_SIZE] = "$";
+	(void)snprintf(since, sizeof(since), "%"PRIu64"-0", (knot_time() - prop_delay) * 1000);
 
 	while (thread->state & ThreadActive) {
 		if (s->rdb_ctx == NULL) {
-			s->rdb_ctx = rdb_connect(conf(), false);
+			s->rdb_ctx = rdb_connect(conf(), false, " events");
 			if (s->rdb_ctx == NULL) {
-				log_error("rdb, failed to connect");
+				log_error("rdb, failed to connect events");
 				sleep(2);
 				continue;
 			} else if (!rdb_compatible(s->rdb_ctx)) {
@@ -951,8 +956,9 @@ static int rdb_listener_run(struct dthread *thread)
 			}
 		}
 
+		// Note the timeout should be lower than the TLS timeout (see hiredis_attach_gnutls())
 		redisReply *reply = redisCommand(s->rdb_ctx, "XREAD BLOCK %d STREAMS %b %s",
-		                                 10000, RDB_EVENT_KEY, strlen(RDB_EVENT_KEY), since);
+		                                 4000, RDB_EVENT_KEY, strlen(RDB_EVENT_KEY), since);
 		if (reply == NULL) {
 			if (thread->state & ThreadDead) {
 				break;
@@ -960,6 +966,8 @@ static int rdb_listener_run(struct dthread *thread)
 			if (s->rdb_ctx->err != REDIS_OK) {
 				log_error("rdb, failed to read events (%s)", s->rdb_ctx->errstr);
 			}
+			rdb_disconnect(s->rdb_ctx, false);
+			s->rdb_ctx = NULL;
 			sleep(2);
 			continue;
 		}

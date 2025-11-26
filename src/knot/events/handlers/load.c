@@ -171,6 +171,15 @@ int event_load(conf_t *conf, zone_t *zone)
 			if (ret != KNOT_EOK) {
 				log_zone_error(zone->name, "failed to load from database (%s)",
 				               ret == KNOT_ERDB ? err : knot_strerror(ret));
+
+				time_t next = time(NULL);
+				const knot_rdataset_t *soa = zone_soa(zone);
+				if (soa != NULL) {
+					next += knot_soa_retry(soa->rdata);
+				} else {
+					next += zone_bootstrap_next(&zone->zonefile.bootstrap_cnt);
+				}
+				zone_events_schedule_at(zone, ZONE_EVENT_LOAD, next);
 				goto cleanup;
 			}
 			zone->zonefile.serial = zone_contents_serial(zf_conts); // for logging
@@ -212,6 +221,7 @@ int event_load(conf_t *conf, zone_t *zone)
 		zone->zonefile.serial = zone_contents_serial(zf_conts);
 		zone->zonefile.exists = (zf_conts != NULL);
 		zone->zonefile.mtime = mtime;
+		zone->zonefile.bootstrap_cnt = 0;
 
 zonefile_loaded:
 		// If configured, add reverse records to zone contents

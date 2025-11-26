@@ -37,18 +37,6 @@ redisContextFuncs redisContextGnuTLSFuncs = {
 	.write = knot_redis_tls_write
 };
 
-static void ctx_deinit(redis_tls_ctx_t *ctx)
-{
-	if (ctx != NULL) {
-		if (ctx->tls != NULL) {
-			knot_creds_free(ctx->tls->creds);
-			knot_tls_ctx_free(ctx->tls);
-		}
-		knot_creds_free(ctx->local_creds);
-		hi_free(ctx);
-	}
-}
-
 static void knot_redis_tls_close(redisContext *ctx)
 {
 	redis_tls_ctx_t *tls_ctx = ctx->privctx;
@@ -61,7 +49,15 @@ static void knot_redis_tls_close(redisContext *ctx)
 
 static void knot_redis_tls_free(void *privctx)
 {
-	ctx_deinit((redis_tls_ctx_t *)privctx);
+	redis_tls_ctx_t *tls_ctx = privctx;
+	if (tls_ctx != NULL) {
+		if (tls_ctx->tls != NULL) {
+			knot_creds_free(tls_ctx->tls->creds);
+			knot_tls_ctx_free(tls_ctx->tls);
+		}
+		knot_creds_free(tls_ctx->local_creds);
+		hi_free(tls_ctx);
+	}
 }
 
 static ssize_t knot_redis_tls_read(struct redisContext *ctx, char *buff, size_t size)
@@ -71,15 +67,11 @@ static ssize_t knot_redis_tls_read(struct redisContext *ctx, char *buff, size_t 
 	int ret = knot_tls_recv(tls_ctx->conn, buff, size);
 	if (ret >= 0) {
 		return ret;
-	} else if (ret == KNOT_EBADCERT ||
-	           ret == KNOT_NET_ERECV ||
-	           ret == KNOT_NET_ECONNECT ||
-	           ret == KNOT_NET_EHSHAKE ||
-	           ret == KNOT_ETIMEOUT
-	) {
+	} else if (ret == KNOT_NET_EAGAIN) {
+		return 0;
+	} else {
 		return -1;
 	}
-	return 0;
 }
 
 static ssize_t knot_redis_tls_write(struct redisContext *ctx)
@@ -89,15 +81,11 @@ static ssize_t knot_redis_tls_write(struct redisContext *ctx)
 	int ret = knot_tls_send(tls_ctx->conn, ctx->obuf, sdslen(ctx->obuf));
 	if (ret >= 0) {
 		return ret;
-	} else if (ret == KNOT_EBADCERT ||
-	           ret == KNOT_NET_ESEND ||
-	           ret == KNOT_NET_ECONNECT ||
-	           ret == KNOT_NET_EHSHAKE ||
-	           ret == KNOT_ETIMEOUT
-	) {
+	} else if (ret == KNOT_NET_EAGAIN) {
+		return 0;
+	} else {
 		return -1;
 	}
-	return 0;
 }
 
 static int hiredis_attach_gnutls(redisContext *ctx, struct knot_creds *local_creds,
@@ -111,17 +99,21 @@ static int hiredis_attach_gnutls(redisContext *ctx, struct knot_creds *local_cre
 
 	privctx->tls = knot_tls_ctx_new(creds, 5000, 2000, KNOT_TLS_CLIENT);
 	if (privctx->tls == NULL) {
-		ctx_deinit(privctx);
+		hi_free(privctx);
 		return KNOT_EINVAL;
 	}
 
 	privctx->conn = knot_tls_conn_new(privctx->tls, ctx->fd);
 	if (privctx->conn == NULL) {
-		ctx_deinit(privctx);
+		knot_tls_ctx_free(privctx->tls);
+		hi_free(privctx);
 		return KNOT_ECONN;
 	}
 
 	if (knot_tls_handshake(privctx->conn, true) != KNOT_EOK) {
+		knot_tls_conn_del(privctx->conn);
+		knot_tls_ctx_free(privctx->tls);
+		hi_free(privctx);
 		return KNOT_ECONN;
 	}
 
@@ -146,6 +138,7 @@ static redisContext *connect_addr(conf_t *conf, const char *addr_str, int port)
 		log_debug("rdb, failed to connect, remote %s%s%.0u (%s)",
 		          addr_str, (port != 0 ? "@" : ""), port,
 		          (rdb != NULL ? rdb->errstr : "no reply"));
+		redisFree(rdb);
 		return NULL;
 	}
 
@@ -316,7 +309,7 @@ static int get_master(redisContext *rdb, char *out, size_t out_len, int *port)
 	return KNOT_EOK;
 }
 
-redisContext *rdb_connect(conf_t *conf, bool require_master)
+redisContext *rdb_connect(conf_t *conf, bool require_master, const char *info)
 {
 	int port = 0;
 	int role = -1;
@@ -355,10 +348,14 @@ redisContext *rdb_connect(conf_t *conf, bool require_master)
 		} else if (role == 1 && !require_master) { // Replica
 			goto connected;
 		} else if (role == 2) { // Sentinel
-			if (get_master(rdb, addr_str, sizeof(addr_str), &port) == KNOT_EOK &&
-			    (rdb = connect_addr(conf, addr_str, port)) == KNOT_EOK) {
+			int ret = get_master(rdb, addr_str, sizeof(addr_str), &port);
+			redisFree(rdb);
+			if (ret == KNOT_EOK &&
+			    (rdb = connect_addr(conf, addr_str, port)) != NULL) {
 				goto connected;
 			}
+		} else {
+			redisFree(rdb);
 		}
 
 		conf_val_next(&db_listen);
@@ -374,7 +371,7 @@ connected:
 #ifdef ENABLE_REDIS_TLS
 		tls = rdb->privctx != NULL;
 #endif // ENABLE_REDIS_TLS
-		log_debug("rdb, connected, remote %s%s%.0u%s%s%s",
+		log_debug("rdb, connected%s, remote %s%s%.0u%s%s%s", info,
 		          (tcp ? rdb->tcp.host : rdb->unix_sock.path),
 		          (tcp ? "@" : ""),
 		          (tcp ? rdb->tcp.port : 0),

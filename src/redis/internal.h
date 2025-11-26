@@ -188,7 +188,7 @@ static bool zone_txn_is_open(RedisModuleCtx *ctx, const arg_dname_t *origin, con
 }
 
 static void commit_event(RedisModuleCtx *ctx, rdb_event_t type, const arg_dname_t *origin,
-                         uint8_t instance, uint32_t serial)
+                         uint8_t instance, uint32_t serial, RedisModuleStreamID *stream_id)
 {
 	RedisModuleString *keyname = RedisModule_CreateString(ctx, RDB_EVENT_KEY, strlen(RDB_EVENT_KEY));
 	RedisModuleKey *stream_key = RedisModule_OpenKey(ctx, keyname, REDISMODULE_READ | REDISMODULE_WRITE);
@@ -213,8 +213,11 @@ static void commit_event(RedisModuleCtx *ctx, rdb_event_t type, const arg_dname_
 		NULL,
 	};
 
-	RedisModuleStreamID ts;
-	int ret = RedisModule_StreamAdd(stream_key, REDISMODULE_STREAM_ADD_AUTOID, &ts, events, 4);
+	int flags = 0;
+	if (stream_id->ms == 0) {
+		flags = REDISMODULE_STREAM_ADD_AUTOID;
+	}
+	int ret = RedisModule_StreamAdd(stream_key, flags, stream_id, events, 4);
 
 	for (RedisModuleString **event = events; *event != NULL; event++) {
 		RedisModule_FreeString(ctx, *event);
@@ -231,11 +234,12 @@ static void commit_event(RedisModuleCtx *ctx, rdb_event_t type, const arg_dname_
 		return;
 	}
 
-	ts.ms -= 1000LLU * rdb_event_age;
-	ts.seq = 0;
+	RedisModuleStreamID trim_id = {
+		.ms = stream_id->ms - 1000LLU * rdb_event_age
+	};
 
 	// NOTE Trimming with REDISMODULE_STREAM_TRIM_APPROX improves preformance
-	long long removed_cnt = RedisModule_StreamTrimByID(stream_key, REDISMODULE_STREAM_TRIM_APPROX, &ts);
+	long long removed_cnt = RedisModule_StreamTrimByID(stream_key, REDISMODULE_STREAM_TRIM_APPROX, &trim_id);
 	if (removed_cnt) {
 		RedisModule_Log(ctx, REDISMODULE_LOGLEVEL_NOTICE, "stream cleanup %lld old events", removed_cnt);
 	}
@@ -668,6 +672,7 @@ static void zone_begin_txt_format(RedisModuleCtx *ctx, const arg_dname_t *origin
 	if (e.ret != KNOT_EOK) {
 		RedisModule_ReplyWithError(ctx, e.what);
 	} else {
+		RedisModule_ReplicateVerbatim(ctx);
 		RedisModule_ReplyWithLongLong(ctx, serialize_transaction(txn));
 	}
 }
@@ -678,6 +683,7 @@ static void zone_begin_bin_format(RedisModuleCtx *ctx, const arg_dname_t *origin
 	if (e.ret != KNOT_EOK) {
 		RedisModule_ReplyWithError(ctx, e.what);
 	} else {
+		RedisModule_ReplicateVerbatim(ctx);
 		RedisModule_ReplyWithStringBuffer(ctx, (const char *)txn, sizeof(*txn));
 	}
 }
@@ -716,10 +722,10 @@ static void upd_begin_txt_format(RedisModuleCtx *ctx, const arg_dname_t *origin,
 	exception_t e = upd_begin(ctx, origin, txn);
 	if (e.ret != KNOT_EOK) {
 		RedisModule_ReplyWithError(ctx, e.what);
-		return;
+	} else {
+		RedisModule_ReplicateVerbatim(ctx);
+		RedisModule_ReplyWithLongLong(ctx, serialize_transaction(txn));
 	}
-
-	RedisModule_ReplyWithLongLong(ctx, serialize_transaction(txn));
 }
 
 static void upd_begin_bin_format(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t *txn)
@@ -727,10 +733,10 @@ static void upd_begin_bin_format(RedisModuleCtx *ctx, const arg_dname_t *origin,
 	exception_t e = upd_begin(ctx, origin, txn);
 	if (e.ret != KNOT_EOK) {
 		RedisModule_ReplyWithError(ctx, e.what);
-		return;
+	} else {
+		RedisModule_ReplicateVerbatim(ctx);
+		RedisModule_ReplyWithStringBuffer(ctx, (const char *)txn, sizeof(*txn));
 	}
-
-	RedisModule_ReplyWithStringBuffer(ctx, (const char *)txn, sizeof(*txn));
 }
 
 static upd_meta_k upd_meta_get_when_open(RedisModuleCtx *ctx, const arg_dname_t *origin,
@@ -892,6 +898,7 @@ static void upd_add_bin_format(RedisModuleCtx *ctx, const arg_dname_t *origin,
 	if (e.ret != KNOT_EOK) {
 		RedisModule_ReplyWithError(ctx, e.what);
 	} else {
+		RedisModule_ReplicateVerbatim(ctx);
 		RedisModule_ReplyWithSimpleString(ctx, RDB_RETURN_OK);
 	}
 }
@@ -905,6 +912,7 @@ static void upd_remove_bin_format(RedisModuleCtx *ctx, const arg_dname_t *origin
 	if (e.ret != KNOT_EOK) {
 		RedisModule_ReplyWithError(ctx, e.what);
 	} else {
+		RedisModule_ReplicateVerbatim(ctx);
 		RedisModule_ReplyWithSimpleString(ctx, RDB_RETURN_OK);
 	}
 }
@@ -1024,6 +1032,7 @@ static void zone_store_bin_format(RedisModuleCtx *ctx, const arg_dname_t *origin
 		return;
 	}
 
+	RedisModule_ReplicateVerbatim(ctx);
 	RedisModule_ReplyWithSimpleString(ctx, RDB_RETURN_OK);
 }
 
@@ -1043,6 +1052,7 @@ static void run_scanner(scanner_ctx_t *s_ctx, const arg_dname_t *origin,
 	}
 	zs_deinit(&s);
 
+	RedisModule_ReplicateVerbatim(s_ctx->ctx);
 	RedisModule_ReplyWithSimpleString(s_ctx->ctx, RDB_RETURN_OK);
 }
 
@@ -1288,6 +1298,7 @@ static void zone_purge_v(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn
 	if (e.ret != KNOT_EOK) {
 		RedisModule_ReplyWithError(ctx, RDB_EEVENT);
 	} else {
+		RedisModule_ReplicateVerbatim(ctx);
 		RedisModule_ReplyWithSimpleString(ctx, RDB_RETURN_OK);
 	}
 }
@@ -1554,7 +1565,8 @@ static exception_t zone_meta_active_exchange(RedisModuleCtx *ctx, zone_meta_k ke
 	raise(e);
 }
 
-static void zone_commit(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t *txn)
+static void zone_commit(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t *txn,
+                        RedisModuleStreamID *stream_id)
 {
 	zone_meta_k meta_key = zone_meta_get_when_open(ctx, origin, txn, REDISMODULE_READ | REDISMODULE_WRITE);
 	if (meta_key == NULL) {
@@ -1621,7 +1633,13 @@ static void zone_commit(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_
 	RedisModule_FreeString(ctx, value);
 	RedisModule_CloseKey(zones_index);
 
-	commit_event(ctx, RDB_EVENT_ZONE, origin, txn->instance, serial);
+	commit_event(ctx, RDB_EVENT_ZONE, origin, txn->instance, serial, stream_id);
+
+	// Replicate with explicit ID so replicas use the same ID.
+	RedisModuleStreamID wire_id = WIRE_STREAM_ID(stream_id);
+	RedisModule_Replicate(ctx, RDB_CMD_ZONE_COMMIT, "bbb", (char *)origin->data,
+	                      origin->len, txn, sizeof(*txn), &wire_id, sizeof(wire_id));
+
 	RedisModule_ReplyWithSimpleString(ctx, RDB_RETURN_OK);
 }
 
@@ -1645,6 +1663,7 @@ static void zone_abort(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t
 
 	int ret = delete_zone_index(ctx, origin, txn);
 	if (ret == KNOT_EOK) {
+		RedisModule_ReplicateVerbatim(ctx);
 		RedisModule_ReplyWithSimpleString(ctx, RDB_RETURN_OK);
 	} else if (ret == KNOT_EEXIST) {
 		RedisModule_ReplyWithError(ctx, RDB_EZONE);
@@ -1894,6 +1913,7 @@ static void upd_abort_v(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_
 	if (e.ret != KNOT_EOK) {
 		RedisModule_ReplyWithError(ctx, e.what);
 	} else {
+		RedisModule_ReplicateVerbatim(ctx);
 		RedisModule_ReplyWithSimpleString(ctx, RDB_RETURN_OK);
 	}
 }
@@ -2021,7 +2041,8 @@ static exception_t upd_trim_history(RedisModuleCtx *ctx, const arg_dname_t *orig
 	return_ok;
 }
 
-static void upd_commit(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t *upd_txn)
+static void upd_commit(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t *upd_txn,
+                       RedisModuleStreamID *stream_id)
 {
 	upd_meta_k meta_key = upd_meta_get_when_open(ctx, origin, upd_txn, REDISMODULE_READ | REDISMODULE_WRITE);
 	if (meta_key == NULL) {
@@ -2209,10 +2230,15 @@ static void upd_commit(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t
 	upd_meta_unlock(ctx, meta_key, upd_txn->id);
 	RedisModule_CloseKey(meta_key);
 
-	commit_event(ctx, RDB_EVENT_UPD, origin, upd_txn->instance, serial_new);
+	commit_event(ctx, RDB_EVENT_UPD, origin, upd_txn->instance, serial_new, stream_id);
+
 	if (e.ret != KNOT_EOK) {
 		RedisModule_ReplyWithError(ctx, e.what);
 	} else {
+		// Replicate with explicit ID so replicas use the same ID.
+		RedisModuleStreamID wire_id = WIRE_STREAM_ID(stream_id);
+		RedisModule_Replicate(ctx, RDB_CMD_UPD_COMMIT, "bbb", (char *)origin->data,
+		                      origin->len, upd_txn, sizeof(*upd_txn), &wire_id, sizeof(wire_id));
 		RedisModule_ReplyWithSimpleString(ctx, RDB_RETURN_OK);
 	}
 }
@@ -2396,6 +2422,4 @@ static void upd_load(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t *
 		counter++;
 	}
 	RedisModule_ReplySetArrayLength(ctx, counter);
-
-	return;
 }

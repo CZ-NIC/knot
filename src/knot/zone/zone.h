@@ -336,3 +336,5 @@ void zone_set_lastsigned_serial(conf_t *conf, zone_t *zone, uint32_t serial);
 int zone_get_lastsigned_serial(zone_t *zone, uint32_t *serial);
 
 int slave_zone_serial(zone_t *zone, conf_t *conf, uint32_t *serial);
+
+time_t zone_bootstrap_next(uint8_t *count);
