@@ -1,5 +1,6 @@
 from dnstest.utils import *
 import dnstest.params as params
+import datetime
 import os
 import shutil
 import subprocess
@@ -99,19 +100,32 @@ class Redis(object):
         if is_sentinel:
             prog.append('--sentinel')
         self.proc = subprocess.Popen(prog)
-        if not is_sentinel:
-            time.sleep(0.3)
+
+        time.sleep(0.3)
+        self.run_monitor()
+
+    def run_monitor(self):
+        is_sentinel = len(self._sentinel_of) > 0
+        if not is_sentinel and (not self.monitor or self.monitor.poll() is not None):
+            if self.monitor_log:
+                self.monitor_log.close()
+
             monitor_cmd = [ self.redis_cli, "-h", self.addr, "-p", str(self.port), "monitor" ]
             self.monitor_log = open(os.path.join(self.wrk_dir, "monitor.log"), "a")
             self.monitor = subprocess.Popen(monitor_cmd, stdout=self.monitor_log, stderr=self.monitor_log)
 
-    def stop(self):
+    def stop(self, kill=False):
         if self.monitor:
             self.monitor.terminate()
+            self.monitor = None
         if self.monitor_log:
             self.monitor_log.close()
+            self.monitor_log = None
         if self.proc:
-            self.proc.terminate()
+            if kill:
+                self.proc.kill()
+            else:
+                self.proc.terminate()
 
     def freeze(self, seconds):
         cmd = [ self.redis_cli, "-h", self.addr, "-p", str(self.port), "DEBUG", "sleep", str(seconds) ]
@@ -121,4 +135,9 @@ class Redis(object):
         cmd = [ self.redis_cli, "-h", self.addr, "-p", str(self.port) ] + list(params)
         p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         out, _ = p.communicate()
-        return out.decode().strip()
+        txt = out.decode().strip()
+        outf = open(os.path.join(self.wrk_dir, "cli.log"), "a")
+        outf.write("%s CLI %s\n" % (str(datetime.datetime.now()), str(list(params))))
+        outf.write(txt)
+        outf.write("\n--------\n")
+        return txt
