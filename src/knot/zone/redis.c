@@ -17,7 +17,7 @@
 
 struct redisContext *zone_redis_connect(conf_t *conf, bool require_master)
 {
-	return rdb_connect(conf, require_master);
+	return rdb_connect(conf, require_master, require_master ? " worker writer" : " worker reader");
 }
 
 void zone_redis_disconnect(struct redisContext *ctx, bool pool_save)

@@ -309,7 +309,7 @@ static int get_master(redisContext *rdb, char *out, size_t out_len, int *port)
 	return KNOT_EOK;
 }
 
-redisContext *rdb_connect(conf_t *conf, bool require_master)
+redisContext *rdb_connect(conf_t *conf, bool require_master, const char *info)
 {
 	int port = 0;
 	int role = -1;
@@ -371,7 +371,7 @@ connected:
 #ifdef ENABLE_REDIS_TLS
 		tls = rdb->privctx != NULL;
 #endif // ENABLE_REDIS_TLS
-		log_debug("rdb, connected, remote %s%s%.0u%s%s%s",
+		log_debug("rdb, connected%s, remote %s%s%.0u%s%s%s", info,
 		          (tcp ? rdb->tcp.host : rdb->unix_sock.path),
 		          (tcp ? "@" : ""),
 		          (tcp ? rdb->tcp.port : 0),

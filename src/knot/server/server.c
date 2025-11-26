@@ -945,9 +945,9 @@ static int rdb_listener_run(struct dthread *thread)
 
 	while (thread->state & ThreadActive) {
 		if (s->rdb_ctx == NULL) {
-			s->rdb_ctx = rdb_connect(conf(), false);
+			s->rdb_ctx = rdb_connect(conf(), false, " events");
 			if (s->rdb_ctx == NULL) {
-				log_error("rdb, failed to connect to read events");
+				log_error("rdb, failed to connect events");
 				sleep(2);
 				continue;
 			} else if (!rdb_compatible(s->rdb_ctx)) {
