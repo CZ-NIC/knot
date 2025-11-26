@@ -938,7 +938,10 @@ static int rdb_listener_run(struct dthread *thread)
 	server_t *s = thread->data;
 
 	s->rdb_ctx = NULL;
+
+	const uint64_t prop_delay = 60; // Maximum considered propagation delay to all replicas.
 	char since[RDB_TIMESTAMP_SIZE] = "$";
+	(void)snprintf(since, sizeof(since), "%"PRIu64"-0", (knot_time() - prop_delay) * 1000);
 
 	while (thread->state & ThreadActive) {
 		if (s->rdb_ctx == NULL) {
