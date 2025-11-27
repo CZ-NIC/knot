@@ -25,7 +25,8 @@ ENV BUILD_PKGS=" \
     libxdp-dev \
     make \
     pkg-config \
-    protobuf-c-compiler"
+    protobuf-c-compiler \
+    protobuf-compiler"
 
 # Install dependencies
 RUN apt-get update && \
