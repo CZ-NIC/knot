@@ -1671,6 +1671,10 @@ static int purge_orphan_member_cb(const knot_dname_t *member, const knot_dname_t
 static int catalog_orphans_sweep(server_t *server)
 {
 	catalog_t *cat = &server->catalog;
+	if (catalog_exists(cat) == KNOT_ENODB) {
+		return KNOT_EOK;
+	}
+
 	int ret2 = KNOT_EOK;
 	int ret = catalog_begin(cat);
 	if (ret == KNOT_EOK) {

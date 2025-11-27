@@ -43,6 +43,11 @@ void catalog_init(catalog_t *cat, const char *path, size_t mapsize)
 	knot_lmdb_init(&cat->db, path, mapsize, MDB_NOTLS, NULL);
 }
 
+int catalog_exists(catalog_t *cat)
+{
+	return knot_lmdb_exists(&cat->db);
+}
+
 static void ensure_cat_version(knot_lmdb_txn_t *ro_txn, knot_lmdb_txn_t *rw_txn)
 {
 	MDB_val key = { 8, "\x01version" };
