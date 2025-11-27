@@ -9,6 +9,7 @@
 
 #include "contrib/color.h"
 #include "contrib/spinlock.h"
+#include "contrib/string.h"
 #include "contrib/time.h"
 #include "libknot/libknot.h"
 #include "libknot/dnssec/sample_keys.h"
@@ -19,13 +20,19 @@
 
 #define DFLT_ID "-"
 
-#define TEST_FORMAT  "%-18s %9s %9s %9s %9s\n"
-#define BENCH_FORMAT "%-18s %9"
+#define TEST_FORMAT  "%-20s %9s %9s %9s %9s\n"
+#define BENCH_FORMAT "%-20s %9"
 #define BENCH_TIME   3000
 
 static const key_parameters_t *KEYS[] = {
-	&SAMPLE_RSA_KEY,
-	&SAMPLE_ECDSA_KEY,
+	&SAMPLE_RSA1024_SHA256_KEY,
+	&SAMPLE_RSA2048_SHA256_KEY,
+	&SAMPLE_RSA4096_SHA256_KEY,
+	&SAMPLE_RSA1024_SHA512_KEY,
+	&SAMPLE_RSA2048_SHA512_KEY,
+	&SAMPLE_RSA4096_SHA512_KEY,
+	&SAMPLE_ECDSA_P256_SHA256_KEY,
+	&SAMPLE_ECDSA_P384_SHA384_KEY,
 	&SAMPLE_ED25519_KEY,
 	&SAMPLE_ED448_KEY,
 };
@@ -171,13 +178,17 @@ static void test_algorithm(dnssec_keystore_t *store,
 	const knot_lookup_t *alg_info = knot_lookup_by_id(knot_dnssec_alg_names,
 	                                                  params->algorithm);
 	assert(alg_info);
+	char *name_keysz = sprintf_alloc("%s %db", alg_info->name, params->bit_size);
+	assert(name_keysz);
 
 	printf(TEST_FORMAT,
-	       alg_info->name,
+	       name_keysz,
 	       res.generate ? "yes" : "no",
 	       res.import   ? "yes" : "no",
 	       res.remove   ? "yes" : "no",
 	       res.use      ? "yes" : "no");
+
+	free(name_keysz);
 }
 
 static int init_keystore(dnssec_keystore_t **store, const char *keystore_id,
@@ -366,13 +377,16 @@ int keymgr_keystore_bench(const char *keystore_id, keymgr_list_params_t *params,
 		const knot_lookup_t *alg_info = knot_lookup_by_id(
 			knot_dnssec_alg_names, KEYS[i]->algorithm);
 		assert(alg_info);
+		char *name_keysz = sprintf_alloc("%s %db", alg_info->name, KEYS[i]->bit_size);
+		assert(name_keysz);
 
 		const unsigned result = (unsigned)result_f;
 		if (result > 0) {
-			printf(BENCH_FORMAT"u\n", alg_info->name, result);
+			printf(BENCH_FORMAT"u\n", name_keysz, result);
 		} else {
-			printf(BENCH_FORMAT"s\n", alg_info->name, "n/a");
+			printf(BENCH_FORMAT"s\n", name_keysz, "n/a");
 		}
+		free(name_keysz);
 	}
 
 	dnssec_keystore_deinit(store);

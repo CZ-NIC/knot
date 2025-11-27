@@ -172,9 +172,9 @@ int main(void)
 	dnssec_crypto_init();
 
 	diag("RSA signing");
-	check_key(&SAMPLE_RSA_KEY, &input_data, &signed_rsa, true);
+	check_key(&SAMPLE_RSA1024_SHA256_KEY, &input_data, &signed_rsa, true);
 	diag("ECDSA signing");
-	check_key(&SAMPLE_ECDSA_KEY, &input_data, &signed_ecdsa, false);
+	check_key(&SAMPLE_ECDSA_P256_SHA256_KEY, &input_data, &signed_ecdsa, false);
 	diag("ED25519 signing");
 	check_key(&SAMPLE_ED25519_KEY, &input_data, &signed_ed25519, true);
 #ifdef HAVE_ED448
