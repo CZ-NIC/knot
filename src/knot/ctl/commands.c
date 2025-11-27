@@ -1739,6 +1739,7 @@ static int orphans_purge(ctl_args_t *args)
 		if (only_orphan || MATCH_AND_FILTER(args, CTL_FILTER_PURGE_JOURNAL)) {
 			ret = journals_walk(&args->server->journaldb,
 			                    drop_journal_if_orphan, args->server);
+			ret = (ret == KNOT_ENODB ? KNOT_EOK : ret);
 			log_if_orphans_error(NULL, ret, "journal", &failed);
 		}
 
