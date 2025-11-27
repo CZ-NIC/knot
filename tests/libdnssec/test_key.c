@@ -179,8 +179,8 @@ int main(void)
 	dnssec_crypto_init();
 
 	static const keyinfo_t keys[] = {
-		{ "RSA",     &SAMPLE_RSA_KEY },
-		{ "ECDSA",   &SAMPLE_ECDSA_KEY },
+		{ "RSA",     &SAMPLE_RSA1024_SHA256_KEY },
+		{ "ECDSA",   &SAMPLE_ECDSA_P256_SHA256_KEY },
 		{ "ED25519", &SAMPLE_ED25519_KEY },
 #ifdef HAVE_ED448
 		{ "ED448",   &SAMPLE_ED448_KEY },
