@@ -1,3 +1,20 @@
+Knot DNS 3.4.9 (2025-11-28)
+===========================
+
+Improvements:
+-------------
+ - doc: various improvements
+
+Bugfixes:
+---------
+ - knotd: if multiple primaries send NOTIFY concurrently, only the last remote is queried
+ - knotd: server crashes if "" value overrides template master value
+ - knotd: refresh with pinned master not rescheduled when tolerance period expired
+ - keymgr: missing deprecation warning for 'local-serial' command
+ - mod-rrl: failed to compile if target architecture was specified
+ - knot-exporter: missing connection close
+ - libdnssec: missing digest.h in dnssec.h
+
 Knot DNS 3.4.8 (2025-07-29)
 ===========================
 
