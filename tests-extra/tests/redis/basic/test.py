@@ -59,9 +59,10 @@ for z in zones:
     resp.check(rcode="NOERROR", nordata="1.2.3.4", rdata="1.2.3.5", ttl=1800)
 
 # Test no change
+uptodate_log_before = slave.log_search_count("database is up-to-date")
 slave.ctl("zone-reload", wait=True)
-uptodate_log = slave.log_search_count("database is up-to-date")
-if uptodate_log != len(zones):
+uptodate_log_after = slave.log_search_count("database is up-to-date")
+if uptodate_log_after - uptodate_log_before != len(zones):
     set_err("UP-TO-DATE LOGGED %dx" % uptodate_log)
 
 # Add to DB manually. Slave will diverge from master.
