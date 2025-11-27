@@ -1,3 +1,40 @@
+Knot DNS 3.5.2 (2025-11-28)
+===========================
+
+Features:
+---------
+ - knotd: configurable zone timer storage mode (see 'database.timer-db-sync')
+ - libknot: added support for the DSYNC record type
+ - redis: new module command for printing zone information (see 'KNOT.ZONE.INFO')
+
+Improvements:
+-------------
+ - knotd: queries to a catalog zone are now allowed also for ACL rules with action 'query'
+ - knotd: denied query to a catalog zone is responded to with NOTAUTH instead of REFUSED
+ - knotd: existing PID file is reused if it matches current PID !1819
+ - knotd: zone purge has its own zone event
+ - knotd: optimized zone timer storage
+ - knotd: optimized ACL evaluation
+ - keymgr: added more algorithms to keystore-test and keystore-bench
+ - mod-dnstap: added detection for protoc
+ - libs: upgraded embedded libngtcp2 to 1.18.0
+ - redis: added support for zone data replication
+ - redis: extended logging
+ - doc: various improvements
+
+Bugfixes:
+---------
+ - knotd: failed to receive zone with ZONEMD if enabled DNSSEC signing and ZONEMD generate
+ - knotd: refresh with pinned master not rescheduled when tolerance period expired
+ - knotd: failed to build with older libhiredis without TLS support
+ - knotd: misleading error message when attempting to sign empty zone
+ - mod-rrl: failed to compile if target architecture was specified
+ - libknot: failed to dump RRSet if the initial output buffer was too small
+ - libdnssec: missing digest.h in dnssec.h
+ - redis: defective communication with sentinel
+ - redis: failed zone load was not rescheduled
+ - redis: several memory leaks
+
 Knot DNS 3.5.1 (2025-10-16)
 ===========================
 
