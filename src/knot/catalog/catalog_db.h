@@ -47,6 +47,17 @@ int catalog_bailiwick_shift(const knot_dname_t *subname, const knot_dname_t *nam
 void catalog_init(catalog_t *cat, const char *path, size_t mapsize);
 
 /*!
+ * \brief Check if the catalog exists on the filesystem.
+ *
+ * \param cat        Catalog structure.
+ *
+ * \retval KNOT_EOK     The catalog exists (and is accessible for stat() ).
+ * \retval KNOT_ENODB   The catalog doesn't exist.
+ * \return KNOT_E* explaining why stat() failed.
+ */
+int catalog_exists(catalog_t *cat);
+
+/*!
  * \brief Open the catalog LMDB, create it if not exists.
  *
  * \param cat   Catalog to be opened.
