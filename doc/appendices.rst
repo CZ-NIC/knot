@@ -84,6 +84,16 @@ support.
        | 2048
        | 4096
      - 2018-09
+   * - `Luna Cloud HSM <https://thalesdocs.com/dpod/services/luna_cloud_hsm/index.html>`_
+     - yes
+     - no
+     - n/a
+     - | 256
+       | 384
+     - | 1024
+       | 2048
+       | 4096
+     - 2025-11
 
 .. in progress: key ID checks have to be disabled in code
    * - `Yubikey NEO <https://www.yubico.com/products/yubikey-hardware/yubikey-neo/>`_
