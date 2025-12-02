@@ -167,6 +167,8 @@ PKG_CHECK_MODULES([gnutls], [gnutls >= 3.6.10], [
 
     CFLAGS=$save_CFLAGS
     LIBS=$save_LIBS
+], [
+    AS_IF([test "$enable_redis" != "module"], [AC_MSG_ERROR([GnuTLS library not found])])
 ])
 AM_CONDITIONAL([ENABLE_PKCS11], [test "$enable_pkcs11" = "yes"])
 
