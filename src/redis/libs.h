@@ -19,7 +19,6 @@
 #include "contrib/string.c"
 #include "contrib/time.c"
 #include "contrib/ucw/mempool.c"
-#include "libdnssec/key/keytag.c"
 #include "libknot/codes.c"
 #include "libknot/descriptor.c"
 #include "libknot/dname.c"
@@ -33,3 +32,9 @@
 #include "libzscanner/error.c"
 #include "libzscanner/functions.c"
 #include "libzscanner/scanner.c.t0"
+
+// Add a dummy symbol for unused but called function in rrset-dump.c.
+int dnssec_keytag(const dnssec_binary_t *rdata, uint16_t *keytag)
+{
+	return KNOT_ENOTSUP;
+}
