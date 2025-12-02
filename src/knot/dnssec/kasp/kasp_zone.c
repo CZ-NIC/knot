@@ -305,24 +305,33 @@ void free_key_params(key_params_t *parm)
 	}
 }
 
-void zone_deinit_keystore(knot_kasp_keystore_t **keystores)
+static void _zone_deinit_keystore(knot_kasp_keystore_t **keystores, bool deallocate)
 {
 	if (keystores != NULL && *keystores != NULL) {
 		for (size_t i = 0; i < (*keystores)[0].count; i++) {
 			dnssec_keystore_deinit((*keystores)[i].keystore);
 		}
-		free(*keystores);
-		*keystores = NULL;
+		if (deallocate) {
+			free(*keystores);
+			*keystores = NULL;
+		}
 	}
+}
+
+void zone_deinit_keystore(knot_kasp_keystore_t **keystores)
+{
+	_zone_deinit_keystore(keystores, true);
 }
 
 int zone_init_keystore(conf_t *conf, conf_val_t *policy_id, conf_val_t *keystore_id,
                        knot_kasp_keystore_t **keystores)
 {
-	if (keystores == NULL || *keystores != NULL ||
+	if (keystores == NULL ||
 	    (bool)(policy_id == NULL) == (bool)(keystore_id == NULL)) {
 		return KNOT_EINVAL;
 	}
+
+	bool allocate = (*keystores == NULL);
 
 	char *zone_path = conf_db(conf, C_KASP_DB);
 	if (zone_path == NULL) {
@@ -341,10 +350,12 @@ int zone_init_keystore(conf_t *conf, conf_val_t *policy_id, conf_val_t *keystore
 	}
 
 	size_t ks_count = conf_val_count(keystore_id);
-	*keystores = calloc(ks_count, sizeof(**keystores));
-	if (*keystores == NULL) {
-		free(zone_path);
-		return KNOT_ENOMEM;
+	if (allocate) {
+		*keystores = calloc(ks_count, sizeof(**keystores));
+		if (*keystores == NULL) {
+			free(zone_path);
+			return KNOT_ENOMEM;
+		}
 	}
 
 	int ret = KNOT_EOK;
@@ -370,7 +381,7 @@ int zone_init_keystore(conf_t *conf, conf_val_t *policy_id, conf_val_t *keystore
 	}
 
 	if (ret != KNOT_EOK) {
-		zone_deinit_keystore(keystores);
+		_zone_deinit_keystore(keystores, allocate);
 	}
 
 	free(zone_path);
