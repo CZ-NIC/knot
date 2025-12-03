@@ -28,7 +28,7 @@ static void log_dnssec_next(const knot_dname_t *zone, knot_time_t refresh_at)
 }
 
 void event_dnssec_reschedule(conf_t *conf, zone_t *zone,
-			     const zone_sign_reschedule_t *refresh, bool zone_changed)
+			     const zone_sign_reschedule_t *refresh)
 {
 	time_t now = time(NULL);
 	time_t ignore = -1;
@@ -49,7 +49,7 @@ void event_dnssec_reschedule(conf_t *conf, zone_t *zone,
 		ZONE_EVENT_DS_CHECK, refresh->plan_ds_check ? now : ignore,
 		ZONE_EVENT_DNSKEY_SYNC, refresh->plan_dnskey_sync ? now + jitter : ignore
 	);
-	if (zone_changed) {
+	if (refresh->zone_changed) {
 		zone_schedule_notify(zone, 0);
 	}
 }
@@ -61,7 +61,6 @@ int event_dnssec(conf_t *conf, zone_t *zone)
 	zone_sign_reschedule_t resch = { 0 };
 	zone_sign_roll_flags_t r_flags = KEY_ROLL_ALLOW_ALL;
 	int sign_flags = 0;
-	bool zone_changed = false;
 
 	if (zone_get_flag(zone, ZONE_FORCE_RESIGN, true)) {
 		log_zone_info(zone->name, "DNSSEC, dropping previous "
@@ -90,7 +89,9 @@ int event_dnssec(conf_t *conf, zone_t *zone)
 		goto done;
 	}
 
-	zone_changed = !zone_update_no_change(&up);
+	resch.zone_changed = !zone_update_no_change(&up);
+
+	zone_update_set_post_commit(&up, (zone_update_commit_cb_t)event_dnssec_reschedule, &resch);
 
 	ret = zone_update_commit(conf, &up);
 	if (ret != KNOT_EOK) {
@@ -98,9 +99,6 @@ int event_dnssec(conf_t *conf, zone_t *zone)
 	}
 
 done:
-	// Schedule dependent events
-	event_dnssec_reschedule(conf, zone, &resch, zone_changed);
-
 	if (ret != KNOT_EOK) {
 		zone_update_clear(&up);
 	}

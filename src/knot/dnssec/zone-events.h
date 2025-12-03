@@ -37,6 +37,7 @@ typedef struct {
 	bool keys_changed;
 	bool plan_ds_check;
 	bool plan_dnskey_sync;
+	bool zone_changed;
 } zone_sign_reschedule_t;
 
 typedef struct {

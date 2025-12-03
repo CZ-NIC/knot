@@ -20,6 +20,8 @@ typedef struct {
 	int warning;
 } dnssec_validation_hint_t;
 
+typedef void (*zone_update_commit_cb_t)(conf_t *, zone_t *, void *);
+
 /*! \brief Structure for zone contents updating / querying. */
 typedef struct zone_update {
 	zone_t *zone;                /*!< Zone being updated. */
@@ -29,6 +31,8 @@ typedef struct zone_update {
 	changeset_t extra_ch;        /*!< Extra changeset to store just diff btwn zonefile and result. */
 	apply_ctx_t *a_ctx;          /*!< Context for applying changesets. */
 	uint32_t flags;              /*!< Zone update flags. */
+	void *post_commit_cb_ctx;
+	zone_update_commit_cb_t  post_commit_cb;
 	dnssec_validation_hint_t validation_hint;
 } zone_update_t;
 
@@ -277,6 +281,15 @@ int zone_update_verify_digest(conf_t *conf, zone_update_t *update);
  * \return KNOT_E*
  */
 int zone_update_commit(conf_t *conf, zone_update_t *update);
+
+/*!
+ * \brief Set a callback to be called after successful zone_update_commit.
+ *
+ * \param update       Zone update.
+ * \param cb           Callback.
+ * \param cb_ctx       Arbitrary context.
+ */
+void zone_update_set_post_commit(zone_update_t *update, zone_update_commit_cb_t cb, void *cb_ctx);
 
 /*!
  * \brief Returns bool whether there are any changes at all.

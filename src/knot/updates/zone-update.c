@@ -1038,9 +1038,19 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 		                       zone_contents_serial(update->zone->contents));
 	}
 
+	if (update->post_commit_cb != NULL) {
+		update->post_commit_cb(conf, update->zone, update->post_commit_cb_ctx);
+	}
+
 	memset(update, 0, sizeof(*update));
 
 	return KNOT_EOK;
+}
+
+void zone_update_set_post_commit(zone_update_t *update, zone_update_commit_cb_t cb, void *cb_ctx)
+{
+	update->post_commit_cb = cb;
+	update->post_commit_cb_ctx = cb_ctx;
 }
 
 bool zone_update_no_change(zone_update_t *update)

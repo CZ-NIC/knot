@@ -114,10 +114,13 @@ struct refresh_data {
 	enum state state;                 //!< Event processing state.
 	enum xfr_type xfr_type;           //!< Transfer type (mostly IXFR versus AXFR).
 	bool axfr_style_ixfr;             //!< Master responded with AXFR-style-IXFR.
+	bool axfr_bootstrap;
 	knot_rrset_t *initial_soa_copy;   //!< Copy of the received initial SOA.
 	struct xfr_stats stats;           //!< Transfer statistics.
 	struct timespec started;          //!< When refresh started.
 	size_t change_size;               //!< Size of added and removed RRs.
+	uint32_t old_serial;
+	uint32_t master_serial;
 
 	struct {
 		zone_contents_t *zone;    //!< AXFR result, new zone.
@@ -330,19 +333,44 @@ static void axfr_slave_sign_serial(zone_contents_t *new_contents, zone_t *zone,
 	zone_contents_set_soa_serial(new_contents, new_serial);
 }
 
+static void post_commit(conf_t *conf, zone_t *zone, void *ctx)
+{
+	struct refresh_data *data = ctx;
+	conf_val_t val = conf_zone_get(data->conf, C_DNSSEC_SIGNING, data->zone->name);
+	bool dnssec_enable = conf_bool(&val);
+
+	if (dnssec_enable && (data->xfr_type == XFR_TYPE_AXFR || !EMPTY_LIST(data->ixfr.changesets))) {
+		int ret = zone_set_master_serial(data->zone, data->master_serial);
+		if (ret != KNOT_EOK) {
+			log_zone_warning(data->zone->name,
+			                 "unable to save master serial, future transfers might be broken");
+		}
+	}
+
+	finalize_timers(data);
+	xfr_log_publish(data, data->old_serial, zone_contents_serial(data->zone->contents),
+	                data->master_serial, dnssec_enable, data->axfr_bootstrap);
+
+
+	if (data->xfr_type == XFR_TYPE_AXFR || data->old_serial != zone_contents_serial(data->zone->contents)) {
+		data->fallback->remote = false;
+		zone_set_last_master(data->zone, (const struct sockaddr_storage *)data->remote);
+	}
+}
+
 static int axfr_finalize(struct refresh_data *data)
 {
 	zone_contents_t *new_zone = data->axfr.zone;
 
 	conf_val_t val = conf_zone_get(data->conf, C_DNSSEC_SIGNING, data->zone->name);
 	bool dnssec_enable = conf_bool(&val);
-	uint32_t old_serial = zone_contents_serial(data->zone->contents), master_serial = 0;
-	bool bootstrap = (data->zone->contents == NULL);
+	data->old_serial = zone_contents_serial(data->zone->contents);
+	data->axfr_bootstrap = (data->zone->contents == NULL);
 	zone_skip_t skip = { 0 };
 	int ret = KNOT_EOK;
 
 	if (dnssec_enable) {
-		axfr_slave_sign_serial(new_zone, data->zone, data->conf, &master_serial);
+		axfr_slave_sign_serial(new_zone, data->zone, data->conf, &data->master_serial);
 		ret = zone_skip_add_dnssec_diff(&skip);
 		assert(ret == KNOT_EOK); // static size of zone_skip is enough to cover dnssec types
 	}
@@ -388,6 +416,8 @@ static int axfr_finalize(struct refresh_data *data)
 		return ret;
 	}
 
+	zone_update_set_post_commit(&up, post_commit, data);
+
 	ret = zone_update_commit(data->conf, &up);
 	if (ret != KNOT_EOK) {
 		zone_update_clear(&up);
@@ -396,21 +426,6 @@ static int axfr_finalize(struct refresh_data *data)
 		data->fallback->remote = false;
 		return ret;
 	}
-
-	if (dnssec_enable) {
-		ret = zone_set_master_serial(data->zone, master_serial);
-		if (ret != KNOT_EOK) {
-			log_zone_warning(data->zone->name,
-			"unable to save master serial, future transfers might be broken");
-		}
-	}
-
-	finalize_timers(data);
-	xfr_log_publish(data, old_serial, zone_contents_serial(data->zone->contents),
-	                master_serial, dnssec_enable, bootstrap);
-
-	data->fallback->remote = false;
-	zone_set_last_master(data->zone, (const struct sockaddr_storage *)data->remote);
 
 	return KNOT_EOK;
 }
@@ -595,10 +610,10 @@ static int ixfr_finalize(struct refresh_data *data)
 {
 	conf_val_t val = conf_zone_get(data->conf, C_DNSSEC_SIGNING, data->zone->name);
 	bool dnssec_enable = conf_bool(&val);
-	uint32_t master_serial = 0, old_serial = zone_contents_serial(data->zone->contents);
+	data->old_serial = zone_contents_serial(data->zone->contents);
 
 	if (dnssec_enable) {
-		int ret = ixfr_slave_sign_serial(&data->ixfr.changesets, data->zone, data->conf, &master_serial);
+		int ret = ixfr_slave_sign_serial(&data->ixfr.changesets, data->zone, data->conf, &data->master_serial);
 		if (ret != KNOT_EOK) {
 			IXFRIN_LOG(LOG_WARNING, data,
 			           "failed to adjust SOA serials from unsigned remote (%s)",
@@ -664,29 +679,14 @@ static int ixfr_finalize(struct refresh_data *data)
 		return ret;
 	}
 
+	zone_update_set_post_commit(&up, post_commit, data);
+
 	ret = zone_update_commit(data->conf, &up);
 	if (ret != KNOT_EOK) {
 		zone_update_clear(&up);
 		IXFRIN_LOG(LOG_WARNING, data,
 		           "failed to store changes (%s)", knot_strerror(ret));
 		return ret;
-	}
-
-	if (dnssec_enable && !EMPTY_LIST(data->ixfr.changesets)) {
-		ret = zone_set_master_serial(data->zone, master_serial);
-		if (ret != KNOT_EOK) {
-			log_zone_warning(data->zone->name,
-			"unable to save master serial, future transfers might be broken");
-		}
-	}
-
-	finalize_timers(data);
-	xfr_log_publish(data, old_serial, zone_contents_serial(data->zone->contents),
-	                master_serial, dnssec_enable, false);
-
-	if (old_serial != zone_contents_serial(data->zone->contents)) {
-		data->fallback->remote = false;
-		zone_set_last_master(data->zone, (const struct sockaddr_storage *)data->remote);
 	}
 
 	return KNOT_EOK;
