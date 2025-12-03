@@ -98,6 +98,10 @@ int zone_skip_from_conf(zone_skip_t *skip, conf_val_t *val)
 
 int zonefile_write_skip(const char *path, struct zone_contents *zone, conf_t *conf)
 {
+	if (zone == NULL) {
+		return KNOT_EEMPTYZONE;
+	}
+
 	conf_val_t skip_val = conf_zone_get(conf, C_ZONEFILE_SKIP, zone->apex->owner);
 	zone_skip_t skip = { 0 };
 	int ret = zone_skip_from_conf(&skip, &skip_val);

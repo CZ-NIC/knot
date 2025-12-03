@@ -890,6 +890,10 @@ int zone_dump_to_dir(conf_t *conf, zone_t *zone, const char *dir)
 		return KNOT_EINVAL;
 	}
 
+	if (zone->contents == NULL) {
+		return KNOT_EEMPTYZONE;
+	}
+
 	size_t dir_len = strlen(dir);
 	if (dir_len == 0) {
 		return KNOT_EINVAL;

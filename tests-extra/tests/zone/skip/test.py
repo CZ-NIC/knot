@@ -86,4 +86,12 @@ resp.check_count(0, "AAAA")
 resp = server.dig("zf.example.com.", "AAAA", dnssec=True)
 resp.check_count(1, "AAAA")
 
+server.ctl("-f zone-purge +expire example.com.")
+t.sleep(1)
+try:
+    server.ctl("zone-flush +outdir " + server.data_dir, wait=True)
+except:
+    pass # just checking that server does not crash, below:
+server.ctl("zone-status")
+
 t.end()
