@@ -70,6 +70,7 @@ void catalog_update_deinit(catalog_update_t *u)
 void catalog_update_free(catalog_update_t *u)
 {
 	if (u != NULL) {
+		catalog_update_clear(u);
 		catalog_update_deinit(u);
 		free(u);
 	}
