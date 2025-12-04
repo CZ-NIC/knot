@@ -3,6 +3,7 @@
  *  For more information, see <https://www.knot-dns.cz/>
  */
 
+#include "knot/common/log.h"
 #include "knot/dnssec/kasp/kasp_zone.h"
 #include "knot/dnssec/kasp/keystore.h"
 #include "knot/dnssec/zone-keys.h"
@@ -336,8 +337,7 @@ void zone_deinit_keystore(knot_kasp_keystore_t **keystores)
 int zone_init_keystore(conf_t *conf, conf_val_t *policy_id, conf_val_t *keystore_id,
                        knot_kasp_keystore_t **keystores)
 {
-	if (keystores == NULL ||
-	    (bool)(policy_id == NULL) == (bool)(keystore_id == NULL)) {
+	if (keystores == NULL) {
 		return KNOT_EINVAL;
 	}
 
@@ -350,9 +350,13 @@ int zone_init_keystore(conf_t *conf, conf_val_t *policy_id, conf_val_t *keystore
 
 	conf_val_t keystore_val;
 	if (keystore_id == NULL) {
-		conf_id_fix_default(policy_id);
-
-		keystore_val = conf_id_get(conf, C_POLICY, C_KEYSTORE, policy_id);
+		if (policy_id != NULL) {
+			conf_id_fix_default(policy_id);
+			keystore_val = conf_id_get(conf, C_POLICY, C_KEYSTORE, policy_id);
+		} else {
+			uint8_t empty = 0;
+			keystore_val = conf_rawid_get(conf, C_POLICY, C_KEYSTORE, &empty, 0);
+		}
 		conf_id_fix_default(&keystore_val);
 		keystore_id = &keystore_val;
 	} else {
@@ -395,6 +399,49 @@ int zone_init_keystore(conf_t *conf, conf_val_t *policy_id, conf_val_t *keystore
 	}
 
 	free(zone_path);
+	return ret;
+}
+
+int init_all_keystores(conf_t *conf, knot_kasp_keystore_t **keystores)
+{
+	assert(keystores != NULL);
+	assert(*keystores == NULL);
+
+	// Allocate an array (also for the default keystore).
+	size_t count = conf_id_count(conf, C_KEYSTORE);
+	*keystores = calloc(1 + count, sizeof(**keystores));
+	if (*keystores == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	knot_kasp_keystore_t *ks = *keystores;
+
+	// Initialize the default keystore.
+	int ret = zone_init_keystore(conf, NULL, NULL, &ks);
+	if (ret != KNOT_EOK) {
+		log_error("failed to initialize default keystore (%s)", knot_strerror(ret));
+		deinit_all_keystores(keystores);
+		return ret;
+	}
+	assert((*keystores)[0].count == 1);
+	ks++;
+
+	// Initialize configured keystores.
+	for (conf_iter_t iter = conf_iter(conf, C_KEYSTORE);
+	     iter.code == KNOT_EOK; conf_iter_next(conf, &iter)) {
+		conf_val_t id = conf_iter_id(conf, &iter);
+		ret = zone_init_keystore(conf, NULL, &id, &ks);
+		if (ret != KNOT_EOK) {
+			log_error("failed to initialize keystore %s (%s)",
+			          conf_str(&id), knot_strerror(ret));
+			deinit_all_keystores(keystores);
+			return ret;
+		}
+		(*keystores)[0].count++;
+		ks++;
+	}
+	assert((*keystores)[0].count == 1 + count);
+
 	return ret;
 }
 
