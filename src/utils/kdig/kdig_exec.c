@@ -899,6 +899,8 @@ static int process_query(const query_t *query, net_t *net)
 				                           &query->style);
 				// If error try next resolved address.
 				if (ret != 0) {
+					free(net->local_info);
+					net->local_info = NULL;
 					net->srv = net->srv->ai_next;
 					if (net->srv != NULL && query->style.show_query) {
 						printf("\n");
