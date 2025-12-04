@@ -41,6 +41,13 @@ void zone_deinit_keystore(knot_kasp_keystore_t **keystores);
 int zone_init_keystore(conf_t *conf, conf_val_t *policy_id, conf_val_t *keystore_id,
                        knot_kasp_keystore_t **keystores);
 
+inline static void deinit_all_keystores(knot_kasp_keystore_t **keystores)
+{
+	zone_deinit_keystore(keystores);
+}
+
+int init_all_keystores(conf_t *conf, knot_kasp_keystore_t **keystores);
+
 int kasp_zone_keys_from_rr(knot_kasp_zone_t *zone,
                            const knot_rdataset_t *zone_dnskey,
                            bool policy_single_type_signing,
