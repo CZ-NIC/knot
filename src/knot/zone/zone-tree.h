@@ -199,6 +199,17 @@ int zone_tree_add_node(zone_tree_t *tree, zone_node_t *apex, const knot_dname_t 
 int zone_tree_del_node(zone_tree_t *tree, zone_node_t *node, bool free_deleted);
 
 /*!
+ * \brief Remove a subtree, freeing removed nodes and their RRsets.
+ *
+ * \param tree        Zone tree to remove from.
+ * \param subroot     Subtree root name.
+ * \param excl_root   Skip removing the root of the subtree.
+ *
+ * \return KNOT_E*
+ */
+int zone_tree_del_subtree(zone_tree_t *tree, const knot_dname_t *subroot, bool excl_root);
+
+/*!
  * \brief Applies the given function to each node in the zone in order.
  *
  * \param tree Zone tree to apply the function to.

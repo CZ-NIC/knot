@@ -12,8 +12,7 @@
 #include "libknot/error.h"
 #include "libknot/rrtype/rdname.h"
 
-knot_dynarray_declare(nodeptr, zone_node_t *, DYNARRAY_VISIBILITY_STATIC, 2)
-knot_dynarray_define(nodeptr, zone_node_t *, DYNARRAY_VISIBILITY_STATIC)
+knot_dynarray_define(nodeptr, zone_node_t *, DYNARRAY_VISIBILITY_NORMAL)
 
 typedef struct {
 	nodeptr_dynarray_t array;
