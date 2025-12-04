@@ -14,6 +14,8 @@ typedef trie_t additionals_tree_t;
 inline static additionals_tree_t *additionals_tree_new(void) { return trie_create(NULL); }
 void additionals_tree_free(additionals_tree_t *a_t);
 
+knot_dynarray_declare(nodeptr, zone_node_t *, DYNARRAY_VISIBILITY_NORMAL, 2)
+
 /*!
  * \brief Foreach additional in all node RRSets, do sth.
  *

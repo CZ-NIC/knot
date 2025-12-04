@@ -11,7 +11,7 @@
 
 #define NCOUNT 4
 static knot_dname_t* NAME[NCOUNT];
-static zone_node_t NODEE[NCOUNT];
+static zone_node_t* NODEE[NCOUNT];
 static knot_dname_t* ORDER[NCOUNT];
 static void ztree_init_data(void)
 {
@@ -21,15 +21,19 @@ static void ztree_init_data(void)
 	NAME[3] = knot_dname_from_str_alloc("ns.");
 
 	knot_dname_t *order[NCOUNT] = {
-	        NAME[0], NAME[2], NAME[1], NAME[3]
+		NAME[0], NAME[2], NAME[1], NAME[3]
 	};
 	memcpy(ORDER, order, NCOUNT * sizeof(knot_dname_t*));
 
+	const char *rd = "\x02\x00\x01\x00";
+	knot_rrset_t rr = { .rrs = { .count = 1, .size = 4, .rdata = (knot_rdata_t *)&rd } };
+
 	for (unsigned i = 0; i < NCOUNT; ++i) {
-		memset(NODEE + i, 0, sizeof(zone_node_t));
-		NODEE[i].owner = NAME[i];
-		NODEE[i].prev = NODEE + ((NCOUNT + i - 1) % NCOUNT);
-		NODEE[i].rrset_count = 1; /* required for ordered search */
+		NODEE[i] = node_new(NAME[i], false, false, NULL);
+		NODEE[i]->prev = *(NODEE + ((NCOUNT + i - 1) % NCOUNT));
+
+		rr.owner = NAME[i];
+		node_add_rrset(NODEE[i], &rr, NULL);
 	}
 }
 
@@ -45,7 +49,7 @@ static int ztree_iter_data(zone_node_t *node, void *data)
 	unsigned *i = (unsigned *)data;
 	knot_dname_t *owner = node->owner;
 	int result = KNOT_EOK;
-	if (owner != ORDER[*i]) {
+	if (!knot_dname_is_equal(owner, ORDER[*i])) {
 		result = KNOT_ERROR;
 		char *exp_s = knot_dname_to_str_alloc(ORDER[*i]);
 		char *owner_s = knot_dname_to_str_alloc(owner);
@@ -78,7 +82,7 @@ int main(int argc, char *argv[])
 	/* 2. insert test */
 	unsigned passed = 1;
 	for (unsigned i = 0; i < NCOUNT; ++i) {
-		zone_node_t *node = NODEE + i;
+		zone_node_t *node = NODEE[i];
 		if (zone_tree_insert(t, &node) != KNOT_EOK) {
 			passed = 0;
 			break;
@@ -90,7 +94,7 @@ int main(int argc, char *argv[])
 	passed = 1;
 	for (unsigned i = 0; i < NCOUNT; ++i) {
 		zone_node_t *node = zone_tree_get(t, NAME[i]);
-		if (node == NULL || node != NODEE + i) {
+		if (node == NULL || node != NODEE[i]) {
 			passed = 0;
 			break;
 		}
@@ -103,7 +107,7 @@ int main(int argc, char *argv[])
 	knot_dname_t *tmp_dn = knot_dname_from_str_alloc("z.ac.");
 	zone_tree_get_less_or_equal(t, tmp_dn, &node, &prev);
 	knot_dname_free(tmp_dn, NULL);
-	ok(prev == NODEE + 1, "ztree: ordered lookup");
+	ok(prev == NODEE[1], "ztree: ordered lookup");
 
 	/* 5. ordered traversal */
 	unsigned i = 0;
@@ -118,7 +122,19 @@ int main(int argc, char *argv[])
 	ret = zone_tree_sub_apply(t, (const knot_dname_t *)"\x02""ac", true, ztree_node_counter, &counter);
 	ok(ret == KNOT_EOK && counter == 1, "ztree: subtree iteration excluding root");
 
+	/* 7. subtree deletion */
+	ret = zone_tree_del_subtree(t, (const knot_dname_t *)"\x02""ac", true);
+	ok(ret == KNOT_EOK && zone_tree_get(t, NAME[1]) == NULL && zone_tree_get(t, NAME[2]) != NULL, "ztree: subtree deletion w/o root");
+	ret = zone_tree_del_subtree(t, (const knot_dname_t *)"\x02""ns", false);
+	ok(ret == KNOT_EOK && zone_tree_get(t, NAME[3]) == NULL, "ztree: subtree deletion with root");
+
 	zone_tree_free(&t);
+
+	// free exactly what left
+	node_free_rrsets(NODEE[0], NULL);
+	node_free(NODEE[0], NULL);
+	node_free_rrsets(NODEE[2], NULL);
+	node_free(NODEE[2], NULL);
 	ztree_free_data();
 	return 0;
 }
