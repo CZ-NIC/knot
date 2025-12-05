@@ -889,11 +889,18 @@ int knot_zone_sign_update_dnskeys(zone_update_t *update,
 		CHECK_RET;
 	}
 
-	if (dnssec_ctx->policy->ds_push && node_rrtype_exists(ch.add->apex, KNOT_RRTYPE_CDS)) {
+	if (node_rrtype_exists(ch.add->apex, KNOT_RRTYPE_CDS)) {
 		// there is indeed a change to CDS
 		update->zone->timers->next_ds_push = time(NULL) + dnssec_ctx->policy->propagation_delay;
 		update->zone->timers->flags |= TIMERS_MODIFIED;
-		zone_events_schedule_at(update->zone, ZONE_EVENT_DS_PUSH, update->zone->timers->next_ds_push);
+		// the event is planned only if DS-push configured, but timers set always just for case of later reconfiguration
+		if (dnssec_ctx->policy->ds_push) {
+			zone_events_schedule_at(update->zone, ZONE_EVENT_DS_PUSH, update->zone->timers->next_ds_push);
+		}
+	} else if (node_rrtype_exists(ch.remove->apex, KNOT_RRTYPE_CDS)) {
+		// CDS removal
+		update->zone->timers->next_ds_push = 0;
+		update->zone->timers->flags |= TIMERS_MODIFIED;
 	}
 
 	ret = zone_update_apply_changeset(update, &ch);
