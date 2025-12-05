@@ -60,7 +60,7 @@ Required libraries
 
 Knot DNS requires a few libraries to be available:
 
-* gnutls >= 3.6.10
+* gnutls >= 3.6.12
 * libedit
 * liburcu
 * lmdb >= 0.9.15
