@@ -19,6 +19,7 @@
 #define MOD_QUERIES		"\x0B""log-queries"
 #define MOD_RESPONSES		"\x0D""log-responses"
 #define MOD_WITH_QUERIES	"\x16""responses-with-queries"
+#define MOD_COMBINED		"\x0F""query-with-resp"
 
 const yp_item_t dnstap_conf[] = {
 	{ MOD_SINK,         YP_TSTR,  YP_VNONE },
@@ -27,6 +28,7 @@ const yp_item_t dnstap_conf[] = {
 	{ MOD_QUERIES,      YP_TBOOL, YP_VBOOL = { true } },
 	{ MOD_RESPONSES,    YP_TBOOL, YP_VBOOL = { true } },
 	{ MOD_WITH_QUERIES, YP_TBOOL, YP_VBOOL = { false } },
+	{ MOD_COMBINED,     YP_TBOOL, YP_VBOOL = { false } }, // microsoft alias for responses-with-queries
 	{ NULL }
 };
 
@@ -35,6 +37,13 @@ int dnstap_conf_check(knotd_conf_check_args_t *args)
 	knotd_conf_t sink = knotd_conf_check_item(args, MOD_SINK);
 	if (sink.count == 0 || sink.single.string[0] == '\0') {
 		args->err_str = "no sink specified";
+		return KNOT_EINVAL;
+	}
+
+	knotd_conf_t resp_with_q = knotd_conf_check_item(args, MOD_WITH_QUERIES);
+	knotd_conf_t combined    = knotd_conf_check_item(args, MOD_COMBINED);
+	if (resp_with_q.count && combined.count) {
+		args->err_str = "'query-with-resp' is an alias for 'responses-with-queries'; cannot specify both";
 		return KNOT_EINVAL;
 	}
 
@@ -300,13 +309,19 @@ int dnstap_load(knotd_mod_t *mod)
 	}
 	ctx->version_len = (ctx->version != NULL) ? strlen(ctx->version) : 0;
 
-	/* Set responses-with-queries. */
-	conf = knotd_conf_mod(mod, MOD_WITH_QUERIES);
-	ctx->with_queries = conf.single.boolean;
-
 	/* Set sink. */
 	conf = knotd_conf_mod(mod, MOD_SINK);
 	const char *sink = conf.single.string;
+
+	/* Set responses-with-queries. */
+	conf = knotd_conf_mod(mod, MOD_WITH_QUERIES);
+	ctx->with_queries = conf.single.boolean;
+	conf = knotd_conf_mod(mod, MOD_COMBINED);
+	if (conf.count) {
+		knotd_mod_log(mod, LOG_WARNING,
+		        "'query-with-resp' is deprecated, use 'responses-with-queries' instead");
+		ctx->with_queries = conf.single.boolean;
+	}
 
 	/* Set log_queries. */
 	conf = knotd_conf_mod(mod, MOD_QUERIES);
