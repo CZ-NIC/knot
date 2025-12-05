@@ -11,8 +11,6 @@
 #include "libknot/dnssec/p11/p11.h"
 #include "libknot/errcode.h"
 
-#ifdef ENABLE_PKCS11
-
 #define PKCS11_MODULES_MAX 16
 
 static char *pkcs11_modules[PKCS11_MODULES_MAX] = { 0 };
@@ -76,27 +74,3 @@ void p11_cleanup(void)
 
 	gnutls_pkcs11_deinit();
 }
-
-#else
-
-int p11_init(void)
-{
-	return KNOT_EOK;
-}
-
-int p11_reinit(void)
-{
-	return KNOT_EOK;
-}
-
-int p11_load_module(const char *module)
-{
-	return KNOT_ENOTSUP;
-}
-
-void p11_cleanup(void)
-{
-	// this function intentionally left blank
-}
-
-#endif

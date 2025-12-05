@@ -16,8 +16,6 @@
 #include "libknot/dnssec/pem.h"
 #include "libknot/dnssec/shared/shared.h"
 
-#ifdef ENABLE_PKCS11
-
 struct pkcs11_ctx {
 	char *url;
 };
@@ -374,13 +372,3 @@ int dnssec_keystore_init_pkcs11(dnssec_keystore_t **store_ptr)
 
 	return keystore_create(store_ptr, &IMPLEMENTATION);
 }
-
-#else // !ENABLE_PKCS11
-
-_public_
-int dnssec_keystore_init_pkcs11(dnssec_keystore_t **store_ptr)
-{
-	return KNOT_ENOTSUP;
-}
-
-#endif

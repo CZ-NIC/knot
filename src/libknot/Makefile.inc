@@ -6,15 +6,12 @@ libknot_la_CPPFLAGS = $(embedded_libngtcp2_CFLAGS) \
                       $(gnutls_CFLAGS) ${fuzzer_CFLAGS}
 libknot_la_LDFLAGS  = $(AM_LDFLAGS) $(libknot_VERSION_INFO) $(LDFLAG_EXCLUDE_LIBS) \
                       ${fuzzer_LDFLAGS}
-libknot_la_LIBADD   = $(libcontrib_LIBS) $(lmdb_LIBS) $(gnutls_LIBS) $(math_LIBS)
+libknot_la_LIBADD   = $(libcontrib_LIBS) $(lmdb_LIBS) $(gnutls_LIBS) $(math_LIBS) \
+                      $(pthread_LIBS)
 
 if EMBEDDED_LIBNGTCP2
 libknot_la_LIBADD  += $(libembngtcp2_LIBS)
 endif EMBEDDED_LIBNGTCP2
-
-if ENABLE_PKCS11
-libknot_la_LIBADD  += $(pthread_LIBS)
-endif
 
 EXTRA_DIST += \
 	libknot/dnssec/sample_keys.h

@@ -151,10 +151,6 @@ PKG_CHECK_MODULES([gnutls], [gnutls >= 3.6.12], [
     CFLAGS="$CFLAGS $gnutls_CFLAGS"
     LIBS="$LIBS $gnutls_LIBS"
 
-    AC_CHECK_FUNC([gnutls_pkcs11_copy_pubkey], [enable_pkcs11=yes], [enable_pkcs11=no])
-    AS_IF([test "$enable_pkcs11" = yes],
-        [AC_DEFINE([ENABLE_PKCS11], [1], [PKCS #11 support available])])
-
     AC_CHECK_FUNC([gnutls_early_cipher_get],
         [AC_DEFINE([HAVE_GNUTLS_QUIC], [1], [gnutls_early_cipher_get available])
          gnutls_quic=yes], [gnutls_quic=no])
@@ -164,7 +160,6 @@ PKG_CHECK_MODULES([gnutls], [gnutls >= 3.6.12], [
 ], [
     AS_IF([test "$enable_redis" != "module"], [AC_MSG_ERROR([GnuTLS library not found])])
 ])
-AM_CONDITIONAL([ENABLE_PKCS11], [test "$enable_pkcs11" = "yes"])
 
 AC_ARG_ENABLE([recvmmsg],
    AS_HELP_STRING([--enable-recvmmsg=auto|yes|no], [enable recvmmsg() network API [default=auto]]),
@@ -819,7 +814,6 @@ result_msg_base="
     Systemd integration:    ${enable_systemd}
     D-Bus support:          ${enable_dbus}
     POSIX capabilities:     ${enable_cap_ng}
-    PKCS #11 support:       ${enable_pkcs11}
 
     Code coverage:          ${enable_code_coverage}
     Sanitizer:              ${with_sanitizer}
