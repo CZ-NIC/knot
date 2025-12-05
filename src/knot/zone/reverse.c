@@ -116,12 +116,6 @@ static bool flatten_apex_nocopy(uint16_t type)
 	       type == KNOT_RRTYPE_CDS;
 }
 
-static bool flatten_apex_delete(uint16_t type)
-{
-	return type == KNOT_RRTYPE_NS ||
-	       type == KNOT_RRTYPE_DS;
-}
-
 static int flatten_from_node(zone_node_t *node, void *data)
 {
 	rev_ctx_t *ctx = data;
@@ -130,31 +124,20 @@ static int flatten_from_node(zone_node_t *node, void *data)
 
 	int ret = KNOT_EOK;
 
-	zone_node_t *target_node = NULL;
+	assert(ctx->rev_upd == NULL); // not implemented with update in mind
 
+	if (apex) {
+		ret = zone_tree_del_subtree(ctx->rev_conts->nodes, node->owner, false);
+	}
+
+	zone_node_t *target_node = NULL;
 	for (int i = 0; i < node->rrset_count && ret == KNOT_EOK; i++) {
 		knot_rrset_t rrset = node_rrset_at(node, i);
 		if (apex && flatten_apex_nocopy(rrset.type)) {
 			continue;
 		}
 
-		assert(ctx->rev_upd == NULL); // not implemented with update in mind
-
 		ret = zone_contents_add_rr(ctx->rev_conts, &rrset, &target_node);
-	}
-
-	if (apex && target_node == NULL) {
-		target_node = (zone_node_t *)zone_contents_find_node(ctx->rev_conts, node->owner);
-	}
-
-	// TODO delete whole subtree from rev_conts BEFORE adding records from included zone?
-	for (int i = 0; apex && target_node != NULL && i < target_node->rrset_count && ret == KNOT_EOK; ) {
-		knot_rrset_t rrset = node_rrset_at(target_node, i);
-		if (flatten_apex_delete(rrset.type)) {
-			ret = zone_contents_remove_rr(ctx->rev_conts, &rrset, &target_node);
-		} else {
-			i++; // NOTE otherwise we jump to next RRSet by deleting the current one
-		}
 	}
 
 	return ret;
@@ -225,7 +208,7 @@ int zones_reverse_log(zone_t *zone, zone_contents_t *to_conts)
 		(void)knot_dname_to_str(forw_str, fail_fwd, sizeof(forw_str));
 		log_zone_warning(zone->name, "waiting for source forward zone '%s'", forw_str);
 	} else if (ret != KNOT_EOK) {
-		log_zone_error(zone->name, "failed to generate reverse records");
+		log_zone_error(zone->name, "failed to generate reverse records (%s)", knot_strerror(ret));
 	}
 	return ret;
 }
