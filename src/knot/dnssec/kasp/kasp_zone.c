@@ -401,7 +401,7 @@ int zone_init_keystore(conf_t *conf, conf_val_t *policy_id, conf_val_t *keystore
  * \note             After this function returns an error, only the count of keystores
  *                   from the beginning of keystores array shall be deinitialized.
  *
- * \return           KNOT_E*
+ * \return KNOT_E*
  */
 static int _init_keystores(conf_t *conf, knot_kasp_keystore_t *keystores, size_t *count)
 {
