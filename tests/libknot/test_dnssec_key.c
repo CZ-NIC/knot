@@ -181,9 +181,7 @@ int main(void)
 		{ "RSA",     &SAMPLE_RSA1024_SHA256_KEY },
 		{ "ECDSA",   &SAMPLE_ECDSA_P256_SHA256_KEY },
 		{ "ED25519", &SAMPLE_ED25519_KEY },
-#ifdef HAVE_ED448
 		{ "ED448",   &SAMPLE_ED448_KEY },
-#endif
 		{ NULL }
 	};
 

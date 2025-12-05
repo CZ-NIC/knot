@@ -270,9 +270,7 @@ static gnutls_ecc_curve_t choose_ecdsa_curve(size_t pubkey_size)
 {
 	switch (pubkey_size) {
 	case 32: return GNUTLS_ECC_CURVE_ED25519;
-#ifdef HAVE_ED448
 	case 57: return GNUTLS_ECC_CURVE_ED448;
-#endif
 	case 64: return GNUTLS_ECC_CURVE_SECP256R1;
 	case 96: return GNUTLS_ECC_CURVE_SECP384R1;
 	default: return GNUTLS_ECC_CURVE_INVALID;
@@ -370,9 +368,7 @@ int bind_privkey_to_pem(dnssec_key_t *key, bind_privkey_t *params, dnssec_binary
 	case DNSSEC_KEY_ALGORITHM_ECDSA_P384_SHA384:
 		return ecdsa_params_to_pem(key, params, pem);
 	case DNSSEC_KEY_ALGORITHM_ED25519:
-#ifdef HAVE_ED448
 	case DNSSEC_KEY_ALGORITHM_ED448:
-#endif
 		return eddsa_params_to_pem(key, params, pem);
 	default:
 		return KNOT_INVALID_KEY_ALGORITHM;

@@ -97,9 +97,7 @@ static size_t eddsa_curve_point_size(gnutls_ecc_curve_t curve)
 {
 	switch (curve) {
 	case GNUTLS_ECC_CURVE_ED25519: return 32;
-#ifdef HAVE_ED448
 	case GNUTLS_ECC_CURVE_ED448: return 57;
-#endif
 	default: return 0;
 	}
 }
@@ -235,9 +233,7 @@ static gnutls_ecc_curve_t eddsa_curve_from_rdata_size(size_t rdata_size)
 {
 	switch (rdata_size) {
 	case 32: return GNUTLS_ECC_CURVE_ED25519;
-#ifdef HAVE_ED448
 	case 57: return GNUTLS_ECC_CURVE_ED448;
-#endif
 	default: return GNUTLS_ECC_CURVE_INVALID;
 	}
 }
@@ -318,9 +314,7 @@ int convert_pubkey_to_dnskey(gnutls_pubkey_t key, dnssec_binary_t *rdata)
 	case GNUTLS_PK_RSA: return rsa_pubkey_to_rdata(key, rdata);
 	case GNUTLS_PK_ECDSA: return ecdsa_pubkey_to_rdata(key, rdata);
 	case GNUTLS_PK_EDDSA_ED25519: return eddsa_pubkey_to_rdata(key, rdata);
-#ifdef HAVE_ED448
 	case GNUTLS_PK_EDDSA_ED448: return eddsa_pubkey_to_rdata(key, rdata);
-#endif
 	default: return KNOT_INVALID_KEY_ALGORITHM;
 	}
 }
@@ -340,9 +334,7 @@ int convert_dnskey_to_pubkey(uint8_t algorithm, const dnssec_binary_t *rdata,
 	case GNUTLS_PK_RSA: return rsa_rdata_to_pubkey(rdata, key);
 	case GNUTLS_PK_ECDSA: return ecdsa_rdata_to_pubkey(rdata, key);
 	case GNUTLS_PK_EDDSA_ED25519: return eddsa_rdata_to_pubkey(rdata, key);
-#ifdef HAVE_ED448
 	case GNUTLS_PK_EDDSA_ED448: return eddsa_rdata_to_pubkey(rdata, key);
-#endif
 	default: return KNOT_INVALID_KEY_ALGORITHM;
 	}
 }
