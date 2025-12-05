@@ -354,6 +354,9 @@ int zone_tree_it_sub_begin(zone_tree_t *tree, const knot_dname_t *sub_root,
 	knot_dname_storage_t lf_storage;
 	uint8_t *lf = knot_dname_lf(sub_root, lf_storage);
 	ret = trie_it_get_leq(it->it, lf + 1, *lf);
+	if (ret == 1) {
+		ret = KNOT_ENOENT;
+	}
 	if ((ret != KNOT_EOK && ret != KNOT_ENOENT) || it->sub_root == NULL) {
 		zone_tree_it_free(it);
 		return ret == KNOT_EOK ? KNOT_ENOMEM : ret;
