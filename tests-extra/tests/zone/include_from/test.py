@@ -43,12 +43,12 @@ for z in childs:
     r.check(rcode="NOERROR", rdata="192.0.2.1")
 
 r = slave.dig("dns1.org.cz", "A")
-r.check(rcode="NOERROR", rdata="192.0.2.2")
+r.check(rcode="NOERROR", nordata="192.0.2.2")
 
 r = slave.dig("com.cz.", "TXT")
 r.check(rcode="NOERROR", rdata="auth-txt")
-r.check(rcode="NOERROR", rdata="nonauth-txt")
-r.check_count(2, "TXT")
+r.check(rcode="NOERROR", nordata="nonauth-txt")
+r.check_count(1, "TXT")
 
 up = master.update(childs[0])
 up.add("dns1", 3600, "AAAA", "1::2")
