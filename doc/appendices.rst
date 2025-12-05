@@ -23,7 +23,7 @@ support.
    * -
      - Generate
      - Import
-     - ED25519
+     - EDDSA
      - ECDSA
      - RSA
      - Last tested
@@ -84,9 +84,9 @@ support.
        | 2048
        | 4096
      - 2018-09
-   * - `Luna Cloud HSM <https://thalesdocs.com/dpod/services/luna_cloud_hsm/index.html>`_
+   * - `Luna Cloud HSM (non-FIPS) <https://thalesdocs.com/dpod/services/luna_cloud_hsm/index.html>`_
      - yes
-     - no
+     - n/a
      - n/a
      - | 256
        | 384
@@ -94,6 +94,16 @@ support.
        | 2048
        | 4096
      - 2025-11
+   * - `Luna Network HSM (non-FIPS) <https://www.thalesdocs.com/gphsm/luna/7/docs/network/Content/Home_Luna.htm>`_
+     - yes
+     - n/a
+     - | ed448
+     - | 256
+       | 384
+     - | 1024
+       | 2048
+       | 4096
+     - 2025-12
 
 .. in progress: key ID checks have to be disabled in code
    * - `Yubikey NEO <https://www.yubico.com/products/yubikey-hardware/yubikey-neo/>`_
