@@ -26,7 +26,7 @@ support.
      - EDDSA
      - ECDSA
      - RSA
-     - Last tested
+     - Tested
    * - `Feitian ePass 2003 <https://www.ftsafe.com/Products/PKI/Standard>`_
      - yes
      - n/a
@@ -47,13 +47,14 @@ support.
    * - `SoftHSM 2.0 <https://www.opendnssec.org/softhsm/>`_ [#fn-softhsm]_
      - yes
      - yes
-     - | 256
+     - | ed25519
+       | ed448
      - | 256
        | 384
      - | 1024
        | 2048
        | 4096
-     - 2021-09
+     - 2025-12
    * - `Trustway Proteccio NetHSM <https://atos.net/en/solutions/cyber-security/data-protection-and-governance/hardware-security-module-trustway-proteccio-nethsm>`_
      - yes
      - ECDSA only
