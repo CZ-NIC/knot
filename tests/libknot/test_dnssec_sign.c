@@ -57,7 +57,6 @@ static const dnssec_binary_t signed_ed25519 = { .size = 64, .data = (uint8_t [])
 		0x70, 0x34, 0x5e, 0x02, 0x49, 0xfb, 0x9e, 0x05,
 }};
 
-#ifdef HAVE_ED448
 static const dnssec_binary_t signed_ed448 = { .size = 114, .data = (uint8_t []) {
 	0x8d, 0x79, 0x27, 0xbd, 0xe2, 0xc4, 0x23, 0xd8, 0x26, 0xc1, 0xd4, 0xab,
 	0x6a, 0x0d, 0xdf, 0xe5, 0x5c, 0xf1, 0x8d, 0x3f, 0x1b, 0x13, 0x81, 0x94,
@@ -70,7 +69,6 @@ static const dnssec_binary_t signed_ed448 = { .size = 114, .data = (uint8_t []) 
 	0x74, 0x99, 0x01, 0x98, 0x5f, 0xdb, 0xea, 0xdf, 0xab, 0x59, 0x6c, 0x79,
 	0xe2, 0xc2, 0x2a, 0x91, 0x29, 0x00
 }};
-#endif
 
 static dnssec_binary_t binary_set_string(char *str)
 {
@@ -177,10 +175,8 @@ int main(void)
 	check_key(&SAMPLE_ECDSA_P256_SHA256_KEY, &input_data, &signed_ecdsa, false);
 	diag("ED25519 signing");
 	check_key(&SAMPLE_ED25519_KEY, &input_data, &signed_ed25519, true);
-#ifdef HAVE_ED448
 	diag("ED448 signing");
 	check_key(&SAMPLE_ED448_KEY, &input_data, &signed_ed448, true);
-#endif
 
 	dnssec_crypto_cleanup();
 

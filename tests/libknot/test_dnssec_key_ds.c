@@ -91,15 +91,11 @@ int main(int argc, char *argv[])
 	test_key("RSA",     &SAMPLE_RSA1024_SHA256_KEY);
 	test_key("ECDSA",   &SAMPLE_ECDSA_P256_SHA256_KEY);
 	test_key("ED25519", &SAMPLE_ED25519_KEY);
-#ifdef HAVE_ED448
 	test_key("ED448",   &SAMPLE_ED448_KEY);
-#endif
 
 	test_errors(&SAMPLE_ECDSA_P256_SHA256_KEY);
 	test_errors(&SAMPLE_ED25519_KEY);
-#ifdef HAVE_ED448
 	test_errors(&SAMPLE_ED448_KEY);
-#endif
 
 	dnssec_crypto_cleanup();
 

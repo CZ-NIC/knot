@@ -2197,9 +2197,6 @@ Possible values:
 - ``ed25519``
 - ``ed448``
 
-.. NOTE::
-   Ed448 algorithm is only available if compiled with GnuTLS 3.6.12+ and Nettle 3.6+.
-
 *Default:* ``ecdsap256sha256``
 
 .. _policy_ksk-size:

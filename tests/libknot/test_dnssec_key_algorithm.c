@@ -49,9 +49,7 @@ static void check_defaults(void)
 	is_int(2048, dnssec_algorithm_key_size_default(DNSSEC_KEY_ALGORITHM_RSA_SHA1_NSEC3),   "rsa default");
 	is_int(256, dnssec_algorithm_key_size_default(DNSSEC_KEY_ALGORITHM_ECDSA_P256_SHA256), "ecc default");
 	is_int(256, dnssec_algorithm_key_size_default(DNSSEC_KEY_ALGORITHM_ED25519),           "ed25519 default");
-#ifdef HAVE_ED448
 	is_int(456, dnssec_algorithm_key_size_default(DNSSEC_KEY_ALGORITHM_ED448),             "ed448 default");
-#endif
 }
 
 int main(void)
@@ -62,9 +60,8 @@ int main(void)
 	ok_range(DNSSEC_KEY_ALGORITHM_RSA_SHA512, 1024, 4096, "RSA/SHA256");
 	ok_range(DNSSEC_KEY_ALGORITHM_ECDSA_P384_SHA384, 384, 384, "ECDSA/SHA384");
 	ok_range(DNSSEC_KEY_ALGORITHM_ED25519, 256, 256, "ED25519");
-#ifdef HAVE_ED448
 	ok_range(DNSSEC_KEY_ALGORITHM_ED448, 456, 456, "ED448");
-#endif
+
 	null_range();
 
 	check_borders();

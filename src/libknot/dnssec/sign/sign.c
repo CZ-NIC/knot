@@ -207,10 +207,8 @@ static gnutls_sign_algorithm_t algo_dnssec2gnutls(dnssec_key_algorithm_t algorit
 		return GNUTLS_SIGN_ECDSA_SHA384;
 	case DNSSEC_KEY_ALGORITHM_ED25519:
 		return GNUTLS_SIGN_EDDSA_ED25519;
-#ifdef HAVE_ED448
 	case DNSSEC_KEY_ALGORITHM_ED448:
 		return GNUTLS_SIGN_EDDSA_ED448;
-#endif
 	default:
 		return GNUTLS_SIGN_UNKNOWN;
 	}
