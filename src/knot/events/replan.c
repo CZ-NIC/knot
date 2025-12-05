@@ -147,7 +147,13 @@ void replan_from_timers(conf_t *conf, zone_t *zone)
 		if (ds_check == 0) {
 			ds_check = TIME_IGNORE;
 		}
-		ds_push = zone->timers->next_ds_push;
+		val = conf_zone_get(conf, C_DS_PUSH, zone->name);
+		if (val.code != KNOT_EOK) {
+			val = conf_id_get(conf, C_POLICY, C_DS_PUSH, &policy);
+		}
+		if (conf_val_count(&val) > 0) {
+                        ds_push = zone->timers->next_ds_push;
+		}
 		if (ds_push == 0) {
 			ds_push = TIME_IGNORE;
 		}
