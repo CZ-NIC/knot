@@ -10,6 +10,7 @@ __all__ = [
     "params",
     "response",
     "server",
+    "softhsm",
     "test",
     "update",
     "utils",

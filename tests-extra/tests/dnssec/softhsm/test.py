@@ -37,14 +37,14 @@ serial = server.zone_wait(zone, serial)
 server.flush(zone[0], wait=True)
 server.zone_verify(zone[0])
 
-# keys0ksk = KnotPkcs11SoftHSM("keys0ksk", "knot3", "1234", ksk_only=True)
+keys0ksk = KnotPkcs11SoftHSM("keys0ksk", "knotksk", "1234", ksk_only=True)
 
-# server.dnssec(zone).keystore = [ keys0ksk, keys1 ]
-# server.gen_confile()
-# server.reload()
+server.dnssec(zone).keystore = [ keys0ksk, keys1 ]
+server.gen_confile()
+server.reload()
 
-# server.ctl("zone-key-rollover %s ksk" % zone[0].name)
-# serial = server.zone_wait(zone, serial)
+server.ctl("zone-key-rollover %s ksk" % zone[0].name)
+serial = server.zone_wait(zone, serial)
 
 # server.ctl("zone-ksk-submitted %s" % zone[0].name)
 # serial = server.zone_wait(zone, serial)

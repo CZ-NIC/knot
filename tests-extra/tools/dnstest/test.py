@@ -10,6 +10,7 @@ import psutil
 import time
 import dns.name
 import dns.zone
+from dnstest.softhsm import SoftHSM2_Manager
 import zone_generate
 from subprocess import Popen, PIPE, check_call, CalledProcessError, check_output, run, DEVNULL
 from dnstest.utils import *
@@ -211,6 +212,8 @@ class Test(object):
         srv.quic_log = srv.dir + "/quic.log"
         srv.confile = srv.dir + "/%s.conf" % srv.name
         srv.softhsm = srv.dir + "/softhsm"
+        srv.init_softhsm2_keystore()
+        srv.softhsm_keystores = SoftHSM2_Manager(srv.softhsm)
 
         xdp_enable = (params.xdp and xdp_enable and \
                       server == "knot" and \

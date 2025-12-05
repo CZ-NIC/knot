@@ -15,7 +15,8 @@ import dns.message
 import dns.query
 import dns.update
 from subprocess import Popen, PIPE, check_call, CalledProcessError, check_output, run, DEVNULL
-from dnstest.keystore import KnotPkcs11SoftHSM, KnotPkcs11SoftHSMWrapper
+from dnstest.keystore import KnotPkcs11SoftHSM
+from dnstest.softhsm import SoftHSM2_Manager
 from dnstest.utils import *
 from dnstest.context import Context
 import dnstest.config
@@ -194,6 +195,7 @@ class Server(object):
         self.session_log = None
         self.confile = None
         self.softhsm = None
+        self.softhsm_keystores = None
 
         self.redis = None
 
@@ -343,14 +345,6 @@ class Server(object):
                      "log.level = INFO\n"
                 )
                 softhsm_config_file.write(softhsm_config)
-            for ks in self.softhsm_keystores:
-                create_storage_process = Popen(
-                    ['softhsm2-util', '--init-token', '--free', f'--label={ks.keystore.token}', f'--pin={ks.keystore.passwd}', '--so-pin=12345', f'--module={ks.keystore.so_path}'],
-                    stdout=open(self.softhsm + "/stdout", mode='a'),
-                    stderr=open(self.softhsm + "/stderr", mode='a'),
-                    env=dict(os.environ,
-                             SOFTHSM2_CONF=self.softhsm + "/softhsm.conf"))
-                create_storage_process.wait()
 
     def start_server(self, clean=False):
         '''Start the server'''
@@ -369,10 +363,8 @@ class Server(object):
             if os.path.isfile(self.ferr):
                 copyfile(self.ferr, self.ferr + str(int(time.time())))
 
-            if clean and os.path.isdir(self.softhsm):
-                move(self.softhsm, self.softhsm + str(int(time.time())))
-            if len(self.softhsm_keystores) > 0:
-               self.init_softhsm2_keystore()
+            # if clean and os.path.isdir(self.softhsm):
+            #     move(self.softhsm, self.softhsm + str(int(time.time())))
 
             if self.daemon_bin != None:
                 self.proc = Popen(self.valgrind + [self.daemon_bin] + \
@@ -1428,7 +1420,6 @@ class Knot(Server):
         self.includes = set()
         self.binding_fail = "cannot bind address"
         self.pidfile = "knot.pid"
-        self.softhsm_keystores = set()
 
     def listening(self):
         tcp = super()._check_socket("tcp", self.port)
@@ -1704,7 +1695,7 @@ class Knot(Server):
             #TODO these will dupe if you use same keystore for multiple zones
             for ks in z.dnssec.keystore:
                 if isinstance(ks, KnotPkcs11SoftHSM):
-                    self.softhsm_keystores.add(KnotPkcs11SoftHSMWrapper(ks))
+                    self.softhsm_keystores.add(ks)
                 s.id_item("id", ks.id)
                 s.item_type("config", ks.config)
                 s.item_type("backend", ks.backend)
