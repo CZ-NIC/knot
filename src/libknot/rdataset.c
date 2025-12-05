@@ -140,7 +140,7 @@ int knot_rdataset_copy(knot_rdataset_t *dst, const knot_rdataset_t *src, knot_mm
 		if (dst->rdata == NULL) {
 			return KNOT_ENOMEM;
 		}
-		memcpy(dst->rdata, src->rdata, src->size);
+		memcpy(dst->rdata, (void *)src->rdata, src->size);
 	} else {
 		assert(src->size == 0);
 		dst->rdata = NULL;
