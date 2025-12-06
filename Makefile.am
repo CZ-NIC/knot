@@ -58,6 +58,7 @@ if CODE_COVERAGE_ENABLED
 		--ignore-errors source \
 		--no-checksum \
 		--compat-libtool \
+		--rc geninfo_unexecuted_blocks=1 \
 		--output-file $(CODE_COVERAGE_INFO)
 else
 	@echo "You need to run configure with --enable-code-coverage to enable code coverage"
