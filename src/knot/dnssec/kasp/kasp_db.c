@@ -24,6 +24,7 @@ typedef enum {
 	KASPDBKEY_SAVED_TTLS = 0x8,
 } keyclass_t;
 
+#define NUM_KEY_CLASSES 1   // Count of key related classes.
 static const keyclass_t related_classes[] = {
 	KASPDBKEY_PARAMS,
 	// Key related classes above this line.
@@ -34,13 +35,13 @@ static const keyclass_t related_classes[] = {
 	KASPDBKEY_OFFLINE_RECORDS,
 	KASPDBKEY_SAVED_TTLS,
 };
-#define NUM_KEY_CLASSES 1   // Count of key related classes.
-
 static const size_t related_classes_size = sizeof(related_classes) / sizeof(*related_classes);
 
+// DNSSEC key metadata.
 static const keyclass_t *key_related_classes = related_classes;
 static const size_t key_related_classes_size = NUM_KEY_CLASSES;
 
+// Zone related classes (but not DNSSEC key metadata).
 static const keyclass_t *zone_related_classes = related_classes + key_related_classes_size;
 static const size_t zone_related_classes_size = related_classes_size - key_related_classes_size;
 
