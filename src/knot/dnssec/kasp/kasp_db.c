@@ -24,7 +24,7 @@ typedef enum {
 	KASPDBKEY_SAVED_TTLS = 0x8,
 } keyclass_t;
 
-#define NUM_KEY_CLASSES 1   // Count of key related classes.
+#define NUM_KEY_CLASSES 1   // Count of DNSSEC key related classes.
 static const keyclass_t related_classes[] = {
 	KASPDBKEY_PARAMS,
 	// Key related classes above this line.
