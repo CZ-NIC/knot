@@ -70,7 +70,8 @@ int kasp_db_delete_key(knot_lmdb_db_t *db, const knot_dname_t *zone_name, const 
 int kasp_db_delete_keys(knot_lmdb_db_t *db, const knot_dname_t *zone_name, bool orphan, bool best);
 
 /*!
- * \brief Remove all zone's keys from DB, including nsec3param
+ * \brief Remove all zone's keys from DB, including nsec3param, but exluding keys related to
+ *        zone's DNSSEC keys (i.e. DNSSEC keys metadata).
  *
  * \param db            KASP db
  * \param zone_name     zone to be removed
