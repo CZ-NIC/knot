@@ -29,7 +29,7 @@ AC_DEFUN([AX_CODE_COVERAGE], [
 		changequote([,])
 	
 		dnl Add the coverage flags (clang, gcc)
-		CFLAGS="$CFLAGS --coverage"
-		LDFLAGS="$LDFLAGS --coverage"
+		CFLAGS="$CFLAGS --coverage -fprofile-update=atomic"
+		LDFLAGS="$LDFLAGS --coverage -fprofile-update=atomic"
 	])
 ]) # AC_CODE_COVERAGE
