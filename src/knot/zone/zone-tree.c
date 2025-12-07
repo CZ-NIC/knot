@@ -7,6 +7,7 @@
 #include <stdlib.h>
 
 #include "knot/zone/zone-tree.h"
+#include "knot/zone/adds_tree.h"
 #include "libknot/consts.h"
 #include "libknot/errcode.h"
 #include "libknot/packet/wire.h"
@@ -272,6 +273,33 @@ int zone_tree_del_node(zone_tree_t *tree, zone_node_t *node, bool free_deleted)
 	return ret;
 }
 
+static int clear_rrs(zone_node_t *node, void *ctx)
+{
+	nodeptr_dynarray_t *leaves = ctx;
+	binode_unify(node, false, NULL);
+	node_free_rrsets(node, NULL);
+	if (node->children == 0) {
+		(void)nodeptr_dynarray_add(leaves, &node); // if ENOMEM, we just leak
+	}
+	return KNOT_EOK;
+}
+
+int zone_tree_del_subtree(zone_tree_t *tree, const knot_dname_t *subroot, bool excl_root)
+{
+	nodeptr_dynarray_t leaves = { 0 };
+	int ret = zone_tree_sub_apply(tree, subroot, excl_root, clear_rrs, &leaves);
+	if (ret == KNOT_EOK) {
+		knot_dynarray_foreach(nodeptr, zone_node_t *, n, leaves) {
+			ret = zone_tree_del_node(tree, *n, true);
+			if (ret != KNOT_EOK) {
+				break;
+			}
+		}
+	}
+	nodeptr_dynarray_free(&leaves);
+	return ret;
+}
+
 int zone_tree_apply(zone_tree_t *tree, zone_tree_apply_cb_t function, void *data)
 {
 	if (function == NULL) {
@@ -326,6 +354,9 @@ int zone_tree_it_sub_begin(zone_tree_t *tree, const knot_dname_t *sub_root,
 	knot_dname_storage_t lf_storage;
 	uint8_t *lf = knot_dname_lf(sub_root, lf_storage);
 	ret = trie_it_get_leq(it->it, lf + 1, *lf);
+	if (ret == 1) {
+		ret = KNOT_ENOENT;
+	}
 	if ((ret != KNOT_EOK && ret != KNOT_ENOENT) || it->sub_root == NULL) {
 		zone_tree_it_free(it);
 		return ret == KNOT_EOK ? KNOT_ENOMEM : ret;
