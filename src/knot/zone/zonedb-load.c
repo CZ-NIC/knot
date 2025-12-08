@@ -75,7 +75,7 @@ static void replan_events(conf_t *conf, zone_t *zone, zone_t *old_zone, bool con
 {
 	if (!conf_updated) {
 		conf_val_t digest = conf_zone_get(conf, C_ZONEMD_GENERATE, zone->name);
-		if (zone->contents != NULL && !zone_contents_digest_exists(zone->contents, conf_opt(&digest), true)) {
+		if (zone->contents != NULL && !zone_contents_digest_exists(zone->contents, conf_opt(&digest), true, false)) {
 			conf_updated = true;
 		}
 	}

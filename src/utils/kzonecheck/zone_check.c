@@ -105,7 +105,7 @@ int zone_check(const char *zone_file, const knot_dname_t *zone_name, bool zonemd
 	}
 
 	if (zonemd) {
-		ret = zone_contents_digest_verify(contents);
+		ret = zone_contents_digest_verify(contents, false);
 		if (ret != KNOT_EOK) {
 			if (stats.error_count > 0 && !stats.handler.error) {
 				(void)fprintf(stderr, "\n");
