@@ -98,6 +98,7 @@ static MDB_val make_key_str(keyclass_t kclass, const knot_dname_t *dname, const 
 		return knot_lmdb_make_key("BN", (int)kclass, dname);
 	case KASPDBKEY_PARAMS:
 	case KASPDBKEY_OFFLINE_RECORDS:
+	case KASPDBKEY_TRASH_PARAMS:
 		assert(dname != NULL);
 		if (str == NULL) {
 			return knot_lmdb_make_key("BN", (int)kclass, dname);
@@ -283,6 +284,27 @@ static size_t keyid_inuse(knot_lmdb_txn_t *txn, const char *key_id, key_params_t
 	return count;
 }
 
+/*! \brief Make the trash record for the key in KASP DB. */
+static bool trash_key(knot_lmdb_txn_t *txn)
+{
+	bool ret = true;
+	MDB_val key = txn->cur_key;
+
+	uint8_t kclass;
+	knot_dname_t *dname;
+	char *str;
+
+	if (knot_lmdb_unmake_key(key.mv_data, key.mv_size,
+	                         "BNS", &kclass, &dname, &str)) {
+		assert(kclass == KASPDBKEY_PARAMS);
+		key = make_key_str(KASPDBKEY_TRASH_PARAMS, dname, str);
+		MDB_val empty_val = { 0 };
+		ret = knot_lmdb_insert(txn, &key, &empty_val);
+		free(key.mv_data);
+	}
+
+	return ret;
+}
 
 int kasp_db_delete_key(knot_lmdb_db_t *db, const knot_dname_t *zone_name, const char *key_id, bool *still_used)
 {
@@ -298,7 +320,8 @@ int kasp_db_delete_key(knot_lmdb_db_t *db, const knot_dname_t *zone_name, const 
 	return txn.ret;
 }
 
-int kasp_db_delete_keys(knot_lmdb_db_t *db, const knot_dname_t *zone_name, bool orphan, bool best)
+int kasp_db_delete_keys(knot_lmdb_db_t *db, const knot_dname_t *zone_name,
+                        bool orphan, bool best, bool trash)
 {
 	int ret;
 	knot_kasp_keystore_t *keystores;
@@ -330,16 +353,20 @@ int kasp_db_delete_keys(knot_lmdb_db_t *db, const knot_dname_t *zone_name, bool 
 		size_t count = keyid_inuse(&txn_r, key_id, NULL);
 		assert(count > 0);
 		if (count == 1) {
-			ret = kdnssec_delete_from_keystores(keystores, key_id,
-			                                    orphan ? NULL : zone_name, true);
-			ret = (ret == KNOT_ENOENT) ? KNOT_EOK : ret;
-			if (ret != KNOT_EOK) {
-				// Note: it isn't sure that there still is a key to delete.
-				free(key_id);
-				if (best) {
-					continue;
-				} else {
-					break;
+			if (trash) {
+				(void)trash_key(&txn);
+			} else {
+				ret = kdnssec_delete_from_keystores(keystores, key_id,
+				                                    orphan ? NULL : zone_name, true);
+				ret = (ret == KNOT_ENOENT) ? KNOT_EOK : ret;
+				if (ret != KNOT_EOK) {
+					// Note: it isn't sure that there still is a key to delete.
+					free(key_id);
+					if (best) {
+						continue;
+					} else {
+						break;
+					}
 				}
 			}
 		}
