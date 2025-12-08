@@ -63,11 +63,13 @@ int kasp_db_delete_key(knot_lmdb_db_t *db, const knot_dname_t *zone_name, const 
  * \param db            KASP db
  * \param zone_name     zone to remove from
  * \param orphan        if true, remove keys of a non-existent zone (orphans)
- * \param best          continue with other keys even if one key fails
+ * \param best          if true, continue with other keys even if one key fails
+ * \param trash         if true, move the key to trash instead of removing it
  *
  * \return KNOT_E*
  */
-int kasp_db_delete_keys(knot_lmdb_db_t *db, const knot_dname_t *zone_name, bool orphan, bool best);
+int kasp_db_delete_keys(knot_lmdb_db_t *db, const knot_dname_t *zone_name,
+                        bool orphan, bool best, bool trash);
 
 /*!
  * \brief Remove all zone's keys from DB, including nsec3param, but exluding keys related to
