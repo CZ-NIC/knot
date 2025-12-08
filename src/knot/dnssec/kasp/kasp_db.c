@@ -229,6 +229,34 @@ static MDB_val trash_serialize(const key_params_t *params)
 	return knot_lmdb_make_key("LHBB", expir, params->keytag, params->algorithm, flags);
 }
 
+// For future use.
+_unused_ static bool trash_deserialize(const MDB_val *val, key_params_t *params)
+{
+	uint64_t expir;
+	uint8_t flags;
+
+	if (knot_lmdb_unmake_key(val->mv_data, val->mv_size, "LHBB",
+	                         &expir, &params->keytag, &params->algorithm, &flags)) {
+
+		flags_deserialize(params, flags);
+
+		if ((flags & 0x02) && (params->is_ksk || !params->is_csk)) {
+			return true;
+		}
+	}
+	return false;
+}
+
+// For future use.
+_unused_ static bool trash_expired(const MDB_val *val, knot_time_t now)
+{
+	if (val->mv_size < sizeof(knot_time_t)) {
+		return false;
+	}
+
+	return ((knot_time_t)knot_wire_read_u64(val->mv_data) < now);
+}
+
 static key_params_t *txn2params(knot_lmdb_txn_t *txn)
 {
 	key_params_t *p = calloc(1, sizeof(*p));
