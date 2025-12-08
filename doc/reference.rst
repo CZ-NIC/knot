@@ -2110,6 +2110,7 @@ DNSSEC policy configuration.
      ksk-lifetime: TIME
      zsk-lifetime: TIME
      delete-delay: TIME
+     key-trash: BOOL
      propagation-delay: TIME
      rrsig-lifetime: TIME
      rrsig-refresh: TIME
@@ -2329,6 +2330,20 @@ it completely. This might be useful in some troubleshooting cases when resurrect
 is needed.
 
 *Default:* ``0``
+
+.. _policy_key-trash:
+
+key-trash
+---------
+
+When a catalog member zone is removed from the catalog and purged, keep its keys
+in a "trash bin" in the keystore with possibility to be recovered later rather than
+removing them instantly. This parameter also applies to automatic key management mode.
+
+.. NOTE::
+   Key "trash bin" can be clean with ``knotc -f zone-purge +keys +orphan <zone>``.
+
+*Default:* ``on``
 
 .. _policy_propagation-delay:
 
