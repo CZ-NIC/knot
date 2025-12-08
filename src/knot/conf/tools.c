@@ -1144,11 +1144,6 @@ static int check_zone_or_tpl(
 			args->err_str = "'dnssec-validation' is not compatible with 'dnssec-signing'";
 			return KNOT_EINVAL;
 		}
-
-		conf_val_t zonemd_verify = conf_get_wrap(args, C_ZONEMD_VERIFY);
-		if (conf_bool(&zonemd_verify)) {
-			CONF_LOG(LOG_WARNING, "'zonemd-verify' not compatible with 'dnssec-signing' as incremental changes to the zone will always fail");
-		}
 	} else {
 		conf_val_t ddnsmaster = conf_get_wrap(args, C_DDNS_MASTER);
 		if (ddnsmaster.code == KNOT_EOK && *conf_str(&ddnsmaster) == '\0') {
