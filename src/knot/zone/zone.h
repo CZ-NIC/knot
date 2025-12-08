@@ -68,6 +68,7 @@ typedef enum {
 	PURGE_ZONE_KASPDB   = 1 << 27, /*!< Purge KASP DB. */
 	PURGE_ZONE_CATALOG  = 1 << 28, /*!< Purge the catalog. */
 	PURGE_ZONE_EXPIRE   = 1 << 29, /*!< Expire the zone, free contents. */
+	PURGE_ZONE_TRASH    = 1 << 30, /*!< When purging keys, purge also the keys in trash. */
 } purge_flag_t;
 
 /*!< All data. */
@@ -78,7 +79,7 @@ typedef enum {
 #define PURGE_ZONE_ALL   (PURGE_ZONE_DATA | PURGE_ZONE_KEYS | PURGE_ZONE_BEST | PURGE_ZONE_LOG)
 
 /*!< All purge-related flags. */
-#define PURGE_ZONE_FLAGS (PURGE_ZONE_ALL | PURGE_ZONE_NOSYNC | PURGE_ZONE_EXPIRE)
+#define PURGE_ZONE_FLAGS (PURGE_ZONE_ALL | PURGE_ZONE_NOSYNC | PURGE_ZONE_EXPIRE | PURGE_ZONE_TRASH)
 
 /*!
  * \brief Structure for holding DNS zone.
