@@ -272,22 +272,52 @@ static size_t keyid_inuse(knot_lmdb_txn_t *txn, const char *key_id, key_params_t
 	return count;
 }
 
+/*! \brief Make the trash record for the key in KASP DB. */
+static bool trash_key(knot_lmdb_txn_t *txn)
+{
+	bool ret = true;
+	MDB_val cur_key = txn->cur_key;
 
-int kasp_db_delete_key(knot_lmdb_db_t *db, const knot_dname_t *zone_name, const char *key_id, bool *still_used)
+	char *str = NULL;
+	knot_dname_t *dname = NULL;
+	keyclass_t kclass;
+
+	if (knot_lmdb_unmake_key(cur_key.mv_data, cur_key.mv_size,
+	                         "BNS", &kclass, &dname, &str)) {
+		assert(kclass == KASPDBKEY_PARAMS);
+		cur_key = make_key_str(KASPDBKEY_TRASH_PARAMS, dname, str);
+		MDB_val empty_cur_val = { 0 };
+		free(str);
+		ret = knot_lmdb_insert(txn, &cur_key, &empty_cur_val);
+	}
+
+	return ret;
+}
+
+int kasp_db_delete_key(knot_lmdb_db_t *db, const knot_dname_t *zone_name, const char *key_id,
+                       bool trash, bool *still_used)
 {
 	MDB_val search = make_key_str(KASPDBKEY_PARAMS, zone_name, key_id);
 	knot_lmdb_txn_t txn = { 0 };
 	knot_lmdb_begin(db, &txn, true);
 	knot_lmdb_del_prefix(&txn, &search);
-	if (still_used != NULL) {
-		*still_used = (keyid_inuse(&txn, key_id, NULL) > 0);
+	if (trash || still_used != NULL) {
+		bool used = (keyid_inuse(&txn, key_id, NULL) > 0);
+		if (trash && !used) {
+			(void)trash_key(&txn);
+			used = true;
+		}
+		if (still_used != NULL) {
+			*still_used = used;
+		}
 	}
 	knot_lmdb_commit(&txn);
 	free(search.mv_data);
 	return txn.ret;
 }
 
-int kasp_db_delete_keys(knot_lmdb_db_t *db, const knot_dname_t *zone_name, bool orphan, bool best)
+int kasp_db_delete_keys(knot_lmdb_db_t *db, const knot_dname_t *zone_name,
+                        bool orphan, bool best, bool trash)
 {
 	int ret;
 	knot_kasp_keystore_t *keystores;
@@ -319,15 +349,19 @@ int kasp_db_delete_keys(knot_lmdb_db_t *db, const knot_dname_t *zone_name, bool 
 		size_t count = keyid_inuse(&txn_r, key_id, NULL);
 		assert(count > 0);
 		if (count == 1) {
-			ret = kdnssec_delete_from_keystores(keystores, key_id, true);
-			ret = (ret == KNOT_ENOENT) ? KNOT_EOK : ret;
-			if (ret != KNOT_EOK) {
-				// Note: it isn't sure that there still is a key to delete.
-				free(key_id);
-				if (best) {
-					continue;
-				} else {
-					break;
+			if (trash) {
+				(void)trash_key(&txn);
+			} else {
+				ret = kdnssec_delete_from_keystores(keystores, key_id, true);
+				ret = (ret == KNOT_ENOENT) ? KNOT_EOK : ret;
+				if (ret != KNOT_EOK) {
+					// Note: it isn't sure that there still is a key to delete.
+					free(key_id);
+					if (best) {
+						continue;
+					} else {
+						break;
+					}
 				}
 			}
 		}

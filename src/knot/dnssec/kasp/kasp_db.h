@@ -51,11 +51,13 @@ int kasp_db_get_key_algorithm(knot_lmdb_db_t *db, const knot_dname_t *zone_name,
  * \param db            KASP db
  * \param zone_name     zone to be removed from
  * \param key_id        ID of key to be removed
+ * \param trash         if true, move the key to trash instead of removing it
  * \param still_used    output if KNOT_EOK: is the key still in use by other zones?
  *
  * \return KNOT_E*
  */
-int kasp_db_delete_key(knot_lmdb_db_t *db, const knot_dname_t *zone_name, const char *key_id, bool *still_used);
+int kasp_db_delete_key(knot_lmdb_db_t *db, const knot_dname_t *zone_name, const char *key_id,
+                       bool trash, bool *still_used);
 
 /*!
  * \brief Remove all keys from zone. Delete them if no zone has them anymore.
@@ -63,11 +65,13 @@ int kasp_db_delete_key(knot_lmdb_db_t *db, const knot_dname_t *zone_name, const 
  * \param db            KASP db
  * \param zone_name     zone to remove from
  * \param orphan        if true, remove keys of a non-existent zone (orphans)
- * \param best          continue with other keys even if one key fails
+ * \param best          if true, continue with other keys even if one key fails
+ * \param trash         if true, move the key to trash instead of removing it
  *
  * \return KNOT_E*
  */
-int kasp_db_delete_keys(knot_lmdb_db_t *db, const knot_dname_t *zone_name, bool orphan, bool best);
+int kasp_db_delete_keys(knot_lmdb_db_t *db, const knot_dname_t *zone_name,
+                        bool orphan, bool best, bool trash);
 
 /*!
  * \brief Remove all zone's keys from DB, including nsec3param, but exluding keys related to

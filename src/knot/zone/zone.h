@@ -67,6 +67,7 @@ typedef enum {
 	PURGE_ZONE_KASPDB   = 1 << 27, /*!< Purge KASP DB. */
 	PURGE_ZONE_CATALOG  = 1 << 28, /*!< Purge the catalog. */
 	PURGE_ZONE_EXPIRE   = 1 << 29, /*!< Expire the zone, free contents. */
+	PURGE_ZONE_TRASH    = 1 << 30, /*!< Purge also the keys in trash. */
 } purge_flag_t;
 
 /*!< All data. */

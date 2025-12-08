@@ -266,7 +266,8 @@ int kdnssec_delete_key(kdnssec_ctx_t *ctx, knot_kasp_key_t *key_ptr)
 	}
 
 	bool key_still_used_in_keystore = false;
-	int ret = kasp_db_delete_key(ctx->kasp_db, ctx->zone->dname, key_ptr->id, &key_still_used_in_keystore);
+	int ret = kasp_db_delete_key(ctx->kasp_db, ctx->zone->dname, key_ptr->id,
+	                             ctx->policy->key_trash, &key_still_used_in_keystore);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}

@@ -348,7 +348,8 @@ int selective_zone_purge(conf_t *conf, zone_t *zone, purge_flag_t params)
 		ret = knot_lmdb_open(zone_kaspdb(zone));
 		if (ret == KNOT_EOK) {
 			ret = kasp_db_delete_keys(zone_kaspdb(zone), zone->name,
-			                          false, !exit_immediately);
+			                          false, !exit_immediately,
+			                          !(params & PURGE_ZONE_TRASH));
 		}
 		RETURN_IF_FAILED("keys", KNOT_ENOENT);
 	}
