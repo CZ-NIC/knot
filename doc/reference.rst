@@ -2341,7 +2341,7 @@ in a "trash bin" in the keystore with possibility to be recovered later rather t
 removing them instantly. This parameter also applies to automatic key management mode.
 
 .. NOTE::
-   Key "trash bin" can be clean with ``knotc -f zone-purge +keys +orphan <zone>``.
+   Key "trash bin" can be cleaned with ``knotc -f zone-purge +keys +orphan <zone>``.
 
 *Default:* ``on``
 
