@@ -299,6 +299,17 @@ void knot_lmdb_del_cur(knot_lmdb_txn_t *txn);
  */
 void knot_lmdb_del_prefix(knot_lmdb_txn_t *txn, MDB_val *prefix);
 
+/*!
+ * \brief Delete all DB records matching given key prefix, return the
+ *        last deleted record as cur_key and cur_val, or return empty
+ *        data if no matching record is found. As the transaction is still open,
+ *        both data are accessible until txn commit.
+ *
+ * \param txn      DB transaction.
+ * \param prefix   Prefix to be deleted.
+ */
+void knot_lmdb_del_prefix_ret(knot_lmdb_txn_t *txn, MDB_val *prefix);
+
 typedef int (*lmdb_apply_cb)(MDB_val *key, MDB_val *val, void *ctx);
 
 /*!

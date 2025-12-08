@@ -1789,7 +1789,8 @@ static int orphans_purge(ctl_args_t *args)
 				// Purge keys. (It needs to be requested explicitly.)
 				if (MATCH_AND_FILTER(args, CTL_FILTER_PURGE_KEYS)) {
 					if (knot_lmdb_open(&args->server->kaspdb) == KNOT_EOK) {
-						ret = kasp_db_delete_keys(&args->server->kaspdb, zone_name, true, false);
+						ret = kasp_db_delete_keys(&args->server->kaspdb, zone_name,
+						                          true, false, false);
 						log_if_orphans_error(zone_name, ret, "keys", &failed);
 					}
 				}
@@ -1856,6 +1857,7 @@ static int zone_purge(zone_t *zone, ctl_args_t *args)
 		MATCH_OR_FILTER(args, CTL_FILTER_PURGE_EXPIRE)   * PURGE_ZONE_EXPIRE |
 		// Keys purge must be requested explicitly.
 		MATCH_AND_FILTER(args, CTL_FILTER_PURGE_KEYS)    * PURGE_ZONE_KEYS |
+		PURGE_ZONE_TRASH |
 		PURGE_ZONE_NOSYNC; // Purge even zonefiles with disabled syncing.
 
 	zone_set_flag(zone, (zone_flag_t)params);
