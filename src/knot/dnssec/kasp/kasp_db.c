@@ -84,6 +84,11 @@ static bool is_key_related(const MDB_val *key)
 	return (*(uint8_t *)key->mv_data == KASPDBKEY_PARAMS);
 }
 
+static bool is_trash_related(const MDB_val *key)
+{
+	return (*(uint8_t *)key->mv_data == KASPDBKEY_TRASH);
+}
+
 static MDB_val make_key_str(keyclass_t kclass, const knot_dname_t *dname, const char *str)
 {
 	switch (kclass) {
