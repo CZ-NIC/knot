@@ -22,12 +22,17 @@ typedef enum {
 	KASPDBKEY_LASTSIGNEDSERIAL = 0x6,
 	KASPDBKEY_OFFLINE_RECORDS = 0x7,
 	KASPDBKEY_SAVED_TTLS = 0x8,
+	KASPDBKEY_TRASH = 0xf1,
 } keyclass_t;
 
-#define NUM_KEY_CLASSES 1   // Count of DNSSEC key related classes.
+#define NUM_TRASH_CLASSES 1   // Count of key trash classes.
+#define NUM_KEY_CLASSES   1   // Count of DNSSEC key related classes.
 static const keyclass_t ordered_classes[] = {
+	// Trash classes.
+	KASPDBKEY_TRASH,
+	// Key related classes.
 	KASPDBKEY_PARAMS,
-	// Key related classes above this line.
+	// Zone related classes.
 	KASPDBKEY_NSEC3SALT,
 	KASPDBKEY_NSEC3TIME,
 	KASPDBKEY_MASTERSERIAL,
@@ -38,21 +43,21 @@ static const keyclass_t ordered_classes[] = {
 static const size_t ordered_classes_size = sizeof(ordered_classes) / sizeof(*ordered_classes);
 
 // DNSSEC key metadata.
-static const keyclass_t *key_classes = ordered_classes;
+static const keyclass_t *key_classes = ordered_classes + NUM_TRASH_CLASSES;
 static const size_t key_classes_size = NUM_KEY_CLASSES;
 
 // Zone related classes (but not DNSSEC key metadata).
-static const keyclass_t *zone_classes = ordered_classes + key_classes_size;
-static const size_t zone_classes_size = ordered_classes_size - key_classes_size;
+static const keyclass_t *zone_classes = ordered_classes + NUM_TRASH_CLASSES + NUM_KEY_CLASSES;
+static const size_t zone_classes_size = ordered_classes_size - NUM_TRASH_CLASSES - NUM_KEY_CLASSES;
 
 // KASP related classes (including DNSSEC keys, for backup/restore).
-static const keyclass_t *kasp_classes = ordered_classes;
-static const size_t kasp_classes_size = ordered_classes_size;
+static const keyclass_t *kasp_classes = ordered_classes + NUM_TRASH_CLASSES;
+static const size_t kasp_classes_size = ordered_classes_size - NUM_TRASH_CLASSES;
 
-static bool is_zone_related_class(uint8_t class)
+static bool is_related_class(const keyclass_t* classes, const size_t classes_size, uint8_t class)
 {
-	for (size_t i = 0; i < zone_classes_size; i++) {
-		if (zone_classes[i] == class) {
+	for (size_t i = 0; i < classes_size; i++) {
+		if (classes[i] == class) {
 			return true;
 		}
 	}
@@ -61,12 +66,18 @@ static bool is_zone_related_class(uint8_t class)
 
 static bool is_zone_related(const MDB_val *key)
 {
-	return is_zone_related_class(*(uint8_t *)key->mv_data);
+	return is_related_class(zone_classes, zone_classes_size,
+                                     *(uint8_t *)key->mv_data);
 }
 
 static bool is_key_related(const MDB_val *key)
 {
 	return (*(uint8_t *)key->mv_data == KASPDBKEY_PARAMS);
+}
+
+static bool is_trash_related(const MDB_val *key)
+{
+	return (*(uint8_t *)key->mv_data == KASPDBKEY_TRASH);
 }
 
 static MDB_val make_key_str(keyclass_t kclass, const knot_dname_t *dname, const char *str)
@@ -90,6 +101,13 @@ static MDB_val make_key_str(keyclass_t kclass, const knot_dname_t *dname, const 
 		} else {
 			return knot_lmdb_make_key("BNS", (int)kclass, dname, str);
 		}
+	case KASPDBKEY_TRASH:
+		assert(str != NULL);
+		if (dname == NULL) {
+			return knot_lmdb_make_key("BS", (int)kclass, str);
+		} else {
+			return knot_lmdb_make_key("BSN", (int)kclass, str, dname);
+		}
 	default:
 		assert(0);
 		MDB_val empty = { 0 };
@@ -109,12 +127,19 @@ static bool unmake_key_str(const MDB_val *keyv, char **str)
 	uint8_t kclass;
 	const knot_dname_t *dname;
 	const char *s;
-	return (knot_lmdb_unmake_key(keyv->mv_data, keyv->mv_size, "BNS", &kclass, &dname, &s) &&
-		((*str = strdup(s)) != NULL));
+
+	bool b = (*(uint8_t *)keyv->mv_data == KASPDBKEY_TRASH) ?
+	         knot_lmdb_unmake_key(keyv->mv_data, keyv->mv_size, "BSN",
+	             &kclass, &s, &dname) :
+	         knot_lmdb_unmake_key(keyv->mv_data, keyv->mv_size, "BNS",
+	             &kclass, &dname, &s);
+
+	return b && ((*str = strdup(s)) != NULL);
 }
 
 static bool unmake_key_time(const MDB_val *keyv, knot_time_t *time)
 {
+	assert(*(uint8_t *)keyv->mv_data != KASPDBKEY_TRASH);
 	uint8_t kclass;
 	const knot_dname_t *dname;
 	const char *s;
@@ -391,8 +416,9 @@ int kasp_db_sweep_keys(knot_lmdb_db_t *db, sweep_cb keep_zone, void *cb_data)
 	knot_lmdb_txn_t txn = { 0 };
 	knot_lmdb_begin(db, &txn, true);
 	knot_lmdb_forwhole(&txn) {
-		if (!is_key_related(&txn.cur_key) ||
-		    keep_zone((const knot_dname_t *)txn.cur_key.mv_data + 1, cb_data)) {
+		if (!is_trash_related(&txn.cur_key) &&
+		    (!is_key_related(&txn.cur_key) ||
+		     keep_zone((const knot_dname_t *)txn.cur_key.mv_data + 1, cb_data))) {
 			continue;
 		}
 		char *key_id = NULL;
