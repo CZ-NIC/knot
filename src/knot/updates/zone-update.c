@@ -987,8 +987,9 @@ int zone_update_verify_digest(conf_t *conf, zone_update_t *update)
 	if (!conf_bool(&val)) {
 		return KNOT_EOK;
 	}
+	val = conf_zone_get(conf, C_DNSSEC_SIGNING, update->zone->name);
 
-	int ret = zone_contents_digest_verify(update->new_cont);
+	int ret = zone_contents_digest_verify(update->new_cont, conf_bool(&val));
 	if (ret != KNOT_EOK) {
 		log_zone_error(update->zone->name, "ZONEMD, verification failed (%s)",
 		               knot_strerror(ret));
