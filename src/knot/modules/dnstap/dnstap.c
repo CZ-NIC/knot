@@ -97,7 +97,9 @@ static knotd_state_t log_message(knotd_state_t state, const knot_pkt_t *pkt,
 	int ret = dt_message_fill(&msg, msgtype,
 	                          (const struct sockaddr *)knotd_qdata_remote_addr(qdata),
 	                          (const struct sockaddr *)knotd_qdata_local_addr(qdata),
-	                          qdata->params->proto, pkt->wire, pkt->size, &tv);
+	                          qdata->params->proto, pkt->wire, pkt->size, &tv,
+	                          (ctx->with_queries && qdata->query != NULL) ? qdata->query->wire : NULL,
+	                          qdata->query->size);
 	if (ret != KNOT_EOK) {
 		return state;
 	}
@@ -116,16 +118,6 @@ static knotd_state_t log_message(knotd_state_t state, const knot_pkt_t *pkt,
 		dnstap.version.data = (uint8_t *)ctx->version;
 		dnstap.version.len = ctx->version_len;
 		dnstap.has_version = 1;
-	}
-
-	/* Also add query message if 'responses-with-queries' is enabled and this is a response. */
-	if (ctx->with_queries &&
-	    msgtype == DNSTAP__MESSAGE__TYPE__AUTH_RESPONSE &&
-	    qdata->query != NULL)
-	{
-		msg.query_message.len = qdata->query->size;
-		msg.query_message.data = qdata->query->wire;
-		msg.has_query_message = 1;
 	}
 
 	/* Pack the message. */
