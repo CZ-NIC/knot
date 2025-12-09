@@ -77,7 +77,7 @@ static knotd_state_t log_message(knotd_state_t state, const knot_pkt_t *pkt,
 	/* Unless we want to measure the time it takes to process each query,
 	 * we can treat Q/R times the same. */
 	struct timespec tv = { 0 };
-	clock_gettime(CLOCK_REALTIME, &tv);
+	clock_gettime(CLOCK_REALTIME_COARSE, &tv);
 
 	/* Determine query / response. */
 	Dnstap__Message__Type msgtype = DNSTAP__MESSAGE__TYPE__AUTH_QUERY;
@@ -95,7 +95,8 @@ static knotd_state_t log_message(knotd_state_t state, const knot_pkt_t *pkt,
 	                          (const struct sockaddr *)knotd_qdata_local_addr(qdata),
 	                          qdata->params->proto, pkt->wire, pkt->size, &tv,
 	                          (ctx->with_queries && qdata->query != NULL) ? qdata->query->wire : NULL,
-	                          (ctx->with_queries && qdata->query != NULL) ? qdata->query->size : 0);
+	                          (ctx->with_queries && qdata->query != NULL) ? qdata->query->size : 0,
+	                          &qdata->query_time);
 	if (ret != KNOT_EOK) {
 		return state;
 	}
