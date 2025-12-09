@@ -29,7 +29,7 @@ def repo_file(*path):
 class Test(object):
     '''Specification of DNS test topology'''
 
-    MAX_START_TRIES = 10
+    MAX_START_TRIES = 3
     XDP_LOCK_FILE = "/tmp/knottest-xdp-lock"
     LOCAL_ADDR_COMMON = {4: "127.0.0.1", 6: "::1"}
     LOCAL_ADDR_MULTI = LOCAL_ADDR_COMMON
