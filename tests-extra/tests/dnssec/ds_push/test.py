@@ -124,7 +124,6 @@ child.dnssec(child_zone).propagation_delay = 4
 child.dnssec(child_zone).ksk_shared = True
 child.dnssec(child_zone).cds_cdnskey_publish = "always"
 
-child.conf_zone(child_zone).ds_push = [ parent ]
 child.conf_ss("submission", child_zone).parent = [ parent ]
 child.conf_ss("submission", child_zone).check_interval = 2
 
@@ -135,7 +134,17 @@ t.sleep(2)
 child.start()
 child.zone_wait(child_zone)
 
-t.sleep(9)
+SLEEP_FIRST=random.randint(0, 5)
+t.sleep(SLEEP_FIRST)
+
+child.conf_zone(child_zone).ds_push = [ parent ]
+child.gen_confile()
+child.reload()
+
+t.sleep(7-SLEEP_FIRST)
+
+if not child.log_search("KSK submission, confirmed"):
+    set_err("initial KSK not confirmed")
 
 pregenerate_key(child, child_zone, "ECDSAP256SHA256")
 watch_ksk_rollover(t, child, child_zone[0], 2, 2, 3, "KSK rollover")
