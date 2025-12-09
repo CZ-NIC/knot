@@ -37,6 +37,9 @@
  * \param mtime
  *	Message time. May be NULL.
  *
+ * \param *_q
+ *	Symmetrical query parameters in case responses-with-queries is enabled.
+ *
  * \retval KNOT_EOK
  * \retval KNOT_EINVAL
  */
@@ -47,4 +50,6 @@ int dt_message_fill(Dnstap__Message             *m,
                     const int                   protocol,
                     const void                  *wire,
                     const size_t                len_wire,
-                    const struct timespec       *mtime);
+                    const struct timespec       *mtime,
+                    const void                  *wire_q,
+                    const size_t                len_wire_q);
