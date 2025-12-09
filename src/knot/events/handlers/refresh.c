@@ -620,6 +620,15 @@ static int ixfr_finalize(struct refresh_data *data)
 
 	changeset_t *set;
 	WALK_LIST(set, data->ixfr.changesets) {
+		if (data->ignore_zonemd) {
+			ret = zone_update_remove_rrset(&up, data->zone->name, KNOT_RRTYPE_ZONEMD);
+			if (ret != KNOT_EOK && ret != KNOT_ENOENT) {
+				data->fallback_axfr = false;
+				data->fallback->remote = false;
+				return ret;
+			}
+		}
+
 		ret = zone_update_apply_changeset(&up, set);
 		if (ret != KNOT_EOK) {
 			uint32_t serial_from = knot_soa_serial(set->soa_from->rrs.rdata);

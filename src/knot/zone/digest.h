@@ -10,14 +10,16 @@
 /*!
  * \brief Compute hash over whole zone by concatenating RRSets in wire format.
  *
- * \param contents     Zone contents to digest.
- * \param algorithm    Algorithm to use.
- * \param out_digest   Output: buffer with computed hash (to be freed).
- * \param out_size     Output: size of the resulting hash.
+ * \param contents        Zone contents to digest.
+ * \param algorithm       Algorithm to use.
+ * \param ignore_dnssec   Skip DNSSEC-related records while computing the digest.
+ * \param out_digest      Output: buffer with computed hash (to be freed).
+ * \param out_size        Output: size of the resulting hash.
  *
  * \return KNOT_E*
  */
 int zone_contents_digest(const zone_contents_t *contents, int algorithm,
+                         bool ignore_dnssec,
                          uint8_t **out_digest, size_t *out_size);
 
 /*!
@@ -25,16 +27,19 @@ int zone_contents_digest(const zone_contents_t *contents, int algorithm,
  *
  * \note Special value 255 of algorithm means that ZONEMD shall not exist.
  *
- * \param contents   Zone contents to be verified.
- * \param alg        Required algorithm of the ZONEMD.
- * \param no_verify  Don't verify the validness of the digest in ZONEMD.
+ * \param contents       Zone contents to be verified.
+ * \param alg            Required algorithm of the ZONEMD.
+ * \param no_verify      Don't verify the validness of the digest in ZONEMD.
+ * \param ignore_dnssec  Skip DNSSEC-related records when eventually verifying the digest.
  */
-bool zone_contents_digest_exists(const zone_contents_t *contents, int alg, bool no_verify);
+bool zone_contents_digest_exists(const zone_contents_t *contents, int alg, bool no_verify,
+                                 bool ignore_dnssec);
 
 /*!
  * \brief Verify zone dgest in ZONEMD record.
  *
- * \param contents   Zone contents ot be verified.
+ * \param contents        Zone contents ot be verified.
+ * \param ignore_dnssec   Skip DNSSEC-related records while computing the digest.
  *
  * \retval KNOT_EEMPTYZONE  The zone is empty.
  * \retval KNOT_ENOENT      There is no ZONEMD in contents' apex.
@@ -44,7 +49,7 @@ bool zone_contents_digest_exists(const zone_contents_t *contents, int alg, bool 
  * \retval KNOT_EMALF       The computed hash differs from ZONEMD.
  * \return KNOT_E*
  */
-int zone_contents_digest_verify(const zone_contents_t *contents);
+int zone_contents_digest_verify(const zone_contents_t *contents, bool ignore_dnssec);
 
 struct zone_update;
 /*!
