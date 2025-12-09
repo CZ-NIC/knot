@@ -52,4 +52,5 @@ int dt_message_fill(Dnstap__Message             *m,
                     const size_t                len_wire,
                     const struct timespec       *mtime,
                     const void                  *wire_q,
-                    const size_t                len_wire_q);
+                    const size_t                len_wire_q,
+                    const struct timespec       *mtime_q);
