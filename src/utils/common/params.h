@@ -139,6 +139,15 @@ char *name_from_idn(const char *idn_name);
 void name_to_idn(char **name);
 
 /*!
+ * \brief Transforms ASCII punycode to localized IDN string.
+ *
+ * If an error occurs or IDN support is missing, this function does nothing.
+ *
+ * \param name	ASCII name to transform and replace with IDN name.
+ */
+void name_to_puny(char **name);
+
+/*!
  * \brief Find the best parameter match in table based on prefix equality.
  *
  * \param str		Parameter name to look up.

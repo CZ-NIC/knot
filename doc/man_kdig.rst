@@ -345,12 +345,31 @@ Options
 **+**\ [\ **no**\ ]\ **json**
   Use JSON for output encoding (RFC 8427).
 
-**+noidn**
-  Disable the IDN transformation to ASCII and vice versa. IDN support depends
-  on libidn2 availability during project building! If used in *common-settings*,
-  all IDN transformations are disabled. If used in the individual query *settings*,
-  transformation from ASCII is disabled on output for the particular query. Note
-  that IDN transformation does not preserve domain name letter case.
+**+**\ [\ **no**\ ]\ **idnin**
+  Use IDN transformation to domain names on input. IDN support depends
+  on libidn2 availability during project building!
+
+  The default is to process IDN input when standard output is a tty. The IDN
+  processing on input is disabled when kdig output is redirected to files,
+  pipes, and other non-tty file descriptors.
+
+  If used in *common-settings*, all IDN transformations are disabled. If used
+  in the individual query *settings*, transformation from ASCII is disabled
+  on output for the particular query. Note that IDN transformation does not
+  preserve domain name letter case.
+
+**+**\ [\ **no**\ ]\ **idnout**
+  Use IDN transformation to domain names on input. IDN support depends
+  on libidn2 availability during project building!
+
+  The default is to process puny code on output when standard output is a tty.
+  The puny code processing on output is disabled when kdig output is redirected
+  to files, pipes, and other non-tty file descriptors.
+
+  If used in *common-settings*, all IDN transformations are disabled. If used
+  in the individual query *settings*, transformation from ASCII is disabled
+  on output for the particular query. Note that IDN transformation does not
+  preserve domain name letter case.
 
 Notes
 -----

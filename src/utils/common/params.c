@@ -61,6 +61,35 @@ void name_to_idn(char **name) {
 	return;
 }
 
+void name_to_puny(char **name) {
+#ifdef LIBIDN
+	char *idn_name = NULL;
+
+	char *c = *name, *ptr = *name;
+	while (*c != '\0') {
+		if (*c == '\\') {
+			c++;
+			*ptr = atoi(c);
+			c += 2;
+		} else {
+			*ptr = *c;
+		}
+		ptr++;
+		c++;
+	}
+	*ptr = *c;
+
+	int rc = idna_to_ascii_8z(*name, &idn_name, 0);
+	if (rc != IDNA_SUCCESS) {
+		return;
+	}
+
+	free(*name);
+	*name = idn_name;
+#endif
+	return;
+}
+
 /*!
  * \brief Checks if string is a prefix of reference string.
  *

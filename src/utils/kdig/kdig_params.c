@@ -55,7 +55,7 @@ static const style_t DEFAULT_STYLE_DIG = {
 		.human_ttl = false,
 		.human_timestamp = true,
 		.generic = false,
-		.ascii_to_idn = name_to_idn
+		.ascii_to_idn = name_to_puny
 	},
 	.show_query = false,
 	.show_header = true,
@@ -1408,12 +1408,38 @@ static int opt_noednsopt(const char *arg, void *query)
 	return KNOT_EOK;
 }
 
-static int opt_noidn(const char *arg, void *query)
+static int opt_idnin(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->idn = true;
+
+	return KNOT_EOK;
+}
+
+static int opt_noidnin(const char *arg, void *query)
 {
 	query_t *q = query;
 
 	q->idn = false;
-	q->style.style.ascii_to_idn = NULL;
+
+	return KNOT_EOK;
+}
+
+static int opt_idnout(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->style.style.ascii_to_idn = name_to_idn;
+
+	return KNOT_EOK;
+}
+
+static int opt_noidnout(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->style.style.ascii_to_idn = name_to_puny;
 
 	return KNOT_EOK;
 }
@@ -1687,8 +1713,11 @@ static const param_t kdig_opts2[] = {
 	{ "json",           ARG_NONE,     opt_json },
 	{ "nojson",         ARG_NONE,     opt_nojson },
 
-	/* "idn" doesn't work since it must be called before query creation. */
-	{ "noidn",          ARG_NONE,     opt_noidn },
+	{ "idnin",            ARG_NONE,     opt_idnin },
+	{ "noidnin",          ARG_NONE,     opt_noidnin },
+
+	{ "idnout",            ARG_NONE,     opt_idnout },
+	{ "noidnout",          ARG_NONE,     opt_noidnout },
 
 	{ NULL }
 };
@@ -1723,7 +1752,8 @@ query_t *query_create(const char *owner, const query_t *conf)
 		query->flags = DEFAULT_FLAGS_DIG;
 		query->style = DEFAULT_STYLE_DIG;
 		query->style.style.now = knot_time();
-		query->idn = true;
+		query->style.style.ascii_to_idn = isatty(STDOUT_FILENO) ? name_to_idn : name_to_puny,
+		query->idn = isatty(STDOUT_FILENO);
 		query->nsid = false;
 		query->zoneversion = false;
 		query->edns = 0;
@@ -2337,6 +2367,10 @@ void complete_queries(list_t *queries, const query_t *conf)
 			q->retries = 0;
 		}
 
+		if (q->idn == false) {
+			q->style.style.ascii_to_idn = NULL;
+		}
+
 		// Complete nameservers list.
 		complete_servers(q, conf);
 
@@ -2430,7 +2464,8 @@ static void print_help(void)
 	       "       +[no]ednsopt=CODE[:HEX]    Set custom EDNS option.\n"
 	       "       +[no]proxy=SADDR-DADDR     Add PROXYv2 header with src and dest addresses.\n"
 	       "       +[no]json                  Use JSON for output encoding (RFC 8427).\n"
-	       "       +noidn                     Disable IDN transformation.\n"
+	       "       +[no]idnin                 Use IDN transformation on input.\n"
+	       "       +[no]idnout                Use IDN transformation on output.\n"
 	       "\n"
 	       "       -h, --help                 Print the program help.\n"
 	       "       -V, --version              Print the program version.\n",
