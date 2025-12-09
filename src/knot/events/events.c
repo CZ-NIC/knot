@@ -204,12 +204,12 @@ static void event_wrap(worker_task_t *task)
 
 	pthread_mutex_lock(&events->mx);
 	zone_event_type_t type = get_next_event(events);
-	pthread_cond_t *blocking = events->blocking[type];
 	if (!valid_event(type)) {
 		events->running = 0;
 		pthread_mutex_unlock(&events->mx);
 		return;
 	}
+	pthread_cond_t *blocking = events->blocking[type];
 	events->type = type;
 	event_set_time(events, type, 0);
 	events->forced[type] = false;
