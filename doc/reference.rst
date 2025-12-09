@@ -2329,21 +2329,14 @@ keep it in the KASP database for at least this period (in seconds) before deleti
 it completely. This might be useful in some troubleshooting cases when resurrection
 is needed.
 
-*Default:* ``0``
-
-.. _policy_key-trash:
-
-key-trash
----------
-
-When a catalog member zone is removed from the catalog and purged, keep its keys
-in a "trash bin" in the keystore with possibility to be recovered later rather than
-removing them instantly. This parameter also applies to automatic key management mode.
+Value ``-1`` configures a "trash bin" instead, in which unused keys are stored instead
+of being deleted permanently. The "trash bin" is available in case of removed catalog
+member zones and in automatic key management mode.
 
 .. NOTE::
    Key "trash bin" can be cleaned with ``knotc -f zone-purge +keys +orphan <zone>``.
 
-*Default:* ``on``
+*Default:* ``-1``
 
 .. _policy_propagation-delay:
 

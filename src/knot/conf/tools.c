@@ -861,19 +861,14 @@ int check_policy(
 	                                            C_OFFLINE_KSK, args->id, args->id_len);
 	conf_val_t delete_dely = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_POLICY,
 	                                            C_DELETE_DELAY, args->id, args->id_len);
-	conf_val_t key_trash = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_POLICY,
-	                                          C_KEY_TRASH, args->id, args->id_len);
 	if (conf_opt(&dnskey_mgmt) != DNSKEY_MGMT_FULL) {
 		if (conf_bool(&offline_ksk)) {
 			args->err_str = "incremental DNSKEY management can't be used with offline-ksk";
 			return KNOT_EINVAL;
 		}
 		if (conf_int(&delete_dely) <= 0) {
-			args->err_str = "incremental DNSKEY management requires configured delete-delay";
+			args->err_str = "incremental DNSKEY management requires configured positive delete-delay";
 			return KNOT_EINVAL;
-		}
-		if (conf_bool(&key_trash)) {
-			CONF_LOG(LOG_WARNING, "there is no DNSKEY trash in manual key management mode");
 		}
 	}
 

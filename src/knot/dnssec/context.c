@@ -66,8 +66,10 @@ static void policy_load(knot_kasp_policy_t *policy, conf_t *conf, conf_val_t *id
 	val = conf_id_get(conf, C_POLICY, C_DELETE_DELAY, id);
 	policy->delete_delay = conf_int(&val);
 
-	val = conf_id_get(conf, C_POLICY, C_KEY_TRASH, id);
-	policy->key_trash = conf_bool(&val);
+	if (policy->delete_delay == -1) {
+		policy->delete_delay = 0;
+		policy->key_trash = true;
+	}
 
 	val = conf_id_get(conf, C_POLICY, C_PROPAG_DELAY, id);
 	policy->propagation_delay = conf_int(&val);
