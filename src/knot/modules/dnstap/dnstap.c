@@ -13,6 +13,10 @@
 #include "contrib/time.h"
 #include "knot/include/module.h"
 
+#ifndef CLOCK_REALTIME_COARSE
+#define CLOCK_REALTIME_COARSE CLOCK_REALTIME
+#endif
+
 #define MOD_SINK		"\x04""sink"
 #define MOD_IDENTITY		"\x08""identity"
 #define MOD_VERSION		"\x07""version"
@@ -77,7 +81,7 @@ static knotd_state_t log_message(knotd_state_t state, const knot_pkt_t *pkt,
 	/* Unless we want to measure the time it takes to process each query,
 	 * we can treat Q/R times the same. */
 	struct timespec tv = { 0 };
-	clock_gettime(CLOCK_REALTIME, &tv);
+	clock_gettime(CLOCK_REALTIME_COARSE, &tv);
 
 	/* Determine query / response. */
 	Dnstap__Message__Type msgtype = DNSTAP__MESSAGE__TYPE__AUTH_QUERY;
