@@ -56,7 +56,7 @@ static int write_dnstap(dt_writer_t           *writer,
 
 	ret = dt_message_fill(&msg, msg_type, net->local_info->ai_addr,
 	                      net->srv->ai_addr, protocol,
-	                      wire, wire_len, mtime, NULL, 0);
+	                      wire, wire_len, mtime, NULL, 0, NULL);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}

@@ -26,6 +26,10 @@
 #include "contrib/macros.h"
 #include "contrib/mempattern.h"
 
+#ifndef CLOCK_REALTIME_COARSE
+#define CLOCK_REALTIME_COARSE CLOCK_REALTIME
+#endif
+
 /*! \brief Accessor to query-specific data. */
 #define QUERY_DATA(ctx) ((knotd_qdata_t *)(ctx)->data)
 
@@ -72,6 +76,7 @@ static int process_query_begin(knot_layer_t *ctx, void *params)
 
 	/* Initialize persistent data. */
 	query_data_init(ctx, params, extra);
+	clock_gettime(CLOCK_REALTIME_COARSE, &QUERY_DATA(ctx)->query_time);
 
 	/* Await packet. */
 	return KNOT_STATE_CONSUME;

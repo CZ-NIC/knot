@@ -424,6 +424,7 @@ typedef struct {
 	knot_mm_t *mm;                /*!< Memory context. */
 	knotd_qdata_params_t *params; /*!< Low-level processing parameters. */
 
+	struct timespec query_time;      /*!< Time when the query was received. */
 	struct knotd_qdata_extra *extra; /*!< Private items (process_query.h). */
 } knotd_qdata_t;
 

@@ -99,7 +99,7 @@ static knotd_state_t log_message(knotd_state_t state, const knot_pkt_t *pkt,
 	                          (const struct sockaddr *)knotd_qdata_local_addr(qdata),
 	                          qdata->params->proto, pkt->wire, pkt->size, &tv,
 	                          (ctx->with_queries && qdata->query != NULL) ? qdata->query->wire : NULL,
-	                          qdata->query->size);
+	                          qdata->query->size, &qdata->query_time);
 	if (ret != KNOT_EOK) {
 		return state;
 	}
