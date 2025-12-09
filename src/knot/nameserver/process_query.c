@@ -72,6 +72,7 @@ static int process_query_begin(knot_layer_t *ctx, void *params)
 
 	/* Initialize persistent data. */
 	query_data_init(ctx, params, extra);
+	clock_gettime(CLOCK_REALTIME_COARSE, &QUERY_DATA(ctx)->query_time);
 
 	/* Await packet. */
 	return KNOT_STATE_CONSUME;
