@@ -57,6 +57,8 @@ static void query_data_init(knot_layer_t *ctx, knotd_qdata_params_t *params,
 	data->extra = extra;
 	data->rcode_ede = KNOT_EDNS_EDE_NONE;
 
+	clock_gettime(CLOCK_REALTIME_COARSE, &data->query_time);
+
 	/* Initialize lists. */
 	memset(extra, 0, sizeof(*extra));
 	init_list(&extra->wildcards);
