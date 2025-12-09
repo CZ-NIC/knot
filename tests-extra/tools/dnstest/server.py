@@ -118,8 +118,8 @@ class Server(object):
     START_WAIT = 2
     START_WAIT_VALGRIND = 5
     START_WAIT_ATTEMPTS = 60
-    START_MAX_ATTEMPTS = 10  # During the test, fatal.
-    START_INIT_ATTEMPTS = 3  # When starting a test, non-fatal.
+    START_MAX_ATTEMPTS = 3  # During the test, fatal.
+    START_INIT_ATTEMPTS = 1  # When starting a test, non-fatal.
     STOP_TIMEOUT = 30
     COMPILE_TIMEOUT = 60
     DIG_TIMEOUT = 5
@@ -880,7 +880,7 @@ class Server(object):
 
         check_log("ZONE WAIT %s: %s" % (self.name, zone.name))
 
-        attempts = 60 if not self.valgrind else 100
+        attempts = 15 if not self.valgrind else 25
         for t in range(attempts):
             try:
                 if use_ctl:
