@@ -845,12 +845,23 @@ static int zone_ksk_sbm_confirm(zone_t *zone, _unused_ ctl_args_t *args)
 {
 	kdnssec_ctx_t ctx = { 0 };
 
-	int ret = kdnssec_ctx_init(conf(), &ctx, zone->name, zone_kaspdb(zone), NULL);
+	int ret = KNOT_EOK;
+
+	uint32_t ds_ttl = 0;
+	const char *ds_ttl_s = args->data[KNOT_CTL_IDX_DATA];
+	if (MATCH_AND_FILTER(args, CTL_FILTER_KSK_SBM_TTL) && ds_ttl_s != NULL) {
+		ret = str_to_u32(ds_ttl_s, &ds_ttl);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+	}
+
+	ret = kdnssec_ctx_init(conf(), &ctx, zone->name, zone_kaspdb(zone), NULL);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
 
-	ret = knot_dnssec_ksk_sbm_confirm(&ctx, 0);
+	ret = knot_dnssec_ksk_sbm_confirm(&ctx, ds_ttl);
 	kdnssec_ctx_deinit(&ctx);
 
 	conf_val_t val = conf_zone_get(conf(), C_DNSSEC_SIGNING, zone->name);
