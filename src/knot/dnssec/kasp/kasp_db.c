@@ -286,8 +286,7 @@ static bool trash_key(knot_lmdb_txn_t *txn)
 	                         "BNS", &kclass, &dname, &str)) {
 		assert(kclass == KASPDBKEY_PARAMS);
 		cur_key = make_key_str(KASPDBKEY_TRASH_PARAMS, dname, str);
-		MDB_val empty_cur_val = { 0 };
-		ret = knot_lmdb_insert(txn, &cur_key, &empty_cur_val);
+		ret = knot_lmdb_insert(txn, &cur_key, &txn->cur_val);
 	}
 
 	return ret;
