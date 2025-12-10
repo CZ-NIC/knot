@@ -652,6 +652,11 @@ const filter_desc_t zone_flush_filters[] = {
 	{ NULL },
 };
 
+const filter_desc_t zone_ksk_sbm_filters[] = {
+	{ "+ttl", CTL_FILTER_KSK_SBM_TTL, true },
+	{ NULL },
+};
+
 const filter_desc_t zone_backup_filters[] = {
 	{ "+backupdir",   CTL_FILTER_BACKUP_OUTDIR,      true },  // This must be the first.
 	{ "+zonefile",    CTL_FILTER_BACKUP_ZONEFILE,   false },
@@ -705,6 +710,9 @@ static const filter_desc_t *get_filter(ctl_cmd_t cmd, const char *filter_name)
 		break;
 	case CTL_ZONE_FLUSH:
 		fd = zone_flush_filters;
+		break;
+	case CTL_ZONE_KSK_SBM:
+		fd = zone_ksk_sbm_filters;
 		break;
 	case CTL_ZONE_BACKUP:
 	case CTL_ZONE_RESTORE:
