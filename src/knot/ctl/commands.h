@@ -20,6 +20,8 @@
 
 #define CTL_FILTER_FLUSH_OUTDIR		"d"
 
+#define CTL_FILTER_KSK_SBM_TTL		"t"
+
 #define CTL_FILTER_STATUS_LOADING	"l"
 
 #define CTL_FILTER_STATUS_ROLE		"r"
