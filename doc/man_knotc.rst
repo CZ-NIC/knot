@@ -188,7 +188,7 @@ Actions
   the user confirms manually that the parent zone contains DS record for the new
   KSK in submission phase and the old KSK can be retired. The optional **+ttl**
   parameter specifies the parent DS's TTL and possibly other delays, with the
-  effect that the removal of old KSK is postponed by this amount of seconds. (#)
+  effect that the removal of old KSK is postponed by this number of seconds. (#)
 
 **zone-freeze** [*zone*...]
   Trigger a zone freeze. All running events will be finished and all new and pending
