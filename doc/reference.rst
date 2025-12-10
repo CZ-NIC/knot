@@ -2042,6 +2042,11 @@ After successful parent DS check, wait for this period (in seconds) before
 continuing the next key roll-over step. This delay shall cover the propagation
 delay of update in the parent zone.
 
+.. NOTE::
+   This delay has only effect on automatic KSK submission with parent queries.
+   For KSK submission resulting in :ref:`submission_timeout` or manually confirmed
+   by *knotc* **zone-ksk-submitted**, the parent-delay doesn't apply.
+
 *Default:* ``0``
 
 .. _dnskey-sync section:
