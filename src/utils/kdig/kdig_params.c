@@ -2045,29 +2045,9 @@ static int parse_local(const char *value, query_t *query)
 static int parse_name(const char *value, list_t *queries, const query_t *conf)
 {
 	query_t	*query = NULL;
-	char	*ascii_name = (char *)value;
-	char	*fqd_name = NULL;
-
-	if (value != NULL && value[0] != '\0') {
-		if (conf->idn) {
-			ascii_name = name_from_idn(value);
-			if (ascii_name == NULL) {
-				return KNOT_EINVAL;
-			}
-		}
-
-		// If name is not FQDN, append trailing dot.
-		fqd_name = get_fqd_name(ascii_name);
-
-		if (conf->idn) {
-			free(ascii_name);
-		}
-	}
 
 	// Create new query.
-	query = query_create(fqd_name, conf);
-
-	free(fqd_name);
+	query = query_create(value, conf);
 
 	if (query == NULL) {
 		return KNOT_ENOMEM;
@@ -2335,6 +2315,23 @@ void complete_queries(list_t *queries, const query_t *conf)
 	WALK_LIST(n, *queries) {
 		query_t *q = (query_t *)n;
 		query_t *q_prev = (HEAD(*queries) != n) ? (query_t *)n->prev : NULL;
+
+		if (q->owner != NULL && q->owner[0] != '\0') {
+			char *ascii_name = q->owner;
+			if (q->idn) {
+				ascii_name = name_from_idn(q->owner);
+				if (ascii_name == NULL) {
+					ascii_name = q->owner;
+				} else {
+					free(q->owner);
+				}
+			}
+
+			// If name is not FQDN, append trailing dot.
+			q->owner = get_fqd_name(ascii_name);
+			free(ascii_name);
+		}
+
 
 		// Fill class number if missing.
 		if (q->class_num < 0) {
