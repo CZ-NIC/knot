@@ -118,6 +118,7 @@ enum knot_rr_type {
 	KNOT_RRTYPE_URI        = 256, /*!< Uniform resource identifier. */
 	KNOT_RRTYPE_CAA        = 257, /*!< Certification authority restriction. */
 
+	KNOT_RRTYPE_RESINFO    = 261, /*!< Resolver Information as Key/Value Pairs.*/
 	KNOT_RRTYPE_WALLET     = 262, /*!< Public wallet address. */
 };
 

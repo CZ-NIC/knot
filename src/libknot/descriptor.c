@@ -143,6 +143,8 @@ static const knot_rdata_descriptor_t rdata_descriptors[] = {
 	                               KNOT_RDATA_WF_END }, "URI" },
 	[KNOT_RRTYPE_CAA]        = { { KNOT_RDATA_WF_REMAINDER,
 	                               KNOT_RDATA_WF_END }, "CAA" },
+	[KNOT_RRTYPE_RESINFO]    = { { KNOT_RDATA_WF_REMAINDER,
+	                               KNOT_RDATA_WF_END }, "RESINFO" },
 	[KNOT_RRTYPE_WALLET]     = { { KNOT_RDATA_WF_REMAINDER,
 	                               KNOT_RDATA_WF_END }, "WALLET" },
 };
