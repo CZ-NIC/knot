@@ -2306,6 +2306,7 @@ static int txt_dump_data(rrset_dump_params_t *p, uint16_t type)
 			return dump_mx(p);
 		case KNOT_RRTYPE_TXT:
 		case KNOT_RRTYPE_SPF:
+		case KNOT_RRTYPE_RESINFO:
 		case KNOT_RRTYPE_WALLET:
 			return dump_txt(p);
 		case KNOT_RRTYPE_KEY:
