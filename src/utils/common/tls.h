@@ -34,6 +34,8 @@ typedef struct {
 	char *certfile;
 	/*! Optional validity of stapled OCSP response for the server cert. */
 	uint32_t ocsp_stapling;
+	// /*! Optional path to a file where session ticker is/should be stored */
+	// char *sess_ticket_file;
 } tls_params_t;
 
 /*! \brief TLS context. */

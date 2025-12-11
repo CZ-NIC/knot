@@ -4,12 +4,14 @@
  */
 
 #include <arpa/inet.h>
+#include <fcntl.h>
 #include <locale.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 
 #include "utils/kdig/kdig_params.h"
+#include "libknot/errcode.h"
 #include "utils/common/hex.h"
 #include "utils/common/msg.h"
 #include "utils/common/netio.h"
@@ -1688,6 +1690,9 @@ static const param_t kdig_opts2[] = {
 
 	{ "tls-ocsp-stapling",   ARG_OPTIONAL, opt_tls_ocsp_stapling },
 	{ "notls-ocsp-stapling", ARG_NONE,     opt_notls_ocsp_stapling },
+
+	// { "tls-session-ticket-file",   ARG_OPTIONAL, opt_tls_sess_token_file },
+	// { "notls-session-ticket-file", ARG_NONE, opt_tls_sess_token_file },
 
 	{ "https",          ARG_OPTIONAL, opt_https },
 	{ "nohttps",        ARG_NONE,     opt_nohttps },

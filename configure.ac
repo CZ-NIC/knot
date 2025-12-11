@@ -463,34 +463,9 @@ AC_ARG_ENABLE([cap-ng],
   [], [enable_cap_ng=auto]
 )
 
-# FIXME: move out of knot DNS daemon section
-# Build qtest_kdig
-# AC_ARG_ENABLE([qtest],
-#   [AS_HELP_STRING([--enable-qtest=yes|no], [Build QUIC implementation tests (needs QUIC and libcmocka >= 1.1.7) [default: no]])],
-#   [enable_qtest="$enableval"],
-#   [enable_qtest=no]
-# )
-# #
-# AS_CASE([$enable_qtest],
-#   [yes], [PKG_CHECK_MODULES([libcmocka], [libcmocka >= 1.1.7],
-#     [enable_quic=yes],
-#     [AC_MSG_ERROR([libcmocka not found, but --enable-qtest=yes was requested])]),
-#   ],
-#   [no], [],
-#   [*], [AC_MSG_ERROR([Invalid value for --enable-qtest])]
-# )
-#
-# AM_CONDITIONAL([ENABLE_QTEST], [test "x$enable_qtest" != "xno"])
-# AC_SUBST([libcmocka_CFLAGS])
-# AC_SUBST([libcmocka_LIBS])
-#
-# AS_IF([test "x$enable_qtest" != "xno"], [
-#   AC_DEFINE([ENABLE_QTEST], [1], [Define to yes to enable QUIC implementation tests])
-# ])
-
 AC_ARG_ENABLE([qtest],
   [AS_HELP_STRING([--enable-qtest=yes|no],
-    [Build QUIC implementation tests (needs QUIC and cmocka >= 1.1.7) [default: no]])],
+    [Build qtest, a DoQ test utility (requires Knot be compiled with QUIC and cmocka >= 1.1.7) [default: no]])],
   [enable_qtest="$enableval"],
   [enable_qtest=no]
 )

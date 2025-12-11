@@ -657,6 +657,7 @@ static int process_query_packet(const knot_pkt_t      *query,
 	if (style->show_query && style->format != FORMAT_JSON) {
 		// Create copy of query packet for parsing.
 		knot_pkt_t *q = knot_pkt_new(query->wire, query->size, NULL);
+
 		if (q != NULL) {
 			if (knot_pkt_parse(q, KNOT_PF_NOCANON) == KNOT_EOK) {
 				print_packet(q, net, query->size,
@@ -823,7 +824,7 @@ fail:
 	return -1;
 }
 
-static int process_query(const query_t *query, net_t *net)
+int process_query(const query_t *query, net_t *net)
 {
 	node_t     *server;
 	knot_pkt_t *out_packet;
@@ -854,37 +855,12 @@ static int process_query(const query_t *query, net_t *net)
 		goto finish;
 	}
 
-	// Get connection parameters.
-	int socktype = get_socktype(query->protocol, query->type_num);
-	int flags = query->fastopen ? NET_FLAGS_FASTOPEN : NET_FLAGS_NONE;
-
 	// Loop over server list to process query.
 	WALK_LIST(server, query->servers) {
-		srv_info_t *remote = (srv_info_t *)server;
-		int iptype = get_iptype(query->ip, remote);
-
-		DBG("Querying for owner(%s), class(%u), type(%u), server(%s), "
-		    "port(%s), protocol(%s)", query->owner, query->class_num,
-		    query->type_num, remote->name, remote->service,
-		    get_sockname(socktype));
-
 		// Loop over the number of retries.
 		for (size_t i = 0; i <= query->retries; i++) {
-			// Initialize network structure for current server.
-			ret = net_init(query->local, remote, iptype, socktype,
-			               query->wait, flags,
-			               (struct sockaddr *)&query->proxy.src,
-			               (struct sockaddr *)&query->proxy.dst,
-			               net);
-			if (ret != KNOT_EOK) {
-				if (ret == KNOT_NET_EADDR) {
-					// Requested address family not available.
-					goto next_server;
-				}
-				continue;
-			}
-
 			// Loop over all resolved addresses for remote.
+			ret = -1;
 			while (net->srv != NULL) {
 				ret = net_init_crypto(net, &query->tls, &query->https,
 				                      &query->quic);
@@ -918,21 +894,11 @@ static int process_query(const query_t *query, net_t *net)
 			}
 
 			if (i < query->retries) {
-				DBG("retrying server %s@%s(%s)",
-				    remote->name, remote->service,
-				    get_sockname(socktype));
-
 				if (query->style.show_query) {
 					printf("\n");
 				}
 			}
-
-			net_clean(net);
 		}
-
-		ERR("failed to query server %s@%s(%s)",
-		    remote->name, remote->service, get_sockname(socktype));
-
 		// If not last server, print separation.
 		if (server->next->next && query->style.show_query) {
 			printf("\n");
@@ -941,9 +907,6 @@ next_server:
 		continue;
 	}
 finish:
-	if (!query->keepopen || net->sockfd < 0) {
-		net_clean(net);
-	}
 	sign_context_deinit(&sign_ctx);
 	knot_pkt_free(out_packet);
 

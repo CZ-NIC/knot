@@ -463,6 +463,16 @@ static int get_expiry(ngtcp2_conn *ctx)
 	return (expiry - now + NGTCP2_MILLISECONDS - 1) / NGTCP2_MILLISECONDS;
 }
 
+static void user_printf(void *user_data, const char *format, ...)
+{
+	char buf[256];
+	va_list args;
+	va_start(args, format);
+	(void)vsnprintf(buf, sizeof(buf), format, args);
+	(void)printf("%s\n", buf);
+	va_end(args);
+}
+
 int quic_ctx_connect(quic_ctx_t *ctx, int sockfd, struct addrinfo *dst_addr)
 {
 	if (connect(sockfd, (const struct sockaddr *)(dst_addr->ai_addr),
@@ -487,6 +497,7 @@ int quic_ctx_connect(quic_ctx_t *ctx, int sockfd, struct addrinfo *dst_addr)
 	ngtcp2_settings_default(&settings);
 	settings.initial_ts = quic_timestamp();
 	settings.handshake_timeout = ctx->tls->wait * NGTCP2_SECONDS;
+	settings.log_printf = user_printf;
 
 	ngtcp2_transport_params params;
 	ngtcp2_transport_params_default(&params);

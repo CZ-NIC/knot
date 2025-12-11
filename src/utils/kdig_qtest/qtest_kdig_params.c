@@ -2284,6 +2284,7 @@ static bool compare_servers(list_t *s1, list_t *s2)
 	return true;
 }
 
+// void complete_queries(list_t *queries, const query_t *conf, query_t *out_query)
 void complete_queries(list_t *queries, const query_t *conf)
 {
 	node_t  *n;
@@ -2336,7 +2337,9 @@ void complete_queries(list_t *queries, const query_t *conf)
 
 		// Retries only apply to pure UDP.
 		if (q->protocol == PROTO_TCP ||
-		    q->tls.enable || q->https.enable || q->quic.enable) {
+		    q->tls.enable ||
+		    q->https.enable ||
+		    q->quic.enable) {
 			q->retries = 0;
 		}
 
@@ -2714,7 +2717,7 @@ static int parse_opt2(const char *value, kdig_params_t *params)
 	return kdig_opts2[ret].handler(arg, query);
 }
 
-static int parse_token(const char *value, kdig_params_t *params)
+int parse_token(const char *value, kdig_params_t *params)
 {
 	query_t *query;
 
@@ -2741,7 +2744,8 @@ static int parse_token(const char *value, kdig_params_t *params)
 	return KNOT_EINVAL;
 }
 
-int kdig_parse(kdig_params_t *params, int argc, char *argv[])
+int kdig_parse(kdig_params_t *params, int argc, char *argv[],
+		query_t *out_ref_query)
 {
 	if (params == NULL || argv == NULL) {
 		DBG_NULL;
@@ -2782,18 +2786,8 @@ int kdig_parse(kdig_params_t *params, int argc, char *argv[])
 			break;
 		}
 
-		// Check return.
-		switch (ret) {
-		case KNOT_EOK:
-			if (params->stop) {
-				return KNOT_EOK;
-			}
-			break;
-		case KNOT_ENOTSUP:
-			print_help();
-		default: // Fall through.
-			return ret;
-		}
+		/* no mistakes allowed here */
+		assert(ret == KNOT_EOK);
 	}
 
 	// Complete missing data in queries based on defaults.

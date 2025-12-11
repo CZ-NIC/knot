@@ -60,6 +60,14 @@ typedef enum {
 	DOQ_ERROR_RESERVED = 0xd098ea5e
 } quic_doq_error_t;
 
+typedef struct test_env {
+	uint64_t scenario;
+	int16_t counter;
+	char *buf;
+	size_t bufsize;
+	size_t bufend;
+} test_env_t;
+
 typedef struct quic_ctx {
 	ngtcp2_crypto_conn_ref conn_ref;
 	// Parameters
@@ -82,16 +90,32 @@ typedef struct quic_ctx {
 	ngtcp2_pkt_info pi;
 	quic_state_t state;
 	kdig_callbacks_t *cbs;
+	test_env_t *env;
 } quic_ctx_t;
 
 extern const gnutls_datum_t doq_alpn;
 
+int recv_stream_data_cb(ngtcp2_conn *conn, uint32_t flags,
+	int64_t stream_id, uint64_t offset, const uint8_t *data,
+	size_t datalen, void *user_data, void *stream_user_data);
+int recv_stream_data_ignore_all_but_0(ngtcp2_conn *conn, uint32_t flags,
+	int64_t stream_id, uint64_t offset, const uint8_t *data,
+	size_t datalen, void *user_data, void *stream_user_data);
+
 int quic_send_data(quic_ctx_t *ctx, int sockfd, int family,
+	ngtcp2_vec *datav, size_t datavlen);
+int quic_send_data_test(quic_ctx_t *ctx, int sockfd, int family,
+	ngtcp2_vec *datav, size_t datavlen);
+int quic_send_data_defer_second_packet(quic_ctx_t *ctx, int sockfd, int family,
+	ngtcp2_vec *datav, size_t datavlen);
+int quic_send_data_split(quic_ctx_t *ctx, int sockfd, int family,
 	ngtcp2_vec *datav, size_t datavlen);
 
 int quic_recv(quic_ctx_t *ctx, int sockfd);
+int quic_recv_with_ack(quic_ctx_t *ctx, int sockfd);
 
 uint64_t quic_timestamp(void);
+uint64_t quic_timestamp_mock(void);
 
 int quic_generate_secret(uint8_t *buf, size_t buflen);
 
@@ -111,6 +135,10 @@ int offset_span(ngtcp2_vec **vec, size_t *veclen, size_t sub);
 
 int quic_send_dns_query(quic_ctx_t *ctx, int sockfd, struct addrinfo *srv,
         const uint8_t *buf, const size_t buf_len);
+int quic_send_dns_query_split(quic_ctx_t *ctx, int sockfd, struct addrinfo *srv,
+	const uint8_t *buf, const size_t buf_len);
+int quic_send_dns_query_sync(quic_ctx_t *ctx, int sockfd,
+		struct addrinfo *srv, const uint8_t *buf, const size_t buf_len);
 
 int quic_recv_dns_response(quic_ctx_t *ctx, uint8_t *buf, const size_t buf_len,
         struct addrinfo *srv);
@@ -176,28 +204,32 @@ typedef int (*qtest_net_receive)(const net_t *net, uint8_t *buf, const size_t bu
 typedef int (*qtest_quic_recv_dns_response)(quic_ctx_t *ctx, uint8_t *buf, const size_t buf_len,
 	struct addrinfo *srv);
 
+typedef int (*ngtcp2_recv_stream_data_cb)( ngtcp2_conn * conn, uint32_t flags,
+		int64_t stream_id, uint64_t offset, const uint8_t * data,
+		size_t datalen, void * user_data, void * stream_user_data);
+
 typedef struct kdig_callbacks {
-	qtest_getaddr getaddr;
+	qtest_tls_ctx_setup_remote_endpoint tls_ctx_setup_remote_endpoint;
+	// ngtcp2_recv_stream_data_cb ngtcp2_recv_stream_data_cb;
+	qtest_quic_recv_dns_response quic_recv_dns_response;
+	qtest_quic_generate_secret quic_generate_secret;
+	qtest_quic_send_dns_query quic_send_dns_query;
+	qtest_verify_certificate verify_certificate;
+	qtest_net_set_local_info net_set_local_info;
+	qtest_quic_ctx_connect quic_ctx_connect;
+	qtest_net_get_remote net_get_remote;
+	qtest_quic_send_data quic_send_data;
+	qtest_quic_timestamp quic_timestamp;
+	qtest_quic_ctx_init quic_ctx_init;
 	qtest_get_addr_str get_addr_str;
 	qtest_tls_ctx_init tls_ctx_init;
-	// qtest_net_init_crypto net_init_crypto;
-	qtest_quic_ctx_init quic_ctx_init;
-	qtest_net_get_remote net_get_remote;
-	qtest_tls_ctx_setup_remote_endpoint tls_ctx_setup_remote_endpoint;
-	qtest_quic_ctx_connect quic_ctx_connect;
-	qtest_net_set_local_info net_set_local_info;
-	qtest_quic_send_dns_query quic_send_dns_query;
 	qtest_offset_span offset_span;
-	qtest_quic_send_data quic_send_data;
 	qtest_net_ecn_set net_ecn_set;
-	qtest_quic_recv quic_recv;
-	qtest_quic_timestamp quic_timestamp;
-	qtest_quic_generate_secret quic_generate_secret;
-	qtest_verify_certificate verify_certificate;
-	qtest_get_conn get_conn;
-	qtest_get_expiry get_expiry;
 	qtest_net_receive net_receive;
-	qtest_quic_recv_dns_response quic_recv_dns_response;
+	qtest_get_expiry get_expiry;
+	qtest_quic_recv quic_recv;
+	qtest_get_conn get_conn;
+	qtest_getaddr getaddr;
 } kdig_callbacks_t;
 
 #endif //ENABLE_QUIC

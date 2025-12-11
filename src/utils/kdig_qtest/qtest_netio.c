@@ -278,7 +278,7 @@ int net_init(const srv_info_t      *local,
 	}
 
 	// net->cbs.getaddr = ;
-	net->cbs = calloc(sizeof(struct kdig_callbacks), 1);
+	net->cbs = calloc(1, sizeof(*net->cbs));
 	if (!net->cbs) {
 		net_clean(net);
 		return KNOT_EINVAL;
@@ -290,6 +290,7 @@ int net_init(const srv_info_t      *local,
 	net->cbs->get_addr_str = get_addr_str; //TODO: done
 	net->cbs->net_receive = net_receive; //TODO:
 #ifdef ENABLE_QUIC
+	// net->cbs->ngtcp2_recv_stream_data_cb = recv_stream_data_cb;
 	net->cbs->quic_recv_dns_response = quic_recv_dns_response; //TODO: done
 	net->cbs->quic_generate_secret = quic_generate_secret; //TODO: done
 	net->cbs->quic_send_dns_query = quic_send_dns_query; //TODO: done
