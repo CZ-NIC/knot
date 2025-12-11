@@ -1420,6 +1420,7 @@
 	    | "SVCB"i       %{ type_num(KNOT_RRTYPE_SVCB, &rdata_tail); }
 	    | "HTTPS"i      %{ type_num(KNOT_RRTYPE_HTTPS, &rdata_tail); }
 	    | "DSYNC"i      %{ type_num(KNOT_RRTYPE_DSYNC, &rdata_tail); }
+	    | "RESINFO"i    %{ type_num(KNOT_RRTYPE_RESINFO, &rdata_tail); }
 	    | "WALLET"i     %{ type_num(KNOT_RRTYPE_WALLET, &rdata_tail); }
 	    | "TYPE"i      . num16 # TYPE0-TYPE65535.
 	    ) $!_type_error %_ret . all_wchar;
@@ -1489,6 +1490,7 @@
 	    | "SVCB"i       %{ window_add_bit(KNOT_RRTYPE_SVCB, s); }
 	    | "HTTPS"i      %{ window_add_bit(KNOT_RRTYPE_HTTPS, s); }
 	    | "DSYNC"i      %{ window_add_bit(KNOT_RRTYPE_DSYNC, s); }
+	    | "RESINFO"i    %{ window_add_bit(KNOT_RRTYPE_RESINFO, s); }
 	    | "WALLET"i     %{ window_add_bit(KNOT_RRTYPE_WALLET, s); }
 	    | "TYPE"i      . type_bitmap # TYPE0-TYPE65535.
 	    );
@@ -2105,6 +2107,7 @@
 			fcall r_data_mx;
 		case KNOT_RRTYPE_TXT:
 		case KNOT_RRTYPE_SPF:
+		case KNOT_RRTYPE_RESINFO:
 		case KNOT_RRTYPE_WALLET:
 			fcall r_data_txt;
 		case KNOT_RRTYPE_AAAA:
@@ -2222,6 +2225,7 @@
 		case KNOT_RRTYPE_SVCB:
 		case KNOT_RRTYPE_HTTPS:
 		case KNOT_RRTYPE_DSYNC:
+		case KNOT_RRTYPE_RESINFO:
 		case KNOT_RRTYPE_WALLET:
 			fcall nonempty_hex_r_data;
 		// Next types can have empty rdata.
@@ -2308,6 +2312,7 @@
 		| "SVCB"i       %{ s->r_type = KNOT_RRTYPE_SVCB; }
 		| "HTTPS"i      %{ s->r_type = KNOT_RRTYPE_HTTPS; }
 		| "DSYNC"i      %{ s->r_type = KNOT_RRTYPE_DSYNC; }
+		| "RESINFO"i    %{ s->r_type = KNOT_RRTYPE_RESINFO; }
 		| "WALLET"i     %{ s->r_type = KNOT_RRTYPE_WALLET; }
 		| "TYPE"i      . type_number
 		) $!_r_type_error;
