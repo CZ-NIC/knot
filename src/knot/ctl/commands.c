@@ -723,6 +723,9 @@ static int zone_backup_cmd(zone_t *zone, ctl_args_t *args)
 
 		if (ctx->restore_mode && ret == KNOT_EOK) {
 			ret = zone_keys_load(zone, args);
+			if (ret == KNOT_ENOTSUP) { // Ignore if disabled signing.
+				ret = KNOT_EOK;
+			}
 		}
 
 		if (!(ctx->backup_params & BACKUP_PARAM_EVENT)) {
