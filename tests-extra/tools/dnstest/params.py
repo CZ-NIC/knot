@@ -49,7 +49,7 @@ xdp = False
 valgrind_bin = get_binary("KNOT_TEST_VALGRIND", "valgrind")
 # KNOT_TEST_VALGRIND_FLAGS - valgrind flags.
 valgrind_flags = get_param("KNOT_TEST_VALGRIND_FLAGS",
-                           "--leak-check=full --show-leak-kinds=all --track-origins=yes --vgdb=yes --verbose --num-callers=20 --trace-children=yes --trace-children-skip=/usr/*sh,/bin/*sh")
+                           "--leak-check=full --show-leak-kinds=all --track-origins=yes --vgdb=yes --verbose --num-callers=20 --trace-children=yes --trace-children-skip=/usr/*sh,/bin/*sh --gen-suppressions=all")
 # KNOT_TEST_GDB - gdb binary.
 gdb_bin = get_binary("KNOT_TEST_GDB", "gdb")
 # KNOT_TEST_VGDB - vgdb binary.
