@@ -2315,7 +2315,7 @@ void complete_queries(list_t *queries, const query_t *conf)
 		if (q->owner != NULL && q->owner[0] != '\0') {
 			char *ascii_name = q->owner;
 			if (q->idn) {
-				ascii_name = name_from_idn(q->owner);
+				ascii_name = name_from_idn(q->owner, q->style.show_header);
 				if (ascii_name == NULL) {
 					ascii_name = q->owner;
 				} else {
