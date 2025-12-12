@@ -1408,11 +1408,37 @@ static int opt_noednsopt(const char *arg, void *query)
 	return KNOT_EOK;
 }
 
-static int opt_noidn(const char *arg, void *query)
+static int opt_idnin(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->idn = true;
+
+	return KNOT_EOK;
+}
+
+static int opt_noidnin(const char *arg, void *query)
 {
 	query_t *q = query;
 
 	q->idn = false;
+
+	return KNOT_EOK;
+}
+
+static int opt_idnout(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->style.style.ascii_to_idn = name_to_idn;
+
+	return KNOT_EOK;
+}
+
+static int opt_noidnout(const char *arg, void *query)
+{
+	query_t *q = query;
+
 	q->style.style.ascii_to_idn = NULL;
 
 	return KNOT_EOK;
@@ -1687,8 +1713,11 @@ static const param_t kdig_opts2[] = {
 	{ "json",           ARG_NONE,     opt_json },
 	{ "nojson",         ARG_NONE,     opt_nojson },
 
-	/* "idn" doesn't work since it must be called before query creation. */
-	{ "noidn",          ARG_NONE,     opt_noidn },
+	{ "idnin",          ARG_NONE,     opt_idnin },
+	{ "noidnin",        ARG_NONE,     opt_noidnin },
+
+	{ "idnout",         ARG_NONE,     opt_idnout },
+	{ "noidnout",       ARG_NONE,     opt_noidnout },
 
 	{ NULL }
 };
@@ -1723,6 +1752,7 @@ query_t *query_create(const char *owner, const query_t *conf)
 		query->flags = DEFAULT_FLAGS_DIG;
 		query->style = DEFAULT_STYLE_DIG;
 		query->style.style.now = knot_time();
+		query->style.style.ascii_to_idn = isatty(STDOUT_FILENO) ? name_to_idn : NULL,
 		query->idn = true;
 		query->nsid = false;
 		query->zoneversion = false;
@@ -2014,36 +2044,11 @@ static int parse_local(const char *value, query_t *query)
 
 static int parse_name(const char *value, list_t *queries, const query_t *conf)
 {
-	query_t	*query = NULL;
-	char	*ascii_name = (char *)value;
-	char	*fqd_name = NULL;
-
-	if (value != NULL && value[0] != '\0') {
-		if (conf->idn) {
-			ascii_name = name_from_idn(value);
-			if (ascii_name == NULL) {
-				return KNOT_EINVAL;
-			}
-		}
-
-		// If name is not FQDN, append trailing dot.
-		fqd_name = get_fqd_name(ascii_name);
-
-		if (conf->idn) {
-			free(ascii_name);
-		}
-	}
-
-	// Create new query.
-	query = query_create(fqd_name, conf);
-
-	free(fqd_name);
-
+	query_t	*query = query_create(value, conf);
 	if (query == NULL) {
 		return KNOT_ENOMEM;
 	}
 
-	// Add new query to the queries.
 	add_tail(queries, (node_t *)query);
 
 	return KNOT_EOK;
@@ -2306,6 +2311,23 @@ void complete_queries(list_t *queries, const query_t *conf)
 		query_t *q = (query_t *)n;
 		query_t *q_prev = (HEAD(*queries) != n) ? (query_t *)n->prev : NULL;
 
+		// Normalize to FQDN and optionally apply IDN conversion.
+		if (q->owner != NULL && q->owner[0] != '\0') {
+			char *ascii_name = q->owner;
+			if (q->idn) {
+				ascii_name = name_from_idn(q->owner, q->style.show_header);
+				if (ascii_name == NULL) {
+					ascii_name = q->owner;
+				} else {
+					free(q->owner);
+				}
+			}
+
+			// If name is not FQDN, append trailing dot.
+			q->owner = get_fqd_name(ascii_name);
+			free(ascii_name);
+		}
+
 		// Fill class number if missing.
 		if (q->class_num < 0) {
 			if (conf->class_num >= 0) {
@@ -2430,7 +2452,8 @@ static void print_help(void)
 	       "       +[no]ednsopt=CODE[:HEX]    Set custom EDNS option.\n"
 	       "       +[no]proxy=SADDR-DADDR     Add PROXYv2 header with src and dest addresses.\n"
 	       "       +[no]json                  Use JSON for output encoding (RFC 8427).\n"
-	       "       +noidn                     Disable IDN transformation.\n"
+	       "       +[no]idnin               * Use IDN transformation on input.\n"
+	       "       +[no]idnout              * Use IDN transformation on output.\n"
 	       "\n"
 	       "       -h, --help                 Print the program help.\n"
 	       "       -V, --version              Print the program version.\n",

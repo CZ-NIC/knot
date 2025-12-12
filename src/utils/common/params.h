@@ -123,11 +123,12 @@ inline static void print_version(const char *prog_name, bool verbose)
  * \brief Transforms localized IDN string to ASCII punycode.
  *
  * \param idn_name	IDN name to transform.
+ * \param info		Enable info logging.
  *
  * \retval NULL		if transformation fails.
  * \retval string	if ok.
  */
-char *name_from_idn(const char *idn_name);
+char *name_from_idn(const char *idn_name, bool info);
 
 /*!
  * \brief Transforms ASCII punycode to localized IDN string.

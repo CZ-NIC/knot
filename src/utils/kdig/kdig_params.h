@@ -97,7 +97,7 @@ struct query {
 	flags_t		flags;
 	/*!< Output settings. */
 	style_t		style;
-	/*!< IDN conversion. */
+	/*!< Unicode to IDN input conversion. */
 	bool		idn;
 	/*!< Query for NSID. */
 	bool		nsid;

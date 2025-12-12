@@ -102,7 +102,7 @@ static int parse_name(const char *value, list_t *queries, const query_t *conf)
 	query_t	*query;
 
 	if (conf->idn) {
-		ascii_name = name_from_idn(value);
+		ascii_name = name_from_idn(value, true);
 		if (ascii_name == NULL) {
 			free(reverse);
 			return KNOT_EINVAL;

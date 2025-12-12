@@ -345,12 +345,18 @@ Options
 **+**\ [\ **no**\ ]\ **json**
   Use JSON for output encoding (RFC 8427).
 
-**+noidn**
-  Disable the IDN transformation to ASCII and vice versa. IDN support depends
-  on libidn2 availability during project building! If used in *common-settings*,
-  all IDN transformations are disabled. If used in the individual query *settings*,
-  transformation from ASCII is disabled on output for the particular query. Note
-  that IDN transformation does not preserve domain name letter case.
+**+**\ [\ **no**\ ]\ **idnin**
+  Use IDN transformation (Unicode to ASCII punycode) on input query. (*)
+
+  Note that IDN transformation does not preserve domain name letter case.
+  IDN support depends on libidn2 availability during project building!
+
+**+**\ [\ **no**\ ]\ **idnout**
+  Use IDN transformation (ASCII punycode to Unicode) on printed domain names. (*)
+  This mode is disabled by default for non-tty outputs (e.g. file, pipe).
+
+  Note that IDN transformation does not preserve domain name letter case.
+  IDN support depends on libidn2 availability during project building!
 
 Notes
 -----

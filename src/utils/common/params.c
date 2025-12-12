@@ -26,7 +26,7 @@
 #define IPV4_REVERSE_DOMAIN	"in-addr.arpa."
 #define IPV6_REVERSE_DOMAIN	"ip6.arpa."
 
-char *name_from_idn(const char *idn_name) {
+char *name_from_idn(const char *idn_name, bool info) {
 #ifdef LIBIDN
 	char *name = NULL;
 
@@ -40,6 +40,9 @@ char *name_from_idn(const char *idn_name) {
 		free(name);
 		return strdup(idn_name);
 	} else {
+		if (info) {
+			INFO("IDNA qname %s -> %s", idn_name, name);
+		}
 		return name;
 	}
 #endif
