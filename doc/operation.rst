@@ -357,11 +357,12 @@ If the journal is used to store both zone history and contents, a special change
 is present with zone contents. When the journal gets full, the changes are merged into this
 special changeset.
 
-There is also a :ref:`safety hard limit <database_journal-db-max-size>` for overall
-journal database size, but it's strongly recommended to set the per-zone limits in
-a way to prevent hitting this one. For LMDB, it's hard to recover from the
-database-full state. For wiping one zone's journal, see *knotc zone-purge +journal*
-command.
+There is also a :ref:`safety hard limit <database_journal-db-max-size>`
+for overall journal database size, but it's strongly recommended to
+set :ref:`the per-zone limits <zone_journal-max-usage>` in a way to
+prevent hitting this one.
+For LMDB, it's hard to recover from the database-full state.
+For wiping one zone's journal, see *knotc zone-purge +journal* command.
 
 .. [#fn-hc] This constant is hardcoded.
 
