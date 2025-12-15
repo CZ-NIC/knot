@@ -1298,7 +1298,7 @@ The hard limit for the KASP database maximum size.
 .. NOTE::
    This value also influences server's usage of virtual memory.
 
-*Default:* ``500M`` (500 MiB)
+*Default:* ``10G`` (10 GiB), or ``512M`` (512 MiB) for 32-bit
 
 .. _database_timer-db:
 
@@ -1320,7 +1320,7 @@ The hard limit for the timer database maximum size.
 .. NOTE::
    This value also influences server's usage of virtual memory.
 
-*Default:* ``100M`` (100 MiB)
+*Default:* ``5G`` (5 GiB), or ``512M`` (512 MiB) for 32-bit
 
 .. _database_timer-db-sync:
 
