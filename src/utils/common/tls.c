@@ -13,10 +13,6 @@
 #include <gnutls/gnutls.h>
 #include <gnutls/ocsp.h>
 #include <gnutls/x509.h>
-#define GNUTLS_VERSION_FASTOPEN_READY 0x030503
-#if GNUTLS_VERSION_NUMBER >= GNUTLS_VERSION_FASTOPEN_READY
-#include <gnutls/socket.h>
-#endif
 
 #include "utils/common/tls.h"
 #include "utils/common/msg.h"
@@ -554,8 +550,7 @@ int tls_ctx_setup_remote_endpoint(tls_ctx_t *ctx, const gnutls_datum_t *alpn,
 	return KNOT_EOK;
 }
 
-int tls_ctx_connect(tls_ctx_t *ctx, int sockfd, bool fastopen,
-        struct sockaddr_storage *addr)
+int tls_ctx_connect(tls_ctx_t *ctx, int sockfd, struct sockaddr_storage *addr)
 {
 	if (ctx == NULL) {
 		return KNOT_EINVAL;
@@ -564,16 +559,7 @@ int tls_ctx_connect(tls_ctx_t *ctx, int sockfd, bool fastopen,
 	int ret = 0;
 	gnutls_session_set_ptr(ctx->session, ctx);
 
-	if (fastopen) {
-#if GNUTLS_VERSION_NUMBER >= GNUTLS_VERSION_FASTOPEN_READY
-		gnutls_transport_set_fastopen(ctx->session, sockfd, (struct sockaddr *)addr,
-		                              sockaddr_len(addr), 0);
-#else
-		return KNOT_ENOTSUP;
-#endif
-	} else {
-		gnutls_transport_set_int(ctx->session, sockfd);
-	}
+	gnutls_transport_set_int(ctx->session, sockfd);
 
 	gnutls_handshake_set_timeout(ctx->session, 1000 * ctx->wait);
 

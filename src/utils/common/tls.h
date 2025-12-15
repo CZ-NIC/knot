@@ -62,8 +62,7 @@ int tls_ctx_init(tls_ctx_t *ctx, const tls_params_t *params,
         unsigned int flags, int wait);
 int tls_ctx_setup_remote_endpoint(tls_ctx_t *ctx, const gnutls_datum_t *alpn,
         size_t alpn_size, const char *priority, const char *remote);
-int tls_ctx_connect(tls_ctx_t *ctx, int sockfd,
-        bool fastopen, struct sockaddr_storage *addr);
+int tls_ctx_connect(tls_ctx_t *ctx, int sockfd, struct sockaddr_storage *addr);
 
 int tls_ctx_send(tls_ctx_t *ctx, const uint8_t *buf, const size_t buf_len);
 int tls_ctx_receive(tls_ctx_t *ctx, uint8_t *buf, const size_t buf_len);

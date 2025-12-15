@@ -69,8 +69,6 @@ struct query {
 	ip_t		ip;
 	/*!< Protocol type (TCP, UDP) to use. */
 	protocol_t	protocol;
-	/*!< Use TCP Fast Open. */
-	bool		fastopen;
 	/*!< Keep TCP connection open. */
 	bool		keepopen;
 	/*!< Port/service to connect to. */
