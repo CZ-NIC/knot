@@ -10,7 +10,6 @@
 #include <stdlib.h>
 #include <netinet/in.h>
 #include <sys/types.h>   // OpenBSD
-#include <netinet/tcp.h> // TCP_FASTOPEN
 #include <sys/socket.h>
 
 #ifdef HAVE_SYS_UIO_H
@@ -210,7 +209,6 @@ int net_init(const srv_info_t      *local,
              const int             iptype,
              const int             socktype,
              const int             wait,
-             const net_flags_t     flags,
              const struct sockaddr *proxy_src,
              const struct sockaddr *proxy_dst,
              net_t                 *net)
@@ -265,7 +263,6 @@ int net_init(const srv_info_t      *local,
 	net->wait = wait;
 	net->local = local;
 	net->remote = remote;
-	net->flags = flags;
 	net->proxy.src = proxy_src;
 	net->proxy.dst = proxy_dst;
 
@@ -339,59 +336,6 @@ int net_init_crypto(net_t                 *net,
 	return KNOT_EOK;
 }
 
-/*!
- * Connect with TCP Fast Open.
- */
-static int fastopen_connect(int sockfd, const struct addrinfo *srv)
-{
-#if defined( __FreeBSD__)
-	const int enable = 1;
-	return setsockopt(sockfd, IPPROTO_TCP, TCP_FASTOPEN, &enable, sizeof(enable));
-#elif defined(__APPLE__)
-	// connection is performed lazily when first data are sent
-	struct sa_endpoints ep = {0};
-	ep.sae_dstaddr = srv->ai_addr;
-	ep.sae_dstaddrlen = srv->ai_addrlen;
-	int flags =  CONNECT_DATA_IDEMPOTENT|CONNECT_RESUME_ON_READ_WRITE;
-
-	return connectx(sockfd, &ep, SAE_ASSOCID_ANY, flags, NULL, 0, NULL, NULL);
-#elif defined(__linux__)
-	// connect() will be called implicitly with sendto(), sendmsg()
-	return 0;
-#else
-	errno = ENOTSUP;
-	return -1;
-#endif
-}
-
-/*!
- * Sends data with TCP Fast Open.
- */
-static int fastopen_send(int sockfd, const struct msghdr *msg, int timeout)
-{
-#if defined(__FreeBSD__) || defined(__APPLE__)
-	return sendmsg(sockfd, msg, 0);
-#elif defined(__linux__)
-	int ret = sendmsg(sockfd, msg, MSG_FASTOPEN);
-	if (ret == -1 && errno == EINPROGRESS) {
-		struct pollfd pfd = {
-			.fd = sockfd,
-			.events = POLLOUT,
-			.revents = 0,
-		};
-		if (poll(&pfd, 1, 1000 * timeout) != 1) {
-			errno = ETIMEDOUT;
-			return -1;
-		}
-		ret = sendmsg(sockfd, msg, 0);
-	}
-	return ret;
-#else
-	errno = ENOTSUP;
-	return -1;
-#endif
-}
-
 static char *net_get_remote(const net_t *net)
 {
 	if (net->tls.params->sni != NULL) {
@@ -456,39 +400,32 @@ int net_connect(net_t *net)
 	if (net->socktype == SOCK_STREAM) {
 		int  cs = 1, err;
 		socklen_t err_len = sizeof(err);
-		bool fastopen = net->flags & NET_FLAGS_FASTOPEN;
 
 #ifdef TCP_NODELAY
 		(void)setsockopt(sockfd, IPPROTO_TCP, TCP_NODELAY, &cs, sizeof(cs));
 #endif
 
 		// Establish a connection.
-		if (net->tls.params == NULL || !fastopen) {
-			if (fastopen) {
-				ret = fastopen_connect(sockfd, net->srv);
-			} else {
-				ret = connect(sockfd, net->srv->ai_addr, net->srv->ai_addrlen);
-			}
-			if (ret != 0 && errno != EINPROGRESS) {
-				WARN("can't connect to %s", net->remote_str);
-				net_close(net);
-				return KNOT_NET_ECONNECT;
-			}
+		ret = connect(sockfd, net->srv->ai_addr, net->srv->ai_addrlen);
+		if (ret != 0 && errno != EINPROGRESS) {
+			WARN("can't connect to %s", net->remote_str);
+			net_close(net);
+			return KNOT_NET_ECONNECT;
+		}
 
-			// Check for connection timeout.
-			if (!fastopen && poll(&pfd, 1, 1000 * net->wait) != 1) {
-				WARN("connection timeout for %s", net->remote_str);
-				net_close(net);
-				return KNOT_NET_ECONNECT;
-			}
+		// Check for connection timeout.
+		if (poll(&pfd, 1, 1000 * net->wait) != 1) {
+			WARN("connection timeout for %s", net->remote_str);
+			net_close(net);
+			return KNOT_NET_ECONNECT;
+		}
 
-			// Check if NB socket is writeable.
-			cs = getsockopt(sockfd, SOL_SOCKET, SO_ERROR, &err, &err_len);
-			if (cs < 0 || err != 0) {
-				WARN("can't connect to %s", net->remote_str);
-				net_close(net);
-				return KNOT_NET_ECONNECT;
-			}
+		// Check if NB socket is writeable.
+		cs = getsockopt(sockfd, SOL_SOCKET, SO_ERROR, &err, &err_len);
+		if (cs < 0 || err != 0) {
+			WARN("can't connect to %s", net->remote_str);
+			net_close(net);
+			return KNOT_NET_ECONNECT;
 		}
 
 		if (net->tls.params != NULL) {
@@ -505,7 +442,7 @@ int net_connect(net_t *net)
 				if (remote && net->https.authority == NULL) {
 					net->https.authority = strdup(remote);
 				}
-				ret = https_ctx_connect(&net->https, sockfd, fastopen,
+				ret = https_ctx_connect(&net->https, sockfd,
 				        (struct sockaddr_storage *)net->srv->ai_addr);
 			} else
 #endif //LIBNGHTTP2
@@ -517,7 +454,7 @@ int net_connect(net_t *net)
 					net_close(net);
 					return ret;
 				}
-				ret = tls_ctx_connect(&net->tls, sockfd, fastopen,
+				ret = tls_ctx_connect(&net->tls, sockfd,
 				        (struct sockaddr_storage *)net->srv->ai_addr);
 			}
 			if (ret != KNOT_EOK) {
@@ -669,8 +606,6 @@ int net_send(const net_t *net, const uint8_t *buf, const size_t buf_len)
 		}
 	// Send data over TCP.
 	} else {
-		bool fastopen = net->flags & NET_FLAGS_FASTOPEN;
-
 		char proxy_buf[PROXYV2_HEADER_MAXLEN];
 		uint16_t pktsize = htons(buf_len); // Leading packet length bytes.
 		struct iovec iov[3] = {
@@ -705,12 +640,7 @@ int net_send(const net_t *net, const uint8_t *buf, const size_t buf_len)
 
 		ssize_t total = iov[0].iov_len + iov[1].iov_len + iov[2].iov_len;
 
-		int ret = 0;
-		if (fastopen) {
-			ret = fastopen_send(net->sockfd, &msg, net->wait);
-		} else {
-			ret = sendmsg(net->sockfd, &msg, 0);
-		}
+		int ret = sendmsg(net->sockfd, &msg, 0);
 		if (ret != total) {
 			WARN("can't send query to %s", net->remote_str);
 			return KNOT_NET_ESEND;

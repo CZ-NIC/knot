@@ -854,7 +854,6 @@ static int process_query(const query_t *query, net_t *net)
 
 	// Get connection parameters.
 	int socktype = get_socktype(query->protocol, query->type_num);
-	int flags = query->fastopen ? NET_FLAGS_FASTOPEN : NET_FLAGS_NONE;
 
 	// Loop over server list to process query.
 	WALK_LIST(server, query->servers) {
@@ -870,7 +869,7 @@ static int process_query(const query_t *query, net_t *net)
 		for (size_t i = 0; i <= query->retries; i++) {
 			// Initialize network structure for current server.
 			ret = net_init(query->local, remote, iptype, socktype,
-			               query->wait, flags,
+			               query->wait,
 			               (struct sockaddr *)&query->proxy.src,
 			               (struct sockaddr *)&query->proxy.dst,
 			               net);
@@ -1214,7 +1213,6 @@ static int process_xfr(const query_t *query, net_t *net)
 
 	// Get connection parameters.
 	int socktype = get_socktype(query->protocol, query->type_num);
-	int flags = query->fastopen ? NET_FLAGS_FASTOPEN : NET_FLAGS_NONE;
 
 	// Use the first nameserver from the list.
 	srv_info_t *remote = HEAD(query->servers);
@@ -1226,7 +1224,7 @@ static int process_xfr(const query_t *query, net_t *net)
 	    get_sockname(socktype));
 
 	// Initialize network structure.
-	ret = net_init(query->local, remote, iptype, socktype, query->wait, flags,
+	ret = net_init(query->local, remote, iptype, socktype, query->wait,
 	               (struct sockaddr *)&query->proxy.src,
 	               (struct sockaddr *)&query->proxy.dst,
 	               net);

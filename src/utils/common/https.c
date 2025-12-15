@@ -309,15 +309,14 @@ static int sockaddr_to_authority(char *buf, const size_t buf_len, const struct s
 	return KNOT_EOK;
 }
 
-int https_ctx_connect(https_ctx_t *ctx, int sockfd, bool fastopen,
-                      struct sockaddr_storage *addr)
+int https_ctx_connect(https_ctx_t *ctx, int sockfd, struct sockaddr_storage *addr)
 {
 	if (ctx == NULL || addr == NULL) {
 		return KNOT_EINVAL;
 	}
 
 	// Create TLS connection
-	int ret = tls_ctx_connect(ctx->tls, sockfd, fastopen, addr);
+	int ret = tls_ctx_connect(ctx->tls, sockfd, addr);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
