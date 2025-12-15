@@ -6,9 +6,11 @@ src/contrib/libngtcp2/ngtcp2
 src/contrib/libngtcp2/ngtcp2/crypto
 src/contrib/libngtcp2/ngtcp2/lib
 src/contrib/licenses
+src/contrib/musl
 src/contrib/openbsd
 src/contrib/proxyv2
 src/contrib/qp-trie
+src/contrib/redis
 src/contrib/ucw
 src/contrib/url-parser
 src/contrib/vpool
@@ -24,6 +26,7 @@ src/knot/events/handlers
 src/knot/include
 src/knot/journal
 src/knot/modules
+src/knot/modules/authsignal
 src/knot/modules/cookies
 src/knot/modules/dnsproxy
 src/knot/modules/dnstap
@@ -54,10 +57,12 @@ src/libknot/dnssec/shared
 src/libknot/dnssec/sign
 src/libknot/packet
 src/libknot/probe
+src/libknot/quic
 src/libknot/rrtype
 src/libknot/xdp
 src/libknot/yparser
 src/libzscanner
+src/redis
 src/utils
 src/utils/common
 src/utils/kcatalogprint
