@@ -193,7 +193,11 @@ static bool enable_pktinfo(int sock, int family)
 		break;
 	case AF_INET6:
 		level = IPPROTO_IPV6;
+#if defined(IPV6_RECVPKTINFO)
 		option = IPV6_RECVPKTINFO; /* Multiplatform */
+#else
+		option = IPV6_PKTINFO;
+#endif
 		break;
 	default:
 		assert(0);
