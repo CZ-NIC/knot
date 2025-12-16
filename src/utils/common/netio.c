@@ -406,28 +406,26 @@ int net_connect(net_t *net)
 #endif
 
 		// Establish a connection.
-		if (net->tls.params == NULL) {
-			ret = connect(sockfd, net->srv->ai_addr, net->srv->ai_addrlen);
-			if (ret != 0 && errno != EINPROGRESS) {
-				WARN("can't connect to %s", net->remote_str);
-				net_close(net);
-				return KNOT_NET_ECONNECT;
-			}
+		ret = connect(sockfd, net->srv->ai_addr, net->srv->ai_addrlen);
+		if (ret != 0 && errno != EINPROGRESS) {
+			WARN("can't connect to %s", net->remote_str);
+			net_close(net);
+			return KNOT_NET_ECONNECT;
+		}
 
-			// Check for connection timeout.
-			if (poll(&pfd, 1, 1000 * net->wait) != 1) {
-				WARN("connection timeout for %s", net->remote_str);
-				net_close(net);
-				return KNOT_NET_ECONNECT;
-			}
+		// Check for connection timeout.
+		if (poll(&pfd, 1, 1000 * net->wait) != 1) {
+			WARN("connection timeout for %s", net->remote_str);
+			net_close(net);
+			return KNOT_NET_ECONNECT;
+		}
 
-			// Check if NB socket is writeable.
-			cs = getsockopt(sockfd, SOL_SOCKET, SO_ERROR, &err, &err_len);
-			if (cs < 0 || err != 0) {
-				WARN("can't connect to %s", net->remote_str);
-				net_close(net);
-				return KNOT_NET_ECONNECT;
-			}
+		// Check if NB socket is writeable.
+		cs = getsockopt(sockfd, SOL_SOCKET, SO_ERROR, &err, &err_len);
+		if (cs < 0 || err != 0) {
+			WARN("can't connect to %s", net->remote_str);
+			net_close(net);
+			return KNOT_NET_ECONNECT;
 		}
 
 		if (net->tls.params != NULL) {
