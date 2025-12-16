@@ -339,6 +339,8 @@ static void tcp_wait_for_events(tcp_context_t *tcp)
 				/* Don't accept more clients than configured. */
 				if (fdset_get_length(set) < tcp->max_worker_fds) {
 					tcp_event_accept(tcp, idx, iface);
+				} else {
+					ATOMIC_ADD(tcp->server->stats.tcp_throttled, 1);
 				}
 			/* Client sockets - already accepted connection or
 			   closed connection :-( */

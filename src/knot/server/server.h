@@ -90,7 +90,7 @@ typedef struct server {
 	struct {
 		knot_atomic_uint64_t tcp_io_timeout;
 		knot_atomic_uint64_t tcp_idle_timeout;
-
+		knot_atomic_uint64_t tcp_throttled;
 	} stats;
 
 	knot_zonedb_t *zone_db;
