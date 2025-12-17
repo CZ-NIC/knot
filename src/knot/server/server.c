@@ -1163,10 +1163,8 @@ static void server_free_handler(iohandler_t *h)
 	}
 
 	/* Wait for threads to finish */
-	if (h->unit) {
-		dt_stop(h->unit);
-		dt_join(h->unit);
-	}
+	dt_stop(h->unit);
+	dt_join(h->unit);
 
 	/* Destroy worker context. */
 	dt_delete(&h->unit);
