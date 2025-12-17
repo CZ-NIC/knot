@@ -105,6 +105,17 @@ support.
        | 2048
        | 4096
      - 2025-12
+   * - `Securosys Primus HSM and CloudHSM (non-FIPS) <https://docs.securosys.com/knot-dns/installation>`_
+     - yes
+     - yes
+     - | ed25519
+       | ed448
+     - | 256
+       | 384
+     - | 1024
+       | 2048
+       | 4096
+     - 2025-12
 
 .. in progress: key ID checks have to be disabled in code
    * - `Yubikey NEO <https://www.yubico.com/products/yubikey-hardware/yubikey-neo/>`_
