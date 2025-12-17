@@ -1603,6 +1603,7 @@ void server_stop(server_t *server)
 	server->state |= ServerShutting;
 	/* Stop timer DB syncing thread */
 	dt_stop(server->timerdb_sync);
+	dt_join(server->timerdb_sync);
 	/* Interrupt background workers. */
 	worker_pool_stop(server->workers);
 
@@ -1687,7 +1688,7 @@ static int reconfigure_timer_db(conf_t *conf, server_t *server)
 		}
 	} else if (!should_sync && exists_sync) {
 		dt_stop(server->timerdb_sync);
-		dt_delete(&server->timerdb_sync);
+		dt_join(server->timerdb_sync);
 	}
 
 	return ret;
@@ -1832,7 +1833,7 @@ int server_reconfigure(conf_t *conf, server_t *server)
 
 	/* Reconfigure Timer DB. */
 	if ((ret = reconfigure_timer_db(conf, server)) != KNOT_EOK) {
-		log_error("failed to reconfigure Timer DB (%s)",
+		log_error("failed to reconfigure timer DB (%s)",
 		          knot_strerror(ret));
 	}
 
