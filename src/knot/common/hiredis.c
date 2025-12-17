@@ -241,8 +241,11 @@ int rdb_addr_to_str(struct sockaddr_storage *addr, char *out, size_t out_len, in
 		*port = sockaddr_port(addr);
 		sockaddr_port_set(addr, 0);
 
-		if (sockaddr_tostr(out, out_len, addr) <= 0 || *port == 0) {
+		if (sockaddr_tostr(out, out_len, addr) <= 0 || *port < 0) {
 			return KNOT_EINVAL;
+		}
+		if (*port == 0) {
+			*port = CONF_REDIS_PORT;
 		}
 	}
 
