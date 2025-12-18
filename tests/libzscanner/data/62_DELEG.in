@@ -1,0 +1,24 @@
+$ORIGIN	.
+$TTL	1
+
+; OK
+@	DELEG
+@	DELEGI	; Comment
+@	deleg	mandatory=server-ipv4 server-ipv4=1.2.3.4
+@	delegi	server-ipv6="1::2,3::4"
+xy	DELEG	server-name="ab,cd." ; Comment
+xy	DELEGI	include-delegi=c\,d
+@	TYPE61440	key65535="a" key1000=b include-delegi=ab key7 mandatory=key7,include-delegi
+@	type65433 \# 8 0001000401020304
+
+; KO
+@	DELEG	bogus				; Unknown parameter
+@	DELEGI	server-IPv4=1.2.3.4	; Capital letter in parameter name
+@	DELEG	server-name
+@	DELEGI	server-ipv6=
+@	DELEG	server-ipv6=1::2,
+@	DELEGI	server-ipv6=1::2,,3::4
+@	DELEG	mandatory=mandatory
+@	DELEGI	mandatory=bogus
+@	DELEG	server-name=a-label-has-exactly-sixty-four-octets-abcdefghijklmnopqrstuvwxyz
+@	DELEGI	server-name=this.domain.name.has.exactly.two.hundred.and.fifty.six.octets.in.its.wire.format.due.to.having.exactly.two.hundred.and.fifty.five.characters.in.its.textual.form.without.the.trailing.dot.that.makes.it.relative.to.the.record.owner.name.that.is.actually.root
