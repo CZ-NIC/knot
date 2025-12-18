@@ -47,6 +47,11 @@ extern const knot_lookup_t knot_dnssec_alg_names[];
 extern const knot_lookup_t knot_svcb_param_names[];
 
 /*!
+ * \brief DELEG DelegInfo types.
+ */
+extern const knot_lookup_t knot_deleg_info_names[];
+
+/*!
  * \brief EDNS option names.
  */
 extern const knot_lookup_t knot_edns_opt_names[];

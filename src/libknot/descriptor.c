@@ -147,6 +147,10 @@ static const knot_rdata_descriptor_t rdata_descriptors[] = {
 	                               KNOT_RDATA_WF_END }, "RESINFO" },
 	[KNOT_RRTYPE_WALLET]     = { { KNOT_RDATA_WF_REMAINDER,
 	                               KNOT_RDATA_WF_END }, "WALLET" },
+	[KNOT_RRTYPE_DELEG]      = { { KNOT_RDATA_WF_REMAINDER,
+	                               KNOT_RDATA_WF_END }, "DELEG" },
+	[KNOT_RRTYPE_DELEGPARAM] = { { KNOT_RDATA_WF_REMAINDER,
+	                               KNOT_RDATA_WF_END }, "DELEGPARAM" },
 };
 
 #define MAX_RRTYPE sizeof(rdata_descriptors) / sizeof(knot_rdata_descriptor_t) - 1

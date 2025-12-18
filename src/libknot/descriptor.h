@@ -120,6 +120,9 @@ enum knot_rr_type {
 
 	KNOT_RRTYPE_RESINFO    = 261, /*!< Resolver information as key/value pairs. */
 	KNOT_RRTYPE_WALLET     = 262, /*!< Public wallet address. */
+
+	KNOT_RRTYPE_DELEG      = 61440, /*!< Next generation delegation. */
+	KNOT_RRTYPE_DELEGPARAM = 65433, /*!< Next generation delegation lookaside. */
 };
 
 /*!
