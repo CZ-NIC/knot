@@ -1446,10 +1446,10 @@ static void wire_tsig_rcode_to_str(rrset_dump_params_t *p)
 	p->in_max -= in_len;
 }
 
-static void wire_svcb_paramkey_to_str(rrset_dump_params_t *p)
+static void wire_generic_paramkey_to_str(rrset_dump_params_t *p, const knot_lookup_t *names)
 {
 	uint16_t param_key = knot_wire_read_u16(p->in);
-	const knot_lookup_t *type = knot_lookup_by_id(knot_svcb_param_names, param_key);
+	const knot_lookup_t *type = knot_lookup_by_id(names, param_key);
 
 	if (type != NULL) {
 		dump_string(p, type->name);
@@ -1462,6 +1462,16 @@ static void wire_svcb_paramkey_to_str(rrset_dump_params_t *p)
 		wire_num16_to_str(p);
 		CHECK_PRET
 	}
+}
+
+static void wire_svcb_paramkey_to_str(rrset_dump_params_t *p)
+{
+	wire_generic_paramkey_to_str(p, knot_svcb_param_names);
+}
+
+static void wire_deleg_paramkey_to_str(rrset_dump_params_t *p)
+{
+	wire_generic_paramkey_to_str(p, knot_deleg_info_names);
 }
 
 static void wire_value_list_to_str(rrset_dump_params_t *p,
@@ -1572,6 +1582,45 @@ static void wire_svcparam_to_str(rrset_dump_params_t *p)
 			break;
 		case KNOT_SVCB_PARAM_OHTTP:
 			p->ret = KNOT_EMALF; // must not have value
+			break;
+		default:
+			wire_text_to_str(p, val_len, NULL, true, false);
+		}
+	}
+}
+
+static void wire_deleginfo_to_str(rrset_dump_params_t *p)
+{
+	CHECK_PRET
+
+	CHECK_INMAX(4)
+
+	uint16_t key_type = knot_wire_read_u16(p->in);
+	uint16_t val_len = knot_wire_read_u16(p->in + sizeof(key_type));
+
+	wire_deleg_paramkey_to_str(p);
+
+	p->in += sizeof(val_len);
+	p->in_max -= sizeof(val_len);
+	CHECK_INMAX(val_len)
+
+	if (val_len > 0) {
+		dump_string(p, "=");
+		CHECK_PRET
+
+		switch (key_type) {
+		case KNOT_DELEG_INFO_MANDATORY:
+			wire_value_list_to_str(p, wire_deleg_paramkey_to_str, p->in + val_len);
+			break;
+		case KNOT_DELEG_INFO_IPV4:
+			wire_value_list_to_str(p, wire_ipv4_to_str, p->in + val_len);
+			break;
+		case KNOT_DELEG_INFO_IPV6:
+			wire_value_list_to_str(p, wire_ipv6_to_str, p->in + val_len);
+			break;
+		case KNOT_DELEG_INFO_NAME:
+		case KNOT_DELEG_INFO_INCLUDE:
+			wire_value_list_to_str(p, wire_dname_to_str, p->in + val_len);
 			break;
 		default:
 			wire_text_to_str(p, val_len, NULL, true, false);
@@ -1809,6 +1858,7 @@ static void dnskey_info(const uint8_t *rdata,
 #define DUMP_EUI	wire_eui_to_str(p); CHECK_RET(p);
 #define DUMP_TSIG_RCODE	wire_tsig_rcode_to_str(p); CHECK_RET(p);
 #define DUMP_SVCPARAM	wire_svcparam_to_str(p); CHECK_RET(p);
+#define DUMP_DELEGINFO	wire_deleginfo_to_str(p); CHECK_RET(p);
 #define DUMP_DSYNC_SCH	wire_dsync_scheme_to_str(p); CHECK_RET(p);
 #define DUMP_UNKNOWN	wire_unknown_to_str(p); CHECK_RET(p);
 
@@ -2281,6 +2331,29 @@ static int dump_dsync(DUMP_PARAMS)
 	DUMP_END;
 }
 
+static int dump_deleg(DUMP_PARAMS)
+{
+	if (p->style->wrap) {
+		if (p->in_max > 0) {
+			WRAP_INIT;
+			DUMP_DELEGINFO;
+			while (p->in_max > 0) {
+				WRAP_LINE; DUMP_DELEGINFO;
+			}
+			WRAP_END;
+		}
+	} else {
+		while (p->in_max > 0) {
+			DUMP_DELEGINFO;
+			if (p->in_max > 0) {
+				DUMP_SPACE;
+			}
+		}
+	}
+
+	DUMP_END;
+}
+
 static int txt_dump_data(rrset_dump_params_t *p, uint16_t type)
 {
 	switch (type) {
@@ -2369,8 +2442,11 @@ static int txt_dump_data(rrset_dump_params_t *p, uint16_t type)
 		case KNOT_RRTYPE_SVCB:
 		case KNOT_RRTYPE_HTTPS:
 			return dump_svcb(p);
-	        case KNOT_RRTYPE_DSYNC:
-		        return dump_dsync(p);
+		case KNOT_RRTYPE_DSYNC:
+			return dump_dsync(p);
+		case KNOT_RRTYPE_DELEG:
+		case KNOT_RRTYPE_DELEGI:
+			return dump_deleg(p);
 		default:
 			return dump_unknown(p);
 	}

@@ -122,6 +122,16 @@ const knot_lookup_t knot_svcb_param_names[] = {
 };
 
 _public_
+const knot_lookup_t knot_deleg_info_names[] = {
+	{ KNOT_DELEG_INFO_MANDATORY,   "mandatory" },
+	{ KNOT_DELEG_INFO_IPV4,        "server-ipv4" },
+	{ KNOT_DELEG_INFO_IPV6,        "server-ipv6" },
+	{ KNOT_DELEG_INFO_NAME,        "server-name" },
+	{ KNOT_DELEG_INFO_INCLUDE,     "include-delegi" },
+	{ 0, NULL }
+};
+
+_public_
 const knot_lookup_t knot_edns_opt_names[] = {
 	{ KNOT_EDNS_OPTION_NSID,          "NSID" },
 	{ KNOT_EDNS_OPTION_CLIENT_SUBNET, "ECS" },
