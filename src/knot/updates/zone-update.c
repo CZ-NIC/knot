@@ -1255,7 +1255,7 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 	}
 
 	if (conf->cache.srv_dbus_event & DBUS_EVENT_ZONE_UPDATED) {
-		dbus_emit_zone_updated(update->zone->name,
+		dbus_emit_zone_updated(update->zone->name, true,
 		                       zone_contents_serial(update->zone->contents));
 	}
 
@@ -1264,6 +1264,10 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 	return KNOT_EOK;
 error:
 	ATOMIC_ADD(update->zone->server->stats.zone_update_error, 1);
+	if (conf->cache.srv_dbus_event & DBUS_EVENT_ZONE_UPDATED) {
+		dbus_emit_zone_updated(update->zone->name, false, 0);
+	}
+
 	return ret;
 }
 

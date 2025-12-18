@@ -180,14 +180,18 @@ void dbus_emit_running(bool up)
 #endif // ENABLE_DBUS
 }
 
-void dbus_emit_zone_updated(const knot_dname_t *zone_name, uint32_t serial)
+void dbus_emit_zone_updated(const knot_dname_t *zone_name, bool success, uint32_t serial)
 {
 #if ENABLE_DBUS
 	knot_dname_txt_storage_t buff;
 	char *zone_str = knot_dname_to_str(buff, zone_name, sizeof(buff));
 	if (zone_str != NULL) {
-		emit_event(KNOT_BUS_EVENT_ZONE_UPD, "su", VALUE_OF(zone_str),
-		           VALUE_OF(serial));
+		if (success) {
+			emit_event(KNOT_BUS_EVENT_ZONE_UPD, "su", VALUE_OF(zone_str),
+			           VALUE_OF(serial));
+		} else {
+			emit_event(KNOT_BUS_EVENT_ZONE_NOT_UPD, "s", VALUE_OF(zone_str));
+		}
 	}
 #endif // ENABLE_DBUS
 }
