@@ -122,6 +122,9 @@ enum knot_rr_type {
 	KNOT_RRTYPE_WALLET     = 262, /*!< Public wallet address. */
 
 	KNOT_RRTYPE_ALIAS      = 65401, /*!< PRIVATE. Alias record. */
+
+	KNOT_RRTYPE_DELEG      = 61440, /*!< Next generation delegation. */
+	KNOT_RRTYPE_DELEGPARAM = 65433, /*!< Next generation delegation lookaside. */
 };
 
 /*!

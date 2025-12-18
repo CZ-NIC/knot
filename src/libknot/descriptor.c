@@ -152,6 +152,10 @@ static const knot_rdata_descriptor_t rdata_descriptors[] = {
 	                               KNOT_RDATA_WF_END }, "WALLET" },
 	[KNOT_RRTYPE_ALIAS]      = { { KNOT_RDATA_WF_DECOMPRESSIBLE_DNAME,
 	                               KNOT_RDATA_WF_END }, "ALIAS" },
+	[KNOT_RRTYPE_DELEG]      = { { KNOT_RDATA_WF_REMAINDER_MAYEMPTY,
+	                               KNOT_RDATA_WF_END }, "DELEG" },
+	[KNOT_RRTYPE_DELEGPARAM] = { { KNOT_RDATA_WF_REMAINDER_MAYEMPTY,
+	                               KNOT_RDATA_WF_END }, "DELEGPARAM" },
 };
 
 #define MAX_RRTYPE sizeof(rdata_descriptors) / sizeof(knot_rdata_descriptor_t) - 1
