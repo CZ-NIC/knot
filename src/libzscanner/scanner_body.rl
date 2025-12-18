@@ -246,7 +246,7 @@
 	dname_ := ( relative_dname
 	          | absolute_dname
 	          | '@' %_origin_dname_exit
-	          ) $!_dname_error %_ret . all_wchar;
+	          ) $!_dname_error %_ret . (all_wchar | ',' | '"');
 	dname = (alnum | [\-_/\\] | [*.@]) ${ fhold; fcall dname_; };
 	# END
 
@@ -1422,6 +1422,8 @@
 	    | "DSYNC"i      %{ type_num(KNOT_RRTYPE_DSYNC, &rdata_tail); }
 	    | "RESINFO"i    %{ type_num(KNOT_RRTYPE_RESINFO, &rdata_tail); }
 	    | "WALLET"i     %{ type_num(KNOT_RRTYPE_WALLET, &rdata_tail); }
+	    | "DELEG"i      %{ type_num(KNOT_RRTYPE_DELEG, &rdata_tail); }
+	    | "DELEGI"i     %{ type_num(KNOT_RRTYPE_DELEGI, &rdata_tail); }
 	    | "TYPE"i      . num16 # TYPE0-TYPE65535.
 	    ) $!_type_error %_ret . all_wchar;
 	type_num = alnum ${ fhold; fcall type_num_; };
@@ -1492,6 +1494,8 @@
 	    | "DSYNC"i      %{ window_add_bit(KNOT_RRTYPE_DSYNC, s); }
 	    | "RESINFO"i    %{ window_add_bit(KNOT_RRTYPE_RESINFO, s); }
 	    | "WALLET"i     %{ window_add_bit(KNOT_RRTYPE_WALLET, s); }
+	    | "DELEG"i      %{ window_add_bit(KNOT_RRTYPE_DELEG, s); }
+	    | "DELEGI"i     %{ window_add_bit(KNOT_RRTYPE_DELEGI, s); }
 	    | "TYPE"i      . type_bitmap # TYPE0-TYPE65535.
 	    );
 
@@ -1763,7 +1767,7 @@
 	l32 = ipv4_addr %_ipv4_addr_write;
 	# END
 
-	# BEGIN - SvcParams processing (SVCB/HTTPS records)
+	# BEGIN - SvcParams and DelegInfos processing (SVCB/HTTPS and DELEG/DELEGI records)
 	action _svcb_params_init {
 		s->svcb.params_position = rdata_tail;
 		s->svcb.last_key = -1;
@@ -1836,6 +1840,10 @@
 	svcb_key_ipv6hint  = ("ipv6hint"        %_write16_6);
 	svcb_key_dohpath   = ("dohpath"         %_write16_7);
 	svcb_key_ohttp     = ("ohttp"           %_write16_8);
+	deleg_key_ipv4     = ("server-ipv4"     %_write16_1);
+	deleg_key_ipv6     = ("server-ipv6"     %_write16_2);
+	deleg_key_name     = ("server-name"     %_write16_3);
+	deleg_key_include  = ("include-delegi"  %_write16_4);
 
 	mandat_value_ :=
 		(svcb_key_generic | svcb_key_alpn | svcb_key_ndalpn | svcb_key_port |
@@ -1843,6 +1851,12 @@
 		 svcb_key_ohttp
 		) >_rdata_2B_check $!_mandat_value_error %_ret . ([,\"] | all_wchar);
 	mandat_value = alpha ${ fhold; fcall mandat_value_; };
+
+	deleg_mandat_value_ :=
+		(svcb_key_generic | deleg_key_ipv4 | deleg_key_ipv6 | deleg_key_name |
+		 deleg_key_include
+		) >_rdata_2B_check $!_mandat_value_error %_ret . ([,\"] | all_wchar);
+	deleg_mandat_value = alpha ${ fhold; fcall deleg_mandat_value_; };
 
 	svcb_empty    = zlen %_write16_0;
 	svcb_generic_ = (text                                         >_item_length2_init %_item_length2_exit);
@@ -1855,6 +1869,9 @@
 	svcb_ech      = (base64_quartet+                              >_item_length2_init %_item_length2_exit);
 	svcb_ipv6     = ((ipv6_addr_write . ("," . ipv6_addr_write)*) >_item_length2_init %_item_length2_exit);
 	svcb_dohpath  = (text                                         >_item_length2_init %_item_length2_exit);
+	deleg_mandat_ = ((deleg_mandat_value    . ("," . deleg_mandat_value)*)    >_item_length2_init %_item_length2_exit);
+	deleg_mandat  = deleg_mandat_ >_mandatory_init %_mandatory_exit;
+	deleg_name    = ((r_dname . ("," . r_dname)*)                 >_item_length2_init %_item_length2_exit);
 
 	svcb_param_generic   = (svcb_key_generic   . svcb_generic);
 	svcb_param_mandatory = (svcb_key_mandatory . "=" . (svcb_mandat  | ('\"' . svcb_mandat  . '\"')));
@@ -1866,6 +1883,11 @@
 	svcb_param_ipv6hint  = (svcb_key_ipv6hint  . "=" . (svcb_ipv6    | ('\"' . svcb_ipv6    . '\"')));
 	svcb_param_dohpath   = (svcb_key_dohpath   . "=" . (svcb_dohpath | ('\"' . svcb_dohpath . '\"')));
 	svcb_param_ohttp     = (svcb_key_ohttp     . svcb_empty);
+	deleg_info_mandatory = (svcb_key_mandatory . "=" . (deleg_mandat | ('\"' . deleg_mandat  . '\"')));
+	deleg_info_ipv4      = (deleg_key_ipv4     . "=" . (svcb_ipv4    | ('\"' . svcb_ipv4    . '\"')));
+	deleg_info_ipv6      = (deleg_key_ipv6     . "=" . (svcb_ipv6    | ('\"' . svcb_ipv6    . '\"')));
+	deleg_info_name      = (deleg_key_name     . "=" . (deleg_name   | ('\"' . deleg_name   . '\"')));
+	deleg_info_include   = (deleg_key_include  . "=" . (deleg_name   | ('\"' . deleg_name   . '\"')));
 
 	svcb_param_any =
 		(svcb_param_generic | svcb_param_mandatory | svcb_param_alpn |
@@ -1877,6 +1899,15 @@
 		((sep . svcb_param_any)* . sep?) >_svcb_params_init
 		%_svcb_params_exit $!_svcb_params_error %_ret . end_wchar;
 	svcb_params = all_wchar ${ fhold; fcall svcb_params_; };
+
+	deleg_info_any =
+		(svcb_param_generic | deleg_info_mandatory | deleg_info_ipv4 |
+		 deleg_info_ipv6 | deleg_info_name | deleg_info_include
+		) >_svcb_param_init %_svcb_param_exit;
+	deleg_infos_ :=
+		((deleg_info_any . (sep . deleg_info_any)*)? . sep?) >_svcb_params_init
+		%_svcb_params_exit $!_svcb_params_error %_ret . end_wchar;
+	deleg_infos = (alpha | all_wchar) ${ fhold; fcall deleg_infos_; };
 	# END
 
 	# BEGIN - Mnemonic names processing
@@ -2082,6 +2113,10 @@
 		(type_num . sep . dsync_scheme . sep . num16 . sep . r_dname )
 		$!_r_data_error %_ret . all_wchar;
 
+	r_data_deleg :=
+		(deleg_infos)
+		$!_r_data_error %_ret . all_wchar;
+
 	action _text_r_data {
 		fhold;
 		switch (s->r_type) {
@@ -2169,6 +2204,9 @@
 			fcall r_data_svcb;
 		case KNOT_RRTYPE_DSYNC:
 			fcall r_data_dsync;
+		case KNOT_RRTYPE_DELEG:
+		case KNOT_RRTYPE_DELEGI:
+			fcall r_data_deleg;
 		default:
 			WARN(ZS_CANNOT_TEXT_DATA);
 			fgoto err_line;
@@ -2230,6 +2268,8 @@
 			fcall nonempty_hex_r_data;
 		// Next types can have empty rdata.
 		case KNOT_RRTYPE_APL:
+		case KNOT_RRTYPE_DELEG:
+		case KNOT_RRTYPE_DELEGI:
 		default:
 			fcall hex_r_data;
 		}
@@ -2314,6 +2354,8 @@
 		| "DSYNC"i      %{ s->r_type = KNOT_RRTYPE_DSYNC; }
 		| "RESINFO"i    %{ s->r_type = KNOT_RRTYPE_RESINFO; }
 		| "WALLET"i     %{ s->r_type = KNOT_RRTYPE_WALLET; }
+		| "DELEG"i      %{ s->r_type = KNOT_RRTYPE_DELEG; }
+		| "DELEGI"i     %{ s->r_type = KNOT_RRTYPE_DELEGI; }
 		| "TYPE"i      . type_number
 		) $!_r_type_error;
 	# END

@@ -7,3 +7,11 @@ dns1	A	192.0.2.1
 
 wallet WALLET	"BTC" "bc1qf2kdgu2vlctqlnlxk4smkxd68grl5q2we8dzfd"
 wallet WALLET	"ETH" "0x87D487fa59274545743949BE4282EA87F316821E"
+
+deleg1 DELEG include-delegi="delegi1,delegi2" mandatory=include-delegi,server-ipv4 server-ipv4="1.2.3.4" server-ipv6=1::2
+
+delegi1 DELEGI server-name=ns.example.com.
+delegi2 DELEGI mandatory=server-ipv6 server-ipv6=1::2
+
+sub.deleg1 A 1.2.3.4
+sub.delegi1 A 1.2.3.4

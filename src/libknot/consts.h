@@ -152,4 +152,17 @@ typedef enum {
 	KNOT_SVCB_PARAM_OHTTP     = 8,
 } knot_svcb_param_t;
 
+/*!
+ * \brief DELEG DelegInfo registry.
+ *
+ * https://www.iana.org/assignments/dns-svcb/dns-svcb.xhtml
+ */
+typedef enum {
+	KNOT_DELEG_INFO_MANDATORY    = 0,
+	KNOT_DELEG_INFO_IPV4         = 1,
+	KNOT_DELEG_INFO_IPV6         = 2,
+	KNOT_DELEG_INFO_NAME         = 3,
+	KNOT_DELEG_INFO_INCLUDE      = 4,
+} knot_deleg_info_t;
+
 /*! @} */
