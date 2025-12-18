@@ -16,6 +16,9 @@ cb() {
 	zone_updated)
 		echo "Updated zone=${2} to serial=${3}"
 		;;
+	zone_not_updated)
+		echo "Not updated zone=${2}"
+		;;
 	external_verify)
 		echo "Awaiting external validation for zone=${2} serial=${3}"
 		;;

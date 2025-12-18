@@ -658,8 +658,12 @@ Possible values:
   - ``started`` – Emitted when the server is started and all configured zones (including
     catalog zones and their members) are loaded or successfully bootstrapped.
   - ``stopped`` – Emitted when the server shutdown sequence is initiated.
-- ``zone-updated`` – The signal ``zone_updated`` is emitted when a zone has been updated.
-  Parameters: **zone** name and zone SOA **serial**.
+- ``zone-updated`` – Two signals may be emitted:
+
+  - ``zone_updated`` – Emitted when a zone has been successfully updated.
+    Parameters: **zone** name and zone SOA **serial**.
+  - ``zone_not_updated`` – Emitted when a zone has not been successfully updated.
+    Parameters: **zone** name.
 - ``external-verify`` – The signal ``external_verify`` is emitted when a zone is awaiting
   external validation before applying changes.
   Parameters: **zone** name and new zone SOA **serial**.
