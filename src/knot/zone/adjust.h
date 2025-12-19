@@ -9,7 +9,7 @@
 #include "knot/updates/zone-update.h"
 
 typedef struct {
-	const zone_contents_t *zone;
+	zone_contents_t *zone; // mostly const, just setting DELEG-present flag for zone->nodes
 	zone_tree_t *changed_nodes;
 	bool nsec3_param_changed;
 } adjust_ctx_t;
