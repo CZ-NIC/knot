@@ -40,7 +40,8 @@ static const flags_t DEFAULT_FLAGS_DIG = {
 	.z_flag  = false,
 	.ad_flag = true,
 	.cd_flag = false,
-	.do_flag = false
+	.do_flag = false,
+	.de_flag = false,
 };
 
 static const style_t DEFAULT_STYLE_DIG = {
@@ -271,6 +272,24 @@ static int opt_nodoflag(const char *arg, void *query)
 	query_t *q = query;
 
 	q->flags.do_flag = false;
+
+	return KNOT_EOK;
+}
+
+static int opt_deflag(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->flags.de_flag = true;
+
+	return KNOT_EOK;
+}
+
+static int opt_nodeflag(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->flags.de_flag = false;
 
 	return KNOT_EOK;
 }
@@ -1550,6 +1569,9 @@ static const param_t kdig_opts2[] = {
 	{ "dnssec",         ARG_NONE,     opt_doflag },   // Alias.
 	{ "nodnssec",       ARG_NONE,     opt_nodoflag },
 
+	{ "deflag",         ARG_NONE,     opt_deflag },
+	{ "nodeflag",       ARG_NONE,     opt_nodeflag },
+
 	{ "all",            ARG_NONE,     opt_all },
 	{ "noall",          ARG_NONE,     opt_noall },
 
@@ -2377,6 +2399,7 @@ static void print_help(void)
 	       "       +[no]cdflag                Set CD flag.\n"
 	       "       +[no]doflag                Set DO flag.\n"
 	       "       +[no]dnssec                Same as +[no]doflag.\n"
+	       "       +[no]deflag                Set DE flag.\n"
 	       "       +[no]all                   Show all packet sections.\n"
 	       "       +[no]qr                    Show query packet.\n"
 	       "       +[no]header              * Show packet header.\n"

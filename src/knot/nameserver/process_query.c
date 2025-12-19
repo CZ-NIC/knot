@@ -261,7 +261,7 @@ static int answer_edns_init(const knot_pkt_t *query, knot_pkt_t *resp,
 	/* Set DO bit if set (DNSSEC requested). */
 	if (knot_pkt_has_dnssec(query)) {
 		knot_edns_set_do(&qdata->opt_rr);
-	}
+	} // TODO: also echo back DE bit if we are DELEG-aware?
 
 	/* Append NSID if requested and available. */
 	if (knot_pkt_edns_option(query, KNOT_EDNS_OPTION_NSID) != NULL) {
