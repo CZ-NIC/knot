@@ -48,6 +48,8 @@ typedef struct {
 	bool	cd_flag;
 	/*!< DNSSEC OK flag. */
 	bool	do_flag;
+	/*!< DELEG-aware flag. */
+	bool	de_flag;
 } flags_t;
 
 /*! \brief Basic parameters for DNS query. */

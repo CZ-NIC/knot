@@ -336,9 +336,22 @@ static void print_section_opt(const knot_pkt_t *packet, const style_t *style)
 		ercode_str = unknown_ercode;
 	}
 
-	printf(";; Version: %u; flags: %s; UDP size: %u B; ext-rcode: %s\n",
+	char flags[96] = " ", *flend = flags;
+	for (uint32_t mask = 1 << 15, bit = 1; mask; mask >>= 1, bit++) {
+		if (packet->opt_rr->ttl & mask) {
+			if (mask & KNOT_EDNS_DO_MASK) {
+				flend += snprintf(flend, 4, " do");
+			} else if (mask & KNOT_EDNS_DE_MASK) {
+				flend += snprintf(flend, 4, " de");
+			} else {
+				flend += snprintf(flend, 7, " bit%u", bit);
+			}
+		}
+	}
+
+	printf(";; Version: %u; flags:%s; UDP size: %u B; ext-rcode: %s\n",
 	       knot_edns_get_version(packet->opt_rr),
-	       (knot_edns_do(packet->opt_rr) != 0) ? "do" : "",
+	       flags,
 	       knot_edns_get_payload(packet->opt_rr),
 	       ercode_str);
 
@@ -851,6 +864,8 @@ static void json_print_edns(jsonw_t *w, const knot_pkt_t *pkt)
 		if ((flags & mask)) {
 			if ((mask & KNOT_EDNS_DO_MASK)) {
 				jsonw_str(w, NULL, "DO");
+			} else if ((mask & KNOT_EDNS_DE_MASK)) {
+				jsonw_str(w, NULL, "DE");
 			} else {
 				(void)snprintf(tmp, sizeof(tmp), "BIT%d", i);
 				jsonw_str(w, NULL, tmp);
