@@ -177,6 +177,9 @@ Options
 **+**\ [\ **no**\ ]\ **dnssec**
   Same as **+**\ [\ **no**\ ]\ **doflag**
 
+**+**\ [\ **no**\ ]\ **deflag**
+  Set the DE flag.
+
 **+**\ [\ **no**\ ]\ **validate**\[\ =\ *LEVEL*\]
   Also query for DNSKEY, validate DNSSEC in the answer. Implies DO flag.
   Optional argument specifies verbosity (1-3, default 3).

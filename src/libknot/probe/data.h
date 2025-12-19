@@ -72,7 +72,8 @@ typedef struct {
 		uint8_t version;  /*!< EDNS version. */
 		uint8_t present  : 1; /*!< EDNS presence indication. */
 		uint8_t flag_do  : 1; /*!< DO flag indication. */
-		uint8_t reserved : 6; /*!< Unused. */
+		uint8_t flag_de  : 1; /*!< DE flag indication. */
+		uint8_t reserved : 5; /*!< Unused. */
 	} query_edns;
 
 	struct {

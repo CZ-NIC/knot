@@ -85,6 +85,7 @@ int knot_probe_data_set(knot_probe_data_t *data, knot_probe_proto_t proto,
 		data->query_edns.version = knot_edns_get_version(query->opt_rr);
 		data->query_edns.present = 1;
 		data->query_edns.flag_do = knot_edns_do(query->opt_rr);
+		data->query_edns.flag_de = knot_edns_de(query->opt_rr);
 		if (query->edns_opts != NULL) {
 			for (int i = 0; i <= KNOT_EDNS_MAX_OPTION_CODE; i++) {
 				if (query->edns_opts->ptr[i] != NULL) {
