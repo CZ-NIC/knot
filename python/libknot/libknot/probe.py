@@ -61,7 +61,8 @@ class KnotProbeData(ctypes.Structure):
                 ('edns_version', ctypes.c_ubyte),
                 ('edns_present', ctypes.c_ubyte, 1),
                 ('edns_flag_do', ctypes.c_ubyte, 1),
-                ('_reserved_', ctypes.c_ubyte, 6),
+                ('edns_flag_de', ctypes.c_ubyte, 1),
+                ('_reserved_', ctypes.c_ubyte, 5),
                 ('query_hdr', KnotProbeDataDNSHdr),
                 ('query_size', ctypes.c_ushort),
                 ('query_class', ctypes.c_ushort),
@@ -155,6 +156,8 @@ class KnotProbeData(ctypes.Structure):
             string += ", EDNS %i B" % self.edns_payload
             if self.edns_flag_do == 1:
                 string += ", " + COL("DO", BOLD)
+            if self.edns_flag_de == 1:
+                string += ", " + COL("DE", BOLD)
             if (self.edns_options & (1 << 3)) != 0:
                 string += ", NSID"
             if (self.edns_options & (1 << 8)) != 0:
