@@ -460,6 +460,27 @@ AM_CONDITIONAL([HAVE_DNSTAP], test "$enable_dnstap" != "no")
 AM_CONDITIONAL([HAVE_LIBDNSTAP], test "$enable_dnstap" != "no" -o \
                                       "$STATIC_MODULE_dnstap" != "no" -o \
                                       "$SHARED_MODULE_dnstap" != "no")
+
+AC_ARG_ENABLE([throttle-dnstap-logs],
+  AS_HELP_STRING([--enable-throttle-dnstap-logs=auto|yes|no], [enable throttling support for dnstap logs [default=auto]]),
+  [enable_throttle_dnstap_logs="$enableval"], [enable_throttle_dnstap_logs=auto])
+
+AS_CASE([$enable_throttle_dnstap_logs],
+  [auto],[
+    AS_IF([test "x$atomic_type" != "xnone"], [
+      AC_DEFINE([ENABLE_THROTTLE_DNSTAP_LOGS], [1], [Define to 1 to enable support for throttling dnstap logs.])
+      enable_throttle_dnstap_logs=yes
+    ],
+    [enable_throttle_dnstap_logs=no])],
+  [yes],[
+    AS_IF([test "x$atomic_type" != "xnone"], [
+      AC_DEFINE([ENABLE_THROTTLE_DNSTAP_LOGS], [1], [Define to 1 to enable support for throttling dnstap logs.])
+    ],
+    [AC_MSG_ERROR([Throttling support needs stdatomic support])])],
+  [no],[],
+  [*], [AC_MSG_ERROR([Invalid value of --enable-throttle-dnstap-logs.])
+])
+
 # MaxMind DB for the GeoIP module
 AC_ARG_ENABLE([maxminddb],
     AS_HELP_STRING([--enable-maxminddb=auto|yes|no], [enable MaxMind DB [default=auto]]),
@@ -765,6 +786,8 @@ AC_LINK_IFELSE(
    atomic_type="C11"],
   [atomic_type="none"]
 )
+AC_SEARCH_LIBS([__atomic_compare_exchange_8], [atomic], [], [])
+AM_CONDITIONAL([HAVE_ATOMIC_PRIMITIVES], [test "x$atomic_type" != "xnone"])
 
 # Prepare CFLAG_VISIBILITY to be used where needed
 gl_VISIBILITY()
@@ -828,6 +851,8 @@ result_msg_base="
     D-Bus support:          ${enable_dbus}
     POSIX capabilities:     ${enable_cap_ng}
     PKCS #11 support:       ${enable_pkcs11}
+
+    Dnstap throttling       ${enable_throttle_dnstap_logs}
 
     Code coverage:          ${enable_code_coverage}
     Sanitizer:              ${with_sanitizer}
