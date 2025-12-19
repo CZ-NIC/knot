@@ -176,8 +176,12 @@ static int put_delegation(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 		qdata->extra->node = node_parent(qdata->extra->node);
 	}
 
-	/* Insert NS record. */
-	knot_rrset_t rrset = node_rrset(qdata->extra->node, KNOT_RRTYPE_NS);
+	uint16_t rr_type = KNOT_RRTYPE_NS;
+	if (qdata->deleg_aware && node_rrtype_exists(qdata->extra->node, KNOT_RRTYPE_DELEG)) {
+		rr_type = KNOT_RRTYPE_DELEG;
+	}
+
+	knot_rrset_t rrset = node_rrset(qdata->extra->node, rr_type);
 	knot_rrset_t rrsigs = node_rrset(qdata->extra->node, KNOT_RRTYPE_RRSIG);
 	return process_query_put_rr(pkt, qdata, &rrset, &rrsigs,
 	                            KNOT_COMPR_HINT_NONE, 0);
@@ -362,11 +366,23 @@ static knotd_in_state_t name_found(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 {
 	uint16_t qtype = knot_pkt_qtype(pkt);
 
-	/* DS query at DP is answered normally, but everything else at/below DP
-	 * triggers referral response. */
-	if (((qdata->extra->node->flags & NODE_FLAGS_DELEG) && qtype != KNOT_RRTYPE_DS) ||
-	    (qdata->extra->node->flags & NODE_FLAGS_NONAUTH)) {
+	bool at_deleg = (qdata->extra->node->flags & NODE_FLAGS_DELEG);
+	bool below_deleg = (qdata->extra->node->flags & NODE_FLAGS_NONAUTH);
+	bool parent_side = (qtype == KNOT_RRTYPE_DS);
+	if (qdata->deleg_aware) {
+		parent_side = parent_side || (qtype == KNOT_RRTYPE_DELEG);
+	} else {
+		at_deleg = at_deleg && node_rrtype_exists(qdata->extra->node, KNOT_RRTYPE_NS);
+		below_deleg = below_deleg && !(qdata->extra->node->flags & NODE_FLAGS_NONAUTH_DELEG);
+	}
+
+	if ((at_deleg && !parent_side) || below_deleg) {
 		return KNOTD_IN_STATE_DELEG;
+	} else if ((qdata->extra->node->flags & NODE_FLAGS_DELEG) &&
+	           qtype != KNOT_RRTYPE_DS && qtype != KNOT_RRTYPE_DELEG) {
+		return KNOTD_IN_STATE_NODATA;
+	} else if (qdata->extra->node->flags & NODE_FLAGS_NONAUTH) {
+		return KNOTD_IN_STATE_MISS;
 	}
 
 	if (node_rrtype_exists(qdata->extra->node, KNOT_RRTYPE_CNAME)
@@ -437,7 +453,8 @@ static knotd_in_state_t name_not_found(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 	}
 
 	/* Name is below delegation. */
-	if ((node->flags & NODE_FLAGS_DELEG)) {
+	if ((node->flags & NODE_FLAGS_DELEG) &&
+	    (qdata->deleg_aware || node_rrtype_exists(node, KNOT_RRTYPE_NS))) {
 		qdata->extra->node = node;
 		return KNOTD_IN_STATE_DELEG;
 	}
@@ -724,6 +741,10 @@ knot_layer_state_t internet_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 
 	/* Get answer to QNAME. */
 	qdata->name = knot_pkt_qname(qdata->query);
+	qdata->deleg_aware = ((qdata->extra->contents->nodes->flags & ZONE_TREE_CONTAINS_DELEG) && knot_pkt_has_deleg_aware(qdata->query));
+	if (qdata->deleg_aware) {
+		knot_edns_set_de(&qdata->opt_rr);
+	}
 
 	return answer_query(pkt, qdata);
 }

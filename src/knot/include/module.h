@@ -419,6 +419,7 @@ typedef struct {
 	knot_sign_context_t sign;       /*!< Signing context. */
 	knot_edns_client_subnet_t *ecs; /*!< EDNS Client Subnet option. */
 	bool err_truncated;             /*!< Set TC and AA bits if an error reply. */
+	bool deleg_aware;               /*!< Answering DELEG-aware way. */
 
 	/*! Persistent items on processing reset. */
 	knot_mm_t *mm;                /*!< Memory context. */

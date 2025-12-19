@@ -95,6 +95,8 @@ enum node_flags {
 	NODE_FLAGS_SUBTREE_DATA =    1 << 12,
 	/*! \brief Node owner name contains \0 byte in some label. */
 	NODE_FLAGS_NULLBYTE =        1 << 13,
+	/*! \brief Node is not authoritative due to being below a DELEG-only delegation. */
+	NODE_FLAGS_NONAUTH_DELEG =   1 << 14,
 };
 
 typedef void (*node_addrem_cb)(zone_node_t *, void *);

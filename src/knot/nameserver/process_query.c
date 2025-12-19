@@ -191,7 +191,7 @@ static zone_t *answer_zone_find(const knot_pkt_t *query, knot_zonedb_t *zonedb)
 	 * the zone (but use whole qname in search for the record), as the DS
 	 * records are only present in a parent zone.
 	 */
-	if (qtype == KNOT_RRTYPE_DS && qname[0] != '\0') {
+	if ((qtype == KNOT_RRTYPE_DS || (qtype == KNOT_RRTYPE_DELEG && knot_pkt_has_deleg_aware(query))) && qname[0] != '\0') {
 		const knot_dname_t *parent = knot_dname_next_label(qname);
 		zone = knot_zonedb_find_suffix(zonedb, parent);
 		/* If zone does not exist, search for its parent zone,
