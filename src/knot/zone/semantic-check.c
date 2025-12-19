@@ -148,6 +148,9 @@ static int check_delegation(const zone_node_t *node, semchecks_data_t *data)
 
 	const knot_rdataset_t *ns_rrs = node_rdataset(node, KNOT_RRTYPE_NS);
 	if (ns_rrs == NULL) {
+		if (node_rrtype_exists(node, KNOT_RRTYPE_DELEG)) {
+			return KNOT_EOK;
+		}
 		assert(data->zone->apex == node);
 		data->handler->cb(data->handler, data->zone, node->owner,
 		                  SEM_ERR_NS_APEX, NULL);

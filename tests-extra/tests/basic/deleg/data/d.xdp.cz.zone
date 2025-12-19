@@ -1,0 +1,34 @@
+$ORIGIN d.xdp.cz.
+$TTL 20
+@	SOA	dns1 hostmaster 2010111201 10800 3600 1209600 7200
+	NS	dns1
+dns1	A	192.0.2.1
+delegi	DELEGI	server-name=dns1.ns
+
+ns	NS	dns1.ns
+ns	A	255.255.255.0
+dns1.ns	A	192.0.2.2
+
+ns-ds	NS	dns1.ns
+ns-ds	A	255.255.255.0
+dns1.ns-ds	A	192.0.2.2
+ns-ds	DS	34333 15 2 31486936F0F225158FD79ADF5BBC74F00B7B2CE78D5D951FC0E2DDB3008DCEC9
+
+deleg	DELEG	server-name=dns1.deleg
+deleg	A	255.255.255.0
+dns1.deleg	A	192.0.2.2
+
+deleg-ds	DELEG	include-delegi=delegi
+deleg-ds	A	255.255.255.0
+deleg-ds	DS	34333 15 2 31486936F0F225158FD79ADF5BBC74F00B7B2CE78D5D951FC0E2DDB3008DCEC9
+
+deleg-ns	DELEG	include-delegi=delegi
+deleg-ns	A	255.255.255.0
+deleg-ns	NS	dns1.deleg-ns
+dns1.deleg-ns	A	192.0.2.2
+
+deleg-ns-ds	DELEG	server-name=dns1.deleg-ns-ds
+deleg-ns-ds	A	255.255.255.0
+deleg-ns-ds	NS	dns1.deleg-ns-ds
+dns1.deleg-ns-ds	A	192.0.2.2
+deleg-ns-ds	DS	34333 15 2 31486936F0F225158FD79ADF5BBC74F00B7B2CE78D5D951FC0E2DDB3008DCEC9

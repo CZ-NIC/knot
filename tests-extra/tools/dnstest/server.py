@@ -669,7 +669,7 @@ class Server(object):
 
     def dig(self, rname, rtype, rclass="IN", udp=None, serial=None, timeout=None,
             tries=3, flags="", bufsize=None, edns=None, nsid=False, dnssec=False,
-            log_no_sep=False, tsig=None, addr=None, source=None, xdp=None):
+            de=False, log_no_sep=False, tsig=None, addr=None, source=None, xdp=None):
 
         # Convert one item zone list to zone name.
         if isinstance(rname, list):
@@ -741,7 +741,7 @@ class Server(object):
                 dig_flags += " +z"
 
         # Set EDNS.
-        if edns != None or bufsize or nsid:
+        if edns != None or bufsize or nsid or de:
             class NsidFix(object):
                 '''Old pythondns doesn't implement NSID option.'''
                 def __init__(self):
@@ -771,6 +771,10 @@ class Server(object):
                 options = None
 
             query.use_edns(edns=edns, payload=payload, options=options)
+
+            if de:
+                query.ednsflags |= (1<<13)
+                dig_flags += " +deflag"
 
         # Set DO flag.
         if dnssec:

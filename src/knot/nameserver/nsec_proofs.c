@@ -609,19 +609,24 @@ int nsec_prove_dp_security(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 		return KNOT_EINVAL;
 	}
 
+	int ret = KNOT_EOK;
+
 	// Add DS into the response.
 
 	knot_rrset_t rrset = node_rrset(qdata->extra->node, KNOT_RRTYPE_DS);
 	if (!knot_rrset_empty(&rrset)) {
 		knot_rrset_t rrsigs = node_rrset(qdata->extra->node, KNOT_RRTYPE_RRSIG);
-		return process_query_put_rr(pkt, qdata, &rrset, &rrsigs,
-		                            KNOT_COMPR_HINT_NONE, 0);
+		ret = process_query_put_rr(pkt, qdata, &rrset, &rrsigs,
+		                           KNOT_COMPR_HINT_NONE, 0);
 	}
 
-	// Alternatively prove that DS doesn't exist.
+	// Prove that DS and/or DELEG does not exist.
+	if ((knot_rrset_empty(&rrset) || (qdata->deleg_aware && !node_rrtype_exists(qdata->extra->node, KNOT_RRTYPE_DELEG))) && ret == KNOT_EOK) {
+		ret = put_nodata(qdata->extra->node, qdata->extra->encloser, qdata->extra->previous,
+		                 qdata->extra->contents, qdata->name, qdata, pkt);
+	}
 
-	return put_nodata(qdata->extra->node, qdata->extra->encloser, qdata->extra->previous,
-	                  qdata->extra->contents, qdata->name, qdata, pkt);
+	return ret;
 }
 
 int nsec_append_rrsigs(knot_pkt_t *pkt, knotd_qdata_t *qdata, bool optional)

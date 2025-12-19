@@ -1004,7 +1004,8 @@ bool knot_zone_sign_rr_should_be_signed(const zone_node_t *node,
 	// At delegation points we only want to sign NSECs and DSs
 	if (node->flags & NODE_FLAGS_DELEG) {
 		if (!(rrset->type == KNOT_RRTYPE_NSEC ||
-		      rrset->type == KNOT_RRTYPE_DS)) {
+		      rrset->type == KNOT_RRTYPE_DS ||
+		      rrset->type == KNOT_RRTYPE_DELEG)) {
 			return false;
 		}
 	}
