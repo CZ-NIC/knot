@@ -14,7 +14,8 @@ This section has informative character. Knot DNS has been tested with several
 devices which claim to support PKCS #11 interface. The following table
 indicates which algorithms and operations have been observed to work. Please
 notice minimal GnuTLS library version required for particular algorithm
-support.
+support. Factors like firmware and Cryptoki module version might affect the
+outcome.
 
 .. list-table::
    :header-rows: 1
