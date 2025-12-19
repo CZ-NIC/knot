@@ -12,6 +12,11 @@
 #include "contrib/dnstap/writer.h"
 #include "contrib/time.h"
 #include "knot/include/module.h"
+#include "knot/modules/dnstap/dnstapcounter.h"
+
+#ifdef ENABLE_THROTTLE_DNSTAP_LOGS
+#include "knot/common/qps_limiter.h"
+#endif
 
 #define MOD_SINK		"\x04""sink"
 #define MOD_IDENTITY		"\x08""identity"
@@ -21,6 +26,11 @@
 #define MOD_WITH_QUERIES	"\x16""responses-with-queries"
 #define MOD_COMBINED		"\x0F""query-with-resp"
 
+#ifdef ENABLE_THROTTLE_DNSTAP_LOGS
+#define MOD_QPS_LIMIT		"\x09""qps-limit"
+#define MOD_ERR_LIMIT		"\x09""err-limit"
+#endif
+
 const yp_item_t dnstap_conf[] = {
 	{ MOD_SINK,         YP_TSTR,  YP_VNONE },
 	{ MOD_IDENTITY,     YP_TSTR,  YP_VNONE },
@@ -29,6 +39,10 @@ const yp_item_t dnstap_conf[] = {
 	{ MOD_RESPONSES,    YP_TBOOL, YP_VBOOL = { true } },
 	{ MOD_WITH_QUERIES, YP_TBOOL, YP_VBOOL = { false } },
 	{ MOD_COMBINED,     YP_TBOOL, YP_VBOOL = { false } }, // alias for responses-with-queries
+#ifdef ENABLE_THROTTLE_DNSTAP_LOGS
+	{ MOD_QPS_LIMIT,    YP_TINT,  YP_VINT = { 0, INT32_MAX, 0 } },
+	{ MOD_ERR_LIMIT,    YP_TINT,  YP_VINT = { 0, INT32_MAX, 0 } },
+#endif
 	{ NULL }
 };
 
@@ -57,10 +71,13 @@ typedef struct {
 	char *version;
 	size_t version_len;
 	bool with_queries;
+#ifdef ENABLE_THROTTLE_DNSTAP_LOGS
+	qps_limiter_t qps_limiter;
+#endif
 } dnstap_ctx_t;
 
 static knotd_state_t log_message(knotd_state_t state, const knot_pkt_t *pkt,
-                                 knotd_qdata_t *qdata, knotd_mod_t *mod)
+                                 knotd_qdata_t *qdata, knotd_mod_t *mod, struct timespec *tv)
 {
 	assert(pkt && qdata && mod);
 
@@ -73,11 +90,6 @@ static knotd_state_t log_message(knotd_state_t state, const knot_pkt_t *pkt,
 
 	struct fstrm_iothr_queue *ioq =
 		fstrm_iothr_get_input_queue_idx(ctx->iothread, qdata->params->thread_id);
-
-	/* Unless we want to measure the time it takes to process each query,
-	 * we can treat Q/R times the same. */
-	struct timespec tv = { 0 };
-	clock_gettime(CLOCK_REALTIME_COARSE, &tv);
 
 	/* Determine query / response. */
 	Dnstap__Message__Type msgtype = DNSTAP__MESSAGE__TYPE__AUTH_QUERY;
@@ -93,7 +105,7 @@ static knotd_state_t log_message(knotd_state_t state, const knot_pkt_t *pkt,
 	int ret = dt_message_fill(&msg, msgtype,
 	                          (const struct sockaddr *)knotd_qdata_remote_addr(qdata),
 	                          (const struct sockaddr *)knotd_qdata_local_addr(qdata),
-	                          qdata->params->proto, pkt->wire, pkt->size, &tv,
+	                          qdata->params->proto, pkt->wire, pkt->size, tv,
 	                          (ctx->with_queries && qdata->query != NULL) ? qdata->query->wire : NULL,
 	                          (ctx->with_queries && qdata->query != NULL) ? qdata->query->size : 0,
 	                          &qdata->query_time);
@@ -140,17 +152,73 @@ static knotd_state_t log_message(knotd_state_t state, const knot_pkt_t *pkt,
 static knotd_state_t dnstap_message_log_query(knotd_state_t state, knot_pkt_t *pkt,
                                               knotd_qdata_t *qdata, knotd_mod_t *mod)
 {
-	assert(qdata);
+	struct timespec tv;
+	clock_gettime(CLOCK_REALTIME_COARSE, &tv);
 
-	return log_message(state, qdata->query, qdata, mod);
+	knotd_mod_stats_incr(mod, qdata->params->thread_id, dnstap_counter_log_emitted,
+	                     log_emitted_QUERY, 1);
+
+	return log_message(state, qdata->query, qdata, mod, &tv);
 }
 
 /*! \brief Submit message - response. */
 static knotd_state_t dnstap_message_log_response(knotd_state_t state, knot_pkt_t *pkt,
                                                  knotd_qdata_t *qdata, knotd_mod_t *mod)
 {
-	return log_message(state, pkt, qdata, mod);
+	struct timespec tv;
+	clock_gettime(CLOCK_REALTIME_COARSE, &tv);
+
+	knotd_mod_stats_incr(mod, qdata->params->thread_id, dnstap_counter_log_emitted,
+	                     log_emitted_RESPONSE, 1);
+
+	return log_message(state, pkt, qdata, mod, &tv);
 }
+
+#ifdef ENABLE_THROTTLE_DNSTAP_LOGS
+/*! \brief Submit message - query. */
+static knotd_state_t dnstap_message_log_query_limit(knotd_state_t state, knot_pkt_t *pkt,
+                                                    knotd_qdata_t *qdata, knotd_mod_t *mod)
+{
+	struct timespec tv;
+	clock_gettime(CLOCK_REALTIME_COARSE, &tv);
+
+	dnstap_ctx_t *ctx = knotd_mod_ctx(mod);
+	if (qps_limiter_is_allowed(&ctx->qps_limiter, tv.tv_sec, false)) {
+		knotd_mod_stats_incr(mod, qdata->params->thread_id,
+		                     dnstap_counter_log_emitted, log_emitted_QUERY, 1);
+
+		return log_message(state, qdata->query, qdata, mod, &tv);
+	} else {
+		knotd_mod_stats_incr(mod, qdata->params->thread_id,
+		                     dnstap_counter_log_dropped, log_dropped_QUERY, 1);
+
+		return state;
+	}
+}
+
+/*! \brief Submit message - response. */
+static knotd_state_t dnstap_message_log_response_limit(knotd_state_t state, knot_pkt_t *pkt,
+                                                       knotd_qdata_t *qdata, knotd_mod_t *mod)
+{
+	struct timespec tv;
+	clock_gettime(CLOCK_REALTIME_COARSE, &tv);
+
+	bool err = KNOT_RCODE_SERVFAIL == knot_wire_get_rcode(pkt->wire);
+
+	dnstap_ctx_t *ctx = knotd_mod_ctx(mod);
+	if (qps_limiter_is_allowed(&ctx->qps_limiter, tv.tv_sec, err)) {
+		knotd_mod_stats_incr(mod, qdata->params->thread_id,
+		                     dnstap_counter_log_emitted, log_emitted_RESPONSE, 1);
+
+		return log_message(state, pkt, qdata, mod, &tv);
+	} else {
+		knotd_mod_stats_incr(mod, qdata->params->thread_id,
+		                     dnstap_counter_log_dropped, log_dropped_RESPONSE, 1);
+
+		return state;
+	}
+}
+#endif
 
 /*! \brief Create a UNIX socket sink. */
 static struct fstrm_writer* dnstap_unix_writer(const char *path)
@@ -326,6 +394,27 @@ int dnstap_load(knotd_mod_t *mod)
 	conf = knotd_conf_mod(mod, MOD_RESPONSES);
 	const bool log_responses = conf.single.boolean;
 
+#ifdef ENABLE_THROTTLE_DNSTAP_LOGS
+	/* Get QPS_limit. */
+	conf = knotd_conf_mod(mod, MOD_QPS_LIMIT);
+	ctx->qps_limiter.log_qps = conf.single.integer;
+
+	/* Get Err QPS_limit. */
+	conf = knotd_conf_mod(mod, MOD_ERR_LIMIT);
+	ctx->qps_limiter.log_err_qps = conf.single.integer;
+
+	bool limit_by_qps = ctx->qps_limiter.log_qps || ctx->qps_limiter.log_err_qps;
+	if (limit_by_qps) {
+		if (qps_limiter_init(&ctx->qps_limiter) != KNOT_EOK) {
+			goto fail;
+		}
+	}
+#endif
+
+	if (dnstap_create_counters(mod) != KNOT_EOK) {
+		goto fail;
+	}
+
 	/* Initialize the writer and the options. */
 	struct fstrm_writer *writer = dnstap_writer(mod, sink);
 	if (writer == NULL) {
@@ -353,13 +442,22 @@ int dnstap_load(knotd_mod_t *mod)
 
 	/* Hook to the query plan. */
 	if (log_queries) {
-		int ret = knotd_mod_hook(mod, KNOTD_STAGE_BEGIN, dnstap_message_log_query);
+		int ret = knotd_mod_hook(mod, KNOTD_STAGE_BEGIN,
+#ifdef ENABLE_THROTTLE_DNSTAP_LOGS
+		                         limit_by_qps ? dnstap_message_log_query_limit :
+#endif
+		                         dnstap_message_log_query);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
+
 	}
 	if (log_responses) {
-		int ret = knotd_mod_hook(mod, KNOTD_STAGE_END, dnstap_message_log_response);
+		int ret = knotd_mod_hook(mod, KNOTD_STAGE_END,
+#ifdef ENABLE_THROTTLE_DNSTAP_LOGS
+		                         limit_by_qps ? dnstap_message_log_response_limit :
+#endif
+		                         dnstap_message_log_response);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
@@ -369,6 +467,9 @@ int dnstap_load(knotd_mod_t *mod)
 fail:
 	knotd_mod_log(mod, LOG_ERR, "failed to initialize sink '%s'", sink);
 
+#ifdef ENABLE_THROTTLE_DNSTAP_LOGS
+	qps_limiter_cleanup(&ctx->qps_limiter);
+#endif
 	free(ctx->identity);
 	free(ctx->version);
 	free(ctx);
@@ -379,8 +480,12 @@ fail:
 void dnstap_unload(knotd_mod_t *mod)
 {
 	dnstap_ctx_t *ctx = knotd_mod_ctx(mod);
+	dnstap_delete_counters(mod);
 
 	fstrm_iothr_destroy(&ctx->iothread);
+#ifdef ENABLE_THROTTLE_DNSTAP_LOGS
+	qps_limiter_cleanup(&ctx->qps_limiter);
+#endif
 	free(ctx->identity);
 	free(ctx->version);
 	free(ctx);
