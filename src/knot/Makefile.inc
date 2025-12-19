@@ -235,6 +235,12 @@ libknotd_la_SOURCES = \
 	knot/zone/zonefile.c			\
 	knot/zone/zonefile.h
 
+if HAVE_ATOMIC_PRIMITIVES
+libknotd_la_SOURCES +=                          \
+	knot/common/qps_limiter.c               \
+	knot/common/qps_limiter.h
+endif
+
 if ENABLE_QUIC
 libknotd_la_SOURCES += \
 	knot/query/quic-requestor.c		\
