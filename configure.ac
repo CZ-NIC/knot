@@ -301,6 +301,29 @@ AS_IF([test "$enable_redis" = yes -o "$enable_redis" = client],[
    ])
 ])
 
+# dnstap module QPS throttle
+AC_ARG_ENABLE([throttle-dnstap-logs],
+    AS_HELP_STRING([--enable-throttle-dnstap-logs=auto|yes|no], [enable throttling support for dnstap logs [default=auto]]),
+    [enable_throttle_dnstap_logs="$enableval"], [enable_throttle_dnstap_logs=auto])
+
+AS_CASE([$enable_throttle_dnstap_logs],
+   [auto],[
+     AS_IF([test "x$atomic_type" != "xnone"], [
+       AC_DEFINE([ENABLE_THROTTLE_DNSTAP_LOGS], [1], [Define to 1 to enable support for throttling dnstap logs.])
+       enable_throttle_dnstap_logs=yes
+     ],
+     [enable_throttle_dnstap_logs=no])
+   ],
+   [yes],[
+     AS_IF([test "x$atomic_type" != "xnone"], [
+       AC_DEFINE([ENABLE_THROTTLE_DNSTAP_LOGS], [1], [Define to 1 to enable support for throttling dnstap logs.])
+     ],
+     [AC_MSG_ERROR([Throttling support needs __atomic or stdatomic support])])
+   ],
+   [no],[],
+   [*], [AC_MSG_ERROR([Invalid value of --enable-throttle-dnstap-logs.]
+ )])
+
 #########################################
 # Dependencies needed for Knot DNS daemon
 #########################################
@@ -771,6 +794,8 @@ AC_LINK_IFELSE(
      atomic_type="__atomic"]
   )
 )
+AC_CHECK_HEADER([stdalign.h], [AC_DEFINE(HAVE_STDALIGN, 1, [Define to 1 if you have stdalign.h])])
+AM_CONDITIONAL([HAVE_ATOMIC_PRIMITIVES], [test "x$atomic_type" != "xnone"])
 
 # Prepare CFLAG_VISIBILITY to be used where needed
 gl_VISIBILITY()
@@ -834,6 +859,7 @@ result_msg_base="
     D-Bus support:          ${enable_dbus}
     POSIX capabilities:     ${enable_cap_ng}
     PKCS #11 support:       ${enable_pkcs11}
+    Throttle sup for dnstap ${enable_throttle_dnstap_logs}
 
     Code coverage:          ${enable_code_coverage}
     Sanitizer:              ${with_sanitizer}
