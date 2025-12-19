@@ -177,6 +177,9 @@ Options
 **+**\ [\ **no**\ ]\ **dnssec**
   Same as **+**\ [\ **no**\ ]\ **doflag**
 
+**+**\ [\ **no**\ ]\ **deflag**
+  Set the DE flag.
+
 **+**\ [\ **no**\ ]\ **all**
   Show all packet sections.
 
