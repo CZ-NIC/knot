@@ -36,10 +36,17 @@ int adjust_cb_flags(zone_node_t *node, adjust_ctx_t *ctx)
 
 	assert(!(node->flags & NODE_FLAGS_DELETED));
 
-	node->flags &= ~(NODE_FLAGS_DELEG | NODE_FLAGS_NONAUTH | NODE_FLAGS_SUBTREE_AUTH | NODE_FLAGS_SUBTREE_DATA);
+	node->flags &= ~(NODE_FLAGS_DELEG | NODE_FLAGS_NONAUTH | NODE_FLAGS_SUBTREE_AUTH | NODE_FLAGS_SUBTREE_DATA | NODE_FLAGS_NONAUTH_DELEG);
 
 	if (parent && (parent->flags & NODE_FLAGS_DELEG || parent->flags & NODE_FLAGS_NONAUTH)) {
 		node->flags |= NODE_FLAGS_NONAUTH;
+		if (parent->flags & NODE_FLAGS_NONAUTH_DELEG || ((parent->flags & NODE_FLAGS_DELEG) && !node_rrtype_exists(parent, KNOT_RRTYPE_NS))) {
+			node->flags |= NODE_FLAGS_NONAUTH_DELEG;
+		}
+	} else if (node_rrtype_exists(node, KNOT_RRTYPE_DELEG) && node != ctx->zone->apex) {
+		ctx->zone->nodes->flags |= ZONE_TREE_CONTAINS_DELEG;
+		node->flags |= NODE_FLAGS_DELEG;
+		set_subt_auth = true;
 	} else if (node_rrtype_exists(node, KNOT_RRTYPE_NS) && node != ctx->zone->apex) {
 		node->flags |= NODE_FLAGS_DELEG;
 		if (node_rrtype_exists(node, KNOT_RRTYPE_DS)) {
