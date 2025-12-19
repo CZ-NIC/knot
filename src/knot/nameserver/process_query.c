@@ -191,7 +191,7 @@ static zone_t *answer_zone_find(const knot_pkt_t *query, knot_zonedb_t *zonedb)
 	 * the zone (but use whole qname in search for the record), as the DS
 	 * records are only present in a parent zone.
 	 */
-	if (qtype == KNOT_RRTYPE_DS && qname[0] != '\0') {
+	if ((qtype == KNOT_RRTYPE_DS || (qtype == KNOT_RRTYPE_DELEG && knot_pkt_has_deleg_aware(query))) && qname[0] != '\0') {
 		const knot_dname_t *parent = knot_dname_next_label(qname);
 		zone = knot_zonedb_find_suffix(zonedb, parent);
 		/* If zone does not exist, search for its parent zone,
@@ -261,7 +261,7 @@ static int answer_edns_init(const knot_pkt_t *query, knot_pkt_t *resp,
 	/* Set DO bit if set (DNSSEC requested). */
 	if (knot_pkt_has_dnssec(query)) {
 		knot_edns_set_do(&qdata->opt_rr);
-	} // TODO: also echo back DE bit if we are DELEG-aware?
+	}
 
 	/* Append NSID if requested and available. */
 	if (knot_pkt_edns_option(query, KNOT_EDNS_OPTION_NSID) != NULL) {
