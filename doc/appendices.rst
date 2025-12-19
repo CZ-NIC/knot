@@ -131,5 +131,5 @@ outcome.
 
 .. [#fn-softhsm] Algorithms supported depend on support in OpenSSL on which SoftHSM relies.
    A command similar to the following may be used to verify what algorithms are supported:
-   ``$ pkcs11-tool --modul /usr/lib64/pkcs11/libsofthsm2.so -M``.
+   ``$ pkcs11-tool --module /usr/lib64/pkcs11/libsofthsm2.so -M``.
 .. [#fn-utimaco] Requires setting the number of background workers to 1!
