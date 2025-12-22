@@ -171,6 +171,7 @@
 #define C_TIMER_DB_SYNC		"\x0D""timer-db-sync"
 #define C_TLS			"\x03""tls"
 #define C_TPL			"\x08""template"
+#define C_TRASH_DELAY		"\x0B""trash-delay"
 #define C_UDP			"\x03""udp"
 #define C_UDP_MAX_PAYLOAD	"\x0F""udp-max-payload"
 #define C_UDP_MAX_PAYLOAD_IPV4	"\x14""udp-max-payload-ipv4"
