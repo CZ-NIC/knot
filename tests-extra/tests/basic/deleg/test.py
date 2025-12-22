@@ -121,4 +121,12 @@ for childs_running in [ False, True ]:
                 check_normal(resp, False, "A")
 
 knot.ctl("zone-flush", wait=True)
+
+resp = knot.dig(parent[0].name, "DNSKEY")
+if resp.resp.answer[0].to_rdataset()[0].flags & 2 != 2:
+    set_err("No ADT flag")
+resp = knot.dig(childs[0].name, "DNSKEY")
+if resp.resp.answer[0].to_rdataset()[0].flags & 2 != 0:
+    set_err("Extra ADT flag")
+
 t.end()
