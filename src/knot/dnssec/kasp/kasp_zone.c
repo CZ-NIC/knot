@@ -41,6 +41,16 @@ static int dnskey_guess_flags(dnssec_key_t *key, uint16_t keytag)
 		return KNOT_EOK;
 	}
 
+	dnssec_key_set_flags(key, DNSKEY_FLAGS_KSK_ADT);
+	if (dnssec_key_get_keytag(key) == keytag) {
+		return KNOT_EOK;
+	}
+
+	dnssec_key_set_flags(key, DNSKEY_FLAGS_ZSK_ADT);
+	if (dnssec_key_get_keytag(key) == keytag) {
+		return KNOT_EOK;
+	}
+
 	dnssec_key_set_flags(key, DNSKEY_FLAGS_REVOKED);
 	if (dnssec_key_get_keytag(key) == keytag) {
 		return KNOT_EOK;
@@ -410,7 +420,7 @@ int kasp_zone_keys_from_rr(knot_kasp_zone_t *zone,
 		}
 		zone->keys[i].is_pub_only = true;
 
-		zone->keys[i].is_ksk = (knot_dnskey_flags(zkey) == DNSKEY_FLAGS_KSK);
+		zone->keys[i].is_ksk = (knot_dnskey_flags(zkey) & KNOT_DNSKEY_FLAG_SEP);
 		zone->keys[i].is_zsk = true; // doesn't hurt in case of validation, any KSK might behave like ZSK that is published but not active
 
 		zone->keys[i].timing.publish = 1;

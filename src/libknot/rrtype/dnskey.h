@@ -22,6 +22,8 @@
 #define KNOT_DNSKEY_FLAG_ZONE	256
 /*! /brief The key MUST NOT be used for validation. */
 #define KNOT_DNSKEY_FLAG_REVOKE	128
+/*! /brief Signalling DELEG-aware zone. */
+#define KNOT_DNSKEY_FLAG_ADT    2
 
 static inline
 uint16_t knot_dnskey_flags(const knot_rdata_t *rdata)

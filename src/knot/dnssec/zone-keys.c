@@ -311,7 +311,7 @@ static void fix_revoked_flag(knot_kasp_key_t *key)
 {
 	uint16_t flags = dnssec_key_get_flags(key->key);
 	if ((flags & DNSKEY_FLAGS_REVOKED) != DNSKEY_FLAGS_REVOKED) {
-		dnssec_key_set_flags(key->key, flags | DNSKEY_FLAGS_REVOKED); // FYI leading to change of keytag
+		dnssec_key_set_flags(key->key, (flags | DNSKEY_FLAGS_REVOKED) & ~KNOT_DNSKEY_FLAG_ADT); // FYI leading to change of keytag
 	}
 }
 

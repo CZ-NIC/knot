@@ -90,6 +90,7 @@ typedef struct {
  */
 typedef struct {
 	bool manual;
+	bool deleg_aware;
 	char *string;
 	// DNSKEY
 	dnssec_key_algorithm_t algorithm;
