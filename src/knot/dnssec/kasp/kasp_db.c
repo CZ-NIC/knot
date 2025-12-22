@@ -221,10 +221,9 @@ static bool params_deserialize(const MDB_val *val, key_params_t *params)
 	return false;
 }
 
-static MDB_val trash_serialize(const key_params_t *params)
+static MDB_val trash_serialize(const key_params_t *params, uint64_t expir)
 {
 	uint8_t flags = flags_serialize(params);
-	uint64_t expir = (uint64_t)knot_time() + (14 * 86400); // Two weeks for now.
 
 	return knot_lmdb_make_key("LHBB", expir, params->keytag, params->algorithm, flags);
 }
@@ -331,7 +330,7 @@ static size_t keyid_inuse(knot_lmdb_txn_t *txn, const char *key_id, key_params_t
 }
 
 /*! \brief Make a trash record for the key in KASP DB. */
-static int make_trash_key(knot_lmdb_txn_t *txn, MDB_val *key, MDB_val *val)
+static int make_trash_key(knot_lmdb_txn_t *txn, MDB_val *key, MDB_val *val, uint32_t delay)
 {
 	bool rv = true;
 	uint8_t kclass;
@@ -346,6 +345,7 @@ static int make_trash_key(knot_lmdb_txn_t *txn, MDB_val *key, MDB_val *val)
 			return KNOT_EMALF;
 		}
 		free(params.public_key.data);
+		uint64_t expir = (uint64_t)knot_time() + delay;
 		MDB_val nkey = make_key_str(KASPDBKEY_TRASH, dname, str);
 		MDB_val nval = trash_serialize(&params, expir);
 		rv = knot_lmdb_insert(txn, &nkey, &nval);
@@ -376,12 +376,14 @@ int kasp_db_delete_keys(knot_lmdb_db_t *db, const knot_dname_t *zone_name,
 	int ret;
 	knot_kasp_keystore_t *keystores = NULL;
 	kdnssec_ctx_t ctx = { 0 };
+	uint32_t delay = 0;
 
 	if (orphan) {
 		ret = init_all_keystores(conf(), &keystores);
 	} else {
 		ret = kdnssec_ctx_init(conf(), &ctx, zone_name, db, NULL);
 		keystores = ctx.keystores;
+		delay = trash ? ctx.policy->trash_delay : 0;
 	}
 
 	if (ret != KNOT_EOK) {
@@ -403,8 +405,8 @@ int kasp_db_delete_keys(knot_lmdb_db_t *db, const knot_dname_t *zone_name,
 		size_t count = keyid_inuse(&txn_r, key_id, NULL);
 		assert(count > 0);
 		if (count == 1) {
-			if (trash) {
-				(void)make_trash_key(&txn, &txn.cur_key, &txn.cur_val);
+			if (delay > 0) {
+				(void)make_trash_key(&txn, &txn.cur_key, &txn.cur_val, delay);
 			} else {
 				ret = kdnssec_delete_from_keystores(keystores, key_id,
 				                                    orphan ? NULL : zone_name, true);

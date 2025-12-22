@@ -29,6 +29,7 @@ keys2 = KeystorePEM("keys2")
 server.dnssec(zone).enable = True
 server.dnssec(zone).propagation_delay = 1
 server.dnssec(zone).keystore = [ keys1, keys2 ]
+server.dnssec(zone).trash_delay = 0
 
 t.start()
 serial = server.zone_wait(zone)
