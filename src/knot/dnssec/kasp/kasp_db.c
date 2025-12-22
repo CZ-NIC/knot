@@ -147,13 +147,30 @@ static bool unmake_key_time(const MDB_val *keyv, knot_time_t *time)
 		str_to_u64(s, time) == KNOT_EOK);
 }
 
-static MDB_val params_serialize(const key_params_t *params)
+static uint8_t flags_serialize(const key_params_t *params)
 {
 	uint8_t flags = 0x02;
 	flags |= (params->is_ksk ? 0x01 : 0);
 	flags |= (params->is_pub_only ? 0x04 : 0);
 	flags |= (params->is_csk ? 0x08 : 0);
 	flags |= (params->is_for_later ? 0x10 : 0);
+
+	return flags;
+}
+
+static bool flags_deserialize(key_params_t *params, uint8_t flags)
+{
+	params->is_ksk = ((flags & 0x01) ? true : false);
+	params->is_pub_only = ((flags & 0x04) ? true : false);
+	params->is_csk = ((flags & 0x08) ? true : false);
+	params->is_for_later = ((flags & 0x10) ? true : false);
+
+	return (flags & 0x02);
+}
+
+static MDB_val params_serialize(const key_params_t *params)
+{
+	uint8_t flags = flags_serialize(params);
 
 	return knot_lmdb_make_key("LLHBBLLLLLLLLLDL", (uint64_t)params->public_key.size,
 		(uint64_t)sizeof(params->timing.revoke), params->keytag, params->algorithm, flags,
@@ -185,10 +202,7 @@ static bool params_deserialize(const MDB_val *val, key_params_t *params)
 		params->public_key.data, (size_t)keylen)) {
 
 		params->public_key.size = keylen;
-		params->is_ksk = ((flags & 0x01) ? true : false);
-		params->is_pub_only = ((flags & 0x04) ? true : false);
-		params->is_csk = ((flags & 0x08) ? true : false);
-		params->is_for_later = ((flags & 0x10) ? true : false);
+		bool flags_ok = flags_deserialize(params, flags);
 
 		if (future > 0) {
 			if (future < sizeof(params->timing.revoke)) {
@@ -200,7 +214,7 @@ static bool params_deserialize(const MDB_val *val, key_params_t *params)
 			params->timing.revoke = knot_wire_read_u64(val->mv_data + val->mv_size - future);
 		}
 
-		if ((flags & 0x02) && (params->is_ksk || !params->is_csk)) {
+		if (flags_ok && (params->is_ksk || !params->is_csk)) {
 			return true;
 		}
 	}
