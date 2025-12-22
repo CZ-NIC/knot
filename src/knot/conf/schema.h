@@ -81,6 +81,7 @@
 #define C_KASP_DB		"\x07""kasp-db"
 #define C_KASP_DB_MAX_SIZE	"\x10""kasp-db-max-size"
 #define C_DELETE_DELAY		"\x0C""delete-delay"
+#define C_TRASH_DELAY		"\x0C""trash-delay"
 #define C_KEY			"\x03""key"
 #define C_KEYSTORE		"\x08""keystore"
 #define C_KEYTAG_MODULO		"\x0D""keytag-modulo"
