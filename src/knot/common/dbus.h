@@ -17,6 +17,7 @@
 #define KNOT_BUS_EVENT_STARTED       "started"
 #define KNOT_BUS_EVENT_STOPPED       "stopped"
 #define KNOT_BUS_EVENT_ZONE_UPD      "zone_updated"
+#define KNOT_BUS_EVENT_ZONE_NOT_UPD  "zone_not_updated"
 #define KNOT_BUS_EVENT_EXTERNAL      "external_verify"
 #define KNOT_BUS_EVENT_ZONE_KEYS_UPD "keys_updated"
 #define KNOT_BUS_EVENT_ZONE_KSK_SUBM "zone_ksk_submission"
@@ -46,9 +47,10 @@ void dbus_emit_running(bool up);
  * \brief Emit event signal for updated zones.
  *
  * \param zone_name  Zone name.
+ * \param success    Successful update indication (if false, serial isn't used).
  * \param serial     Current zone SOA serial.
  */
-void dbus_emit_zone_updated(const knot_dname_t *zone_name, uint32_t serial);
+void dbus_emit_zone_updated(const knot_dname_t *zone_name, bool success, uint32_t serial);
 
 /*!
  * \brief Emit event signal that external verify shall take place.

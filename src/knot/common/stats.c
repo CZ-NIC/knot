@@ -127,6 +127,7 @@ int stats_server(stats_dump_ctr_f fcn, stats_dump_ctx_t *ctx)
 	}
 
 	DUMP_VAL(params, "zone-count", knot_zonedb_size(ctx->server->zone_db));
+	DUMP_VAL(params, "zone-update-error", ATOMIC_GET(ctx->server->stats.zone_update_error));
 	DUMP_VAL(params, "tcp-io-timeout", ATOMIC_GET(ctx->server->stats.tcp_io_timeout));
 	DUMP_VAL(params, "tcp-idle-timeout", ATOMIC_GET(ctx->server->stats.tcp_idle_timeout));
 
