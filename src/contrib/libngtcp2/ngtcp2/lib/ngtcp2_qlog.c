@@ -209,16 +209,17 @@ void ngtcp2_qlog_end(ngtcp2_qlog *qlog) {
   qlog->write(qlog->user_data, NGTCP2_QLOG_WRITE_FLAG_FIN, "", 0);
 }
 
-static ngtcp2_vec vec_pkt_type_initial = ngtcp2_make_vec_lit("initial");
-static ngtcp2_vec vec_pkt_type_handshake = ngtcp2_make_vec_lit("handshake");
-static ngtcp2_vec vec_pkt_type_0rtt = ngtcp2_make_vec_lit("0RTT");
-static ngtcp2_vec vec_pkt_type_1rtt = ngtcp2_make_vec_lit("1RTT");
-static ngtcp2_vec vec_pkt_type_retry = ngtcp2_make_vec_lit("retry");
-static ngtcp2_vec vec_pkt_type_version_negotiation =
+static const ngtcp2_vec vec_pkt_type_initial = ngtcp2_make_vec_lit("initial");
+static const ngtcp2_vec vec_pkt_type_handshake =
+  ngtcp2_make_vec_lit("handshake");
+static const ngtcp2_vec vec_pkt_type_0rtt = ngtcp2_make_vec_lit("0RTT");
+static const ngtcp2_vec vec_pkt_type_1rtt = ngtcp2_make_vec_lit("1RTT");
+static const ngtcp2_vec vec_pkt_type_retry = ngtcp2_make_vec_lit("retry");
+static const ngtcp2_vec vec_pkt_type_version_negotiation =
   ngtcp2_make_vec_lit("version_negotiation");
-static ngtcp2_vec vec_pkt_type_stateless_reset =
+static const ngtcp2_vec vec_pkt_type_stateless_reset =
   ngtcp2_make_vec_lit("stateless_reset");
-static ngtcp2_vec vec_pkt_type_unknown = ngtcp2_make_vec_lit("unknown");
+static const ngtcp2_vec vec_pkt_type_unknown = ngtcp2_make_vec_lit("unknown");
 
 static const ngtcp2_vec *qlog_pkt_type(const ngtcp2_pkt_hd *hd) {
   if (hd->flags & NGTCP2_PKT_FLAG_LONG_FORM) {
@@ -727,7 +728,7 @@ void ngtcp2_qlog_write_frame(ngtcp2_qlog *qlog, const ngtcp2_frame *fr) {
     return;
   }
 
-  switch (fr->type) {
+  switch (fr->hd.type) {
   case NGTCP2_FRAME_PADDING:
     if (ngtcp2_buf_left(&qlog->buf) < NGTCP2_QLOG_PADDING_FRAME_OVERHEAD + 1) {
       return;
@@ -744,7 +745,7 @@ void ngtcp2_qlog_write_frame(ngtcp2_qlog *qlog, const ngtcp2_frame *fr) {
   case NGTCP2_FRAME_ACK_ECN:
     if (ngtcp2_buf_left(&qlog->buf) <
         NGTCP2_QLOG_ACK_FRAME_BASE_OVERHEAD +
-          (size_t)(fr->type == NGTCP2_FRAME_ACK_ECN
+          (size_t)(fr->ack.type == NGTCP2_FRAME_ACK_ECN
                      ? NGTCP2_QLOG_ACK_FRAME_ECN_OVERHEAD
                      : 0) +
           NGTCP2_QLOG_ACK_FRAME_RANGE_OVERHEAD * (1 + fr->ack.rangecnt) + 1) {
