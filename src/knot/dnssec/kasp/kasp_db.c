@@ -218,10 +218,10 @@ static bool params_deserialize(const MDB_val *val, key_params_t *params)
 	return false;
 }
 
-static MDB_val trash_serialize(const key_params_t *params)
+static MDB_val trash_serialize(const key_params_t *params, uint32_t delay)
 {
 	uint8_t flags = flags_serialize(params);
-	uint64_t expir = (uint64_t)knot_time() + (14 * 86400); // Two weeks for now.
+	uint64_t expir = (uint64_t)knot_time() + delay;
 
 	return knot_lmdb_make_key("LHBB", expir, params->keytag, params->algorithm, flags);
 }
@@ -326,7 +326,7 @@ static size_t keyid_inuse(knot_lmdb_txn_t *txn, const char *key_id, key_params_t
 }
 
 /*! \brief Make the trash record for the key in KASP DB. */
-static bool trash_key(knot_lmdb_txn_t *txn)
+static bool trash_key(knot_lmdb_txn_t *txn, uint32_t delay)
 {
 	bool ret = true;
 	MDB_val key = txn->cur_key;
@@ -342,7 +342,7 @@ static bool trash_key(knot_lmdb_txn_t *txn)
 		if (!params_deserialize(&txn->cur_val, &params)) {
 			return KNOT_EMALF;
 		}
-		MDB_val val = trash_serialize(&params);
+		MDB_val val = trash_serialize(&params, delay);
 		key = make_key_str(KASPDBKEY_TRASH_PARAMS, dname, str);
 		ret = knot_lmdb_insert(txn, &key, &val);
 		free(key.mv_data);
@@ -371,12 +371,14 @@ int kasp_db_delete_keys(knot_lmdb_db_t *db, const knot_dname_t *zone_name,
 	int ret;
 	knot_kasp_keystore_t *keystores;
 	kdnssec_ctx_t ctx = { 0 };
+	uint32_t delay = 0;
 
 	if (orphan) {
 		ret = init_all_keystores(conf(), &keystores);
 	} else {
 		ret = kdnssec_ctx_init(conf(), &ctx, zone_name, db, NULL);
 		keystores = ctx.keystores;
+		delay = trash ? ctx.policy->trash_delay : 0;
 	}
 
 	if (ret != KNOT_EOK) {
@@ -398,8 +400,8 @@ int kasp_db_delete_keys(knot_lmdb_db_t *db, const knot_dname_t *zone_name,
 		size_t count = keyid_inuse(&txn_r, key_id, NULL);
 		assert(count > 0);
 		if (count == 1) {
-			if (trash) {
-				(void)trash_key(&txn);
+			if (delay > 0) {
+				(void)trash_key(&txn, delay);
 			} else {
 				ret = kdnssec_delete_from_keystores(keystores, key_id,
 				                                    orphan ? NULL : zone_name, true);
