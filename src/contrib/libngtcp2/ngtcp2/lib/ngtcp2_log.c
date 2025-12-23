@@ -127,6 +127,10 @@ static const char *strerrorcode(uint64_t error_code) {
     return "CRYPTO_BUFFER_EXCEEDED";
   case NGTCP2_KEY_UPDATE_ERROR:
     return "KEY_UPDATE_ERROR";
+  case NGTCP2_AEAD_LIMIT_REACHED:
+    return "AEAD_LIMIT_REACHED";
+  case NGTCP2_NO_VIABLE_PATH:
+    return "NO_VIABLE_PATH";
   case NGTCP2_VERSION_NEGOTIATION_ERROR:
     return "VERSION_NEGOTIATION_ERROR";
   default:
@@ -443,7 +447,7 @@ static void log_fr_datagram(ngtcp2_log *log, const ngtcp2_pkt_hd *hd,
 
 static void log_fr(ngtcp2_log *log, const ngtcp2_pkt_hd *hd,
                    const ngtcp2_frame *fr, const char *dir) {
-  switch (fr->type) {
+  switch (fr->hd.type) {
   case NGTCP2_FRAME_STREAM:
     log_fr_stream(log, hd, &fr->stream, dir);
     break;

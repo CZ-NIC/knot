@@ -335,6 +335,10 @@ static void bbr_on_init(ngtcp2_cc_bbr *bbr, ngtcp2_conn_stat *cstat,
   bbr->max_inflight = 0;
 
   bbr->bdp = 0;
+
+  bbr->undo_bw_shortterm = 0;
+  bbr->undo_inflight_shortterm = 0;
+  bbr->undo_inflight_longterm = 0;
 }
 
 static void bbr_reset_congestion_signals(ngtcp2_cc_bbr *bbr) {
@@ -1297,6 +1301,7 @@ static void bbr_cc_congestion_event(ngtcp2_cc *cc, ngtcp2_conn_stat *cstat,
                                     const ngtcp2_cc_ack *ack,
                                     ngtcp2_tstamp ts) {
   ngtcp2_cc_bbr *bbr = ngtcp2_struct_of(cc, ngtcp2_cc_bbr, cc);
+  (void)ack;
 
   if (bbr->in_loss_recovery || in_congestion_recovery(cstat, sent_ts)) {
     return;
@@ -1306,9 +1311,9 @@ static void bbr_cc_congestion_event(ngtcp2_cc *cc, ngtcp2_conn_stat *cstat,
   bbr->round_count_at_recovery =
     bbr->round_start ? bbr->round_count : bbr->round_count + 1;
   bbr_save_cwnd(bbr, cstat);
-  cstat->cwnd =
-    cstat->bytes_in_flight +
-    ngtcp2_max_uint64(ack->bytes_delivered, cstat->max_tx_udp_payload_size);
+  bbr->undo_bw_shortterm = bbr->bw_shortterm;
+  bbr->undo_inflight_shortterm = bbr->inflight_shortterm;
+  bbr->undo_inflight_longterm = bbr->inflight_longterm;
 
   cstat->congestion_recovery_start_ts = ts;
 }
@@ -1321,11 +1326,17 @@ static void bbr_cc_on_spurious_congestion(ngtcp2_cc *cc,
 
   cstat->congestion_recovery_start_ts = UINT64_MAX;
 
-  if (bbr->in_loss_recovery) {
-    bbr->in_loss_recovery = 0;
-    bbr->round_count_at_recovery = UINT64_MAX;
-    bbr_restore_cwnd(bbr, cstat);
-  }
+  bbr->in_loss_recovery = 0;
+  bbr->round_count_at_recovery = UINT64_MAX;
+  bbr_reset_full_bw(bbr);
+  bbr->loss_in_round = 0;
+  bbr_restore_cwnd(bbr, cstat);
+  bbr->bw_shortterm =
+    ngtcp2_max_uint64(bbr->bw_shortterm, bbr->undo_bw_shortterm);
+  bbr->inflight_shortterm =
+    ngtcp2_max_uint64(bbr->inflight_shortterm, bbr->undo_inflight_shortterm);
+  bbr->inflight_longterm =
+    ngtcp2_max_uint64(bbr->inflight_longterm, bbr->undo_inflight_longterm);
 }
 
 static void bbr_cc_on_persistent_congestion(ngtcp2_cc *cc,
