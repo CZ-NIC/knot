@@ -358,6 +358,8 @@ redisContext *rdb_connect(conf_t *conf, bool require_master, const char *info)
 				goto connected;
 			}
 		} else {
+			log_debug("rdb, failed to query, remote %s%s%.0u",
+			          addr_str, (port != 0 ? "@" : ""), port);
 			redisFree(rdb);
 		}
 
