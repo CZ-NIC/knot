@@ -5,6 +5,7 @@ Backup and restore of SoftHSM keystores.
 """
 
 from dnstest.utils import *
+from dnstest.keys import Keymgr
 from dnstest.keystore import KeystoreSoftHSM
 from dnstest.test import Test
 
@@ -52,5 +53,10 @@ knot2.reload()
 knot2.zone_wait(zone, serial)
 resp = knot2.dig(zone[0].name, "DNSKEY")
 resp.cmp(knot1)
+
+_, keys, _ = Keymgr.run_check(knot1.confile, zone[0].name, "list", env=keys1.env())
+key_ids = [key.split()[0] for key in keys.strip().splitlines()]
+for key_id in key_ids:
+    isset(keys2.has_key(key_id), f"key {key_id} in keys2")
 
 t.end()
