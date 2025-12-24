@@ -351,15 +351,25 @@ static bool make_trash_key(knot_lmdb_txn_t *txn, uint32_t delay)
 	return rv;
 }
 
-int kasp_db_delete_key(knot_lmdb_db_t *db, const knot_dname_t *zone_name, const char *key_id, bool *still_used)
+int kasp_db_delete_key(knot_lmdb_db_t *db, const knot_dname_t *zone_name, const char *key_id,
+                       uint32_t delay, bool *still_used)
 {
 	MDB_val search = make_key_str(KASPDBKEY_PARAMS, zone_name, key_id);
 	knot_lmdb_txn_t txn = { 0 };
 	knot_lmdb_begin(db, &txn, true);
 	knot_lmdb_del_prefix(&txn, &search);
-	if (still_used != NULL) {
-		*still_used = (keyid_inuse(&txn, key_id, NULL) > 0);
+
+	if (still_used != NULL || delay > 0) {
+		bool used = (keyid_inuse(&txn, key_id, NULL) > 0);
+		if (!used && delay > 0) {
+			(void)make_trash_key(&txn, delay);
+			used = true;
+		}
+		if (still_used != NULL) {
+			*still_used = used;
+		}
 	}
+
 	knot_lmdb_commit(&txn);
 	free(search.mv_data);
 	return txn.ret;
