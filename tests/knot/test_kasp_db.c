@@ -119,7 +119,7 @@ int main(int argc, char *argv[])
 	free_params
 	ptrlist_deep_free(&l, NULL);
 
-	ret = kasp_db_delete_key(db, zone1, params1.id, &ignore);
+	ret = kasp_db_delete_key(db, zone1, params1.id, 0, &ignore);
 	is_int(KNOT_EOK, ret, "kasp_db: delete key 1 eok");
 
 	ret = kasp_db_list_keys(db, zone1, &l);
