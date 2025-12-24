@@ -73,13 +73,15 @@ class Tsig(object):
 
 class Keymgr(object):
     @classmethod
-    def run(cls, conf_file, *args):
+    def run(cls, conf_file, *args, env=None):
+        env = env or {}
         cmdline = [dnstest.params.keymgr_bin]
         if conf_file:
             cmdline += ["-c", conf_file, "-e"]
         cmdline += list(args)
 
-        cmd = Popen(cmdline, stdout=PIPE, stderr=PIPE, universal_newlines=True)
+        cmd = Popen(cmdline, stdout=PIPE, stderr=PIPE, universal_newlines=True,
+                    env=dict(os.environ, **env))
         (stdout, stderr) = cmd.communicate()
 
         with open(Context().out_dir + "/keymgr.out", "a") as outf:
@@ -91,8 +93,8 @@ class Keymgr(object):
         return (cmd.returncode, stdout, stderr)
 
     @classmethod
-    def run_check(cls, conf_file, *args):
-        result = cls.run(conf_file, *args)
+    def run_check(cls, conf_file, *args, env=None):
+        result = cls.run(conf_file, *args, env=env)
         exit_code, _, _ = result
         if exit_code != 0:
             raise Failed("Failed to run keymgr command %s." % list(args))
@@ -100,8 +102,8 @@ class Keymgr(object):
             return result
 
     @classmethod
-    def run_fail(cls, conf_file, *args):
-        result = cls.run(conf_file, *args)
+    def run_fail(cls, conf_file, *args, env=None):
+        result = cls.run(conf_file, *args, env=env)
         exit_code, _, _ = result
         if exit_code == 0:
             raise Failed("Keymgr passed when shall fail %s." % list(args))
