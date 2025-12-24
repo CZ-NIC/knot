@@ -1591,10 +1591,10 @@ void server_stop(server_t *server)
 
 #ifdef ENABLE_REDIS
 	/* Interrupt and stop XREAD BLOCK loop. */
-	if (server->rdb_ctx != NULL) {
-		redisSetTimeout(server->rdb_ctx, (struct timeval){ 0, 1 });
-	}
 	dt_stop(server->rdb_events);
+	if (server->rdb_ctx != NULL) {
+		shutdown(server->rdb_ctx->fd, SHUT_RDWR);
+	}
 	dt_join(server->rdb_events);
 #endif // ENABLE_REDIS
 
