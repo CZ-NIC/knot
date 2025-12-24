@@ -2,8 +2,10 @@
 
 import os
 import shutil
-from subprocess import Popen
+import textwrap
+from subprocess import Popen, check_output
 from dnstest.context import Context
+from dnstest.utils import *
 
 class Keystore(object):
     def __init__(self, id: str, ksk_only: bool = None, key_label: bool = None):
@@ -21,8 +23,14 @@ class KeystorePEM(Keystore):
     def backend(self):
         return "pem"
 
+    def env(self):
+        return { }
+
     def clear(self):
         shutil.rmtree(self.config())
+
+    def has_key(self, id: str):
+        return os.path.isfile(os.path.join(self.config(), f"{id}.pem"))
 
 class KeystoreSoftHSM(Keystore):
     so_pin = "12345"
@@ -45,8 +53,21 @@ class KeystoreSoftHSM(Keystore):
     def config_file(self):
         return os.path.join(self.dir, "softhsm.conf")
 
+    def env(self):
+        return { "SOFTHSM2_CONF": self.config_file() }
+
     def clear(self):
         shutil.rmtree(os.path.join(self.dir, "tokens"))
+
+    def has_key(self, id: str):
+        urls = check_output(['p11tool', '--list-token-urls'],
+                           env=dict(os.environ, **self.env())).decode('ascii')
+        url = ssearch(urls, r'(pkcs11:.*SoftHSM.*)')
+        keys = check_output(['p11tool', '--login', '--set-pin', self.passwd, '--list-keys', url],
+                           env=dict(os.environ, **self.env())).decode('ascii')
+        id_sep = ':'.join(textwrap.wrap(id, 2))
+        key = ssearch(keys, r'(ID:.*%s.*)' % id_sep)
+        return False if not key else len(key) > 0
 
     def init(self, keystore=None):
         if not os.path.isdir(self.dir):
@@ -68,7 +89,7 @@ class KeystoreSoftHSM(Keystore):
                  f'--pin={self.passwd}', f'--so-pin={self.so_pin}', f'--module={self.so_path}'],
                     stdout=open(os.path.join(self.dir, "stdout"), mode='a'),
                     stderr=open(os.path.join(self.dir, "stderr"), mode='a'),
-                    env=dict(os.environ, SOFTHSM2_CONF=self.config_file()))
+                    env=dict(os.environ, **self.env()))
             init_process.wait()
 
     def link(self, server):
