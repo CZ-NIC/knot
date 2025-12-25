@@ -116,6 +116,8 @@ for i in range(5):
         up.add("loop", 3600, "AAAA", "1::%d" % i)
         up.send()
     master.zones_wait(zones, serials6, equal=True)
+    if i < 3:
+        slave.zones_wait(zones, serials6, equal=True)
 
 slave.ctl("zone-thaw")
 slave.zones_wait(zones, serials6, equal=True)
