@@ -883,7 +883,7 @@ class Server(object):
 
         check_log("ZONE WAIT %s: %s" % (self.name, zone.name))
 
-        attempts = 15 if not self.valgrind else 25
+        attempts = 15 if not self.valgrind else 45
         for t in range(attempts):
             try:
                 if use_ctl:
