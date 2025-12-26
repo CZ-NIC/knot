@@ -98,7 +98,7 @@ def watch_ksk_rollover(t, server, zone, before_keys, after_keys, total_keys, des
 
 t = Test(tsig=False)
 
-parent = t.server("knot")
+parent = t.server("knot", xdp_enable=False) # DDNS over XDP not supported
 parent_zone = t.zone_rnd(1)
 t.link(parent_zone, parent, ddns=True)
 
