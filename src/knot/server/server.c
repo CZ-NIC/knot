@@ -973,18 +973,30 @@ static int rdb_listener_run(struct dthread *thread)
 }
 #endif // ENABLE_REDIS
 
+static void duration_to_str(char res[64], struct timespec *beg)
+{
+        struct timespec end = time_now();
+        double duration = time_diff_ms(beg, &end) / 1000.0;
+        if (duration >= 1.0) {
+                snprintf(res, 64, " in %0.2f seconds", duration);
+	}
+}
+
 static int timer_db_do_sync(struct dthread *thread)
 {
 	server_t *s = thread->data;
 
 	while (thread->state & ThreadActive) {
+		struct timespec beg = time_now();
 		rcu_read_lock();
 		int ret = zone_timers_write_all(&s->timerdb, s->zone_db);
 		rcu_read_unlock();
+		char dur_str[64] = "";
+		duration_to_str(dur_str, &beg);
 		if (ret == KNOT_EOK) {
-			log_info("updated persistent timer DB");
+			log_info("updated persistent timer DB%s", dur_str);
 		} else {
-			log_error("failed to update persistent timer DB (%s)", knot_strerror(ret));
+			log_error("failed to update persistent timer DB%s (%s)", dur_str, knot_strerror(ret));
 		}
 
 		if (conf()->cache.db_timer_db_sync <= 0) {
