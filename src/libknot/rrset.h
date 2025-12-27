@@ -76,6 +76,31 @@ inline static void knot_rrset_init(knot_rrset_t *rrset, knot_dname_t *owner,
 }
 
 /*!
+ * \brief Construct single-RR RRset from existing header and given RData.
+ *
+ * \param init_from    Initialize owner, type, TTL and class from this other RRset.
+ * \param rdata_str    Single RData in binary string form. See \warning
+ * \param rdata_len    Length of the RData.
+ *
+ * \warning The rdata_str must include a two-byte empty prefix for length,
+ *          not included in rdata_len.
+ *
+ * \return Staticly initialized RRset structure for temporary use.
+ */
+inline static knot_rrset_t knot_rrset_simple(const knot_rrset_t *init_from,
+                                             const char *rdata_str,
+                                             uint16_t rdata_len)
+{
+	knot_rrset_t rrset;
+	knot_rrset_init(&rrset, init_from->owner, init_from->type, init_from->rclass, init_from->ttl);
+	*(uint16_t *)rdata_str = rdata_len;
+	rrset.rrs.count = 1;
+	rrset.rrs.size = knot_rdata_size(rdata_len);
+	rrset.rrs.rdata = (knot_rdata_t *)rdata_str;
+	return rrset;
+}
+
+/*!
  * \brief Initializes given RRSet structure.
  *
  * \param rrset  RRSet to init.

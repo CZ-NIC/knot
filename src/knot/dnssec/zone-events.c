@@ -99,6 +99,26 @@ int knot_dnssec_nsec3resalt(kdnssec_ctx_t *ctx, bool soa_rrsigs_ok,
 	return ret;
 }
 
+int knot_dnssec_fix_adt(zone_update_t *up)
+{
+	if (!(up->new_cont->nodes->flags & ZONE_TREE_CONTAINS_DELEG)) {
+		return KNOT_EOK;
+	}
+
+	knot_rrset_t dk = node_rrset(up->new_cont->apex, KNOT_RRTYPE_DNSKEY);
+	knot_rdata_t *rd = dk.rrs.rdata;
+	for (int i = 0; i < dk.rrs.count; i++) {
+		if ((knot_dnskey_flags(rd) & KNOT_DNSKEY_FLAG_ADT)) {
+			return KNOT_EOK;
+		}
+		rd = knot_rdataset_next(rd);
+	}
+
+	char adt_rdata_with_prefix[] = "\x00\x00\x00\x02\x03\x00\x00";
+	knot_rrset_t dummy_adt_rrset = knot_rrset_simple(&dk, adt_rdata_with_prefix, 5);
+	return zone_update_add(up, &dummy_adt_rrset);
+}
+
 static int check_offline_records(kdnssec_ctx_t *ctx)
 {
 	if (!ctx->policy->offline_ksk) {
@@ -231,6 +251,11 @@ int knot_dnssec_zone_sign(zone_update_t *update,
 
 	result = zone_adjust_contents(update->new_cont, adjust_cb_flags, NULL,
 	                              false, false, 1, update->a_ctx->node_ptrs);
+	if (result != KNOT_EOK) {
+		return result;
+	}
+
+	result = knot_dnssec_fix_adt(update);
 	if (result != KNOT_EOK) {
 		return result;
 	}
@@ -373,6 +398,11 @@ int knot_dnssec_sign_update(zone_update_t *update, conf_t *conf)
 	}
 
 	result = check_offline_records(&ctx);
+	if (result != KNOT_EOK) {
+		goto done;
+	}
+
+	result = knot_dnssec_fix_adt(update);
 	if (result != KNOT_EOK) {
 		goto done;
 	}

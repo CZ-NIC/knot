@@ -116,13 +116,26 @@ for childs_running in [ False, True ]:
             else:
                 check_normal(resp, False, "A")
 
-knot.ctl("zone-flush", wait=True)
-
 resp = knot.dig(parent[0].name, "DNSKEY")
 if resp.resp.answer[0].to_rdataset()[0].flags & 2 != 2:
     set_err("No ADT flag")
 resp = knot.dig(childs[0].name, "DNSKEY")
 if resp.resp.answer[0].to_rdataset()[0].flags & 2 != 0:
     set_err("Extra ADT flag")
+
+# incremental addition of DELEG -- temporary ADT DNSKEY
+Z = "ns-ds.d.xdp.cz."
+up = knot.update(knot.zones[Z])
+up.add("deleg", 30, "TYPE61440", "\\# 8 0001000401020304")
+up.send("NOERROR")
+knot.zone_wait(knot.zones[Z], serials[Z])
+resp = knot.dig(Z, "DNSKEY")
+adt_found = False
+for dnskey_rr in resp.resp.answer[0].to_rdataset():
+    adt_found = adt_found or (dnskey_rr.flags & 2 != 0)
+if not adt_found:
+    set_err("No ADT temporary DNSKEY")
+
+knot.ctl("zone-flush", wait=True)
 
 t.end()
