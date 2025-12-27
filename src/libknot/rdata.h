@@ -30,6 +30,15 @@ typedef struct {
 	uint8_t data[];
 } knot_rdata_t;
 
+
+/*!
+ * \brief Dummy fixed-sized compatible structure for static initialization in simple cases.
+ */
+typedef struct {
+	uint16_t len;
+	uint8_t data[254];
+} knot_rdata254_t;
+
 /*!
  * \brief Inits rdata structure.
  *
