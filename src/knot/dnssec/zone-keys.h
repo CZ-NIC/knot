@@ -63,9 +63,9 @@ enum {
 	DNSKEY_FLAGS_REVOKED = KNOT_DNSKEY_FLAG_ZONE | KNOT_DNSKEY_FLAG_SEP | KNOT_DNSKEY_FLAG_REVOKE,
 };
 
-inline static uint16_t dnskey_flags(bool is_ksk)
+inline static uint16_t dnskey_flags(bool is_ksk, bool adt)
 {
-	return is_ksk ? DNSKEY_FLAGS_KSK : DNSKEY_FLAGS_ZSK;
+	return adt ? (is_ksk ? DNSKEY_FLAGS_KSK_ADT : DNSKEY_FLAGS_ZSK_ADT) : (is_ksk ? DNSKEY_FLAGS_KSK : DNSKEY_FLAGS_ZSK);
 }
 
 typedef enum {
@@ -74,6 +74,7 @@ typedef enum {
 	DNSKEY_GENERATE_SEP_SPEC  = (1 << 2), // not (SEP bit set iff KSK)
 	DNSKEY_GENERATE_SEP_ON    = (1 << 3), // SEP bit set on
 	DNSKEY_GENERATE_FOR_LATER = (1 << 4), // Pregenerated key for later automatic use.
+	DNSKEY_GENERATE_ADT_ON    = (1 << 5), // DELEG-awareness signalling flag
 } kdnssec_generate_flags_t;
 
 void normalize_generate_flags(kdnssec_generate_flags_t *flags);
