@@ -13,6 +13,7 @@
 #include <sys/types.h>   // OpenBSD
 #include <netinet/tcp.h> // TCP_FASTOPEN
 #include <sys/resource.h>
+#include <urcu.h>
 
 #include "libknot/libknot.h"
 #include "libknot/yparser/ypschema.h"
@@ -996,7 +997,9 @@ static int timer_db_do_sync(struct dthread *thread)
 	server_t *s = thread->data;
 
 	while (thread->state & ThreadActive) {
+		rcu_read_lock();
 		int ret = zone_timers_write_all(&s->timerdb, s->zone_db);
+		rcu_read_unlock();
 		if (ret == KNOT_EOK) {
 			log_info("updated persistent timer DB");
 		} else {
