@@ -600,7 +600,7 @@ static int import_key(kdnssec_ctx_t *ctx, unsigned backend, const char *param,
 	if (ret != KNOT_EOK) {
 		goto fail;
 	}
-	dnssec_key_set_flags(key, dnskey_flags(flags & DNSKEY_GENERATE_SEP_ON));
+	dnssec_key_set_flags(key, dnskey_flags(flags & DNSKEY_GENERATE_SEP_ON, false));
 	dnssec_key_set_algorithm(key, ctx->policy->algorithm);
 
 	// fill key structure from keystore (incl. pubkey from privkey computation)
@@ -915,7 +915,7 @@ int keymgr_set_timing(knot_kasp_key_t *key, int argc, char *argv[])
 			normalize_generate_flags(&flags);
 			key->is_ksk = (flags & DNSKEY_GENERATE_KSK);
 			key->is_zsk = (flags & DNSKEY_GENERATE_ZSK);
-			return dnssec_key_set_flags(key->key, dnskey_flags(flags & DNSKEY_GENERATE_SEP_ON));
+			return dnssec_key_set_flags(key->key, dnskey_flags(flags & DNSKEY_GENERATE_SEP_ON, false));
 		}
 		return KNOT_EOK;
 	}
