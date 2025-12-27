@@ -98,6 +98,15 @@ int knot_dnssec_nsec3resalt(kdnssec_ctx_t *ctx, bool soa_rrsigs_ok,
                             knot_time_t *salt_changed, knot_time_t *when_resalt);
 
 /*!
+ * \brief If DELEG in zone and no DNSKEY in apex with ADT bit, add dummy ADT-enabling DNSKEY.
+ *
+ * \param up     Zone update with DNSKEYs updated but not tree-signed yet.
+ *
+ * \return KNOT_E*
+ */
+int knot_dnssec_fix_adt(zone_update_t *up);
+
+/*!
  * \brief When DNSSEC signing failed, re-plan on this time.
  *
  * \param ctx    zone signing context
