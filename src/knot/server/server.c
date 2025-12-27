@@ -39,6 +39,7 @@
 #include "contrib/conn_pool.h"
 #include "contrib/files.h"
 #include "contrib/net.h"
+#include "contrib/openbsd/siphash.h"
 #include "contrib/openbsd/strlcat.h"
 #include "contrib/os.h"
 #include "contrib/sockaddr.h"
@@ -941,15 +942,15 @@ static int rdb_listener_run(struct dthread *thread)
 		redisReply *reply = redisCommand(s->rdb_ctx, "XREAD BLOCK %d STREAMS %b %s",
 		                                 4000, RDB_EVENT_KEY, strlen(RDB_EVENT_KEY), since);
 		if (reply == NULL) {
-			if (thread->state & ThreadDead) {
+			if (dt_is_cancelled(thread)) {
 				break;
 			}
-			if (s->rdb_ctx->err != REDIS_OK) {
+			if (s->rdb_ctx != NULL && s->rdb_ctx->err != REDIS_OK) {
 				log_error("rdb, failed to read events (%s)", s->rdb_ctx->errstr);
 			}
 			rdb_disconnect(s->rdb_ctx, false);
 			s->rdb_ctx = NULL;
-			sleep(2);
+			sleep(1);
 			continue;
 		}
 		if (reply->type == REDIS_REPLY_NIL) {
@@ -1026,7 +1027,6 @@ int server_init(server_t *server, int bg_workers)
 
 	int ret = catalog_update_init(&server->catalog_upd);
 	if (ret != KNOT_EOK) {
-		dt_stop(server->rdb_events);
 		dt_delete(&server->rdb_events);
 		worker_pool_destroy(server->workers);
 		evsched_deinit(&server->sched);
@@ -1163,10 +1163,8 @@ static void server_free_handler(iohandler_t *h)
 	}
 
 	/* Wait for threads to finish */
-	if (h->unit) {
-		dt_stop(h->unit);
-		dt_join(h->unit);
-	}
+	dt_stop(h->unit);
+	dt_join(h->unit);
 
 	/* Destroy worker context. */
 	dt_delete(&h->unit);
@@ -1593,10 +1591,11 @@ void server_stop(server_t *server)
 
 #ifdef ENABLE_REDIS
 	/* Interrupt and stop XREAD BLOCK loop. */
-	if (server->rdb_ctx != NULL) {
-		redisSetTimeout(server->rdb_ctx, (struct timeval){ 0, 1 });
-	}
 	dt_stop(server->rdb_events);
+	if (server->rdb_ctx != NULL) {
+		shutdown(server->rdb_ctx->fd, SHUT_RDWR);
+	}
+	dt_join(server->rdb_events);
 #endif // ENABLE_REDIS
 
 	/* Stop scheduler. */
@@ -1605,6 +1604,7 @@ void server_stop(server_t *server)
 	server->state |= ServerShutting;
 	/* Stop timer DB syncing thread */
 	dt_stop(server->timerdb_sync);
+	dt_join(server->timerdb_sync);
 	/* Interrupt background workers. */
 	worker_pool_stop(server->workers);
 
@@ -1689,7 +1689,7 @@ static int reconfigure_timer_db(conf_t *conf, server_t *server)
 		}
 	} else if (!should_sync && exists_sync) {
 		dt_stop(server->timerdb_sync);
-		dt_delete(&server->timerdb_sync);
+		dt_join(server->timerdb_sync);
 	}
 
 	return ret;
@@ -1712,6 +1712,15 @@ static void free_redis_conn(intptr_t ptr)
 static bool invalid_redis_conn(intptr_t ptr)
 {
 	return ptr == CONN_POOL_FD_INVALID || !zone_redis_ping((void *)ptr);
+}
+
+static uint64_t db_listen_hash(conf_val_t *val)
+{
+	SIPHASH_CTX ctx;
+	SIPHASH_KEY key = { 0 };
+	SipHash24_Init(&ctx, &key);
+	SipHash24_Update(&ctx, val->blob, val->blob_len);
+	return SipHash24_End(&ctx);
 }
 
 static int reconfigure_remote_pool(conf_t *conf, server_t *server)
@@ -1754,14 +1763,27 @@ static int reconfigure_remote_pool(conf_t *conf, server_t *server)
 	}
 
 	val = conf_get(conf, C_DB, C_ZONE_DB_LISTEN);
-	if (global_redis_pool == NULL && val.code == KNOT_EOK) {
-		size_t bg_wrkrs = conf_bg_threads(conf);
-		conn_pool_t *new_pool = conn_pool_init(bg_wrkrs, REDIS_CONN_POOL_TIMEOUT,
-		                                       free_redis_conn, invalid_redis_conn);
-		if (new_pool == NULL) {
-			return KNOT_ENOMEM;
+	if (val.code == KNOT_EOK) {
+		static uint64_t hash = 0;
+		uint64_t curr_hash = db_listen_hash(&val);
+
+		if (global_redis_pool == NULL) {
+			size_t bg_wrkrs = conf_bg_threads(conf);
+			conn_pool_t *new_pool = conn_pool_init(bg_wrkrs + 1, REDIS_CONN_POOL_TIMEOUT,
+			                                       free_redis_conn, invalid_redis_conn);
+			if (new_pool == NULL) {
+				return KNOT_ENOMEM;
+			}
+			global_redis_pool = new_pool;
 		}
-		global_redis_pool = new_pool;
+		if (hash != curr_hash) {
+			conn_pool_purge(global_redis_pool);
+			if (server->rdb_ctx != NULL) {
+				// Interrupt XREAD BLOCK and reconnect events.
+				shutdown(server->rdb_ctx->fd, SHUT_RDWR);
+			}
+		}
+		hash = curr_hash;
 	}
 
 	val = conf_get(conf, C_SRV, C_RMT_RETRY_DELAY);
@@ -1834,7 +1856,7 @@ int server_reconfigure(conf_t *conf, server_t *server)
 
 	/* Reconfigure Timer DB. */
 	if ((ret = reconfigure_timer_db(conf, server)) != KNOT_EOK) {
-		log_error("failed to reconfigure Timer DB (%s)",
+		log_error("failed to reconfigure timer DB (%s)",
 		          knot_strerror(ret));
 	}
 

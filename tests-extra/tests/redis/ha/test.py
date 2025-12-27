@@ -86,10 +86,9 @@ t.xfr_diff(master, slave1, zones, serial_init)
 t.xfr_diff(master, slave2, zones, serial_init)
 
 # Add to DB manually.
-slave2.stop()
 slave2.db_in(zones,  [redis_slave2], 1)
 slave2.gen_confile()
-slave2.start()
+slave2.reload()
 slave2.zones_wait(zones) # interesting: remove and see
 txn = redis_slave1.cli("knot.upd.begin", ZONE, "1")
 redis_slave1.cli("knot.upd.add", ZONE, txn, "test TXT test")
