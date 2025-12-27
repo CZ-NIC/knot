@@ -33,17 +33,24 @@ t.start()
 t.sleep(1)
 db_upd(redis1, ZONE, 1, True)
 db_upd(redis2, ZONE, 1, True)
+db_upd(redis1, ZONE, 2, True)
+db_upd(redis2, ZONE, 2, True)
 serials = server.zones_wait(zones)
 
 db_upd(redis1, ZONE, 1)
 db_upd(redis2, ZONE, 1)
+db_upd(redis1, ZONE, 2)
+db_upd(redis2, ZONE, 2)
 serials = server.zones_wait(zones, serials)
 
-server.db_in(zones, [redis2], 1)
+target_redis = random.choice([redis1, redis2])
+target_inst  = random.choice([1, 2])
+
+server.db_in(zones, [target_redis], target_inst)
 server.gen_confile()
 server.reload()
 
-db_upd(redis2, ZONE, 1)
+db_upd(target_redis, ZONE, target_inst)
 serials = server.zones_wait(zones, serials)
 
 t.end()
