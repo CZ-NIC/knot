@@ -978,13 +978,16 @@ static int timer_db_do_sync(struct dthread *thread)
 	server_t *s = thread->data;
 
 	while (thread->state & ThreadActive) {
+		struct timespec beg = time_now();
 		rcu_read_lock();
 		int ret = zone_timers_write_all(&s->timerdb, s->zone_db);
 		rcu_read_unlock();
+		struct timespec end = time_now();
+		double duration = time_diff_ms(&beg, &end) / 1000.0;
 		if (ret == KNOT_EOK) {
-			log_info("updated persistent timer DB");
+			log_info("updated persistent timer DB in %0.2f seconds", duration);
 		} else {
-			log_error("failed to update persistent timer DB (%s)", knot_strerror(ret));
+			log_error("failed to update persistent timer DB in %0.2f seconds (%s)", duration, knot_strerror(ret));
 		}
 
 		if (conf()->cache.db_timer_db_sync <= 0) {
