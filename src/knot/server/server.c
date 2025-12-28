@@ -1106,11 +1106,15 @@ void server_deinit(server_t *server)
 	bool should_sync = (conf()->cache.db_timer_db_sync == TIMER_DB_SYNC_SHUTDOWN ||
 	                    conf()->cache.db_timer_db_sync > 0);
 	if (should_sync && server->zone_db != NULL) {
-		log_info("updating persistent timer DB");
+		struct timespec beg = time_now();
 		int ret = zone_timers_write_all(&server->timerdb, server->zone_db);
+		char dur_str[64] = "";
+		duration_to_str(dur_str, &beg);
 		if (ret != KNOT_EOK) {
-			log_error("failed to update persistent timer DB (%s)",
-			          knot_strerror(ret));
+			log_error("failed to update persistent timer DB%s (%s)",
+			          dur_str, knot_strerror(ret));
+		} else {
+			log_info("updated persistent timer DB%s", dur_str);
 		}
 	}
 
