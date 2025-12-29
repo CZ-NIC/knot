@@ -108,10 +108,11 @@ up = master.update(zone)
 up.delete("longttl.example.com.", "A") # zone max TTL decreases
 up.send()
 t.sleep(2)
-master.ctl("zone-sign", wait=True)
+master.ctl("zone-sign")
+t.sleep(2)
 rrsig_new = check_same_rrsig(master, zone, None)
 
-wait4key(t, master, zone, 2, old_key, 9, 14, "ZSK remove") # old ZSK removed
+wait4key(t, master, zone, 2, old_key, 6, 10, "ZSK remove") # old ZSK removed
 check_salt(master, zone, False)
 check_same_rrsig(master, zone, rrsig_new)
 
