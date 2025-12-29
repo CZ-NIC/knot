@@ -325,9 +325,9 @@ static size_t keyid_inuse(knot_lmdb_txn_t *txn, const char *key_id, key_params_t
 }
 
 /*! \brief Make the trash record for the key in KASP DB. */
-static bool make_trash_key(knot_lmdb_txn_t *txn, uint32_t delay)
+static int make_trash_key(knot_lmdb_txn_t *txn, uint32_t delay)
 {
-	bool rv = true;
+	int ret = KNOT_EOK;
 	MDB_val key = txn->cur_key;
 
 	uint8_t kclass;
@@ -339,17 +339,16 @@ static bool make_trash_key(knot_lmdb_txn_t *txn, uint32_t delay)
 		assert(kclass == KASPDBKEY_PARAMS);
 		key_params_t params;
 		if (!params_deserialize(&txn->cur_val, &params)) {
-			assert(0);  // KNOT_EMALF
-			return false;
+			return KNOT_EMALF;
 		}
 		uint64_t expir = (uint64_t)knot_time() + delay;
 		MDB_val val = trash_serialize(&params, expir);
 		key = make_key_str(KASPDBKEY_TRASH_PARAMS, dname, str);
-		rv = knot_lmdb_insert(txn, &key, &val);
+		ret = knot_lmdb_insert(txn, &key, &val) ? KNOT_EOK : KNOT_ERROR;
 		free(key.mv_data);
 	}
 
-	return rv;
+	return ret;
 }
 
 int kasp_db_delete_key(knot_lmdb_db_t *db, const knot_dname_t *zone_name, const char *key_id,
@@ -363,7 +362,12 @@ int kasp_db_delete_key(knot_lmdb_db_t *db, const knot_dname_t *zone_name, const 
 	if (still_used != NULL || delay > 0) {
 		bool used = (keyid_inuse(&txn, key_id, NULL) > 0);
 		if (!used && delay > 0) {
-			(void)make_trash_key(&txn, delay);
+			int ret = make_trash_key(&txn, delay);
+			if (ret != KNOT_EOK) {
+				knot_lmdb_abort(&txn);
+				free(search.mv_data);
+				return ret;
+			}
 			used = true;
 		}
 		if (still_used != NULL) {
@@ -412,19 +416,19 @@ int kasp_db_delete_keys(knot_lmdb_db_t *db, const knot_dname_t *zone_name,
 		assert(count > 0);
 		if (count == 1) {
 			if (delay > 0) {
-				(void)make_trash_key(&txn, delay);
+				ret = make_trash_key(&txn, delay);
 			} else {
 				ret = kdnssec_delete_from_keystores(keystores, key_id,
 				                                    orphan ? NULL : zone_name, true);
 				ret = (ret == KNOT_ENOENT) ? KNOT_EOK : ret;
-				if (ret != KNOT_EOK) {
-					// Note: it isn't sure that there still is a key to delete.
-					free(key_id);
-					if (best) {
-						continue;
-					} else {
-						break;
-					}
+				// Note: if error, it isn't sure that there still is a key to delete.
+			}
+			if (ret != KNOT_EOK) {
+				free(key_id);
+				if (best) {
+					continue;
+				} else {
+					break;
 				}
 			}
 		}
