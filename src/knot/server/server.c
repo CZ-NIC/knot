@@ -12,6 +12,7 @@
 #include <string.h>
 #include <sys/types.h>   // OpenBSD
 #include <sys/resource.h>
+#include <urcu.h>
 
 #include "libknot/libknot.h"
 #include "libknot/yparser/ypschema.h"
@@ -972,16 +973,30 @@ static int rdb_listener_run(struct dthread *thread)
 }
 #endif // ENABLE_REDIS
 
+static void duration_to_str(char res[64], struct timespec *beg)
+{
+        struct timespec end = time_now();
+        double duration = time_diff_ms(beg, &end) / 1000.0;
+        if (duration >= 1.0) {
+                snprintf(res, 64, " in %0.2f seconds", duration);
+	}
+}
+
 static int timer_db_do_sync(struct dthread *thread)
 {
 	server_t *s = thread->data;
 
 	while (thread->state & ThreadActive) {
+		struct timespec beg = time_now();
+		rcu_read_lock();
 		int ret = zone_timers_write_all(&s->timerdb, s->zone_db);
+		rcu_read_unlock();
+		char dur_str[64] = "";
+		duration_to_str(dur_str, &beg);
 		if (ret == KNOT_EOK) {
-			log_info("updated persistent timer DB");
+			log_info("updated persistent timer DB%s", dur_str);
 		} else {
-			log_error("failed to update persistent timer DB (%s)", knot_strerror(ret));
+			log_error("failed to update persistent timer DB%s (%s)", dur_str, knot_strerror(ret));
 		}
 
 		if (conf()->cache.db_timer_db_sync <= 0) {
@@ -1072,11 +1087,15 @@ void server_deinit(server_t *server)
 	bool should_sync = (conf()->cache.db_timer_db_sync == TIMER_DB_SYNC_SHUTDOWN ||
 	                    conf()->cache.db_timer_db_sync > 0);
 	if (should_sync && server->zone_db != NULL) {
-		log_info("updating persistent timer DB");
+		struct timespec beg = time_now();
 		int ret = zone_timers_write_all(&server->timerdb, server->zone_db);
+		char dur_str[64] = "";
+		duration_to_str(dur_str, &beg);
 		if (ret != KNOT_EOK) {
-			log_error("failed to update persistent timer DB (%s)",
-			          knot_strerror(ret));
+			log_error("failed to update persistent timer DB%s (%s)",
+			          dur_str, knot_strerror(ret));
+		} else {
+			log_info("updated persistent timer DB%s", dur_str);
 		}
 	}
 
