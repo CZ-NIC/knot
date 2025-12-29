@@ -339,6 +339,7 @@ static bool make_trash_key(knot_lmdb_txn_t *txn, uint32_t delay)
 		assert(kclass == KASPDBKEY_PARAMS);
 		key_params_t params;
 		if (!params_deserialize(&txn->cur_val, &params)) {
+			assert(0);  // KNOT_EMALF
 			return false;
 		}
 		uint64_t expir = (uint64_t)knot_time() + delay;
