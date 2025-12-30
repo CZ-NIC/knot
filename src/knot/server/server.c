@@ -1800,6 +1800,7 @@ static int reconfigure_remote_pool(conf_t *conf, server_t *server)
 		hash = curr_hash;
 	}
 
+#ifdef ENABLE_REDIS
 	val = conf_get(conf, C_DB, C_ZONE_DB_LISTEN);
 	if (val.code == KNOT_EOK) {
 		static uint64_t hash = 0;
@@ -1823,6 +1824,7 @@ static int reconfigure_remote_pool(conf_t *conf, server_t *server)
 		}
 		hash = curr_hash;
 	}
+#endif // ENABLE_REDIS
 
 	val = conf_get(conf, C_SRV, C_RMT_RETRY_DELAY);
 	int delay_ms = conf_int(&val);
