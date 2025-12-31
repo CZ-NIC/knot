@@ -67,6 +67,7 @@ static zone_t *create_zone_from(const knot_dname_t *name, server_t *server)
 		zone_free(&zone);
 		return NULL;
 	}
+	zone->events.answering = (server->state & ServerAnswering);
 
 	return zone;
 }
