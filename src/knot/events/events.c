@@ -132,7 +132,8 @@ static zone_event_type_t get_next_event(zone_events_t *events)
 		time_t current = events->time[i];
 
 		if ((next == 0 || current < next) && (current != 0) &&
-		    (events->forced[i] || !events->ufrozen || !ufreeze_applies(i))) {
+		    (events->forced[i] || !events->ufrozen || !ufreeze_applies(i)) &&
+		    (events->answering || !only_started(i))) {
 			next = current;
 			next_type = i;
 		}
@@ -487,6 +488,13 @@ void zone_events_freeze_blocking(zone_t *zone)
 	events->run_end = NULL;
 	pthread_mutex_unlock(&events->mx);
 	pthread_cond_destroy(&cond);
+}
+
+void zone_events_start_answering(zone_t *zone)
+{
+	pthread_mutex_lock(&zone->events.mx);
+	zone->events.answering = true;
+	reschedule(&zone->events, true); //unlocks events->mx
 }
 
 void zone_events_start(zone_t *zone)

@@ -117,6 +117,8 @@ static zone_t *create_zone_reload(conf_t *conf, const knot_dname_t *name,
 	zone->catalog_gen = old_zone->catalog_gen;
 	old_zone->catalog_gen = NULL;
 
+	zone->events.answering = old_zone->events.answering;
+
 	return zone;
 }
 
@@ -184,6 +186,8 @@ static zone_t *create_zone_new(conf_t *conf, const knot_dname_t *name,
 		// if load fails, fallback to bootstrap
 		replan_load_new(zone, role == CATALOG_ROLE_GENERATE);
 	}
+
+	zone->events.answering = (server->state & ServerAnswering);
 
 	return zone;
 }

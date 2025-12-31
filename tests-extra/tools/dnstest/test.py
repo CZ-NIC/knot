@@ -384,11 +384,12 @@ class Test(object):
         return [zone]
 
     def zone_rnd(self, number, dnssec=None, nsec3=None, records=None, serial=None,
-                 ttl=None, exists=True):
+                 ttl=None, exists=True, names=None):
         zones = list()
 
         # Generate unique zone names.
-        names = zone_generate.main(["-n", number]).split()
+        if names is None:
+            names = zone_generate.main(["-n", number]).split()
         for name in names:
             zone = dnstest.zonefile.ZoneFile(self.zones_dir)
             zone.set_name(name)
