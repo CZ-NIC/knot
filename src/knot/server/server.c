@@ -1232,6 +1232,8 @@ int server_start_answering(server_t *server)
 		}
 	}
 
+	knot_zonedb_foreach(server->zone_db, zone_events_start_answering);
+
 	return KNOT_EOK;
 }
 

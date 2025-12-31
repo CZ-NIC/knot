@@ -48,6 +48,7 @@ typedef struct zone_events {
 
 	bool frozen;			//!< Terminated, don't schedule new events.
 	bool ufrozen;			//!< Updates to the zone temporarily frozen by user.
+	bool answering;			//!< Server is answering.
 
 	event_t *event;			//!< Scheduler event.
 	worker_pool_t *pool;		//!< Server worker pool.
@@ -160,11 +161,24 @@ void zone_events_freeze(struct zone *zone);
 void zone_events_freeze_blocking(struct zone *zone);
 
 /*!
+ * \brief Set "answering" bit to true.
+ */
+void zone_events_start_answering(struct zone *zone);
+
+/*!
  * \brief ufreeze_applies
  * \param type Type of event to be checked
  * \return true / false if user freeze applies
  */
 bool ufreeze_applies(zone_event_type_t type);
+
+/*!
+ * \brief Events that require answering server.
+ */
+inline static bool only_started(zone_event_type_t type)
+{
+	return type == ZONE_EVENT_NOTIFY;
+}
 
 /*!
  * \brief Start the events processing.
