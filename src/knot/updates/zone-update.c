@@ -870,24 +870,6 @@ static int update_catalog(conf_t *conf, zone_update_t *update)
 	return ret;
 }
 
-typedef struct {
-	pthread_mutex_t lock;
-	size_t counter;
-} counter_reach_t;
-
-static bool counter_reach(counter_reach_t *counter, size_t increment, size_t limit)
-{
-	bool reach = false;
-	pthread_mutex_lock(&counter->lock);
-	counter->counter += increment;
-	if (counter->counter >= limit) {
-		counter->counter = 0;
-		reach = true;
-	}
-	pthread_mutex_unlock(&counter->lock);
-	return reach;
-}
-
 /*! \brief Struct for what needs to be cleared after RCU.
  *
  * This can't be zone_update_t structure as this might be already freed at that time.
@@ -904,12 +886,38 @@ typedef struct {
 	size_t new_cont_size;
 } update_clear_ctx_t;
 
+static void call_mem_trim(update_clear_ctx_t *ctx)
+{
+	static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
+
+	static bool running = false;
+	static size_t counter = 0;
+	static knot_millis_t next = 0;
+
+	knot_millis_t now = knot_millis_now();
+	pthread_mutex_lock(&lock);
+	counter += ctx->new_cont_size;
+	if (running || counter < UPDATE_MEMTRIM_AT || now < next) {
+		pthread_mutex_unlock(&lock);
+		return;
+	}
+	running = true;
+	pthread_mutex_unlock(&lock);
+
+	mem_trim();
+	knot_millis_t diff = knot_millis_now() - now;
+
+	pthread_mutex_lock(&lock);
+	running = false;
+	counter = 0;
+	next = now + 2 * diff;
+	pthread_mutex_unlock(&lock);
+}
+
 static void *update_clear_retry(void *arg);
 
 static void update_clear(struct rcu_head *param)
 {
-	static counter_reach_t counter = { PTHREAD_MUTEX_INITIALIZER, 0 };
-
 	update_clear_ctx_t *ctx = (update_clear_ctx_t *)param;
 
 	if (ctx->free_contents != NULL) {
@@ -929,9 +937,7 @@ static void update_clear(struct rcu_head *param)
 	apply_cleanup(ctx->cleanup_apply);
 	free(ctx->cleanup_apply);
 
-	if (counter_reach(&counter, ctx->new_cont_size, UPDATE_MEMTRIM_AT)) {
-		mem_trim();
-	}
+	call_mem_trim(ctx);
 
 	free(ctx);
 }
