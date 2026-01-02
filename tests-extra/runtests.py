@@ -13,6 +13,9 @@ import tempfile
 import time
 import traceback
 
+import subprocess
+from namespaces import LinuxNamespace
+
 current_dir = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(os.path.join(current_dir, "tools"))
 from dnstest.context import Context
@@ -142,138 +145,129 @@ def log_failed(log_dir, msg, indent=True):
     print("%s%s" % ("  " if indent else "", msg), file=file)
     file.close()
 
-def job(job_id, tasks, results, stop):
-    case_cnt = 0
+def job(args):
+    job_id, test, case, repeat = args
+
+    case_cnt = 1
     fail_cnt = 0
     skip_cnt = 0
 
     ctx = Context()
 
-    while True:
-        if tasks.empty() or (params.exit_on_error and stop.value):
-            break
-        test, case, repeat = tasks.get()
-        if params.repeat == 0:
-            tasks.put((test, case, repeat + 1))
+    ns = LinuxNamespace("user", "net")
+    with ns:
+        subprocess.check_call(["ip", "link", "set", "lo", "up"])
 
-        test_dir = os.path.join(current_dir, TESTS_DIR, test)
-        case_n = case if params.repeat == 1 else case + " #" + str(repeat)
-        case_str_err = (" * %s/%s" % (test, case_n)).ljust(35)
-        case_str_fail = ("%s/%s" % (test, case_n)).ljust(32)
-        case_cnt += 1
+    '''
+    # TEST
+    subprocess.check_call(["ip", "address", "add", "::123/128", "dev", "lo"])
+    print(subprocess.check_output(["ip", "a"]))
+    '''
 
-        case_dir = os.path.join(test_dir, case)
-        test_file = os.path.join(case_dir, "test.py")
-        if not os.path.isfile(test_file):
-            log.error(case_str_err + "MISSING")
-            skip_cnt += 1
-            continue
+    test_dir = os.path.join(current_dir, TESTS_DIR, test)
+    case_n = case if params.repeat == 1 else case + " #" + str(repeat)
+    case_str_err = (" * %s/%s" % (test, case_n)).ljust(35)
+    case_str_fail = ("%s/%s" % (test, case_n)).ljust(32)
+    case_cnt += 1
 
-        try:
-            out_dir = os.path.join(outs_dir, test, case_n.replace(" ", ""))
-            log_file = os.path.join(out_dir, "case.log")
+    case_dir = os.path.join(test_dir, case)
+    test_file = os.path.join(case_dir, "test.py")
+    if not os.path.isfile(test_file):
+        log.error(case_str_err + "MISSING")
+        skip_cnt += 1
+        return case_cnt, fail_cnt, skip_cnt
 
-            os.makedirs(out_dir, exist_ok=True)
-            ctx.job_id = job_id
-            ctx.module_name = "%s_%s_%i" % (test, case, repeat)
-            ctx.module_path = os.path.join(os.path.dirname(sys.argv[0]), TESTS_DIR, test, case)
-            ctx.test_dir = case_dir
-            ctx.out_dir = out_dir
-            ctx.case_log = open(log_file, mode="a")
-            ctx.test = None
-            ctx.err = False
-            ctx.err_msg = ""
-        except OsError:
-            msg = "EXCEPTION (no dir \'%s\')" % out_dir
-            log.error(case_str_err + msg)
-            log_failed(outs_dir, case_str_fail + msg)
-            fail_cnt += 1
-            stop.value = True
-            continue
+    try:
+        out_dir = os.path.join(outs_dir, test, case_n.replace(" ", ""))
+        log_file = os.path.join(out_dir, "case.log")
 
-        try:
-            module_entry = os.path.join(ctx.module_path, "test.py")
-            spec = importlib.util.spec_from_file_location(ctx.module_name, module_entry)
-            mod = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(mod)
-        except dnstest.utils.Skip as exc:
-            log.error(case_str_err + "SKIPPED (%s)" % format(exc))
-            skip_cnt += 1
-        except dnstest.utils.Failed as exc:
-            save_traceback(ctx.out_dir, exc)
+        os.makedirs(out_dir, exist_ok=True)
+        ctx.job_id = job_id
+        ctx.module_name = "%s_%s_%i" % (test, case, repeat)
+        ctx.module_path = os.path.join(os.path.dirname(sys.argv[0]), TESTS_DIR, test, case)
+        ctx.test_dir = case_dir
+        ctx.out_dir = out_dir
+        ctx.case_log = open(log_file, mode="a")
+        ctx.test = None
+        ctx.err = False
+        ctx.err_msg = ""
+    except OsError:
+        msg = "EXCEPTION (no dir \'%s\')" % out_dir
+        log.error(case_str_err + msg)
+        log_failed(outs_dir, case_str_fail + msg)
+        fail_cnt += 1
+        return case_cnt, fail_cnt, skip_cnt
 
-            desc = format(exc)
-            msg = "FAILED (%s)" % (desc if desc else exc.__class__.__name__)
-            if ctx.err and ctx.err_msg:
-                msg += " AND (" + ctx.err_msg + ")"
-            log.error(case_str_err + msg)
-            log_failed(outs_dir, case_str_fail + msg)
+    try:
+        module_entry = os.path.join(ctx.module_path, "test.py")
+        spec = importlib.util.spec_from_file_location(ctx.module_name, module_entry)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+    except dnstest.utils.Skip as exc:
+        log.error(case_str_err + "SKIPPED (%s)" % format(exc))
+        skip_cnt += 1
+    except dnstest.utils.Failed as exc:
+        save_traceback(ctx.out_dir, exc)
 
-            if params.debug:
-                traceback.print_exc()
+        desc = format(exc)
+        msg = "FAILED (%s)" % (desc if desc else exc.__class__.__name__)
+        if ctx.err and ctx.err_msg:
+            msg += " AND (" + ctx.err_msg + ")"
+        log.error(case_str_err + msg)
+        log_failed(outs_dir, case_str_fail + msg)
 
-            fail_cnt += 1
-            stop.value = True
-        except Exception as exc:
-            save_traceback(ctx.out_dir, exc)
+        if params.debug:
+            traceback.print_exc()
 
-            desc = format(exc)
-            msg = "EXCEPTION (%s)" % (desc if desc else exc.__class__.__name__)
-            log.error(case_str_err + msg)
-            log_failed(outs_dir, case_str_fail + msg)
+        fail_cnt += 1
+    except Exception as exc:
+        save_traceback(ctx.out_dir, exc)
 
-            if params.debug:
-                traceback.print_exc()
+        desc = format(exc)
+        msg = "EXCEPTION (%s)" % (desc if desc else exc.__class__.__name__)
+        log.error(case_str_err + msg)
+        log_failed(outs_dir, case_str_fail + msg)
 
-            fail_cnt += 1
-            stop.value = True
-        except BaseException as exc:
-            save_traceback(ctx.out_dir, exc)
-            if params.debug:
-                traceback.print_exc()
-            else:
-                log.info("INTERRUPTED")
-                # Stop servers if still running.
-            if ctx.test:
-                ctx.test.end()
-            sys.exit(1)
+        if params.debug:
+            traceback.print_exc()
+
+        fail_cnt += 1
+    except BaseException as exc:
+        save_traceback(ctx.out_dir, exc)
+        if params.debug:
+            traceback.print_exc()
         else:
-            if ctx.err:
-                msg = "FAILED" + \
-                      ((" (" + ctx.err_msg + ")") if ctx.err_msg else "")
-                log.info(case_str_err + msg)
-                log_failed(outs_dir, case_str_fail + msg)
-                fail_cnt += 1
-                stop.value = True
-            else:
-                log.info(case_str_err + "OK")
-
-        # Stop servers if still running.
+            log.info("INTERRUPTED")
+            # Stop servers if still running.
         if ctx.test:
             ctx.test.end()
+        sys.exit(1)
+    else:
+        if ctx.err:
+            msg = "FAILED" + \
+                  ((" (" + ctx.err_msg + ")") if ctx.err_msg else "")
+            log.info(case_str_err + msg)
+            log_failed(outs_dir, case_str_fail + msg)
+            fail_cnt += 1
+        else:
+            log.info(case_str_err + "OK")
 
-        ctx.case_log.close()
-    results.put((case_cnt, fail_cnt, skip_cnt))
+    # Stop servers if still running.
+    if ctx.test:
+        ctx.test.end()
+
+    ctx.case_log.close()
+    return case_cnt, fail_cnt, skip_cnt
 
 def main(args):
     global log
     global outs_dir
-
-    tasks = multiprocessing.Queue()
-    results = multiprocessing.SimpleQueue()
-    stop = multiprocessing.Value('i', False)
 
     case_cnt = 0
     fail_cnt = 0
     skip_cnt = 0
 
     included = parse_args(args)
-
-    range_end = 2 if params.repeat == 0 else params.repeat + 1
-    for n in range(1, range_end):
-        for test, cases in included.items():
-            for case in cases:
-                tasks.put((test, case, n), block=False)
 
     timestamp = int(time.time())
     today = time.strftime("%Y-%m-%d", time.localtime(timestamp))
@@ -318,25 +312,27 @@ def main(args):
         log.error(str(e))
         sys.exit(1)
 
+    tasks = []
+    job_id = 1
+
+    range_end = 2 if params.repeat == 0 else params.repeat + 1
+    for repeat in range(1, range_end):
+        for test, cases in included.items():
+            for case in cases:
+                tasks.append((job_id, test, case, repeat))
+
     ref_time = datetime.datetime.now().replace(microsecond=0)
 
-    if params.jobs > 1: # Multi-thread run
-        threads = []
-        for j in range(params.jobs):
-            t = multiprocessing.Process(target=job, args=(j + 1, tasks, results, stop))
-            threads.append(t)
-            t.start()
+    with multiprocessing.Pool(params.jobs) as pool:
+        for a, b, c in pool.imap_unordered(job, tasks):
+            case_cnt += a
+            fail_cnt += b
+            skip_cnt += c
 
-        for thread in threads:
-            thread.join()
-    else: # Single-thread run
-        job(1, tasks, results, stop)
-
-    while not results.empty():
-        a, b, c = results.get()
-        case_cnt += a
-        fail_cnt += b
-        skip_cnt += c
+            if params.exit_on_error and fail_cnt:
+                pool.terminate()
+                pool.join()
+                break
 
     time_diff = datetime.datetime.now().replace(microsecond=0) - ref_time
     msg_time = "TOTAL TIME: %s, " % time_diff
