@@ -255,6 +255,9 @@ int knot_qreq_recv(struct knot_quic_reply *r, struct iovec *out, int timeout_ms)
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
+		if (conn->conn == NULL) {
+			return KNOT_ECONN;
+		}
 	}
 
 	knot_tcp_inbufs_upd_res_t *firstib = stream->inbufs;
