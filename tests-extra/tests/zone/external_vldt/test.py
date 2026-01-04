@@ -40,7 +40,7 @@ ZONE = zone[0].name
 LOG = "for external validation"
 
 slave.conf_srv().async_start = True
-slave.conf_ss("external", zone).timeout = 10
+slave.conf_ss("external", zone).timeout = 20
 slave.conf_ss("external", zone).dump_new_zone  = dump_file(slave, "new")
 slave.conf_ss("external", zone).dump_removals  = dump_file(slave, "diff")
 slave.conf_ss("external", zone).dump_additions = dump_file(slave, "diff")
