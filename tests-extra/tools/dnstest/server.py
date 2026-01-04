@@ -1557,7 +1557,7 @@ class Knot(Server):
 
         s.begin("control")
         s.item("listen", "[ \"knot.sock\", \"knot2.sock\"]")
-        s.item_str("timeout", "15")
+        s.item_str("timeout", "25")
         s.end()
 
         all_remotes = set()
@@ -1809,7 +1809,7 @@ class Knot(Server):
         else:
             conf_params = ["-c", self.confile]
         self.start_params = conf_params
-        self.ctl_params = conf_params + ["-t", "15"]
+        self.ctl_params = conf_params + ["-t", "25"]
         if self.ctl_params_append != None:
             self.ctl_params += self.ctl_params_append
 
