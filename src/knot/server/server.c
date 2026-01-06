@@ -1723,6 +1723,7 @@ static void free_sess_ticket(intptr_t ptr)
 	}
 }
 
+#ifdef ENABLE_REDIS
 static void free_redis_conn(intptr_t ptr)
 {
 	if (ptr != CONN_POOL_FD_INVALID) {
@@ -1743,6 +1744,7 @@ static uint64_t db_listen_hash(conf_val_t *val)
 	SipHash24_Update(&ctx, val->blob, val->blob_len);
 	return SipHash24_End(&ctx);
 }
+#endif // ENABLE_REDIS
 
 static int reconfigure_remote_pool(conf_t *conf, server_t *server)
 {
