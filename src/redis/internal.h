@@ -933,7 +933,7 @@ static void scanner_data(zs_scanner_t *s)
 	uint8_t buf[knot_rdata_size(s->r_data_length)];
 	knot_rdata_t *rdata = (knot_rdata_t *)buf;
 	knot_rdata_init(rdata, s->r_data_length, s->r_data);
-	if (knot_rdata_to_canonical(rdata, s->r_type) != KNOT_EOK) {
+	if (knot_rdata_to_canonical_impl(rdata, s->r_type) != KNOT_EOK) {
 		RedisModule_ReplyWithError(s_ctx->ctx, RDB_EMALF);
 		s_ctx->replied = true;
 		s->error.fatal = true;
