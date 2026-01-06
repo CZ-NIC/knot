@@ -42,7 +42,7 @@ def test_info():
             if len(info) > 0:
                 info += "<-%i" % frame[2]
             else:
-                info = "%s#%i" % (frame_dir, frame[2])
+                info = "%s:%i" % (frame_dir, frame[2])
     parts = info.split("/")
 
     if len(parts) > 1:
