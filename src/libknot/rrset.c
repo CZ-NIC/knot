@@ -125,8 +125,7 @@ bool knot_rrset_is_nsec3rel(const knot_rrset_t *rr)
 	         && knot_rrsig_type_covered(rr->rrs.rdata) == KNOT_RRTYPE_NSEC3));
 }
 
-_public_
-int knot_rdata_to_canonical(knot_rdata_t *rdata, uint16_t type)
+static int knot_rdata_to_canonical_impl(knot_rdata_t *rdata, uint16_t type)
 {
 	if (rdata == NULL) {
 		return KNOT_EINVAL;
@@ -182,6 +181,16 @@ int knot_rdata_to_canonical(knot_rdata_t *rdata, uint16_t type)
 }
 
 _public_
+int knot_rdata_to_canonical(uint8_t *rdata, uint16_t len, uint16_t type)
+{
+	uint8_t buf[knot_rdata_size(len)];
+	knot_rdata_t *rdata_ = (knot_rdata_t *)buf;
+	knot_rdata_init(rdata_, len, rdata);
+
+	return knot_rdata_to_canonical_impl(rdata_, type);
+}
+
+_public_
 int knot_rrset_rr_to_canonical(knot_rrset_t *rrset)
 {
 	if (rrset == NULL || rrset->rrs.count != 1) {
@@ -191,7 +200,7 @@ int knot_rrset_rr_to_canonical(knot_rrset_t *rrset)
 	/* Convert owner for all RRSets. */
 	knot_dname_to_lower(rrset->owner);
 
-	return knot_rdata_to_canonical(rrset->rrs.rdata, rrset->type);
+	return knot_rdata_to_canonical_impl(rrset->rrs.rdata, rrset->type);
 }
 
 _public_
