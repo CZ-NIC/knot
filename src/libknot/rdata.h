@@ -88,21 +88,20 @@ inline static int knot_rdata_cmp(const knot_rdata_t *rdata1, const knot_rdata_t 
 }
 
 /*!
- * \brief Converts rdata into canonical format.
+ * \brief Convert one Rdata into canonical format.
  *
  * Rdata domain names are converted only for types listed in RFC 4034,
  * Section 6.2, except for NSEC (updated by RFC 6840, Section 5.1) and
  * A6 (not supported).
  *
- * \warning This function expects either empty rdata or full, not malformed
- *          rdata. If malformed rdata is passed to this function, memory errors
+ * \warning This function expects either empty RDATA or full, not malformed
+ *          RDATA. If malformed RRSet is passed to this function, memory errors
  *          may occur.
  *
- * \param rdata  Rdata to convert.
- * \param type   Rdata type.
- *
- * \return Error code, KNOT_EOK if successful.
+ * \param data  Rdata to convert.
+ * \param len   Length of Rdata
+ * \param type  Type of Rdata.
  */
-int knot_rdata_to_canonical(knot_rdata_t *rdata, uint16_t type);
+int knot_rdata_to_canonical(uint8_t *data, uint16_t len, uint16_t type);
 
 /*! @} */
