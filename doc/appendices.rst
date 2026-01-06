@@ -28,17 +28,16 @@ outcome.
      - ECDSA
      - RSA
      - Tested
-   * - `SoftHSM 2.0 <https://www.opendnssec.org/softhsm/>`_ [#fn-softhsm]_
+   * - `Utimaco SecurityServer (V4) <https://hsm.utimaco.com/products-hardware-security-modules/general-purpose-hsm/securityserver-cse/>`_ [#fn-utimaco]_
      - yes
      - yes
-     - | ed25519
-       | ed448
+     - n/a
      - | 256
        | 384
      - | 1024
        | 2048
        | 4096
-     - 2025-12
+     - 2018-09
    * - `Trustway Proteccio NetHSM <https://atos.net/en/solutions/cyber-security/data-protection-and-governance/hardware-security-module-trustway-proteccio-nethsm>`_
      - yes
      - ECDSA only
@@ -59,16 +58,17 @@ outcome.
        | 2048
        | 4096
      - 2020-01
-   * - `Utimaco SecurityServer (V4) <https://hsm.utimaco.com/products-hardware-security-modules/general-purpose-hsm/securityserver-cse/>`_ [#fn-utimaco]_
+   * - `SoftHSM 2.0 <https://www.opendnssec.org/softhsm/>`_ [#fn-softhsm]_
      - yes
      - yes
-     - n/a
+     - | ed25519
+       | ed448
      - | 256
        | 384
      - | 1024
        | 2048
        | 4096
-     - 2018-09
+     - 2025-12
    * - `Luna Cloud HSM (non-FIPS) <https://thalesdocs.com/dpod/services/luna_cloud_hsm/index.html>`_
      - yes
      - n/a
