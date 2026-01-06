@@ -170,7 +170,7 @@ def job(job_id, tasks, results, stop):
             continue
 
         try:
-            out_dir = os.path.join(outs_dir, test, case_n.replace(" ", ""))
+            out_dir = os.path.join(outs_dir, test, case_n.replace(" #", ":"))
             log_file = os.path.join(out_dir, "case.log")
 
             os.makedirs(out_dir, exist_ok=True)
