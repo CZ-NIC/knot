@@ -157,7 +157,7 @@ def job(job_id, tasks, results, stop):
             tasks.put((test, case, repeat + 1))
 
         test_dir = os.path.join(current_dir, TESTS_DIR, test)
-        case_n = case if params.repeat == 1 else case + " #" + str(repeat)
+        case_n = case if params.repeat == 1 else case + " :" + str(repeat)
         case_str_err = (" * %s/%s" % (test, case_n)).ljust(35)
         case_str_fail = ("%s/%s" % (test, case_n)).ljust(32)
         case_cnt += 1
