@@ -1416,6 +1416,9 @@ static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master,
 	if (data.edns.no_edns) {
 		flags |= KNOT_REQUEST_NEW;
 	}
+	if (!conf->cache.srv_quic_resumption) {
+		flags |= KNOT_REQUEST_NO_RESUMPTION;
+	}
 	knot_request_t *req = knot_request_make(NULL, master, pkt, zone->server->quic_creds,
 	                                        &data.edns, flags);
 	if (req == NULL) {

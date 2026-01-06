@@ -17,7 +17,8 @@ int knot_qreq_connect(struct knot_quic_reply **out,
                       const char *const peer_hostnames[RMT_MAX_PINS],
                       const uint8_t *const peer_pins[RMT_MAX_PINS],
                       bool *reused_fd,
-                      int timeout_ms);
+                      int timeout_ms,
+                      bool no_resumption);
 
 int knot_qreq_send(struct knot_quic_reply *r, const struct iovec *data);
 

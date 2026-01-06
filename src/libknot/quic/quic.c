@@ -131,10 +131,12 @@ static ngtcp2_conn *get_conn(ngtcp2_crypto_conn_ref *conn_ref)
 
 static int tls_init_conn_session(knot_quic_conn_t *conn, bool server)
 {
+	knot_tls_flag_t resumption = (conn->quic_table->flags & KNOT_QUIC_TABLE_NO_RESUMPTION) ?
+	                             0 : KNOT_TLS_EARLY_DATA;
 	int ret = knot_tls_session(&conn->tls_session, conn->quic_table->creds,
 	                           conn->quic_table->priority,
 	                           (server ? KNOT_TLS_SERVER : KNOT_TLS_CLIENT) |
-	                           KNOT_TLS_QUIC | KNOT_TLS_DNS | KNOT_TLS_EARLY_DATA);
+	                           KNOT_TLS_QUIC | KNOT_TLS_DNS | resumption);
 	if (ret != KNOT_EOK) {
 		return TLS_CALLBACK_ERR;
 	}

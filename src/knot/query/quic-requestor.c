@@ -14,7 +14,6 @@
 #include "contrib/net.h"
 #include "contrib/time.h"
 #include "knot/common/log.h" // please use this only for tiny stuff like quic-log
-#include "knot/conf/conf.h" // please use this only for tiny stuff like quic-log
 #include "knot/server/handler.h"
 #include "libknot/error.h"
 
@@ -154,7 +153,8 @@ int knot_qreq_connect(struct knot_quic_reply **out,
                       const char *const peer_hostnames[RMT_MAX_PINS],
                       const uint8_t *const peer_pins[RMT_MAX_PINS],
                       bool *reused_fd,
-                      int timeout_ms)
+                      int timeout_ms,
+                      bool no_resumption)
 {
 	struct knot_quic_reply *r = calloc(1, sizeof(*r) + 2 * sizeof(struct iovec) +
 	                                      2 * QUIC_BUF_SIZE);
@@ -191,6 +191,9 @@ int knot_qreq_connect(struct knot_quic_reply **out,
 	table->flags |= KNOT_QUIC_TABLE_CLIENT_ONLY;
 	if (log_enabled_quic_debug()) {
 		table->log_cb = quic_log_cb;
+	}
+	if (no_resumption) {
+		table->flags |= KNOT_QUIC_TABLE_NO_RESUMPTION;
 	}
 
 	knot_quic_conn_t *conn = NULL;

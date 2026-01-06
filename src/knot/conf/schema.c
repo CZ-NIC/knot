@@ -229,6 +229,7 @@ static const yp_item_t desc_server[] = {
 	{ C_QUIC_MAX_CLIENTS,     YP_TINT,  YP_VINT = { 128, INT32_MAX, 10000 } },
 	{ C_QUIC_OUTBUF_MAX_SIZE, YP_TINT,  YP_VINT = { MEGA(1), SSIZE_MAX, MEGA(100), YP_SSIZE } },
 	{ C_QUIC_IDLE_CLOSE,      YP_TINT,  YP_VINT = { 1, INT32_MAX, 4, YP_STIME } },
+	{ C_QUIC_RESUMPTION,      YP_TBOOL, YP_VBOOL = { true } },
 	{ C_RMT_POOL_LIMIT,       YP_TINT,  YP_VINT = { 0, INT32_MAX, 0 } },
 	{ C_RMT_POOL_TIMEOUT,     YP_TINT,  YP_VINT = { 1, INT32_MAX, 5, YP_STIME } },
 	{ C_RMT_RETRY_DELAY,      YP_TINT,  YP_VINT = { 0, INT32_MAX, 0 } },

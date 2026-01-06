@@ -87,7 +87,8 @@ static int request_ensure_connected(knot_request_t *request, bool *reused_fd, in
 		int ret = knot_qreq_connect(&request->quic_ctx, request->fd,
 		                            &request->remote, &request->source,
 		                            request->creds, request->hostnames,
-		                            request->pins, reused_fd, timeout_ms);
+		                            request->pins, reused_fd, timeout_ms,
+		                            (request->flags & KNOT_REQUEST_NO_RESUMPTION));
 		if (ret != KNOT_EOK) {
 			close(request->fd);
 			request->fd = -1;

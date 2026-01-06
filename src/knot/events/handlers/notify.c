@@ -96,6 +96,9 @@ static int send_notify(conf_t *conf, zone_t *zone, const knot_rrset_t *soa,
 	}
 
 	knot_request_flag_t flags = conf->cache.srv_tcp_fastopen ? KNOT_REQUEST_TFO : 0;
+	if (!conf->cache.srv_quic_resumption) {
+		flags |= KNOT_REQUEST_NO_RESUMPTION;
+	}
 	knot_request_t *req = knot_request_make(NULL, slave, pkt,
 	                                        zone->server->quic_creds, &data.edns, flags);
 	if (req == NULL) {

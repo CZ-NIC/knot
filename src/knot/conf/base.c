@@ -283,6 +283,9 @@ static void init_cache(
 
 	val = conf_get(conf, C_DB, C_TIMER_DB_SYNC);
 	conf->cache.db_timer_db_sync = conf_int(&val);
+
+	val = conf_get(conf, C_SRV, C_QUIC_RESUMPTION);
+	conf->cache.srv_quic_resumption = conf_bool(&val);
 }
 
 int conf_new(

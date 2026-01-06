@@ -98,6 +98,7 @@ typedef struct knot_quic_cid {
 
 typedef enum {
 	KNOT_QUIC_TABLE_CLIENT_ONLY = (1 << 0),
+	KNOT_QUIC_TABLE_NO_RESUMPTION = (1 << 1),
 } knot_quic_table_flag_t;
 
 typedef struct knot_quic_table {

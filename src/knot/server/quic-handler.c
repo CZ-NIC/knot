@@ -18,6 +18,7 @@
 #include "knot/server/quic-handler.h"
 #include "knot/server/server.h"
 #include "libknot/quic/quic.h"
+#include "libknot/quic/quic_conn.h"
 #include "libknot/xdp/tcp_iobuf.h"
 
 #define SWEEP_BUF_SIZE 4096
@@ -115,6 +116,9 @@ knot_quic_table_t *quic_make_table(struct server *server)
 		                     udp_pl, server->quic_creds);
 	if (table != NULL && log_enabled_quic_debug()) {
 		table->log_cb = quic_log_cb;
+	}
+	if (!pconf->cache.srv_quic_resumption) {
+		table->flags |= KNOT_QUIC_TABLE_NO_RESUMPTION;
 	}
 
 	return table;
