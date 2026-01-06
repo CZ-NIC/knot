@@ -2151,9 +2151,9 @@ static int parse_type(const char *value, query_t *query)
 	query->serial = serial;
 	query->notify = notify;
 
-	// If NOTIFY, reset default RD flag.
 	if (query->notify) {
 		query->flags.rd_flag = false;
+		query->flags.aa_flag = true;
 	}
 
 	return KNOT_EOK;
