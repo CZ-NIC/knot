@@ -93,7 +93,7 @@ static int digest_node(zone_node_t *node, void *ctx)
 }
 
 int zone_contents_digest(const zone_contents_t *contents, int algorithm,
-                         bool ignore_dnssec,
+                         int scheme, bool ignore_dnssec,
                          uint8_t **out_digest, size_t *out_size)
 {
 	if (out_digest == NULL || out_size == NULL) {
@@ -155,6 +155,7 @@ static int verify_zonemd(const knot_rdata_t *zonemd, const zone_contents_t *cont
 	uint8_t *computed = NULL;
 	size_t comp_size = 0;
 	int ret = zone_contents_digest(contents, knot_zonemd_algorithm(zonemd),
+	                               knot_zonemd_scheme(zonemd),
 	                               ignore_dnssec, &computed, &comp_size);
 	if (ret != KNOT_EOK) {
 		return ret;
@@ -245,7 +246,7 @@ static ptrdiff_t zonemd_hash_offs(void)
 	return knot_zonemd_digest(&fake) - fake.data;
 }
 
-int zone_update_add_digest(struct zone_update *update, int algorithm, bool placeholder)
+int zone_update_add_digest(conf_t *conf, struct zone_update *update, int algorithm, bool placeholder)
 {
 	if (update == NULL) {
 		return KNOT_EINVAL;
@@ -265,7 +266,9 @@ int zone_update_add_digest(struct zone_update *update, int algorithm, bool place
 			return KNOT_EOK;
 		}
 	} else {
-		int ret = zone_contents_digest(update->new_cont, algorithm, false, &digest, &dsize);
+		conf_val_t scheme = conf_zone_get(conf, C_ZONEMD_SCHEME, update->zone->name);
+
+		int ret = zone_contents_digest(update->new_cont, algorithm, conf_int(&scheme), false, &digest, &dsize);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}

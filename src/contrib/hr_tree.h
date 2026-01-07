@@ -12,16 +12,15 @@ typedef int (*hr_rehash_t)(uint8_t *, const uint8_t *, const uint8_t *);
 
 #pragma pack(push, 8)
 
-typedef struct hr_node {
-	unsigned branch_bit;
-	union {
-		struct {
-                        uint8_t leaf_hash[];
-		};
-		struct {
-			struct hr_node *childs[2];
-			uint8_t branch_hash[];
-		};
+typedef union hr_node {
+	struct {
+		unsigned branch_bit;
+		uint8_t leaf_hash[];
+	};
+	struct {
+		unsigned _branch_bit_placeholder;
+		union hr_node *childs[2];
+		uint8_t branch_hash[];
 	};
 } hr_node_t;
 
@@ -44,6 +43,8 @@ unsigned bitarray_bit(const uint8_t *bitarray, unsigned bit_idx);
 
 /*!
  * \brief Return index of first bit where the given byte arrays differ.
+ *
+ * \retval (len * 8)   If the arrays are equal.
  */
 unsigned bitarray_diff_idx(const uint8_t *a, const uint8_t *b, unsigned len);
 

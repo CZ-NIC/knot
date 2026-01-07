@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include "knot/conf/base.h"
 #include "knot/zone/contents.h"
 
 /*!
@@ -12,6 +13,7 @@
  *
  * \param contents        Zone contents to digest.
  * \param algorithm       Algorithm to use.
+ * \param scheme          Scheme to use.
  * \param ignore_dnssec   Skip DNSSEC-related records while computing the digest.
  * \param out_digest      Output: buffer with computed hash (to be freed).
  * \param out_size        Output: size of the resulting hash.
@@ -19,7 +21,7 @@
  * \return KNOT_E*
  */
 int zone_contents_digest(const zone_contents_t *contents, int algorithm,
-                         bool ignore_dnssec,
+                         int scheme, bool ignore_dnssec,
                          uint8_t **out_digest, size_t *out_size);
 
 /*!
@@ -55,6 +57,7 @@ struct zone_update;
 /*!
  * \brief Add ZONEMD record to zone_update.
  *
+ * \param conf          Relevant conf context.
  * \param update        Update with contents to be digested.
  * \param algorithm     ZONEMD algorithm.
  * \param placeholder   Don't calculate, just put placeholder (if ZONEMD not yet present).
@@ -63,4 +66,4 @@ struct zone_update;
  *
  * \return KNOT_E*
  */
-int zone_update_add_digest(struct zone_update *update, int algorithm, bool placeholder);
+int zone_update_add_digest(conf_t *conf, struct zone_update *update, int algorithm, bool placeholder);

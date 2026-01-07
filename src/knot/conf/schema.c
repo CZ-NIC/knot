@@ -516,6 +516,7 @@ static const yp_item_t desc_external[] = {
 	{ C_SERIAL_MODULO,       YP_TSTR,  YP_VSTR = { "0/1" }, YP_FNONE, { check_modulo_shift } }, \
 	{ C_ZONEMD_GENERATE,     YP_TOPT,  YP_VOPT = { zone_digest, ZONE_DIGEST_NONE }, FLAGS }, \
 	{ C_ZONEMD_VERIFY,       YP_TBOOL, YP_VNONE, FLAGS }, \
+	{ C_ZONEMD_SCHEME,       YP_TINT,  YP_VINT = { 1, 2, 1 } }, \
 	{ C_REFRESH_MIN_INTERVAL,YP_TINT,  YP_VINT = { 2, UINT32_MAX, 2, YP_STIME } }, \
 	{ C_REFRESH_MAX_INTERVAL,YP_TINT,  YP_VINT = { 2, UINT32_MAX, UINT32_MAX, YP_STIME } }, \
 	{ C_RETRY_MIN_INTERVAL,  YP_TINT,  YP_VINT = { 1, UINT32_MAX, 1, YP_STIME } }, \

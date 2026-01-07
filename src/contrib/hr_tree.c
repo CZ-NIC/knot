@@ -11,7 +11,7 @@
 
 #include "hr_tree.h"
 
-#include "contrib/mempattern.h"
+#include "contrib/mempattern.h" // NOTE this include is optional
 
 #ifndef MM_DEFAULT_BLKSIZE
 #define mm_alloc(mm, size) malloc(size)

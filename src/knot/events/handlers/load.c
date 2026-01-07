@@ -425,7 +425,7 @@ load_end:
 				ret = zone_update_increment_soa(&up, conf);
 			}
 			if (ret == KNOT_EOK) {
-				ret = zone_update_add_digest(&up, digest_alg, false);
+				ret = zone_update_add_digest(conf, &up, digest_alg, false);
 			}
 			if (ret != KNOT_EOK) {
 				goto cleanup;
