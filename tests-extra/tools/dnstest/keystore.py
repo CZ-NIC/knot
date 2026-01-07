@@ -63,10 +63,16 @@ class KeystoreSoftHSM(Keystore):
         urls = check_output(['p11tool', '--list-token-urls'],
                            env=dict(os.environ, **self.env())).decode('ascii')
         url = ssearch(urls, r'(pkcs11:.*SoftHSM.*)')
-        keys = check_output(['p11tool', '--login', '--set-pin', self.passwd, '--list-keys', url],
-                           env=dict(os.environ, **self.env())).decode('ascii')
-        id_sep = ':'.join(textwrap.wrap(id, 2))
-        key = ssearch(keys, r'(ID:.*%s.*)' % id_sep)
+        try:
+            # p11tool sets exit status to 2 if there aren't any keys in SoftHSM.
+            keys = check_output(['p11tool', '--login', '--set-pin', self.passwd, '--list-keys', url],
+                                env=dict(os.environ, **self.env()),
+                                stderr=open(Context().test.out_dir + "/p11tool.err", mode="a")).decode('ascii')
+            id_sep = ':'.join(textwrap.wrap(id, 2))
+            key = ssearch(keys, r'(ID:.*%s.*)' % id_sep)
+        except:
+            key = None
+
         return False if not key else len(key) > 0
 
     def init(self, keystore=None):
@@ -76,7 +82,7 @@ class KeystoreSoftHSM(Keystore):
                 config = (
                     f"directories.tokendir = {self.dir}/tokens/\n"
                      "objectstore.backend = file\n"
-                     "log.level = INFO\n"
+                     "log.level = DEBUG\n"
                 )
                 conf_file.write(config)
 
