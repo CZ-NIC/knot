@@ -76,6 +76,80 @@ int dnssec_pem_to_privkey(const dnssec_binary_t *pem, gnutls_privkey_t *key)
 	return KNOT_EOK;
 }
 
+static int dnssec_der_to_x509(const dnssec_binary_t *der, gnutls_x509_privkey_t *key)
+{
+	if (!der || !key) {
+		return KNOT_EINVAL;
+	}
+
+	gnutls_datum_t data = binary_to_datum(der);
+
+	gnutls_datum_t result;
+
+	int r = gnutls_base64_decode2(&data, &result);
+
+	// handle r
+	if (r != GNUTLS_E_SUCCESS) {
+		return KNOT_ENOMEM;
+	}
+
+	gnutls_x509_privkey_t _key = NULL;
+	r = gnutls_x509_privkey_init(&_key);
+	if (r != GNUTLS_E_SUCCESS) {
+		gnutls_free(result.data);
+		return KNOT_ENOMEM;
+	}
+
+	int format = GNUTLS_X509_FMT_DER;
+	char *password = NULL;
+	int flags = GNUTLS_PKCS_PLAIN;
+	r = gnutls_x509_privkey_import_pkcs8(_key, &result, format, password, flags);
+	if (r != GNUTLS_E_SUCCESS) {
+		gnutls_x509_privkey_deinit(_key);
+		gnutls_free(result.data);
+		return KNOT_KEY_EIMPORT;
+	}
+
+	gnutls_free(result.data);
+
+	*key = _key;
+
+	return KNOT_EOK;
+}
+
+_public_
+int dnssec_der_to_privkey(const dnssec_binary_t *pem, gnutls_privkey_t *key)
+{
+	if (!pem || !key) {
+		return KNOT_EINVAL;
+	}
+
+	gnutls_x509_privkey_t key_x509 = NULL;
+	int r = dnssec_der_to_x509(pem, &key_x509);
+	if (r != KNOT_EOK) {
+		return r;
+	}
+
+	gnutls_privkey_t key_abs = NULL;
+	r = gnutls_privkey_init(&key_abs);
+	if (r != GNUTLS_E_SUCCESS) {
+		gnutls_x509_privkey_deinit(key_x509);
+		return KNOT_ENOMEM;
+	}
+
+	int flags = GNUTLS_PRIVKEY_IMPORT_AUTO_RELEASE;
+	r = gnutls_privkey_import_x509(key_abs, key_x509, flags);
+	if (r != GNUTLS_E_SUCCESS) {
+		gnutls_x509_privkey_deinit(key_x509);
+		gnutls_privkey_deinit(key_abs);
+		return KNOT_ENOMEM;
+	}
+
+	*key = key_abs;
+
+	return KNOT_EOK;
+}
+
 static int try_export_pem(gnutls_x509_privkey_t key, dnssec_binary_t *pem)
 {
 	assert(key);
