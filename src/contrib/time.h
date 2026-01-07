@@ -15,6 +15,14 @@
  #define st_mtim st_mtimespec
 #endif
 
+#ifndef CLOCK_MONOTONIC_COARSE
+ #define CLOCK_MONOTONIC_COARSE CLOCK_MONOTONIC
+#endif
+
+#ifndef CLOCK_REALTIME_COARSE
+ #define CLOCK_REALTIME_COARSE CLOCK_REALTIME
+#endif
+
 typedef unsigned long long knot_millis_t;
 
 /*!
