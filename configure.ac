@@ -138,6 +138,22 @@ link_mode=$(test "$enable_shared" = "yes" && echo "shared" || echo "static")
 # Generic dependencies
 ######################
 
+AC_ARG_WITH([memcheck],
+        AC_HELP_STRING([--with-memcheck=auto|yes|no|memcheck_include_folder], [Build with memcheck api. If valgrind/memcheck.h is not in path, define include path in CFLAGS or pass the valgrind/memcheck.h include folder for this parameter. [default=no]]),
+        [with_memcheck=$withval], [with_memcheck=no])
+
+AS_CASE([$with_memcheck],
+    [no], [],
+    [auto], [
+      AC_CHECK_HEADER([valgrind/memcheck.h], [with_memcheck=yes], [with_memcheck=no])
+    ],
+    [yes|*], [
+      AS_IF([test "x$with_memcheck" != "xyes"], [AC_SUBST(CPPFLAGS, "$CPPFLAGS -I$with_memcheck")])
+      AC_CHECK_HEADER([valgrind/memcheck.h], [], [AC_MSG_ERROR([--with-memcheck requries valgrind/memcheck.h header files. If valgrind/memcheck.h is not in path, define include path in CFLAGS or pass the valgrind/memcheck.h include folder for --with-memcheck parameter.])])
+      AC_DEFINE_UNQUOTED([KNOT_ENABLE_MEMCHECK],[1], [Memcheck enabled for this build (1)])
+      with_memcheck=yes
+    ])
+
 AC_ARG_ENABLE([fastparser],
     AS_HELP_STRING([--disable-fastparser], [Disable use of fast zone parser]),
     [], [AS_IF([test -d ".git"], [enable_fastparser=no], [enable_fastparser=yes])]
