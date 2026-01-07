@@ -236,6 +236,17 @@ int dnssec_key_set_rdata(dnssec_key_t *key, const dnssec_binary_t *rdata);
 int dnssec_key_load_pkcs8(dnssec_key_t *key, const dnssec_binary_t *pem);
 
 /*!
+ * Load PKCS #8 private key in the DER format.
+ *
+ * At least an algorithm must be set prior to calling this function.
+ *
+ * The function will create public key, unless it was already set (using
+ * \ref dnssec_key_set_pubkey or \ref dnssec_key_set_rdata). If the public key
+ * was set, the function will prevent loading of non-matching private key.
+ */
+int dnssec_key_load_pkcs8_der(dnssec_key_t *key, const dnssec_binary_t *der);
+
+/*!
  * Check if the key can be used for signing.
  */
 bool dnssec_key_can_sign(const dnssec_key_t *key);
