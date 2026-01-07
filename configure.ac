@@ -835,6 +835,12 @@ AC_ARG_ENABLE([trailing-bytes],
 
 AS_IF([test "$enable_trailing_bytes" = yes], [AC_DEFINE([ENABLE_TRAILING_BYTES], [1], [Define to 1 to enable support for queries with additional trailing 0 bytes.])])
 
+AC_ARG_WITH([udp-max-size],
+    AS_HELP_STRING([--with-udp-max-size=size], [Size of UDP request/response max size supported. [default=65535]]),
+    [udp_max_size=$withval], [udp_max_size=65535])
+
+AC_DEFINE_UNQUOTED([KNOT_MAX_UDP_REQRESP_SIZE_BYTES], [$udp_max_size], [Value of udp max message size])
+
 # Strip -fdebug-prefix-map= parameters from flags for better reproducibility of binaries.
 filtered_cflags=$(echo -n "$CFLAGS" | \
                   sed 's/[[^[:alnum:]]]-f[[^[:space:]]]*-prefix-map=[[^[:space:]]]*//g')
@@ -891,6 +897,7 @@ result_msg_base="
     Dnstap throttling       ${enable_throttle_dnstap_logs}
     Allow trailing bytes:   ${enable_trailing_bytes}
     Valgrind memcheck:      ${with_memcheck}
+    UDP maximum size:       ${udp_max_size}
 
     Code coverage:          ${enable_code_coverage}
     Sanitizer:              ${with_sanitizer}
