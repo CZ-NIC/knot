@@ -2,7 +2,7 @@
  *	BIRD Library -- Linked Lists
  *
  *	(c) 1998 Martin Mares <mj@ucw.cz>
- *	(c) 2015, 2020-2022 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+ *	(c) 2015, 2020-2026 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
  *
  *	Can be freely distributed and used under the terms of the GNU GPL.
  */
@@ -25,6 +25,8 @@ typedef struct list {
 #define TAIL(list) ((void *)((list).tail.prev))
 #define WALK_LIST(n,list) for(n=HEAD(list);(NODE (n))->next; \
 				n=(void *)((NODE (n))->next))
+#define WALK_LIST_RESUME(n,list) for((n)=(void *)((NODE (n))?(NODE (n))->next:HEAD(list));((NODE (n))&&(NODE (n))->next)||((n)=NULL); \
+				(n)=(void *)((NODE (n))->next))
 #define WALK_LIST_DELSAFE(n,nxt,list) \
      for(n=HEAD(list); (nxt=(void *)((NODE (n))->next)); n=(void *) nxt)
 /* WALK_LIST_FIRST supposes that called code removes each processed node */
