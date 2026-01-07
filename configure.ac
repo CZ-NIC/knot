@@ -814,6 +814,11 @@ AC_ARG_ENABLE([trailing-bytes],
 
 AS_IF([test "$enable_trailing_bytes" = yes], [AC_DEFINE([ENABLE_TRAILING_BYTES], [1], [Define to 1 to enable support for queries with additional trailing 0 bytes.])])
 
+AC_ARG_WITH([udp-max-size],
+        AC_HELP_STRING([--with-udp-max-size=size], [Size of UDP request/response max size supported. [default=65535]]),
+        [udp_max_size=$withval], [udp_max_size=65535])
+AC_DEFINE_UNQUOTED([KNOT_MAX_UDP_REQRESP_SIZE_BYTES],[$udp_max_size], [Value of udp max message size])
+
 # Strip -fdebug-prefix-map= parameters from flags for better reproducibility of binaries.
 filtered_cflags=$(echo -n "$CFLAGS" | \
                   sed 's/[[^[:alnum:]]]-f[[^[:space:]]]*-prefix-map=[[^[:space:]]]*//g')
@@ -833,12 +838,13 @@ result_msg_base="
     LMDB:     ${lmdb_LIBS} ${lmdb_CFLAGS}
     Config:   ${conf_mapsize} MiB default mapsize
 
-    Prefix:      ${knot_prefix}
-    Run dir:     ${run_dir}
-    Storage dir: ${storage_dir}
-    Config dir:  ${config_dir}
-    Module dir:  ${module_dir}
-    Redis dir:   ${redis_dir}
+    Prefix:       ${knot_prefix}
+    Run dir:      ${run_dir}
+    Storage dir:  ${storage_dir}
+    Config dir:   ${config_dir}
+    Module dir:   ${module_dir}
+    UDP Max Size: ${udp_max_size}
+    Redis dir:    ${redis_dir}
 
     Static modules: ${static_modules}
     Shared modules: ${shared_modules}
