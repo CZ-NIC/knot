@@ -16,9 +16,11 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <assert.h>
+
 #include "contrib/asan.h"
 #include "contrib/macros.h"
 #include "contrib/ucw/mempool.h"
+#include "contrib/memcheck.h"
 
 /** \todo This shouldn't be precalculated, but computed on load. */
 #define CPU_PAGE_SIZE 4096
@@ -198,6 +200,7 @@ mp_flush(struct mempool *pool)
 		if ((uint8_t *)chunk - chunk->size == (uint8_t *)pool) {
 			break;
 		}
+		VALGRIND_MAKE_MEM_UNDEFINED((uint8_t *)chunk - chunk->size, chunk->size);
 		next = chunk->next;
 		chunk->next = pool->unused;
 		ASAN_POISON_MEMORY_REGION(chunk, sizeof(struct mempool_chunk));
@@ -207,6 +210,7 @@ mp_flush(struct mempool *pool)
 	pool->state.last[0] = chunk;
 	if (chunk) {
 		pool->state.free[0] = chunk->size - sizeof(*pool);
+		VALGRIND_MAKE_MEM_UNDEFINED((uint8_t *)chunk - chunk->size, chunk->size);
 		ASAN_POISON_MEMORY_REGION(chunk, sizeof(struct mempool_chunk));
 	} else {
 		pool->state.free[0] = 0;
@@ -297,6 +301,7 @@ mp_alloc(struct mempool *pool, unsigned size)
 		ptr = mp_alloc_internal(pool, size);
 	}
 	ASAN_UNPOISON_MEMORY_REGION(ptr, size);
+	VALGRIND_MAKE_MEM_UNDEFINED(ptr, size);
 	return ptr;
 }
 
@@ -311,6 +316,7 @@ mp_alloc_noalign(struct mempool *pool, unsigned size)
 		ptr = mp_alloc_internal(pool, size);
 	}
 	ASAN_UNPOISON_MEMORY_REGION(ptr, size);
+	VALGRIND_MAKE_MEM_UNDEFINED(ptr, size);
 	return ptr;
 }
 
