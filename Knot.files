@@ -131,6 +131,7 @@ src/contrib/libngtcp2/ngtcp2/ngtcp2_crypto.h
 src/contrib/libngtcp2/ngtcp2/ngtcp2_crypto_gnutls.h
 src/contrib/libngtcp2/ngtcp2/version.h
 src/contrib/macros.h
+src/contrib/memcheck.h
 src/contrib/mempattern.c
 src/contrib/mempattern.h
 src/contrib/musl/inet_ntop.c
