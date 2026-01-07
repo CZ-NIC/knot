@@ -25,6 +25,8 @@ typedef struct list {
 #define TAIL(list) ((void *)((list).tail.prev))
 #define WALK_LIST(n,list) for(n=HEAD(list);(NODE (n))->next; \
 				n=(void *)((NODE (n))->next))
+#define WALK_LIST_RESUME(n,list) for((n)=(void *)((NODE (n))?(NODE (n))->next:HEAD(list));((NODE (n))&&(NODE (n))->next)||((n)=NULL); \
+				(n)=(void *)((NODE (n))->next))
 #define WALK_LIST_DELSAFE(n,nxt,list) \
      for(n=HEAD(list); (nxt=(void *)((NODE (n))->next)); n=(void *) nxt)
 /* WALK_LIST_FIRST supposes that called code removes each processed node */
