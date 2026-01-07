@@ -1,13 +1,13 @@
+/*  Copyright (C) CZ.NIC, z.s.p.o. and contributors
+ *  SPDX-License-Identifier: GPL-2.0-or-later
+ *  For more information, see <https://www.knot-dns.cz/>
+ */
 
 #include <assert.h>
 
 #include <tap/basic.h>
 
 #include "contrib/hr_tree.c"
-
-#ifdef NDEBUG
-#undef NDEBUG
-#endif
 
 static const uint8_t *check_node(hr_tree_t *t, hr_node_t *n)
 {
@@ -49,7 +49,6 @@ static int hash_uint16_xor(uint8_t *res, const uint8_t *a, const uint8_t *b)
 
 static int hash_error(uint8_t *res, const uint8_t *a, const uint8_t *b)
 {
-	(void)(res, a, b);
 	return -1;
 }
 

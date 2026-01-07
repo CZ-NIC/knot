@@ -15,7 +15,9 @@ typedef int (*hr_rehash_t)(uint8_t *, const uint8_t *, const uint8_t *);
 typedef struct hr_node {
 	unsigned branch_bit;
 	union {
-		uint8_t leaf_hash[];
+		struct {
+                        uint8_t leaf_hash[];
+		};
 		struct {
 			struct hr_node *childs[2];
 			uint8_t branch_hash[];
