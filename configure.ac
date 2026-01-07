@@ -808,6 +808,12 @@ AS_IF([test -n "$sanitizer_CFLAGS"], [CFLAGS="$CFLAGS $sanitizer_CFLAGS"])
 AM_CONDITIONAL([FUZZER], [test "$with_fuzzer" != "no"])
 AM_CONDITIONAL([OSS_FUZZ], [test "$with_oss_fuzz" != "no"])
 
+AC_ARG_ENABLE([trailing-bytes],
+    AS_HELP_STRING([--enable-trailing-bytes=yes|no], [enable trailing bytes in DNS query [default=no]]),
+    [enable_trailing_bytes="$enableval"], [enable_trailing_bytes=no])
+
+AS_IF([test "$enable_trailing_bytes" = yes], [AC_DEFINE([ENABLE_TRAILING_BYTES], [1], [Define to 1 to enable support for queries with additional trailing 0 bytes.])])
+
 # Strip -fdebug-prefix-map= parameters from flags for better reproducibility of binaries.
 filtered_cflags=$(echo -n "$CFLAGS" | \
                   sed 's/[[^[:alnum:]]]-f[[^[:space:]]]*-prefix-map=[[^[:space:]]]*//g')
@@ -837,34 +843,35 @@ result_msg_base="
     Static modules: ${static_modules}
     Shared modules: ${shared_modules}
 
-    Knot DNS libraries:     ${link_mode}
-    Knot DNS daemon:        ${enable_daemon}
-    Knot DNS utilities:     ${enable_utilities}
-    Knot DNS documentation: ${enable_documentation}
+    Knot DNS libraries:      ${link_mode}
+    Knot DNS daemon:         ${enable_daemon}
+    Knot DNS utilities:      ${enable_utilities}
+    Knot DNS documentation:  ${enable_documentation}
 
-    Use recvmmsg:           ${enable_recvmmsg}
-    Use SO_REUSEPORT(_LB):  ${enable_reuseport}
-    XDP support:            ${enable_xdp}
-    DoQ support:            ${enable_quic}
-    Redis support:          ${enable_redis}
-    Socket polling:         ${socket_polling}
-    Atomic support:         ${atomic_type}
-    Memory allocator:       ${with_memory_allocator}
-    Fast zone parser:       ${enable_fastparser}
-    Utilities with IDN:     ${with_libidn}
-    Utilities with DoH:     ${with_libnghttp2}
-    Utilities with Dnstap:  ${enable_dnstap}
-    MaxMind DB support:     ${enable_maxminddb}
-    Systemd integration:    ${enable_systemd}
-    D-Bus support:          ${enable_dbus}
-    POSIX capabilities:     ${enable_cap_ng}
-    PKCS #11 support:       ${enable_pkcs11}
-    Throttle sup for dnstap ${enable_throttle_dnstap_logs}
+    Use recvmmsg:            ${enable_recvmmsg}
+    Use SO_REUSEPORT(_LB):   ${enable_reuseport}
+    XDP support:             ${enable_xdp}
+    DoQ support:             ${enable_quic}
+    Redis support:           ${enable_redis}
+    Socket polling:          ${socket_polling}
+    Atomic support:          ${atomic_type}
+    Memory allocator:        ${with_memory_allocator}
+    Fast zone parser:        ${enable_fastparser}
+    Utilities with IDN:      ${with_libidn}
+    Utilities with DoH:      ${with_libnghttp2}
+    Utilities with Dnstap:   ${enable_dnstap}
+    MaxMind DB support:      ${enable_maxminddb}
+    Systemd integration:     ${enable_systemd}
+    D-Bus support:           ${enable_dbus}
+    POSIX capabilities:      ${enable_cap_ng}
+    PKCS #11 support:        ${enable_pkcs11}
+    Throttle sup for dnstap: ${enable_throttle_dnstap_logs}
+    Allow Trail Query bytes: ${enable_trailing_bytes}
 
-    Code coverage:          ${enable_code_coverage}
-    Sanitizer:              ${with_sanitizer}
-    LibFuzzer:              ${with_fuzzer}
-    OSS-Fuzz:               ${with_oss_fuzz}"
+    Code coverage:           ${enable_code_coverage}
+    Sanitizer:               ${with_sanitizer}
+    LibFuzzer:               ${with_fuzzer}
+    OSS-Fuzz:                ${with_oss_fuzz}"
 
 result_msg_esc=$(echo -n "    Configure:$filtered_config_params\n$result_msg_base" | sed '$!s/$/\\n/' | tr -d '\n')
 
