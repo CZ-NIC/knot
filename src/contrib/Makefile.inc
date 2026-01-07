@@ -69,6 +69,7 @@ libcontrib_la_SOURCES = \
 	contrib/tolower.h			\
 	contrib/trim.h				\
 	contrib/wire_ctx.h			\
+	contrib/memcheck.h			\
 	contrib/openbsd/siphash.c		\
 	contrib/openbsd/siphash.h		\
 	contrib/openbsd/strlcat.c		\

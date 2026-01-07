@@ -891,6 +891,25 @@ AC_ARG_ENABLE([trailing-bytes],
 
 AS_IF([test "$enable_trailing_bytes" = yes], [AC_DEFINE([ENABLE_TRAILING_BYTES], [1], [Define to 1 to enable support for queries with additional trailing 0 bytes.])])
 
+AC_ARG_WITH([memcheck],
+  AS_HELP_STRING([--with-memcheck=auto|yes|no|memcheck_include_folder],
+                 [Build with memcheck api. If valgrind/memcheck.h is not in path, define include path in CFLAGS or pass the valgrind/memcheck.h include folder for this parameter. [default=no]]),
+  [with_memcheck=$withval], [with_memcheck=no]
+)
+
+AS_CASE([$with_memcheck],
+  [no], [],
+  [auto], [
+    AC_CHECK_HEADER([valgrind/memcheck.h], [with_memcheck=yes], [with_memcheck=no])
+  ],
+  [yes|*], [
+    AS_IF([test "x$with_memcheck" != "xyes"], [AC_SUBST(CPPFLAGS, "$CPPFLAGS -I$with_memcheck")])
+    AC_CHECK_HEADER([valgrind/memcheck.h], [], [AC_MSG_ERROR([--with-memcheck requries valgrind/memcheck.h header files. If valgrind/memcheck.h is not in path, define include path in CFLAGS or pass the valgrind/memcheck.h include folder for --with-memcheck parameter.])])
+    AC_DEFINE_UNQUOTED([KNOT_ENABLE_MEMCHECK], [1], [Memcheck enabled for this build (1)])
+    with_memcheck=yes
+  ]
+)
+
 # Strip -fdebug-prefix-map= parameters from flags for better reproducibility of binaries.
 filtered_cflags=$(echo -n "$CFLAGS" | \
                   sed 's/[[^[:alnum:]]]-f[[^[:space:]]]*-prefix-map=[[^[:space:]]]*//g')
@@ -946,6 +965,7 @@ result_msg_base="
 
     Dnstap throttling       ${enable_throttle_dnstap_logs}
     Allow trailing bytes:   ${enable_trailing_bytes}
+    Valgrind memcheck:      ${with_memcheck}
 
     Code coverage:          ${enable_code_coverage}
     Sanitizer:              ${with_sanitizer}
