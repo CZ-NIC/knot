@@ -800,6 +800,12 @@ AS_IF([test -n "$sanitizer_CFLAGS"], [CFLAGS="$CFLAGS $sanitizer_CFLAGS"])
 AM_CONDITIONAL([FUZZER], [test "$with_fuzzer" != "no"])
 AM_CONDITIONAL([OSS_FUZZ], [test "$with_oss_fuzz" != "no"])
 
+AC_ARG_ENABLE([trailing-bytes],
+    AS_HELP_STRING([--enable-trailing-bytes=yes|no], [enable trailing bytes in DNS query [default=no]]),
+    [enable_trailing_bytes="$enableval"], [enable_trailing_bytes=no])
+
+AS_IF([test "$enable_trailing_bytes" = yes], [AC_DEFINE([ENABLE_TRAILING_BYTES], [1], [Define to 1 to enable support for queries with additional trailing 0 bytes.])])
+
 # Strip -fdebug-prefix-map= parameters from flags for better reproducibility of binaries.
 filtered_cflags=$(echo -n "$CFLAGS" | \
                   sed 's/[[^[:alnum:]]]-f[[^[:space:]]]*-prefix-map=[[^[:space:]]]*//g')
@@ -853,6 +859,7 @@ result_msg_base="
     PKCS #11 support:       ${enable_pkcs11}
 
     Dnstap throttling       ${enable_throttle_dnstap_logs}
+    Allow trailing bytes:   ${enable_trailing_bytes}
 
     Code coverage:          ${enable_code_coverage}
     Sanitizer:              ${with_sanitizer}
