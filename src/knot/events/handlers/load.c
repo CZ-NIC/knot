@@ -422,12 +422,12 @@ load_end:
 		/* Don't update ZONEMD if no change and ZONEMD is up-to-date.
 		 * If ZONEFILE_LOAD_DIFSE, the change is non-empty and ZONEMD
 		 * is directly updated without its verification. */
-		if (!zone_update_no_change(&up) || !zone_contents_digest_exists(up.new_cont, digest_alg, false, false)) {
+		if (!zone_update_no_change(&up) || !zone_contents_digest_exists(&up, NULL, digest_alg, false, false)) {
 			if (zone_update_to(&up) == NULL || middle_serial == zone->zonefile.serial) {
 				ret = zone_update_increment_soa(&up, conf);
 			}
 			if (ret == KNOT_EOK) {
-				ret = zone_update_add_digest(&up, digest_alg, false);
+				ret = zone_update_add_digest(conf, &up, digest_alg, false);
 			}
 			if (ret != KNOT_EOK) {
 				goto cleanup;
@@ -450,7 +450,7 @@ load_end:
 		}
 
 		// If the original ZONEMD is outdated, use the reverted changeset again.
-		if (update_zonemd && !zone_contents_digest_exists(up.new_cont, digest_alg, false, false)) {
+		if (update_zonemd && !zone_contents_digest_exists(&up, NULL, digest_alg, false, false)) {
 			ret = zone_update_apply_changeset(&up, cpy);
 			changeset_free(cpy);
 			if (ret != KNOT_EOK) {

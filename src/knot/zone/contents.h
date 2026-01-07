@@ -8,6 +8,7 @@
 #include <pthread.h>
 
 #include "contrib/atomic.h"
+#include "contrib/hr_tree.h"
 #include "libknot/dnssec/nsec.h"
 #include "libknot/rrtype/nsec3param.h"
 #include "knot/zone/node.h"
@@ -18,6 +19,11 @@ enum zone_contents_find_dname_result {
 	ZONE_NAME_FOUND     = 1
 };
 
+enum zone_contents_hr_trees {
+	CONTENTS_ZONEMD_TREE_GENERATE = 0,
+	CONTENTS_ZONEMD_TREE_VALIDATE = 1,
+};
+
 typedef struct zone_contents {
 	zone_node_t *apex;       /*!< Apex node of the zone (holding SOA) */
 
@@ -25,6 +31,7 @@ typedef struct zone_contents {
 	zone_tree_t *nsec3_nodes;
 
 	trie_t *adds_tree; // "additionals tree" for reverse lookup of nodes affected by additionals
+	hr_tree_t *hr_tree;
 
 	// Responding normal queries is protected by rcu_read_lock, but for long
 	// outgoing XFRs, zone-specific lock is better.
@@ -247,6 +254,11 @@ int zone_contents_nsec3_apply(zone_contents_t *contents,
 int zone_contents_cow(zone_contents_t *from, zone_contents_t **to);
 
 /*!
+ * \brief Empty and dispose both incremental ZONEMD-computation trees.
+ */
+void zone_contents_clear_zonemd_trees(zone_contents_t *c);
+
+/*!
  * \brief Deallocate directly owned data of zone contents.
  *
  * \param contents  Zone contents to free.
@@ -288,3 +300,8 @@ int zone_contents_load_nsec3param(zone_contents_t *contents);
  * \brief Return true if zone is empty.
  */
 bool zone_contents_is_empty(const zone_contents_t *zone);
+
+/*!
+ * \brief Return contents' ZONEMD-computation radix tree.
+ */
+hr_tree_t *zone_contents_zonemd_tree(zone_contents_t *zone, enum zone_contents_hr_trees which);

@@ -92,3 +92,31 @@ int dnssec_digest_finish(dnssec_digest_ctx_t *ctx, dnssec_binary_t *out)
 	digest_ctx_free(ctx);
 	return KNOT_EOK;
 }
+
+_public_
+int dnssec_digest_fast(dnssec_digest_t algorithm, dnssec_binary_t *data, dnssec_binary_t *out)
+{
+	if (data == NULL || out == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	gnutls_digest_algorithm_t gtalg = lookup_algorithm(algorithm);
+	if (gtalg == GNUTLS_DIG_UNKNOWN) {
+		return KNOT_EALGORITHM;
+	}
+
+	out->size = gnutls_hash_get_len(gtalg);
+	int r = dnssec_binary_resize(out, out->size);
+	if (r < 0) {
+		return r;
+	}
+
+	return gnutls_hash_fast(gtalg, data->data, data->size, out->data);
+}
+
+_public_
+size_t dnssec_digest_size(dnssec_digest_t algorithm)
+{
+	gnutls_digest_algorithm_t gtalg = lookup_algorithm(algorithm);
+	return gtalg == GNUTLS_DIG_UNKNOWN ? 0 : gnutls_hash_get_len(gtalg);
+}

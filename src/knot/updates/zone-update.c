@@ -379,6 +379,7 @@ void zone_update_clear(zone_update_t *update)
 	}
 
 	if (update->new_cont != NULL) {
+		zone_contents_clear_zonemd_trees(update->new_cont);
 		additionals_tree_free(update->new_cont->adds_tree);
 		update->new_cont->adds_tree = NULL;
 	}
@@ -995,15 +996,18 @@ int zone_update_verify_digest(conf_t *conf, zone_update_t *update)
 	}
 	val = conf_zone_get(conf, C_DNSSEC_SIGNING, update->zone->name);
 
-	int ret = zone_contents_digest_verify(update->new_cont, conf_bool(&val));
+	struct timespec beg = time_now();
+	int ret = zone_contents_digest_verify(update, NULL, conf_bool(&val));
+	struct timespec end = time_now();
+	double duration = time_diff_ms(&beg, &end) / 1000.0;
 	if (ret != KNOT_EOK) {
-		log_zone_error(update->zone->name, "ZONEMD, verification failed (%s)",
-		               knot_strerror(ret));
+		log_zone_error(update->zone->name, "ZONEMD, verification failed in %0.2f seconds (%s)",
+		               duration, knot_strerror(ret));
 		if (conf->cache.srv_dbus_event & DBUS_EVENT_ZONE_INVALID) {
 			dbus_emit_zone_invalid(update->zone->name, 0);
 		}
 	} else {
-		log_zone_info(update->zone->name, "ZONEMD, verification successful");
+		log_zone_info(update->zone->name, "ZONEMD, verification successful in %0.2f seconds", duration);
 	}
 
 	return ret;
