@@ -988,7 +988,7 @@ static int zone_txn_commit_l(zone_t *zone, _unused_ ctl_args_t *args)
 			ret = zone_update_increment_soa(zone->control_update, conf());
 		}
 		if (ret == KNOT_EOK) {
-			ret = zone_update_add_digest(zone->control_update, digest_alg, false);
+			ret = zone_update_add_digest(conf(), zone->control_update, digest_alg, false);
 		}
 	}
 	if (ret != KNOT_EOK) {

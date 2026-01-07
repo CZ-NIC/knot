@@ -191,6 +191,7 @@
 #define C_ZONEFILE_SKIP		"\x0D""zonefile-skip"
 #define C_ZONEFILE_SYNC		"\x0D""zonefile-sync"
 #define C_ZONEMD_GENERATE	"\x0F""zonemd-generate"
+#define C_ZONEMD_SCHEME         "\x0D""zonemd-scheme"
 #define C_ZONEMD_VERIFY		"\x0D""zonemd-verify"
 #define C_ZONE_DB_CERT_HOSTNAME	"\x15""zone-db-cert-hostname"
 #define C_ZONE_DB_CERT_KEY	"\x10""zone-db-cert-key"
@@ -254,6 +255,11 @@ enum {
 	ZONE_DIGEST_SHA384 = 1,
 	ZONE_DIGEST_SHA512 = 2,
 	ZONE_DIGEST_REMOVE = 255,
+};
+
+enum {
+	ZONEMD_SCHEME_SIMPLE = 1,
+	ZONEMD_SCHEME_RADIX  = 2,
 };
 
 enum {

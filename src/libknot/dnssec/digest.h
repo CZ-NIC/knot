@@ -62,4 +62,20 @@ int dnssec_digest(dnssec_digest_ctx_t *ctx, dnssec_binary_t *data);
  */
 int dnssec_digest_finish(dnssec_digest_ctx_t *ctx, dnssec_binary_t *out);
 
+/*!
+ * \brief Directly digest given string.
+ *
+ * \param algorithm   Hasing algorithm to be used.
+ * \param data        Data to be hashed.
+ * \param out         Output: computed hash.
+ *
+ * \return DNSSEC_E*
+ */
+int dnssec_digest_fast(dnssec_digest_t algorithm, dnssec_binary_t *data, dnssec_binary_t *out);
+
+/*!
+ * \brief Return the target hash size.
+ */
+size_t dnssec_digest_size(dnssec_digest_t algorithm);
+
 /*! @} */

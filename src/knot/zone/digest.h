@@ -5,21 +5,27 @@
 
 #pragma once
 
+#include "knot/conf/base.h"
 #include "knot/zone/contents.h"
 
+struct zone_update;
+
 /*!
- * \brief Compute hash over whole zone by concatenating RRSets in wire format.
+ * \brief Compute hash for ZONEMD.
  *
- * \param contents        Zone contents to digest.
+ * \param update          Zone update structure with new contents and potentially incremental changeset.
+ * \param contents        Alternative: full zone contents to digest.
  * \param algorithm       Algorithm to use.
+ * \param scheme          Scheme to use.
  * \param ignore_dnssec   Skip DNSSEC-related records while computing the digest.
+ * \param validation      The ZONEMD is being validated (otherwise inserted).
  * \param out_digest      Output: buffer with computed hash (to be freed).
  * \param out_size        Output: size of the resulting hash.
  *
  * \return KNOT_E*
  */
-int zone_contents_digest(const zone_contents_t *contents, int algorithm,
-                         bool ignore_dnssec,
+int zone_contents_digest(struct zone_update *update, zone_contents_t *contents,
+                         int algorithm, int scheme, bool ignore_dnssec, bool validation,
                          uint8_t **out_digest, size_t *out_size);
 
 /*!
@@ -27,18 +33,20 @@ int zone_contents_digest(const zone_contents_t *contents, int algorithm,
  *
  * \note Special value 255 of algorithm means that ZONEMD shall not exist.
  *
- * \param contents       Zone contents to be verified.
+ * \param update         Zone update to be verified.
+ * \param contents       Alternative: full zone contents to be verified.
  * \param alg            Required algorithm of the ZONEMD.
  * \param no_verify      Don't verify the validness of the digest in ZONEMD.
  * \param ignore_dnssec  Skip DNSSEC-related records when eventually verifying the digest.
  */
-bool zone_contents_digest_exists(const zone_contents_t *contents, int alg, bool no_verify,
-                                 bool ignore_dnssec);
+bool zone_contents_digest_exists(struct zone_update *update, zone_contents_t *contents,
+                                 int alg, bool no_verify, bool ignore_dnssec);
 
 /*!
- * \brief Verify zone dgest in ZONEMD record.
+ * \brief Verify zone digest in ZONEMD record.
  *
- * \param contents        Zone contents ot be verified.
+ * \param update          Zone update to be verified.
+ * \param contents        Alternative: full zone contents to be verified.
  * \param ignore_dnssec   Skip DNSSEC-related records while computing the digest.
  *
  * \retval KNOT_EEMPTYZONE  The zone is empty.
@@ -49,12 +57,12 @@ bool zone_contents_digest_exists(const zone_contents_t *contents, int alg, bool 
  * \retval KNOT_EMALF       The computed hash differs from ZONEMD.
  * \return KNOT_E*
  */
-int zone_contents_digest_verify(const zone_contents_t *contents, bool ignore_dnssec);
+int zone_contents_digest_verify(struct zone_update *update, zone_contents_t *contents, bool ignore_dnssec);
 
-struct zone_update;
 /*!
  * \brief Add ZONEMD record to zone_update.
  *
+ * \param conf          Relevant conf context.
  * \param update        Update with contents to be digested.
  * \param algorithm     ZONEMD algorithm.
  * \param placeholder   Don't calculate, just put placeholder (if ZONEMD not yet present).
@@ -63,4 +71,4 @@ struct zone_update;
  *
  * \return KNOT_E*
  */
-int zone_update_add_digest(struct zone_update *update, int algorithm, bool placeholder);
+int zone_update_add_digest(conf_t *conf, struct zone_update *update, int algorithm, bool placeholder);

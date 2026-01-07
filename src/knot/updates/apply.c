@@ -387,6 +387,8 @@ void update_free_zone(zone_contents_t *contents)
 	free(contents->nodes);
 	free(contents->nsec3_nodes);
 
+	assert(contents->hr_tree == NULL);
+
 	dnssec_nsec3_params_free(&contents->nsec3_params);
 
 	free(contents);

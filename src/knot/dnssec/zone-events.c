@@ -186,7 +186,7 @@ int knot_dnssec_zone_sign(zone_update_t *update,
 	conf_val_t val = conf_zone_get(conf, C_ZONEMD_GENERATE, zone_name);
 	unsigned zonemd_alg = conf_opt(&val);
 	if (zonemd_alg != ZONE_DIGEST_NONE) {
-		result = zone_update_add_digest(update, zonemd_alg, true);
+		result = zone_update_add_digest(conf, update, zonemd_alg, true);
 		if (result != KNOT_EOK) {
 			log_zone_error(zone_name, "DNSSEC, failed to reserve dummy ZONEMD (%s)",
 			               knot_strerror(result));
@@ -286,7 +286,7 @@ int knot_dnssec_zone_sign(zone_update_t *update,
 	// fill in ZONEMD if desired
 	// if (zonemd_alg == ZONE_DIGEST_REMOVE), ZONEMD was already removed above, so skip this
 	if (zonemd_alg != ZONE_DIGEST_NONE && zonemd_alg != ZONE_DIGEST_REMOVE) {
-		result = zone_update_add_digest(update, zonemd_alg, false);
+		result = zone_update_add_digest(conf, update, zonemd_alg, false);
 		if (result == KNOT_EOK) {
 			result = knot_zone_sign_apex_rr(update, KNOT_RRTYPE_ZONEMD, &keyset, &ctx);
 		}
@@ -342,7 +342,7 @@ int knot_dnssec_sign_update(zone_update_t *update, conf_t *conf)
 	conf_val_t val = conf_zone_get(conf, C_ZONEMD_GENERATE, zone_name);
 	unsigned zonemd_alg = conf_opt(&val);
 	if (zonemd_alg != ZONE_DIGEST_NONE) {
-		result = zone_update_add_digest(update, zonemd_alg, true);
+		result = zone_update_add_digest(conf, update, zonemd_alg, true);
 		if (result != KNOT_EOK) {
 			log_zone_error(zone_name, "DNSSEC, failed to reserve dummy ZONEMD (%s)",
 			               knot_strerror(result));
@@ -419,7 +419,7 @@ int knot_dnssec_sign_update(zone_update_t *update, conf_t *conf)
 	// fill in ZONEMD if desired
 	// if (zonemd_alg == ZONE_DIGEST_REMOVE), ZONEMD was already removed above, so skip this
 	if (zonemd_alg != ZONE_DIGEST_NONE && zonemd_alg != ZONE_DIGEST_REMOVE) {
-		result = zone_update_add_digest(update, zonemd_alg, false);
+		result = zone_update_add_digest(conf, update, zonemd_alg, false);
 		if (result == KNOT_EOK) {
 			result = knot_zone_sign_apex_rr(update, KNOT_RRTYPE_ZONEMD, &keyset, &ctx);
 		}
