@@ -20,7 +20,7 @@
 
 unsigned bitarray_bit(const uint8_t *bitarray, unsigned bit_idx)
 {
-	return (bitarray[bit_idx / 8] >> (7 - bit_idx % 8)) & 1;
+	return (bitarray[bit_idx >> 3] >> (7 - (bit_idx & 0x7))) & 1; // more readable: (bitarray[bit_idx / 8] >> (7 - bit_idx % 8)) & 1
 }
 
 static const uint8_t bitarray_ffs[256] = {
@@ -75,7 +75,7 @@ const uint8_t *hr_tree_hash(hr_tree_t *t)
 static int rehash(hr_tree_t *t, hr_node_t *n)
 {
 	assert(isbranch(t, n));
-	return t->rehash_cb(n->branch_hash, node_hash(t, n->childs[0]), node_hash(t, n->childs[1]));
+	return t->rehash_cb(n->branch_hash, node_hash(t, n->childs[0]), node_hash(t, n->childs[1]), t->cb_ctx);
 }
 
 static hr_node_t **next_pp(hr_tree_t *t, hr_node_t *n, const uint8_t *hash)

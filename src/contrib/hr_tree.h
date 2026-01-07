@@ -8,7 +8,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-typedef int (*hr_rehash_t)(uint8_t *, const uint8_t *, const uint8_t *);
+typedef int (*hr_rehash_t)(uint8_t *, const uint8_t *, const uint8_t *, void *);
 
 #pragma pack(push, 8)
 
@@ -22,17 +22,18 @@ typedef union hr_node {
 		union hr_node *childs[2];
 		uint8_t branch_hash[];
 	};
-} hr_node_t;
+} hr_node_t; // NOTE don't forget to updated leaf_size() and branch_size() any time this typedef is modified!
+
+#pragma pack(pop)
 
 typedef struct {
 	unsigned hash_len;
 	hr_rehash_t rehash_cb;
+	void *cb_ctx;
 	hr_node_t *root;
 	size_t alloc_size;
 	struct knot_mm *mm;
 } hr_tree_t;
-
-#pragma pack(pop)
 
 /*!
  * \brief Return N-th bit of array of bytes.

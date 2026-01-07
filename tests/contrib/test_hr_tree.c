@@ -23,7 +23,7 @@ static const uint8_t *check_node(hr_tree_t *t, hr_node_t *n)
 
 	// check branch hash
 	uint8_t cmp_hash[t->hash_len];
-	ok(t->rehash_cb(cmp_hash, node_hash(t, n->childs[0]), node_hash(t, n->childs[1])) == 0, "check branch rehash OK");
+	ok(t->rehash_cb(cmp_hash, node_hash(t, n->childs[0]), node_hash(t, n->childs[1]), NULL) == 0, "check branch rehash OK");
 	ok(memcmp(cmp_hash, n->branch_hash, t->hash_len) == 0, "check branch hash correct");
 
 	// check diff bit
@@ -41,13 +41,13 @@ static void hr_tree_check(hr_tree_t *t)
 	}
 }
 
-static int hash_uint16_xor(uint8_t *res, const uint8_t *a, const uint8_t *b)
+static int hash_uint16_xor(uint8_t *res, const uint8_t *a, const uint8_t *b, void *ctx)
 {
 	*(uint16_t *)res = (*(const uint16_t *)a) ^ (*(const uint16_t *)b);
 	return 0;
 }
 
-static int hash_error(uint8_t *res, const uint8_t *a, const uint8_t *b)
+static int hash_error(uint8_t *res, const uint8_t *a, const uint8_t *b, void *ctx)
 {
 	return -1;
 }

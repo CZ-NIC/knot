@@ -3,11 +3,13 @@
  *  For more information, see <https://www.knot-dns.cz/>
  */
 
+#include <assert.h>
 #include <stdio.h>
 
 #include "knot/zone/digest.h"
 #include "knot/dnssec/rrset-sign.h"
 #include "knot/updates/zone-update.h"
+#include "contrib/hr_tree.h"
 #include "contrib/wire_ctx.h"
 #include "libknot/dnssec/digest.h"
 #include "libknot/libknot.h"
@@ -19,8 +21,27 @@ typedef struct {
 	uint8_t *buf;
 	struct dnssec_digest_ctx *digest_ctx;
 	const zone_node_t *apex;
+	hr_tree_t *hr_tree;
+	int algorithm;
+	int scheme;
 	bool ignore_dnssec;
+	bool allow_alg_change;
 } contents_digest_ctx_t;
+
+static int rehash_2hashes(uint8_t *target, const uint8_t *a, const uint8_t *b, void *alg_vp)
+{
+	intptr_t algorithm = (intptr_t)alg_vp;
+	size_t size = dnssec_digest_size(algorithm);
+	uint8_t both[2*size];
+	memcpy(both, a, size);
+	memcpy(both + size, b, size);
+	dnssec_binary_t bin = { .size = 2 * size, .data = both }, out;
+	int ret = dnssec_digest_fast(algorithm, &bin, &out);
+	assert(out.size == size || ret != 0);
+	memcpy(target, out.data, out.size);
+	dnssec_binary_free(&out);
+	return ret;
+}
 
 static int digest_rrset(knot_rrset_t *rrset, const zone_node_t *node, void *vctx)
 {
@@ -79,7 +100,34 @@ static int digest_rrset(knot_rrset_t *rrset, const zone_node_t *node, void *vctx
 
 	// digest serialized RRSet
 	dnssec_binary_t bufbin = { ret, ctx->buf };
-	return dnssec_digest(ctx->digest_ctx, &bufbin);
+	ret = dnssec_digest(ctx->digest_ctx, &bufbin);
+
+	if (ctx->scheme == 2 && ret == KNOT_EOK) {
+		dnssec_binary_t rrset_hash = { 0 };
+		ret = dnssec_digest_finish(ctx->digest_ctx, &rrset_hash);
+		if (ret == KNOT_EOK) {
+			ret = dnssec_digest_init(ctx->algorithm, &ctx->digest_ctx);
+		}
+
+		if (ctx->algorithm != (intptr_t)ctx->hr_tree->cb_ctx) {
+			if (!ctx->allow_alg_change) {
+				return KNOT_ERROR;
+			} else {
+				hr_tree_clear(ctx->hr_tree);
+				ctx->hr_tree->rehash_cb = rehash_2hashes;
+				ctx->hr_tree->cb_ctx = (void *)(intptr_t)ctx->algorithm;
+				ctx->hr_tree->hash_len = rrset_hash.size;
+			}
+		} else if (ctx->hr_tree->hash_len != rrset_hash.size) {
+			return KNOT_ERROR;
+		}
+
+		if (ret == KNOT_EOK) {
+                        ret = hr_tree_add(ctx->hr_tree, rrset_hash.data);
+		}
+	}
+
+	return ret;
 }
 
 static int digest_node(zone_node_t *node, void *ctx)
@@ -108,6 +156,9 @@ int zone_contents_digest(const zone_contents_t *contents, int algorithm,
 		.buf_size = DIGEST_BUF_MIN,
 		.buf = malloc(DIGEST_BUF_MIN),
 		.apex = contents->apex,
+		.hr_tree = contents->hr_tree, // TODO initialization of this
+	        .algorithm = algorithm,
+	        .scheme = scheme,
 		.ignore_dnssec = ignore_dnssec,
 	};
 	if (ctx.buf == NULL) {

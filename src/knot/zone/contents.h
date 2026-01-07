@@ -8,6 +8,7 @@
 #include <pthread.h>
 
 #include "contrib/atomic.h"
+#include "contrib/hr_tree.h"
 #include "libknot/dnssec/nsec.h"
 #include "libknot/rrtype/nsec3param.h"
 #include "knot/zone/node.h"
@@ -25,6 +26,7 @@ typedef struct zone_contents {
 	zone_tree_t *nsec3_nodes;
 
 	trie_t *adds_tree; // "additionals tree" for reverse lookup of nodes affected by additionals
+	hr_tree_t *hr_tree;
 
 	// Responding normal queries is protected by rcu_read_lock, but for long
 	// outgoing XFRs, zone-specific lock is better.
