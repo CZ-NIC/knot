@@ -58,7 +58,7 @@ static zone_contents_t *str2contents(const char *zone_str)
 static int check_contents(const char *zone_str)
 {
 	zone_contents_t *cont = str2contents(zone_str);
-	int ret = zone_contents_digest_verify(cont, false);
+	int ret = zone_contents_digest_verify(NULL, cont, false);
 	zone_contents_deep_free(cont);
 	return ret;
 }

@@ -378,7 +378,7 @@ static int axfr_finalize(struct refresh_data *data)
 		event_dnssec_reschedule(data->conf, data->zone, &resch, false);
 	} else if (digest_alg != ZONE_DIGEST_NONE) {
 		assert(zone_update_to(&up) != NULL);
-		ret = zone_update_add_digest(&up, digest_alg, false);
+		ret = zone_update_add_digest(data->conf,&up, digest_alg, false);
 	}
 	if (ret != KNOT_EOK) {
 		zone_update_clear(&up);
@@ -661,7 +661,7 @@ static int ixfr_finalize(struct refresh_data *data)
 			ret = zone_update_increment_soa(&up, data->conf);
 		}
 		if (ret == KNOT_EOK) {
-			ret = zone_update_add_digest(&up, digest_alg, false);
+			ret = zone_update_add_digest(data->conf, &up, digest_alg, false);
 		}
 	}
 	if (ret != KNOT_EOK) {
