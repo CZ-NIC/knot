@@ -18,9 +18,10 @@ t.link(zone, master, slave)
 
 master.conf_zone(zone).zonefile_sync = -1
 master.conf_zone(zone).zonemd_generate = "zonemd-sha384"
+master.conf_zone(zone).zonemd_scheme = "radix"
 slave.conf_zone(zone).zonemd_verify = True
 
-VALIDATE_ZONEFILE = random.choice([True, False])
+VALIDATE_ZONEFILE = (random.choice([True, False]) and master.conf_zone(zone).zonemd_scheme == 1)
 backup_cnt = 0
 
 t.start()
