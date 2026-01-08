@@ -57,7 +57,7 @@ server.dnssec(zones[2]).keystore = [ kstore_hsm ]
 t.start()
 serial = server.zones_wait(zones)
 
-#check_key_count(server, kstore_dflt, 2)
+check_key_count(server, kstore_dflt, 2)
 check_key_count(server, kstore_pem, 2)
 #check_key_count(server, kstore_hsm, 2)
 
@@ -66,16 +66,17 @@ keys_zone1 = zone_keys_keystore(server, zones[1])
 keys_zone2 = zone_keys_keystore(server, zones[2], kstore_hsm)
 
 bckdir = "%s/backup" % server.dir
-server.ctl("zone-backup +keysonly +backupdir %s %s %s" % (bckdir, zones[1].name, zones[2].name),
-           wait=True)
+server.ctl("zone-backup +backupdir %s" % bckdir, wait=True)
 
 # Test that the keys aren't purged in default purge.
 server.ctl("-f zone-purge %s" % zones[1].name, wait=True)
+check_key_count(server, kstore_dflt, 2)
 check_key_count(server, kstore_pem, 2)
 #check_key_count(server, kstore_hsm, 2)
 check_keys_presence(kstore_pem, keys_zone1)
 check_keys_presence(kstore_hsm, keys_zone2)
 server.ctl("-f zone-purge %s" % zones[2].name, wait=True)
+check_key_count(server, kstore_dflt, 2)
 check_key_count(server, kstore_pem, 2)
 #check_key_count(server, kstore_hsm, 2)
 check_keys_presence(kstore_pem, keys_zone1)
@@ -84,11 +85,13 @@ check_keys_presence(kstore_hsm, keys_zone2)
 
 # Test that the keys aren't purged as a part of KASP DB purge.
 server.ctl("-f zone-purge +kaspdb %s" % zones[1].name, wait=True)
+check_key_count(server, kstore_dflt, 2)
 check_key_count(server, kstore_pem, 2)
 #check_key_count(server, kstore_hsm, 2)
 check_keys_presence(kstore_pem, keys_zone1)
 check_keys_presence(kstore_hsm, keys_zone2)
 server.ctl("-f zone-purge +kaspdb %s" % zones[2].name, wait=True)
+check_key_count(server, kstore_dflt, 2)
 check_key_count(server, kstore_pem, 2)
 #check_key_count(server, kstore_hsm, 2)
 check_keys_presence(kstore_pem, keys_zone1)
@@ -97,20 +100,26 @@ check_keys_presence(kstore_hsm, keys_zone2)
 
 # Test that the keys are purged when they should be.
 server.ctl("-f zone-purge +keys %s" % zones[1].name, wait=True)
+check_key_count(server, kstore_dflt, 2)
 check_key_count(server, kstore_pem, 0)
 #check_key_count(server, kstore_hsm, 0)
 check_keys_presence(kstore_pem, keys_zone1, False)
 check_keys_presence(kstore_hsm, keys_zone2)
 server.ctl("-f zone-purge +keys %s" % zones[2].name, wait=True)
+check_key_count(server, kstore_dflt, 2)
 check_key_count(server, kstore_pem, 0)
 #check_key_count(server, kstore_hsm, 0)
 check_keys_presence(kstore_pem, keys_zone1, False)
 check_keys_presence(kstore_hsm, keys_zone2, False)
 
 
-server.ctl("zone-restore +keysonly +backupdir %s" % bckdir, wait=True)
-#check_key_count(server, kstore_dflt, 0)
-#check_key_count(server, kstore_pem, 4)
+server.ctl("zone-restore +backupdir %s %s %s" % (bckdir, zones[1].name, zones[2].name),
+           wait=True)
+check_keys_presence(kstore_pem, keys_zone1)
+check_keys_presence(kstore_hsm, keys_zone2, False)  # Keys in HSM cannot be backed up/restored.
+check_key_count(server, kstore_dflt, 2)
+check_key_count(server, kstore_pem, 2)
+#check_key_count(server, kstore_hsm, 0)
 
 
 t.end()
