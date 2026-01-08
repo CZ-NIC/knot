@@ -121,6 +121,37 @@ int fdset_add(fdset_t *set, const int fd, const fdset_event_t events, void *ctx)
 	return idx;
 }
 
+int fdset_set_ctx(fdset_t *set, unsigned i, void *ctx)
+{
+	if (i < set->n) {
+		set->ctx[i] = ctx;
+		return i;
+	} else {
+		return -1;
+	}
+}
+
+void* fdset_get_ctx(fdset_t *set, unsigned i)
+{
+	if (i < set->n) {
+		return set->ctx[i];
+	} else {
+		return NULL;
+	}
+}
+
+int fdset_set_ctx_on_fd(fdset_t *set, int fd, void *ctx)
+{
+	for (unsigned i = 0; i < set->n; i++) {
+		if (fdset_get_fd(set, i) == fd) {
+			set->ctx[i] = ctx;
+			return i;
+		}
+	}
+
+	return -1;
+}
+
 int fdset_remove(fdset_t *set, const unsigned idx)
 {
 	if (set == NULL || idx >= set->n) {
