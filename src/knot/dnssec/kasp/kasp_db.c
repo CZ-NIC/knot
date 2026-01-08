@@ -343,8 +343,8 @@ int kasp_db_delete_key(knot_lmdb_db_t *db, const knot_dname_t *zone_name, const 
 	MDB_val search = make_key_str(KASPDBKEY_PARAMS, zone_name, key_id);
 	knot_lmdb_txn_t txn = { 0 };
 	knot_lmdb_begin(db, &txn, true);
-	knot_lmdb_del_prefix(&txn, &search);
-	if (still_used != NULL) {
+	knot_lmdb_del_prefix_ret(&txn, &search);
+	if (still_used != NULL && txn.ret == KNOT_EOK) {
 		*still_used = (keyid_inuse(&txn, key_id, NULL) > 0);
 	}
 	knot_lmdb_commit(&txn);

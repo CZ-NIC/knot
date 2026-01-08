@@ -463,6 +463,19 @@ void knot_lmdb_del_prefix(knot_lmdb_txn_t *txn, MDB_val *prefix)
 	}
 }
 
+void knot_lmdb_del_prefix_ret(knot_lmdb_txn_t *txn, MDB_val *prefix)
+{
+	MDB_val tmp_key = { 0 };
+	MDB_val tmp_val = { 0 };
+	knot_lmdb_foreach(txn, prefix) {
+		tmp_key = txn->cur_key;
+		tmp_val = txn->cur_val;
+		knot_lmdb_del_cur(txn);
+	}
+	txn->cur_key = tmp_key;
+	txn->cur_val = tmp_val;
+}
+
 int knot_lmdb_apply_threadsafe(knot_lmdb_txn_t *txn, const MDB_val *key, bool prefix, lmdb_apply_cb cb, void *ctx)
 {
 	MDB_cursor *cursor;
