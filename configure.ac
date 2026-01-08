@@ -451,12 +451,14 @@ static_modules_init=""
 doc_modules=""
 
 KNOT_MODULE([authsignal],  "yes")
+KNOT_MODULE([azuredb],     "no")
 KNOT_MODULE([cookies],     "yes")
 KNOT_MODULE([dnsproxy],    "yes", "non-shareable")
 KNOT_MODULE([dnstap],      "no")
 KNOT_MODULE([geoip],       "yes")
 KNOT_MODULE([noudp],       "yes")
 KNOT_MODULE([onlinesign],  "yes", "non-shareable")
+KNOT_MODULE([azurednssec], "no")
 KNOT_MODULE([probe],       "yes")
 KNOT_MODULE([queryacl],    "yes")
 KNOT_MODULE([rrl],         "yes")
@@ -873,6 +875,7 @@ result_msg_base="
     Use recvmmsg:            ${enable_recvmmsg}
     Use SO_REUSEPORT(_LB):   ${enable_reuseport}
     XDP support:             ${enable_xdp}
+    AzureDB Module:          ${SUPPORTS_MODULE_azuredb}
     DoQ support:             ${enable_quic}
     Redis support:           ${enable_redis}
     Socket polling:          ${socket_polling}

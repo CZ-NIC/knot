@@ -266,6 +266,7 @@ KNOTD_MOD_LDFLAGS  = $(AM_LDFLAGS) -module -shared -avoid-version
 pkglibdir = $(module_instdir)
 pkglib_LTLIBRARIES =
 
+# include $(srcdir)/knot/modules/azuredb/Makefile.inc
 include $(srcdir)/knot/modules/authsignal/Makefile.inc
 include $(srcdir)/knot/modules/cookies/Makefile.inc
 include $(srcdir)/knot/modules/dnsproxy/Makefile.inc
@@ -279,3 +280,4 @@ include $(srcdir)/knot/modules/rrl/Makefile.inc
 include $(srcdir)/knot/modules/stats/Makefile.inc
 include $(srcdir)/knot/modules/synthrecord/Makefile.inc
 include $(srcdir)/knot/modules/whoami/Makefile.inc
+# include $(srcdir)/knot/modules/azuredb/Makefile.inc

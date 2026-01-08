@@ -534,6 +534,8 @@ static const yp_item_t desc_template[] = {
 	{ C_ID,                  YP_TSTR,  YP_VNONE, CONF_IO_FREF },
 	{ C_GLOBAL_MODULE,       YP_TDATA, YP_VDATA = { 0, NULL, mod_id_to_bin, mod_id_to_txt },
 	                                   YP_FMULTI | CONF_IO_FRLD_MOD, { check_modref } },
+	{ C_AZURE_MODULE,        YP_TDATA, YP_VDATA = { 0, NULL, mod_id_to_bin, mod_id_to_txt },
+	                                   YP_FMULTI | CONF_IO_FRLD_MOD, { check_modref } },
 	ZONE_ITEMS(CONF_IO_FRLD_ZONES)
 	{ NULL }
 };
