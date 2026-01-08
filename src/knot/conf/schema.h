@@ -65,6 +65,7 @@
 #define C_EXTERNAL_VLDT		"\x13""external-validation"
 #define C_FILE			"\x04""file"
 #define C_GLOBAL_MODULE		"\x0D""global-module"
+#define C_AZURE_MODULE		"\x0C""azure-module"
 #define C_ID			"\x02""id"
 #define C_IDENT			"\x08""identity"
 #define C_INCLUDE_FROM		"\x0C""include-from"

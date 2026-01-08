@@ -451,12 +451,14 @@ static_modules_init=""
 doc_modules=""
 
 KNOT_MODULE([authsignal],  "yes")
+KNOT_MODULE([azuredb],     "no")
 KNOT_MODULE([cookies],     "yes")
 KNOT_MODULE([dnsproxy],    "yes", "non-shareable")
 KNOT_MODULE([dnstap],      "no")
 KNOT_MODULE([geoip],       "yes")
 KNOT_MODULE([noudp],       "yes")
 KNOT_MODULE([onlinesign],  "yes", "non-shareable")
+KNOT_MODULE([azurednssec], "no")
 KNOT_MODULE([probe],       "yes")
 KNOT_MODULE([queryacl],    "yes")
 KNOT_MODULE([rrl],         "yes")
@@ -890,6 +892,7 @@ result_msg_base="
 
     Dnstap throttling       ${enable_throttle_dnstap_logs}
     Allow trailing bytes:   ${enable_trailing_bytes}
+    AzureDB module:         ${SUPPORTS_MODULE_azuredb}
 
     Code coverage:          ${enable_code_coverage}
     Sanitizer:              ${with_sanitizer}
