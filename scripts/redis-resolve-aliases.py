@@ -13,10 +13,15 @@ def parse_args():
                     prog='redis-resolve-aliases.py',
                     description='Knot Redis ALIAS job',
                     epilog='Once started it converts ALIAS records in one instance (every zone in DB) into other instance')
-    parser.add_argument('input_instance',  type=int,                                 help='instance that converts ALIAS from')
-    parser.add_argument('output_instance', type=int,                                 help='instance that converts ALIAS to')
-    parser.add_argument('-a', '--addr',    type=str, nargs='?', default='localhost', help='redis-server address')
-    parser.add_argument('-p', '--port',    type=int, nargs='?', default=6379,        help='redis-server port')
+    parser.add_argument('input_instance',       type=int,                                               help='instance that converts ALIAS from')
+    parser.add_argument('output_instance',      type=int,                                               help='instance that converts ALIAS to')
+    parser.add_argument('-a', '--addr',         type=str, nargs='?', default='localhost',               help='redis-server address')
+    parser.add_argument('-p', '--port',         type=int, nargs='?', default=6379,                      help='redis-server port')
+    parser.add_argument('-C', '--tls_cert',     type=str, nargs='?', default=None,                      help='client cert for redis-server connection')
+    parser.add_argument('-K', '--tls_key',      type=str, nargs='?', default=None,                      help='client key for redis-server connection')
+    parser.add_argument('-A', '--tls_ca',       type=str, nargs='?', default=None,                      help='client CA for redis-server connection')
+    parser.add_argument('-t', '--tls',          default=False,      action='store_true',                help='use transport layer security (TLS)')
+    parser.add_argument('-i', '--tls_insecure', default='required', action='store_const', const='none', help='disable client TLS validation')
     return parser.parse_args()
 
 @contextmanager
@@ -75,7 +80,17 @@ def store_record(conn, zone, txn, record):
 
 def main():
     conf = parse_args()
-    conn = redis.Redis(host=conf.addr, port=conf.port, decode_responses=True)
+    conn = redis.Redis(
+        host=conf.addr,
+        port=conf.port,
+        ssl=conf.tls,
+        ssl_certfile=conf.tls_cert,
+        ssl_keyfile=conf.tls_key,
+        ssl_ca_certs=conf.tls_ca,
+        ssl_cert_reqs=conf.tls_insecure,
+        decode_responses=True
+    )
+    # conn.ping() # TODO test connection ??
     for zone in list_zones(conn, conf.input_instance):
         convert_zone(conn, zone, conf.input_instance, conf.output_instance)
 
