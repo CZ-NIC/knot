@@ -1,0 +1,12 @@
+$ORIGIN zone1.
+
+@ SOA ns admin 1 25 25 80 600
+  NS ns
+ns AAAA ::0
+
+@ A 198.41.0.4
+@ AAAA 2001:503:ba3e::2:30
+alias A 198.41.0.4
+alias A 192.168.0.1
+alias A 170.247.170.2
+alias AAAA 2801:1b8:10::b

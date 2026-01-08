@@ -3,3 +3,4 @@ jsonschema
 psutil
 pyyaml
 setuptools
+redis[hiredis]
