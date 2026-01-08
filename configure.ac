@@ -442,6 +442,8 @@ KNOT_MODULE([stats],       "yes")
 KNOT_MODULE([synthrecord], "yes")
 KNOT_MODULE([whoami],      "yes")
 KNOT_MODULE([delay],       "no")
+KNOT_MODULE([azuredb],     "yes")
+KNOT_MODULE([azurednssec], "yes")
 
 AC_SUBST([STATIC_MODULES_DECLARS], [$(printf "$static_modules_declars")])
 AM_SUBST_NOTMAKE([STATIC_MODULES_DECLARS])
