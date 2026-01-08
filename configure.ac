@@ -826,6 +826,26 @@ AS_IF([test -n "$sanitizer_CFLAGS"], [CFLAGS="$CFLAGS $sanitizer_CFLAGS"])
 AM_CONDITIONAL([FUZZER], [test "$with_fuzzer" != "no"])
 AM_CONDITIONAL([OSS_FUZZ], [test "$with_oss_fuzz" != "no"])
 
+AC_ARG_ENABLE([async-query], AS_HELP_STRING([--enable-async-query=yes|no],
+              [Enable asynchronous query handling [default=no]]), [],
+              [enable_async_query=no])
+
+AS_CASE([$enable_async_query],
+   [yes],[
+     AC_DEFINE([ENABLE_ASYNC_QUERY_HANDLING], [], [Enable support for handling queries asynchronously])
+     AS_IF([test "x$have_atomic8_primitives" != "xyes"],
+       [AC_MSG_ERROR([Async query support needs __atomic or stdatomic support])])
+   ],
+   [no],[],
+   [*], [AC_MSG_ERROR([Invalid value of --enable-async-query.]
+ )])
+
+AS_IF([test "x$STATIC_MODULE_delay" = "xyes" -o "x$SHARED_MODULE_delay" = "xyes"],[
+    AS_IF([test "x$enable_async_query" != "xyes"], [
+      AC_MSG_ERROR([delay module requires async query support in knot. Enable with --enable-async-query])
+    ])
+])
+
 AC_ARG_ENABLE([trailing-bytes],
     AS_HELP_STRING([--enable-trailing-bytes=yes|no], [enable trailing bytes in DNS query [default=no]]),
     [enable_trailing_bytes="$enableval"], [enable_trailing_bytes=no])
@@ -875,6 +895,7 @@ result_msg_base="
     Use recvmmsg:            ${enable_recvmmsg}
     Use SO_REUSEPORT(_LB):   ${enable_reuseport}
     XDP support:             ${enable_xdp}
+    Async Query Handling:    ${enable_async_query}
     AzureDB Module:          ${SUPPORTS_MODULE_azuredb}
     DoQ support:             ${enable_quic}
     Redis support:           ${enable_redis}
