@@ -891,6 +891,15 @@ AS_CASE([$with_unbound],
       with_unbound=yes
     ])
 
+with_aliasrr=no
+AS_IF([test "x$enable_async_query" = "xyes"] && [test "x$SUPPORTS_MODULE_azuredb" = "xyes"] && [test "x$with_unbound" = "xyes"],
+[
+    AM_CONDITIONAL([HAVE_ALIASRR], [true])
+    AC_DEFINE_UNQUOTED([KNOT_ENABLE_ALIASRR],[1], [AliasRR enabled for this build (1)])
+    with_aliasrr=yes
+],
+AM_CONDITIONAL([HAVE_ALIASRR], [false]))
+
 # Strip -fdebug-prefix-map= parameters from flags for better reproducibility of binaries.
 filtered_cflags=$(echo -n "$CFLAGS" | \
                   sed 's/[[^[:alnum:]]]-f[[^[:space:]]]*-prefix-map=[[^[:space:]]]*//g')
@@ -951,6 +960,7 @@ result_msg_base="
     Async query handling:   ${enable_async_query}
     NUMA support            ${with_numa}
     Unbound library support ${with_unbound}
+    Alias RR support:       ${with_aliasrr}
 
     Code coverage:          ${enable_code_coverage}
     Sanitizer:              ${with_sanitizer}
