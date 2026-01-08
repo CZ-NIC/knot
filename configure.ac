@@ -865,6 +865,15 @@ filtered_cppflags=$(echo -n "$CPPFLAGS" | \
 filtered_config_params=$(echo -n "$ac_configure_args" | \
                          sed 's/[[^[:alnum:]]]-f[[^[:space:]]]*-prefix-map=[[^[:space:]]]*//g')
 
+with_aliasrr=no
+AS_IF([test "x$enable_async_query" = "xyes"] && [test "x$SUPPORTS_MODULE_azuredb" = "xyes"] && [test "x$with_unbound" = "xyes"],
+  [
+    AM_CONDITIONAL([HAVE_ALIASRR], [true])
+    AC_DEFINE_UNQUOTED([KNOT_ENABLE_ALIASRR],[1], [AliasRR enabled for this build (1)])
+    with_aliasrr=yes
+  ],
+  AM_CONDITIONAL([HAVE_ALIASRR], [false]))
+
 result_msg_base="
     Target:   $host_os $host_cpu $endianity
     Compiler: ${CC}
@@ -901,6 +910,7 @@ result_msg_base="
     Redis support:           ${enable_redis}
     Socket polling:          ${socket_polling}
     Atomic support:          ${atomic_type}
+    AliasRR Support:         ${with_aliasrr}
     Memory allocator:        ${with_memory_allocator}
     Fast zone parser:        ${enable_fastparser}
     Utilities with IDN:      ${with_libidn}
