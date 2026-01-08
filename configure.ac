@@ -845,6 +845,25 @@ filtered_cppflags=$(echo -n "$CPPFLAGS" | \
 filtered_config_params=$(echo -n "$ac_configure_args" | \
                          sed 's/[[^[:alnum:]]]-f[[^[:space:]]]*-prefix-map=[[^[:space:]]]*//g')
 
+AC_ARG_ENABLE([async-query],
+    AS_HELP_STRING([--enable-async-query=yes|no], [Enable asynchronous query handling [default=no]]), [], [enable_async_query=no])
+
+AS_CASE([$enable_async_query],
+   [yes],[
+     AC_DEFINE([ENABLE_ASYNC_QUERY_HANDLING], [], [Enable support for handling queries asynchronously])
+     AS_IF([test "x$have_atomic8_primitives" != "xyes"],
+       [AC_MSG_ERROR([Async query support needs __atomic or stdatomic support])])
+   ],
+   [no],[],
+   [*], [AC_MSG_ERROR([Invalid value of --enable-async-query.]
+ )])
+
+AS_IF([test "x$STATIC_MODULE_delay" = "xyes" -o "x$SHARED_MODULE_delay" = "xyes"],[
+    AS_IF([test "x$enable_async_query" != "xyes"], [
+      AC_MSG_ERROR([delay module requires async query support in knot. Enable with --enable-async-query])
+    ])
+])
+
 with_aliasrr=no
 AS_IF([test "x$enable_async_query" = "xyes"] && [test "x$SUPPORTS_MODULE_azuredb" = "xyes"] && [test "x$with_unbound" = "xyes"],
   [
@@ -884,6 +903,7 @@ result_msg_base="
     Use recvmmsg:            ${enable_recvmmsg}
     Use SO_REUSEPORT(_LB):   ${enable_reuseport}
     XDP support:             ${enable_xdp}
+    Async Query Handling:    ${enable_async_query}
     AzureDB Module:          ${SUPPORTS_MODULE_azuredb}
     DoQ support:             ${enable_quic}
     Redis support:           ${enable_redis}
