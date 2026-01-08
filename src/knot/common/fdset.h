@@ -119,6 +119,39 @@ void fdset_clear(fdset_t *set);
 int fdset_add(fdset_t *set, const int fd, const fdset_event_t events, void *ctx);
 
 /*!
+ * \brief Set the context on the descriptor at i.
+ *
+ * \param set Target set.
+ * \param i Index to set ctx at.
+ *
+ * \retval index of the added fd if successful.
+ * \retval -1 on errors.
+ */
+int fdset_set_ctx(fdset_t *set, unsigned i, void *ctx);
+
+/*!
+ * \brief Get the context on the descriptor at i.
+ *
+ * \param set Target set.
+ * \param i Index to get ctx at.
+ *
+ * \retval context value.
+ */
+void* fdset_get_ctx(fdset_t *set, unsigned i);
+
+/*!
+ * \brief Clear the context for the given fd
+ *
+ * \param set Target set.
+ * \param fd Handle whose context needs to be cancelled.
+ * \param ctx Context (optional).
+ *
+ * \retval index of the fd if successful.
+ * \retval -1 on errors.
+ */
+int fdset_set_ctx_on_fd(fdset_t *set, int fd, void *ctx);
+
+/*!
  * \brief Remove and close file descriptor from watched set.
  *
  * \param set  Target set.
@@ -189,6 +222,27 @@ inline static int fdset_get_fd(const fdset_t *set, const unsigned idx)
 #else
 	return set->pfd[idx].fd;
 #endif
+}
+
+/*!
+ * \brief Returns index for file descriptor.
+ *
+ * \param set  Target set.
+ * \param .
+ *
+ * \retval Index of the file descriptor. ret >= 0 for file descriptor found.
+ * \retval ret < 0 on errors.
+ */
+inline static int fdset_get_index_for_fd(const fdset_t *set, int fd)
+{
+	assert(set);
+	for (unsigned i = 0; i < set->n; i++) {
+		if (fdset_get_fd(set, i) == fd) {
+			return i;
+		}
+	}
+
+	return -1;
 }
 
 /*!
