@@ -841,6 +841,19 @@ AC_ARG_WITH([udp-max-size],
 
 AC_DEFINE_UNQUOTED([KNOT_MAX_UDP_REQRESP_SIZE_BYTES], [$udp_max_size], [Value of udp max message size])
 
+AC_ARG_ENABLE([async-query],
+    AS_HELP_STRING([--enable-async-query=yes|no], [Enable asynchronous query handling [default=no]]),
+    [], [enable_async_query=no])
+
+AS_CASE([$enable_async_query],
+    [yes],[
+      AC_DEFINE([ENABLE_ASYNC_QUERY_HANDLING], [], [Enable support for handling queries asynchronously])
+      AS_IF([test "x$atomic_type" = "xnone"],
+        [AC_MSG_ERROR([Async query support needs stdatomic support])])
+      ],
+    [no],[],
+    [*], [AC_MSG_ERROR([Invalid value of --enable-async-query.])])
+
 # Strip -fdebug-prefix-map= parameters from flags for better reproducibility of binaries.
 filtered_cflags=$(echo -n "$CFLAGS" | \
                   sed 's/[[^[:alnum:]]]-f[[^[:space:]]]*-prefix-map=[[^[:space:]]]*//g')
@@ -898,6 +911,7 @@ result_msg_base="
     Allow trailing bytes:   ${enable_trailing_bytes}
     Valgrind memcheck:      ${with_memcheck}
     UDP maximum size:       ${udp_max_size}
+    Async query handling:   ${enable_async_query}
 
     Code coverage:          ${enable_code_coverage}
     Sanitizer:              ${with_sanitizer}
