@@ -2096,6 +2096,7 @@ DNSSEC policy configuration.
      ksk-lifetime: TIME
      zsk-lifetime: TIME
      delete-delay: TIME
+     trash-delay: TIME
      propagation-delay: TIME
      rrsig-lifetime: TIME
      rrsig-refresh: TIME
@@ -2315,6 +2316,15 @@ it completely. This might be useful in some troubleshooting cases when resurrect
 is needed.
 
 *Default:* ``0``
+
+trash-delay
+-----------
+
+Set this parameter to ``0`` to avoid storing deleted DNSSEC key in a "trash bin".
+(The "trash bin" can be emptied with ``knotc -f zone-purge +keys +orphan --``,
+automatic cleaning of the "trash bin" will be added in near future.)
+
+*Default:* ``14d`` (14 days)
 
 .. _policy_propagation-delay:
 
