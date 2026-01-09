@@ -1581,6 +1581,9 @@ The restore procedure does not care for keys deleted after taking the snapshot.
 Thus, after restore, there might remain some redundant ``.pem`` files
 of obsolete signing keys.
 
+Only configured private keys are backed up, deleted keys still kept in the "trash bin"
+aren't.
+
 .. NOTE::
    Automatically generated unique-id's of member zones are kept in the
    timers database. Therefore, backup of member zones' timers is crucial for
