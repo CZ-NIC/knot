@@ -1666,6 +1666,7 @@ class Knot(Server):
                     s.item_type(ci.replace("_", "-"), val)
                 s.end()
 
+        keystores = list()
         have_keystore = False
         for zone in sorted(self.zones):
             z = self.zones[zone]
@@ -1676,6 +1677,9 @@ class Knot(Server):
                 s.begin("keystore")
                 have_keystore = True
             for ks in z.dnssec.keystore:
+                if ks.id in keystores:
+                    continue
+                keystores.append(ks.id)
                 s.id_item("id", ks.id)
                 s.item_type("config", ks.config())
                 s.item_type("backend", ks.backend())
