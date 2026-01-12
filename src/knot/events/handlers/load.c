@@ -59,6 +59,7 @@ int event_load(conf_t *conf, zone_t *zone)
 	bool old_contents_exist = (zone->contents != NULL), zone_in_journal_exists = false;
 	const char *zone_src = "zone file";
 	struct redisContext *db_ctx = NULL;
+	bool rdb_reload = false;
 
 	conf_val_t val = conf_zone_get(conf, C_JOURNAL_CONTENT, zone->name);
 	unsigned load_from = conf_opt(&val);
@@ -111,11 +112,12 @@ int event_load(conf_t *conf, zone_t *zone)
 	bool db_enabled = conf_zone_rdb_enabled(conf, zone->name, true, &db_instance);
 	if (db_enabled) {
 		zone_src = "database";
+		rdb_reload = zone_get_flag(zone, ZONE_RDB_RELOAD, false);
 		db_ctx = zone_redis_connect(conf, false);
 	}
 
 	// Attempt to load changes from database. If fails, load full zone from there later.
-	if (db_enabled && (old_contents_exist || journal_conts != NULL) &&
+	if (db_enabled && !rdb_reload && (old_contents_exist || journal_conts != NULL) &&
 	    zone->cat_members == NULL && EMPTY_LIST(zone->include_from) &&
 	    zf_from != ZONEFILE_LOAD_DIFSE && !includes_configured) {
 		zone_redis_err_t err;
@@ -519,6 +521,7 @@ load_end:
 		zone_schedule_notify(conf, zone, 0);
 	}
 	zone_redis_disconnect(db_ctx, true);
+	zone_unset_flag(zone, ZONE_RDB_RELOAD);
 	zone_skip_free(&skip);
 	zone->started = true;
 

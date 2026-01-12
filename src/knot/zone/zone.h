@@ -40,6 +40,7 @@ typedef enum {
 	ZONE_USER_FLUSH     = 1 << 8, /*!< User-triggered flush. */
 	ZONE_LAST_SIGN_OK   = 1 << 9, /*!< Last full-sign event finished OK. */
 	ZONE_PREF_MASTER_2X = 1 << 10, /*!< Preferred master has been overwritten at least once. */
+	ZONE_RDB_RELOAD     = 1 << 11, /*!< Full zone reload from database. */
 
 	ZONE_FLAG_MAX       = 1 << 19, /*!< Maximal usable flag below purge_flag_t. */
 	ZONE_FLAG_TYPESIZE  = 1 << 30, /*!< Enforces the compiler to use 32-bit variable for this enum. */
