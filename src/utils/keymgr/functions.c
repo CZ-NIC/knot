@@ -502,9 +502,12 @@ fail:
 
 static void err_import_key(char *keyid, const char *file)
 {
+	assert(file != NULL);
+
 	ERR2("failed to get key%s%s from %s%s",
-	     *keyid == '\0' ? "" : " ", keyid,
-	     *file == '\0' ? "the keystore" : "file ", file);
+	     (keyid == NULL || *keyid == '\0') ? "" : " ",
+	     (keyid == NULL) ? "" : keyid,
+	     (*file == '\0') ? "the keystore" : "file ", file );
 }
 
 static int import_key(kdnssec_ctx_t *ctx, unsigned backend, const char *param,
