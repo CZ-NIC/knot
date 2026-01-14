@@ -238,7 +238,9 @@ libknotd_la_SOURCES = \
 if HAVE_ATOMIC_PRIMITIVES
 libknotd_la_SOURCES +=                          \
 	knot/common/qps_limiter.c               \
-	knot/common/qps_limiter.h
+	knot/common/qps_limiter.h               \
+	knot/nameserver/lqueue.c                \
+	knot/include/lqueue.h
 endif
 
 if ENABLE_QUIC
