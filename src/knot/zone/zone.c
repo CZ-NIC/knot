@@ -363,10 +363,11 @@ int selective_zone_purge(conf_t *conf, zone_t *zone, purge_flag_t params)
 		return KNOT_ERROR;
 	}
 
-	if ((params & PURGE_ZONE_LOG) ||
-	    (params & PURGE_ZONE_DATA) == PURGE_ZONE_DATA) {
-		log_zone_notice(zone->name, "zone purged");
-	}
+	const char *msg = ((params & PURGE_ZONE_LOG) ||
+	                   (params & PURGE_ZONE_DATA) == PURGE_ZONE_DATA) ?
+	                  "zone purged" :
+	                  "requested zone data purged";
+	log_zone_notice(zone->name, "%s", msg);
 
 	return KNOT_EOK;
 }
