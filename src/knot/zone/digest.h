@@ -15,13 +15,14 @@
  * \param algorithm       Algorithm to use.
  * \param scheme          Scheme to use.
  * \param ignore_dnssec   Skip DNSSEC-related records while computing the digest.
+ * \param validation      The ZONEMD is being validated (otherwise inserted).
  * \param out_digest      Output: buffer with computed hash (to be freed).
  * \param out_size        Output: size of the resulting hash.
  *
  * \return KNOT_E*
  */
-int zone_contents_digest(const zone_contents_t *contents, int algorithm,
-                         int scheme, bool ignore_dnssec,
+int zone_contents_digest(zone_contents_t *contents, int algorithm,
+                         int scheme, bool ignore_dnssec, bool validation,
                          uint8_t **out_digest, size_t *out_size);
 
 /*!
@@ -34,7 +35,7 @@ int zone_contents_digest(const zone_contents_t *contents, int algorithm,
  * \param no_verify      Don't verify the validness of the digest in ZONEMD.
  * \param ignore_dnssec  Skip DNSSEC-related records when eventually verifying the digest.
  */
-bool zone_contents_digest_exists(const zone_contents_t *contents, int alg, bool no_verify,
+bool zone_contents_digest_exists(zone_contents_t *contents, int alg, bool no_verify,
                                  bool ignore_dnssec);
 
 /*!
@@ -51,7 +52,7 @@ bool zone_contents_digest_exists(const zone_contents_t *contents, int alg, bool 
  * \retval KNOT_EMALF       The computed hash differs from ZONEMD.
  * \return KNOT_E*
  */
-int zone_contents_digest_verify(const zone_contents_t *contents, bool ignore_dnssec);
+int zone_contents_digest_verify(zone_contents_t *contents, bool ignore_dnssec);
 
 struct zone_update;
 /*!

@@ -379,6 +379,7 @@ void zone_update_clear(zone_update_t *update)
 	}
 
 	if (update->new_cont != NULL) {
+		zone_contents_clear_zonemd_trees(update->new_cont);
 		additionals_tree_free(update->new_cont->adds_tree);
 		update->new_cont->adds_tree = NULL;
 	}

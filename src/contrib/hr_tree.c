@@ -5,7 +5,6 @@
 
 #include <assert.h>
 #include <errno.h>
-#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -32,7 +31,7 @@ static const uint8_t bitarray_ffs[256] = {
 	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
 	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
 	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-	0 // 127 zeroes follows
+	0 // 127 zeroes follow
 };
 
 unsigned bitarray_diff_idx(const uint8_t *a, const uint8_t *b, unsigned len)
@@ -223,9 +222,14 @@ static void clear_node(hr_tree_t *t, hr_node_t *n)
 	mm_free(t->mm, n);
 }
 
+bool hr_tree_empty(hr_tree_t *t)
+{
+	return (t == NULL || t->root == NULL);
+}
+
 void hr_tree_clear(hr_tree_t *t)
 {
-	if (t != NULL && t->root != NULL) {
+	if (!hr_tree_empty(t)) {
 		clear_node(t, t->root);
 		t->root = NULL;
 		assert(t->alloc_size == 0);

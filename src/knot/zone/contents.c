@@ -492,6 +492,8 @@ int zone_contents_cow(zone_contents_t *from, zone_contents_t **to)
 	}
 	contents->adds_tree = from->adds_tree;
 	from->adds_tree = NULL;
+	contents->hr_tree = from->hr_tree;
+	from->hr_tree = NULL;
 	contents->size = from->size;
 	contents->max_ttl = from->max_ttl;
 
@@ -499,11 +501,23 @@ int zone_contents_cow(zone_contents_t *from, zone_contents_t **to)
 	return KNOT_EOK;
 }
 
+void zone_contents_clear_zonemd_trees(zone_contents_t *c)
+{
+	if (c->hr_tree != NULL) {
+		hr_tree_clear(&c->hr_tree[CONTENTS_ZONEMD_TREE_GENERATE]);
+		hr_tree_clear(&c->hr_tree[CONTENTS_ZONEMD_TREE_VALIDATE]);
+		free(c->hr_tree);
+		c->hr_tree = NULL;
+	}
+}
+
 void zone_contents_free(zone_contents_t *contents)
 {
 	if (contents == NULL) {
 		return;
 	}
+
+	zone_contents_clear_zonemd_trees(contents);
 
 	// free the zone tree, but only the structure
 	zone_tree_free(&contents->nodes);
@@ -611,4 +625,20 @@ bool zone_contents_is_empty(const zone_contents_t *zone)
 	bool no_nsec3 = zone_tree_is_empty(zone->nsec3_nodes);
 
 	return (apex_empty && no_non_apex && no_nsec3);
+}
+
+hr_tree_t *zone_contents_zonemd_tree(zone_contents_t *zone, enum zone_contents_hr_trees which)
+{
+	if (zone == NULL) {
+		return NULL;
+	}
+
+	if (zone->hr_tree == NULL) {
+		zone->hr_tree = calloc(2, sizeof(*zone->hr_tree));
+		if (zone->hr_tree == NULL) {
+			return NULL;
+		}
+	}
+
+	return &zone->hr_tree[which];
 }

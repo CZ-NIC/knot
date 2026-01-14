@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -75,6 +76,11 @@ int hr_tree_rem(hr_tree_t *t, const uint8_t *hash);
  * \retval (Any non-zero error from rehash_cb(): the tree is broken and SHOULD be cleared.)
  */
 int hr_tree_add(hr_tree_t *t, const uint8_t *hash);
+
+/*!
+ * \brief Check if tree is empty.
+ */
+bool hr_tree_empty(hr_tree_t *t);
 
 /*!
  * \brief Free all nodes and empty the tree.
