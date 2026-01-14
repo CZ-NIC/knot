@@ -241,7 +241,9 @@ libknotd_la_SOURCES +=				\
 	knot/common/qps_limiter.h		\
 	knot/include/atomic.h			\
 	knot/include/lqueue.h			\
+	knot/include/lstack.h			\
 	knot/include/modcounter.h		\
+	knot/nameserver/lqueue.c		\
 	knot/nameserver/lqueue.c
 endif
 
