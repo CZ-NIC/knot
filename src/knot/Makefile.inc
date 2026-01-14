@@ -240,7 +240,9 @@ libknotd_la_SOURCES +=				\
 	knot/common/qps_limiter.c		\
 	knot/common/qps_limiter.h		\
 	knot/include/atomic.h			\
-	knot/include/modcounter.h
+	knot/include/lqueue.h			\
+	knot/include/modcounter.h		\
+	knot/nameserver/lqueue.c
 endif
 
 if ENABLE_QUIC
