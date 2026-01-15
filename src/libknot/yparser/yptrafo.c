@@ -384,25 +384,25 @@ static uint8_t sock_type_guess(
 	const uint8_t **if_name)
 {
 	size_t dots = 0;
-	size_t semicolons = 0;
+	size_t colons = 0;
 	size_t digits = 0;
 
 	// Analyze the string.
 	for (size_t i = 0; i < len; i++) {
 		if (str[i] == '.') dots++;
-		else if (str[i] == ':') semicolons++;
+		else if (str[i] == ':') colons++;
 		else if (is_digit(str[i])) digits++;
 	}
 
 	// Guess socket type.
-	if (semicolons >= 1) {
+	if (colons >= 2) {
 		*if_name = (const uint8_t *)strchr((const char *)str, '%');
 		if (*if_name == NULL) {
 			return ADDR_TYPE_IPV6;
 		} else {
 			return ADDR_TYPE_IPV6_LINKLOCAL;
 		}
-	} else if (semicolons == 0 && dots == 3 && digits >= 3) {
+	} else if (colons == 0 && dots == 3 && digits >= 3) {
 		return ADDR_TYPE_IPV4;
 	} else {
 		return ADDR_TYPE_UNIX;
