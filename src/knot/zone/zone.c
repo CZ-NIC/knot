@@ -377,7 +377,7 @@ int selective_zone_purge(conf_t *conf, zone_t *zone, purge_flag_t params)
 	                   (params & PURGE_ZONE_DATA) == PURGE_ZONE_DATA) ?
 	                  "zone purged" :
 	                  "requested zone data purged";
-	log_zone_notice(zone->name, msg);
+	log_zone_notice(zone->name, "%s", msg);
 
 	return KNOT_EOK;
 }
