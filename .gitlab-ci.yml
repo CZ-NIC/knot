@@ -392,6 +392,10 @@ pkg:debian-11:
   <<: *pkg_test_deb
   image: $CI_REGISTRY/packaging/apkg/test/debian-11
 
+pkg:ubuntu-26.04:
+  <<: *pkg_test_deb
+  image: $CI_REGISTRY/packaging/apkg/test/ubuntu-26.04
+
 pkg:ubuntu-24.04:
   <<: *pkg_test_deb
   image: $CI_REGISTRY/packaging/apkg/test/ubuntu-24.04
