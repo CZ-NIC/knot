@@ -1296,8 +1296,9 @@ DNSSEC using an HSM keystore
 
 If access to a PKCS #11 device (i.e. HSM) is controlled by the operating system, such
 as by `polkit <https://github.com/polkit-org/polkit>`_ utility, and :doc:`knotd<man_knotd>`
-and related utilites (:doc:`keymgr<man_keymgr>`, :doc:`kzonesign<man_kzonesign>`) are run
-as a non-root user, privilege control must be configured accordingly in the operating system.
+and related utilites (:doc:`keymgr<man_keymgr>`, :doc:`kzonesign<man_kzonesign>`) are
+configured to be run as a non-root :ref:`user<server_user>`, privilege control must be
+configured accordingly in the operating system.
 
 .. _DNSSEC keys import to HSM:
 
