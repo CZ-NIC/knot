@@ -1,3 +1,43 @@
+Knot DNS 3.5.3 (2026-01-16)
+===========================
+
+Features:
+---------
+ - knotd: added statistics counter for failed zone update (see 'zone-update-error')
+ - knotd: new D-Bus signal for zones not updated (see 'server.dbus-event')
+ - knotc: optional parameter for delayed old KSK removal upon submission (see 'zone-ksk-submitted')
+ - libs: added support for the RESINFO record type
+
+Improvements:
+-------------
+ - knotd: zone inclusion deletes the whole subtree of glues and junk from the parent
+ - knotd: supported unsigned input ZONEMD validation if enabled DNSSEC signing and ZONEMD generate
+ - knotd: DNSSEC signing not required for key restore
+ - knotd: increased defaults for 'database.timer-db-max-size' and 'database.kasp-db-max-size'
+ - knotd: database connection pool is purged if reconfigured
+ - knotd: removed shutdown delay if connected to a database
+ - knotd: optimized memory trimming frequency for many zones
+ - knotd: primary server sends NOTIFY after answering started, not sooner
+ - redis: GnuTLS is not required to build the module alone !1809
+ - libs: improved detection of PKCS #11 support !1830
+ - libs: upgraded embedded libngtcp2 to 1.19.0
+ - samples: added JSON support to probe_dump (Thanks to Benedikt Heine)
+ - doc: extended and updated table of compatible PKCS #11 devices
+
+Bugfixes:
+---------
+ - knotd: DS push not replanned if reconfigured during DS submission
+ - knotd: missing check for empty zone when flushing
+ - knotd: missing catalog update clear if error
+ - knotd: failed to parse database address without port specification
+ - knotd: incorrect thread synchronization when dumping timers
+ - knotd: server crashes when outbound QUIC connection is closed unexpectedly
+ - knotd: zone not reloaded from database if not updated incrementally
+ - knotd: UNIX socket path containing a single colon considered an IPv6 address
+ - keymgr: program crashes when importing a malformed key
+ - kdig: missing address context deinitialization when iterating over addresses
+ - kdig: missing AA flag on NOTIFY query
+
 Knot DNS 3.5.2 (2025-11-28)
 ===========================
 
