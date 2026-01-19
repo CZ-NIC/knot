@@ -9,6 +9,7 @@
 #include <time.h>
 #include <urcu.h>
 
+#include "knot/common/dbus.h"
 #include "knot/common/log.h"
 #include "knot/conf/module.h"
 #include "knot/dnssec/kasp/kasp_db.h"
@@ -1033,4 +1034,14 @@ time_t zone_bootstrap_next(uint8_t *count)
 
 	// Add a random delay to prevent burst refresh.
 	return increment + dnssec_random_uint16_t() % MIN(30, (1 + *count) * 5);
+}
+
+void zone_update_error(conf_t *conf, zone_t *zone)
+{
+	if (conf != NULL && zone != NULL) {
+		ATOMIC_ADD(zone->server->stats.zone_update_error, 1);
+		if (conf->cache.srv_dbus_event & DBUS_EVENT_ZONE_UPDATED) {
+			dbus_emit_zone_updated(zone->name, false, 0);
+		}
+	}
 }

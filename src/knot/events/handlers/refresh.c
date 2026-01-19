@@ -1265,6 +1265,7 @@ static int transfer_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 		if (data->ret == KNOT_EOK) {
 			data->updated = true;
 		} else {
+			zone_update_error(data->conf, data->zone);
 			next = KNOT_STATE_FAIL;
 		}
 	}

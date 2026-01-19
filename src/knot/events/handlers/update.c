@@ -242,6 +242,7 @@ static void process_requests(conf_t *conf, zone_t *zone, list_t *requests)
 	if (ret != KNOT_EOK) {
 		log_zone_error(zone->name, "DDNS, processing failed (%s)",
 		               knot_strerror(ret));
+		zone_update_error(conf, zone);
 		return;
 	}
 
