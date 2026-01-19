@@ -916,7 +916,7 @@ bool knot_zone_sign_use_key(const zone_key_t *key, const knot_rrset_t *covered)
 	}
 
 	bool active_ksk = ((key->is_active || key->is_ksk_active_plus) && key->is_ksk);
-	bool active_zsk = ((key->is_active || key->is_zsk_active_plus) && key->is_zsk);;
+	bool active_zsk = ((key->is_active || key->is_zsk_active_plus) && key->is_zsk);
 
 	// this may be a problem with offline KSK
 	bool cds_sign_by_ksk = true;
