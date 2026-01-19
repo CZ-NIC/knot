@@ -155,7 +155,7 @@ typedef enum {
 /*!
  * \brief DELEG DelegInfo registry.
  *
- * https://www.iana.org/assignments/dns-svcb/dns-svcb.xhtml
+ * TODO
  */
 typedef enum {
 	KNOT_DELEG_INFO_MANDATORY   = 0,
