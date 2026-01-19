@@ -538,5 +538,10 @@ cleanup:
 	zone_skip_free(&skip);
 	zone->started = true;
 
-	return (dontcare_load_error(conf, zone) ? KNOT_EOK : ret);
+	if (ret != KNOT_EOK && !dontcare_load_error(conf, zone)) {
+		zone_update_error(conf, zone);
+		return ret;
+	}
+
+	return KNOT_EOK;
 }
