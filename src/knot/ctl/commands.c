@@ -993,12 +993,14 @@ static int zone_txn_commit_l(zone_t *zone, _unused_ ctl_args_t *args)
 	}
 	if (ret != KNOT_EOK) {
 		zone_control_clear(zone);
+		zone_update_error(conf(), zone);
 		return ret;
 	}
 
 	ret = zone_update_commit(conf(), zone->control_update);
 	if (ret != KNOT_EOK) {
 		zone_control_clear(zone);
+		zone_update_error(conf(), zone);
 		return ret;
 	}
 
