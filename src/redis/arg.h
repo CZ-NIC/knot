@@ -166,6 +166,15 @@ typedef struct {
 	out.len = ret; \
 }
 
+#define ARG_FLAG(arg, out, flag) { \
+	size_t len; \
+	const char *ptr = RedisModule_StringPtrLen(arg, &len); \
+	if (strcmp(ptr, flag) != 0) { \
+		return RedisModule_ReplyWithError(ctx, RDB_E("invalid flag")); \
+	} \
+	out = true; \
+}
+
 #define ARG_DNAME_TXT(arg, out, origin, name) { \
 	size_t len; \
 	out.txt = RedisModule_StringPtrLen(arg, &len); \

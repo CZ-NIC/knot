@@ -257,7 +257,7 @@ static int zone_store_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int arg
 
 static int zone_store_bin(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 {
-	if (argc != 8) {
+	if (argc < 8 || argc > 9) {
 		return RedisModule_WrongArity(ctx);
 	}
 
@@ -283,7 +283,12 @@ static int zone_store_bin(RedisModuleCtx *ctx, RedisModuleString **argv, int arg
 	size_t rdataset_len;
 	ARG_DATA(argv[7], rdataset_len, rdataset, "rdataset");
 
-	zone_store_bin_format(ctx, &origin, &txn, &owner, rtype, ttl, rcount, rdataset, rdataset_len);
+	bool merge = false;
+	if (argc > 8) {
+		ARG_FLAG(argv[8], merge, "M");
+	}
+
+	zone_store_bin_format(ctx, &origin, &txn, &owner, rtype, ttl, rcount, rdataset, rdataset_len, merge);
 	return REDISMODULE_OK;
 }
 
@@ -543,7 +548,7 @@ static int upd_add_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 
 static int upd_add_bin(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 {
-	if (argc != 8) {
+	if (argc < 8 || argc > 9) {
 		return RedisModule_WrongArity(ctx);
 	}
 
@@ -569,13 +574,18 @@ static int upd_add_bin(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 	size_t rdata_len;
 	ARG_DATA(argv[7], rdata_len, rdata, "rdata");
 
+	bool merge = false;
+	if (argc > 8) {
+		ARG_FLAG(argv[8], merge, "M");
+	}
+
 	knot_rdataset_t rdataset = {
 		.count = rcount,
 		.size = rdata_len,
 		.rdata = (knot_rdata_t *)rdata
 	};
 
-	upd_add_bin_format(ctx, &origin, &txn, &owner, ttl, rtype, &rdataset);
+	upd_add_bin_format(ctx, &origin, &txn, &owner, ttl, rtype, &rdataset, merge);
 	return REDISMODULE_OK;
 }
 
