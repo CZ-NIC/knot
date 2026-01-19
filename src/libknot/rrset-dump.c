@@ -2290,6 +2290,7 @@ static int txt_dump_data(rrset_dump_params_t *p, uint16_t type)
 		case KNOT_RRTYPE_CNAME:
 		case KNOT_RRTYPE_PTR:
 		case KNOT_RRTYPE_DNAME:
+		case KNOT_RRTYPE_ALIAS:
 			return dump_ns(p);
 		case KNOT_RRTYPE_SOA:
 			return dump_soa(p);
