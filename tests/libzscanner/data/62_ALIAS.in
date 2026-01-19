@@ -1,0 +1,14 @@
+$ORIGIN	.
+$TTL	1
+
+; The ALIAS is the same as the NS, so there are the differences and basics only.
+
+; OK
+@	ALIAS		test.example.com	; Relative dname
+@	ALIAS		\# 1 00			; Hexadecimal rdata
+@	TYPE65401	\# 1 00			; TYPE + Hexadecimal rdata
+@	TYPE65401	@			; TYPE
+@	alias		@			; Type in lower-case
+
+; KO
+@	ALIAS
