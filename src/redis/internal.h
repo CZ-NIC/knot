@@ -798,6 +798,27 @@ static int upd_add_bin_cb(diff_v *diff, const void *data, uint32_t ttl)
 	return ret;
 }
 
+static int upd_merge_bin_cb(diff_v *diff, const void *data, uint32_t ttl)
+{
+	const knot_rdataset_t *rdataset = data;
+
+	int ret = KNOT_EOK;
+
+	knot_rdata_t *rr = rdataset->rdata;
+	for (uint16_t i = 0; i < rdataset->count && ret == KNOT_EOK; i++) {
+		if (knot_rdataset_member(&diff->rem_rrs, rr)) {
+			ret = knot_rdataset_remove(&diff->rem_rrs, rr, &mm);
+		} else {
+			ret = knot_rdataset_add(&diff->add_rrs, rr, &mm);
+			diff->add_ttl = ttl;
+		}
+
+		rr = knot_rdataset_next(rr);
+	}
+
+	return ret;
+}
+
 static int upd_remove_bin_cb(diff_v *diff, const void *data, uint32_t ttl)
 {
 	const knot_rdataset_t *rdataset = data;
@@ -892,9 +913,10 @@ static int upd_remove_txt_format(RedisModuleCtx *ctx, const arg_dname_t *origin,
 static void upd_add_bin_format(RedisModuleCtx *ctx, const arg_dname_t *origin,
                                const rdb_txn_t *txn, const arg_dname_t *owner,
                                const uint32_t ttl, const uint16_t rtype,
-                               const knot_rdataset_t *data)
+                               const knot_rdataset_t *data, bool merge)
 {
-	exception_t e = upd_add_rem(ctx, origin, txn, owner, ttl, rtype, (void *)data, upd_add_bin_cb);
+	exception_t e = upd_add_rem(ctx, origin, txn, owner, ttl, rtype, (void *)data,
+	                            merge ? upd_merge_bin_cb : upd_add_bin_cb);
 	if (e.ret != KNOT_EOK) {
 		RedisModule_ReplyWithError(ctx, e.what);
 	} else {
@@ -981,7 +1003,8 @@ static void scanner_error(zs_scanner_t *s)
 static void zone_store_bin_format(RedisModuleCtx *ctx, const arg_dname_t *origin,
                                   const rdb_txn_t *txn, const arg_dname_t *owner,
                                   uint16_t rtype, uint32_t ttl, uint16_t rcount,
-                                  const uint8_t *zone_data, const size_t zone_data_len)
+                                  const uint8_t *zone_data, const size_t zone_data_len,
+                                  bool merge)
 {
 	if (zone_txn_is_open(ctx, origin, txn) == false) {
 		RedisModule_ReplyWithError(ctx, RDB_ETXN);
@@ -990,45 +1013,63 @@ static void zone_store_bin_format(RedisModuleCtx *ctx, const arg_dname_t *origin
 
 	RedisModuleString *rrset_keyname = rrset_keyname_construct(ctx, origin, txn, owner, rtype);
 	rrset_k rrset_key = RedisModule_OpenKey(ctx, rrset_keyname, REDISMODULE_READ | REDISMODULE_WRITE);
-	if (RedisModule_KeyType(rrset_key) != REDISMODULE_KEYTYPE_EMPTY) {
-		RedisModule_FreeString(ctx, rrset_keyname);
-		RedisModule_CloseKey(rrset_key);
-		RedisModule_ReplyWithError(ctx, RDB_EEXIST);
-		return;
-	}
-
-	rrset_v *rrset = RedisModule_Calloc(1, sizeof(*rrset));
-	if (rrset == NULL) {
-		RedisModule_FreeString(ctx, rrset_keyname);
-		RedisModule_CloseKey(rrset_key);
-		RedisModule_ReplyWithError(ctx, RDB_EALLOC);
-		return;
-	}
-
-	rrset->ttl = ttl;
-	rrset->rrs.count = rcount;
-	if (zone_data_len != 0) {
-		rrset->rrs.rdata = RedisModule_Alloc(zone_data_len);
-		if (rrset->rrs.rdata == NULL) {
-			RedisModule_Free(rrset);
+	if (RedisModule_KeyType(rrset_key) == REDISMODULE_KEYTYPE_EMPTY) {
+		rrset_v *rrset = RedisModule_Calloc(1, sizeof(*rrset));
+		if (rrset == NULL) {
 			RedisModule_FreeString(ctx, rrset_keyname);
 			RedisModule_CloseKey(rrset_key);
 			RedisModule_ReplyWithError(ctx, RDB_EALLOC);
 			return;
 		}
-		rrset->rrs.size = zone_data_len;
-		memcpy(rrset->rrs.rdata, zone_data, zone_data_len);
-	} else {
-		rrset->rrs.rdata = NULL;
-		rrset->rrs.size = 0;
-	}
 
-	int ret = rrset_key_set(ctx, rrset_key, rrset_keyname, origin, txn, rtype, rrset);
-	RedisModule_FreeString(ctx, rrset_keyname);
-	RedisModule_CloseKey(rrset_key);
-	if (ret != KNOT_EOK) {
-		RedisModule_Free(rrset);
-		RedisModule_ReplyWithError(ctx, RDB_ESTORE);
+		rrset->ttl = ttl;
+		rrset->rrs.count = rcount;
+		if (zone_data_len != 0) {
+			rrset->rrs.rdata = RedisModule_Alloc(zone_data_len);
+			if (rrset->rrs.rdata == NULL) {
+				RedisModule_Free(rrset);
+				RedisModule_FreeString(ctx, rrset_keyname);
+				RedisModule_CloseKey(rrset_key);
+				RedisModule_ReplyWithError(ctx, RDB_EALLOC);
+				return;
+			}
+			rrset->rrs.size = zone_data_len;
+			memcpy(rrset->rrs.rdata, zone_data, zone_data_len);
+		} else {
+			rrset->rrs.rdata = NULL;
+			rrset->rrs.size = 0;
+		}
+
+		int ret = rrset_key_set(ctx, rrset_key, rrset_keyname, origin, txn, rtype, rrset);
+		RedisModule_FreeString(ctx, rrset_keyname);
+		RedisModule_CloseKey(rrset_key);
+		if (ret != KNOT_EOK) {
+			RedisModule_Free(rrset);
+			RedisModule_ReplyWithError(ctx, RDB_ESTORE);
+			return;
+		}
+	} else if (merge) {
+		rrset_v *rrset = RedisModule_ModuleTypeGetValue(rrset_key);
+		RedisModule_Assert(rrset != NULL);
+
+		knot_rdataset_t new_rdataset = {
+			.count = rcount,
+			.size = zone_data_len,
+			.rdata = (knot_rdata_t *)zone_data
+		};
+		if (knot_rdataset_merge(&rrset->rrs, &new_rdataset, &mm) != KNOT_EOK) {
+			RedisModule_FreeString(ctx, rrset_keyname);
+			RedisModule_CloseKey(rrset_key);
+			RedisModule_ReplyWithError(ctx, RDB_EALLOC);
+		}
+		rrset->ttl = ttl;
+
+		RedisModule_FreeString(ctx, rrset_keyname);
+		RedisModule_CloseKey(rrset_key);
+	} else {
+		RedisModule_FreeString(ctx, rrset_keyname);
+		RedisModule_CloseKey(rrset_key);
+		RedisModule_ReplyWithError(ctx, RDB_EEXIST);
 		return;
 	}
 
