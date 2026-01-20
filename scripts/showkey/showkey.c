@@ -198,7 +198,7 @@ static int print_key(const dnssec_key_t *key)
 	       "	.public_key = { .size = %zu, .data = (uint8_t []){%s\n"
 	       "	}},\n"
 	       "	.rdata = { .size = %zu, .data = (uint8_t []){\n"
-	       "		%02x, 0x%02x, 0x%02x, 0x%02x,%s\n"
+	       "		0x%02x, 0x%02x, 0x%02x, 0x%02x,%s\n"
 	       "	}},\n"
 	       "	.key_id = \"%s\",\n"
 	       "	.keytag = %d,\n"
