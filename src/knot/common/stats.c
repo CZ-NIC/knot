@@ -17,6 +17,8 @@
 #include "knot/nameserver/query_module.h"
 #include "libknot/xdp.h"
 
+#define ARRAY_SIZE(array)       (sizeof(array) / sizeof((array)[0]))
+
 static uint64_t stats_get_counter(knot_atomic_uint64_t **stats_vals, uint32_t offset,
                                   unsigned threads)
 {
@@ -109,6 +111,26 @@ int stats_xdp(stats_dump_ctr_f fcn, stats_dump_ctx_t *ctx)
 	return KNOT_EOK;
 }
 
+const char *server_stat_names[] = {
+	"udp_received",
+	"udp_async_done",
+	"udp_no_req_obj",
+	"udp_req_batch_limited",
+	"tcp_accept",
+	"tcp_received",
+	"tcp_async_done",
+	"tcp_no_req_obj",
+	"tcp_multiple_req",
+};
+
+static knot_atomic_uint64_t server_stat_counters[ARRAY_SIZE(server_stat_names)];
+
+void server_stats_increment_counter(server_stats_counter_t counter, uint64_t value)
+{
+	assert(counter < server_stats_max);
+	ATOMIC_ADD(server_stat_counters[counter], value);
+}
+
 #define DUMP_VAL(params, it, val) { \
 	(params).item = (it); \
 	(params).value = (val); \
@@ -130,6 +152,9 @@ int stats_server(stats_dump_ctr_f fcn, stats_dump_ctx_t *ctx)
 	DUMP_VAL(params, "zone-update-error", ATOMIC_GET(ctx->server->stats.zone_update_error));
 	DUMP_VAL(params, "tcp-io-timeout", ATOMIC_GET(ctx->server->stats.tcp_io_timeout));
 	DUMP_VAL(params, "tcp-idle-timeout", ATOMIC_GET(ctx->server->stats.tcp_idle_timeout));
+	for (size_t i = 0; i < ARRAY_SIZE(server_stat_names); i++) {
+		DUMP_VAL(params, server_stat_names[i], ATOMIC_GET(server_stat_counters[i]));
+	}
 
 	return KNOT_EOK;
 }
@@ -450,6 +475,8 @@ static void *dumper(void *data)
 
 void stats_reconfigure(conf_t *conf, server_t *server)
 {
+	_Static_assert(server_stats_max == ARRAY_SIZE(server_stat_names), ""); // Ensure enum and names are setup consistently.
+
 	if (conf == NULL || server == NULL) {
 		return;
 	}
