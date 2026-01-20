@@ -27,6 +27,7 @@
 #include "contrib/ucw/mempool.h"
 #include "knot/common/fdset.h"
 #include "knot/common/log.h"
+#include "knot/common/stats.h"
 #include "knot/nameserver/process_query.h"
 #include "knot/query/layer.h"
 #include "knot/server/handler.h"
@@ -618,6 +619,7 @@ int udp_master(dthread_t *thread)
 			if (!fdset_it_is_pollin(&it)) {
 				continue;
 			}
+			server_stats_increment_counter(server_stats_udp_received, 1);
 			if (api->udp_recv(fdset_it_get_fd(&it), api_ctx) > 0) {
 				const iface_t *iface = fdset_it_get_ctx(&it);
 				assert(iface);

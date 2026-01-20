@@ -33,6 +33,7 @@
 #include "contrib/sockaddr.h"
 #include "contrib/time.h"
 #include "contrib/ucw/mempool.h"
+#include "knot/common/stats.h"
 
 /*! \brief TCP context data. */
 typedef struct tcp_context {
@@ -338,12 +339,16 @@ static void tcp_wait_for_events(tcp_context_t *tcp)
 			if (idx < tcp->client_threshold) {
 				/* Don't accept more clients than configured. */
 				if (fdset_get_length(set) < tcp->max_worker_fds) {
+					server_stats_increment_counter(server_stats_tcp_accept, 1);
 					tcp_event_accept(tcp, idx, iface);
 				}
-			/* Client sockets - already accepted connection or
-			   closed connection :-( */
-			} else if (tcp_event_serve(tcp, idx, iface) != KNOT_EOK) {
-				should_close = true;
+			} else {
+				server_stats_increment_counter(server_stats_tcp_received, 1);
+				/* Client sockets - already accepted connection or
+				   closed connection :-( */
+				if (tcp_event_serve(tcp, idx, iface) != KNOT_EOK) {
+					should_close = true;
+				}
 			}
 		}
 
