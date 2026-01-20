@@ -24,7 +24,7 @@ outcome.
    * -
      - Generate
      - Import
-     - EDDSA
+     - EdDSA
      - ECDSA
      - RSA
      - Tested
