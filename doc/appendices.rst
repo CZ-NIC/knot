@@ -69,7 +69,7 @@ outcome.
        | 2048
        | 4096
      - 2025-12
-   * - `Luna Cloud HSM (non-FIPS) <https://thalesdocs.com/dpod/services/luna_cloud_hsm/index.html>`_
+   * - `Thales Luna Cloud HSM (non-FIPS) <https://thalesdocs.com/dpod/services/luna_cloud_hsm/index.html>`_
      - yes
      - n/a
      - n/a
@@ -79,7 +79,7 @@ outcome.
        | 2048
        | 4096
      - 2025-11
-   * - `Luna Network HSM (non-FIPS) <https://www.thalesdocs.com/gphsm/luna/7/docs/network/Content/Home_Luna.htm>`_
+   * - `Thales Luna Network HSM (non-FIPS) <https://www.thalesdocs.com/gphsm/luna/7/docs/network/Content/Home_Luna.htm>`_
      - yes
      - n/a
      - | ed448
