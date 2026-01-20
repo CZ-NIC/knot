@@ -50,6 +50,27 @@ typedef struct {
 typedef int (*stats_dump_ctr_f)(stats_dump_params_t *, stats_dump_ctx_t *);
 
 /*!
+ * \brief Statistics metrics item.
+ */
+typedef enum {
+	server_stats_udp_received,
+	server_stats_udp_async_done,
+	server_stats_udp_no_req_obj,
+	server_stats_udp_req_batch_limited,
+	server_stats_tcp_accept,
+	server_stats_tcp_received,
+	server_stats_tcp_async_done,
+	server_stats_tcp_no_req_obj,
+	server_stats_tcp_multiple_req,
+	server_stats_max,
+} server_stats_counter_t;
+
+/*!
+ * \brief Increment the server stats.
+ */
+void server_stats_increment_counter(server_stats_counter_t counter, uint64_t value);
+
+/*!
  * \brief XDP metrics.
  */
 int stats_xdp(stats_dump_ctr_f fcn, stats_dump_ctx_t *ctx);
