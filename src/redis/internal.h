@@ -1402,7 +1402,7 @@ static void zone_list(RedisModuleCtx *ctx, bool instances, bool txt)
 
 	RedisModuleKey *zones_index = get_zones_index(ctx, REDISMODULE_READ);
 	if (zones_index == NULL) {
-		RedisModule_ReplyWithError(ctx, RDB_EALLOC);
+		RedisModule_ReplyWithEmptyArray(ctx);
 		return;
 	}
 	RedisModuleScanCursor *cursor = RedisModule_ScanCursorCreate();
