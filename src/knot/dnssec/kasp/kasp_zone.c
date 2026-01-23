@@ -254,7 +254,8 @@ int kasp_zone_save(const knot_kasp_zone_t *zone,
 	for (size_t i = 0; i < zone->num_keys; i++) {
 		kaspkey2params(&zone->keys[i], &parm);
 
-		// Force overwrite already existing key-val pairs.
+		// Force overwrite already existing key-val pairs
+		// and remove related trash records.
 		int ret = kasp_db_add_key(kdb, zone_name, &parm);
 		if (ret != KNOT_EOK) {
 			return ret;
