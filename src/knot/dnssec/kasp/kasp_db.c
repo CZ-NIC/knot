@@ -576,9 +576,20 @@ int kasp_db_list_zones(knot_lmdb_db_t *db, list_t *zones)
 
 int kasp_db_add_key(knot_lmdb_db_t *db, const knot_dname_t *zone_name, const key_params_t *params)
 {
-	MDB_val v = params_serialize(params);
-	MDB_val k = make_key_str(KASPDBKEY_PARAMS, zone_name, params->id);
-	return knot_lmdb_quick_insert(db, k, v);
+	MDB_val val = params_serialize(params);
+	MDB_val key = make_key_str(KASPDBKEY_PARAMS, zone_name, params->id);
+	MDB_val del_prefix = make_key_str(KASPDBKEY_TRASH, NULL, params->id);
+	knot_lmdb_txn_t txn = { 0 };
+	knot_lmdb_begin(db, &txn, true);
+	knot_lmdb_insert(&txn, &key, &val);
+	// More than one KASPDBKEY_TRASH aren't expected, but none must remain.
+	knot_lmdb_del_prefix(&txn, &del_prefix);
+	free(key.mv_data);
+	free(val.mv_data);
+	free(del_prefix.mv_data);
+	knot_lmdb_commit(&txn);
+
+	return txn.ret;
 }
 
 int kasp_db_share_key(knot_lmdb_db_t *db, const knot_dname_t *zone_from,

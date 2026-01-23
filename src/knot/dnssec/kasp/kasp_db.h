@@ -118,10 +118,11 @@ int kasp_db_list_zones(knot_lmdb_db_t *db, list_t *zones);
 
 /*!
  * \brief Add a key to the DB (possibly overwrite) and link it to a zone.
+ *        Remove all trash records related to the key, if there are any.
  *
  * Stores new key with given params into KASP db. If a key with the same ID had been present
  * in KASP db already, its params get silently overwritten by those new params.
- * Moreover, the key ID is linked to the zone.
+ * Moreover, the key ID is linked to the zone and all related trash records are removed.
  *
  * \param db            KASP db
  * \param zone_name     name of the zone the new key shall belong to
