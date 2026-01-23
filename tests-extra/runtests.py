@@ -13,6 +13,9 @@ import tempfile
 import time
 import traceback
 
+import subprocess
+from namespaces import LinuxNamespace
+
 current_dir = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(os.path.join(current_dir, "tools"))
 from dnstest.context import Context
@@ -149,6 +152,16 @@ def job(args):
     skip_cnt = 0
 
     ctx = Context()
+
+    ns = LinuxNamespace("user", "net")
+    with ns:
+        subprocess.check_call(["ip", "link", "set", "lo", "up"])
+
+    '''
+    # TEST
+    subprocess.check_call(["ip", "address", "add", "::123/128", "dev", "lo"])
+    print(subprocess.check_output(["ip", "a"]))
+    '''
 
     test_dir = os.path.join(current_dir, TESTS_DIR, test)
     case_n = case if params.repeat == 1 else case + " #" + str(repeat)
