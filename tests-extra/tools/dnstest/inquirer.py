@@ -15,6 +15,7 @@ class Inquirer:
         self.active = False
 
     def start(self, *args):
+        return
         self.proc = multiprocessing.Process(target=self._query, args=args)
         self.active = True
         self.proc.start()
