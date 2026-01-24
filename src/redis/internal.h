@@ -874,14 +874,22 @@ static exception_t upd_add_rem(RedisModuleCtx *ctx, const arg_dname_t *origin,
 	} else {
 		RedisModule_Assert(RedisModule_ModuleTypeGetType(diff_key) == rdb_diff_t);
 	}
-	RedisModule_FreeString(ctx, diff_keystr);
 
 	ret = cb(diff, data, ttl);
 	if (ret == KNOT_EEXIST) {
+		RedisModule_FreeString(ctx, diff_keystr);
 		RedisModule_CloseKey(diff_key);
 		throw(KNOT_EEXIST, RDB_EEXIST);
 	}
 
+	if (diff->add_rrs.count == 0 && diff->rem_rrs.count == 0) {
+		index_k diff_index_key = get_upd_index(ctx, origin, txn, id, REDISMODULE_READ | REDISMODULE_WRITE);
+		RedisModule_ZsetRem(diff_index_key, diff_keystr, NULL);
+		RedisModule_CloseKey(diff_index_key);
+		RedisModule_DeleteKey(diff_key);
+	}
+
+	RedisModule_FreeString(ctx, diff_keystr);
 	RedisModule_CloseKey(diff_key);
 	return_ok;
 }
