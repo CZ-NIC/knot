@@ -450,6 +450,20 @@ def test_upd_commit():
     resp = env.cmd('KNOT.UPD.LOAD', 'example.com', 1, 1)
     env.assertEqual(len(resp), 1, message="Failed to commit update")
 
+    # add/remove canceling
+    txn1 = env.cmd('KNOT.ZONE.BEGIN', 'example.com', 1)
+    env.cmd('KNOT.ZONE.STORE', 'example.com', txn1, "@ IN SOA ns.icann.org. noc.dns.icann.org. ( 1 7200  3600 1209600 3600 )")
+    env.cmd('KNOT.ZONE.COMMIT', 'example.com', txn1)
+
+    txn = env.cmd('KNOT.UPD.BEGIN', 'example.com', 1)
+    env.cmd('KNOT.UPD.ADD', 'example.com', txn, "cancel TXT test")
+    env.cmd('KNOT.UPD.REMOVE', 'example.com', txn, "cancel TXT test")
+    env.cmd('KNOT.UPD.ADD', 'example.com', txn, "cancel2 TXT test2")
+    env.cmd('KNOT.UPD.REMOVE', 'example.com', txn, "cancel2 TXT test2")
+    env.cmd('KNOT.UPD.COMMIT', 'example.com', txn)
+    resp = env.cmd('KNOT.UPD.LOAD', 'example.com', 1, 1)
+    env.assertEqual(len(resp[0]), 1, message="Failed to commit update")
+
 def test_upd_abort():
     env = Env(moduleArgs=['max-event-age', '60', 'default-ttl', '3600'])
 
