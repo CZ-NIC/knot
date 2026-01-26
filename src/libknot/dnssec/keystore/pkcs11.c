@@ -111,7 +111,7 @@ static int safe_open(const char *config, char **url_ptr)
 
 	r = p11_load_module(module);
 	free(module);
-	if (r != GNUTLS_E_SUCCESS) {
+	if (r != KNOT_EOK) {
 		free(url);
 		return KNOT_P11_ELOAD;
 	}
