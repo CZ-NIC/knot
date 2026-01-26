@@ -1,9 +1,12 @@
+#!/usr/bin/env python3
+
 from dnstest.utils import *
 import dnstest.params as params
 import datetime
 import os
 import shutil
 import subprocess
+import sys
 import time
 
 class Redis(object):
@@ -141,3 +144,13 @@ class Redis(object):
         outf.write(txt)
         outf.write("\n--------\n")
         return txt
+
+    def unalias(self, inst_in, inst_out, dry_run=False):
+        cmd = [ sys.executable, params.unalias_bin, str(inst_in), str(inst_out), "-a",
+                self.addr, "-p", str(self.tls_port if self.tls else self.port), "-s" ]
+        if self.tls:
+            cmd += [ "-t", "-i" ]
+        if dry_run:
+            cmd += [ "-d" ]
+        outf = open(os.path.join(self.wrk_dir, "unalias.log"), "a")
+        subprocess.run(cmd, stdout=outf, stderr=outf)

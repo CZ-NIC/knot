@@ -1,0 +1,8 @@
+$ORIGIN zone2.
+
+@ SOA ns admin 1 25 25 80 600
+  NS ns
+ns AAAA ::0
+
+@ ALIAS c.root-servers.net.
+alias ALIAS d.root-servers.net.
