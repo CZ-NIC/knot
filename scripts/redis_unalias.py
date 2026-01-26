@@ -101,7 +101,9 @@ def knot_zone_transaction(conn, zone, inst, dryrun):
         if dryrun:
             resp = conn.execute_command('KNOT.ZONE.LOAD', dname_to_str(zone), txn_to_str(txn))
             conn.execute_command('KNOT_BIN.ZONE.ABORT', zone, txn)
-            print(*resp, sep='\n')
+            print(f'=== FULL {resp[0][0].decode()} ===')
+            for record in resp:
+                print(*[x.decode() for x in record], sep=' ')
         else:
             conn.execute_command('KNOT_BIN.ZONE.COMMIT', zone, txn)
 
@@ -120,7 +122,14 @@ def knot_upd_transaction(conn, zone, inst, dryrun):
         if dryrun:
             resp = conn.execute_command('KNOT.UPD.DIFF', dname_to_str(zone), txn_to_str(txn))
             conn.execute_command('KNOT_BIN.UPD.ABORT', zone, txn)
-            print(*resp, sep='\n')
+            print(f'=== UPDATE {resp[0][0][0][0].decode()} ===')
+            for diff in resp:
+                for rem in diff[0]:
+                    print('- ', end='')
+                    print(*[x.decode() for x in rem], sep=' ')
+                for add in diff[1]:
+                    print('+ ', end='')
+                    print(*[x.decode() for x in add], sep=' ')
         else:
             conn.execute_command('KNOT_BIN.UPD.COMMIT', zone, txn)
 
