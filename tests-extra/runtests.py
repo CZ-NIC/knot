@@ -259,6 +259,8 @@ def main(args):
     global log
     global outs_dir
 
+    multiprocessing.set_start_method('fork')
+
     tasks = multiprocessing.Queue()
     results = multiprocessing.SimpleQueue()
     stop = multiprocessing.Value('i', False)
