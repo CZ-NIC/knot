@@ -74,6 +74,9 @@ autoreconf -if
 make
 ```
 
+Note that `./configure` accepts various parameters (see `./configure --help`).
+The following examples assume `--sysconfdir=/etc` and `--localstatedir=/var/lib`.
+
 Install Knot DNS into system:
 ```bash
 sudo make install
