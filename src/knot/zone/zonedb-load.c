@@ -93,6 +93,61 @@ static void replan_events(conf_t *conf, zone_t *zone, zone_t *old_zone, bool con
 	}
 }
 
+static int configure_catalog(conf_t *conf, zone_t *zone, server_t *server)
+{
+	int ret = KNOT_EOK;
+
+	conf_val_t role_val = conf_zone_get(conf, C_CATALOG_ROLE, zone->name);
+	switch (conf_opt(&role_val)) {
+	case CATALOG_ROLE_MEMBER:
+		assert(zone->catalog_gen == NULL);
+		conf_val_t catz = conf_zone_get(conf, C_CATALOG_ZONE, zone->name);
+		assert(catz.code == KNOT_EOK); // conf consistency checked in conf/tools.c
+		zone->catalog_gen = knot_dname_copy(conf_dname(&catz), NULL);
+		if (zone->catalog_gen == NULL) {
+			return KNOT_ENOMEM;
+		}
+
+		if (zone->timers->catalog_member == 0) {
+			zone->timers->catalog_member = time(NULL);
+			zone->timers->flags |= TIMERS_MODIFIED;
+			ret = zone_timers_write(&zone->server->timerdb, zone->name,
+			                        zone->timers);
+			if (ret != KNOT_EOK) {
+				log_zone_error(zone->name, "failed to initialize catalog member zone (%s)",
+				               knot_strerror(ret));
+				return ret;
+			}
+		}
+		// zone_set_flag(zone, ZONE_IS_CAT_MEMBER); is set later.
+		break;
+	case CATALOG_ROLE_GENERATE:
+		if (zone->cat_members == NULL) {
+			zone->cat_members = catalog_update_new();
+			if (zone->cat_members == NULL) {
+				ret = KNOT_ENOMEM;
+				log_zone_error(zone->name, "failed to initialize catalog zone (%s)",
+				               knot_strerror(ret));
+				return ret;
+			}
+			zone_set_flag(zone, ZONE_IS_CATALOG);
+		}
+		break;
+	case CATALOG_ROLE_INTERPRET:
+		ret = catalog_open(&server->catalog);
+		if (ret != KNOT_EOK) {
+			log_error("failed to open catalog database (%s)", knot_strerror(ret));
+			return ret;
+		}
+		zone_set_flag(zone, ZONE_IS_CATALOG);
+		break;
+	default:
+		break;
+	}
+
+	return ret;
+}
+
 static zone_t *create_zone_reload(conf_t *conf, const knot_dname_t *name,
                                   server_t *server, zone_t *old_zone)
 {
@@ -115,8 +170,10 @@ static zone_t *create_zone_reload(conf_t *conf, const knot_dname_t *name,
 	zone->cat_members = old_zone->cat_members;
 	old_zone->cat_members = NULL;
 
-	zone->catalog_gen = old_zone->catalog_gen;
-	old_zone->catalog_gen = NULL;
+	if (configure_catalog(conf, zone, server) != KNOT_EOK) {
+		zone_free(&zone);
+		return NULL;
+	}
 
 	return zone;
 }
@@ -129,7 +186,7 @@ static zone_t *create_zone_new(conf_t *conf, const knot_dname_t *name,
 		return NULL;
 	}
 
-	int ret = zone_timers_read(&server->timerdb, name, zone->timers);
+	int ret = zone_timers_read(&server->timerdb, zone->name, zone->timers);
 	if (ret != KNOT_EOK && ret != KNOT_ENODB && ret != KNOT_ENOENT) {
 		log_zone_error(zone->name, "failed to load persistent timers (%s)",
 		               knot_strerror(ret));
@@ -139,39 +196,9 @@ static zone_t *create_zone_new(conf_t *conf, const knot_dname_t *name,
 
 	zone_timers_sanitize(conf, zone);
 
-	conf_val_t role_val = conf_zone_get(conf, C_CATALOG_ROLE, name);
-	unsigned role = conf_opt(&role_val);
-	if (role == CATALOG_ROLE_MEMBER) {
-		conf_val_t catz = conf_zone_get(conf, C_CATALOG_ZONE, name);
-		assert(catz.code == KNOT_EOK); // conf consistency checked in conf/tools.c
-		zone->catalog_gen = knot_dname_copy(conf_dname(&catz), NULL);
-		if (zone->timers->catalog_member == 0) {
-			zone->timers->catalog_member = time(NULL);
-			zone->timers->flags |= TIMERS_MODIFIED;
-			ret = zone_timers_write(&zone->server->timerdb, zone->name,
-			                        zone->timers);
-		}
-		if (ret != KNOT_EOK || zone->catalog_gen == NULL) {
-			log_zone_error(zone->name, "failed to initialize catalog member zone (%s)",
-			               knot_strerror(KNOT_ENOMEM));
-			zone_free(&zone);
-			return NULL;
-		}
-	} else if (role == CATALOG_ROLE_GENERATE) {
-		zone->cat_members = catalog_update_new();
-		if (zone->cat_members == NULL) {
-			log_zone_error(zone->name, "failed to initialize catalog zone (%s)",
-			               knot_strerror(KNOT_ENOMEM));
-			zone_free(&zone);
-			return NULL;
-		}
-		zone_set_flag(zone, ZONE_IS_CATALOG);
-	} else if (role == CATALOG_ROLE_INTERPRET) {
-		ret = catalog_open(&server->catalog);
-		if (ret != KNOT_EOK) {
-			log_error("failed to open catalog database (%s)", knot_strerror(ret));
-		}
-		zone_set_flag(zone, ZONE_IS_CATALOG);
+	if (configure_catalog(conf, zone, server) != KNOT_EOK) {
+		zone_free(&zone);
+		return NULL;
 	}
 
 	if (zone_expired(zone)) {
@@ -183,7 +210,7 @@ static zone_t *create_zone_new(conf_t *conf, const knot_dname_t *name,
 	} else {
 		log_zone_info(zone->name, "zone will be loaded");
 		// if load fails, fallback to bootstrap
-		replan_load_new(zone, role == CATALOG_ROLE_GENERATE);
+		replan_load_new(zone, zone->cat_members != NULL);
 	}
 
 	return zone;
