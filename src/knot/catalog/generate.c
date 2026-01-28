@@ -6,15 +6,16 @@
 #include <string.h>
 
 #include "knot/catalog/generate.h"
-#include "knot/common/log.h"
 #include "knot/updates/zone-update.h"
 #include "contrib/openbsd/siphash.h"
 #include "contrib/wire_ctx.h"
 
-static knot_dname_t *catalog_member_owner(const knot_dname_t *member,
-                                          const knot_dname_t *catzone,
-                                          time_t member_time)
+knot_dname_t *catalog_member_owner(const knot_dname_t *member, const knot_dname_t *catzone,
+                                   time_t member_time)
 {
+	assert(member);
+	assert(catzone);
+
 	SIPHASH_CTX hash;
 	SIPHASH_KEY shkey = { 0 }; // only used for hashing -> zero key
 	SipHash24_Init(&hash, &shkey);
@@ -50,69 +51,6 @@ static knot_dname_t *catalog_member_owner(const knot_dname_t *member,
 
 	free(hexhash);
 	return out;
-}
-
-void catalog_generate_rem(conf_t *conf, zone_t *zone, knot_zonedb_t *db_new)
-{
-	if (zone == NULL) {
-		return;
-	}
-	knot_dname_t *cg = zone->catalog_gen;
-	if (cg == NULL) {
-		return;
-	}
-	zone_t *catz = knot_zonedb_find(db_new, cg);
-	if (catz == NULL || catz->contents == NULL) {
-		return;
-	}
-	assert(catz->cat_members != NULL); // if this failed to allocate, catz wasn't added to zonedb
-	knot_dname_t *owner = catalog_member_owner(zone->name, cg, zone->timers_static->catalog_member);
-	if (owner == NULL) {
-		catz->cat_members->error = KNOT_ENOENT;
-		return;
-	}
-	int ret = catalog_update_add(catz->cat_members, zone->name, owner, cg,
-	                             CAT_UPD_REM, NULL, 0, NULL);
-	if (ret != KNOT_EOK) {
-		catz->cat_members->error = ret;
-	} else {
-		zone_schedule_update(conf, catz, ZONE_EVENT_LOAD);
-	}
-	free(owner);
-}
-
-void catalog_generate_add(conf_t *conf, zone_t *zone, knot_zonedb_t *db_new, bool property)
-{
-	if (zone == NULL) {
-		return;
-	}
-	knot_dname_t *cg = zone->catalog_gen;
-	if (cg == NULL) {
-		return;
-	}
-	zone_t *catz = knot_zonedb_find(db_new, cg);
-	if (catz == NULL) {
-		log_zone_error(zone->name, "member zone belongs to non-existing catalog zone");
-		return;
-	} else if (catz->cat_members == NULL) {
-		log_zone_error(zone->name, "member zone belongs to non-generated catalog zone");
-		return;
-	}
-	knot_dname_t *owner = catalog_member_owner(zone->name, cg, zone->timers_static->catalog_member);
-	if (owner == NULL) {
-		catz->cat_members->error = KNOT_ENOENT;
-		return;
-	}
-	size_t cgroup_size = zone->catalog_group == NULL ? 0 : strlen(zone->catalog_group);
-	int ret = catalog_update_add(catz->cat_members, zone->name, owner, cg,
-	                             (property ? CAT_UPD_PROP : CAT_UPD_ADD),
-	                             zone->catalog_group, cgroup_size, NULL);
-	if (ret != KNOT_EOK) {
-		catz->cat_members->error = ret;
-	} else {
-		zone_schedule_update(conf, catz, ZONE_EVENT_LOAD);
-	}
-	free(owner);
 }
 
 static void set_rdata(knot_rrset_t *rrset, uint8_t *data, uint16_t len)

@@ -322,9 +322,11 @@ int zone_dump_to_dir(conf_t *conf, zone_t *zone, const char *dir);
 bool zone_includes_configured(conf_t *conf, zone_t *zone);
 int zone_includes_add(zone_t *zone, zone_t *include, zone_include_method_t method);
 void zone_includes_rem(zone_t *zone, zone_t *include);
+void zone_includes_upd(zone_t *zone, zone_t *include, zone_t *old);
 void zone_includes_clear(zone_t *zone);
 
 void zone_local_notify_subscribe(zone_t *zone, zone_t *subscribe);
+void zone_local_notify_update(zone_t *zone, zone_t *subscribe, zone_t *old);
 void zone_local_notify_unsubscribe(zone_t *zone, zone_t *subscribe);
 void zone_local_notify(conf_t *conf, zone_t *zone);
 

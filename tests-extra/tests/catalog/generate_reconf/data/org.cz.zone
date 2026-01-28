@@ -1,0 +1,5 @@
+$ORIGIN org.cz.
+
+@	SOA	dns hostmaster 1 10800 3600 1209600 7200
+	NS	dns
+dns	A	192.0.2.1

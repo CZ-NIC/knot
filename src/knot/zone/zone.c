@@ -946,6 +946,16 @@ void zone_includes_rem(zone_t *zone, zone_t *include)
 	}
 }
 
+void zone_includes_upd(zone_t *zone, zone_t *include, zone_t *old)
+{
+	zone_include_t *n;
+	WALK_LIST(n, zone->include_from) {
+		if (n->include == old) {
+			n->include = include;
+		}
+	}
+}
+
 void zone_includes_clear(zone_t *zone)
 {
 	zone_include_t *n, *next;
@@ -958,6 +968,16 @@ void zone_includes_clear(zone_t *zone)
 void zone_local_notify_subscribe(zone_t *zone, zone_t *subscribe)
 {
 	ptrlist_add(&zone->internal_notify, subscribe, NULL);
+}
+
+void zone_local_notify_update(zone_t *zone, zone_t *subscribe, zone_t *old)
+{
+	ptrnode_t *n;
+	WALK_LIST(n, zone->internal_notify) {
+		if (n->d == old) {
+			n->d = subscribe;
+		}
+	}
 }
 
 void zone_local_notify_unsubscribe(zone_t *zone, zone_t *subscribe)
