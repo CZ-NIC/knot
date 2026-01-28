@@ -45,14 +45,6 @@ static bool zone_file_updated(conf_t *conf, const zone_t *old_zone,
 	}
 }
 
-static void zone_get_catalog_group(conf_t *conf, zone_t *zone)
-{
-	conf_val_t val = conf_zone_get(conf, C_CATALOG_GROUP, zone->name);
-	if (val.code == KNOT_EOK) {
-		zone->catalog_group = conf_str(&val);
-	}
-}
-
 static zone_t *create_zone_from(const knot_dname_t *name, server_t *server)
 {
 	zone_t *zone = zone_new(name);
@@ -141,6 +133,11 @@ static int configure_catalog(conf_t *conf, zone_t *zone, server_t *server)
 		break;
 	default:
 		break;
+	}
+
+	conf_val_t val = conf_zone_get(conf, C_CATALOG_GROUP, zone->name);
+	if (val.code == KNOT_EOK) {
+		zone->catalog_group = conf_str(&val);
 	}
 
 	return ret;
@@ -236,10 +233,6 @@ static zone_t *create_zone(conf_t *conf, const knot_dname_t *name, server_t *ser
 		z = create_zone_reload(conf, name, server, old_zone);
 	} else {
 		z = create_zone_new(conf, name, server);
-	}
-
-	if (z != NULL) {
-		zone_get_catalog_group(conf, z);
 	}
 
 	return z;
