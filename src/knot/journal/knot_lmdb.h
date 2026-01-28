@@ -311,6 +311,7 @@ void knot_lmdb_del_prefix(knot_lmdb_txn_t *txn, MDB_val *prefix);
 void knot_lmdb_del_prefix_ret(knot_lmdb_txn_t *txn, MDB_val *prefix);
 
 typedef int (*lmdb_apply_cb)(MDB_val *key, MDB_val *val, void *ctx);
+typedef int (*lmdb_copy_cb)(knot_lmdb_txn_t *from, knot_lmdb_txn_t *to, MDB_val *prefix);
 
 /*!
  * \brief Call a callback for any item matching given key.
@@ -358,6 +359,7 @@ int knot_lmdb_quick_insert(knot_lmdb_db_t *db, MDB_val key, MDB_val val);
  * \param from     Open RO/RW transaction in the database to copy from.
  * \param to       Open RW txn in the DB to copy to.
  * \param prefix   Prefix for matching records to be copied.
+ * \param cb       Optional callback called before every record insert, or NULL.
  *
  * \note Prior to copying, all records from the target DB, matching the prefix, will be deleted!
  *
@@ -365,7 +367,7 @@ int knot_lmdb_quick_insert(knot_lmdb_db_t *db, MDB_val key, MDB_val val);
  *
  * \note KNOT_EOK even if none records matched the prefix (and were copied).
  */
-int knot_lmdb_copy_prefix(knot_lmdb_txn_t *from, knot_lmdb_txn_t *to, MDB_val *prefix);
+int knot_lmdb_copy_prefix(knot_lmdb_txn_t *from, knot_lmdb_txn_t *to, MDB_val *prefix, lmdb_copy_cb cb);
 
 /*!
  * \brief Copy all records matching any of multiple prefixes.
@@ -374,13 +376,14 @@ int knot_lmdb_copy_prefix(knot_lmdb_txn_t *from, knot_lmdb_txn_t *to, MDB_val *p
  * \param to          DB to copy to.
  * \param prefixes    List of prefixes to match.
  * \param n_prefixes  Number of prefixes in the list.
+ * \param cb          Optional callback called before every record insert, or NULL.
  *
  * \note Prior to copying, all records from the target DB, matching any of the prefixes, will be deleted!
  *
  * \return KNOT_E*
  */
 int knot_lmdb_copy_prefixes(knot_lmdb_db_t *from, knot_lmdb_db_t *to,
-                            MDB_val *prefixes, size_t n_prefixes);
+                            MDB_val *prefixes, size_t n_prefixes, lmdb_copy_cb cb);
 
 /*!
  * \brief Amount of bytes used by the DB storage.

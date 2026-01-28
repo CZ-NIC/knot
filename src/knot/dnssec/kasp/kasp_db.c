@@ -356,6 +356,25 @@ static int make_trash_key(knot_lmdb_txn_t *txn, MDB_val *key, MDB_val *val, uint
 	return ret;
 }
 
+static int kasp_db_untrash_key(knot_lmdb_txn_t *from_txn, knot_lmdb_txn_t *to_txn, MDB_val *prefix)
+{
+	if (!is_key_related(prefix)) {
+		return KNOT_EOK;
+	}
+
+	char *str;
+	if (!unmake_key_str(&from_txn->cur_key, &str)) {
+		return KNOT_EMALF;
+	}
+
+	MDB_val del_pref = make_key_str(KASPDBKEY_TRASH, NULL, str);
+	knot_lmdb_del_prefix(to_txn, &del_pref);
+	free(del_pref.mv_data);
+	free(str);
+
+	return KNOT_EOK;
+}
+
 int kasp_db_delete_key(knot_lmdb_db_t *db, const knot_dname_t *zone_name, const char *key_id,
                        uint32_t delay, bool *still_used)
 {
@@ -851,6 +870,13 @@ void kasp_db_ensure_init(knot_lmdb_db_t *db, conf_t *conf)
 static int kasp_db_backup_generic(const knot_dname_t *zone, knot_lmdb_db_t *db, knot_lmdb_db_t *backup_db,
                                   const keyclass_t *classes, const size_t classes_size)
 {
+	// For restore, remove zones's all keys from KASP DB and keystores
+	// (use the trash-bin if configured). For backup, do nothing (target db is empty).
+	int ret = kasp_db_delete_keys(backup_db, zone, false, false, true);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
 	size_t n_prefs = classes_size;
 
 	// NOTE: for full KASP db backup, this must match number of record types
@@ -865,7 +891,7 @@ static int kasp_db_backup_generic(const knot_dname_t *zone, knot_lmdb_db_t *db, 
 		prefixes[n_prefs++] = knot_lmdb_make_key("B", KASPDBKEY_POLICYLAST);
 	}
 
-	int ret = knot_lmdb_copy_prefixes(db, backup_db, prefixes, n_prefs);
+	ret = knot_lmdb_copy_prefixes(db, backup_db, prefixes, n_prefs, kasp_db_untrash_key);
 
 	for (int i = 0; i < n_prefs; i++) {
 		free(prefixes[i].mv_data);

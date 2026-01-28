@@ -539,7 +539,8 @@ int knot_lmdb_quick_insert(knot_lmdb_db_t *db, MDB_val key, MDB_val val)
 	return txn.ret;
 }
 
-int knot_lmdb_copy_prefix(knot_lmdb_txn_t *from, knot_lmdb_txn_t *to, MDB_val *prefix)
+int knot_lmdb_copy_prefix(knot_lmdb_txn_t *from, knot_lmdb_txn_t *to, MDB_val *prefix,
+                          lmdb_copy_cb cb)
 {
 	knot_lmdb_foreach(to, prefix) {
 		knot_lmdb_del_cur(to);
@@ -548,13 +549,19 @@ int knot_lmdb_copy_prefix(knot_lmdb_txn_t *from, knot_lmdb_txn_t *to, MDB_val *p
 		return to->ret;
 	}
 	knot_lmdb_foreach(from, prefix) {
+		if (cb != NULL) {
+			int ret = cb(from, to, prefix);
+			if (ret != KNOT_EOK) {
+				return ret;
+			}
+		}
 		knot_lmdb_insert(to, &from->cur_key, &from->cur_val);
 	}
 	return from->ret == KNOT_EOK ? to->ret : from->ret;
 }
 
 int knot_lmdb_copy_prefixes(knot_lmdb_db_t *from, knot_lmdb_db_t *to,
-                            MDB_val *prefixes, size_t n_prefixes)
+                            MDB_val *prefixes, size_t n_prefixes, lmdb_copy_cb cb)
 {
 	if (n_prefixes < 1) {
 		return KNOT_EOK;
@@ -573,7 +580,7 @@ int knot_lmdb_copy_prefixes(knot_lmdb_db_t *from, knot_lmdb_db_t *to,
 	knot_lmdb_begin(from, &tr, false);
 	knot_lmdb_begin(to, &tw, true);
 	for (size_t i = 0; i < n_prefixes && ret == KNOT_EOK; i++) {
-		ret = knot_lmdb_copy_prefix(&tr, &tw, &prefixes[i]);
+		ret = knot_lmdb_copy_prefix(&tr, &tw, &prefixes[i], cb);
 	}
 	knot_lmdb_commit(&tw);
 	knot_lmdb_commit(&tr);

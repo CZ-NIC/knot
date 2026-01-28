@@ -310,7 +310,7 @@ int journal_copy_with_md(knot_lmdb_db_t *from, knot_lmdb_db_t *to, const knot_dn
 	knot_lmdb_begin(to, &tw, true);
 	update_last_inserter(&tr, NULL);
 	MDB_val prefix = journal_zone_prefix(zone);
-	knot_lmdb_copy_prefix(&tr, &tw, &prefix);
+	knot_lmdb_copy_prefix(&tr, &tw, &prefix, NULL);
 	free(prefix.mv_data);
 	knot_lmdb_commit(&tw);
 	knot_lmdb_commit(&tr);
