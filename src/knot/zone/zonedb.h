@@ -60,6 +60,7 @@ knot_zonedb_t *knot_zonedb_cow(knot_zonedb_t *db);
  * \param zone Parsed zone.
  *
  * \retval KNOT_EOK
+ * \retval KNOT_ENOMEM
  * \retval KNOT_EZONEIN
  */
 int knot_zonedb_insert(knot_zonedb_t *db, zone_t *zone);
