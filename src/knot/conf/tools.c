@@ -1081,7 +1081,7 @@ int check_include_from(
 	val = conf_rawid_get_txn(args->extra->conf, args->extra->txn, \
 	                         C_TPL, option, tpl->data, tpl->len); \
 	if (val.code == KNOT_EOK) { \
-		args->err_str = "'" option_string "' not compatible with the role"; \
+		args->err_str = "'" option_string "' not compatible with catalog role"; \
 		return KNOT_EINVAL; \
 	} \
 }
@@ -1114,6 +1114,18 @@ static int sub_check_catalog_tpl(
 		CHECK_CATZ_TPL(C_CATALOG_GROUP, "catalog-group");
 		return KNOT_EOK;
 	}
+}
+
+#define CHECK_CATZ(option, option_string, must) \
+{ \
+	conf_val_t val = conf_get_wrap(args, option); \
+	if (val.code == KNOT_EOK && !must) { \
+		args->err_str = "'" option_string "' not compatible with catalog role"; \
+		return KNOT_EINVAL; \
+	} else if (val.code != KNOT_EOK && must) { \
+		args->err_str = "'" option_string "' required with catalog role"; \
+		return KNOT_EINVAL; \
+	} \
 }
 
 static int check_zone_or_tpl(
@@ -1170,26 +1182,11 @@ static int check_zone_or_tpl(
 	}
 
 	conf_val_t catalog_role = conf_get_wrap(args, C_CATALOG_ROLE);
-	conf_val_t catalog_tpl = conf_get_wrap(args, C_CATALOG_TPL);
-	conf_val_t catalog_zone = conf_get_wrap(args, C_CATALOG_ZONE);
-	conf_val_t catalog_serial = conf_get_wrap(args, C_SERIAL_POLICY);
-
-	unsigned role = conf_opt(&catalog_role);
-	if ((bool)(role == CATALOG_ROLE_INTERPRET) != (bool)(catalog_tpl.code == KNOT_EOK)) {
-		args->err_str = "'catalog-role' must correspond to configured 'catalog-template'";
-		return KNOT_EINVAL;
-	}
-	if ((bool)(role == CATALOG_ROLE_MEMBER) != (bool)(catalog_zone.code == KNOT_EOK)) {
-		args->err_str = "'catalog-role' must correspond to configured 'catalog-zone'";
-		return KNOT_EINVAL;
-	}
-	if (role == CATALOG_ROLE_GENERATE &&
-	    conf_opt(&catalog_serial) != SERIAL_POLICY_UNIXTIME && // Default doesn't harm.
-	    catalog_serial.code == KNOT_EOK) {
-		args->err_str = "'serial-policy' must be 'unixtime' for generated catalog zones";
-		return KNOT_EINVAL;
-	}
-	if (role == CATALOG_ROLE_INTERPRET) {
+	switch (conf_opt(&catalog_role)) {
+	case CATALOG_ROLE_INTERPRET:
+		CHECK_CATZ(C_CATALOG_ZONE, "catalog-zone", false);
+		CHECK_CATZ(C_CATALOG_TPL, "catalog-template", true);
+		conf_val_t catalog_tpl = conf_get_wrap(args, C_CATALOG_TPL);
 		conf_val(&catalog_tpl);
 		while (catalog_tpl.code == KNOT_EOK) {
 			if (sub_check_catalog_tpl(args, &catalog_tpl) != KNOT_EOK) {
@@ -1197,6 +1194,25 @@ static int check_zone_or_tpl(
 			}
 			conf_val_next(&catalog_tpl);
 		}
+		break;
+	case CATALOG_ROLE_GENERATE:
+		CHECK_CATZ(C_CATALOG_TPL, "catalog-template", false);
+		// C_CATALOG_ZONE is ignored for convenience reasons.
+		conf_val_t serial = conf_get_wrap(args, C_SERIAL_POLICY);
+		if (conf_opt(&serial) != SERIAL_POLICY_UNIXTIME && // Default doesn't harm.
+		    serial.code == KNOT_EOK) {
+			args->err_str = "'serial-policy' must be 'unixtime' for generated catalog zones";
+			return KNOT_EINVAL;
+		}
+		break;
+	case CATALOG_ROLE_MEMBER:
+		CHECK_CATZ(C_CATALOG_ZONE, "catalog-zone", true);
+		CHECK_CATZ(C_CATALOG_TPL, "catalog-template", false);
+		break;
+	default:
+		CHECK_CATZ(C_CATALOG_ZONE, "catalog-zone", false);
+		CHECK_CATZ(C_CATALOG_TPL, "catalog-template",false);
+		break;
 	}
 
 	conf_val_t ds_push = conf_get_wrap(args, C_DS_PUSH);
