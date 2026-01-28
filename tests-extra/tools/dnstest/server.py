@@ -304,16 +304,26 @@ class Server(object):
         z = self.zones[zone_arg_check(zone).name]
         z.catalog_role = ZoneCatalogRole.GENERATE
 
-    def cat_member(self, zone, catalog, group=None):
+    def cat_member(self, zone, catalog, group=None, remove=False):
         z = self.zones[zone_arg_check(zone).name]
-        c = self.zones[zone_arg_check(catalog).name]
-        z.catalog_role = ZoneCatalogRole.MEMBER
-        z.catalog_gen_name = c.name
-        z.catalog_group = group
+        if remove:
+            if z:
+                z.catalog_role = None
+                z.catalog_gen_name = None
+                z.catalog_group = None
+        else:
+            c = self.zones[zone_arg_check(catalog).name]
+            z.catalog_role = ZoneCatalogRole.MEMBER
+            z.catalog_gen_name = c.name
+            z.catalog_group = group
 
-    def cat_hidden(self, zone):
+    def cat_hidden(self, zone, remove=False):
         z = self.zones[zone_arg_check(zone).name]
-        z.catalog_role = ZoneCatalogRole.HIDDEN
+        if remove:
+            if z:
+                z.catalog_role = None
+        else:
+            z.catalog_role = ZoneCatalogRole.HIDDEN
 
     def compile(self):
         try:
