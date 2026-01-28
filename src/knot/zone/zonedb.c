@@ -75,11 +75,16 @@ int knot_zonedb_insert(knot_zonedb_t *db, zone_t *zone)
 	uint8_t *lf = knot_dname_lf(zone->name, lf_storage);
 	assert(lf);
 
+	trie_val_t *rval;
 	if (db->cow != NULL) {
-		*trie_get_cow(db->cow, lf + 1, *lf) = zone;
+		rval = trie_get_cow(db->cow, lf + 1, *lf);
 	} else {
-		*trie_get_ins(db->trie, lf + 1, *lf) = zone;
+		rval = trie_get_ins(db->trie, lf + 1, *lf);
 	}
+	if (rval == NULL) {
+		return KNOT_ENOMEM;
+	}
+	*rval = zone;
 
 	return KNOT_EOK;
 }
