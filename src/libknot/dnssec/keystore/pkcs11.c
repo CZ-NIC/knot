@@ -305,10 +305,10 @@ static int pkcs11_remove_key(void *_ctx, const char *id)
 	}
 
 	r = gnutls_pkcs11_delete_url(url, GNUTLS_PKCS11_OBJ_FLAG_LOGIN);
-	if (r < 0) {
-		return KNOT_ERROR;
-	} else if (r == 0) {
+	if (r == 0 || r == GNUTLS_E_REQUESTED_DATA_NOT_AVAILABLE) {
 		return KNOT_ENOENT;
+	} else if (r < 0) {
+		return KNOT_ERROR;
 	}
 
 	return KNOT_EOK;
