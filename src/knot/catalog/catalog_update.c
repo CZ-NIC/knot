@@ -20,7 +20,6 @@ int catalog_update_init(catalog_update_t *u)
 		return KNOT_ENOMEM;
 	}
 	pthread_mutex_init(&u->mutex, 0);
-	u->error = KNOT_EOK;
 	return KNOT_EOK;
 }
 
@@ -58,7 +57,6 @@ void catalog_update_clear(catalog_update_t *u)
 {
 	trie_apply(u->upd, freecb, NULL);
 	trie_clear(u->upd);
-	u->error = KNOT_EOK;
 }
 
 void catalog_update_deinit(catalog_update_t *u)

@@ -6,7 +6,6 @@
 #include <string.h>
 
 #include "knot/catalog/generate.h"
-#include "knot/updates/zone-update.h"
 #include "contrib/openbsd/siphash.h"
 #include "contrib/wire_ctx.h"
 
@@ -113,15 +112,12 @@ static int rem_group_txt(const knot_dname_t *ptr_owner, zone_update_t *up)
 	return ret;
 }
 
-struct zone_contents *catalog_update_to_zone(catalog_update_t *u, const knot_dname_t *catzone,
-                                             uint32_t soa_serial)
+int catalog_update_to_zone(struct zone_contents **conts, catalog_update_t *u,
+                           const knot_dname_t *catzone, uint32_t soa_serial)
 {
-	if (u->error != KNOT_EOK) {
-		return NULL;
-	}
 	zone_contents_t *c = zone_contents_new(catzone, true);
 	if (c == NULL) {
-		return c;
+		return KNOT_ENOMEM;
 	}
 
 	zone_node_t *unused = NULL;
@@ -148,7 +144,8 @@ struct zone_contents *catalog_update_to_zone(catalog_update_t *u, const knot_dna
 	wire_ctx_write_u32(&wire, CATALOG_SOA_EXPIRE);
 	wire_ctx_write_u32(&wire, 0);
 	set_rdata(&rrset, data, wire_ctx_offset(&wire));
-	if (zone_contents_add_rr(c, &rrset, &unused) != KNOT_EOK) {
+	int ret = zone_contents_add_rr(c, &rrset, &unused);
+	if (ret != KNOT_EOK) {
 		goto fail;
 	}
 
@@ -156,7 +153,8 @@ struct zone_contents *catalog_update_to_zone(catalog_update_t *u, const knot_dna
 	unused = NULL;
 	rrset.type = KNOT_RRTYPE_NS;
 	set_rdata(&rrset, invalid, sizeof(invalid));
-	if (zone_contents_add_rr(c, &rrset, &unused) != KNOT_EOK) {
+	ret = zone_contents_add_rr(c, &rrset, &unused);
+	if (ret != KNOT_EOK) {
 		goto fail;
 	}
 
@@ -164,12 +162,14 @@ struct zone_contents *catalog_update_to_zone(catalog_update_t *u, const knot_dna
 	unused = NULL;
 	knot_dname_storage_t owner;
 	if (knot_dname_store(owner, version) == 0 || catalog_dname_append(owner, catzone) == 0) {
+		ret = KNOT_ERROR;
 		goto fail;
 	}
 	rrset.owner = owner;
 	rrset.type = KNOT_RRTYPE_TXT;
 	set_rdata(&rrset, cat_version, sizeof(cat_version));
-	if (zone_contents_add_rr(c, &rrset, &unused) != KNOT_EOK) {
+	ret = zone_contents_add_rr(c, &rrset, &unused);
+	if (ret != KNOT_EOK) {
 		goto fail;
 	}
 
@@ -184,8 +184,8 @@ struct zone_contents *catalog_update_to_zone(catalog_update_t *u, const knot_dna
 		rrset.owner = val->add_owner;
 		set_rdata(&rrset, val->member, knot_dname_size(val->member));
 		unused = NULL;
-		if (zone_contents_add_rr(c, &rrset, &unused) != KNOT_EOK ||
-		    add_group_txt(val->add_owner, val->new_group, c, NULL) != KNOT_EOK) {
+		if ((ret = zone_contents_add_rr(c, &rrset, &unused)) != KNOT_EOK ||
+		    (ret = add_group_txt(val->add_owner, val->new_group, c, NULL)) != KNOT_EOK) {
 			catalog_it_free(it);
 			goto fail;
 		}
@@ -193,10 +193,11 @@ struct zone_contents *catalog_update_to_zone(catalog_update_t *u, const knot_dna
 	}
 	catalog_it_free(it);
 
-	return c;
+	*conts = c;
+	return KNOT_EOK;
 fail:
 	zone_contents_deep_free(c);
-	return NULL;
+	return ret;;
 }
 
 int catalog_update_to_update(catalog_update_t *u, struct zone_update *zu)
@@ -207,7 +208,7 @@ int catalog_update_to_update(catalog_update_t *u, struct zone_update *zu)
 	ptr.rrs.rdata = (knot_rdata_t *)tmp;
 	ptr.rrs.count = 1;
 
-	int ret = u->error;
+	int ret = KNOT_EOK;
 	catalog_it_t *it = catalog_it_begin(u);
 	while (!catalog_it_finished(it) && ret == KNOT_EOK) {
 		catalog_upd_val_t *val = catalog_it_val(it);

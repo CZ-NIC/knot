@@ -6,6 +6,7 @@
 #pragma once
 
 #include "knot/catalog/catalog_update.h"
+#include "knot/updates/zone-update.h"
 
 #define CATALOG_SOA_REFRESH	3600
 #define CATALOG_SOA_RETRY	600
@@ -26,16 +27,15 @@ knot_dname_t *catalog_member_owner(const knot_dname_t *member, const knot_dname_
 /*!
  * \brief Generate catalog zone contents from (full) catalog update.
  *
+ * \param cont        Output zone contents.
  * \param u           Catalog update to read.
  * \param catzone     Catalog zone name.
  * \param soa_serial  SOA serial of the generated zone.
  *
- * \return Catalog zone contents, or NULL if ENOMEM.
+ * \return KNOT_E*
  */
-struct zone_contents *catalog_update_to_zone(catalog_update_t *u, const knot_dname_t *catzone,
-                                             uint32_t soa_serial);
-
-struct zone_update;
+int catalog_update_to_zone(struct zone_contents **conts, catalog_update_t *u,
+                           const knot_dname_t *catzone, uint32_t soa_serial);
 
 /*!
  * \brief Incrementally update catalog zone from catalog update.
