@@ -264,9 +264,8 @@ zonefile_loaded:
 	if (zone->cat_members != NULL && !old_contents_exist) {
 		uint32_t serial = journal_conts == NULL ? 1 : zone_contents_serial(journal_conts);
 		serial = serial_next(serial, conf, zone->name, SERIAL_POLICY_UNIXTIME, 1); // unixtime hardcoded
-		zf_conts = catalog_update_to_zone(zone->cat_members, zone->name, serial);
-		if (zf_conts == NULL) {
-			ret = zone->cat_members->error == KNOT_EOK ? KNOT_ENOMEM : zone->cat_members->error;
+		ret = catalog_update_to_zone(&zf_conts, zone->cat_members, zone->name, serial);
+		if (ret != KNOT_EOK) {
 			goto cleanup;
 		}
 	}
