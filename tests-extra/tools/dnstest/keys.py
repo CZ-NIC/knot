@@ -77,8 +77,8 @@ class Keymgr(object):
         env = env or {}
         cmdline = [dnstest.params.keymgr_bin]
         if conf_file:
-            cmdline += ["-c", conf_file, "-e"]
-        cmdline += list(args)
+            cmdline += ["-c", conf_file]
+        cmdline += ["-e"] + list(args)
 
         cmd = Popen(cmdline, stdout=PIPE, stderr=PIPE, universal_newlines=True,
                     env=dict(os.environ, **env))
