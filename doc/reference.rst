@@ -1453,7 +1453,7 @@ The PKCS #11 URI Scheme is defined in :rfc:`7512`.
 ksk-only
 --------
 
-Newly generated keys sre stored in this keystore only if they are KSKs or CSKs.
+Newly generated keys are stored in this keystore only if they are KSKs or CSKs.
 Zone signing keys will be stored in subsequent keystore without this option enabled.
 
 *Default:* ``off``
