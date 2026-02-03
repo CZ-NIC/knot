@@ -26,7 +26,6 @@ sockname = knot.ctl_sock_rnd(name_only=True)
 ctl.connect(os.path.join(knot.dir, sockname))
 
 # Check conf-abort and conf-commit without conf transaction open.
-
 ctl.send_block(cmd="conf-abort")
 resp = ctl.receive_block()
 
@@ -37,6 +36,27 @@ except libknot.control.KnotCtlError as exc:
     isset(exc.message == "no active transaction", "abort error code")
 else:
     set_err("UNEXPECTED RETURN")
+
+# Check repeated conf-commit after fixed semcheck issues.
+ctl.send_block(cmd="conf-begin")
+resp = ctl.receive_block()
+
+ctl.send_block(cmd="conf-set", section="remote", item="id", data="test")
+resp = ctl.receive_block()
+
+try:
+    ctl.send_block(cmd="conf-commit")
+    resp = ctl.receive_block()
+except libknot.control.KnotCtlError as exc:
+    isset(exc.message == "no remote address defined", "commit error code")
+else:
+    set_err("UNEXPECTED RETURN")
+
+ctl.send_block(cmd="conf-set", section="remote", identifier="test", item="address", data="::1")
+resp = ctl.receive_block()
+
+ctl.send_block(cmd="conf-commit")
+resp = ctl.receive_block()
 
 # Add new zone.
 ctl.send_block(cmd="conf-begin")
