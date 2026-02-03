@@ -1150,7 +1150,7 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 		ret = commit_full(conf, update);
 	}
 	if (ret != KNOT_EOK) {
-		goto error;
+		return ret;
 	}
 
 	conf_val_t thr = conf_zone_get(conf, C_ADJUST_THR, update->zone->name);
@@ -1161,7 +1161,7 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 	}
 	if (ret != KNOT_EOK) {
 		discard_adds_tree(update);
-		goto error;
+		return ret;
 	}
 
 	/* Check the zone size. */
@@ -1170,8 +1170,7 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 
 	if (update->new_cont->size > size_limit) {
 		discard_adds_tree(update);
-		ret = KNOT_EZONESIZE;
-		goto error;
+		return KNOT_EZONESIZE;
 	}
 
 	val = conf_zone_get(conf, C_DNSSEC_VALIDATION, update->zone->name);
@@ -1184,7 +1183,7 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 		ret = knot_dnssec_validate_zone(update, &val_conf);
 		if (ret != KNOT_EOK) {
 			discard_adds_tree(update);
-			goto error;
+			return ret;
 		}
 	}
 
@@ -1193,7 +1192,7 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 		ret = zone_update_external(conf, update, &val);
 		if (ret != KNOT_EOK) {
 			discard_adds_tree(update);
-			goto error;
+			return ret;
 		}
 	}
 
@@ -1201,21 +1200,21 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 	if (ret != KNOT_EOK) {
 		log_zone_error(update->zone->name, "failed to process catalog zone (%s)", knot_strerror(ret));
 		discard_adds_tree(update);
-		goto error;
+		return ret;
 	}
 
 	ret = commit_redis(conf, update);
 	if (ret != KNOT_EOK) {
 		log_zone_error(update->zone->name, "zone database update failed (%s)", knot_strerror(ret));
 		discard_adds_tree(update);
-		goto error;
+		return ret;
 	}
 
 	ret = commit_journal(conf, update);
 	if (ret != KNOT_EOK) {
 		log_zone_error(update->zone->name, "journal update failed (%s)", knot_strerror(ret));
 		discard_adds_tree(update);
-		goto error;
+		return ret;
 	}
 
 	if (dnssec) {
@@ -1268,13 +1267,6 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 	memset(update, 0, sizeof(*update));
 
 	return KNOT_EOK;
-error:
-	ATOMIC_ADD(update->zone->server->stats.zone_update_error, 1);
-	if (conf->cache.srv_dbus_event & DBUS_EVENT_ZONE_UPDATED) {
-		dbus_emit_zone_updated(update->zone->name, false, 0);
-	}
-
-	return ret;
 }
 
 bool zone_update_no_change(zone_update_t *update)

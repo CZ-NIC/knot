@@ -108,6 +108,7 @@ done:
 
 	if (ret != KNOT_EOK) {
 		zone_update_clear(&up);
+		zone_update_error(conf, zone);
 	}
 	return ret;
 }
