@@ -2226,6 +2226,7 @@ static int ctl_conf_txn(ctl_args_t *args, ctl_cmd_t cmd)
 		if (ret != KNOT_EOK) {
 			// A semantic error is already sent by the check function.
 			if (io.error.code != KNOT_EOK) {
+				(void)conf_io_abort(false);
 				return KNOT_EOK;
 			}
 			// No transaction abort!
