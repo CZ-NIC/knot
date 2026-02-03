@@ -186,6 +186,7 @@ static bool token_init(void)
 	fprintf(file, "objectstore.backend = file\n");
 	fprintf(file, "log.level = INFO\n");
 	fprintf(file, "slots.removable = false\n");
+	fprintf(file, "slots.mechanisms = ALL\n");
 
 	fclose(file);
 
