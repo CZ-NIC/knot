@@ -82,6 +82,8 @@ class KeystoreSoftHSM(Keystore):
                 config = (
                     f"directories.tokendir = {self.dir}/tokens/\n"
                      "objectstore.backend = file\n"
+                     "slots.removable = false\n"
+                     "slots.mechanisms = ALL\n"
                      "log.level = INFO\n"
                 )
                 conf_file.write(config)
