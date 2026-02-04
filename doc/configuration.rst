@@ -657,7 +657,7 @@ The owner names of the PTR records shall follow this scheme:
 
 where the mentioned labels shall match:
 
-- *<unique-id>* — Single label that is recommended to be unique among member zones.
+- *<unique-id>* — Single label that must be unique among member zones.
 - ``zones`` — Required label.
 - *<catalog-zone>* — Name of the catalog zone.
 
