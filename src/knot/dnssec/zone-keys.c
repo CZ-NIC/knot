@@ -261,7 +261,7 @@ int kdnssec_delete_from_keystores(knot_kasp_keystore_t *keystores, char *key_id,
 	return (found && ret == KNOT_ENOENT) ? KNOT_EOK : ret;
 }
 
-int kdnssec_delete_key(kdnssec_ctx_t *ctx, knot_kasp_key_t *key_ptr)
+int kdnssec_delete_key(kdnssec_ctx_t *ctx, knot_kasp_key_t *key_ptr, bool trash)
 {
 	assert(ctx);
 	assert(ctx->zone);
@@ -276,8 +276,9 @@ int kdnssec_delete_key(kdnssec_ctx_t *ctx, knot_kasp_key_t *key_ptr)
 	}
 
 	bool key_still_used_in_keystore = false;
+	uint32_t delay = trash ? ctx->policy->trash_delay : 0;
 	int ret = kasp_db_delete_key(ctx->kasp_db, ctx->zone->dname, key_ptr->id,
-	                             ctx->policy->trash_delay, &key_still_used_in_keystore);
+	                             delay, &key_still_used_in_keystore);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
