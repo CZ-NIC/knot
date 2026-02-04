@@ -214,7 +214,7 @@ int keymgr_del_all_old(kdnssec_ctx_t *ctx)
 	for (size_t i = 0; i < ctx->zone->num_keys; ) {
 		knot_kasp_key_t *key = &ctx->zone->keys[i];
 		if (knot_time_cmp(key->timing.remove, ctx->now) < 0) {
-			int ret = kdnssec_delete_key(ctx, key);
+			int ret = kdnssec_delete_key(ctx, key, true);
 			if (ret != KNOT_EOK) {
 				return ret;
 			}
