@@ -3538,6 +3538,22 @@ Assign this member zone to specified generated catalog zone.
 
    The referenced catalog zone must exist and have :ref:`zone_catalog-role` set to *generate*.
 
+.. WARNING::
+   Atomically changing a member zone from one catalog zone to another that is
+   consumed by the same secondary is not recommended, as the update to the target
+   catalog zone may be randomly processed first and ignored due to a clash between
+   catalogs.
+
+   The correct catalog zone processing order on secondaries can be achieved by
+   temporarily :ref:`freezing outgoing transfers<knotc_zone-xfr-freeze>` of the
+   target catalog zone and :ref:`thawing<knotc_zone-xfr-thaw>` it after the source
+   catalog zone has already been processed (i.e. the member has been removed),
+   and then manually :ref:`notifying<knotc_zone-notify>` the secondaries.
+
+   If the generated zone catalogs have already arrived at a secondary in the
+   wrong order, triggering a :ref:`zone retransfer<knotc_zone-retransfer>` of
+   the target catalog on the secondary fixes the situation.
+
 *Default:* not set
 
 .. _zone_catalog-group:
