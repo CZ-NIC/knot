@@ -1325,8 +1325,8 @@ DNS over TLS
 ============
 
 TLS is an encrypted internet transport protocol.
-Knot DNS supports DNS over TLS (DoT) (:rfc:`7858`), including zone transfers (XoT).
-By default, the TCP port `853` is used for DNS over TLS.
+Knot DNS supports DNS over TLS (DoT) (:rfc:`7858`), including zone transfers (XoT)
+(:rfc:`9103`). By default, the TCP port `853` is used for DNS over TLS.
 
 There are the same requirements for TLS key and certificate as for :ref:`DNS_over_QUIC`.
 
