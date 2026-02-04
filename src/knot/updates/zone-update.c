@@ -1173,6 +1173,11 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 		return KNOT_EZONESIZE;
 	}
 
+	if ((update->new_cont->nodes->flags & ZONE_TREE_CONTAINS_DELEG) &&
+	    !knot_dnssec_has_adt(update->new_cont)) {
+		log_zone_warning(update->zone->name, "Contains DELEG record(s) but missing ADT bit in DNSKEY.");
+	}
+
 	val = conf_zone_get(conf, C_DNSSEC_VALIDATION, update->zone->name);
 	if (conf_bool(&val)) {
 		validation_conf_t val_conf = {

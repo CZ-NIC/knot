@@ -159,7 +159,7 @@ int knot_dnssec_zone_sign(zone_update_t *update,
 	}
 
 	// update policy based on the zone content
-	update_policy_from_zone(ctx.policy, update->new_cont);
+	update_policy_from_zone(conf, ctx.policy, update->new_cont);
 
 	if (ctx.policy->rrsig_refresh_before < ctx.policy->zone_maximal_ttl + ctx.policy->propagation_delay) {
 		log_zone_warning(zone_name, "DNSSEC, rrsig-refresh too low to prevent expired RRSIGs in resolver caches");
@@ -334,7 +334,7 @@ int knot_dnssec_sign_update(zone_update_t *update, conf_t *conf)
 		return result;
 	}
 
-	update_policy_from_zone(ctx.policy, update->new_cont);
+	update_policy_from_zone(conf, ctx.policy, update->new_cont);
 
 	// create placeholder ZONEMD to be signed and later filled in
 	// ...or remove it & its RRSIGs if zonemd_alg == ZONE_DIGEST_REMOVE
@@ -549,4 +549,21 @@ end:
 	kdnssec_ctx_deinit(&ctx);
 
 	return ret;
+}
+
+bool knot_dnssec_has_adt(const zone_contents_t *zone)
+{
+	const knot_rdataset_t *dk = node_rdataset(zone->apex, KNOT_RRTYPE_DNSKEY);
+	if (dk == NULL) {
+		return false;
+	}
+	knot_rdata_t *rd = dk->rdata;
+	for (int i  = 0; i < dk->count; i++) {
+                if ((knot_dnskey_flags(rd) & KNOT_DNSKEY_FLAG_ADT)) {
+			return true;
+		}
+		rd = knot_rdataset_next(rd);
+	}
+
+	return false;
 }

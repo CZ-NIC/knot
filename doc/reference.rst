@@ -2727,6 +2727,7 @@ Definition of zones served by the server.
      file: STR
      zone-db-input: INT
      zone-db-output: INT
+     deleg-aware: BOOL
      master: remote_id | remotes_id ...
      ddns-master: remote_id
      notify: remote_id | remotes_id ...
@@ -2853,6 +2854,24 @@ contents. The value of this option specifies the zone instance number
 (from 1 to 8 inclusive) within the database to write to.
 
 *Default:* ``-1`` (disabled)
+
+.. _zone_deleg-aware:
+
+deleg-aware
+-----------
+
+Triggers DELEG-aware answering for queries with DE bit.
+
+Also sets ADT bit for all newly generated DNSKEYs.
+
+.. NOTE::
+   According to DELEG specification, at least one DNSKEY MUST have the ADT
+   bit set before DELEG RRs are added to the zone. It is therefore
+   recommendd to set this option first and perform (or wait for) some
+   key roll-over before putting DELEG RRs to the zone. The server
+   emits a log warning otherwise.
+
+*Default:* ``off``
 
 .. _zone_master:
 

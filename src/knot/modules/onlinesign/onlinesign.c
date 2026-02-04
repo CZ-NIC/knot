@@ -485,7 +485,7 @@ static knotd_in_state_t pre_routine(knotd_in_state_t state, knot_pkt_t *pkt,
 		}
 	}
 	if (ret == KNOT_EOK || knot_time_cmp(ctx->event_rollover, mod->dnssec->now) <= 0) {
-		update_policy_from_zone(mod->dnssec->policy, qdata->extra->contents);
+		update_policy_from_zone(conf(), mod->dnssec->policy, qdata->extra->contents);
 		ret = knot_dnssec_key_rollover(mod->dnssec, KEY_ROLL_ALLOW_KSK_ROLL | KEY_ROLL_ALLOW_ZSK_ROLL, &resch);
 		if (ret != KNOT_EOK) {
 			ctx->event_rollover = knot_dnssec_failover_delay(mod->dnssec);

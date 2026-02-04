@@ -481,6 +481,7 @@ static const yp_item_t desc_external[] = {
 	{ C_FILE,                YP_TSTR,  YP_VNONE, FLAGS }, \
 	{ C_ZONE_DB_IN,          YP_TINT,  YP_VINT = { -1, 8, -1 }, FLAGS, { check_db_instance } }, \
 	{ C_ZONE_DB_OUT,         YP_TINT,  YP_VINT = { -1, 8, -1 }, FLAGS, { check_db_instance } }, \
+	{ C_DELEG_AWARE,         YP_TBOOL, YP_VNONE, FLAGS }, \
 	{ C_MASTER,              YP_TREF,  YP_VREF = { C_RMT, C_RMTS }, YP_FMULTI | CONF_REF_EMPTY, \
 	                                   { check_ref } }, \
 	{ C_DDNS_MASTER,         YP_TREF,  YP_VREF = { C_RMT }, YP_FNONE, { check_ref_empty } }, \

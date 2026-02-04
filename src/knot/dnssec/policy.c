@@ -14,13 +14,16 @@ static uint32_t zone_soa_ttl(const zone_contents_t *zone)
 	return soa.ttl;
 }
 
-void update_policy_from_zone(knot_kasp_policy_t *policy,
+void update_policy_from_zone(conf_t *conf,
+                             knot_kasp_policy_t *policy,
                              const zone_contents_t *zone)
 {
+	assert(conf);
 	assert(policy);
 	assert(zone);
 
-	policy->deleg_aware = (zone->nodes->flags & ZONE_TREE_CONTAINS_DELEG);
+	conf_val_t val = conf_zone_get(conf, C_DELEG_AWARE, zone->apex->owner);
+	policy->deleg_aware = conf_bool(&val);
 
 	if (policy->dnskey_ttl == UINT32_MAX) {
 		policy->dnskey_ttl = zone_soa_ttl(zone);
