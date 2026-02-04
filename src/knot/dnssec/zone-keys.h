@@ -124,10 +124,11 @@ int kdnssec_delete_from_keystores(knot_kasp_keystore_t *keystores, char *key_id,
  *
  * \param ctx           kasp context (zone, keystore, kaspdb) to be modified
  * \param key_ptr       pointer to key to be removed, must be inside keystore structure, NOT a copy of it!
+ * \param trash         if true, use the trash-bin as defined in kasp context->policy
  *
  * \return KNOT_E*
  */
-int kdnssec_delete_key(kdnssec_ctx_t *ctx, knot_kasp_key_t *key_ptr);
+int kdnssec_delete_key(kdnssec_ctx_t *ctx, knot_kasp_key_t *key_ptr, bool trash);
 
 /*!
  * \brief Load private key for given ID by searching all configured keystores.

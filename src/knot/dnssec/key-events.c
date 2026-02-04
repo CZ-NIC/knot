@@ -193,7 +193,7 @@ static int share_or_generate_key(kdnssec_ctx_t *ctx, kdnssec_generate_flags_t fl
 			return ret;
 		} else {
 			// another zone updated policy-last key in the meantime
-			ret = kdnssec_delete_key(ctx, key);
+			ret = kdnssec_delete_key(ctx, key, false);
 			if (ret == KNOT_EOK) {
 				ret = kdnssec_ctx_commit(ctx);
 			}
@@ -713,7 +713,7 @@ static int exec_really_remove(kdnssec_ctx_t *ctx, knot_kasp_key_t *key)
 {
 	assert(get_key_state(key, ctx->now) == DNSSEC_KEY_STATE_REMOVED);
 	assert(!ctx->keep_deleted_keys);
-	return kdnssec_delete_key(ctx, key);
+	return kdnssec_delete_key(ctx, key, true);
 }
 
 int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flags,

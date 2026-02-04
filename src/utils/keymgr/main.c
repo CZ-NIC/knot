@@ -246,7 +246,7 @@ static int key_command(int argc, char *argv[], int opt_ind, knot_lmdb_db_t *kasp
 		knot_kasp_key_t *key2del;
 		ret = keymgr_get_key(&kctx, argv[2], &key2del);
 		if (ret == KNOT_EOK) {
-			ret = kdnssec_delete_key(&kctx, key2del);
+			ret = kdnssec_delete_key(&kctx, key2del, true);
 		}
 	} else if (same_command(argv[1], "pregenerate", false)) {
 		CHECK_MISSING_ARG("Timestamp to not specified");
