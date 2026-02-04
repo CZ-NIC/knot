@@ -3538,6 +3538,10 @@ Assign this member zone to specified generated catalog zone.
 
    The referenced catalog zone must exist and have :ref:`zone_catalog-role` set to *generate*.
 
+   Atomically changing a member zone from one catalog zone to another, which is consumed by
+   the same secondary, is not recommended as the update to the target catalog zone may be
+   randomly processed first and ignored due to clash between catalogs.
+
 *Default:* not set
 
 .. _zone_catalog-group:
