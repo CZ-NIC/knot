@@ -349,6 +349,23 @@ const knot_rdataset_t *zone_update_from(zone_update_t *update)
 	return NULL;
 }
 
+uint32_t zone_update_from_serial(const zone_update_t *update)
+{
+	assert(update != NULL);
+	assert(update->new_cont->apex != NULL);
+
+	if (update->flags & UPDATE_NO_CHSET) {
+		const knot_rdataset_t *old_soa = node_rdataset(binode_counterpart(update->new_cont->apex), KNOT_RRTYPE_SOA);
+		assert(old_soa != NULL && old_soa->count > 0);
+		return knot_soa_serial(old_soa->rdata);
+	} else if (update->flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) {
+		return changeset_from(&update->change);
+	} else {
+		assert(0);
+		return 0;
+	}
+}
+
 const knot_rdataset_t *zone_update_to(zone_update_t *update)
 {
 	if (update == NULL) {
@@ -743,9 +760,9 @@ static int commit_redis(conf_t *conf, zone_update_t *update)
 	bool incremental = ((update->flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) && update->zone->contents != NULL);
 	if (incremental) {
 		zone_redis_err_t err;
-		uint32_t redis_soa = 0;
+		uint32_t redis_soa = 0, chset_soa = zone_update_from_serial(update);
 		int soa_ret = zone_redis_serial(db_ctx, db_instance, update->zone->name, &redis_soa, err);
-		incremental = (soa_ret == KNOT_EOK && redis_soa == zone_contents_serial(update->zone->contents));
+		incremental = (soa_ret == KNOT_EOK && redis_soa == chset_soa);
 	}
 
 	zone_redis_txn_t txn;
