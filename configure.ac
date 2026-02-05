@@ -420,6 +420,7 @@ static_modules_declars=""
 static_modules_init=""
 doc_modules=""
 
+KNOT_MODULE([append],      "yes")
 KNOT_MODULE([authsignal],  "yes")
 KNOT_MODULE([cookies],     "yes")
 KNOT_MODULE([dnsproxy],    "yes", "non-shareable")
