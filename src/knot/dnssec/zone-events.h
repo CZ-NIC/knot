@@ -115,3 +115,8 @@ knot_time_t knot_dnssec_failover_delay(const kdnssec_ctx_t *ctx);
  * \return KNOT_E*
  */
 int knot_dnssec_validate_zone(zone_update_t *update, validation_conf_t *val_conf);
+
+/*!
+ * \brief Check if any DNSKEY in the apex has ADT bit set.
+ */
+bool knot_dnssec_has_adt(const zone_contents_t *zone);

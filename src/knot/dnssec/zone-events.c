@@ -550,3 +550,20 @@ end:
 
 	return ret;
 }
+
+bool knot_dnssec_has_adt(const zone_contents_t *zone)
+{
+	const knot_rdataset_t *dk = node_rdataset(zone->apex, KNOT_RRTYPE_DNSKEY);
+	if (dk == NULL) {
+		return false;
+	}
+	knot_rdata_t *rd = dk->rdata;
+	for (int i  = 0; i < dk->count; i++) {
+                if ((knot_dnskey_flags(rd) & KNOT_DNSKEY_FLAG_ADT)) {
+			return true;
+		}
+		rd = knot_rdataset_next(rd);
+	}
+
+	return false;
+}

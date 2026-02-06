@@ -5,6 +5,7 @@
 
 #include "knot/zone/adjust.h"
 #include "knot/common/log.h"
+#include "knot/dnssec/zone-events.h"
 #include "knot/dnssec/zone-nsec.h"
 #include "knot/zone/adds_tree.h"
 #include "knot/zone/measure.h"
@@ -35,6 +36,10 @@ int adjust_cb_flags(zone_node_t *node, adjust_ctx_t *ctx)
 	bool has_data = node_non_dnssec_exists(node);
 
 	assert(!(node->flags & NODE_FLAGS_DELETED));
+
+	if (parent == NULL && knot_dnssec_has_adt(ctx->zone)) {
+                ctx->zone->nodes->flags |= ZONE_TREE_DNSKEY_ADT;
+	}
 
 	node->flags &= ~(NODE_FLAGS_DELEG | NODE_FLAGS_NONAUTH | NODE_FLAGS_SUBTREE_AUTH | NODE_FLAGS_SUBTREE_DATA | NODE_FLAGS_NONAUTH_DELEG);
 
