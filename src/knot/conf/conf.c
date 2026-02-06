@@ -181,7 +181,7 @@ conf_val_t conf_zone_get_txn(
 	switch (val.code) {
 	case KNOT_EOK:
 		// 3 ~ 2-byte length prefix + '\0'.
-		if (val.blob_len == 3 && (val.item->flags & (YP_FMULTI | CONF_REF_EMPTY))) {
+		if (val.blob_len == 3 && (val.item->flags & (YP_FMULTI | CONF_IO_FREF_EMPTY))) {
 			assert(memcmp(val.blob, "\x00\x01\x00", val.blob_len) == 0);
 			conf_val_t empty = { .item = val.item, .code = KNOT_ENOENT };
 			return empty;
