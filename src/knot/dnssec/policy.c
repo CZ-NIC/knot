@@ -20,8 +20,6 @@ void update_policy_from_zone(knot_kasp_policy_t *policy,
 	assert(policy);
 	assert(zone);
 
-	policy->deleg_aware = (zone->nodes->flags & ZONE_TREE_CONTAINS_DELEG);
-
 	if (policy->dnskey_ttl == UINT32_MAX) {
 		policy->dnskey_ttl = zone_soa_ttl(zone);
 	}
