@@ -26,10 +26,14 @@ def check_delegation(resp, D, debit):
         resp.check_count(1, "TYPE61440", section="authority")
     else:
         resp.check_count(1, "NS", section="authority")
+        if debit:
+           resp.check_count(1, "NSEC", section="authority")
+
     if "ds" in D:
         resp.check_count(1, "DS", section="authority")
     else:
         resp.check_count(1, "NSEC", section="authority")
+
     if (resp.resp.ednsflags & (1<<13)) != ((1<<13) if debit else 0): # resp.check(noeflags=...) requires DEflag support in dnspython
         set_err("%sDE flag in response" % ("no " if debit else ""))
 
