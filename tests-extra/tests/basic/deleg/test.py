@@ -46,6 +46,13 @@ def check_nxdomain(resp, nsec_count):
     resp.check_count(nsec_count, "NSEC", section="authority")
     resp.check_count(0, "NS", section="authority")
 
+def check_adt(server, zone_name, expected):
+    resp = server.dig(zone_name, "DNSKEY")
+    adt_found = False
+    for dnskey_rr in resp.resp.answer[0].to_rdataset():
+        adt_found = adt_found or (dnskey_rr.flags & 2 != 0)
+    compare(adt_found, expected, "ADT bit%s set" % ("" if expected else " not"))
+
 t = Test()
 
 knot = t.server("knot")
@@ -60,13 +67,27 @@ for childz in DELEGATIONS:
 t.link(parent, knot)
 knot.dnssec(parent).enable = True
 t.start()
-knot.zone_wait(parent)
+parent_serial = knot.zone_wait(parent)
+
+check_adt(knot, parent[0].name, False)
+isset(knot.log_search("missing ADT"), "warning of missing ADT")
+
+knot.dnssec(parent).deleg_adt = True
+knot.gen_confile()
+knot.reload()
+t.sleep(2)
+check_adt(knot, parent[0].name, False)
+
+knot.ctl("zone-key-rollover %s zsk" % parent[0].name)
+parent_serial = knot.zone_wait(parent, parent_serial)
+check_adt(knot, parent[0].name, True)
 
 for childs_running in [ False, True ]:
 
     if childs_running and DELEGATIONS[0] not in knot.zones:
         t.link(childs, knot)
         knot.dnssec(childs).enable = True
+        knot.dnssec(childs).deleg_adt = True
         knot.gen_confile()
         knot.reload()
         serials = knot.zones_wait(childs)
@@ -121,12 +142,5 @@ for childs_running in [ False, True ]:
                 check_normal(resp, False, "A")
 
 knot.ctl("zone-flush", wait=True)
-
-resp = knot.dig(parent[0].name, "DNSKEY")
-if resp.resp.answer[0].to_rdataset()[0].flags & 2 != 2:
-    set_err("No ADT flag")
-resp = knot.dig(childs[0].name, "DNSKEY")
-if resp.resp.answer[0].to_rdataset()[0].flags & 2 != 0:
-    set_err("Extra ADT flag")
 
 t.end()

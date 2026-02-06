@@ -2087,6 +2087,7 @@ DNSSEC policy configuration.
      manual: BOOL
      single-type-signing: BOOL
      algorithm: rsasha1 | rsasha1-nsec3-sha1 | rsasha256 | rsasha512 | ecdsap256sha256 | ecdsap384sha384 | ed25519 | ed448
+     deleg-adt: BOOL
      ksk-size: SIZE
      zsk-size: SIZE
      ksk-shared: BOOL
@@ -2184,6 +2185,15 @@ Possible values:
 - ``ed448``
 
 *Default:* ``ecdsap256sha256``
+
+.. _policy_deleg-adt:
+
+deleg-adt
+---------
+
+All newly generated keys will have ADT bit set, signalling possible presence of DELEG RRs in the zone.
+
+*Default:* ``off``
 
 .. _policy_ksk-size:
 

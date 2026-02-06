@@ -414,6 +414,7 @@ static const yp_item_t desc_policy[] = {
 	{ C_KEYSTORE,            YP_TREF,  YP_VREF = { C_KEYSTORE }, YP_FMULTI | CONF_IO_FRLD_ZONES,
 	                                   { check_ref_dflt } },
 	{ C_MANUAL,              YP_TBOOL, YP_VNONE, CONF_IO_FRLD_ZONES },
+	{ C_DELEG_ADT,           YP_TBOOL, YP_VNONE },
 	{ C_SINGLE_TYPE_SIGNING, YP_TBOOL, YP_VNONE, CONF_IO_FRLD_ZONES },
 	{ C_ALG,                 YP_TOPT,  YP_VOPT = { dnssec_key_algs,
 	                                               DNSSEC_KEY_ALGORITHM_ECDSA_P256_SHA256 },

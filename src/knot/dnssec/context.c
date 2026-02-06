@@ -29,6 +29,9 @@ static void policy_load(knot_kasp_policy_t *policy, conf_t *conf, conf_val_t *id
 	conf_val_t val = conf_id_get(conf, C_POLICY, C_MANUAL, id);
 	policy->manual = conf_bool(&val);
 
+	val = conf_id_get(conf, C_POLICY, C_DELEG_ADT, id);
+	policy->deleg_aware = conf_bool(&val);
+
 	val = conf_id_get(conf, C_POLICY, C_SINGLE_TYPE_SIGNING, id);
 	policy->single_type_signing = conf_bool(&val);
 	policy->sts_default = (val.code != KNOT_EOK);
