@@ -522,10 +522,10 @@ static const yp_item_t desc_external[] = {
 	{ C_RETRY_MAX_INTERVAL,  YP_TINT,  YP_VINT = { 1, UINT32_MAX, UINT32_MAX, YP_STIME } }, \
 	{ C_EXPIRE_MIN_INTERVAL, YP_TINT,  YP_VINT = { 3, UINT32_MAX, 3, YP_STIME } }, \
 	{ C_EXPIRE_MAX_INTERVAL, YP_TINT,  YP_VINT = { 3, UINT32_MAX, UINT32_MAX, YP_STIME } }, \
-	{ C_CATALOG_ROLE,        YP_TOPT,  YP_VOPT = { catalog_roles, CATALOG_ROLE_NONE }, FLAGS }, \
-	{ C_CATALOG_TPL,         YP_TREF,  YP_VREF = { C_TPL }, YP_FMULTI | FLAGS, { check_ref, check_catalog_tpl } }, \
-	{ C_CATALOG_ZONE,        YP_TDNAME,YP_VNONE, FLAGS | CONF_IO_FRLD_ZONES }, \
-	{ C_CATALOG_GROUP,       YP_TSTR,  YP_VNONE, FLAGS | CONF_IO_FRLD_ZONES, { check_catalog_group } }, \
+	{ C_CATALOG_ROLE,        YP_TOPT,  YP_VOPT = { catalog_roles, CATALOG_ROLE_NONE }, CONF_IO_FCAT | FLAGS }, \
+	{ C_CATALOG_TPL,         YP_TREF,  YP_VREF = { C_TPL }, YP_FMULTI | CONF_IO_FCAT | FLAGS, { check_ref, check_catalog_tpl } }, \
+	{ C_CATALOG_ZONE,        YP_TDNAME,YP_VNONE, CONF_IO_FCAT | FLAGS }, \
+	{ C_CATALOG_GROUP,       YP_TSTR,  YP_VNONE, CONF_IO_FCAT | FLAGS, { check_catalog_group } }, \
 	{ C_MODULE,              YP_TDATA, YP_VDATA = { 0, NULL, mod_id_to_bin, mod_id_to_txt }, \
 	                                   YP_FMULTI | FLAGS, { check_modref } }, \
 	{ C_COMMENT,             YP_TSTR,  YP_VNONE }, \

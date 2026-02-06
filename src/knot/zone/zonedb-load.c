@@ -515,6 +515,7 @@ static knot_zonedb_t *create_zonedb_commit(conf_t *conf, server_t *server)
 
 	assert(conf->io.flags & CONF_IO_FACTIVE);
 	bool include = conf->io.flags & CONF_IO_FDIFF_ZONES;
+	bool cat = conf->io.flags & CONF_IO_FCAT;
 
 	// Insert possibly added zones by conf-set include.
 	if (include) {
@@ -539,7 +540,7 @@ static knot_zonedb_t *create_zonedb_commit(conf_t *conf, server_t *server)
 			if (type & CONF_IO_TSET) {
 				zone_t *zone = get_zone(conf, name, server, NULL);
 				(void)knot_zonedb_insert(db_new, zone);
-			} else if (type & CONF_IO_TCHANGE) {
+			} else if ((type & CONF_IO_TCHANGE) && cat) {
 				zone_t *old = knot_zonedb_find(db_old, name);
 				zone_t *zone = get_zone(conf, name, server, old);
 				(void)knot_zonedb_insert(db_new, zone);
@@ -560,7 +561,7 @@ static knot_zonedb_t *create_zonedb_commit(conf_t *conf, server_t *server)
 				catalog_generate_upd(conf, zone, db_new, CAT_UPD_REM);
 				unreg_reverse(zone);
 				(void)knot_zonedb_del(db_new, name);
-			} else if (type & CONF_IO_TCHANGE) {
+			} else if ((type & CONF_IO_TCHANGE) && cat) {
 				zone_t *old = knot_zonedb_find(db_old, name);
 				assert(old != NULL);
 				if (old->catalog_gen == NULL && zone->catalog_gen != NULL) {
@@ -793,6 +794,7 @@ static void remove_old_zonedb_commit(conf_t *conf, knot_zonedb_t *db_old, server
 
 	assert(conf->io.flags & CONF_IO_FACTIVE);
 	bool reload_zones = conf->io.flags & CONF_IO_FRLD_ZONES;
+	bool cat = conf->io.flags & CONF_IO_FCAT;
 
 	if (conf->io.zones != NULL) {
 		trie_it_t *trie_it = trie_it_begin(conf->io.zones);
@@ -802,7 +804,7 @@ static void remove_old_zonedb_commit(conf_t *conf, knot_zonedb_t *db_old, server
 			if (type & CONF_IO_TUNSET) {
 				zone_t *zone = knot_zonedb_find(db_old, name);
 				zone_free(&zone);
-			} else if (type & CONF_IO_TCHANGE) {
+			} else if ((type & CONF_IO_TCHANGE) && cat) {
 				zone_t *zone = knot_zonedb_find(db_old, name);
 				if (zone != NULL) {
 					zone->contents = NULL; // Preserve reused contents.
