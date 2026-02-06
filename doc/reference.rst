@@ -2109,6 +2109,7 @@ DNSSEC policy configuration.
      keytag-modulo: INT/INT
      ksk-lifetime: TIME
      zsk-lifetime: TIME
+     deleg-adt: BOOL
      delete-delay: TIME
      propagation-delay: TIME
      rrsig-lifetime: TIME
@@ -2317,6 +2318,16 @@ A period (in seconds) between ZSK activation and the next rollover initiation.
    Zero (aka infinity) value causes no ZSK rollover as a result.
 
 *Default:* ``30d`` (30 days)
+
+.. _policy_deleg-adt:
+
+deleg-adt
+---------
+
+All newly generated keys will have ADT bit set, signaling possible presence
+of DELEG RRs in the zone.
+
+*Default:* ``off``
 
 .. _policy_delete-delay:
 
