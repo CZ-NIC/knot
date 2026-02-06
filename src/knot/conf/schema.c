@@ -481,10 +481,10 @@ static const yp_item_t desc_external[] = {
 	{ C_FILE,                YP_TSTR,  YP_VNONE, FLAGS }, \
 	{ C_ZONE_DB_IN,          YP_TINT,  YP_VINT = { -1, 8, -1 }, FLAGS, { check_db_instance } }, \
 	{ C_ZONE_DB_OUT,         YP_TINT,  YP_VINT = { -1, 8, -1 }, FLAGS, { check_db_instance } }, \
-	{ C_MASTER,              YP_TREF,  YP_VREF = { C_RMT, C_RMTS }, YP_FMULTI | CONF_REF_EMPTY, \
+	{ C_MASTER,              YP_TREF,  YP_VREF = { C_RMT, C_RMTS }, YP_FMULTI | CONF_IO_FREF_EMPTY, \
 	                                   { check_ref } }, \
 	{ C_DDNS_MASTER,         YP_TREF,  YP_VREF = { C_RMT }, YP_FNONE, { check_ref_empty } }, \
-	{ C_NOTIFY,              YP_TREF,  YP_VREF = { C_RMT, C_RMTS }, YP_FMULTI | CONF_REF_EMPTY, \
+	{ C_NOTIFY,              YP_TREF,  YP_VREF = { C_RMT, C_RMTS }, YP_FMULTI | CONF_IO_FREF_EMPTY, \
 	                                   { check_ref } }, \
 	{ C_NOTIFY_DELAY,        YP_TINT,  YP_VINT  = { 0, UINT32_MAX, 0, YP_STIME } }, \
 	{ C_UPDATE_DELAY,        YP_TINT,  YP_VINT  = { 0, UINT32_MAX, 0, YP_STIME } }, \
@@ -508,7 +508,7 @@ static const yp_item_t desc_external[] = {
 	{ C_DNSSEC_SIGNING,      YP_TBOOL, YP_VNONE, FLAGS }, \
 	{ C_DNSSEC_VALIDATION,   YP_TBOOL, YP_VNONE, FLAGS }, \
 	{ C_DNSSEC_POLICY,       YP_TREF,  YP_VREF = { C_POLICY }, FLAGS, { check_ref_dflt } }, \
-	{ C_DS_PUSH,             YP_TREF,  YP_VREF = { C_RMT, C_RMTS }, YP_FMULTI | CONF_REF_EMPTY | FLAGS, \
+	{ C_DS_PUSH,             YP_TREF,  YP_VREF = { C_RMT, C_RMTS }, YP_FMULTI | CONF_IO_FREF_EMPTY | FLAGS, \
 	                                   { check_ref } }, \
 	{ C_REVERSE_GEN,         YP_TDNAME,YP_VNONE, YP_FMULTI | FLAGS }, \
 	{ C_INCLUDE_FROM,        YP_TDNAME,YP_VNONE, YP_FMULTI | FLAGS, { check_include_from } }, \
