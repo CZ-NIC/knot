@@ -14,8 +14,10 @@ enum {
 	ZONE_TREE_USE_BINODES = (1 << 0),
 	/*! If set, from each bi-node in the zone tree, the second zone_node_t is valid. */
 	ZONE_TREE_BINO_SECOND = (1 << 1),
-	/*! Indication of presence of a DELEG record anywhere in the tree -- Knot only behaves as DELEG-aware if there is any. */
+	/*! Indication of presence of a DELEG record anywhere in the tree. */
 	ZONE_TREE_CONTAINS_DELEG = (1 << 2),
+	/*! DELEG-awareness of the zone. */
+	ZONE_TREE_DELEG_AWARE    = (1 << 3),
 };
 
 typedef struct {

@@ -1191,6 +1191,11 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 		return KNOT_EZONESIZE;
 	}
 
+	if ((update->new_cont->nodes->flags & ZONE_TREE_CONTAINS_DELEG) &&
+	    node_rrtype_exists(update->new_cont->apex, KNOT_RRTYPE_DNSKEY) && !knot_dnssec_has_adt(update->new_cont)) {
+		log_zone_warning(update->zone->name, "contains DELEG record but no DNSKEY with ADT bit");
+	}
+
 	val = conf_zone_get(conf, C_DNSSEC_VALIDATION, update->zone->name);
 	if (conf_bool(&val)) {
 		validation_conf_t val_conf = {
