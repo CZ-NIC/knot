@@ -537,7 +537,7 @@ static knot_zonedb_t *create_zonedb_commit(conf_t *conf, server_t *server)
 		for (; !trie_it_finished(trie_it); trie_it_next(trie_it)) {
 			const knot_dname_t *name = (const knot_dname_t *)trie_it_key(trie_it, NULL);
 			conf_io_type_t type = conf_io_trie_val(trie_it);
-			if (type & CONF_IO_TSET) {
+			if ((type & CONF_IO_TSET) && !include) {
 				zone_t *zone = get_zone(conf, name, server, NULL);
 				(void)knot_zonedb_insert(db_new, zone);
 			} else if ((type & CONF_IO_TCHANGE) && cat) {
