@@ -92,6 +92,7 @@
 /libzscanner/test_zscanner
 /libzscanner/zscanner-tool
 
+/modules/test_dnserr
 /modules/test_onlinesign
 /modules/test_rrl
 
