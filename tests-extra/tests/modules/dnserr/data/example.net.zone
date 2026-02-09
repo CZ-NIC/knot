@@ -1,0 +1,8 @@
+$ORIGIN example.net.
+$TTL 7200
+
+@	SOA	dns1 hostmaster 2010111213 10800 3600 1209600 7200
+	NS	dns1
+	NS	dns2
+
+dns1	A	127.0.0.1
