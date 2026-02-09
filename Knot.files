@@ -289,6 +289,7 @@ src/knot/journal/serialization.c
 src/knot/journal/serialization.h
 src/knot/modules/authsignal/authsignal.c
 src/knot/modules/cookies/cookies.c
+src/knot/modules/dnserr/dnserr.c
 src/knot/modules/dnsproxy/dnsproxy.c
 src/knot/modules/dnstap/dnstap.c
 src/knot/modules/geoip/geodb.c
@@ -762,6 +763,7 @@ tests/libknot/test_yptrafo.c
 tests/libzscanner/processing.c
 tests/libzscanner/processing.h
 tests/libzscanner/zscanner-tool.c
+tests/modules/test_dnserr.c
 tests/modules/test_onlinesign.c
 tests/modules/test_rrl.c
 tests/tap/basic.c
