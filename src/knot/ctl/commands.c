@@ -140,14 +140,17 @@ static void ctl_log_conf_data(knot_ctl_data_t *data)
 	const char *section = (*data)[KNOT_CTL_IDX_SECTION];
 	const char *item = (*data)[KNOT_CTL_IDX_ITEM];
 	const char *id = (*data)[KNOT_CTL_IDX_ID];
+	const char *val = (*data)[KNOT_CTL_IDX_DATA];
 
 	if (section != NULL) {
-		log_ctl_debug("control, config item '%s%s%s%s%s%s'", section,
+		log_ctl_debug("control, config item '%s%s%s%s%s%s%s%s'", section,
 		              (id   != NULL ? "["  : ""),
 		              (id   != NULL ? id   : ""),
 		              (id   != NULL ? "]"  : ""),
 		              (item != NULL ? "."  : ""),
-		              (item != NULL ? item : ""));
+		              (item != NULL ? item : ""),
+		              (val  != NULL ? "="  : ""),
+		              (val  != NULL ? val  : ""));
 	}
 }
 
