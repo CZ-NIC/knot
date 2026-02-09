@@ -167,6 +167,16 @@ check_PROGRAMS += \
 endif HAVE_LIBUTILS
 
 if HAVE_DAEMON
+if STATIC_MODULE_dnserr
+check_PROGRAMS += \
+	modules/test_dnserr
+else
+if SHARED_MODULE_dnserr
+check_PROGRAMS += \
+	modules/test_dnserr
+endif
+endif
+
 if STATIC_MODULE_onlinesign
 check_PROGRAMS += \
 	modules/test_onlinesign
