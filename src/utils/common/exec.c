@@ -285,6 +285,17 @@ static void print_expire(const uint8_t *data, uint16_t len)
 	}
 }
 
+static void print_dname(const uint8_t *data, uint16_t len)
+{
+	if (len == 0) {
+		printf("(empty)");
+	} else {
+		char str[KNOT_DNAME_TXT_MAXLEN] = "";
+		knot_dname_to_str(str, data, KNOT_DNAME_TXT_MAXLEN);
+		printf("%s", str);
+	}
+}
+
 static void print_zoneversion(const uint8_t *data, uint16_t len, const knot_dname_t *qname)
 {
 	knot_dname_storage_t zone;
@@ -379,6 +390,10 @@ static void print_section_opt(const knot_pkt_t *packet, const style_t *style)
 		case KNOT_EDNS_OPTION_EXPIRE:
 			printf(";; EXPIRE: ");
 			print_expire(opt_data, opt_len);
+			break;
+		case KNOT_EDNS_OPTION_AGENT_DOMAIN:
+			printf(";; AGENT DOMAIN: ");
+			print_dname(opt_data, opt_len);
 			break;
 		case KNOT_EDNS_OPTION_ZONEVERSION:
 			printf(";; ZONEVERSION: ");

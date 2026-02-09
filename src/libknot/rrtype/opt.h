@@ -84,6 +84,8 @@ enum {
 	KNOT_EDNS_OPTION_CHAIN         = 13,
 	/*! \brief EDNS Extended error code. */
 	KNOT_EDNS_OPTION_EDE           = 15,
+	/*! \brief EDNS DNS Agent Domain code. */
+	KNOT_EDNS_OPTION_AGENT_DOMAIN  = 18,
 	/*! \brief EDNS Zone version option code. */
 	KNOT_EDNS_OPTION_ZONEVERSION   = 19,
 
@@ -579,6 +581,9 @@ int knot_edns_cookie_write(uint8_t *option, uint16_t option_len,
  */
 int knot_edns_cookie_parse(knot_edns_cookie_t *cc, knot_edns_cookie_t *sc,
                            const uint8_t *option, uint16_t option_len);
+
+int knot_edns_domainagent_write(uint8_t *option, uint16_t option_len,
+                                const knot_dname_t *zone);
 
 /*!
  * \brief Writes EDNS Zone version wire data.

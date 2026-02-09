@@ -676,6 +676,21 @@ int knot_edns_cookie_parse(knot_edns_cookie_t *cc, knot_edns_cookie_t *sc,
 }
 
 _public_
+int knot_edns_domainagent_write(uint8_t *option, uint16_t option_len,
+                                const knot_dname_t *zone)
+{
+	if (option == NULL || zone == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	wire_ctx_t wire = wire_ctx_init(option, option_len);
+	wire_ctx_write(&wire, zone, option_len);
+
+	return wire.error;
+}
+
+
+_public_
 int knot_edns_zoneversion_parse(knot_dname_storage_t zone, uint8_t *type,
                                 uint32_t *version, const uint8_t *option,
                                 uint16_t option_len, const knot_dname_t *qname)

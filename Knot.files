@@ -289,6 +289,7 @@ src/knot/journal/serialization.c
 src/knot/journal/serialization.h
 src/knot/modules/authsignal/authsignal.c
 src/knot/modules/cookies/cookies.c
+src/knot/modules/dnserr/dnserr.c
 src/knot/modules/dnsproxy/dnsproxy.c
 src/knot/modules/dnstap/dnstap.c
 src/knot/modules/geoip/geodb.c

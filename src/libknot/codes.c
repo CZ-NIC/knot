@@ -131,6 +131,7 @@ const knot_lookup_t knot_edns_opt_names[] = {
 	{ KNOT_EDNS_OPTION_PADDING,       "PADDING" },
 	{ KNOT_EDNS_OPTION_CHAIN,         "CHAIN" },
 	{ KNOT_EDNS_OPTION_EDE,           "EDE" },
+	{ KNOT_EDNS_OPTION_AGENT_DOMAIN,  "AGENT DOMAIN" },
 	{ KNOT_EDNS_OPTION_ZONEVERSION,   "ZONEVERSION" },
 	{ 0, NULL }
 };
