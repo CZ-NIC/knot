@@ -443,3 +443,34 @@ class ModAuthSignal(KnotModule):
 
     mod_name = "authsignal"
     empty = True
+
+class ModDnsErr(KnotModule):
+    '''DNS Error module'''
+
+    mod_name = "dnserr"
+
+    def __init__(self, report_channel=None, agent=False, cache_size=None, cache_lifetime=None):
+        super().__init__()
+        self.report_channel = report_channel
+        self.agent = agent
+        self.cache_size = cache_size
+        self.cache_lifetime = cache_lifetime
+
+    def get_conf(self, conf=None):
+        if not conf:
+            conf = dnstest.config.KnotConf()
+
+        conf.begin(self.conf_name)
+        conf.id_item("id", self.conf_id)
+        if self.report_channel:
+            conf.item_str("report-channel", self.report_channel)
+        if self.agent:
+            conf.item_str("agent", "on")
+        if self.cache_size:
+            conf.item_str("cache-size", self.cache_size)
+        if self.cache_lifetime:
+            conf.item_str("cache-lifetime", self.cache_lifetime)
+        conf.end()
+
+        return conf
+
