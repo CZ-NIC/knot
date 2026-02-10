@@ -87,7 +87,8 @@ int knotd_mod_proto_hook(knotd_mod_t *mod, knotd_stage_t stage, knotd_mod_proto_
 _public_
 int knotd_mod_hook(knotd_mod_t *mod, knotd_stage_t stage, knotd_mod_hook_f hook)
 {
-	if (stage != KNOTD_STAGE_BEGIN && stage != KNOTD_STAGE_END) {
+	if (stage != KNOTD_STAGE_BEGIN && stage != KNOTD_STAGE_END &&
+	    stage != KNOTD_STAGE_ZONE_LOOKUP) {
 		return KNOT_EINVAL;
 	}
 
@@ -98,7 +99,8 @@ _public_
 int knotd_mod_in_hook(knotd_mod_t *mod, knotd_stage_t stage, knotd_mod_in_hook_f hook)
 {
 	if (stage != KNOTD_STAGE_PREANSWER && stage != KNOTD_STAGE_ANSWER &&
-	    stage != KNOTD_STAGE_AUTHORITY && stage != KNOTD_STAGE_ADDITIONAL) {
+	    stage != KNOTD_STAGE_AUTHORITY && stage != KNOTD_STAGE_ADDITIONAL &&
+	    stage != KNOTD_STAGE_NAME_LOOKUP) {
 		return KNOT_EINVAL;
 	}
 
