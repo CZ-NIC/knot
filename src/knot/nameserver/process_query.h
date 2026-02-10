@@ -30,6 +30,13 @@ typedef struct knotd_qdata_extra {
 	void *ext;
 	void (*ext_cleanup)(knotd_qdata_t *); /*!< Extensions cleanup callback. */
 	void (*ext_finished)(knotd_qdata_t *, knot_pkt_t *, int); /*!< Optional postprocessing callback. */
+
+	struct {
+		const knot_dname_t *zone_name;
+		bool is_suffix_match;
+	} zone_lookup_params;
+
+	int ext_result; /*!< Additional error code from module. Modules MUST return this value for : KNOTD_STAGE_NAME_LOOKUP */
 } knotd_qdata_extra_t;
 
 /*! \brief Visited wildcard node list. */
