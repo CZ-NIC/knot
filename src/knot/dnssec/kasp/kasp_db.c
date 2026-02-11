@@ -426,12 +426,13 @@ int kasp_db_delete_keys(knot_lmdb_db_t *db, const knot_dname_t *zone_name,
 		return ret;
 	}
 
-	knot_lmdb_txn_t txn_r = { 0 };
-	knot_lmdb_begin(db, &txn_r, false);
-
 	MDB_val prefix = make_key_str(KASPDBKEY_PARAMS, zone_name, NULL);
 	knot_lmdb_txn_t txn = { 0 };
 	knot_lmdb_begin(db, &txn, true);
+
+	knot_lmdb_txn_t txn_r = { 0 };
+	knot_lmdb_begin(db, &txn_r, false);
+
 	knot_lmdb_foreach(&txn, &prefix) {
 		char *key_id = NULL;
 		if (!unmake_key_str(&txn.cur_key, &key_id)) {
@@ -462,8 +463,8 @@ int kasp_db_delete_keys(knot_lmdb_db_t *db, const knot_dname_t *zone_name,
 		free(key_id);
 	}
 
-	knot_lmdb_commit(&txn);
 	knot_lmdb_abort(&txn_r);
+	knot_lmdb_commit(&txn);
 	free(prefix.mv_data);
 
 	if (orphan) {
@@ -526,11 +527,12 @@ int kasp_db_sweep_keys(knot_lmdb_db_t *db, sweep_cb keep_zone, void *cb_data)
 		return ret;
 	}
 
+	knot_lmdb_txn_t txn = { 0 };
+	knot_lmdb_begin(db, &txn, true);
+
 	knot_lmdb_txn_t txn_r = { 0 };
 	knot_lmdb_begin(db, &txn_r, false);
 
-	knot_lmdb_txn_t txn = { 0 };
-	knot_lmdb_begin(db, &txn, true);
 	knot_lmdb_forwhole(&txn) {
 		if (!is_trash_related(&txn.cur_key) &&
 		    (!is_key_related(&txn.cur_key) ||
@@ -555,8 +557,8 @@ int kasp_db_sweep_keys(knot_lmdb_db_t *db, sweep_cb keep_zone, void *cb_data)
 		free(key_id);
 	}
 
-	knot_lmdb_commit(&txn);
 	knot_lmdb_abort(&txn_r);
+	knot_lmdb_commit(&txn);
 	deinit_all_keystores(&keystores);
 	return (ret == KNOT_EOK) ? txn.ret : ret;
 }
