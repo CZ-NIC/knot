@@ -152,24 +152,24 @@ flush_journal_replan:
 	return ret;
 }
 
-zone_t* zone_new(const knot_dname_t *name)
+zone_t *zone_new_mm(const knot_dname_t *name, knot_mm_t *mm)
 {
-	zone_t *zone = malloc(sizeof(zone_t));
+	zone_t *zone = mm_alloc(mm, sizeof(zone_t));
 	if (zone == NULL) {
 		return NULL;
 	}
 	memset(zone, 0, sizeof(zone_t));
 
-	zone->name = knot_dname_copy(name, NULL);
+	zone->name = knot_dname_copy(name, mm);
 	if (zone->name == NULL) {
-		free(zone);
+		mm_free(mm, zone);
 		return NULL;
 	}
 
-	zone->timers = calloc(1, sizeof(*zone->timers));
+	zone->timers = mm_calloc(mm, 1, sizeof(*zone->timers));
 	if (zone->timers == NULL) {
-		knot_dname_free(zone->name, NULL);
-		free(zone);
+		knot_dname_free(zone->name, mm);
+		mm_free(mm, zone);
 		return NULL;
 	}
 	zone->timers_static = zone->timers;
@@ -199,6 +199,11 @@ zone_t* zone_new(const knot_dname_t *name)
 	return zone;
 }
 
+zone_t *zone_new(const knot_dname_t *name)
+{
+	return zone_new_mm(name, NULL);
+}
+
 void zone_control_clear(zone_t *zone)
 {
 	if (zone == NULL) {
@@ -210,7 +215,7 @@ void zone_control_clear(zone_t *zone)
 	zone->control_update = NULL;
 }
 
-void zone_free(zone_t **zone_ptr)
+void zone_free_mm(zone_t **zone_ptr, knot_mm_t *mm)
 {
 	if (zone_ptr == NULL || *zone_ptr == NULL) {
 		return;
@@ -230,7 +235,7 @@ void zone_free(zone_t **zone_ptr)
 	/* Free zone contents. Possible wait for XFRout lock. */
 	zone_contents_deep_free(zone->contents);
 
-	knot_dname_free(zone->name, NULL);
+	knot_dname_free(zone->name, mm);
 
 	free_ddns_queue(zone);
 	pthread_mutex_destroy(&zone->ddns_lock);
@@ -257,9 +262,14 @@ void zone_free(zone_t **zone_ptr)
 
 	ATOMIC_DEINIT(zone->backup_ctx);
 
-	free(zone->timers);
-	free(zone);
+	mm_free(mm, zone->timers);
+	mm_free(mm, zone);
 	*zone_ptr = NULL;
+}
+
+void zone_free(zone_t **zone_ptr)
+{
+	zone_free_mm(zone_ptr, NULL);
 }
 
 void zone_reset(conf_t *conf, zone_t *zone)
