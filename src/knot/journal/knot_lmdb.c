@@ -291,6 +291,11 @@ void knot_lmdb_abort(knot_lmdb_txn_t *txn)
 			mdb_cursor_close(txn->cursor);
 			txn->cursor = NULL;
 		}
+		if (txn->cursor_st != NULL) {
+			mdb_cursor_close(txn->cursor_st);
+			txn->cursor_st = NULL;
+		}
+
 		mdb_txn_abort(txn->txn);
 		txn->opened = false;
 	}
@@ -313,10 +318,16 @@ void knot_lmdb_commit(knot_lmdb_txn_t *txn)
 	if (!txn_semcheck(txn)) {
 		return;
 	}
+
 	if (txn->cursor != NULL) {
 		mdb_cursor_close(txn->cursor);
 		txn->cursor = NULL;
 	}
+	if (txn->cursor_st != NULL) {
+		mdb_cursor_close(txn->cursor_st);
+		txn->cursor_st = NULL;
+	}
+
 	txn->ret = mdb_txn_commit(txn->txn);
 	err_to_knot(&txn->ret);
 	txn->opened = false;
@@ -355,6 +366,16 @@ static bool curget(knot_lmdb_txn_t *txn, MDB_cursor_op op)
 		return false;
 	}
 	return (txn->ret == KNOT_EOK);
+}
+
+void knot_lmdb_cursor_swap(knot_lmdb_txn_t *txn)
+{
+	MDB_cursor *tmp = txn->cursor;
+	txn->cursor = txn->cursor_st;
+	txn->cursor_st = tmp;
+	if (txn->cursor != NULL) {
+		(void)curget(txn, MDB_GET_CURRENT);
+	}
 }
 
 static int mdb_val_clone(const MDB_val *orig, MDB_val *clone)
