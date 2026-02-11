@@ -139,7 +139,7 @@ link_mode=$(test "$enable_shared" = "yes" && echo "shared" || echo "static")
 ######################
 
 AC_ARG_WITH([memcheck],
-        AC_HELP_STRING([--with-memcheck=auto|yes|no|memcheck_include_folder], [Build with memcheck api. If valgrind/memcheck.h is not in path, define include path in CFLAGS or pass the valgrind/memcheck.h include folder for this parameter. [default=no]]),
+        AS_HELP_STRING([--with-memcheck=auto|yes|no|memcheck_include_folder], [Build with memcheck api. If valgrind/memcheck.h is not in path, define include path in CFLAGS or pass the valgrind/memcheck.h include folder for this parameter. [default=no]]),
         [with_memcheck=$withval], [with_memcheck=no])
 
 AS_CASE([$with_memcheck],
