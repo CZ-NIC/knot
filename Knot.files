@@ -63,6 +63,7 @@ src/contrib/libbpf/include/uapi/linux/if_link.h
 src/contrib/libbpf/include/uapi/linux/if_xdp.h
 src/contrib/libbpf/include/uapi/linux/netlink.h
 src/contrib/macros.h
+src/contrib/memcheck.h
 src/contrib/mempattern.c
 src/contrib/mempattern.h
 src/contrib/net.c
@@ -117,6 +118,8 @@ src/knot/common/log.c
 src/knot/common/log.h
 src/knot/common/process.c
 src/knot/common/process.h
+src/knot/common/qps_limiter.c
+src/knot/common/qps_limiter.h
 src/knot/common/stats.c
 src/knot/common/stats.h
 src/knot/common/systemd.c
@@ -191,6 +194,10 @@ src/knot/events/handlers/refresh.c
 src/knot/events/handlers/update.c
 src/knot/events/replan.c
 src/knot/events/replan.h
+src/knot/include/atomic.h
+src/knot/include/lqueue.h
+src/knot/include/lstack.h
+src/knot/include/modcounter.h
 src/knot/include/module.h
 src/knot/journal/journal_basic.c
 src/knot/journal/journal_basic.h
@@ -205,8 +212,11 @@ src/knot/journal/knot_lmdb.h
 src/knot/journal/serialization.c
 src/knot/journal/serialization.h
 src/knot/modules/cookies/cookies.c
+src/knot/modules/delay/delay.c
 src/knot/modules/dnsproxy/dnsproxy.c
 src/knot/modules/dnstap/dnstap.c
+src/knot/modules/dnstap/dnstapcounter.c
+src/knot/modules/dnstap/dnstapcounter.h
 src/knot/modules/geoip/geodb.c
 src/knot/modules/geoip/geodb.h
 src/knot/modules/geoip/geoip.c
@@ -231,6 +241,8 @@ src/knot/nameserver/internet.h
 src/knot/nameserver/ixfr.c
 src/knot/nameserver/ixfr.h
 src/knot/nameserver/log.h
+src/knot/nameserver/lqueue.c
+src/knot/nameserver/lstack.c
 src/knot/nameserver/notify.c
 src/knot/nameserver/notify.h
 src/knot/nameserver/nsec_proofs.c
@@ -239,6 +251,7 @@ src/knot/nameserver/process_query.c
 src/knot/nameserver/process_query.h
 src/knot/nameserver/query_module.c
 src/knot/nameserver/query_module.h
+src/knot/nameserver/query_state.h
 src/knot/nameserver/tsig_ctx.c
 src/knot/nameserver/tsig_ctx.h
 src/knot/nameserver/update.c
@@ -252,8 +265,12 @@ src/knot/query/query.c
 src/knot/query/query.h
 src/knot/query/requestor.c
 src/knot/query/requestor.h
+src/knot/server/dns-handler.c
+src/knot/server/dns-handler.h
 src/knot/server/dthreads.c
 src/knot/server/dthreads.h
+src/knot/server/network_req_manager.c
+src/knot/server/network_req_manager.h
 src/knot/server/server.c
 src/knot/server/server.h
 src/knot/server/tcp-handler.c
