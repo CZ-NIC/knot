@@ -16,6 +16,7 @@
 #include "knot/updates/changesets.h"
 #include "knot/zone/contents.h"
 #include "knot/zone/timers.h"
+#include "knot/dnssec/zone-keys.h"
 #include "libknot/dname.h"
 #include "libknot/dynarray.h"
 #include "libknot/packet/pkt.h"
@@ -29,18 +30,21 @@ struct zone_backup_ctx;
  * When updating check create_zone_reload() if the flag mask is ok.
  */
 typedef enum {
-	ZONE_FORCE_AXFR     = 1 << 0, /*!< Force AXFR as next transfer. */
-	ZONE_FORCE_RESIGN   = 1 << 1, /*!< Force zone re-sign. */
-	ZONE_FORCE_FLUSH    = 1 << 2, /*!< Force zone flush. */
-	ZONE_FORCE_KSK_ROLL = 1 << 3, /*!< Force KSK/CSK rollover. */
-	ZONE_FORCE_ZSK_ROLL = 1 << 4, /*!< Force ZSK rollover. */
-	ZONE_IS_CATALOG     = 1 << 5, /*!< This is a catalog. */
-	ZONE_IS_CAT_MEMBER  = 1 << 6, /*!< This zone exists according to a catalog. */
-	ZONE_XFR_FROZEN     = 1 << 7, /*!< Outgoing AXFR/IXFR temporarily disabled. */
-	ZONE_USER_FLUSH     = 1 << 8, /*!< User-triggered flush. */
-	ZONE_LAST_SIGN_OK   = 1 << 9, /*!< Last full-sign event finished OK. */
+	ZONE_FORCE_AXFR     = 1 << 0,  /*!< Force AXFR as next transfer. */
+	ZONE_FORCE_RESIGN   = 1 << 1,  /*!< Force zone re-sign. */
+	ZONE_FORCE_FLUSH    = 1 << 2,  /*!< Force zone flush. */
+	ZONE_FORCE_KSK_ROLL = 1 << 3,  /*!< Force KSK/CSK rollover. */
+	ZONE_FORCE_ZSK_ROLL = 1 << 4,  /*!< Force ZSK rollover. */
+	ZONE_IS_CATALOG     = 1 << 5,  /*!< This is a catalog. */
+	ZONE_IS_CAT_MEMBER  = 1 << 6,  /*!< This zone exists according to a catalog. */
+	ZONE_XFR_FROZEN     = 1 << 7,  /*!< Outgoing AXFR/IXFR temporarily disabled. */
+	ZONE_USER_FLUSH     = 1 << 8,  /*!< User-triggered flush. */
+	ZONE_LAST_SIGN_OK   = 1 << 9,  /*!< Last full-sign event finished OK. */
 	ZONE_PREF_MASTER_2X = 1 << 10, /*!< Preferred master has been overwritten at least once. */
 	ZONE_RDB_RELOAD     = 1 << 11, /*!< Full zone reload from database. */
+
+	ZONE_DNSSEC_ENABLED = 1 << 14, /*!< DNSSEC is enabled for this zone. */
+	ZONE_EPHEMERAL      = 1 << 15, /*!< Ephemeral zone which is not persisted after query processing */
 
 	ZONE_FLAG_MAX       = 1 << 19, /*!< Maximal usable flag below purge_flag_t. */
 	ZONE_FLAG_TYPESIZE  = 1 << 30, /*!< Enforces the compiler to use 32-bit variable for this enum. */
@@ -143,6 +147,9 @@ typedef struct zone
 	/*! \brief Preferred master for remote operation. */
 	struct sockaddr_storage *preferred_master;
 
+	/*! \brief Zone signing context and keys. (for DNSSEC onlinesign) */
+	zone_sign_ctx_t *sign_ctx;
+
 	/*! \brief Query modules. */
 	list_t query_modules;
 	struct query_plan *query_plan;
@@ -160,6 +167,17 @@ typedef struct {
 } zone_include_t;
 
 /*!
+ * \brief Creates new zone with empty zone content and marks it as ephemeral. If mm is passed,
+ * allocates the zone using mm.
+ *
+ * \param name  Zone name.
+ * \param mm    mempool pointer
+ *
+ * \return The initialized zone structure or NULL if an error occurred.
+ */
+zone_t* zone_new_mm(const knot_dname_t *name, knot_mm_t *mm);
+
+/*!
  * \brief Creates new zone with empty zone content.
  *
  * \param name  Zone name.
@@ -167,6 +185,15 @@ typedef struct {
  * \return The initialized zone structure or NULL if an error occurred.
  */
 zone_t* zone_new(const knot_dname_t *name);
+
+/*!
+ * \brief Deallocates the zone structure created with zone_new_mm.
+ *
+ * \note The function also deallocates all bound structures (contents, etc.).
+ *
+ * \param zone_ptr Zone to be freed.
+ */
+void zone_free_mm(zone_t **zone_ptr, knot_mm_t *mm);
 
 /*!
  * \brief Deallocates the zone structure.
