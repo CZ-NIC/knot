@@ -530,9 +530,6 @@ int kasp_db_sweep_keys(knot_lmdb_db_t *db, sweep_cb keep_zone, void *cb_data)
 	knot_lmdb_txn_t txn = { 0 };
 	knot_lmdb_begin(db, &txn, true);
 
-	knot_lmdb_txn_t txn_r = { 0 };
-	knot_lmdb_begin(db, &txn_r, false);
-
 	knot_lmdb_forwhole(&txn) {
 		if (!is_trash_related(&txn.cur_key) &&
 		    (!is_key_related(&txn.cur_key) ||
@@ -541,7 +538,9 @@ int kasp_db_sweep_keys(knot_lmdb_db_t *db, sweep_cb keep_zone, void *cb_data)
 		}
 		char *key_id = NULL;
 		if (unmake_key_str(&txn.cur_key, &key_id)) {
-			size_t count = keyid_inuse(&txn_r, key_id, NULL);
+			knot_lmdb_push_cursor(&txn);
+			size_t count = keyid_inuse(&txn, key_id, NULL);
+			knot_lmdb_pop_cursor(&txn);
 			assert(count > 0);
 			if (count == 1) {
 				ret = kdnssec_delete_from_keystores(keystores, key_id, NULL, true);
@@ -557,7 +556,6 @@ int kasp_db_sweep_keys(knot_lmdb_db_t *db, sweep_cb keep_zone, void *cb_data)
 		free(key_id);
 	}
 
-	knot_lmdb_abort(&txn_r);
 	knot_lmdb_commit(&txn);
 	deinit_all_keystores(&keystores);
 	return (ret == KNOT_EOK) ? txn.ret : ret;
