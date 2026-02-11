@@ -853,7 +853,7 @@ AC_ARG_ENABLE([trailing-bytes],
 AS_IF([test "$enable_trailing_bytes" = yes], [AC_DEFINE([ENABLE_TRAILING_BYTES], [1], [Define to 1 to enable support for queries with additional trailing 0 bytes.])])
 
 AC_ARG_WITH([udp-max-size],
-        AC_HELP_STRING([--with-udp-max-size=size], [Size of UDP request/response max size supported. [default=65535]]),
+        AS_HELP_STRING([--with-udp-max-size=size], [Size of UDP request/response max size supported. [default=65535]]),
         [udp_max_size=$withval], [udp_max_size=65535])
 AC_DEFINE_UNQUOTED([KNOT_MAX_UDP_REQRESP_SIZE_BYTES],[$udp_max_size], [Value of udp max message size])
 
