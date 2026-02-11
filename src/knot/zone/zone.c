@@ -446,13 +446,13 @@ int zone_change_store(conf_t *conf, zone_t *zone, changeset_t *change, changeset
 	return journal_insert_flush(conf, zone, change, extra, NULL);
 }
 
-int zone_diff_store(conf_t *conf, zone_t *zone, const zone_diff_t *diff)
+int zone_diff_store(conf_t *conf, zone_t *zone, const zone_diff_t *diff, changeset_t *extra)
 {
 	if (conf == NULL || zone == NULL || diff == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	return journal_insert_flush(conf, zone, NULL, NULL, diff);
+	return journal_insert_flush(conf, zone, NULL, extra, diff);
 }
 
 int zone_changes_clear(conf_t *conf, zone_t *zone)

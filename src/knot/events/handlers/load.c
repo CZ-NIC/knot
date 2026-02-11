@@ -137,7 +137,7 @@ int event_load(conf_t *conf, zone_t *zone)
 		}
 
 		if (old_contents_exist) {
-			ret = zone_update_init(&up, zone, UPDATE_INCREMENTAL);
+			ret = zone_update_init(&up, zone, UPDATE_INCREMENTAL | UPDATE_NO_CHSET);
 		} else {
 			ret = zone_update_from_contents(&up, zone, journal_conts, UPDATE_HYBRID);
 		}
@@ -296,7 +296,7 @@ zonefile_loaded:
 	// Create zone_update structure according to current state.
 	if (old_contents_exist) {
 		if (zone->cat_members != NULL) {
-			ret = zone_update_init(&up, zone, UPDATE_INCREMENTAL);
+			ret = zone_update_init(&up, zone, UPDATE_INCREMENTAL | UPDATE_NO_CHSET);
 			if (ret == KNOT_EOK) {
 				ret = catalog_update_to_update(zone->cat_members, &up);
 			}
@@ -307,7 +307,7 @@ zonefile_loaded:
 			// nothing to be re-loaded. We could nicely end here...
 			// BUT in case of conf change, it's proper to re-ZONEMD and re-DNSSEC
 			// ALSO replan_load_updated() relies on that DNSSEC event planning cascades from here
-			ret = zone_update_init(&up, zone, UPDATE_INCREMENTAL);
+			ret = zone_update_init(&up, zone, UPDATE_INCREMENTAL | UPDATE_NO_CHSET);
 		} else if (zf_from == ZONEFILE_LOAD_WHOLE) {
 			// throw old zone contents and load new from ZF
 			ret = zone_update_from_contents(&up, zone, zf_conts,
@@ -316,7 +316,7 @@ zonefile_loaded:
 			zu_from_zf_conts = true;
 		} else {
 			// compute ZF diff and if success, apply it
-			ret = zone_update_from_differences(&up, zone, NULL, zf_conts, UPDATE_INCREMENTAL, &skip);
+			ret = zone_update_from_differences(&up, zone, NULL, zf_conts, UPDATE_INCREMENTAL | UPDATE_NO_CHSET, &skip);
 		}
 	} else {
 		if (journal_conts != NULL && zf_from != ZONEFILE_LOAD_WHOLE) {
@@ -437,13 +437,12 @@ load_end:
 
 	// If the change is only automatically incremented SOA serial, make it no change.
 	if (zf_from == ZONEFILE_LOAD_DIFSE && (up.flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) &&
-	    changeset_differs_just_serial(&up.change, update_zonemd)) {
-		changeset_t *cpy = changeset_clone(&up.change);
-		if (cpy == NULL) {
-			ret = KNOT_ENOMEM;
-			goto cleanup;
+	    (ret = zone_update_differs_just_serial(&up, update_zonemd)) == KNOT_EOK) {
+		changeset_t *cpy;
+		ret = zone_update_to_changeset(&up, &cpy);
+		if (ret == KNOT_EOK) {
+			ret = zone_update_apply_changeset_reverse(&up, cpy);
 		}
-		ret = zone_update_apply_changeset_reverse(&up, cpy);
 		if (ret != KNOT_EOK) {
 			changeset_free(cpy);
 			goto cleanup;
@@ -466,6 +465,9 @@ load_end:
 			 * are always updated with other changes in the zone. */
 			zone->zonefile.resigned = false;
 		}
+	}
+	if (ret < 0) {
+		goto cleanup;
 	}
 
 	uint32_t old_serial = 0, new_serial = zone_contents_serial(up.new_cont);

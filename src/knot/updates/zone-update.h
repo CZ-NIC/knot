@@ -332,3 +332,25 @@ int zone_update_foreach(zone_update_t *update, bool additions, rrset_cb_t cb, vo
  * \brief Return whether apex DNSKEY, CDNSKEY, or CDS is updated.
  */
 bool zone_update_changes_dnskey(zone_update_t *update);
+
+/*!
+ * \brief Check if update changes just SOA serial, SOA RRSIG, and optionally also ZONEMD and its RRSIG.
+ *
+ * \param update           Zone update in question.
+ * \param ignore_zonemd    Allow also a change to ZONEMD and its RRSIG.
+ *
+ * \retval 1         if something else is also modified.
+ * \retval KNOT_EOK  if no toher changes.
+ * \return KNOT_E*   if error occured.
+ */
+int zone_update_differs_just_serial(zone_update_t *update, bool ignore_zonemd);
+
+/*!
+ * \brief Store the changes in zone update to a changeset.
+ *
+ * \param update    Update in question.
+ * \param ch        Output: newly allocated changeset.
+ *
+ * \return KNOT_E*
+ */
+int zone_update_to_changeset(zone_update_t *update, changeset_t **ch);

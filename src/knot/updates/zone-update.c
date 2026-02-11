@@ -506,7 +506,6 @@ chset_add:
 			ret = changeset_add_addition(&update->change, rrset_copy, CHANGESET_CHECK);
 		}
 		if (ret == KNOT_EOK && (update->flags & UPDATE_EXTRA_CHSET)) {
-			assert(!(update->flags & UPDATE_NO_CHSET));
 			ret = changeset_add_addition(&update->extra_ch, rrset_copy, CHANGESET_CHECK);
 		}
 	}
@@ -550,11 +549,11 @@ int zone_update_remove(zone_update_t *update, const knot_rrset_t *rrset)
 	}
 
 	if ((update->flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) &&
-	    rrset_copy->type != KNOT_RRTYPE_SOA && !(update->flags & UPDATE_NO_CHSET) &&
-	    ret == KNOT_EOK) {
-		ret = changeset_add_removal(&update->change, rrset_copy, CHANGESET_CHECK);
+	    rrset_copy->type != KNOT_RRTYPE_SOA){
+		if (ret == KNOT_EOK && !(update->flags & UPDATE_NO_CHSET)) {
+			ret = changeset_add_removal(&update->change, rrset_copy, CHANGESET_CHECK);
+		}
 		if (ret == KNOT_EOK && (update->flags & UPDATE_EXTRA_CHSET)) {
-			assert(!(update->flags & UPDATE_NO_CHSET));
 			ret = changeset_add_removal(&update->extra_ch, rrset_copy, CHANGESET_CHECK);
 		}
 	}
@@ -695,15 +694,17 @@ static int commit_journal(conf_t *conf, zone_update_t *update)
 	}
 
 	int ret = KNOT_EOK;
+	changeset_t *extra = (update->flags & UPDATE_EXTRA_CHSET) ? &update->extra_ch : NULL;
+
 	if (update->flags & UPDATE_NO_CHSET) {
 		zone_diff_t diff;
 		get_zone_diff(&diff, update);
+		assert(!zone_update_no_change(update) || !(update->flags & UPDATE_EXTRA_CHSET));
 		if (content != JOURNAL_CONTENT_NONE && !zone_update_no_change(update)) {
-			ret = zone_diff_store(conf, update->zone, &diff);
+			ret = zone_diff_store(conf, update->zone, &diff, extra);
 		}
 	} else if ((update->flags & UPDATE_INCREMENTAL) ||
 	           (update->flags & UPDATE_HYBRID)) {
-		changeset_t *extra = (update->flags & UPDATE_EXTRA_CHSET) ? &update->extra_ch : NULL;
 		if (content != JOURNAL_CONTENT_NONE && !zone_update_no_change(update)) {
 			ret = zone_change_store(conf, update->zone, &update->change, extra);
 		}
@@ -1401,4 +1402,87 @@ bool zone_update_changes_dnskey(zone_update_t *update)
 		return (contents_have_dnskey(update->change.remove) ||
 		        contents_have_dnskey(update->change.add));
 	}
+}
+
+bool soa_differs_just_serial(const knot_rrset_t *soa1, const knot_rrset_t *soa2)
+{
+	return soa1 != NULL && soa2 != NULL && soa1->rrs.count == 1 && soa2->rrs.count == 1 &&
+	       knot_dname_is_equal(knot_soa_primary(soa1->rrs.rdata), knot_soa_primary(soa2->rrs.rdata)) &&
+	       knot_dname_is_equal(knot_soa_mailbox(soa1->rrs.rdata), knot_soa_mailbox(soa2->rrs.rdata)) &&
+	       knot_soa_refresh(soa1->rrs.rdata) == knot_soa_refresh(soa2->rrs.rdata) &&
+	       knot_soa_retry(soa1->rrs.rdata)   == knot_soa_retry(soa2->rrs.rdata) &&
+	       knot_soa_minimum(soa1->rrs.rdata) == knot_soa_minimum(soa2->rrs.rdata) &&
+	       knot_soa_expire(soa1->rrs.rdata)  == knot_soa_expire(soa2->rrs.rdata);
+}
+
+int diff_just_ser_cb(const knot_rrset_t *rr, void *ctx)
+{
+	bool *ignore_zonemd = ctx;
+	if (rr->type == KNOT_RRTYPE_SOA || (*ignore_zonemd && rr->type == KNOT_RRTYPE_ZONEMD)) {
+		return KNOT_EOK;
+	}
+	if (rr->type != KNOT_RRTYPE_RRSIG) {
+		return 1;
+	}
+	knot_rdata_t *rd = rr->rrs.rdata;
+	for (int i = 0; i < rr->rrs.count; i++) {
+		if (knot_rrsig_type_covered(rd) != KNOT_RRTYPE_SOA && (!*ignore_zonemd || knot_rrsig_type_covered(rd) != KNOT_RRTYPE_ZONEMD)) {
+			return 1;
+		}
+		rd = knot_rdataset_next(rd);
+	}
+	return KNOT_EOK;
+}
+
+int zone_update_differs_just_serial(zone_update_t *update, bool ignore_zonemd)
+{
+	int ret = zone_update_foreach(update, false, diff_just_ser_cb, &ignore_zonemd);
+	if (ret == KNOT_EOK) {
+                ret = zone_update_foreach(update, true, diff_just_ser_cb, &ignore_zonemd);
+	}
+	if (ret != KNOT_EOK || (update->flags & UPDATE_FULL)) {
+		return ret;
+	}
+	if (!(update->flags & UPDATE_NO_CHSET)) {
+		return soa_differs_just_serial(update->change.soa_from, update->change.soa_to) ? KNOT_EOK : 1;
+	}
+	knot_rrset_t soa1 = node_rrset(binode_counterpart(update->new_cont->apex), KNOT_RRTYPE_SOA);
+	knot_rrset_t soa2 = node_rrset(update->new_cont->apex, KNOT_RRTYPE_SOA);
+	return soa_differs_just_serial(&soa1, &soa2) ? KNOT_EOK : 1;
+}
+
+int ch_rem_cb(const knot_rrset_t *rr, void *ctx) {
+	return changeset_add_removal(ctx, rr, 0);
+}
+
+int ch_add_cb(const knot_rrset_t *rr, void *ctx) {
+	return changeset_add_addition(ctx, rr, 0);
+}
+
+int zone_update_to_changeset(zone_update_t *update, changeset_t **ch)
+{
+	if (update == NULL || ch == NULL || (update->flags & UPDATE_FULL)) {
+		return KNOT_EINVAL;
+	}
+
+	if (!(update->flags & UPDATE_NO_CHSET)) {
+		*ch = changeset_clone(&update->change);
+		return *ch == NULL ? KNOT_ENOMEM : KNOT_EOK;
+	}
+
+	*ch = changeset_new(update->zone->name);
+	if (*ch == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	int ret = zone_update_foreach(update, false, ch_rem_cb, *ch);
+	if (ret == KNOT_EOK) {
+		ret = zone_update_foreach(update, true, ch_add_cb, *ch);
+	}
+
+	if (ret != KNOT_EOK) {
+		changeset_free(*ch);
+		*ch = NULL;
+	}
+	return ret;
 }
