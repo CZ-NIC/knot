@@ -31,7 +31,8 @@ typedef struct knot_lmdb_db {
 
 typedef struct {
 	MDB_txn *txn;
-	MDB_cursor *cursor;
+	MDB_cursor *cursor;    // Active cursor.
+	MDB_cursor *cursor_st; // Stored cursor.
 	MDB_val cur_key;
 	MDB_val cur_val;
 
@@ -177,6 +178,16 @@ void knot_lmdb_abort(knot_lmdb_txn_t *txn);
  * \note If txn->ret equals KNOT_EOK afterwards, whole DB transaction was successful.
  */
 void knot_lmdb_commit(knot_lmdb_txn_t *txn);
+
+/*!
+ * \brief Swap two internal cursors in a transaction.
+ *
+ * \param txn   Transaction in which cursors will be swapped.
+ *
+ * \note Both cursors retain their values.
+ * \note txn->cur_key and txn->cur_val are updated to reflect the new active cursor.
+ */
+void knot_lmdb_cursor_swap(knot_lmdb_txn_t *txn);
 
 /*!
  * \brief Find a key in database. The matched key will be in txn->cur_key and its value in txn->cur_val.
