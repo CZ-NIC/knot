@@ -287,10 +287,15 @@ void knot_lmdb_begin(knot_lmdb_db_t *db, knot_lmdb_txn_t *txn, bool rw)
 void knot_lmdb_abort(knot_lmdb_txn_t *txn)
 {
 	if (txn->opened) {
-		if (txn->cursor != NULL) {
-			mdb_cursor_close(txn->cursor);
-			txn->cursor = NULL;
+		txn->cursors[txn->cursori] = txn->cursor;
+		txn->cursor = NULL;
+		for (int i = 0; i < NUM_CURSORS; i++) {
+			if (txn->cursors[i] != NULL) {
+				mdb_cursor_close(txn->cursors[i]);
+				txn->cursors[i] = NULL;
+			}
 		}
+
 		mdb_txn_abort(txn->txn);
 		txn->opened = false;
 	}
@@ -313,10 +318,16 @@ void knot_lmdb_commit(knot_lmdb_txn_t *txn)
 	if (!txn_semcheck(txn)) {
 		return;
 	}
-	if (txn->cursor != NULL) {
-		mdb_cursor_close(txn->cursor);
-		txn->cursor = NULL;
+
+	txn->cursors[txn->cursori] = txn->cursor;
+	txn->cursor = NULL;
+	for (int i = 0; i < NUM_CURSORS; i++) {
+		if (txn->cursors[i] != NULL) {
+			mdb_cursor_close(txn->cursors[i]);
+			txn->cursors[i] = NULL;
+		}
 	}
+
 	txn->ret = mdb_txn_commit(txn->txn);
 	err_to_knot(&txn->ret);
 	txn->opened = false;
@@ -331,6 +342,20 @@ static bool txn_enomem(knot_lmdb_txn_t *txn, const MDB_val *tocheck)
 		return false;
 	}
 	return true;
+}
+
+void knot_lmdb_push_cursor(knot_lmdb_txn_t *txn)
+{
+	assert(txn->cursori < NUM_CURSORS - 1);
+	txn->cursors[txn->cursori++] = txn->cursor;
+	txn->cursor = txn->cursors[txn->cursori];
+}
+
+void knot_lmdb_pop_cursor(knot_lmdb_txn_t *txn)
+{
+	assert(txn->cursori > 0);
+	txn->cursors[txn->cursori--] = txn->cursor;
+	txn->cursor = txn->cursors[txn->cursori];
 }
 
 static bool init_cursor(knot_lmdb_txn_t *txn)

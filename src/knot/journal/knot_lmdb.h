@@ -29,9 +29,13 @@ typedef struct knot_lmdb_db {
 	char *path;
 } knot_lmdb_db_t;
 
+#define NUM_CURSORS  2
+
 typedef struct {
 	MDB_txn *txn;
-	MDB_cursor *cursor;
+	MDB_cursor *cursors[NUM_CURSORS];
+	MDB_cursor *cursor; // Cached current cursor handle.
+	int cursori; // Current cursor index.
 	MDB_val cur_key;
 	MDB_val cur_val;
 
@@ -177,6 +181,13 @@ void knot_lmdb_abort(knot_lmdb_txn_t *txn);
  * \note If txn->ret equals KNOT_EOK afterwards, whole DB transaction was successful.
  */
 void knot_lmdb_commit(knot_lmdb_txn_t *txn);
+
+
+void knot_lmdb_push_cursor(knot_lmdb_txn_t *txn);
+
+
+void knot_lmdb_pop_cursor(knot_lmdb_txn_t *txn);
+
 
 /*!
  * \brief Find a key in database. The matched key will be in txn->cur_key and its value in txn->cur_val.
