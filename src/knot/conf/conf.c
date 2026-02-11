@@ -1460,6 +1460,65 @@ conf_remote_t conf_remote_txn(
 	return out;
 }
 
+#ifdef ENABLE_ASYNC_QUERY_HANDLING
+#define UDP_ASYNC_DEFAULT_REQ 1024
+#define TCP_ASYNC_DEFAULT_REQ 128
+#define XDP_ASYNC_DEFAULT_REQ 0
+
+bool conf_is_numa_enabled_txn(
+	conf_t *conf,
+	knot_db_txn_t *txn)
+{
+	conf_val_t val = conf_get_txn(conf, txn, C_SRV, C_ENABLE_NUMA);
+	return conf_bool(&val);
+}
+
+size_t conf_udp_async_req_txn(
+	conf_t *conf,
+	knot_db_txn_t *txn)
+{
+	conf_val_t val = conf_get_txn(conf, txn, C_SRV, C_UDP_ASYNC_REQS);
+	int64_t reqs = conf_int(&val);
+	if (reqs == YP_NIL) {
+		return UDP_ASYNC_DEFAULT_REQ;
+	}
+
+	return reqs;
+}
+
+size_t conf_tcp_async_req_txn(
+	conf_t *conf,
+	knot_db_txn_t *txn)
+{
+	conf_val_t val = conf_get_txn(conf, txn, C_SRV, C_TCP_ASYNC_REQS);
+	int64_t reqs = conf_int(&val);
+	if (reqs == YP_NIL) {
+		return TCP_ASYNC_DEFAULT_REQ;
+	}
+
+	return reqs;
+}
+
+size_t conf_xdp_async_req_txn(
+	conf_t *conf,
+	knot_db_txn_t *txn)
+{
+	conf_val_t lisxdp_val = conf_get(conf, C_SRV, C_LISTEN_XDP);
+	if (lisxdp_val.code == KNOT_EOK) {
+		conf_val_t val = conf_get_txn(conf, txn, C_SRV, C_XDP_ASYNC_REQS);
+		int64_t reqs = conf_int(&val);
+		if (reqs == YP_NIL) {
+			return XDP_ASYNC_DEFAULT_REQ;
+		}
+
+		return reqs;
+	} else {
+		return 0;
+	}
+}
+#endif
+
+
 int conf_xdp_iface(
 	struct sockaddr_storage *addr,
 	conf_xdp_iface_t *iface)

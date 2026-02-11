@@ -211,6 +211,13 @@
 #define CONF_DNS_TLS_PORT	853
 #define CONF_REDIS_PORT		6379
 
+#ifdef ENABLE_ASYNC_QUERY_HANDLING
+#define C_ENABLE_NUMA           "\x0b""enable-numa"
+#define C_UDP_ASYNC_REQS        "\x0d""udp-async-req"
+#define C_TCP_ASYNC_REQS        "\x0d""tcp-async-req"
+#define C_XDP_ASYNC_REQS        "\x0d""xdp-async-req"
+#endif
+
 enum {
 	KEYSTORE_BACKEND_PEM    = 1,
 	KEYSTORE_BACKEND_PKCS11 = 2,
