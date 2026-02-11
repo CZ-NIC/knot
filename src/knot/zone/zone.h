@@ -16,6 +16,7 @@
 #include "knot/updates/changesets.h"
 #include "knot/zone/contents.h"
 #include "knot/zone/timers.h"
+#include "knot/dnssec/zone-keys.h"
 #include "libknot/dname.h"
 #include "libknot/dynarray.h"
 #include "libknot/packet/pkt.h"
@@ -34,6 +35,9 @@ typedef enum {
 	ZONE_LAST_SIGN_OK   = 1 << 9, /*!< Last full-sign event finished OK. */
 	ZONE_PREF_MASTER_2X = 1 << 10, /*!< Preferred master has been overwritten at least once. */
 	ZONE_RDB_RELOAD     = 1 << 11, /*!< Full zone reload from database. */
+
+	ZONE_DNSSEC_ENABLED = 1 << 14, /*!< DNSSEC is enabled for this zone. */
+	ZONE_EPHEMERAL      = 1 << 15, /*!< Ephemeral zone which is not persisted after query processing */
 
 	ZONE_FLAG_MAX       = 1 << 19, /*!< Maximal usable flag below purge_flag_t. */
 	ZONE_FLAG_TYPESIZE  = 1 << 30, /*!< Enforces the compiler to use 32-bit variable for this enum. */
@@ -138,6 +142,9 @@ typedef struct zone
 	/*! \brief Preferred master for remote operation. */
 	struct sockaddr_storage *preferred_master;
 
+	/*! \brief Zone signing context and keys. (for DNSSEC onlinesign) */
+	zone_sign_ctx_t *sign_ctx;
+
 	/*! \brief Query modules. */
 	list_t query_modules;
 	struct query_plan *query_plan;
@@ -155,6 +162,17 @@ typedef struct {
 } zone_include_t;
 
 /*!
+ * \brief Creates new zone with empty zone content and marks it as ephemeral. If mm is passed,
+ * allocates the zone using mm.
+ *
+ * \param name  Zone name.
+ * \param mm    Memory context to use.
+ *
+ * \return The initialized zone structure or NULL if an error occurred.
+ */
+zone_t* zone_new_mm(const knot_dname_t *name, knot_mm_t *mm);
+
+/*!
  * \brief Creates new zone with empty zone content.
  *
  * \param name  Zone name.
@@ -162,6 +180,16 @@ typedef struct {
  * \return The initialized zone structure or NULL if an error occurred.
  */
 zone_t* zone_new(const knot_dname_t *name);
+
+/*!
+ * \brief Deallocates the zone structure created with zone_new_mm.
+ *
+ * \note The function also deallocates all bound structures (contents, etc.).
+ *
+ * \param zone_ptr Zone to be freed.
+ * \param mm       Memory context to use.
+ */
+void zone_free_mm(zone_t **zone_ptr, knot_mm_t *mm);
 
 /*!
  * \brief Deallocates the zone structure.
