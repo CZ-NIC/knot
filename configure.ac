@@ -833,7 +833,7 @@ AC_ARG_ENABLE([async-query], AS_HELP_STRING([--enable-async-query=yes|no],
 AS_CASE([$enable_async_query],
    [yes],[
      AC_DEFINE([ENABLE_ASYNC_QUERY_HANDLING], [], [Enable support for handling queries asynchronously])
-     AS_IF([test "x$have_atomic8_primitives" != "xyes"],
+     AS_IF([test "x$atomic_type" = "xnone"],
        [AC_MSG_ERROR([Async query support needs __atomic or stdatomic support])])
    ],
    [no],[],
