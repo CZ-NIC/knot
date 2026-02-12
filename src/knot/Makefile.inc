@@ -161,6 +161,8 @@ libknotd_la_SOURCES = \
 	knot/journal/knot_lmdb.h		\
 	knot/journal/serialization.c		\
 	knot/journal/serialization.h		\
+	knot/server/dns-handler.c		\
+	knot/server/dns-handler.h		\
 	knot/server/dthreads.c			\
 	knot/server/dthreads.h			\
 	knot/server/handler.c			\
