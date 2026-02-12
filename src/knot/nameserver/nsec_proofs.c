@@ -628,7 +628,11 @@ int nsec_append_rrsigs(knot_pkt_t *pkt, knotd_qdata_t *qdata, bool optional)
 {
 	int ret = KNOT_EOK;
 	uint16_t flags = optional ? KNOT_PF_NOTRUNC : KNOT_PF_NULL;
-	flags |= KNOT_PF_FREE; // Free all RRSIGs, they are synthesized
+	if (qdata->extra->zone->sign_ctx == NULL) {
+		// Free all RRSIGs, they are synthesized
+		// For online sign module, they are freed as part of azuredb module.
+		flags |= KNOT_PF_FREE;
+	}
 	flags |= KNOT_PF_ORIGTTL;
 
 	/* Append RRSIGs for section. */
