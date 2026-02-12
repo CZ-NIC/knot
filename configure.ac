@@ -852,6 +852,22 @@ AC_ARG_ENABLE([trailing-bytes],
 
 AS_IF([test "$enable_trailing_bytes" = yes], [AC_DEFINE([ENABLE_TRAILING_BYTES], [1], [Define to 1 to enable support for queries with additional trailing 0 bytes.])])
 
+AC_ARG_WITH([numa],
+        AS_HELP_STRING([--with-numa=yes|no|numa_include_folder], [Build with numa api. If numa.h is not in path, define include path in CFLAGS or pass the numa.h include folder for this parameter. [default=no]]),
+        [with_numa=$withval], [with_numa=no])
+
+AS_CASE([$with_numa],
+    [no], [],
+    [yes|*], [
+      AC_SEARCH_LIBS([numa_node_of_cpu], [numa],
+      [
+        AC_DEFINE_UNQUOTED([KNOT_ENABLE_NUMA],[1], [NUMA enabled for this build (1)])
+        with_numa=yes
+      ],
+      [AC_MSG_ERROR([--with-numa requries numa.h header files. If numa.h is not in path, define include path in CFLAGS or pass the numa.h include folder for --with-numa parameter.])],
+      [])
+    ])
+
 AC_ARG_WITH([udp-max-size],
         AS_HELP_STRING([--with-udp-max-size=size], [Size of UDP request/response max size supported. [default=65535]]),
         [udp_max_size=$withval], [udp_max_size=65535])
@@ -908,6 +924,7 @@ result_msg_base="
     AzureDB Module:          ${SUPPORTS_MODULE_azuredb}
     DoQ support:             ${enable_quic}
     Redis support:           ${enable_redis}
+    NUMA Support             ${with_numa}
     Socket polling:          ${socket_polling}
     Atomic support:          ${atomic_type}
     AliasRR Support:         ${with_aliasrr}
