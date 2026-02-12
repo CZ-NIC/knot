@@ -261,6 +261,7 @@ static const yp_item_t desc_server[] = {
 	/* Legacy items.*/
 	{ C_TCP_FASTOPEN,         YP_TBOOL, YP_VNONE, YP_FNONE, { legacy_item } },
 	{ C_DISABLE_ANY,          YP_TBOOL, YP_VNONE, YP_FNONE, { legacy_item } },
+	{ C_LISTEN_XDP,           YP_TADDR, YP_VADDR = { CONF_DNS_PORT }, YP_FMULTI, { check_xdp_listen_old } },
 	{ NULL }
 };
 

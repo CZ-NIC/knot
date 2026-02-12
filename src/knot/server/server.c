@@ -658,6 +658,9 @@ static int configure_sockets(conf_t *conf, server_t *s)
 	conf_val_t liquic_val = conf_get(conf, C_SRV, C_LISTEN_QUIC);
 	conf_val_t listls_val = conf_get(conf, C_SRV, C_LISTEN_TLS);
 	conf_val_t lisxdp_val = conf_get(conf, C_XDP, C_LISTEN);
+	if (lisxdp_val.code != KNOT_EOK) {
+		lisxdp_val = conf_get(conf, C_SRV, C_LISTEN_XDP);
+	}
 	conf_val_t rundir_val = conf_get(conf, C_SRV, C_RUNDIR);
 	uint16_t convent_quic = conf_val_count(&liquic_val);
 	uint16_t convent_tls = conf_val_count(&listls_val);
@@ -1327,6 +1330,9 @@ static bool listen_changed(conf_t *conf, server_t *server)
 	conf_val_t liquic_val = conf_get(conf, C_SRV, C_LISTEN_QUIC);
 	conf_val_t listls_val = conf_get(conf, C_SRV, C_LISTEN_TLS);
 	conf_val_t lisxdp_val = conf_get(conf, C_XDP, C_LISTEN);
+	if (lisxdp_val.code != KNOT_EOK) {
+		lisxdp_val = conf_get(conf, C_SRV, C_LISTEN_XDP);
+	}
 	size_t new_count = conf_val_count(&listen_val) + conf_val_count(&liquic_val) +
 	                   conf_val_count(&listls_val) + conf_val_count(&lisxdp_val);
 	size_t old_count = server->n_ifaces;
