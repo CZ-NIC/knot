@@ -10,6 +10,7 @@
 #include "knot/dnssec/rrset-sign.h"
 #include "knot/nameserver/process_query.h"
 #include "knot/nameserver/query_module.h"
+#include "knot/nameserver/query_state.h"
 #include "knot/nameserver/chaos.h"
 #include "knot/nameserver/internet.h"
 #include "knot/nameserver/axfr.h"
@@ -179,8 +180,42 @@ static knot_layer_state_t query_chaos(knot_pkt_t *pkt, knot_layer_t *ctx)
 	return KNOT_STATE_DONE;
 }
 
+/*!
+ * \brief Lookup zone from plan if available, else fallback to regular DB lookup.
+ */
+static zone_t *lookup_zone(struct query_plan *plan, knotd_qdata_t *qdata, knot_pkt_t *query,
+                           knot_zonedb_t *db, const knot_dname_t *zone_name, bool is_suffix_match)
+{
+	struct query_step *step;
+	int next_state = KNOT_STATE_PRODUCE;
+	qdata->extra->zone_lookup_params.is_suffix_match = is_suffix_match;
+	qdata->extra->zone_lookup_params.zone_name = zone_name;
+
+	zone_t *static_zone_response = is_suffix_match ? knot_zonedb_find_suffix(db, zone_name)
+	                                               : knot_zonedb_find(db, zone_name);
+	if (static_zone_response != NULL) {
+		return static_zone_response;
+	}
+
+	if (plan != NULL) {
+		WALK_LIST(step, plan->stage[KNOTD_STAGE_ZONE_LOOKUP]) {
+			next_state = step->general_hook(next_state, query, qdata, step->ctx);
+			if (next_state == KNOT_STATE_FAIL) {
+				break;
+			}
+		}
+	}
+
+	if (next_state == KNOTD_STATE_ZONE_LOOKUPDONE) {
+		return qdata->extra->zone;
+	}
+
+	return NULL;
+}
+
 /*! \brief Find zone for given question. */
-static zone_t *answer_zone_find(const knot_pkt_t *query, knot_zonedb_t *zonedb)
+static zone_t *answer_zone_find(struct query_plan *plan, knotd_qdata_t *qdata,
+                                knot_pkt_t *query, knot_zonedb_t *zonedb)
 {
 	uint16_t qtype = knot_pkt_qtype(query);
 	uint16_t qclass = knot_pkt_qclass(query);
@@ -198,7 +233,7 @@ static zone_t *answer_zone_find(const knot_pkt_t *query, knot_zonedb_t *zonedb)
 	 */
 	if (qtype == KNOT_RRTYPE_DS && qname[0] != '\0') {
 		const knot_dname_t *parent = knot_dname_next_label(qname);
-		zone = knot_zonedb_find_suffix(zonedb, parent);
+		zone = lookup_zone(plan, qdata, query, zonedb, parent, true);
 		/* If zone does not exist, search for its parent zone,
 		   this will later result to NODATA answer. */
 		/*! \note This is not 100% right, it may lead to DS name for example
@@ -209,10 +244,10 @@ static zone_t *answer_zone_find(const knot_pkt_t *query, knot_zonedb_t *zonedb)
 
 	if (zone == NULL) {
 		if (query_type(query) == KNOTD_QUERY_TYPE_NORMAL) {
-			zone = knot_zonedb_find_suffix(zonedb, qname);
+			zone = lookup_zone(plan, qdata, query, zonedb, qname, true);
 		} else {
 			// Direct match required.
-			zone = knot_zonedb_find(zonedb, qname);
+			zone = lookup_zone(plan, qdata, query, zonedb, qname, false);
 		}
 	}
 
@@ -440,9 +475,9 @@ static int answer_edns_put(knot_pkt_t *resp, knotd_qdata_t *qdata)
 }
 
 /*! \brief Initialize response, sizes and find zone from which we're going to answer. */
-static int prepare_answer(knot_pkt_t *query, knot_pkt_t *resp, knot_layer_t *ctx)
+static int prepare_answer(struct query_plan *plan, knotd_qdata_t *qdata, knot_pkt_t *query,
+                          knot_pkt_t *resp, knot_layer_t *ctx)
 {
-	knotd_qdata_t *qdata = QUERY_DATA(ctx);
 	server_t *server = qdata->params->server;
 
 	/* Initialize response. */
@@ -459,8 +494,9 @@ static int prepare_answer(knot_pkt_t *query, knot_pkt_t *resp, knot_layer_t *ctx
 	}
 
 	/* Update maximal answer size. */
+	uint16_t resp_size = KNOT_WIRE_MAX_PKTSIZE;
 	if (qdata->params->proto == KNOTD_QUERY_PROTO_UDP) {
-		resp->max_size = KNOT_WIRE_MIN_PKTSIZE;
+		resp_size = KNOT_WIRE_MIN_PKTSIZE;
 		if (knot_pkt_has_edns(query)) {
 			uint16_t server_size;
 			switch (knotd_qdata_remote_addr(qdata)->ss_family) {
@@ -475,11 +511,10 @@ static int prepare_answer(knot_pkt_t *query, knot_pkt_t *resp, knot_layer_t *ctx
 			}
 			uint16_t client_size = knot_edns_get_payload(query->opt_rr);
 			uint16_t transfer = MIN(client_size, server_size);
-			resp->max_size = MAX(resp->max_size, transfer);
+			resp_size = MAX(resp_size, transfer);
 		}
-	} else {
-		resp->max_size = KNOT_WIRE_MAX_PKTSIZE;
 	}
+	resp->max_size = MIN(resp->max_size, resp_size);
 
 	/* All supported OPCODEs require a question. */
 	const knot_dname_t *qname = knot_pkt_qname(query);
@@ -497,7 +532,7 @@ static int prepare_answer(knot_pkt_t *query, knot_pkt_t *resp, knot_layer_t *ctx
 	}
 
 	/* Find zone for QNAME. */
-	qdata->extra->zone = answer_zone_find(query, server->zone_db);
+	qdata->extra->zone = answer_zone_find(plan, qdata, query, server->zone_db);
 	if (qdata->extra->zone != NULL && qdata->extra->contents == NULL) {
 		qdata->extra->contents = qdata->extra->zone->contents;
 	}
@@ -565,12 +600,20 @@ static knot_layer_state_t process_query_err(knot_layer_t *ctx, knot_pkt_t *pkt)
 	return KNOT_STATE_DONE;
 }
 
+#ifdef ENABLE_ASYNC_QUERY_HANDLING
+#define NON_CONTINUABLE_STATE(next_state) ((next_state) == KNOT_STATE_FAIL || (next_state) == KNOT_STATE_ASYNC)
+#define BREAK_IF_ASYNC(next_state) if ((next_state) == KNOT_STATE_ASYNC) { break; }
+#else
+#define NON_CONTINUABLE_STATE(next_state) ((next_state) == KNOT_STATE_FAIL)
+#define BREAK_IF_ASYNC(next_state)
+#endif
+
 #define PROCESS_BEGIN(plan, step, next_state, qdata) \
 	if (plan != NULL) { \
-		WALK_LIST(step, plan->stage[KNOTD_STAGE_BEGIN]) { \
-			assert(step->type == QUERY_HOOK_TYPE_GENERAL); \
-			next_state = step->general_hook(next_state, pkt, qdata, step->ctx); \
-			if (next_state == KNOT_STATE_FAIL) { \
+		WALK_LIST_RESUME((step), plan->stage[KNOTD_STAGE_BEGIN]) { \
+			assert((step)->type == QUERY_HOOK_TYPE_GENERAL); \
+			next_state = (step)->general_hook(next_state, pkt, qdata, (step)->ctx); \
+			if (NON_CONTINUABLE_STATE(next_state)) { \
 				goto finish; \
 			} \
 		} \
@@ -578,14 +621,45 @@ static knot_layer_state_t process_query_err(knot_layer_t *ctx, knot_pkt_t *pkt)
 
 #define PROCESS_END(plan, step, next_state, qdata) \
 	if (plan != NULL) { \
-		WALK_LIST(step, plan->stage[KNOTD_STAGE_END]) { \
-			assert(step->type == QUERY_HOOK_TYPE_GENERAL); \
-			next_state = step->general_hook(next_state, pkt, qdata, step->ctx); \
+		WALK_LIST_RESUME((step), plan->stage[KNOTD_STAGE_END]) { \
+			assert((step)->type == QUERY_HOOK_TYPE_GENERAL); \
+			next_state = (step)->general_hook(next_state, pkt, qdata, (step)->ctx); \
 			if (next_state == KNOT_STATE_FAIL) { \
 				next_state = process_query_err(ctx, pkt); \
 			} \
+			BREAK_IF_ASYNC(next_state); \
 		} \
 	}
+
+static void init_state_machine(state_machine_t *state)
+{
+	memset(state, 0, sizeof(*state));
+	state->process_query_next_state = KNOT_STATE_PRODUCE;
+}
+
+#ifdef ENABLE_ASYNC_QUERY_HANDLING
+static int complete_async_call(knotd_qdata_t *qdata)
+{
+	return qdata->params->async_completed_callback(qdata->params);
+}
+
+static int async_operation_in_completed_callback(knotd_qdata_t *qdata, int state)
+{
+	assert(qdata->state);
+	state_machine_t *state_machine = qdata->state;
+	state_machine->process_query_next_state_in = state;
+	return complete_async_call(qdata);
+}
+
+static int async_operation_completed_callback(knotd_qdata_t *qdata, int state)
+{
+	assert(qdata->state);
+	state_machine_t *state_machine = qdata->state;
+	state_machine->process_query_next_state = state;
+
+	return complete_async_call(qdata);
+}
+#endif
 
 static int process_query_out(knot_layer_t *ctx, knot_pkt_t *pkt)
 {
@@ -596,9 +670,10 @@ static int process_query_out(knot_layer_t *ctx, knot_pkt_t *pkt)
 	knotd_qdata_t *qdata = QUERY_DATA(ctx);
 	struct query_plan *plan = conf()->query_plan;
 	struct query_plan *zone_plan = NULL;
-	struct query_step *step;
-
-	int next_state = KNOT_STATE_PRODUCE;
+	state_machine_t *state = NULL;
+	struct query_step *step = NULL;
+	struct query_step **step_to_use = &step;
+	int next_state;
 
 	/* Check parse state. */
 	knot_pkt_t *query = qdata->query;
@@ -608,10 +683,44 @@ static int process_query_out(knot_layer_t *ctx, knot_pkt_t *pkt)
 		goto finish;
 	}
 
-	/* Preprocessing. */
-	if (prepare_answer(query, pkt, ctx) != KNOT_EOK) {
-		next_state = KNOT_STATE_FAIL;
-		goto finish;
+	state = qdata->state;
+	if (state == NULL) {
+		state = mm_alloc(ctx->mm, sizeof(*state));
+		if (state == NULL) {
+			qdata->rcode = KNOT_RCODE_SERVFAIL;
+			next_state = KNOT_STATE_FAIL;
+			goto finish;
+		}
+		init_state_machine(state);
+		qdata->state = state;
+#ifdef ENABLE_ASYNC_QUERY_HANDLING
+		qdata->async_completed = async_operation_completed_callback;
+		qdata->async_in_completed = async_operation_in_completed_callback;
+#endif
+	}
+	step_to_use = &state->step;
+
+	next_state = state->process_query_next_state;
+#ifdef ENABLE_ASYNC_QUERY_HANDLING
+	assert(next_state != KNOT_STATE_ASYNC); /* at the beginning or resuming cant be in async */
+#endif
+	if (NON_CONTINUABLE_STATE(next_state)) {
+		if (state->process_query_state == PROCESS_QUERY_STATE_DONE_ZONE_PLAN_BEGIN) {
+			/* Async state and failurs are result of query_* methods
+			 * Go to query_* and recover execution from there. */
+			goto run_query;
+		} else {
+			goto finish;
+		}
+	}
+
+	STATE_MACHINE_RUN_STATE(state, next_state, KNOT_STATE_ASYNC, process_query_state, PROCESS_QUERY_STATE_DONE_PREPARE_ANSWER) {
+		/* Preprocessing. */
+		if (prepare_answer(plan, qdata, query, pkt, ctx) != KNOT_EOK) {
+			next_state = KNOT_STATE_FAIL;
+			goto finish;
+		}
+		STATE_MACHINE_COMPLETED_STATE(state, next_state, KNOT_STATE_ASYNC, process_query_state, PROCESS_QUERY_STATE_DONE_PREPARE_ANSWER);
 	}
 
 	if (qdata->extra->zone != NULL && qdata->extra->zone->query_plan != NULL) {
@@ -619,76 +728,127 @@ static int process_query_out(knot_layer_t *ctx, knot_pkt_t *pkt)
 	}
 
 	/* Before query processing code. */
-	PROCESS_BEGIN(plan, step, next_state, qdata);
-	PROCESS_BEGIN(zone_plan, step, next_state, qdata);
-
-	/* Answer based on qclass. */
-	if (next_state == KNOT_STATE_PRODUCE) {
-		switch (knot_pkt_qclass(pkt)) {
-		case KNOT_CLASS_CH:
-			next_state = query_chaos(pkt, ctx);
-			break;
-		case KNOT_CLASS_ANY:
-		case KNOT_CLASS_IN:
-			next_state = query_internet(pkt, ctx);
-			break;
-		default:
-			qdata->rcode = KNOT_RCODE_REFUSED;
-			next_state = KNOT_STATE_FAIL;
-			break;
-		}
+	STATE_MACHINE_RUN_STATE(state, next_state, KNOT_STATE_ASYNC, process_query_state, PROCESS_QUERY_STATE_DONE_PLAN_BEGIN) {
+		PROCESS_BEGIN(plan, *step_to_use, next_state, qdata);
+		STATE_MACHINE_COMPLETED_STATE(state, next_state, KNOT_STATE_ASYNC, process_query_state, PROCESS_QUERY_STATE_DONE_PLAN_BEGIN);
 	}
 
-	/* Postprocessing. */
-	if (next_state == KNOT_STATE_DONE || next_state == KNOT_STATE_PRODUCE) {
-		/* Move to Additionals to add OPT and TSIG. */
-		if (pkt->current != KNOT_ADDITIONAL) {
-			(void)knot_pkt_begin(pkt, KNOT_ADDITIONAL);
-		}
+	STATE_MACHINE_RUN_STATE(state, next_state, KNOT_STATE_ASYNC, process_query_state, PROCESS_QUERY_STATE_DONE_ZONE_PLAN_BEGIN) {
+		PROCESS_BEGIN(zone_plan, *step_to_use, next_state, qdata);
+		STATE_MACHINE_COMPLETED_STATE(state, next_state, KNOT_STATE_ASYNC, process_query_state, PROCESS_QUERY_STATE_DONE_ZONE_PLAN_BEGIN);
+	}
 
-		/* Put OPT RR to the additional section. */
-		if (answer_edns_put(pkt, qdata) != KNOT_EOK) {
-			qdata->rcode = KNOT_RCODE_FORMERR;
-			next_state = KNOT_STATE_FAIL;
-			goto finish;
+run_query:
+	STATE_MACHINE_RUN_STATE(state, next_state, KNOT_STATE_ASYNC, process_query_state, PROCESS_QUERY_STATE_DONE_QUERY) {
+		/* Answer based on qclass. */
+		if (next_state == KNOT_STATE_PRODUCE) {
+			switch (knot_pkt_qclass(pkt)) {
+			case KNOT_CLASS_CH:
+				next_state = query_chaos(pkt, ctx);
+				break;
+			case KNOT_CLASS_ANY:
+			case KNOT_CLASS_IN:
+				next_state = query_internet(pkt, ctx);
+				break;
+			default:
+				qdata->rcode = KNOT_RCODE_REFUSED;
+				next_state = KNOT_STATE_FAIL;
+				break;
+			}
 		}
+		STATE_MACHINE_COMPLETED_STATE(state, next_state, KNOT_STATE_ASYNC, process_query_state, PROCESS_QUERY_STATE_DONE_QUERY);
+	}
 
-		/* Transaction security (if applicable). */
-		if (process_query_sign_response(pkt, qdata) != KNOT_EOK) {
-			next_state = KNOT_STATE_FAIL;
-			goto finish;
-		}
+	STATE_MACHINE_RUN_STATE(state, next_state, KNOT_STATE_ASYNC, process_query_state, PROCESS_QUERY_STATE_DONE_POST_QUERY) {
+		/* Postprocessing. */
+		if (next_state == KNOT_STATE_DONE || next_state == KNOT_STATE_PRODUCE) {
+			/* Move to Additionals to add OPT and TSIG. */
+			if (pkt->current != KNOT_ADDITIONAL) {
+				(void)knot_pkt_begin(pkt, KNOT_ADDITIONAL);
+			}
 
-		/* Optional postprocessing with known final EDNS + TSIG (for XFR stats). */
-		if (qdata->extra->ext_finished != NULL) {
-			qdata->extra->ext_finished(qdata, pkt, next_state);
+			/* Put OPT RR to the additional section. */
+			if (answer_edns_put(pkt, qdata) != KNOT_EOK) {
+				qdata->rcode = KNOT_RCODE_FORMERR;
+				next_state = KNOT_STATE_FAIL;
+				goto finish;
+			}
+
+			/* Transaction security (if applicable). */
+			if (process_query_sign_response(pkt, qdata) != KNOT_EOK) {
+				next_state = KNOT_STATE_FAIL;
+				goto finish;
+			}
+
+			/* Optional postprocessing with known final EDNS + TSIG (for XFR stats). */
+			if (qdata->extra->ext_finished != NULL) {
+				qdata->extra->ext_finished(qdata, pkt, next_state);
+			}
 		}
+		STATE_MACHINE_COMPLETED_STATE(state, next_state, KNOT_STATE_ASYNC, process_query_state, PROCESS_QUERY_STATE_DONE_POST_QUERY);
 	}
 
 finish:
-	switch (next_state) {
-	case KNOT_STATE_NOOP:
-		break;
-	case KNOT_STATE_FAIL:
-		/* Error processing. */
-		next_state = process_query_err(ctx, pkt);
-		break;
-	case KNOT_STATE_FINAL:
-		/* Just skipped postprocessing. */
-		next_state = KNOT_STATE_DONE;
-		break;
-	default:
-		set_rcode_to_packet(pkt, qdata);
+	STATE_MACHINE_RUN_STATE(state, next_state, KNOT_STATE_ASYNC, process_query_state, PROCESS_QUERY_STATE_DONE_HANDLE_ERROR) {
+		switch (next_state) {
+		case KNOT_STATE_NOOP:
+			break;
+		case KNOT_STATE_FAIL:
+			/* Error processing. */
+			next_state = process_query_err(ctx, pkt);
+			break;
+		case KNOT_STATE_FINAL:
+			/* Just skipped postprocessing. */
+			next_state = KNOT_STATE_DONE;
+			break;
+		default:
+			set_rcode_to_packet(pkt, qdata);
+		}
+		STATE_MACHINE_COMPLETED_STATE(state, next_state, KNOT_STATE_ASYNC, process_query_state, PROCESS_QUERY_STATE_DONE_HANDLE_ERROR);
 	}
 
 	/* After query processing code. */
-	PROCESS_END(plan, step, next_state, qdata);
-	PROCESS_END(zone_plan, step, next_state, qdata);
+	STATE_MACHINE_RUN_STATE(state, next_state, KNOT_STATE_ASYNC, process_query_state, PROCESS_QUERY_STATE_DONE_PLAN_END) {
+		PROCESS_END(plan, *step_to_use, next_state, qdata);
+		STATE_MACHINE_COMPLETED_STATE(state, next_state, KNOT_STATE_ASYNC, process_query_state, PROCESS_QUERY_STATE_DONE_PLAN_END);
+	}
+
+	STATE_MACHINE_RUN_STATE(state, next_state, KNOT_STATE_ASYNC, process_query_state, PROCESS_QUERY_STATE_DONE_ZONE_PLAN_END) {
+		PROCESS_END(zone_plan, *step_to_use, next_state, qdata);
+		STATE_MACHINE_COMPLETED_STATE(state, next_state, KNOT_STATE_ASYNC, process_query_state, PROCESS_QUERY_STATE_DONE_ZONE_PLAN_END);
+	}
 
 	rcu_read_unlock();
 
+	if (knot_layer_active_state(next_state)) {
+		/* Exiting the state machine with an active state will result in more produce calls which need to resume from beginning.
+		 * Reset the state machine so it will execute all steps. */
+		if (state) {
+			init_state_machine(state);
+		}
+	}
+
 	return next_state;
 }
+
+#ifdef ENABLE_ASYNC_QUERY_HANDLING
+static int process_query_set_async_state(knot_layer_t *ctx, knot_pkt_t *pkt, int layer_state)
+{
+	assert(pkt && ctx);
+	knotd_qdata_t *qdata = QUERY_DATA(ctx);
+	if (qdata != NULL) {
+		state_machine_t *state = qdata->state;
+		if (state != NULL) {
+			state->process_query_next_state = layer_state;
+			if (layer_state == KNOT_STATE_FAIL) {
+				state->process_query_next_state_in = KNOTD_IN_STATE_ERROR;
+			}
+		}
+	}
+
+	return layer_state;
+}
+#endif
 
 bool process_query_acl_check(conf_t *conf, acl_action_t action,
                              knotd_qdata_t *qdata)
@@ -1056,6 +1216,9 @@ const knot_layer_api_t *process_query_layer(void)
 		.finish  = &process_query_finish,
 		.consume = &process_query_in,
 		.produce = &process_query_out,
+#ifdef ENABLE_ASYNC_QUERY_HANDLING
+		.set_async_state  = &process_query_set_async_state,
+#endif
 	};
 	return &api;
 }
