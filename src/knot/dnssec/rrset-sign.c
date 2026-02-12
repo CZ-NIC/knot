@@ -182,31 +182,19 @@ int knot_sign_ctx_add_data(dnssec_sign_ctx_t *ctx,
 	return sign_ctx_add_records(ctx, covered);
 }
 
-/*!
- * \brief Create RRSIG RDATA.
- *
- * \param[in]  rrsigs        RR set with RRSIGS.
- * \param[in]  ctx           DNSSEC signing context.
- * \param[in]  covered       RR covered by the signature.
- * \param[in]  key           Key used for signing.
- * \param[in]  sig_incepted  Timestamp of signature inception.
- * \param[in]  sig_expires   Timestamp of signature expiration.
- * \param[in]  sign_flags    Signing flags.
- * \param[in]  mm            Memory context.
- *
- * \return Error code, KNOT_EOK if successful.
- */
-static int rrsigs_create_rdata(knot_rrset_t *rrsigs, dnssec_sign_ctx_t *ctx,
-                               const knot_rrset_t *covered,
-                               const dnssec_key_t *key,
-                               uint32_t sig_incepted, uint32_t sig_expires,
-                               dnssec_sign_flags_t sign_flags,
-                               knot_mm_t *mm)
+int rrsigs_create_rdata(knot_rrset_t *rrsigs,
+                        dnssec_sign_ctx_t *ctx,
+                        const knot_rrset_t *covered,
+                        const dnssec_key_t *key,
+                        uint32_t sig_incepted,
+                        uint32_t sig_expires,
+                        dnssec_sign_flags_t sign_flags,
+                        knot_mm_t *mm)
 {
-	assert(rrsigs);
-	assert(rrsigs->type == KNOT_RRTYPE_RRSIG);
-	assert(!knot_rrset_empty(covered));
-	assert(key);
+	if (rrsigs == NULL || rrsigs->type != KNOT_RRTYPE_RRSIG ||
+	    knot_rrset_empty(covered) || key == NULL) {
+		return KNOT_EINVAL;
+	}
 
 	size_t header_size = rrsig_rdata_header_size(key);
 	assert(header_size != 0);
