@@ -165,6 +165,8 @@ libknotd_la_SOURCES = \
 	knot/server/dthreads.h			\
 	knot/server/handler.c			\
 	knot/server/handler.h			\
+	knot/server/network_req_manager.c	\
+	knot/server/network_req_manager.h	\
 	knot/server/proxyv2.c			\
 	knot/server/proxyv2.h			\
 	knot/server/server.c			\
