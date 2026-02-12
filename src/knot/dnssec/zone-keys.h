@@ -33,6 +33,9 @@ typedef struct {
 	bool is_ksk_active_plus;
 	bool is_pub_only;
 	bool is_revoked;
+
+	int signature_validity_offset;
+	int signature_validity_period;
 } zone_key_t;
 
 knot_dynarray_declare(keyptr, zone_key_t *, DYNARRAY_VISIBILITY_NORMAL, 1)
@@ -50,6 +53,7 @@ typedef struct {
 	zone_key_t *keys;                 // keys in keyset
 	dnssec_sign_ctx_t **sign_ctxs;    // signing buffers for keys in keyset
 	const kdnssec_ctx_t *dnssec_ctx;  // dnssec context
+	zone_node_t *rrsig;
 } zone_sign_ctx_t;
 
 /*!
