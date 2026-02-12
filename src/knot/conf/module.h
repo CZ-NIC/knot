@@ -78,10 +78,11 @@ void conf_mod_unload_shared(
  * Activates configured query modules for the specified zone or for all zones.
  *
  * \param[in] conf           Configuration.
+ * \param[in] server         Server context.
  * \param[in] zone_name      Zone name, NULL for all zones.
  * \param[in] query_modules  Destination query modules list.
  * \param[in] query_plan     Destination query plan.
- * 
+ *
  * \return Error code, KNOT_EOK if success.
  */
 int conf_activate_modules(
@@ -90,6 +91,27 @@ int conf_activate_modules(
 	const knot_dname_t *zone_name,
 	list_t *query_modules,
 	struct query_plan **query_plan
+);
+
+/*!
+ * Activates specified configured query module for the specified zone or for all zones.
+ *
+ * \param[in] conf           Configuration.
+ * \param[in] server         Server context.
+ * \param[in] zone_name      Zone name, NULL for all zones.
+ * \param[in] query_modules  Destination query modules list.
+ * \param[in] query_plan     Destination query plan.
+ * \param[in] val            Module configuration to activate.
+ *
+ * \return Error code, KNOT_EOK if success.
+ */
+int conf_activate_given_module_conf(
+	conf_t *conf,
+	struct server *server,
+	const knot_dname_t *zone_name,
+	list_t *query_modules,
+	struct query_plan **query_plan,
+	conf_val_t val
 );
 
 /*!
