@@ -39,8 +39,10 @@ class TimerDBInfo:
 
     @classmethod
     def format_last_master(cls, value):
-        offset = 4 if value[0] == socket.AF_INET else 16
-        return socket.inet_ntop(value[0], value[-offset:])
+        if value[0] == socket.AF_INET:
+            return socket.inet_ntop(socket.AF_INET, value[4:8])
+        else:
+            return socket.inet_ntop(socket.AF_INET6, value[8:24])
 
     @classmethod
     def format_value(cls, id, value):
