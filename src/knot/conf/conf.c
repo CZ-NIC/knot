@@ -1503,7 +1503,10 @@ size_t conf_xdp_async_req_txn(
 	conf_t *conf,
 	knot_db_txn_t *txn)
 {
-	conf_val_t lisxdp_val = conf_get(conf, C_SRV, C_LISTEN_XDP);
+#ifndef ENABLE_XDP
+	return KNOT_ENOTSUP;
+#else
+	conf_val_t lisxdp_val = conf_get(conf, C_XDP, C_LISTEN);
 	if (lisxdp_val.code == KNOT_EOK) {
 		conf_val_t val = conf_get_txn(conf, txn, C_SRV, C_XDP_ASYNC_REQS);
 		int64_t reqs = conf_int(&val);
@@ -1515,6 +1518,7 @@ size_t conf_xdp_async_req_txn(
 	} else {
 		return 0;
 	}
+#endif
 }
 #endif
 
