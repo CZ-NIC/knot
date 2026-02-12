@@ -182,21 +182,7 @@ int knot_sign_ctx_add_data(dnssec_sign_ctx_t *ctx,
 	return sign_ctx_add_records(ctx, covered);
 }
 
-/*!
- * \brief Create RRSIG RDATA.
- *
- * \param[in]  rrsigs        RR set with RRSIGS.
- * \param[in]  ctx           DNSSEC signing context.
- * \param[in]  covered       RR covered by the signature.
- * \param[in]  key           Key used for signing.
- * \param[in]  sig_incepted  Timestamp of signature inception.
- * \param[in]  sig_expires   Timestamp of signature expiration.
- * \param[in]  sign_flags    Signing flags.
- * \param[in]  mm            Memory context.
- *
- * \return Error code, KNOT_EOK if successful.
- */
-static int rrsigs_create_rdata(knot_rrset_t *rrsigs, dnssec_sign_ctx_t *ctx,
+int rrsigs_create_rdata(knot_rrset_t *rrsigs, dnssec_sign_ctx_t *ctx,
                                const knot_rrset_t *covered,
                                const dnssec_key_t *key,
                                uint32_t sig_incepted, uint32_t sig_expires,
