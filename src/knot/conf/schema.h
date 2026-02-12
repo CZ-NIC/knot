@@ -206,6 +206,7 @@
 
 // Legacy items.
 #define C_TCP_FASTOPEN		"\x0C""tcp-fastopen"
+#define C_DISABLE_ANY		"\x0B""disable-any"
 
 #define CONF_DNS_PORT		53
 #define CONF_DNS_TLS_PORT	853

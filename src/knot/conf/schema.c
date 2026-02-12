@@ -260,6 +260,7 @@ static const yp_item_t desc_server[] = {
 #endif
 	/* Legacy items.*/
 	{ C_TCP_FASTOPEN,         YP_TBOOL, YP_VNONE, YP_FNONE, { legacy_item } },
+	{ C_DISABLE_ANY,          YP_TBOOL, YP_VNONE, YP_FNONE, { legacy_item } },
 	{ NULL }
 };
 
@@ -550,6 +551,8 @@ static const yp_item_t desc_zone[] = {
 	{ C_DOMAIN, YP_TDNAME, YP_VNONE, CONF_IO_FRLD_ZONE },
 	{ C_TPL,    YP_TREF,   YP_VREF = { C_TPL }, CONF_IO_FRLD_ZONE, { check_ref } },
 	ZONE_ITEMS(CONF_IO_FRLD_ZONE)
+	/* Legacy items.*/
+	{ C_DISABLE_ANY,          YP_TBOOL, YP_VNONE, YP_FNONE, { legacy_item } },
 	{ NULL }
 };
 
