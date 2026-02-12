@@ -125,8 +125,7 @@ dnssec_key_t *dnssec_key_dup(const dnssec_key_t *key)
 
 	if (dnssec_key_new(&dup) != KNOT_EOK ||
 	    dnssec_key_set_dname(dup, key->dname) != KNOT_EOK ||
-	    dnssec_key_set_rdata(dup, &key->rdata) != KNOT_EOK
-	) {
+	    dnssec_key_set_rdata(dup, &key->rdata) != KNOT_EOK) {
 		dnssec_key_free(dup);
 		return NULL;
 	}
