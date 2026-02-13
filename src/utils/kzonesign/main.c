@@ -269,10 +269,15 @@ int main(int argc, char *argv[])
 		goto failure;
 	}
 
-success:
+success:;
+	int ret = EXIT_SUCCESS;
+	if (check_write_err()) {
+		ret = KNOT_EFILE;
+	}
 	util_conf_deinit();
-	return EXIT_SUCCESS;
+	return ret;
 failure:
+	check_write_err();
 	util_conf_deinit();
 	return EXIT_FAILURE;
 }

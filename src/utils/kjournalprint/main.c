@@ -505,10 +505,12 @@ int main(int argc, char *argv[])
 		}
 	}
 
-success:
+success:;
+	int ret = check_write_err();
 	util_conf_deinit();
-	return EXIT_SUCCESS;
+	return ret ? EXIT_FAILURE : EXIT_SUCCESS;
 failure:
+	check_write_err();
 	util_conf_deinit();
 	return EXIT_FAILURE;
 }

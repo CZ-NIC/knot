@@ -159,6 +159,10 @@ int main(int argc, char *argv[])
 	catalog_print(&c);
 	catalog_deinit(&c);
 
+	if (check_write_err()) {
+		goto failure;
+	}
+
 success:
 	params_cleanup();
 	util_conf_deinit();

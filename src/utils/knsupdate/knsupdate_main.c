@@ -6,6 +6,7 @@
 #include <stdlib.h>
 
 #include "libknot/dnssec/crypto.h"
+#include "utils/common/msg.h"
 #include "utils/knsupdate/knsupdate_exec.h"
 #include "utils/knsupdate/knsupdate_params.h"
 #include "libknot/libknot.h"
@@ -28,6 +29,10 @@ int main(int argc, char *argv[])
 		}
 	} else {
 		ret = EXIT_FAILURE;
+	}
+
+	if (check_write_err()) {
+		ret = KNOT_EFILE;
 	}
 
 	knsupdate_clean(&params);

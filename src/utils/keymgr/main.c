@@ -417,6 +417,9 @@ int main(int argc, char *argv[])
 	} else {
 		ret = key_command(argc, argv, optind, &kaspdb, &list_params);
 	}
+	if (check_write_err()) {
+		ret = KNOT_EFILE;
+	}
 	knot_lmdb_deinit(&kaspdb);
 	if (ret != KNOT_EOK) {
 		goto failure;

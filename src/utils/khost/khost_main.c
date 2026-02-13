@@ -6,6 +6,7 @@
 #include <stdlib.h>
 
 #include "libknot/dnssec/crypto.h"
+#include "utils/common/msg.h"
 #include "utils/khost/khost_params.h"
 #include "utils/kdig/kdig_exec.h"
 #include "libknot/libknot.h"
@@ -27,6 +28,10 @@ int main(int argc, char *argv[])
 		}
 	} else {
 		ret = EXIT_FAILURE;
+	}
+
+	if (check_write_err()) {
+		ret = KNOT_EFILE;
 	}
 
 	khost_clean(&params);

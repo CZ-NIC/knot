@@ -1428,5 +1428,9 @@ err:
 		jsonw_end(ctx.jw);
 		jsonw_free(&ctx.jw);
 	}
+	if (check_write_err()) {
+		ecode = KNOT_EFILE;
+	}
+
 	return ecode;
 }

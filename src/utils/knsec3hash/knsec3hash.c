@@ -164,6 +164,10 @@ int main(int argc, char *argv[])
 	       digest_print.data, argv[1], nsec3_params.algorithm,
 	       nsec3_params.iterations);
 
+	if (check_write_err()) {
+		exit_code = KNOT_EFILE;
+	}
+
 fail:
 	dnssec_nsec3_params_free(&nsec3_params);
 	dnssec_binary_free(&dname);
