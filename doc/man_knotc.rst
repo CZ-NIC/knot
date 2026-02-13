@@ -71,27 +71,39 @@ Options
 Actions
 .......
 
+.. _knotc_status:
+
 **status** [*detail*]
   Check if the server is running. Details are **version** for the running
   server version, **workers** for the numbers of worker threads,
   **configure** for the configure summary, or **cert-key** for the
   public key pin of the currently used certificate.
 
+.. _knotc_stop:
+
 **stop**
   Stop the server if running.
+
+.. _knotc_reload:
 
 **reload**
   Reload the server configuration and modified zone files, and reopen the log files
   if they are configured. All open zone transactions will be aborted!
 
+.. _knotc_stats:
+
 **stats** [*module*\ [\ **.**\ *counter*\ ]]
   Show global statistics counter(s). To print also counters with value 0, use
   force option.
+
+.. _knotc_zone-check:
 
 **zone-check** [*zone*...]
   Test if the server can load the zone. Semantic checks are executed if enabled
   in the configuration. If invoked with the force option, an error is returned
   when semantic check warning appears. (*)
+
+.. _knotc_zone-status:
 
 **zone-status** [*zone*...] [*filter*]
   Show the zone status. Filters are **+role**, **+serial**, **+transaction**,
@@ -105,6 +117,8 @@ Actions
   *bold font (highlited)* - zone is active / *normal* - zone is empty,
   *underscored* - zone is an interpreted catalog member.
 
+.. _knotc_zone-reload:
+
 **zone-reload** [*zone*...]
   Trigger a zone reload from a disk without checking its modification time. For
   secondary zone, the refresh event from primary server(s) is scheduled;
@@ -112,20 +126,28 @@ Actions
   zone transaction will be aborted! If invoked with the force option, also zone
   modules will be re-loaded, but blocking mode might not work reliably. (#)
 
+.. _knotc_zone-refresh:
+
 **zone-refresh** [*zone*...]
   Trigger a check for the zone serial on the zone's primary server. If
   the primary server has a newer zone, a transfer is scheduled. This command is
   valid for secondary zones. (#)
+
+.. _knotc_zone-retransfer:
 
 **zone-retransfer** [*zone*...]
   Trigger a zone transfer from the zone's primary server. The server
   doesn't check the serial of the primary server's zone. This command is valid
   for secondary zones. (#)
 
+.. _knotc_zone-notify:
+
 **zone-notify** [*zone*...]
   Trigger a NOTIFY message to all configured remotes. This can help in cases
   when previous NOTIFY had been lost or the secondary servers have been
   offline. (#)
+
+.. _knotc_zone-flush:
 
 **zone-flush** [*zone*...] [**+outdir** *directory*]
   Trigger a zone journal flush to the configured zone file. If zonefile
@@ -133,6 +155,8 @@ Actions
   If an output directory is specified, the current zone is immediately
   dumped (in the blocking mode) to a zone file in the specified directory. See
   :ref:`Notes<notes>` below about the directory permissions. (#)
+
+.. _knotc_zone-backup:
 
 **zone-backup** [*zone*...] **+backupdir** *directory* [*filter*...]
   Trigger a zone data and metadata backup to a specified directory.
@@ -156,6 +180,8 @@ Actions
   be overwritten. See :ref:`Notes<notes>` below about the directory permissions.
   (#)
 
+.. _knotc_zone-restore:
+
 **zone-restore** [*zone*...] **+backupdir** *directory* [*filter*...]
   Trigger a zone data and metadata restore from a specified backup directory.
   Optional filters are equivalent to the same filters of **zone-backup**.
@@ -163,18 +189,26 @@ Actions
   with the force option. See :ref:`Notes<notes>` below about the directory
   permissions. (#)
 
+.. _knotc_zone-sign:
+
 **zone-sign** [*zone*...]
   Trigger a DNSSEC re-sign of the zone. Existing signatures will be dropped.
   This command is valid for zones with DNSSEC signing enabled. (#)
+
+.. _knotc_zone-validate:
 
 **zone-validate** [*zone*...]
   Trigger a DNSSEC validation of the zone. If the validation fails and the
   zone is secondary, the zone expires immediately! (#)
 
+.. _knotc_zone-keys-load:
+
 **zone-keys-load** [*zone*...]
   Trigger a load of DNSSEC keys and other signing material from KASP database
   (which might have been altered manually). If suitable, re-sign the zone
   afterwards (keeping valid signatures intact). (#)
+
+.. _knotc_zone-key-rollover:
 
 **zone-key-rollover** *zone* *key_type*
   Trigger immediate key rollover. Publish new key and start a key rollover,
@@ -183,6 +217,8 @@ Actions
   key management enabled. Note that complete key rollover consists of several steps
   and the blocking mode relates to the initial one only! (#)
 
+.. _knotc_zone-ksk-submitted:
+
 **zone-ksk-submitted** *zone*... [**+ttl** *seconds*]
   Use when the zone's KSK rollover is in submission phase. By calling this command
   the user confirms manually that the parent zone contains DS record for the new
@@ -190,47 +226,73 @@ Actions
   parameter specifies the parent DS's TTL and possibly other delays, with the
   effect that the removal of old KSK is postponed by this number of seconds. (#)
 
+.. _knotc_zone-freeze:
+
 **zone-freeze** [*zone*...]
   Trigger a zone freeze. All running events will be finished and all new and pending
   (planned) zone-changing events (load, refresh, update, flush, and DNSSEC signing)
   will be held up until the zone is thawed. Up to 8 (this limit is hardcoded) DDNS
   updates per zone will be queued, subsequent updates will be refused. (#)
 
+.. _knotc_zone-thaw:
+
 **zone-thaw** [*zone*...]
   Trigger dismissal of zone freeze. (#)
+
+.. _knotc_zone-xfr-freeze:
 
 **zone-xfr-freeze** [*zone*...]
   Temporarily disable outgoing AXFR/IXFR for the zone(s). (#)
 
+.. _knotc_zone-xfr-thaw:
+
 **zone-xfr-thaw** [*zone*...]
   Dismiss outgoing XFR freeze. (#)
 
+.. _knotc_zone-read:
+
 **zone-read** *zone* [*owner* [*type*]]
   Get zone data that are currently being presented.
+
+.. _knotc_zone-begin:
 
 **zone-begin** *zone*... [**+benevolent**]
   Begin a zone transaction. If **+benevolent** is used, the transaction will
   be committed even if it contains removals of non-existent records or additions
   of existing records.
 
+.. _knotc_zone-commit:
+
 **zone-commit** *zone*...
   Commit the zone transaction. All changes are applied to the zone.
+
+.. _knotc_zone-abort:
 
 **zone-abort** *zone*...
   Abort the zone transaction. All changes are discarded.
 
+.. _knotc_zone-diff:
+
 **zone-diff** *zone*
   Get zone changes within the transaction.
 
+.. _knotc_zone-get:
+
 **zone-get** *zone* [*owner* [*type*]]
   Get zone data within the transaction.
+
+.. _knotc_zone-set:
 
 **zone-set** *zone* *owner* [*ttl*] *type* *rdata*
   Add zone record within the transaction. The first record in a rrset
   requires a ttl value specified.
 
+.. _knotc_zone-unset:
+
 **zone-unset** *zone* *owner* [*type* [*rdata*]]
   Remove zone data within the transaction.
+
+.. _knotc_zone-purge:
 
 **zone-purge** *zone*... [**+orphan**] [*filter*...]
   Purge zone data, zone file, journal, timers, and/or KASP data of specified zones.
@@ -242,9 +304,13 @@ Actions
   to the zone and triggering of zone related events during purge; use of
   **zone-freeze** is advisable. This command always requires the force option. (#)
 
+.. _knotc_zone-stats:
+
 **zone-stats** *zone* [*module*\ [\ **.**\ *counter*\ ]]
   Show zone statistics counter(s). To print also counters with value 0, use
   force option.
+
+.. _knotc_zone-serial-set:
 
 **zone-serial-set** *zone* [[**+**]\ *serial*]
   Set the zone SOA serial to the specified value. If the argument is prefixed with
@@ -255,13 +321,19 @@ Actions
   is created and committed solely for setting the new SOA serial.
   If no argument is specified, the current zone SOA serial is returned.
 
+.. _knotc_conf-init:
+
 **conf-init**
   Initialize the configuration database. If the database doesn't exist yet,
   execute this command as an intended user to ensure the server is permitted
   to access the database (e.g. *sudo -u knot knotc conf-init*). (*)
 
+.. _knotc_conf-check:
+
 **conf-check**
   Check the server configuration. (*)
+
+.. _knotc_conf-import:
 
 **conf-import** *filename* [**+nopurge**]
   Import a configuration file into the configuration database. If the database
@@ -271,33 +343,53 @@ Actions
   database from purging before the import itself.
   Also ensure the server is not using the configuration database at the same time! (*)
 
+.. _knotc_conf-export:
+
 **conf-export** [*filename*] [**+schema**]
   Export the configuration database (or JSON schema) into a file or stdout. (*)
+
+.. _knotc_conf-list:
 
 **conf-list** [*item*]
   List the configuration database sections or section items.
 
+.. _knotc_conf-read:
+
 **conf-read** [*item*]
   Read the item from the active configuration database.
+
+.. _knotc_conf-begin:
 
 **conf-begin**
   Begin a writing configuration database transaction. Only one transaction
   can be opened at a time.
 
+.. _knotc_conf-commit:
+
 **conf-commit**
   Commit the configuration database transaction.
+
+.. _knotc_conf-abort:
 
 **conf-abort**
   Rollback the configuration database transaction.
 
+.. _knotc_conf-diff:
+
 **conf-diff** [*item*]
   Get the item difference in the transaction.
+
+.. _knotc_conf-get:
 
 **conf-get** [*item*]
   Get the item data from the transaction.
 
+.. _knotc_conf-set:
+
 **conf-set** *item* [*data*...]
   Set the item data in the transaction.
+
+.. _knotc_conf-unset:
 
 **conf-unset** [*item*] [*data*...]
   Unset the item data in the transaction.
