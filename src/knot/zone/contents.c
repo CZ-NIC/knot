@@ -494,6 +494,8 @@ int zone_contents_cow(zone_contents_t *from, zone_contents_t **to)
 	from->adds_tree = NULL;
 	contents->hr_tree = from->hr_tree;
 	from->hr_tree = NULL;
+	contents->hs_tree = from->hs_tree;
+	from->hs_tree = NULL;
 	contents->size = from->size;
 	contents->max_ttl = from->max_ttl;
 
@@ -508,6 +510,12 @@ void zone_contents_clear_zonemd_trees(zone_contents_t *c)
 		hr_tree_clear(&c->hr_tree[CONTENTS_ZONEMD_TREE_VALIDATE]);
 		free(c->hr_tree);
 		c->hr_tree = NULL;
+	}
+	if (c->hs_tree != NULL) {
+		hs_tree_clear(&c->hs_tree[CONTENTS_ZONEMD_TREE_GENERATE]);
+		hs_tree_clear(&c->hs_tree[CONTENTS_ZONEMD_TREE_VALIDATE]);
+		free(c->hs_tree);
+		c->hs_tree = NULL;
 	}
 }
 
@@ -641,4 +649,20 @@ hr_tree_t *zone_contents_zonemd_tree(zone_contents_t *zone, enum zone_contents_h
 	}
 
 	return &zone->hr_tree[which];
+}
+
+hs_tree_t *zone_contents_zonemd_tree2(zone_contents_t *zone, enum zone_contents_hr_trees which)
+{
+	if (zone == NULL) {
+		return NULL;
+	}
+
+	if (zone->hs_tree == NULL) {
+		zone->hs_tree = calloc(2, sizeof(*zone->hs_tree));
+		if (zone->hs_tree == NULL) {
+			return NULL;
+		}
+	}
+
+	return &zone->hs_tree[which];
 }
