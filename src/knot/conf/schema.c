@@ -146,6 +146,7 @@ static const knot_lookup_t zone_digest[] = {
 static const knot_lookup_t zonemd_scheme[] = {
 	{ ZONEMD_SCHEME_SIMPLE,  "simple" },
 	{ ZONEMD_SCHEME_RADIX,   "radix" },
+	{ ZONEMD_SCHEME_TREE3,   "tree3" },
 	{ 0, NULL }
 };
 

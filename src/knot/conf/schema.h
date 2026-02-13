@@ -260,6 +260,7 @@ enum {
 enum {
 	ZONEMD_SCHEME_SIMPLE = 1,
 	ZONEMD_SCHEME_RADIX  = 2,
+	ZONEMD_SCHEME_TREE3  = 3,
 };
 
 enum {

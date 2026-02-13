@@ -24,7 +24,7 @@ zone = t.zone_rnd(1, records=3200, dnssec=False)
 t.link(zone, master, slave)
 
 master.conf_zone(zone).zonemd_generate = "zonemd-sha384"
-master.conf_zone(zone).zonemd_scheme = "radix"
+master.conf_zone(zone).zonemd_scheme = "tree3"
 slave.conf_zone(zone).zonemd_verify = True
 slave.conf_zone(zone).zonefile_sync = -1
 
