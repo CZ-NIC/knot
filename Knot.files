@@ -26,6 +26,8 @@ src/contrib/getline.c
 src/contrib/getline.h
 src/contrib/hr_tree.c
 src/contrib/hr_tree.h
+src/contrib/hs_tree.c
+src/contrib/hs_tree.h
 src/contrib/json.c
 src/contrib/json.h
 src/contrib/libngtcp2/ngtcp2/crypto/gnutls.c
