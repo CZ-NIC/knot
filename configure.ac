@@ -870,6 +870,27 @@ AS_CASE([$with_numa],
       [])
     ])
 
+AC_ARG_WITH([unbound],
+    AS_HELP_STRING([--with-unbound=yes|no|unbound_folder], [Build with libunbound api. If unbound.h is not in path, define include path in CFLAGS or pass the unbound.h include folder for this parameter. [default=no]]),
+    [with_unbound=$withval], [with_unbound=no])
+
+AS_CASE([$with_unbound],
+    [no], [],
+    [yes|*], [
+      AS_IF([test "x$with_unbound" != "xyes"],
+      [
+        AC_SUBST(CPPFLAGS, "$CPPFLAGS -I$with_unbound/include")
+        AC_SUBST(LDFLAGS, "$LDFLAGS -L$with_unbound/lib")
+      ])
+      AC_CHECK_HEADER([unbound.h], [], [AC_MSG_ERROR([--with-unbound requries unbound.h header files. If unbound.h is not in path, define include path in CFLAGS or pass the unbound.h include folder for --with-unbound parameter.])])
+      AC_SEARCH_LIBS([ub_resolve_async], [unbound], [],
+        [
+          AC_MSG_ERROR([--with-unbound requries unbound.h header nad library files. If unbound.h is not in path, define include path in CFLAGS or pass the unbound.h include folder for --with-unbound parameter.])
+        ])
+      AC_DEFINE_UNQUOTED([KNOT_ENABLE_UNBOUND],[1], [unbound enabled for this build (1)])
+      with_unbound=yes
+    ])
+
 # Strip -fdebug-prefix-map= parameters from flags for better reproducibility of binaries.
 filtered_cflags=$(echo -n "$CFLAGS" | \
                   sed 's/[[^[:alnum:]]]-f[[^[:space:]]]*-prefix-map=[[^[:space:]]]*//g')
@@ -929,6 +950,7 @@ result_msg_base="
     UDP maximum size:       ${udp_max_size}
     Async query handling:   ${enable_async_query}
     NUMA support            ${with_numa}
+    Unbound library support ${with_unbound}
 
     Code coverage:          ${enable_code_coverage}
     Sanitizer:              ${with_sanitizer}
