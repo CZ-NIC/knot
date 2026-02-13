@@ -941,7 +941,8 @@ static int get_index(
 	unsigned *index1,
 	unsigned *index2)
 {
-	char c, *p;
+	char c;
+	const char *p;
 	if (sscanf(*start, "[%u%c", index1, &c) != 2) {
 		return KNOT_EINVAL;
 	}
