@@ -270,6 +270,9 @@ int main(int argc, char *argv[])
 	}
 
 success:
+	if (stdout_write_err()) {
+		goto failure;
+	}
 	util_conf_deinit();
 	return EXIT_SUCCESS;
 failure:

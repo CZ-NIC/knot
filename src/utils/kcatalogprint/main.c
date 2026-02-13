@@ -160,6 +160,9 @@ int main(int argc, char *argv[])
 	catalog_deinit(&c);
 
 success:
+	if (stdout_write_err()) {
+		goto failure;
+	}
 	params_cleanup();
 	util_conf_deinit();
 	return EXIT_SUCCESS;

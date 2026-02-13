@@ -9,6 +9,7 @@
 
 #include "contrib/strtonum.h"
 #include "knot/common/log.h"
+#include "utils/common/msg.h"
 #include "utils/common/params.h"
 #include "utils/common/signal.h"
 #include "utils/knotc/commands.h"
@@ -165,5 +166,5 @@ int main(int argc, char **argv)
 
 	log_close();
 
-	return (ret == KNOT_EOK) ? EXIT_SUCCESS : EXIT_FAILURE;
+	return (ret == KNOT_EOK && !stdout_write_err()) ? EXIT_SUCCESS : EXIT_FAILURE;
 }

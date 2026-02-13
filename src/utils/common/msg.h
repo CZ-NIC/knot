@@ -5,7 +5,10 @@
 
 #pragma once
 
+#include <errno.h>
+#include <stdbool.h>
 #include <stdio.h>
+#include <string.h>
 
 #define ERROR_		";; ERROR: "
 #define INFO_		";; INFO: "
@@ -30,3 +33,13 @@ int msg_debug(int level, const char *fmt, ...);
 #define ERR2(msg, ...)	do { fprintf(stderr, "error: "   msg "\n", ##__VA_ARGS__); fflush(stderr); } while (0)
 #define WARN2(msg, ...)	do { fprintf(stderr, "warning: " msg "\n", ##__VA_ARGS__); fflush(stderr); } while (0)
 #define INFO2(msg, ...)	do { fprintf(stdout,             msg "\n", ##__VA_ARGS__); fflush(stdout); } while (0)
+
+/*! \brief Prints an error message if stdout is in a state of error. */
+inline static bool stdout_write_err(void)
+{
+	if (fflush(stdout) != 0) {
+		ERR2("failed writing output (%s)", strerror(errno));
+		return true;
+	}
+	return false;
+}
