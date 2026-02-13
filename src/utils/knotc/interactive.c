@@ -231,12 +231,12 @@ static void item_lookup(EditLine *el, const char *str, const cmd_desc_t *cmd_des
 	}
 
 	// Check for id specification.
-	char *id = (strchr(str, '['));
+	const char *id = (strchr(str, '['));
 	if (id != NULL) {
 		char *section = strndup(str, id - str);
 
 		// Check for completed id specification.
-		char *id_stop = (strchr(id, ']'));
+		const char *id_stop = (strchr(id, ']'));
 		if (id_stop != NULL) {
 			// Complete the item name.
 			if (*(id_stop + 1) == '.') {
@@ -255,7 +255,7 @@ static void item_lookup(EditLine *el, const char *str, const cmd_desc_t *cmd_des
 		free(section);
 	} else {
 		// Check for item specification.
-		char *dot = (strchr(str, '.'));
+		const char *dot = (strchr(str, '.'));
 		if (dot != NULL) {
 			// Complete the item name.
 			char *section = strndup(str, dot - str);
