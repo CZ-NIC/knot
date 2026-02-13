@@ -13,6 +13,7 @@
 #include "contrib/string.h"
 #include "contrib/strtonum.h"
 #include "libknot/libknot.h"
+#include "utils/common/exec.h"
 #include "utils/common/msg.h"
 #include "utils/common/params.h"
 
@@ -163,6 +164,10 @@ int main(int argc, char *argv[])
 	printf("%.*s (salt=%s, hash=%d, iterations=%d)\n", (int)digest_print.size,
 	       digest_print.data, argv[1], nsec3_params.algorithm,
 	       nsec3_params.iterations);
+
+	if (check_write_err()) {
+		exit_code = KNOT_EFILE;
+	}
 
 fail:
 	dnssec_nsec3_params_free(&nsec3_params);

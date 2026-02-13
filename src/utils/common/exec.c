@@ -6,6 +6,8 @@
 #include <arpa/inet.h>
 #include <stdlib.h>
 #include <time.h>
+#include <errno.h>
+#include <stdio.h>
 
 #include "libknot/dnssec/random.h"
 #include "utils/common/exec.h"
@@ -1264,4 +1266,15 @@ void print_packet(const knot_pkt_t *packet,
 		printf("\n");
 		print_footer(size, 0, 0, net, elapsed, exec_time, incoming);
 	}
+}
+
+int check_write_err(void)
+{
+	if (fflush(stdout) != 0) {
+		int saved_errno = errno;
+		ERR2("failed writing output (%s)", strerror(errno));
+		return saved_errno;
+	}
+
+	return 0;
 }

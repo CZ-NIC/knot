@@ -9,6 +9,7 @@
 
 #include "contrib/strtonum.h"
 #include "knot/common/log.h"
+#include "utils/common/exec.h"
 #include "utils/common/params.h"
 #include "utils/common/signal.h"
 #include "utils/knotc/commands.h"
@@ -161,6 +162,10 @@ int main(int argc, char **argv)
 		ret = interactive_loop(&params);
 	} else {
 		ret = process_cmd(argc - optind, (const char **)argv + optind, &params);
+	}
+
+	if (check_write_err()) {
+		ret = KNOT_EFILE;
 	}
 
 	log_close();

@@ -1321,5 +1321,9 @@ int kdig_exec(const kdig_params_t *params)
 		net_clean(&net);
 	}
 
+	if (check_write_err()) {
+		success = false;
+	}
+
 	return success ? KNOT_EOK : KNOT_ERROR;
 }

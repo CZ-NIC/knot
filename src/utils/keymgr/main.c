@@ -12,6 +12,7 @@
 #include "knot/dnssec/zone-keys.h"
 #include "libknot/dnssec/crypto.h"
 #include "libknot/libknot.h"
+#include "utils/common/exec.h"
 #include "utils/common/msg.h"
 #include "utils/common/params.h"
 #include "utils/common/signal.h"
@@ -416,6 +417,9 @@ int main(int argc, char *argv[])
 		ret = keymgr_list_zones(&kaspdb, list_params.json);
 	} else {
 		ret = key_command(argc, argv, optind, &kaspdb, &list_params);
+	}
+	if (check_write_err()) {
+		ret = KNOT_EFILE;
 	}
 	knot_lmdb_deinit(&kaspdb);
 	if (ret != KNOT_EOK) {

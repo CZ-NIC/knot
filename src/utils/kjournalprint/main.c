@@ -14,6 +14,7 @@
 #include "knot/journal/journal_read.h"
 #include "knot/journal/serialization.h"
 #include "knot/zone/zone-dump.h"
+#include "utils/common/exec.h"
 #include "utils/common/msg.h"
 #include "utils/common/params.h"
 #include "utils/common/signal.h"
@@ -505,10 +506,12 @@ int main(int argc, char *argv[])
 		}
 	}
 
-success:
+success:;
+	int ret = check_write_err();
 	util_conf_deinit();
-	return EXIT_SUCCESS;
+	return ret ? EXIT_FAILURE : EXIT_SUCCESS;
 failure:
+	check_write_err();
 	util_conf_deinit();
 	return EXIT_FAILURE;
 }

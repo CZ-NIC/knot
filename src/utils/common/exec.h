@@ -124,3 +124,10 @@ void print_packet(const knot_pkt_t *packet,
                   const time_t     exec_time,
                   const bool       incoming,
                   const style_t    *style);
+
+/*!
+ * \brief Prints an error message if stdout is in a state of error.
+ *
+ * \returns Value of errno (non-zero on error).
+ */
+int check_write_err(void);

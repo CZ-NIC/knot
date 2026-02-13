@@ -12,6 +12,7 @@
 #include "utils/common/params.h"
 #include "utils/common/signal.h"
 #include "utils/common/util_conf.h"
+#include "utils/common/exec.h"
 
 #define PROGRAM_NAME	"kcatalogprint"
 
@@ -158,6 +159,10 @@ int main(int argc, char *argv[])
 	free(db);
 	catalog_print(&c);
 	catalog_deinit(&c);
+
+	if (check_write_err()) {
+		goto failure;
+	}
 
 success:
 	params_cleanup();
