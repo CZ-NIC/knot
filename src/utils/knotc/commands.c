@@ -145,7 +145,7 @@ static int check_conf_args(cmd_args_t *args)
 	return KNOT_EINVAL;
 }
 
-static int get_conf_key(const char *key, knot_ctl_data_t *data)
+static int get_conf_key(char *key, knot_ctl_data_t *data)
 {
 	// Get key0.
 	const char *key0 = key;
@@ -534,7 +534,7 @@ static int set_stats_items(cmd_args_t *args, knot_ctl_data_t *data)
 	if (args->argc > idx) {
 		(*data)[KNOT_CTL_IDX_SECTION] = args->argv[idx];
 
-		char *item = strchr(args->argv[idx], '.');
+		char *item = strchr((char *)args->argv[idx], '.');
 		if (item != NULL) {
 			// Separate section and item.
 			*item++ = '\0';
@@ -1220,7 +1220,7 @@ static int cmd_conf_ctl(cmd_args_t *args)
 		CTL_SEND_DATA
 	// Set the first item argument.
 	} else {
-		ret = get_conf_key(args->argv[0], &data);
+		ret = get_conf_key((char *)args->argv[0], &data);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
@@ -1236,7 +1236,7 @@ static int cmd_conf_ctl(cmd_args_t *args)
 		if (args->desc->flags & CMD_FOPT_DATA) {
 			data[KNOT_CTL_IDX_DATA] = args->argv[i];
 		} else {
-			ret = get_conf_key(args->argv[i], &data);
+			ret = get_conf_key((char *)args->argv[i], &data);
 			if (ret != KNOT_EOK) {
 				return ret;
 			}

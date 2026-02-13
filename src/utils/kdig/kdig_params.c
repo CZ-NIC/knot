@@ -876,7 +876,7 @@ static int opt_https(const char *arg, void *query)
 	q->https.enable = true;
 
 	if (arg != NULL) {
-		char *resource = strstr(arg, "://");
+		const char *resource = strstr(arg, "://");
 		if (resource == NULL) {
 			resource = (char *)arg;
 		} else {
@@ -887,7 +887,7 @@ static int opt_https(const char *arg, void *query)
 			}
 		}
 
-		char *tmp_path = strchr(resource, '/');
+		const char *tmp_path = strchr(resource, '/');
 		if (tmp_path) {
 			free(q->https.path);
 			q->https.path = strdup(tmp_path);
@@ -1178,7 +1178,7 @@ static int opt_subnet(const char *arg, void *query)
 {
 	query_t *q = query;
 
-	char         *sep = NULL;
+	const char   *sep = NULL;
 	const size_t arg_len = strlen(arg);
 	const char   *arg_end = arg + arg_len;
 	size_t       addr_len = 0;
