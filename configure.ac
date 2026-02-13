@@ -900,6 +900,26 @@ AS_IF([test "x$enable_async_query" = "xyes"] && [test "x$SUPPORTS_MODULE_azuredb
 ],
 AM_CONDITIONAL([HAVE_ALIASRR], [false]))
 
+AC_ARG_ENABLE([trafficmanager],
+    AS_HELP_STRING([--enable-trafficmanager=yes|no], [enable TrafficManager module [default=no]]),
+    [], [enable_trafficmanager=no])
+
+libnethost_CFLAGS=
+libnethost_LIBS=
+trafficmanager_CFLAGS=
+AS_IF([test "$enable_daemon" = "no"],[enable_trafficmanager=no])
+AS_IF([test "$enable_trafficmanager" = yes], [
+    NETCOREAPP_VERSION=$(ls /usr/share/dotnet/packs/Microsoft.NETCore.App.Host.linux-x64 | tail -n 1)
+    libnethost_CFLAGS="-I/usr/share/dotnet/packs/Microsoft.NETCore.App.Host.linux-x64/$NETCOREAPP_VERSION/runtimes/linux-x64/native"
+    libnethost_LIBS=""
+    trafficmanager_CFLAGS="-I../microsoft/trafficmanager/PolicyProvider.Rescue.Native/include"
+    AC_SUBST([libnethost_CFLAGS])
+    AC_SUBST([libnethost_LIBS])
+    AC_SUBST([trafficmanager_CFLAGS])
+])
+AS_IF([test "$enable_trafficmanager" = yes], [AC_DEFINE([USE_TRAFFICMANAGER], [1], [Define to 1 to enable TrafficManager module.])])
+AM_CONDITIONAL([USE_TRAFFICMANAGER], [test "$enable_trafficmanager" = yes])
+
 # Strip -fdebug-prefix-map= parameters from flags for better reproducibility of binaries.
 filtered_cflags=$(echo -n "$CFLAGS" | \
                   sed 's/[[^[:alnum:]]]-f[[^[:space:]]]*-prefix-map=[[^[:space:]]]*//g')
@@ -961,6 +981,7 @@ result_msg_base="
     NUMA support            ${with_numa}
     Unbound library support ${with_unbound}
     Alias RR support:       ${with_aliasrr}
+    Traffic manager:        ${enable_trafficmanager}
 
     Code coverage:          ${enable_code_coverage}
     Sanitizer:              ${with_sanitizer}
