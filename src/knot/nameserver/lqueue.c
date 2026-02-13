@@ -1,6 +1,7 @@
 #include <stddef.h>
-#include "knot/include/lqueue.h"
 #include <assert.h>
+
+#include "knot/include/lqueue.h"
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Watomic-alignment"
@@ -8,13 +9,13 @@
 int knotd_lockless_queue_create(knotd_lockless_queue_t **queue, KNOTD_LOCKLESS_QUEUE_COUNT_TYPE size) {
     assert(size < 0xFFFFU);
     size_t size_to_alloc = sizeof(knotd_lockless_queue_t) + ((size + 1) * sizeof(void*));
-	if (posix_memalign( (void**)queue, 16, size_to_alloc) != 0) {
-		return ENOMEM;
-	}
+    if (posix_memalign( (void**)queue, 16, size_to_alloc) != 0) {
+            return ENOMEM;
+    }
 
-	memset((void*)*queue, 0, sizeof(knotd_lockless_queue_t));
+    memset((void*)*queue, 0, sizeof(knotd_lockless_queue_t));
     (*queue)->size = size + 1;
-	return 0;
+    return 0;
 }
 
 void knotd_lockless_queue_delete(knotd_lockless_queue_t *queue)

@@ -12,7 +12,7 @@
  * \brief Queue state.
  */
 typedef struct knotd_lockless_queue_state {
-	KNOT_ALIGN(sizeof(KNOTD_LOCKLESS_QUEUE_COUNT_TYPE) * 4)
+    KNOT_ALIGN(sizeof(KNOTD_LOCKLESS_QUEUE_COUNT_TYPE) * 4)
     KNOTD_LOCKLESS_QUEUE_COUNT_TYPE head;               /*!< Head where insertion can be performed. */
     KNOTD_LOCKLESS_QUEUE_COUNT_TYPE tail;               /*!< Tail where removal can be performed. */
     KNOTD_LOCKLESS_QUEUE_COUNT_TYPE head_reserved;      /*!< Head reservation to insert. */
