@@ -285,4 +285,5 @@ include $(srcdir)/knot/modules/rrl/Makefile.inc
 include $(srcdir)/knot/modules/stats/Makefile.inc
 include $(srcdir)/knot/modules/synthrecord/Makefile.inc
 include $(srcdir)/knot/modules/whoami/Makefile.inc
+include $(srcdir)/knot/modules/delay/Makefile.inc
 # include $(srcdir)/knot/modules/azuredb/Makefile.inc
