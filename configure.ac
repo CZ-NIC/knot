@@ -441,6 +441,7 @@ KNOT_MODULE([rrl],         "yes")
 KNOT_MODULE([stats],       "yes")
 KNOT_MODULE([synthrecord], "yes")
 KNOT_MODULE([whoami],      "yes")
+KNOT_MODULE([delay],       "no")
 
 AC_SUBST([STATIC_MODULES_DECLARS], [$(printf "$static_modules_declars")])
 AM_SUBST_NOTMAKE([STATIC_MODULES_DECLARS])
@@ -853,6 +854,12 @@ AS_CASE([$enable_async_query],
       ],
     [no],[],
     [*], [AC_MSG_ERROR([Invalid value of --enable-async-query.])])
+
+AS_IF([test "x$STATIC_MODULE_delay" = "xyes" -o "x$SHARED_MODULE_delay" = "xyes"],[
+    AS_IF([test "x$enable_async_query" != "xyes"], [
+      AC_MSG_ERROR([delay module requires async query support in knot. Enable with --enable-async-query])
+    ])
+])
 
 AC_ARG_WITH([numa],
     AS_HELP_STRING([--with-numa=yes|no|numa_include_folder], [Build with numa api. If numa.h is not in path, define include path in CFLAGS or pass the numa.h include folder for this parameter. [default=no]]),
