@@ -904,6 +904,8 @@ filtered_cppflags=$(echo -n "$CPPFLAGS" | \
 filtered_config_params=$(echo -n "$ac_configure_args" | \
                          sed 's/[[^[:alnum:]]]-f[[^[:space:]]]*-prefix-map=[[^[:space:]]]*//g')
 
+AS_IF([test "x$STATIC_MODULE_azuredb" = "xno"] && [test "x$SHARED_MODULE_azuredb" = "xno"],[SUPPORTS_MODULE_azuredb=no],[SUPPORTS_MODULE_azuredb=yes])
+
 with_aliasrr=no
 AS_IF([test "x$enable_async_query" = "xyes"] && [test "x$SUPPORTS_MODULE_azuredb" = "xyes"] && [test "x$with_unbound" = "xyes"],
   [
