@@ -162,7 +162,7 @@ int main(int argc, char *argv[])
 	int ret = zone_check(filename, zonename, zonemd, DEFAULT_TTL, optional,
 	                     (time_t)check_time, print, threads);
 	log_close();
-	if (ret == KNOT_EOK) {
+	if (!stdout_write_err() && ret == KNOT_EOK) {
 		if (verbose && !print) {
 			INFO2("No error found");
 		}

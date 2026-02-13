@@ -1424,5 +1424,9 @@ err:
 	if (JSON_MODE(ctx)) {
 		jsonw_free(&ctx.jw);
 	}
+	if (stdout_write_err()) {
+		ecode = EXIT_FAILURE;
+	}
+
 	return ecode;
 }
