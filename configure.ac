@@ -854,6 +854,27 @@ AC_ARG_ENABLE([trailing-bytes],
 
 AS_IF([test "$enable_trailing_bytes" = yes], [AC_DEFINE([ENABLE_TRAILING_BYTES], [1], [Define to 1 to enable support for queries with additional trailing 0 bytes.])])
 
+AC_ARG_WITH([unbound],
+        AS_HELP_STRING([--with-unbound=yes|no|unbound_folder], [Build with libunbound api. If unbound.h is not in path, define include path in CFLAGS or pass the unbound.h include folder for this parameter. [default=no]]),
+        [with_unbound=$withval], [with_unbound=no])
+
+AS_CASE([$with_unbound],
+    [no], [],
+    [yes|*], [
+      AS_IF([test "x$with_unbound" != "xyes"],
+      [
+        AC_SUBST(CPPFLAGS, "$CPPFLAGS -I$with_unbound/include")
+        AC_SUBST(LDFLAGS, "$LDFLAGS -L$with_unbound/lib")
+      ])
+      AC_CHECK_HEADER([unbound.h], [], [AC_MSG_ERROR([--with-unbound requries unbound.h header files. If unbound.h is not in path, define include path in CFLAGS or pass the unbound.h include folder for --with-unbound parameter.])])
+      AC_SEARCH_LIBS([ub_resolve_async], [unbound], [],
+        [
+          AC_MSG_ERROR([--with-unbound requries unbound.h header nad library files. If unbound.h is not in path, define include path in CFLAGS or pass the unbound.h include folder for --with-unbound parameter.])
+        ])
+      AC_DEFINE_UNQUOTED([KNOT_ENABLE_UNBOUND],[1], [unbound enabled for this build (1)])
+      with_unbound=yes
+    ])
+
 AC_ARG_WITH([numa],
         AS_HELP_STRING([--with-numa=yes|no|numa_include_folder], [Build with numa api. If numa.h is not in path, define include path in CFLAGS or pass the numa.h include folder for this parameter. [default=no]]),
         [with_numa=$withval], [with_numa=no])
@@ -930,6 +951,7 @@ result_msg_base="
     Socket polling:          ${socket_polling}
     Atomic support:          ${atomic_type}
     AliasRR Support:         ${with_aliasrr}
+    Unbound library support  ${with_unbound}
     Memory allocator:        ${with_memory_allocator}
     Fast zone parser:        ${enable_fastparser}
     Utilities with IDN:      ${with_libidn}
