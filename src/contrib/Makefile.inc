@@ -42,6 +42,8 @@ libcontrib_la_SOURCES = \
 	contrib/getline.h			\
 	contrib/hr_tree.c			\
 	contrib/hr_tree.h			\
+	contrib/hs_tree.c			\
+	contrib/hs_tree.h			\
 	contrib/json.c				\
 	contrib/json.h				\
 	contrib/macros.h			\

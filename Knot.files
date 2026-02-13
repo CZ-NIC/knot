@@ -26,6 +26,8 @@ src/contrib/getline.c
 src/contrib/getline.h
 src/contrib/hr_tree.c
 src/contrib/hr_tree.h
+src/contrib/hs_tree.c
+src/contrib/hs_tree.h
 src/contrib/json.c
 src/contrib/json.h
 src/contrib/libngtcp2/ngtcp2/crypto/gnutls.c
@@ -677,6 +679,7 @@ tests/contrib/test_base64.c
 tests/contrib/test_base64url.c
 tests/contrib/test_heap.c
 tests/contrib/test_hr_tree.c
+tests/contrib/test_hs_tree.c
 tests/contrib/test_inet_ntop.c
 tests/contrib/test_net.c
 tests/contrib/test_net_shortwrite.c
