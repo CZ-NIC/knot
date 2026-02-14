@@ -6,6 +6,8 @@
 #include <stdio.h>
 
 #include "knot/zone/digest.h"
+
+#include "knot/common/log.h"
 #include "knot/dnssec/rrset-sign.h"
 #include "knot/updates/zone-update.h"
 #include "contrib/wire_ctx.h"
@@ -251,7 +253,15 @@ int zone_update_add_digest(struct zone_update *update, int algorithm, bool place
 			return KNOT_EOK;
 		}
 	} else {
+		struct timespec beg = time_now();
 		int ret = zone_contents_digest(update->new_cont, algorithm, false, &digest, &dsize);
+
+		struct timespec end = time_now();
+
+		char meminfo[256] = { 0 };
+		// TODO for incremental algorithm(s) with persistent data structure, fill in meminfo
+		log_zone_debug(update->zone->name, "ZONEMD computed in %.02f seconds%s (%s)", time_diff_ms(&beg, &end) / 1000.0, meminfo, knot_strerror(ret));
+
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
