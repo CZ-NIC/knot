@@ -31,6 +31,15 @@ static void node_free(hs_node_t *n, hs_tree_t *t) {
 	mm_free(t->mm, n);
 }
 
+static uint8_t *any_leaf(hs_node_t *n, unsigned depth, hs_tree_t *t)
+{
+	while (!leaf_parent(n, depth, t)) {
+		n = n->branch_childs[0];
+		depth++;
+	}
+	return n->leaf_childs[0];
+}
+
 static bool node_geq(hs_node_t *n, unsigned depth, hs_tree_t *t, unsigned idx, const uint8_t *hash)
 {
 	if (leaf_parent(n, depth, t)) {
@@ -138,6 +147,16 @@ int hs_tree_rem(hs_tree_t *t, const uint8_t *hash)
 	// FIXME rehash
 }
 
+static int nibble_memcmp(const uint8_t *a, const uint8_t *b, unsigned nibbles)
+{
+	int res = memcmp(a, b, nibbles >> 1);
+	if (res == 0 && (nibbles & 1)) {
+		uint8_t ea = a[nibbles >> 1] & 0xf0, eb = b[nibbles >> 1] & 0xf0;
+		res = memcmp(&ea, &eb, sizeof(ea));
+	}
+	return res;
+}
+
 static int node_add_idx(hs_node_t **npp, unsigned depth, hs_tree_t *t, unsigned idx, const uint8_t *hash)
 {
 	hs_node_t *n = *npp;
@@ -197,7 +216,7 @@ static int node_add(hs_node_t **npp, unsigned depth, hs_tree_t *t, const uint8_t
 		}
 		return node_add_idx(npp, depth, t, idx, hash);
 	} else {
-		int cmp = memcmp(TODO, hash, t->hash_len);
+		int cmp = nibble_memcmp(any_leaf(n->branch_childs[idx], depth + 1, t), hash, t->width_4bits * (depth + 1));
 		if (cmp == 0) {
 			return node_add(&n->branch_childs[idx], depth + 1, t, hash);
 		} else {
