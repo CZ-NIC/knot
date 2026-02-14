@@ -7,6 +7,8 @@
 #include <stdio.h>
 
 #include "knot/zone/digest.h"
+
+#include "knot/common/log.h"
 #include "knot/dnssec/rrset-sign.h"
 #include "knot/updates/zone-update.h"
 #include "contrib/hr_tree.h"
@@ -368,8 +370,13 @@ int zone_update_add_digest(conf_t *conf, struct zone_update *update, int algorit
 			return KNOT_EOK;
 		}
 	} else {
+		struct timespec beg = time_now();
 
 		int ret = zone_contents_digest(update, NULL, algorithm, conf_opt(&scheme), false, false, &digest, &dsize);
+
+		struct timespec end = time_now();
+		log_zone_debug(update->zone->name, "ZONEMD computed in %.02f seconds (%s)", time_diff_ms(&beg, &end) / 1000.0, knot_strerror(ret));
+
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
