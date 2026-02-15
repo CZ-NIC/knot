@@ -200,16 +200,6 @@ static void udp_recvfrom_handle(udp_context_t *ctx, void *d)
 
 	/* Process received pkt. */
 	handle_dns_request(&ctx->dns_handler, &rq->udp_req->dns_req);
-#ifdef ENABLE_ASYNC_QUERY_HANDLING
-	if (dns_handler_request_is_async(rq->udp_req->dns_req)) {
-		// Save udp source state
-		rq->udp_req->msg_namelen_received = rq->msg[RX].msg_namelen;
-		rq->udp_req->msg_controllen_received = rq->msg[RX].msg_controllen;
-		// release the request
-		rq->udp_req = NULL;
-	}
-#endif
-
 }
 
 static void udp_send_single_response(network_dns_request_t *udp_req, struct msghdr *msghdr_tx) {
@@ -388,17 +378,6 @@ static void udp_recvmmsg_handle(udp_context_t *ctx, void *d)
 	/* Setup response for each received msg. */
 	for (unsigned i = 0; i < rq->rcvd; ++i) {
 		struct iovec *tx = rq->msgs[TX][i].msg_hdr.msg_iov;
-#ifdef ENABLE_ASYNC_QUERY_HANDLING
-		if (dns_handler_request_is_async(rq->udp_reqs[i]->dns_req)) {
-			// Save udp source state
-			rq->udp_reqs[i]->msg_namelen_received = rq->msgs[RX][i].msg_hdr.msg_namelen;
-			rq->udp_reqs[i]->msg_controllen_received = rq->msgs[RX][i].msg_hdr.msg_controllen;
-
-			tx->iov_len = 0; // asynced request have nothing to send
-			rq->udp_reqs[i] = NULL;
-			rq->udp_reqs_fully_allocated = false;
-		}
-#endif
 		rq->msgs[TX][i].msg_len = tx->iov_len;
 		rq->msgs[TX][i].msg_hdr.msg_namelen = 0;
 		if (tx->iov_len > 0) {
@@ -539,47 +518,6 @@ static unsigned udp_set_ifaces(const server_t *server, size_t n_ifaces, fdset_t 
 	return fdset_get_length(fds);
 }
 
-#ifdef ENABLE_ASYNC_QUERY_HANDLING
-static bool use_numa = false;
-static bool udp_use_async = false;
-static atomic_shared_dns_request_manager_t udp_shared_req_mgr[KNOT_MAX_NUMA];
-static size_t udp_req_pool_size;
-
-/*!
- * \brief Initialize udp async.
- *
- * \param pool_size Request pool size.
- * \param numa_enabled Indicates if numa available.
- *
- * \retval KNOT_EOK on success.
- */
-int init_udp_async(size_t pool_size, bool numa_enabled) {
-	for (int i = 0; i < KNOT_MAX_NUMA; i++) {
-		init_shared_req_mgr(udp_shared_req_mgr[i]);
-	}
-	udp_req_pool_size = pool_size;
-	udp_use_async = true;
-	use_numa = numa_enabled;
-	return KNOT_EOK;
-}
-
-static void udp_async_query_completed_callback(dns_request_handler_context_t *net, dns_handler_request_t *req) {
-	udp_context_t *udp = caa_container_of(net, udp_context_t, dns_handler);
-	network_dns_request_t *udp_req = caa_container_of(req, network_dns_request_t, dns_req);
-
-	// Prepare response and send it
-	struct msghdr txmsg;
-	udp_set_msghdr_from_req(&txmsg, udp_req, TX);
-	txmsg.msg_namelen = udp_req->msg_namelen_received;
-	txmsg.msg_controllen = udp_req->msg_controllen_received;
-	txmsg.msg_control = (txmsg.msg_controllen != 0) ? &udp_req->pktinfo.cmsg : NULL;
-	udp_send_single_response(udp_req, &txmsg);
-
-	// Free the request
-	udp->req_mgr->free_network_request_func(udp->req_mgr, udp_req);
-}
-#endif
-
 int udp_master(dthread_t *thread)
 {
 	if (thread == NULL || thread->data == NULL) {
@@ -599,14 +537,6 @@ int udp_master(dthread_t *thread)
 	if (cpu > 1) {
 		unsigned cpu_mask = (dt_get_id(thread) % cpu);
 		dt_setaffinity(thread, &cpu_mask, 1);
-#ifdef KNOT_ENABLE_NUMA
-		if (use_numa)
-		{
-			int cpu_numa_node = numa_node_of_cpu(cpu_mask);
-			numa_node =  cpu_numa_node % KNOT_MAX_NUMA;
-			log_info("UDP thread %d using numa %d, original %d", thread_id, numa_node, cpu_numa_node);
-		}
-#endif
 	}
 
 	/* Create UDP answering context. */
@@ -624,18 +554,10 @@ int udp_master(dthread_t *thread)
 #ifdef ENABLE_RECVMMSG
 		api = &udp_recvmmsg_api;
 		udp.req_mgr =
-#ifdef ENABLE_ASYNC_QUERY_HANDLING
-			udp_use_async ?
-				network_dns_request_pool_manager_create(&udp_shared_req_mgr[numa_node], KNOT_WIRE_MAX_UDP_PKTSIZE, 16 * MM_DEFAULT_BLKSIZE, udp_req_pool_size) :
-#endif
 				network_dns_request_manager_knot_mm_create(KNOT_WIRE_MAX_UDP_PKTSIZE, 16 * MM_DEFAULT_BLKSIZE);
 #else
 		api = &udp_recvfrom_api;
 		udp.req_mgr =
-#ifdef ENABLE_ASYNC_QUERY_HANDLING
-			udp_use_async ?
-				network_dns_request_pool_manager_create(&udp_shared_req_mgr[numa_node], KNOT_WIRE_MAX_UDP_PKTSIZE, 16 * MM_DEFAULT_BLKSIZE, udp_req_pool_size):
-#endif
 				network_dns_request_manager_basic_create(KNOT_WIRE_MAX_UDP_PKTSIZE, 16 * MM_DEFAULT_BLKSIZE);
 #endif
 	}
@@ -650,9 +572,6 @@ int udp_master(dthread_t *thread)
 			KNOTD_QUERY_FLAG_NO_AXFR | KNOTD_QUERY_FLAG_NO_IXFR | /* No transfers. */
 				KNOTD_QUERY_FLAG_LIMIT_SIZE, /* Enforce UDP packet size limit. */
 			NULL
-#ifdef ENABLE_ASYNC_QUERY_HANDLING
-			,udp_async_query_completed_callback
-#endif
 			) != KNOT_EOK) {
 		goto finish;
 	}
@@ -661,11 +580,6 @@ int udp_master(dthread_t *thread)
 	void *xdp_socket = NULL;
 	size_t nifs = handler->server->n_ifaces;
 	size_t fds_size = handler->server->n_ifaces;
-#ifdef ENABLE_ASYNC_QUERY_HANDLING
-	if (udp_use_async) {
-		fds_size++;
-	}
-#endif
 	fdset_t fds;
 	if (fdset_init(&fds, fds_size) != KNOT_EOK) {
 		goto finish;
@@ -675,13 +589,6 @@ int udp_master(dthread_t *thread)
 	if (nfds == 0) {
 		goto finish;
 	}
-
-#ifdef ENABLE_ASYNC_QUERY_HANDLING
-	int async_completed_notification = dns_request_handler_context_get_async_notify_handle(&udp.dns_handler);
-	if (fdset_add(&fds, async_completed_notification, FDSET_POLLIN, NULL) < 0) {
-		goto finish;
-	}
-#endif
 
 	/* Initialize the networking API. */
 	api_ctx = api->udp_init(xdp_socket, udp.req_mgr);
@@ -706,13 +613,6 @@ int udp_master(dthread_t *thread)
 				continue;
 			}
 			int ready_handle = fdset_it_get_fd(&it);
-#ifdef ENABLE_ASYNC_QUERY_HANDLING
-			if (ready_handle == async_completed_notification) {
-				server_stats_increment_counter(server_stats_udp_async_done, 1);
-				handle_dns_request_async_completed_queries(&udp.dns_handler);
-			}
-			else
-#endif
 			{
 				server_stats_increment_counter(server_stats_udp_received, 1);
 				if (api->udp_recv(ready_handle, api_ctx) > 0) {
@@ -729,12 +629,6 @@ int udp_master(dthread_t *thread)
 	}
 
 finish:
-#ifdef ENABLE_ASYNC_QUERY_HANDLING
-	{
-		struct timespec five_sec = { 5, 0 };
-		nanosleep(&five_sec, &five_sec);
-	}
-#endif
 
 	cleanup_dns_handle(&udp.dns_handler);
 	api->udp_deinit(api_ctx);
