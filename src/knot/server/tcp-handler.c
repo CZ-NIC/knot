@@ -58,9 +58,6 @@ typedef struct tcp_context {
 	unsigned max_worker_fds;         /*!< Max TCP clients per worker configuration + no. of ifaces. */
 	int idle_timeout;                /*!< [s] TCP idle timeout configuration. */
 	int io_timeout;                  /*!< [ms] TCP send/recv timeout configuration. */
-#ifdef ENABLE_ASYNC_QUERY_HANDLING
-	int async_fd;                    /*!< Async notification file descriptor. */
-#endif
 } tcp_context_t;
 
 #define TCP_SWEEP_INTERVAL 2 /*!< [secs] granularity of connection sweeping. */
@@ -97,12 +94,6 @@ static fdset_sweep_state_t tcp_sweep(fdset_t *set, int fd, _unused_ void *ctx, _
 	assert(set && fd >= 0 && data != NULL);
 
 	_unused_ tcp_context_t *tcp = (tcp_context_t*)data;
-#ifdef ENABLE_ASYNC_QUERY_HANDLING
-	network_dns_request_t *req = (network_dns_request_t *) ctx;
-	if (req != NULL) {
-		dns_handler_cancel_request(req->dns_req);
-	}
-#endif
 
 	/* Best-effort, name and shame. */
 	struct sockaddr_storage ss = { 0 };
@@ -185,15 +176,6 @@ static int tcp_handle(tcp_context_t *tcp, _unused_ unsigned idx)
 	}
 
 	int ret = handle_dns_request(&tcp->dns_handler, &tcp_req->dns_req);
-#ifdef ENABLE_ASYNC_QUERY_HANDLING
-	if (dns_handler_request_is_async(tcp_req->dns_req)) {
-		// Save the request on tcp connection context
-		fdset_set_ctx(&tcp->set, idx, tcp->tcp_req);
-
-		// Release it
-		tcp->tcp_req = NULL;
-	}
-#endif
 	return ret;
 }
 
@@ -261,12 +243,6 @@ static void tcp_wait_for_events(tcp_context_t *tcp)
 		unsigned int idx = fdset_it_get_idx(&it);
 		if (fdset_it_is_error(&it)) {
 			should_close = (idx >= tcp->client_threshold);
-#ifdef ENABLE_ASYNC_QUERY_HANDLING
-		} else if (idx == tcp->client_threshold - 1) {
-			// Async completion notification
-			server_stats_increment_counter(server_stats_tcp_async_done, 1);
-			handle_dns_request_async_completed_queries(&tcp->dns_handler);
-#endif
 		} else if (fdset_it_is_pollin(&it)) {
 			/* Master sockets - new connection to accept. */
 			if (idx < tcp->client_threshold) {
@@ -277,12 +253,6 @@ static void tcp_wait_for_events(tcp_context_t *tcp)
 				}
 			/* Client sockets - already accepted connection or
 			   closed connection :-( */
-#ifdef ENABLE_ASYNC_QUERY_HANDLING
-			} else if (fdset_get_ctx(&tcp->set, idx) != NULL) {
-				// Received another request before completing the current one, ignore for now
-				// Implement more async handling
-				server_stats_increment_counter(server_stats_tcp_multiple_req, 1);
-#endif
 			} else {
 				server_stats_increment_counter(server_stats_tcp_received, 1);
 				if (tcp_event_serve(tcp, idx) != KNOT_EOK) {
@@ -293,12 +263,6 @@ static void tcp_wait_for_events(tcp_context_t *tcp)
 
 		/* Evaluate. */
 		if (should_close) {
-#ifdef ENABLE_ASYNC_QUERY_HANDLING
-			network_dns_request_t *req = (network_dns_request_t *) fdset_it_get_ctx(&it);
-			if (req != NULL) {
-				dns_handler_cancel_request(req->dns_req);
-			}
-#endif
 			fdset_it_remove(&it);
 		}
 	}
@@ -315,63 +279,6 @@ static int tcp_send_produced_result(dns_request_handler_context_t *dns_handler, 
 
 	return sent;
 }
-
-#ifdef ENABLE_ASYNC_QUERY_HANDLING
-static bool use_numa = false;
-static bool tcp_use_async = false;
-static atomic_shared_dns_request_manager_t tcp_shared_req_mgr[KNOT_MAX_NUMA];
-static size_t tcp_req_pool_size;
-
-/*!
- * \brief Initialize tcp async.
- *
- * \param pool_size Request pool size.
- * \param numa_enabled Indicates if numa available.
- *
- * \retval KNOT_EOK on success.
- */
-int init_tcp_async(size_t pool_size, bool numa_enabled) {
-	for (int i = 0; i < KNOT_MAX_NUMA; i++) {
-		init_shared_req_mgr(tcp_shared_req_mgr[i]);
-	}
-	tcp_req_pool_size = pool_size;
-	tcp_use_async = true;
-	use_numa = numa_enabled;
-	return KNOT_EOK;
-}
-
-static void tcp_async_query_completed_callback(dns_request_handler_context_t *net, dns_handler_request_t *req) {
-	tcp_context_t *tcp = caa_container_of(net, tcp_context_t, dns_handler);
-	network_dns_request_t *tcp_req = caa_container_of(req, network_dns_request_t, dns_req);
-
-	if (!dns_handler_request_is_cancelled(tcp_req->dns_req)) {
-		bool err = false;
-		// Send the response
-		if (req->req_data.tx->iov_len > 0) {
-			int size = req->req_data.tx->iov_len;
-			int sent = net_dns_tcp_send(req->req_data.fd, req->req_data.tx->iov_base, size,
-										tcp->io_timeout, NULL);
-			if (sent != size) {
-				tcp_log_error(&req->req_data.source_addr, "send", sent);
-				err = true;
-			}
-		}
-
-		// Cleanup async req from fd to allow fd receive more request
-		int idx = fdset_get_index_for_fd(&tcp->set, req->req_data.fd);
-		fdset_set_ctx(&tcp->set, idx, NULL);
-
-		if (!err) {
-			fdset_set_watchdog(&tcp->set, idx, tcp->idle_timeout);
-		}
-	}
-
-	// Free the request
-	tcp->req_mgr->free_network_request_func(tcp->req_mgr, tcp_req);
-}
-#endif
-
-
 
 int tcp_master(dthread_t *thread)
 {
@@ -393,31 +300,11 @@ int tcp_master(dthread_t *thread)
 	}
 #endif
 
-	_unused_ int numa_node = 0;
-#ifdef KNOT_ENABLE_NUMA
-	if (use_numa)
-	{
-		unsigned cpu = dt_online_cpus();
-		if (cpu > 1) {
-			unsigned cpu_mask = (dt_get_id(thread) % cpu);
-			dt_setaffinity(thread, &cpu_mask, 1);
-			int cpu_numa_node = numa_node_of_cpu(cpu_mask);
-			numa_node =  cpu_numa_node % KNOT_MAX_NUMA;
-			log_info("TCP thread %d using numa %d, original %d", thread_id, numa_node, cpu_numa_node);
-		}
-	}
-#endif
-
 	int ret = KNOT_EOK;
 
 	/* Create TCP answering context. */
 	tcp_context_t tcp = {0};
-	tcp.req_mgr =
-#ifdef ENABLE_ASYNC_QUERY_HANDLING
-		tcp_use_async ?
-			network_dns_request_pool_manager_create(&tcp_shared_req_mgr[numa_node], KNOT_WIRE_MAX_PKTSIZE, 16 * MM_DEFAULT_BLKSIZE, tcp_req_pool_size) :
-#endif
-			network_dns_request_manager_basic_create(KNOT_WIRE_MAX_PKTSIZE, 16 * MM_DEFAULT_BLKSIZE);
+	tcp.req_mgr = network_dns_request_manager_basic_create(KNOT_WIRE_MAX_PKTSIZE, 16 * MM_DEFAULT_BLKSIZE);
 	if (tcp.req_mgr == NULL) {
 		goto finish;
 	}
@@ -428,9 +315,6 @@ int tcp_master(dthread_t *thread)
 		thread_id,
 		0,
 		tcp_send_produced_result
-#ifdef ENABLE_ASYNC_QUERY_HANDLING
-		,tcp_async_query_completed_callback
-#endif
 		);
 	if (ret != KNOT_EOK) {
 		goto finish;
@@ -459,15 +343,6 @@ int tcp_master(dthread_t *thread)
 		goto finish; /* Terminate on zero interfaces. */
 	}
 
-#ifdef ENABLE_ASYNC_QUERY_HANDLING
-	tcp.async_fd = dns_request_handler_context_get_async_notify_handle(&tcp.dns_handler);
-	if (fdset_add(&tcp.set, tcp.async_fd, FDSET_POLLIN, NULL) < 0) {
-		goto finish;
-	}
-
-	tcp.client_threshold++;
-#endif
-
 	for (;;) {
 		/* Check for cancellation. */
 		if (dt_is_cancelled(thread)) {
@@ -486,13 +361,6 @@ int tcp_master(dthread_t *thread)
 	}
 
 finish:
-#ifdef ENABLE_ASYNC_QUERY_HANDLING
-	{
-		struct timespec five_sec = { 5, 0 };
-		nanosleep(&five_sec, &five_sec);
-	}
-#endif
-
 	if (tcp.tcp_req != NULL) {
 		tcp.req_mgr->free_network_request_func(tcp.req_mgr, tcp.tcp_req);
 	}
