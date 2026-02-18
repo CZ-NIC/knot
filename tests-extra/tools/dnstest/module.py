@@ -310,15 +310,21 @@ class ModCookies(KnotModule):
 
         return conf
 
-class ModQueryacl(KnotModule):
-    '''Query ACL module'''
+class ModDnsErr(KnotModule):
+    '''DNS Error module'''
 
-    mod_name = "queryacl"
+    mod_name = "dnserr"
 
-    def __init__(self, address=None, interface=None):
+    def __init__(self,
+                 report_channel : str | None = None,
+                 log_report_channel : bool = False,
+                 log_cache_size : int = 1000,
+                 log_timeout : int = 5):
         super().__init__()
-        self.address = address
-        self.interface = interface
+        self.report_channel = report_channel
+        self.log_report_channel = log_report_channel
+        self.log_cache_size = log_cache_size
+        self.log_timeout = log_timeout
 
     def get_conf(self, conf=None):
         if not conf:
@@ -326,16 +332,12 @@ class ModQueryacl(KnotModule):
 
         conf.begin(self.conf_name)
         conf.id_item("id", self.conf_id)
-        if self.address:
-            if isinstance(self.address, list):
-                conf.item_list("address", self.address)
-            else:
-                conf.item("address", self.address)
-        if self.interface:
-            if isinstance(self.interface, list):
-                conf.item_list("interface", self.interface)
-            else:
-                conf.item("interface", self.interface)
+        if self.report_channel:
+                conf.item_str("send-report-channel", self.report_channel)
+        if self.log_report_channel:
+                conf.item_str("log-report-channel", "on")
+                conf.item_str("log-cache-size", self.log_cache_size)
+                conf.item_str("log-timeout", self.log_timeout)
         conf.end()
 
         return conf
