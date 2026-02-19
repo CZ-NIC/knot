@@ -18,7 +18,9 @@
 #include <sys/uio.h>
 #endif // HAVE_SYS_UIO_H
 
+#include "knot/server/dns-handler.h"
 #include "knot/server/handler.h"
+#include "knot/server/network_req_manager.h"
 #include "knot/server/server.h"
 #include "knot/server/tcp-handler.h"
 #include "knot/common/log.h"
@@ -37,14 +39,13 @@
 
 /*! \brief TCP context data. */
 typedef struct {
-	knot_layer_t layer;              /*!< Query processing layer. */
-	server_t *server;                /*!< Name server structure. */
-	struct iovec iov[2];             /*!< TX/RX buffers. */
+	dns_request_handler_context_t dns_handler; /*!< DNS request handler context. */
+	network_dns_request_manager_t *req_mgr;    /*!< DNS request manager. */
+	network_dns_request_t *tcp_req;            /*!< DNS request. */
 	unsigned client_threshold;       /*!< Index of first TCP client. */
 	struct timespec last_poll_time;  /*!< Time of the last socket poll. */
 	bool is_throttled;               /*!< TCP connections throttling switch. */
 	fdset_t set;                     /*!< Set of server/client sockets. */
-	unsigned thread_id;              /*!< Thread identifier. */
 	unsigned max_worker_fds;         /*!< Max TCP clients per worker configuration + no. of ifaces. */
 	int idle_timeout;                /*!< [s] TCP idle timeout configuration. */
 	int io_timeout;                  /*!< [ms] TCP send/recv timeout configuration. */
@@ -159,11 +160,12 @@ static unsigned tcp_set_ifaces(const iface_t *ifaces, size_t n_ifaces,
 	return fdset_get_length(fds);
 }
 
-static int tcp_handle(tcp_context_t *tcp, knotd_qdata_params_t *params,
-                      struct iovec *rx, struct iovec *tx)
+static int tcp_handle(tcp_context_t *tcp, _unused_ unsigned idx)
 {
-	rx->iov_len = KNOT_WIRE_MAX_PKTSIZE;
-	tx->iov_len = KNOT_WIRE_MAX_PKTSIZE;
+	network_dns_request_t *tcp_req = tcp->tcp_req;
+	knotd_qdata_params_t *params = &tcp_req->dns_req.req_data.params;
+
+	tcp->req_mgr->restore_network_request_func(tcp->req_mgr, tcp_req);
 
 	/* Receive data. */
 	int recv;
@@ -173,7 +175,8 @@ static int tcp_handle(tcp_context_t *tcp, knotd_qdata_params_t *params,
 		case KNOT_NET_EAGAIN: // Unfinished handshake, continue later.
 			return KNOT_EOK;
 		case KNOT_EOK:        // Finished handshake, continue with receiving message.
-			recv = knot_tls_recv(params->tls_conn, rx->iov_base, rx->iov_len);
+			recv = knot_tls_recv(params->tls_conn, tcp_req->dns_req.req_data.rx->iov_base,
+			                     tcp_req->dns_req.req_data.rx->iov_len);
 			break;
 		default:              // E.g. handshake timeout.
 			assert(ret < 0);
@@ -181,39 +184,20 @@ static int tcp_handle(tcp_context_t *tcp, knotd_qdata_params_t *params,
 			break;
 		}
 	} else {
-		recv = net_dns_tcp_recv(params->socket, rx->iov_base, rx->iov_len, tcp->io_timeout);
+		recv = net_dns_tcp_recv(params->socket, tcp_req->dns_req.req_data.rx->iov_base,
+		                        tcp_req->dns_req.req_data.rx->iov_len, tcp->io_timeout);
 	}
 	if (recv > 0) {
-		rx->iov_len = recv;
+		tcp_req->dns_req.req_data.rx->iov_len = recv;
 	} else {
-		tcp_log_error(params->remote, "receive", recv, tcp->server);
+		tcp_log_error(params->remote, "receive", recv, params->server);
 		return KNOT_EOF;
 	}
 
-	handle_query(params, &tcp->layer, rx, NULL);
-
-	/* Resolve until NOOP or finished. */
-	knot_pkt_t *ans = knot_pkt_new(tx->iov_base, tx->iov_len, tcp->layer.mm);
-	while (active_state(tcp->layer.state)) {
-		knot_layer_produce(&tcp->layer, ans);
-		/* Send, if response generation passed and wasn't ignored. */
-		if (ans->size > 0 && send_state(tcp->layer.state)) {
-			int sent;
-			if (params->tls_conn != NULL) {
-				sent = knot_tls_send(params->tls_conn, ans->wire, ans->size);
-			} else {
-				sent = net_dns_tcp_send(params->socket, ans->wire, ans->size,
-				                        tcp->io_timeout);
-			}
-			if (sent != ans->size) {
-				tcp_log_error(params->remote, "send", sent, tcp->server);
-				handle_finish(&tcp->layer);
-				return KNOT_EOF;
-			}
-		}
+	int ret = handle_dns_request(&tcp->dns_handler, &tcp_req->dns_req);
+	if (ret != KNOT_EOK) {
+		return ret;
 	}
-
-	handle_finish(&tcp->layer);
 
 	if (params->tls_conn != NULL) {
 		// Store the qdata params AUTH flag to the connection.
@@ -224,7 +208,7 @@ static int tcp_handle(tcp_context_t *tcp, knotd_qdata_params_t *params,
 		}
 	}
 
-	return KNOT_EOK;
+	return ret;
 }
 
 static void tcp_event_accept(tcp_context_t *tcp, unsigned i, const iface_t *iface)
@@ -247,39 +231,44 @@ static void tcp_event_accept(tcp_context_t *tcp, unsigned i, const iface_t *ifac
 
 static int tcp_event_serve(tcp_context_t *tcp, unsigned i, const iface_t *iface)
 {
+	if (tcp->tcp_req == NULL) {
+		// Previous tcp req is asynced and now we need a new request structure to process the request.
+		tcp->tcp_req = tcp->req_mgr->allocate_network_request_func(tcp->req_mgr);
+
+		if (tcp->tcp_req == NULL) {
+			server_stats_increment_counter(server_stats_tcp_no_req_obj, 1);
+			return KNOT_EOK; // ignore processing now
+		}
+	}
+
+	network_dns_request_t *tcp_req = tcp->tcp_req;
+
 	int fd = fdset_get_fd(&tcp->set, i);
 
 	/* Get local address. */
-	sockaddr_t *local = (sockaddr_t *)&iface->addr;
-	sockaddr_t local_buf;
-	if (iface->anyaddr) {
-		socklen_t local_len = sizeof(local_buf);
-		if (getsockname(fd, &local_buf.ip, &local_len) == 0) {
-			local = &local_buf;
-		}
+	socklen_t sock_len = sizeof(struct sockaddr_storage);
+	if (!iface->anyaddr ||
+	    getsockname(fd, (struct sockaddr *)&tcp_req->dns_req.req_data.target_addr, &sock_len) != 0) {
+		tcp_req->dns_req.req_data.target_addr = iface->addr;
 	}
 
 	/* Get remote address. */
-	sockaddr_t *remote = (sockaddr_t *)&iface->addr;
-	sockaddr_t remote_buf;
-	if (iface->addr.ss_family != AF_UNIX) {
-		socklen_t remote_len = sizeof(remote_buf);
-		if (getpeername(fd, &remote_buf.ip, &remote_len) == 0) {
-			remote = &remote_buf;
-		}
+	sock_len = sizeof(struct sockaddr_storage);
+	if (iface->addr.ss_family == AF_UNIX ||
+	    getpeername(fd, (struct sockaddr *)&tcp_req->dns_req.req_data.source_addr, &sock_len) != 0) {
+		tcp_req->dns_req.req_data.source_addr = iface->addr;
 	}
 
-	knotd_qdata_params_t params = params_init(iface->tls ? KNOTD_QUERY_PROTO_TLS
-	                                                     : KNOTD_QUERY_PROTO_TCP,
-	                                          remote, local, fd, tcp->server,
-	                                          tcp->thread_id);
+	init_dns_request(&tcp->dns_handler, &tcp_req->dns_req, fd,
+	                 iface->tls ? KNOTD_QUERY_PROTO_TLS : KNOTD_QUERY_PROTO_TCP);
+	knotd_qdata_params_t *params = &tcp_req->dns_req.req_data.params;
 
 	// NOTE there is no way to avoid calling accept() on unwanted connections:
 	// - it's not possible to read out the remote IP beforehand
 	// - there is no way to pull it out of the queue
 	// So we just accept() those connection (possibly going ahead with the handshake)
 	// and close it immediately.
-	if (process_query_proto(&params, KNOTD_STAGE_PROTO_BEGIN) == KNOTD_PROTO_STATE_BLOCK) {
+	if (process_query_proto(params, KNOTD_STAGE_PROTO_BEGIN) == KNOTD_PROTO_STATE_BLOCK) {
 		return KNOT_EDENIED; // results in closing connection
 	}
 
@@ -294,16 +283,16 @@ static int tcp_event_serve(tcp_context_t *tcp, unsigned i, const iface_t *iface)
 			}
 			*fdset_ctx(&tcp->set, i, 1) = tls_conn;
 		}
-		params_update_tls(&params, tls_conn);
+		params_update_tls(params, tls_conn);
 	}
 
-	int ret = tcp_handle(tcp, &params, &tcp->iov[0], &tcp->iov[1]);
+	int ret = tcp_handle(tcp, i);
 	if (ret == KNOT_EOK) {
 		/* Update socket activity timer. */
 		(void)fdset_set_watchdog(&tcp->set, i, tcp->idle_timeout);
 	}
 
-	(void)process_query_proto(&params, KNOTD_STAGE_PROTO_END);
+	(void)process_query_proto(params, KNOTD_STAGE_PROTO_END);
 
 	return ret;
 }
@@ -361,6 +350,26 @@ static void tcp_wait_for_events(tcp_context_t *tcp)
 	fdset_it_commit(&it);
 }
 
+static int tcp_send_produced_result(dns_request_handler_context_t *dns_handler,
+                                    dns_handler_request_t *req, size_t size)
+{
+	tcp_context_t *tcp = caa_container_of(dns_handler, tcp_context_t, dns_handler);
+	knot_tls_conn_t *tls_conn = req->req_data.params.tls_conn;
+
+	int sent;
+	if (tls_conn != NULL) {
+		sent = knot_tls_send(tls_conn, req->req_data.tx->iov_base, size);
+	} else {
+		sent = net_dns_tcp_send(req->req_data.params.socket, req->req_data.tx->iov_base,
+		                        size, tcp->io_timeout);
+	}
+	if (sent != size) {
+		tcp_log_error(&req->req_data.source_addr, "send", sent, tcp->dns_handler.server);
+	}
+
+	return sent;
+}
+
 int tcp_master(dthread_t *thread)
 {
 	if (thread == NULL || thread->data == NULL) {
@@ -383,26 +392,19 @@ int tcp_master(dthread_t *thread)
 
 	int ret = KNOT_EOK;
 
-	/* Create big enough memory cushion. */
-	knot_mm_t mm;
-	mm_ctx_mempool(&mm, 16 * MM_DEFAULT_BLKSIZE);
-
 	/* Create TCP answering context. */
-	tcp_context_t tcp = {
-		.server = handler->server,
-		.is_throttled = false,
-		.thread_id = thread_id,
-	};
-	knot_layer_init(&tcp.layer, &mm, process_query_layer());
+	tcp_context_t tcp = { 0 };
+	tcp.req_mgr = network_dns_request_manager_basic_create(KNOT_WIRE_MAX_PKTSIZE,
+	                                                       16 * MM_DEFAULT_BLKSIZE);
+	if (tcp.req_mgr == NULL) {
+		ret = KNOT_ENOMEM;
+		goto finish;
+	}
 
-	/* Create iovec abstraction. */
-	for (unsigned i = 0; i < 2; ++i) {
-		tcp.iov[i].iov_len = KNOT_WIRE_MAX_PKTSIZE;
-		tcp.iov[i].iov_base = malloc(tcp.iov[i].iov_len);
-		if (tcp.iov[i].iov_base == NULL) {
-			ret = KNOT_ENOMEM;
-			goto finish;
-		}
+	tcp.tcp_req = tcp.req_mgr->allocate_network_request_func(tcp.req_mgr);
+	if (tcp.tcp_req == NULL) {
+		ret = KNOT_ENOMEM;
+		goto finish;
 	}
 
 	/* Initialize descriptors for the configured interfaces and bound sockets. */
@@ -419,11 +421,6 @@ int tcp_master(dthread_t *thread)
 		goto finish; /* Terminate on zero interfaces. */
 	}
 
-	/* Initialize sweep interval and TCP configuration. */
-	struct timespec next_sweep;
-	update_sweep_timer(&next_sweep);
-	update_tcp_conf(&tcp);
-
 	/* Initialize TLS context. */
 	if (tls) {
 		// Set the HS timeout to 8x the RMT IO one as the HS duration can be up to 4*roundtrip.
@@ -435,6 +432,18 @@ int tcp_master(dthread_t *thread)
 			goto finish;
 		}
 	}
+
+	/* Initialize TCP answering context. */
+	ret = initialize_dns_handle(&tcp.dns_handler, handler->server,
+	                            thread_id, tcp_send_produced_result);
+	if (ret != KNOT_EOK) {
+		goto finish;
+	}
+
+	/* Initialize sweep interval and TCP configuration. */
+	struct timespec next_sweep;
+	update_sweep_timer(&next_sweep);
+	update_tcp_conf(&tcp);
 
 	for (;;) {
 		/* Check for cancellation. */
@@ -454,11 +463,15 @@ int tcp_master(dthread_t *thread)
 	}
 
 finish:
-	knot_tls_ctx_free(tcp.tls_ctx);
-	free(tcp.iov[0].iov_base);
-	free(tcp.iov[1].iov_base);
-	mp_delete(mm.ctx);
+	if (tcp.tcp_req != NULL) {
+		tcp.req_mgr->free_network_request_func(tcp.req_mgr, tcp.tcp_req);
+	}
+	if (tcp.req_mgr != NULL) {
+		tcp.req_mgr->delete_req_manager(tcp.req_mgr);
+	}
+	cleanup_dns_handle(&tcp.dns_handler);
 
+	knot_tls_ctx_free(tcp.tls_ctx);
 	for (int i = 0; i < tcp.set.n; i++) {
 		free_tls_ctx(&tcp.set, i);
 	}
