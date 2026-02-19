@@ -63,7 +63,7 @@ zone = t.zone("example.net.", storage=".") + t.zone(REPORTCHANNEL, storage=".")
 t.link(zone, knot)
 
 knot.add_module(zone[0], ModDnsErr(report_channel=REPORTCHANNEL))
-knot.add_module(zone[1], ModCookies())
+knot.add_module(zone[1], ModCookies(badcookie_slip=10))
 knot.add_module(zone[1], ModDnsErr(log_report_channel=True, log_cache_size=2000, log_timeout=2))
 
 t.start()
@@ -80,13 +80,21 @@ resp.check(rcode="NOERROR")
 check_reportchannel(resp, REPORTCHANNEL, "Missing Report-Channel in query without EDNS")
 
 # Testing error reporting
+## Generate few positive report domains
 for it in range(10):
     right_tuple = generate_report_domain_prefix(["dns1.example.net."])
     right_format = ".".join(right_tuple)
 
+    # UDP no cookie
+    resp = knot.dig(f"{right_format}.{REPORTCHANNEL}", "TXT", udp=True, edns=0)
+    # TODO better test of cookie
+    resp.check(rcode="NXDOMAIN")
+
+    # TCP
     resp = knot.dig(f"{right_format}.{REPORTCHANNEL}", "TXT", udp=False, edns=0)
     resp.check(rcode="NOERROR")
 
+    # TCP wrong RTYPE
     resp = knot.dig(f"{right_format}.{REPORTCHANNEL}", "A", udp=False, edns=0)
     resp.check(rcode="NXDOMAIN")
 
