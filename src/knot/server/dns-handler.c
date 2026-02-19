@@ -19,6 +19,7 @@
 #include <unistd.h>
 #include <urcu.h>
 #include "knot/server/dns-handler.h"
+#include "knot/server/handler.h"
 
 #define DISPATCH_QUEUE_SIZE (8 * 1024)
 
@@ -74,11 +75,7 @@ static int handle_dns_request_continue(dns_request_handler_context_t *dns_handle
 			dns_req->req_data.tx->iov_len = 0;
 		}
 
-		/* Reset after processing. */
-		knot_layer_finish(&dns_handler->layer);
-
-		/* Flush per-query memory (including query and answer packets). */
-		mp_flush(dns_handler->layer.mm->ctx);
+		handle_finish(&dns_handler->layer);
 #ifdef ENABLE_ASYNC_QUERY_HANDLING
 	} else {
 		dns_req->handler_data.flag |= DNS_HANDLER_REQUEST_FLAG_IS_ASYNC;
@@ -161,32 +158,17 @@ void handle_dns_request_async_completed_queries(dns_request_handler_context_t *d
 }
 #endif
 
-/*!
- * \brief Initialize dns request handler.
- *
- * \param dns_handler DNS handler to be initialized.
- * \param server Server to be used in this DNS request handler.
- * \param thread_id ID of the thread that will invoke this dns_handler.
- * \param flags DNS request flags to be used in this handler.
- * \param send_result Optional. Callback method to send results to network layer. If none provided, only final result will be available in tx of request.
- * \param async_complete Notification when async query is completed.
- *
- * \retval KNOT_EOK if success.
- */
 int initialize_dns_handle(
 	dns_request_handler_context_t *dns_handler,
 	server_t *server,
-	int thread_id,
-	uint8_t flags,
+	unsigned thread_id,
 	send_produced_result send_result
 #ifdef ENABLE_ASYNC_QUERY_HANDLING
 	,async_query_completed_callback async_complete
 #endif
 ) {
-	assert(flags & KNOTD_QUERY_FLAG_LIMIT_SIZE || send_result);
 	dns_handler->server = server;
 	dns_handler->thread_id = thread_id;
-	dns_handler->flags = flags;
 	dns_handler->send_result = send_result;
 	knot_layer_init(&dns_handler->layer, NULL, process_query_layer());
 
@@ -202,15 +184,9 @@ int initialize_dns_handle(
 		return ret;
 	}
 #endif
-
 	return 0;
 }
 
-/*!
- * \brief Cleanup dns request handler.
- *
- * \param dns_handler DNS handler to be cleaned up.
- */
 void cleanup_dns_handle(dns_request_handler_context_t *dns_handler)
 {
 #ifdef ENABLE_ASYNC_QUERY_HANDLING
@@ -223,60 +199,38 @@ void cleanup_dns_handle(dns_request_handler_context_t *dns_handler)
 #endif
 }
 
-/*!
- * \brief handles dns request.
- *
- * \param dns_handler DNS handler to be used.
- * \param dns_req DNS request to be processed.
- *
- * \retval KNOT_EOK if success.
- */
-int handle_dns_request(dns_request_handler_context_t *dns_handler, dns_handler_request_t *dns_req)
+void init_dns_request(dns_request_handler_context_t *dns_handler, dns_handler_request_t *dns_req,
+                      int sock, knotd_query_proto_t proto)
 {
 	dns_handler_request_clear_handler_data(*dns_req);
 	knot_layer_clear_req_data(dns_handler->layer);
 
 	// Use the memory from req for this query processing
 	dns_handler->layer.mm = dns_req->req_data.mm;
-	dns_req->handler_data.dns_handler_ctx = dns_handler;
 
-	// allocate params from request memory
-	knotd_qdata_params_t *params = mm_alloc(dns_handler->layer.mm, sizeof(*params));
-	if (!params) {
-		// failed to allocated, just fail the call
-		dns_req->req_data.tx->iov_len = 0;
-		return KNOT_ESPACE;
-	}
+	/* Initialize basic query processing parameter. */
+	dns_req->req_data.params = params_init(
+		proto, &dns_req->req_data.source_addr,
+		&dns_req->req_data.target_addr, sock,
+		dns_handler->server, dns_handler->thread_id);
+	dns_req->req_data.params.dns_req = dns_req;
+}
+
+int handle_dns_request(dns_request_handler_context_t *dns_handler, dns_handler_request_t *dns_req)
+{
+	dns_req->handler_data.dns_handler_ctx = dns_handler;
 
 #ifdef ENABLE_ASYNC_QUERY_HANDLING
 	dns_req->handler_data.flag &= ~(DNS_HANDLER_REQUEST_FLAG_IS_ASYNC | DNS_HANDLER_REQUEST_FLAG_IS_CANCELLED);
-	params->async_completed_callback = dns_handler_notify_async_completed;
+	dns_req->req_data.params.async_completed_callback = dns_handler_notify_async_completed;
 #endif
 
-	/* Create query processing parameter. */
-	params->remote = &dns_req->req_data.source_addr;
-	params->local  = &dns_req->req_data.target_addr;
-	params->flags = dns_handler->flags;
-	params->socket = dns_req->req_data.fd;
-	params->server = dns_handler->server;
-	params->xdp_msg = dns_req->req_data.xdp_msg;
-	params->thread_id = dns_handler->thread_id;
-	params->dns_req = dns_req;
-	dns_req->handler_data.params = params;
+	/* Create answer packet. */
+	dns_req->handler_data.ans = knot_pkt_new(
+		dns_req->req_data.tx->iov_base, dns_req->req_data.tx->iov_len, dns_handler->layer.mm);
 
-	/* Start query processing. */
-	knot_layer_begin(&dns_handler->layer, params);
-
-	/* Create packets. */
-	knot_pkt_t *query = knot_pkt_new(dns_req->req_data.rx->iov_base, dns_req->req_data.rx->iov_len, dns_handler->layer.mm);
-	dns_req->handler_data.ans = knot_pkt_new(dns_req->req_data.tx->iov_base, dns_req->req_data.tx->iov_len, dns_handler->layer.mm);
-
-	/* Input packet. */
-	int ret = knot_pkt_parse(query, 0);
-	if (ret != KNOT_EOK && query->parsed > 0) { // parsing failed (e.g. 2x OPT)
-		query->parsed--; // artificially decreasing "parsed" leads to FORMERR
-	}
-	knot_layer_consume(&dns_handler->layer, query);
+	/* Process the query. */
+	handle_query(&dns_req->req_data.params, &dns_handler->layer, dns_req->req_data.rx, NULL);
 
 	return handle_dns_request_continue(dns_handler, dns_req);
 }

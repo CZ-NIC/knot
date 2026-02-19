@@ -49,22 +49,20 @@ struct dns_request_handler_context {
 #endif
 	knot_layer_t layer;                /*!< Query processing layer. */
 	server_t *server;                  /*!< Name server structure. */
+	unsigned thread_id;                /*!< Thread identifier. */
 	send_produced_result send_result;  /*!< Sends the results produced.
 	                                        If this is null, the sender handles the response after completion of dns request handling
 	                                        and sends only single result. */
-	unsigned thread_id;                /*!< Thread identifier. */
-	uint8_t flags;                     /*!< Flags for dns request handler for how to handle request. */
 };
 
 /*! \brief Network request data from network layer. */
 typedef struct dns_handler_network_layer_request {
+	knotd_qdata_params_t params;          /*!< Parameters for the request. */
 	struct sockaddr_storage source_addr;  /*!< Source address. */
 	struct sockaddr_storage target_addr;  /*!< Target address. */
 	struct iovec *rx;                     /*!< Received iovec. */
 	struct iovec *tx;                     /*!< Send iovec. */
-	struct knot_xdp_msg *xdp_msg;         /*!< XDP message. */
 	knot_mm_t *mm;                        /*!< Processing memory context. */
-	int fd;                               /*!< handle for the network request. */
 } dns_handler_network_layer_request_t;
 
 /*! \brief Network handler data to process the request. */
@@ -74,7 +72,6 @@ typedef struct dns_handler_request_data {
 #endif
 	knot_pkt_t *ans;                                 /*!< Answer for the req. */
 	dns_request_handler_context_t *dns_handler_ctx;  /*!< dns request handler context for the req. */
-	knotd_qdata_params_t *params;                    /*!< params for this req. */
 	struct {
 		knot_layer_state_t state;                /*!< Processing state. */
 		void *data;                              /*!< Module specific. */
@@ -95,7 +92,6 @@ struct dns_handler_request {
  * \param dns_handler DNS handler to be initialized.
  * \param server Server to be used in this DNS request handler.
  * \param thread_id ID of the thread that will invoke this dns_handler.
- * \param flags DNS request flags to be used in this handler.
  * \param send_result Optional. Callback method to send results to network layer. If none provided, only final result will be available in tx of request.
  * \param async_complete Notification when async query is completed.
  *
@@ -104,8 +100,7 @@ struct dns_handler_request {
 int initialize_dns_handle(
 	dns_request_handler_context_t *dns_handler,
 	server_t *server,
-	int thread_id,
-	uint8_t flags,
+	unsigned thread_id,
 	send_produced_result send_result
 #ifdef ENABLE_ASYNC_QUERY_HANDLING
 	,async_query_completed_callback async_complete
@@ -118,6 +113,9 @@ int initialize_dns_handle(
  * \param dns_handler DNS handler to be cleaned up.
  */
 void cleanup_dns_handle(dns_request_handler_context_t *dns_handler);
+
+void init_dns_request(dns_request_handler_context_t *dns_handler, dns_handler_request_t *dns_req,
+                      int sock, knotd_query_proto_t proto);
 
 /*!
  * \brief handles dns request.
