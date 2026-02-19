@@ -18,7 +18,9 @@
 #include <sys/uio.h>
 #endif // HAVE_SYS_UIO_H
 
+#include "knot/server/dns-handler.h"
 #include "knot/server/handler.h"
+#include "knot/server/network_req_manager.h"
 #include "knot/server/server.h"
 #include "knot/server/tcp-handler.h"
 #include "knot/common/log.h"
@@ -37,14 +39,12 @@
 
 /*! \brief TCP context data. */
 typedef struct tcp_context {
-	knot_layer_t layer;              /*!< Query processing layer. */
-	server_t *server;                /*!< Name server structure. */
-	struct iovec iov[2];             /*!< TX/RX buffers. */
+	network_dns_request_manager_t *req_mgr;    /*!< DNS request manager. */
+	dns_request_handler_context_t dns_handler; /*!< DNS request handler context. */
 	unsigned client_threshold;       /*!< Index of first TCP client. */
 	struct timespec last_poll_time;  /*!< Time of the last socket poll. */
 	bool is_throttled;               /*!< TCP connections throttling switch. */
 	fdset_t set;                     /*!< Set of server/client sockets. */
-	unsigned thread_id;              /*!< Thread identifier. */
 	unsigned max_worker_fds;         /*!< Max TCP clients per worker configuration + no. of ifaces. */
 	int idle_timeout;                /*!< [s] TCP idle timeout configuration. */
 	int io_timeout;                  /*!< [ms] TCP send/recv timeout configuration. */
