@@ -148,6 +148,11 @@ bool zone_update_changed_nsec3param(const zone_update_t *update);
 const knot_rdataset_t *zone_update_from(zone_update_t *update);
 
 /*!
+ * \brief Return the SOA serial "from" to be stored to journal.
+ */
+uint32_t zone_update_from_serial(const zone_update_t *update);
+
+/*!
  * \brief Returns the SOA rdataset we're updating to.
  *
  * \param update  Zone update.
