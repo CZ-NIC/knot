@@ -49,10 +49,11 @@ typedef struct {
 } dnserr_ctx_t;
 
 typedef struct {
-	const uint8_t *qtypes;
+	uint16_t qtypes[32];
 	const uint8_t *record;
 	const uint8_t *record_end;
 	int err;
+	uint8_t qtypes_cnt;
 } dnserr_parsed_t;
 
 static uint64_t log_tuple_hash(const log_tuple_t *val)
@@ -147,8 +148,18 @@ static int parse_report_query(const dnserr_ctx_t *ctx,
 	}
 	ptr += sizeof(ER_LABEL) - 1;
 
-	output->qtypes = ptr;
-	ptr += *ptr + 1;
+	output->qtypes_cnt = 0;
+	char *token = strtok((char *)ptr + 1, "-");
+	char *qtypes_end = (char *)ptr + *ptr + 1;
+	while (token != NULL && token < qtypes_end) {
+		int token_int = atoi(token);
+		if (token_int <= 0 || token_int > UINT16_MAX) {
+			return KNOT_EMALF;
+		}
+		output->qtypes[output->qtypes_cnt++] = token_int;
+		token = strtok(NULL, "-");
+	}
+	ptr = (const uint8_t *)qtypes_end;
 
 	output->record = ptr;
 	ptr += *ptr + 1;
@@ -242,20 +253,12 @@ static knotd_in_state_t dnserr_query(knotd_in_state_t state, knot_pkt_t *pkt,
 		ev.record[parsed.record_end - parsed.record] = '\0';
 
 		// For each QTYPE store one event into hashset
-		char *token = strtok((char *)parsed.qtypes + 1, "-");
-		char *qtypes_end = (char *)parsed.qtypes + *parsed.qtypes + 1;
-		while (token != NULL && token < qtypes_end) {
-			int token_int = atoi(token);
-			if (token_int <= 0 || token_int > UINT16_MAX) {
-				return state;
-			}
-			ev.qtype = token_int;
+		for (int idx = 0; idx < parsed.qtypes_cnt; ++idx) {
+			ev.qtype = parsed.qtypes[idx];
 
 			knot_spin_lock(&ctx->log_cache_lock);
 			hashset_add(&ctx->log_cache, &ev);
 			knot_spin_unlock(&ctx->log_cache_lock);
-
-			token = strtok(NULL, "-");
 		}
 
 		struct timespec now = time_now();
