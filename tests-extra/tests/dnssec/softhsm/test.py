@@ -12,7 +12,7 @@ t = Test()
 
 knot1 = t.server("knot")
 knot2 = t.server("knot")
-zone = t.zone("example.com")
+zone = t.zone("example.com") + t.zone_rnd(5)
 t.link(zone, knot1)
 t.link(zone, knot2)
 
@@ -27,12 +27,12 @@ knot1.dnssec(zone).keystore = [ keys1 ]
 t.start()
 
 # Wait for signed zone
-knot1.zone_wait(zone)
+knot1.zone_wait(zone[0])
 resp = knot1.dig(zone[0].name, "DNSKEY")
 resp.check_count(2, "DNSKEY")
 
 # Wait for unsigned zone
-serial = knot2.zone_wait(zone)
+serial = knot2.zone_wait(zone[0])
 resp = knot2.dig(zone[0].name, "DNSKEY")
 resp.check_count(0, "DNSKEY")
 
@@ -49,7 +49,7 @@ knot2.gen_confile()
 knot2.reload()
 
 # Check the keysets match
-knot2.zone_wait(zone, serial)
+knot2.zone_wait(zone[0], serial)
 resp = knot2.dig(zone[0].name, "DNSKEY")
 resp.cmp(knot1)
 

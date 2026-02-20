@@ -6,6 +6,8 @@
 #include <gnutls/gnutls.h>
 #include <pthread.h>
 
+#include <stdio.h>
+
 #include "contrib/string.h"
 #include "libknot/errcode.h"
 #include "libknot/dnssec/keyid.h"
@@ -200,6 +202,7 @@ static int pkcs11_generate_key(void *_ctx, gnutls_pk_algorithm_t algorithm,
 	int r = gnutls_pkcs11_privkey_generate3(ctx->url, algorithm, bits, label,
 	                                        &gt_cka_id, 0, NULL, 0, flags);
 	if (r != GNUTLS_E_SUCCESS) {
+printf(">>>> pkcs11_generate_key(): gnutls_pkcs11_privkey_generate3() returned %d (%s)\n", r, gnutls_strerror(r));
 		return KNOT_KEY_EGENERATE;
 	}
 
