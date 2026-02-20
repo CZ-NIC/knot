@@ -10,6 +10,27 @@ from dnstest.utils import *
 import dns
 import random
 
+# Backward compatibility
+if not hasattr(dns.edns, "ReportChannelOption"):
+    ReportChannelCode = 18
+
+    class ReportChannelOption(dns.edns.Option):
+        def __init__(self, agent_domain):
+            super().__init__(ReportChannelCode)
+            self.agent_domain = agent_domain
+
+        def to_wire(self, file):
+            return self.agent_domain.to_wire(file)
+
+        def to_text(self):
+            return "REPORTCHANNEL " + self.agent_domain.to_text()
+
+        @classmethod
+        def from_wire_parser(cls, otype, parser):
+            return cls(parser.get_name())
+
+    dns.edns.register_type(ReportChannelOption, ReportChannelCode)
+
 RTYPE_LIST = list(dns.rdatatype.RdataType)
 RTYPE_LIST.remove(dns.rdatatype.RdataType.TYPE0)
 
@@ -47,8 +68,6 @@ def generate_report_domain_prefix(domains : list):
     edec_str = str(int(random.choice(ERROR_LIST)))
 
     return ('_er', rtype_str, domain.removesuffix('.') , edec_str, '_er')
-
-remoteChannelOpcode = 18
 
 REPORTCHANNEL = "agent-domain.com."
 
