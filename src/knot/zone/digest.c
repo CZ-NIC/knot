@@ -128,6 +128,8 @@ static int digest_rrset(const knot_rrset_t *_rrset, void *vctx)
 
 	if (ret < 0) {
 		return ret;
+	} else if (rrset->rrs.count == 0) {
+		return KNOT_EOK;
 	}
 
 	// digest serialized RRSet
@@ -241,7 +243,7 @@ int zone_contents_digest(struct zone_update *update, zone_contents_t *contents,
 	}
 
 	zone_tree_t *conts = contents->nodes;
-	if (scheme == ZONEMD_SCHEME_SIMPLE && !zone_tree_is_empty(contents->nsec3_nodes)) {
+	if (!incremental && !zone_tree_is_empty(contents->nsec3_nodes)) {
 		conts = zone_tree_shallow_copy(conts);
 		if (conts == NULL) {
 			ret = KNOT_ENOMEM;;
