@@ -137,10 +137,21 @@ static int parse_int_label(const uint8_t *dname)
 	return out;
 }
 
-static int parse_report_query(const dnserr_ctx_t *ctx,
-                              const knot_dname_t *dname,
-                              dnserr_parsed_t *output)
+static char *str_next_int(char *in)
 {
+	assert(in != NULL);
+
+	char *ptr = in;
+	while(*ptr >= '0' && *ptr <= '9') {
+		ptr++;
+	}
+	return ptr;
+}
+
+int parse_report_query(dnserr_parsed_t *output, const knot_dname_t *dname)
+{
+	assert(output != NULL && dname != NULL);
+
 	static const uint8_t ER_LABEL[] = "\x03""_er";
 	const uint8_t *ptr = dname;
 	if (memcmp(ptr, ER_LABEL, sizeof(ER_LABEL) - 1) != 0) {
@@ -149,34 +160,48 @@ static int parse_report_query(const dnserr_ctx_t *ctx,
 	ptr += sizeof(ER_LABEL) - 1;
 
 	output->qtypes_cnt = 0;
-	char *token = strtok((char *)ptr + 1, "-");
-	char *qtypes_end = (char *)ptr + *ptr + 1;
+	char *token = (char *)ptr;
+	char *qtypes_end = token + 1 + *ptr;
 	while (token != NULL && token < qtypes_end) {
-		int token_int = atoi(token);
+		int token_int = atoi(++token);
 		if (token_int <= 0 || token_int > UINT16_MAX) {
 			return KNOT_EMALF;
 		}
 		output->qtypes[output->qtypes_cnt++] = token_int;
-		token = strtok(NULL, "-");
+		token = str_next_int(token);
+		if (*token != '-') {
+			break;
+		}
+	}
+	if (output->qtypes_cnt == 0 || token != qtypes_end) {
+		return KNOT_EMALF;
 	}
 	ptr = (const uint8_t *)qtypes_end;
 
+
+	// TODO kontrola errno a _er string
 	output->record = ptr;
 	ptr += *ptr + 1;
-	int err;
-	while (*ptr != '\0' && (err = parse_int_label(ptr)) < KNOT_EOK) {
-		ptr += *ptr + 1;
+	const uint8_t *err_label = ptr + *ptr + 1;
+	unsigned int err = 0;
+	int finish = 1;
+	while ((*ptr != '\0') ||
+	       (*err_label != '\0') ||
+	       ((err = parse_int_label(ptr)) < KNOT_EOK) ||
+	       ((finish = memcmp(err_label, ER_LABEL, sizeof(ER_LABEL) - 1)) != 0)) {
+		ptr = err_label;
 		output->record_end = ptr;
+		err_label = ptr + *ptr + 1;
 	}
-	if (*ptr == '\0') {
+	if (err == 0 || finish != 0) {
 		return KNOT_EMALF;
 	}
 	output->err = err;
-	ptr += *ptr + 1;
+	// ptr += *ptr + 1;
 
-	if (memcmp(ptr, ER_LABEL, sizeof(ER_LABEL) - 1) != 0) {
-		return KNOT_EMALF;
-	}
+	// if (memcmp(ptr, ER_LABEL, sizeof(ER_LABEL) - 1) != 0) {
+	// 	return KNOT_EMALF;
+	// }
 
 	return KNOT_EOK;
 }
@@ -226,7 +251,7 @@ static knotd_in_state_t dnserr_query(knotd_in_state_t state, knot_pkt_t *pkt,
 		}
 
 		dnserr_parsed_t parsed;
-		if (parse_report_query(ctx, qdata->name, &parsed) != KNOT_EOK) {
+		if (parse_report_query(&parsed, qdata->name) != KNOT_EOK) {
 			return KNOTD_IN_STATE_ERROR;
 		}
 
