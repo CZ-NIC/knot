@@ -335,3 +335,43 @@ void hs_tree_clear(hs_tree_t *t)
 		t->rootp = NULL;
 	}
 }
+
+#include <stdio.h>
+
+static void print_hash(uint8_t *hash, unsigned len)
+{
+	const static char hex[] = "0123456789abcdef";
+	for (unsigned i = 0; i < len; i++) {
+		putchar(hex[ hash[i] >> 4 ]);
+		putchar(hex[ hash[i] & 15 ]);
+	}
+	putchar('\n');
+}
+
+static void recur_print(hs_tree_t *t, uint8_t *np, unsigned depth, bool last_child)
+{
+	static const char pipes[] = "||||||||||||||||||||||||||||||||";
+	if (depth > 0) {
+		printf("%.*s%c%c%c", depth - 1, pipes, 0xe2, 0x94, last_child ? 0x94 : 0x9c);
+	}
+
+	hs_node_t *n = (depth <= t->depth ? child2node(np, t) : NULL);
+	if (n != NULL) {
+		printf("* ");
+	}
+
+	print_hash(np, t->hash_len);
+
+	for (unsigned i = 0; n != NULL && i < n->size; i++) {
+		recur_print(t, n->childs[i], depth + 1, i == n->size - 1);
+	}
+}
+
+void hs_tree_print(hs_tree_t *t)
+{
+	if (hs_tree_empty(t)) {
+		printf("(empty)\n");
+	} else {
+		recur_print(t, t->rootp, 0, true);
+	}
+}

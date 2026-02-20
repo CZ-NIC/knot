@@ -40,3 +40,5 @@ int hs_tree_hash(hs_tree_t *t, hs_rehash_t cb, void *ctx, uint8_t **out_hash);
 bool hs_tree_empty(hs_tree_t *t);
 
 void hs_tree_clear(hs_tree_t *t);
+
+void hs_tree_print(hs_tree_t *t);
