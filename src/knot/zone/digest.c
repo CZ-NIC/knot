@@ -128,7 +128,7 @@ static int digest_rrset(const knot_rrset_t *_rrset, void *vctx)
 
 	if (ret < 0) {
 		return ret;
-	} else if (rrset->rrs.count == 0) {
+	} else if (rrset->rrs.count == 0 && ctx->scheme != ZONEMD_SCHEME_SIMPLE) {
 		return KNOT_EOK;
 	}
 
