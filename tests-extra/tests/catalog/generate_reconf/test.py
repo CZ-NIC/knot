@@ -9,6 +9,7 @@ import glob
 import os
 import random
 import shutil
+import time
 
 USE_CTL = random.choice([True, False])
 check_log("USE_CTL %s" % str(USE_CTL))
@@ -31,6 +32,18 @@ def ctl_end(ctl):
     ctl.send(libknot.control.KnotCtlType.END)
     ctl.close()
 
+def mark_zone(server, zone):
+    zone_name = zone[0].name
+    ts = int(time.time() * 1000)
+    server.zones[zone_name].zfile.append_rndTXT(f"_mark_{ts}_")
+    return ts
+
+def check_mark(server, zone, timestamp, present=True):
+    t.sleep(1)
+    zone_name = zone[0].name
+    resp = server.dig(f"_mark_{timestamp}_.{zone_name}", "TXT")
+    resp.check_rr(rtype="TXT") if present else resp.check_no_rr(rtype="TXT")
+
 t = Test()
 
 master = t.server("knot")
@@ -38,6 +51,7 @@ slave = t.server("knot")
 
 zone1 = t.zone_rnd(1)
 t.link(zone1, master, slave)
+master.conf_zone(zone1).zonefile_sync = 0
 slave.cat_hidden(zone1)
 
 gen1 = t.zone("gen1.", exists=False)
@@ -59,6 +73,8 @@ serial = slave.zones_wait(gen1, use_ctl=True)
 
 # Add a new member to an existing generated catalog.
 
+zone1_ts = mark_zone(master, zone1)
+
 memb1 = t.zone_rnd(1)
 
 if USE_CTL:
@@ -73,6 +89,8 @@ if USE_CTL:
     ctl_cmd(ctl, cmd="conf-commit")
     ctl_add_zone(ctl, memb1[0].name)
     ctl_end(ctl)
+
+    check_mark(master, zone1, zone1_ts, present=False)
 else:
     t.link(memb1, master, slave)
     master.cat_member(memb1, gen1)
@@ -80,6 +98,8 @@ else:
 
     master.gen_confile()
     master.reload()
+
+    check_mark(master, zone1, zone1_ts)
 
 serial = slave.zones_wait(gen1, serial, use_ctl=True)
 slave.zones_wait(memb1, use_ctl=True)
@@ -156,6 +176,8 @@ resp.check_no_rr(rtype="SOA") # REFUSED not reliable as it can return NXDOMAIN d
 
 # Move a member between generated catalogs
 
+zone1_ts = mark_zone(master, zone1)
+
 OK_XFR = random.choice([True, False]) # If true, the zone is correctly decataloged first.
 
 if OK_XFR:
@@ -169,12 +191,16 @@ if USE_CTL:
     ctl_cmd(ctl, cmd="conf-set", section="zone", item="catalog-zone", identifier=memb2[0].name, data=gen1[0].name)
     ctl_cmd(ctl, cmd="conf-commit")
     ctl_end(ctl)
+
+    check_mark(master, zone1, zone1_ts, present=False)
 else:
     master.cat_member(memb2, gen2, remove=True)
     master.cat_member(memb2, gen1)
 
     master.gen_confile()
     master.reload()
+
+    check_mark(master, zone1, zone1_ts)
 
 t.sleep(2)
 resp = slave.dig(memb2[0].name, "SOA")
@@ -199,6 +225,8 @@ slave.zones_wait(memb2, use_ctl=True)
 
 # Catalog group change - verify the target template module is activated
 
+zone1_ts = mark_zone(master, zone1)
+
 resp = slave.dig(memb2[0].name, "SOA", udp=True)
 resp.check(noflags="TC") # Module mod-noudp is not active
 
@@ -214,11 +242,15 @@ if USE_CTL:
     ctl_cmd(ctl, cmd="conf-set", section="zone", item="catalog-group", identifier=memb2[0].name, data="catalog-signed")
     ctl_cmd(ctl, cmd="conf-commit")
     ctl_end(ctl)
+
+    check_mark(master, zone1, zone1_ts, present=False)
 else:
     master.cat_member(memb2, gen1, "catalog-signed")
 
     master.gen_confile()
     master.reload()
+
+    check_mark(master, zone1, zone1_ts)
 
 slave.zones_wait(memb2, use_ctl=True)
 t.sleep(2)
@@ -232,6 +264,8 @@ resp.check(flags="TC") # Module mod-noudp is active
 # Include configuration file with a generated catalog member
 
 if USE_CTL:
+    zone1_ts = mark_zone(master, zone1)
+
     zone2 = t.zone("zone2.", exists=False)
 
     ctl = ctl_begin(master)
@@ -243,9 +277,13 @@ if USE_CTL:
 
     slave.zones_wait(zone2, use_ctl=True)
 
+    check_mark(master, zone1, zone1_ts) # Include triggers all zones reload
+
 # Include configuration file with a generated catalog, add another zone, remove previous zone
 
 if USE_CTL:
+    zone1_ts = mark_zone(master, zone1)
+
     gen3 = t.zone("gen3.", exists=False)
     zone3 = t.zone("zone3.", exists=False)
 
@@ -284,9 +322,13 @@ if USE_CTL:
     resp = slave.dig(zone2[0].name, "SOA")
     resp.check_no_rr(rtype="SOA")
 
+    check_mark(master, zone1, zone1_ts) # Include triggers all zones reload
+
 # Reconfigure include-from
 
 if USE_CTL:
+    zone1_ts = mark_zone(master, zone1)
+
     cz = t.zone("cz.", storage=".")
     org_cz = t.zone("org.cz.", storage=".")
 
@@ -327,5 +369,7 @@ if USE_CTL:
     ctl_end(ctl)
 
     serial = master.zones_wait(cz, serial, use_ctl=True)
+
+    check_mark(master, zone1, zone1_ts, present=False)
 
 t.end()
