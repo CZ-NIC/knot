@@ -1742,7 +1742,7 @@ class Knot(Server):
             s.id_item("id", "catalog-default")
             s.item_str("file", self.dir + "/catalog/%s.zone")
             s.item_str("zonefile-load", "difference")
-            s.item_str("journal-content", self.conf_zone(z).journal_content)
+            s.item_type("journal-content", self.conf_zone(z).journal_content)
 
             # this is weird but for the sake of testing, the cataloged zones inherit dnssec policy from catalog zone
             s.item_str("dnssec-signing", "on" if z.dnssec.enable else "off")
@@ -1755,13 +1755,13 @@ class Knot(Server):
 
             s.id_item("id", "catalog-signed")
             s.item_str("file", self.dir + "/catalog/%s.zone")
-            s.item_str("journal-content", self.conf_zone(z).journal_content)
+            s.item_type("journal-content", self.conf_zone(z).journal_content)
             s.item_str("dnssec-signing", "on")
             self.config_xfr(z, s)
 
             s.id_item("id", "catalog-unsigned")
             s.item_str("file", self.dir + "/catalog/%s.zone")
-            s.item_str("journal-content", self.conf_zone(z).journal_content)
+            s.item_type("journal-content", self.conf_zone(z).journal_content)
             self.config_xfr(z, s)
         s.end()
 
