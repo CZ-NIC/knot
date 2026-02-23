@@ -50,9 +50,18 @@ typedef struct {
 	int idle_timeout;                /*!< [s] TCP idle timeout configuration. */
 	int io_timeout;                  /*!< [ms] TCP send/recv timeout configuration. */
 	struct knot_tls_ctx *tls_ctx;    /*!< DoT answering context. */
+#ifdef ENABLE_ASYNC_QUERY_HANDLING
+	int async_fd;                    /*!< Async notification file descriptor. */
+#endif
 } tcp_context_t;
 
 #define TCP_SWEEP_INTERVAL 2 /*!< [secs] granularity of connection sweeping. */
+
+enum {
+	CTX_IFACE = 0,
+	CTX_TLS   = 1,
+	CTX_REQ   = 2,
+};
 
 static void update_sweep_timer(struct timespec *timer)
 {
@@ -77,7 +86,7 @@ static void update_tcp_conf(tcp_context_t *tcp)
 
 static void free_tls_ctx(fdset_t *set, int idx)
 {
-	void **tls_conn = fdset_ctx(set, idx, 1);
+	void **tls_conn = fdset_ctx(set, idx, CTX_TLS);
 	if (*tls_conn != NULL) {
 		knot_tls_conn_del(*tls_conn);
 		*tls_conn = NULL;
@@ -87,10 +96,16 @@ static void free_tls_ctx(fdset_t *set, int idx)
 static fdset_sweep_state_t tcp_sweep(fdset_t *set, int idx, _unused_ void *data)
 {
 	const int fd = fdset_get_fd(set, idx);
-	assert(set && fd >= 0);
+	assert(set && fd >= 0 && data != NULL);
 
 	stats_server_increment(stats_server_tcp_idle_timeout);
 
+#ifdef ENABLE_ASYNC_QUERY_HANDLING
+	network_dns_request_t *req = *fdset_ctx(set, idx, CTX_REQ);
+	if (req != NULL) {
+		dns_handler_cancel_request(req->dns_req);
+	}
+#endif
 	if (log_enabled_debug()) {
 		/* Best-effort, name and shame. */
 		struct sockaddr_storage ss = { 0 };
@@ -194,6 +209,15 @@ static int tcp_handle(tcp_context_t *tcp, _unused_ unsigned idx)
 	}
 
 	int ret = handle_dns_request(&tcp->dns_handler, &tcp_req->dns_req);
+#ifdef ENABLE_ASYNC_QUERY_HANDLING
+	if (dns_handler_request_is_async(tcp_req->dns_req)) {
+		// Save the request on tcp connection context
+		*fdset_ctx(&tcp->set, idx, CTX_REQ) = tcp->tcp_req;
+
+		// Release it
+		tcp->tcp_req = NULL;
+	}
+#endif
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -274,13 +298,13 @@ static int tcp_event_serve(tcp_context_t *tcp, unsigned i, const iface_t *iface)
 	/* Establish a TLS session. */
 	if (iface->tls) {
 		assert(tcp->tls_ctx != NULL);
-		knot_tls_conn_t *tls_conn = *fdset_ctx(&tcp->set, i, 1);
+		knot_tls_conn_t *tls_conn = *fdset_ctx(&tcp->set, i, CTX_TLS);
 		if (tls_conn == NULL) {
 			tls_conn = knot_tls_conn_new(tcp->tls_ctx, fd);
 			if (tls_conn == NULL) {
 				return KNOT_ENOMEM;
 			}
-			*fdset_ctx(&tcp->set, i, 1) = tls_conn;
+			*fdset_ctx(&tcp->set, i, CTX_TLS) = tls_conn;
 		}
 		params_update_tls(params, tls_conn);
 	}
@@ -320,8 +344,14 @@ static void tcp_wait_for_events(tcp_context_t *tcp)
 		unsigned int idx = fdset_it_get_idx(&it);
 		if (fdset_it_is_error(&it)) {
 			should_close = (idx >= tcp->client_threshold);
+#ifdef ENABLE_ASYNC_QUERY_HANDLING
+		} else if (idx == tcp->client_threshold - 1) {
+			// Async completion notification
+			stats_server_increment(server_stats_tcp_async_done);
+			handle_dns_request_async_completed_queries(&tcp->dns_handler);
+#endif
 		} else if (fdset_it_is_pollin(&it)) {
-			const iface_t *iface = fdset_it_get_ctx(&it, 0);
+			const iface_t *iface = fdset_it_get_ctx(&it, CTX_IFACE);
 			assert(iface);
 			/* Master sockets - new connection to accept. */
 			if (idx < tcp->client_threshold) {
@@ -330,6 +360,12 @@ static void tcp_wait_for_events(tcp_context_t *tcp)
 					stats_server_increment(server_stats_tcp_accept);
 					tcp_event_accept(tcp, idx, iface);
 				}
+#ifdef ENABLE_ASYNC_QUERY_HANDLING
+			} else if (fdset_it_get_ctx(&it, CTX_REQ) != NULL) {
+				// Received another request before completing the current one, ignore for now
+				// Implement more async handling
+				stats_server_increment(server_stats_tcp_multiple_req);
+#endif
 			} else {
 				stats_server_increment(server_stats_tcp_received);
 				/* Client sockets - already accepted connection or
@@ -342,6 +378,12 @@ static void tcp_wait_for_events(tcp_context_t *tcp)
 
 		/* Evaluate. */
 		if (should_close) {
+#ifdef ENABLE_ASYNC_QUERY_HANDLING
+			network_dns_request_t *req = (network_dns_request_t *)fdset_it_get_ctx(&it, CTX_REQ);
+			if (req != NULL) {
+				dns_handler_cancel_request(req->dns_req);
+			}
+#endif
 			free_tls_ctx(set, idx);
 			fdset_it_remove(&it);
 		}
@@ -369,6 +411,62 @@ static int tcp_send_produced_result(dns_request_handler_context_t *dns_handler,
 	return sent;
 }
 
+#ifdef ENABLE_ASYNC_QUERY_HANDLING
+static bool use_numa = false;
+static bool tcp_use_async = false;
+static atomic_shared_dns_request_manager_t tcp_shared_req_mgr[KNOT_MAX_NUMA];
+static size_t tcp_req_pool_size;
+
+int init_tcp_async(size_t pool_size, bool numa_enabled)
+{
+	for (int i = 0; i < KNOT_MAX_NUMA; i++) {
+		init_shared_req_mgr(tcp_shared_req_mgr[i]);
+	}
+	tcp_req_pool_size = pool_size;
+	tcp_use_async = true;
+	use_numa = numa_enabled;
+	return KNOT_EOK;
+}
+
+static void tcp_async_query_completed_callback(dns_request_handler_context_t *net,
+                                               dns_handler_request_t *req)
+{
+	tcp_context_t *tcp = caa_container_of(net, tcp_context_t, dns_handler);
+	network_dns_request_t *tcp_req = caa_container_of(req, network_dns_request_t, dns_req);
+	knot_tls_conn_t *tls_conn = req->req_data.params.tls_conn;
+
+	if (!dns_handler_request_is_cancelled(tcp_req->dns_req)) {
+		bool err = false;
+		// Send the response
+		if (req->req_data.tx->iov_len > 0) {
+			int size = req->req_data.tx->iov_len;
+			int sent;
+			if (tls_conn != NULL) {
+				sent = knot_tls_send(tls_conn, req->req_data.tx->iov_base, size);
+			} else {
+				sent = net_dns_tcp_send(req->req_data.params.socket, req->req_data.tx->iov_base,
+				                        size, tcp->io_timeout);
+			}
+			if (sent != size) {
+				tcp_log_error(&req->req_data.source_addr, "send", sent, tcp->dns_handler.server);
+				err = true;
+			}
+		}
+
+		// Cleanup async req from fd to allow fd receive more request
+		int idx = fdset_get_index_for_fd(&tcp->set, req->req_data.params.socket);
+		*fdset_ctx(&tcp->set, idx, CTX_REQ) = NULL;
+
+		if (!err) {
+			fdset_set_watchdog(&tcp->set, idx, tcp->idle_timeout);
+		}
+	}
+
+	// Free the request
+	tcp->req_mgr->free_network_request_func(tcp->req_mgr, tcp_req);
+}
+#endif
+
 int tcp_master(dthread_t *thread)
 {
 	if (thread == NULL || thread->data == NULL) {
@@ -389,12 +487,32 @@ int tcp_master(dthread_t *thread)
 	}
 #endif
 
+	_unused_ int numa_node = 0;
+#ifdef KNOT_ENABLE_NUMA
+	if (use_numa) {
+		unsigned cpu = dt_online_cpus();
+		if (cpu > 1) {
+			unsigned cpu_mask = (dt_get_id(thread) % cpu);
+			dt_setaffinity(thread, &cpu_mask, 1);
+			int cpu_numa_node = numa_node_of_cpu(cpu_mask);
+			numa_node =  cpu_numa_node % KNOT_MAX_NUMA;
+			log_info("TCP thread %d using numa %d, original %d", thread_id, numa_node, cpu_numa_node);
+		}
+	}
+#endif
+
 	int ret = KNOT_EOK;
 
 	/* Create TCP answering context. */
 	tcp_context_t tcp = { 0 };
-	tcp.req_mgr = network_dns_request_manager_basic_create(KNOT_WIRE_MAX_PKTSIZE,
-	                                                       16 * MM_DEFAULT_BLKSIZE);
+	tcp.req_mgr =
+#ifdef ENABLE_ASYNC_QUERY_HANDLING
+		tcp_use_async ?
+			network_dns_request_pool_manager_create(&tcp_shared_req_mgr[numa_node],
+				KNOT_WIRE_MAX_PKTSIZE, 16 * MM_DEFAULT_BLKSIZE, tcp_req_pool_size) :
+#endif
+			network_dns_request_manager_basic_create(
+				KNOT_WIRE_MAX_PKTSIZE, 16 * MM_DEFAULT_BLKSIZE);
 	if (tcp.req_mgr == NULL) {
 		ret = KNOT_ENOMEM;
 		goto finish;
@@ -407,7 +525,7 @@ int tcp_master(dthread_t *thread)
 	}
 
 	/* Initialize descriptors for the configured interfaces and bound sockets. */
-	ret = fdset_init(&tcp.set, FDSET_RESIZE_STEP, 2);
+	ret = fdset_init(&tcp.set, FDSET_RESIZE_STEP, 3);
 	if (ret != KNOT_EOK) {
 		goto finish;
 	}
@@ -434,7 +552,11 @@ int tcp_master(dthread_t *thread)
 
 	/* Initialize TCP answering context. */
 	ret = initialize_dns_handle(&tcp.dns_handler, handler->server,
-	                            thread_id, tcp_send_produced_result);
+	                            thread_id, tcp_send_produced_result
+#ifdef ENABLE_ASYNC_QUERY_HANDLING
+	                           ,tcp_async_query_completed_callback
+#endif
+	                           );
 	if (ret != KNOT_EOK) {
 		goto finish;
 	}
@@ -443,6 +565,15 @@ int tcp_master(dthread_t *thread)
 	struct timespec next_sweep;
 	update_sweep_timer(&next_sweep);
 	update_tcp_conf(&tcp);
+
+#ifdef ENABLE_ASYNC_QUERY_HANDLING
+	tcp.async_fd = dns_request_handler_context_get_async_notify_handle(&tcp.dns_handler);
+	if (fdset_add(&tcp.set, tcp.async_fd, FDSET_POLLIN, NULL) < 0) {
+		goto finish;
+	}
+
+	tcp.client_threshold++;
+#endif
 
 	for (;;) {
 		/* Check for cancellation. */
@@ -462,6 +593,13 @@ int tcp_master(dthread_t *thread)
 	}
 
 finish:
+#ifdef ENABLE_ASYNC_QUERY_HANDLING
+	{
+		struct timespec five_sec = { 5, 0 };
+		nanosleep(&five_sec, &five_sec);
+	}
+#endif
+
 	if (tcp.tcp_req != NULL) {
 		tcp.req_mgr->free_network_request_func(tcp.req_mgr, tcp.tcp_req);
 	}
