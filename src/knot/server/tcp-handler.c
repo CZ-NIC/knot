@@ -75,7 +75,7 @@ static void update_tcp_conf(tcp_context_t *tcp)
 
 static void free_tls_ctx(fdset_t *set, int idx)
 {
-	void **tls_conn = fdset_ctx2(set, idx);
+	void **tls_conn = fdset_ctx(set, idx, 1);
 	if (*tls_conn != NULL) {
 		knot_tls_conn_del(*tls_conn);
 		*tls_conn = NULL;
@@ -285,13 +285,13 @@ static int tcp_event_serve(tcp_context_t *tcp, unsigned i, const iface_t *iface)
 	/* Establish a TLS session. */
 	if (iface->tls) {
 		assert(tcp->tls_ctx != NULL);
-		knot_tls_conn_t *tls_conn = *fdset_ctx2(&tcp->set, i);
+		knot_tls_conn_t *tls_conn = *fdset_ctx(&tcp->set, i, 1);
 		if (tls_conn == NULL) {
 			tls_conn = knot_tls_conn_new(tcp->tls_ctx, fd);
 			if (tls_conn == NULL) {
 				return KNOT_ENOMEM;
 			}
-			*fdset_ctx2(&tcp->set, i) = tls_conn;
+			*fdset_ctx(&tcp->set, i, 1) = tls_conn;
 		}
 		params_update_tls(&params, tls_conn);
 	}
@@ -332,7 +332,7 @@ static void tcp_wait_for_events(tcp_context_t *tcp)
 		if (fdset_it_is_error(&it)) {
 			should_close = (idx >= tcp->client_threshold);
 		} else if (fdset_it_is_pollin(&it)) {
-			const iface_t *iface = fdset_it_get_ctx(&it);
+			const iface_t *iface = fdset_it_get_ctx(&it, 0);
 			assert(iface);
 			/* Master sockets - new connection to accept. */
 			if (idx < tcp->client_threshold) {
@@ -401,7 +401,7 @@ int tcp_master(dthread_t *thread)
 	}
 
 	/* Prepare initial buffer for listening and bound sockets. */
-	if (fdset_init(&tcp.set, FDSET_RESIZE_STEP) != KNOT_EOK) {
+	if (fdset_init(&tcp.set, FDSET_RESIZE_STEP, 2) != KNOT_EOK) {
 		ret = KNOT_ENOMEM;
 		goto finish;
 	}
