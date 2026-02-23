@@ -29,8 +29,11 @@ class KeystorePEM(Keystore):
     def clear(self):
         shutil.rmtree(self.config())
 
+    def keys(self):
+        return [name.removesuffix('.pem') for name in os.listdir(self.config())]
+
     def has_key(self, id: str):
-        return os.path.isfile(os.path.join(self.config(), f"{id}.pem"))
+        return id in self.keys()
 
 class KeystoreSoftHSM(Keystore):
     so_pin = "12345"
@@ -59,24 +62,32 @@ class KeystoreSoftHSM(Keystore):
     def clear(self):
         shutil.rmtree(os.path.join(self.dir, "tokens"))
 
-    def has_key(self, id: str):
+    def keys(self):
         urls = check_output(['p11tool', '--list-token-urls'],
-                           env=dict(os.environ, **self.env())).decode('ascii')
+                            env=dict(os.environ, **self.env())).decode('ascii')
         url = ssearch(urls, r'(pkcs11:.*SoftHSM.*)')
-        try:
-            keys = check_output(['p11tool', '-d 9999', '--login', '--set-pin', self.passwd, '--list-keys', url],
-                                env=dict(os.environ, **self.env()),
-                                stderr=open(Context().test.out_dir + "/p11tool.err", mode="a")).decode('ascii')
-            id_sep = ':'.join(textwrap.wrap(id, 2))
-            key = ssearch(keys, r'(ID:.*%s.*)' % id_sep)
-        except CalledProcessError as e:
-            # p11tool sets exit status to 2 if there aren't any keys in SoftHSM.
-            if e.returncode == 2:
-                key = None
-            else:
-                raise Failed("'p11tool --list-keys' failed")
 
-        return False if not key else len(key) > 0
+        # In case of concurrent access to SoftHSM, p11tool may fail or crash. Retry then.
+        MAX_TRIES = 3
+        for tries in range(MAX_TRIES):
+            try:
+                output = check_output(['p11tool', '-d 9999', '--login', '--set-pin', self.passwd, '--list-keys', url],
+                                      env=dict(os.environ, **self.env()),
+                                      stderr=open(Context().test.out_dir + "/p11tool.err", mode="a")).decode('ascii')
+
+                return [key.removeprefix('ID: ').replace(":", "") for key in re.findall(r'(ID: .*)', output)]
+            except CalledProcessError as e:
+                # p11tool sets exit status to 2 if there aren't any keys in SoftHSM.
+                if e.returncode == 2:
+                    return []
+                else:
+                    if tries < MAX_TRIES - 1:
+                        time.sleep(1)
+
+        raise Failed("'p11tool --list-keys' failed")
+
+    def has_key(self, id: str):
+        return id in self.keys()
 
     def init(self, keystore=None):
         if not os.path.isdir(self.dir):
