@@ -11,11 +11,8 @@ from dnstest.keystore import KeystorePEM
 from dnstest.test import Test
 
 def check_key_count(server, keystore, expected):
-    try:
-        files = len([name for name in os.listdir(keystore.config())])
-    except FileNotFoundError:
-        files = 0
-    compare(files, expected, "privkey count in %s" % keystore.id)
+    keys = len(keystore.keys())
+    compare(keys, expected, "privkey count in %s" % keystore.id)
 
 t = Test()
 
