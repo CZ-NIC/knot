@@ -192,6 +192,27 @@ inline static int fdset_get_fd(const fdset_t *set, const unsigned idx)
 }
 
 /*!
+ * \brief Returns index for file descriptor.
+ *
+ * \param set  Target set.
+ * \param .
+ *
+ * \retval Index of the file descriptor. ret >= 0 for file descriptor found.
+ * \retval ret < 0 on errors.
+ */
+inline static int fdset_get_index_for_fd(const fdset_t *set, int fd)
+{
+	assert(set);
+	for (unsigned i = 0; i < set->n; i++) {
+		if (fdset_get_fd(set, i) == fd) {
+			return i;
+		}
+	}
+
+	return -1;
+}
+
+/*!
  * \brief Returns number of file descriptors stored in set.
  *
  * \param set  Target set.
