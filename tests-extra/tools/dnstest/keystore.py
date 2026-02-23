@@ -8,14 +8,43 @@ from dnstest.context import Context
 from dnstest.utils import *
 
 class Keystore(object):
-    def __init__(self, id: str, ksk_only: bool = None, key_label: bool = None):
+    def __init__(self, id: str, server = None, ksk_only: bool = None, key_label: bool = None):
         self.id = id
+        self.server = server # Only KeystoreDflt uses it.
         self.ksk_only = ksk_only
         self.key_label = key_label
 
+class KeystoreDflt(Keystore):
+    def __init__(self, id: str, server, ksk_only: bool = None, key_label: bool = None):
+        super().__init__(id, server, False, False)
+
+    def config(self):
+        return None
+
+    def _config(self):
+        return os.path.join(self.server.keydir, "keys")
+
+    def backend(self):
+        return None
+
+    def _backend(self):
+        return "pem"
+
+    def env(self):
+        return { }
+
+    def clear(self):
+        shutil.rmtree(self._config())
+
+    def keys(self):
+        return [name.removesuffix('.pem') for name in os.listdir(self._config())]
+
+    def has_key(self, id: str):
+        return id in self.keys()
+
 class KeystorePEM(Keystore):
-    def __init__(self, id: str, ksk_only: bool = None, key_label: bool = None):
-        super().__init__(id, ksk_only, key_label)
+    def __init__(self, id: str, server = None, ksk_only: bool = None, key_label: bool = None):
+        super().__init__(id, server, ksk_only, key_label)
 
     def config(self):
         return os.path.join(Context().test.out_dir, f"{self.backend()}-{self.id}")
@@ -38,9 +67,9 @@ class KeystorePEM(Keystore):
 class KeystoreSoftHSM(Keystore):
     so_pin = "12345"
 
-    def __init__(self, id: str, ksk_only: bool = None, key_label: bool = None,
+    def __init__(self, id: str, server = None, ksk_only: bool = None, key_label: bool = None,
                  token: str = None, passwd: str = None, so_path: str = None):
-        super().__init__(id, ksk_only, key_label)
+        super().__init__(id, server, ksk_only, key_label)
         self.so_path = so_path if so_path else "/usr/lib/x86_64-linux-gnu/softhsm/libsofthsm2.so"
         self.passwd = passwd if passwd else "1234"
         self.token = token if token else "knot"
