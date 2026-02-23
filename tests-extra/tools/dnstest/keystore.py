@@ -5,6 +5,7 @@ import random
 import shutil
 from subprocess import Popen, check_output
 from dnstest.context import Context
+from dnstest.server import Server
 from dnstest.utils import *
 
 class Keystore(object):
@@ -14,11 +15,16 @@ class Keystore(object):
         self.key_label = key_label
 
 class KeystorePEM(Keystore):
-    def __init__(self, id: str, ksk_only: bool = None, key_label: bool = None):
+    def __init__(self, id: str, ksk_only: bool = None, key_label: bool = None,
+                 server_default: Server = None):
         super().__init__(id, ksk_only, key_label)
+        self.server = server_default
 
     def config(self):
-        return os.path.join(Context().test.out_dir, f"{self.backend()}-{self.id}")
+        if self.server:
+            return os.path.join(self.server.keydir, "keys")
+        else:
+            return os.path.join(Context().test.out_dir, f"{self.backend()}-{self.id}")
 
     def backend(self):
         return "pem"
