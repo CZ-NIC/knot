@@ -23,8 +23,7 @@ static int fdset_resize(fdset_t *set, const unsigned size)
 {
 	assert(set);
 
-	MEM_RESIZE(set->ctx, size);
-	MEM_RESIZE(set->ctx2, size);
+	MEM_RESIZE(set->ctx, size * set->ctx_count);
 	MEM_RESIZE(set->timeout, size);
 #if defined(HAVE_EPOLL) || defined(HAVE_KQUEUE)
 	MEM_RESIZE(set->ev, size);
@@ -35,13 +34,14 @@ static int fdset_resize(fdset_t *set, const unsigned size)
 	return KNOT_EOK;
 }
 
-int fdset_init(fdset_t *set, const unsigned size)
+int fdset_init(fdset_t *set, const unsigned size, const uint8_t ctx_count)
 {
-	if (set == NULL) {
+	if (set == NULL || ctx_count < 1) {
 		return KNOT_EINVAL;
 	}
 
 	memset(set, 0, sizeof(*set));
+	set->ctx_count = ctx_count;
 
 #if defined(HAVE_EPOLL) || defined(HAVE_KQUEUE)
 #ifdef HAVE_EPOLL
@@ -70,7 +70,6 @@ void fdset_clear(fdset_t *set)
 	}
 
 	free(set->ctx);
-	free(set->ctx2);
 	free(set->timeout);
 #if defined(HAVE_EPOLL) || defined(HAVE_KQUEUE)
 	free(set->ev);
@@ -94,8 +93,10 @@ int fdset_add(fdset_t *set, const int fd, const fdset_event_t events, void *ctx)
 	}
 
 	const int idx = set->n++;
-	set->ctx[idx] = ctx;
-	set->ctx2[idx] = NULL;
+	set->ctx[set->ctx_count * idx] = ctx;
+	for (int i = 1; i < set->ctx_count; i++) {
+		set->ctx[set->ctx_count * idx + i] = NULL;
+	}
 	set->timeout[idx] = 0;
 #ifdef HAVE_EPOLL
 	set->ev[idx].data.fd = fd;
@@ -155,8 +156,8 @@ int fdset_remove(fdset_t *set, const unsigned idx)
 	const unsigned last = --set->n;
 	/* Nothing else if it is the last one. Move last -> i if some remain. */
 	if (idx < last) {
-		set->ctx[idx] = set->ctx[last];
-		set->ctx2[idx] = set->ctx2[last];
+		memcpy(&set->ctx[set->ctx_count * idx], &set->ctx[set->ctx_count * last],
+		       sizeof(*set->ctx) * set->ctx_count);
 		set->timeout[idx] = set->timeout[last];
 #if defined(HAVE_EPOLL) || defined (HAVE_KQUEUE)
 		set->ev[idx] = set->ev[last];

@@ -33,8 +33,8 @@
 typedef struct {
 	unsigned n;                   /*!< Active fds. */
 	unsigned size;                /*!< Array size (allocated). */
-	void **ctx;                   /*!< Context for each fd. */
-	void **ctx2;                  /*!< Another context for each fd. */
+	uint8_t ctx_count;            /*!< Number of context pointers for each fd. */
+	void **ctx;                   /*!< Contexts for each fd. */
 	time_t *timeout;              /*!< Timeout for each fd (seconds precision). */
 #if defined(HAVE_EPOLL) || defined(HAVE_KQUEUE)
 #ifdef HAVE_EPOLL
@@ -91,12 +91,13 @@ typedef fdset_sweep_state_t (*fdset_sweep_cb_t)(fdset_t *, int, void *);
 /*!
  * \brief Initialize fdset to given size.
  *
- * \param set   Target set.
- * \param size  Initial set size.
+ * \param set        Target set.
+ * \param size       Initial set size.
+ * \param ctx_count  Number (>=1) of context pointers per one descriptor.
  *
  * \return Error code, KNOT_EOK if success.
  */
-int fdset_init(fdset_t *set, const unsigned size);
+int fdset_init(fdset_t *set, const unsigned size, const uint8_t ctx_count);
 
 /*!
  * \brief Clear whole context of the fdset.
@@ -111,7 +112,7 @@ void fdset_clear(fdset_t *set);
  * \param set     Target set.
  * \param fd      Added file descriptor.
  * \param events  Mask of watched events.
- * \param ctx     Context (optional).
+ * \param ctx     First context pointer (optional).
  *
  * \retval ret >= 0 is index of the added fd.
  * \retval ret < 0 on error.
@@ -270,25 +271,26 @@ inline static int fdset_it_get_fd(const fdset_it_t *it)
 /*!
  * \brief Get context of event referenced by iterator.
  *
- * \param it  Target iterator.
+ * \param it       Target iterator.
+ * \param ctx_idx  Context index (counted from 0).
  *
  * \retval Context of the fd.
  */
-inline static void *fdset_it_get_ctx(const fdset_it_t *it)
+inline static void *fdset_it_get_ctx(const fdset_it_t *it, const uint8_t ctx_idx)
 {
-	assert(it);
+	assert(it && ctx_idx < it->set->ctx_count);
 
-	return it->set->ctx[fdset_it_get_idx(it)];
+	return it->set->ctx[it->set->ctx_count * fdset_it_get_idx(it) + ctx_idx];
 }
 
 /*!
- * \brief Get a read/write pointer on (void *) second context.
+ * \brief Get a read/write pointer on context at the given index.
  */
-inline static void **fdset_ctx2(const fdset_t *set, const unsigned idx)
+inline static void **fdset_ctx(const fdset_t *set, const unsigned idx, const uint8_t ctx_idx)
 {
-	assert(set && idx < set->n);
+	assert(set && idx < set->n && ctx_idx < set->ctx_count);
 
-	return &set->ctx2[idx];
+	return &set->ctx[set->ctx_count * idx + ctx_idx];
 }
 
 /*!

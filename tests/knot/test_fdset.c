@@ -38,7 +38,7 @@ int main(int argc, char *argv[])
 	plan_lazy();
 
 	fdset_t fdset;
-	int ret = fdset_init(&fdset, 32);
+	int ret = fdset_init(&fdset, 32, 2);
 	ok(ret == KNOT_EOK, "fdset_init");
 
 	int fds0[2], fds1[2], fds2[2];

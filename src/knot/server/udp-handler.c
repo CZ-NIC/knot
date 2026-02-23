@@ -578,7 +578,7 @@ int udp_master(dthread_t *thread)
 	void *xdp_socket = NULL;
 	size_t nifs = handler->server->n_ifaces;
 	fdset_t fds;
-	if (fdset_init(&fds, nifs) != KNOT_EOK) {
+	if (fdset_init(&fds, nifs, 1) != KNOT_EOK) {
 		goto finish;
 	}
 	unsigned nfds = udp_set_ifaces(handler->server, nifs, &fds,
@@ -621,7 +621,7 @@ int udp_master(dthread_t *thread)
 			}
 			server_stats_increment_counter(server_stats_udp_received, 1);
 			if (api->udp_recv(fdset_it_get_fd(&it), api_ctx) > 0) {
-				const iface_t *iface = fdset_it_get_ctx(&it);
+				const iface_t *iface = fdset_it_get_ctx(&it, 0);
 				assert(iface);
 				api->udp_handle(&udp, iface, api_ctx);
 				api->udp_send(api_ctx);
