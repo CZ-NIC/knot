@@ -449,6 +449,11 @@ static void skr_import_header(zs_scanner_t *sc)
 
 	// store previous SKR
 	if (ctx->timestamp > 0 && ctx->ret == KNOT_EOK) {
+		if (ctx->r.rrsig.rrs.count == 0) {
+			key_records_clear_rdatasets(&ctx->r);
+			return;
+		}
+
 		ctx->ret = key_records_verify(&ctx->r, ctx->kctx, ctx->timestamp, validity_ts);
 		if (ctx->ret != KNOT_EOK) {
 			return;
