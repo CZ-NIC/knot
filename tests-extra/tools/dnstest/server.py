@@ -304,16 +304,26 @@ class Server(object):
         z = self.zones[zone_arg_check(zone).name]
         z.catalog_role = ZoneCatalogRole.GENERATE
 
-    def cat_member(self, zone, catalog, group=None):
+    def cat_member(self, zone, catalog, group=None, remove=False):
         z = self.zones[zone_arg_check(zone).name]
-        c = self.zones[zone_arg_check(catalog).name]
-        z.catalog_role = ZoneCatalogRole.MEMBER
-        z.catalog_gen_name = c.name
-        z.catalog_group = group
+        if remove:
+            if z:
+                z.catalog_role = None
+                z.catalog_gen_name = None
+                z.catalog_group = None
+        else:
+            c = self.zones[zone_arg_check(catalog).name]
+            z.catalog_role = ZoneCatalogRole.MEMBER
+            z.catalog_gen_name = c.name
+            z.catalog_group = group
 
-    def cat_hidden(self, zone):
+    def cat_hidden(self, zone, remove=False):
         z = self.zones[zone_arg_check(zone).name]
-        z.catalog_role = ZoneCatalogRole.HIDDEN
+        if remove:
+            if z:
+                z.catalog_role = None
+        else:
+            z.catalog_role = ZoneCatalogRole.HIDDEN
 
     def compile(self):
         try:
@@ -1732,7 +1742,7 @@ class Knot(Server):
             s.id_item("id", "catalog-default")
             s.item_str("file", self.dir + "/catalog/%s.zone")
             s.item_str("zonefile-load", "difference")
-            s.item_str("journal-content", self.conf_zone(z).journal_content)
+            s.item_type("journal-content", self.conf_zone(z).journal_content)
 
             # this is weird but for the sake of testing, the cataloged zones inherit dnssec policy from catalog zone
             s.item_str("dnssec-signing", "on" if z.dnssec.enable else "off")
@@ -1745,13 +1755,13 @@ class Knot(Server):
 
             s.id_item("id", "catalog-signed")
             s.item_str("file", self.dir + "/catalog/%s.zone")
-            s.item_str("journal-content", self.conf_zone(z).journal_content)
+            s.item_type("journal-content", self.conf_zone(z).journal_content)
             s.item_str("dnssec-signing", "on")
             self.config_xfr(z, s)
 
             s.id_item("id", "catalog-unsigned")
             s.item_str("file", self.dir + "/catalog/%s.zone")
-            s.item_str("journal-content", self.conf_zone(z).journal_content)
+            s.item_type("journal-content", self.conf_zone(z).journal_content)
             self.config_xfr(z, s)
         s.end()
 

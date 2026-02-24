@@ -3519,7 +3519,7 @@ Multiple catalog templates may be defined. The first one is used unless the memb
 has the *group* property defined, matching another catalog template.
 
 .. NOTE::
-   This option must be set if and only if :ref:`zone_catalog-role` is *interpret*.
+   This option must be set if and only if :ref:`zone_catalog-role` is ``interpret``.
 
    Nested catalog zones aren't supported. Therefore catalog templates can't
    contain :ref:`zone_catalog-role` set to ``interpret`` or ``generate``.
@@ -3534,9 +3534,9 @@ catalog-zone
 Assign this member zone to specified generated catalog zone.
 
 .. NOTE::
-   This option must be set if and only if :ref:`zone_catalog-role` is *member*.
+   This option must be set if :ref:`zone_catalog-role` is ``member``.
 
-   The referenced catalog zone must exist and have :ref:`zone_catalog-role` set to *generate*.
+   The referenced catalog zone must exist and have :ref:`zone_catalog-role` set to ``generate``.
 
 .. WARNING::
    Atomically changing a member zone from one catalog zone to another that is
@@ -3564,7 +3564,7 @@ catalog-group
 Assign this member zone to specified catalog group (configuration template).
 
 .. NOTE::
-   This option has effect if and only if :ref:`zone_catalog-role` is *member*.
+   This option has an effect if and only if :ref:`zone_catalog-role` is ``member``.
 
 *Default:* not set
 

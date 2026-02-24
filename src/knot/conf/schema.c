@@ -481,10 +481,10 @@ static const yp_item_t desc_external[] = {
 	{ C_FILE,                YP_TSTR,  YP_VNONE, FLAGS }, \
 	{ C_ZONE_DB_IN,          YP_TINT,  YP_VINT = { -1, 8, -1 }, FLAGS, { check_db_instance } }, \
 	{ C_ZONE_DB_OUT,         YP_TINT,  YP_VINT = { -1, 8, -1 }, FLAGS, { check_db_instance } }, \
-	{ C_MASTER,              YP_TREF,  YP_VREF = { C_RMT, C_RMTS }, YP_FMULTI | CONF_REF_EMPTY, \
+	{ C_MASTER,              YP_TREF,  YP_VREF = { C_RMT, C_RMTS }, YP_FMULTI | CONF_IO_FREF_EMPTY, \
 	                                   { check_ref } }, \
 	{ C_DDNS_MASTER,         YP_TREF,  YP_VREF = { C_RMT }, YP_FNONE, { check_ref_empty } }, \
-	{ C_NOTIFY,              YP_TREF,  YP_VREF = { C_RMT, C_RMTS }, YP_FMULTI | CONF_REF_EMPTY, \
+	{ C_NOTIFY,              YP_TREF,  YP_VREF = { C_RMT, C_RMTS }, YP_FMULTI | CONF_IO_FREF_EMPTY, \
 	                                   { check_ref } }, \
 	{ C_NOTIFY_DELAY,        YP_TINT,  YP_VINT  = { 0, UINT32_MAX, 0, YP_STIME } }, \
 	{ C_UPDATE_DELAY,        YP_TINT,  YP_VINT  = { 0, UINT32_MAX, 0, YP_STIME } }, \
@@ -508,10 +508,10 @@ static const yp_item_t desc_external[] = {
 	{ C_DNSSEC_SIGNING,      YP_TBOOL, YP_VNONE, FLAGS }, \
 	{ C_DNSSEC_VALIDATION,   YP_TBOOL, YP_VNONE, FLAGS }, \
 	{ C_DNSSEC_POLICY,       YP_TREF,  YP_VREF = { C_POLICY }, FLAGS, { check_ref_dflt } }, \
-	{ C_DS_PUSH,             YP_TREF,  YP_VREF = { C_RMT, C_RMTS }, YP_FMULTI | CONF_REF_EMPTY | FLAGS, \
+	{ C_DS_PUSH,             YP_TREF,  YP_VREF = { C_RMT, C_RMTS }, YP_FMULTI | CONF_IO_FREF_EMPTY | FLAGS, \
 	                                   { check_ref } }, \
-	{ C_REVERSE_GEN,         YP_TDNAME,YP_VNONE, YP_FMULTI | FLAGS }, \
-	{ C_INCLUDE_FROM,        YP_TDNAME,YP_VNONE, YP_FMULTI | FLAGS, { check_include_from } }, \
+	{ C_REVERSE_GEN,         YP_TDNAME,YP_VNONE, CONF_IO_FREV | YP_FMULTI | FLAGS }, \
+	{ C_INCLUDE_FROM,        YP_TDNAME,YP_VNONE, CONF_IO_FREV | YP_FMULTI | FLAGS, { check_include_from } }, \
 	{ C_SERIAL_POLICY,       YP_TOPT,  YP_VOPT = { serial_policies, SERIAL_POLICY_INCREMENT } }, \
 	{ C_SERIAL_MODULO,       YP_TSTR,  YP_VSTR = { "0/1" }, YP_FNONE, { check_modulo_shift } }, \
 	{ C_ZONEMD_GENERATE,     YP_TOPT,  YP_VOPT = { zone_digest, ZONE_DIGEST_NONE }, FLAGS }, \
@@ -522,10 +522,10 @@ static const yp_item_t desc_external[] = {
 	{ C_RETRY_MAX_INTERVAL,  YP_TINT,  YP_VINT = { 1, UINT32_MAX, UINT32_MAX, YP_STIME } }, \
 	{ C_EXPIRE_MIN_INTERVAL, YP_TINT,  YP_VINT = { 3, UINT32_MAX, 3, YP_STIME } }, \
 	{ C_EXPIRE_MAX_INTERVAL, YP_TINT,  YP_VINT = { 3, UINT32_MAX, UINT32_MAX, YP_STIME } }, \
-	{ C_CATALOG_ROLE,        YP_TOPT,  YP_VOPT = { catalog_roles, CATALOG_ROLE_NONE }, FLAGS }, \
-	{ C_CATALOG_TPL,         YP_TREF,  YP_VREF = { C_TPL }, YP_FMULTI | FLAGS, { check_ref, check_catalog_tpl } }, \
-	{ C_CATALOG_ZONE,        YP_TDNAME,YP_VNONE, FLAGS | CONF_IO_FRLD_ZONES }, \
-	{ C_CATALOG_GROUP,       YP_TSTR,  YP_VNONE, FLAGS | CONF_IO_FRLD_ZONES, { check_catalog_group } }, \
+	{ C_CATALOG_ROLE,        YP_TOPT,  YP_VOPT = { catalog_roles, CATALOG_ROLE_NONE }, CONF_IO_FCAT | FLAGS }, \
+	{ C_CATALOG_TPL,         YP_TREF,  YP_VREF = { C_TPL }, YP_FMULTI | CONF_IO_FCAT | FLAGS, { check_ref, check_catalog_tpl } }, \
+	{ C_CATALOG_ZONE,        YP_TDNAME,YP_VNONE, CONF_IO_FCAT | FLAGS }, \
+	{ C_CATALOG_GROUP,       YP_TSTR,  YP_VNONE, CONF_IO_FCAT | FLAGS, { check_catalog_group } }, \
 	{ C_MODULE,              YP_TDATA, YP_VDATA = { 0, NULL, mod_id_to_bin, mod_id_to_txt }, \
 	                                   YP_FMULTI | FLAGS, { check_modref } }, \
 	{ C_COMMENT,             YP_TSTR,  YP_VNONE }, \
@@ -534,13 +534,14 @@ static const yp_item_t desc_template[] = {
 	{ C_ID,                  YP_TSTR,  YP_VNONE, CONF_IO_FREF },
 	{ C_GLOBAL_MODULE,       YP_TDATA, YP_VDATA = { 0, NULL, mod_id_to_bin, mod_id_to_txt },
 	                                   YP_FMULTI | CONF_IO_FRLD_MOD, { check_modref } },
-	ZONE_ITEMS(CONF_IO_FRLD_ZONES)
+	ZONE_ITEMS(CONF_IO_FRLD_ZONES | CONF_IO_FTPL)
 	{ NULL }
 };
 
 static const yp_item_t desc_zone[] = {
 	{ C_DOMAIN, YP_TDNAME, YP_VNONE, CONF_IO_FRLD_ZONE },
-	{ C_TPL,    YP_TREF,   YP_VREF = { C_TPL }, CONF_IO_FRLD_ZONE, { check_ref } },
+	{ C_TPL,    YP_TREF,   YP_VREF = { C_TPL }, CONF_IO_FRLD_ZONE | CONF_IO_FCAT | CONF_IO_FREV,
+	                       { check_ref } },
 	ZONE_ITEMS(CONF_IO_FRLD_ZONE)
 	{ NULL }
 };
