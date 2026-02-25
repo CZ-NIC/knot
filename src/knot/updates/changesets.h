@@ -149,20 +149,6 @@ uint32_t changeset_from(const changeset_t *ch);
 uint32_t changeset_to(const changeset_t *ch);
 
 /*!
- * \brief Check the changes and SOA, ignoring possibly updated SOA serial and ZONEMD.
- *
- * \note Also tolerates changed RRSIG of SOA or ZONEMD.
- *
- * \param ch             Changeset in question.
- * \param ignore_zonemd  If enabled, possible ZONEMD records are ignored.
- *
- * \retval false  If the changeset changes other records than SOA, or some SOA field
- *                other than serial changed or optionally ZONEMD.
- * \retval true   Otherwise.
- */
-bool changeset_differs_just_serial(const changeset_t *ch, bool ignore_zonemd);
-
-/*!
  * \brief Clears changesets in list. Changesets are not free'd. Legacy.
  *
  * \param chgs  Changeset list to clear.

@@ -257,7 +257,7 @@ int journal_insert_zone(zone_journal_t j, const zone_contents_t *z)
 int journal_insert(zone_journal_t j, const changeset_t *ch, const changeset_t *extra,
                    const zone_diff_t *zdiff)
 {
-	assert(zdiff == NULL || (ch == NULL && extra == NULL));
+	assert(zdiff == NULL || ch == NULL);
 
 	size_t ch_size = zdiff == NULL ? changeset_serialized_size(ch) :
 	                                 zone_diff_serialized_size(*zdiff);
