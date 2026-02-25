@@ -8,6 +8,7 @@ import logging
 import multiprocessing
 import os
 import re
+import subprocess
 import sys
 import tempfile
 import time
@@ -148,6 +149,16 @@ def job(job_id, tasks, results, stop):
     skip_cnt = 0
 
     ctx = Context()
+
+    try:
+        clone = os.CLONE_NEWNET
+        if os.geteuid() != 0:
+            clone |= os.CLONE_NEWUSER
+        os.unshare(clone)
+        subprocess.check_call(["ip", "link", "set", "lo", "up"])
+    except PermissionError:
+        log.error("Operation not permited")
+        sys.exit(1)
 
     while True:
         if tasks.empty() or (params.exit_on_error and stop.value):

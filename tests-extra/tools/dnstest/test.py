@@ -46,7 +46,7 @@ class Test(object):
     rel_time = time.time()
     start_time = 0
 
-    def __init__(self, address=None, tsig=None, stress=True, quic=False, tls=False):
+    def __init__(self, address=None, tsig=None, stress=False, quic=False, tls=False):
         if not os.path.exists(Context().out_dir):
             raise Exception("Output directory doesn't exist")
 
@@ -97,7 +97,7 @@ class Test(object):
                 s = socket.socket(family, stype)
                 s.bind((self.addr, port))
                 s.close()
-        except:
+        except Exception as e:
             return False
 
         return True
@@ -140,10 +140,7 @@ class Test(object):
 
     @property
     def hostname(self):
-        hostname = socket.gethostname()
-        addrinfo = socket.getaddrinfo(hostname, 0, socket.AF_UNSPEC,
-                                      socket.SOCK_DGRAM, 0, socket.AI_CANONNAME)
-        return addrinfo[0][3] if addrinfo else hostname
+        return socket.gethostname() # In network namespace there is not DNS name resolver
 
     def server(self, server, nsid=None, ident=None, version=None, \
                valgrind=None, address=None, port=None, ctlport=None, \

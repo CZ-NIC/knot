@@ -237,16 +237,16 @@ class Server(object):
                 iface = "6%s@[%s]:%i" % (proto, self.addr, port)
 
         for i in range(5):
-            pids = []
-            proc = Popen(["lsof", param, iface],
+            pids = set()
+            proc = Popen(["nsenter", "-t", f"{os.getpid()}", "-n", "lsof", param, iface],
                          stdout=PIPE, stderr=PIPE, universal_newlines=True)
             (out, err) = proc.communicate()
             for line in out.split("\n"):
                 fields = line.split()
                 if len(fields) > 1 and fields[1] != "PID" and fields[-1] != "(ESTABLISHED)":
-                    pids.append(fields[1])
+                    pids.add(fields[1])
 
-            pids = list(set(pids))
+            pids = list(pids)
 
             # Check for successful bind.
             if (ux_socket or len(pids) == 1) and str(self.proc.pid) in pids:

@@ -4,6 +4,7 @@
 
 from dnstest.test import Test
 from dnstest.utils import set_err, detail_log
+import os
 
 t = Test(address=4, stress=False)
 
