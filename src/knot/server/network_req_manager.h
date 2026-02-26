@@ -10,22 +10,16 @@
 #define KNOT_MAX_NUMA 1
 #endif
 
-/*! \brief Control message to fit IP_PKTINFO or IPv6_RECVPKTINFO. */
-typedef union {
-	struct cmsghdr cmsg;
-	uint8_t buf[CMSG_SPACE(sizeof(struct in6_pktinfo))];
-} cmsg_pktinfo_t;
-
 /*! \brief DNS request structure allocated for networking layer. */
 typedef struct network_dns_request {
 #ifdef ENABLE_ASYNC_QUERY_HANDLING
 	knotd_lockless_stack_node_t free_list_node;  //!< Lockless stack node.
 #endif
-	dns_handler_request_t dns_req;               //!< DNS request part for the handler.
-	struct iovec iov[NBUFS];                     //!< IOV used in network API for this DNS request.
-	size_t msg_namelen_received;                 //!< Message name length received.
-	size_t msg_controllen_received;              //!< Message control length received.
-	cmsg_pktinfo_t pktinfo;                      //!< Request's DNS cmsg info.
+	dns_handler_request_t dns_req;        //!< DNS request part for the handler.
+	struct iovec iov[NBUFS];              //!< IOV used in network API for this DNS request.
+	size_t msg_namelen_received;          //!< Message name length received.
+	size_t msg_controllen_received;       //!< Message control length received.
+	cmsg_buf_t pktinfo;                   //!< Request's DNS cmsg info.
 } network_dns_request_t;
 
 /*! \brief Network request manager that handles allocation/deallocation/reset. */
