@@ -244,9 +244,11 @@ int kdnssec_delete_from_keystores(knot_kasp_keystore_t *keystores, char *key_id,
 	bool found = false;
 
 	for (size_t i = 0;
-	     i < keystores[0].count && (ret == KNOT_ENOENT || (thorough && ret == KNOT_EOK)); i++) {
+	     i < keystores[0].count && (!found || thorough); i++) {
 		ret = dnssec_keystore_remove(keystores[i].keystore, key_id);
-		if (ret != KNOT_EOK && ret != KNOT_ENOENT) {
+		if (ret == KNOT_EOK) {
+			found = true;
+		} else if (ret != KNOT_ENOENT) {
 			const char *msg = "keystore %s, attempt to remove key %s failed (%s)";
 			const char *err = knot_strerror(ret);
 			if (dname == NULL) {
@@ -254,11 +256,12 @@ int kdnssec_delete_from_keystores(knot_kasp_keystore_t *keystores, char *key_id,
 			} else {
 				log_zone_warning(dname, msg, keystores[i].name, key_id, err);
 			}
+
+			return ret;
 		}
-		found |= (ret == KNOT_EOK);
 	}
 
-	return (found && ret == KNOT_ENOENT) ? KNOT_EOK : ret;
+	return found ? KNOT_EOK : ret;
 }
 
 int kdnssec_delete_key(kdnssec_ctx_t *ctx, knot_kasp_key_t *key_ptr, bool trash)
