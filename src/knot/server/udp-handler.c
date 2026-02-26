@@ -52,7 +52,6 @@ typedef struct {
 	server_t *server;   /*!< Name server structure. */
 	unsigned thread_id; /*!< Thread identifier. */
 	sockaddr_t local;   /*!< Storage for local any address for currently processed query. */
-
 #ifdef ENABLE_QUIC
 	knot_quic_table_t *quic_table;  /*!< QUIC connection table if active. */
 	knot_sweep_stats_t quic_closed; /*!< QUIC sweep context. */
@@ -534,10 +533,6 @@ int udp_master(dthread_t *thread)
 	iohandler_t *handler = (iohandler_t *)thread->data;
 	int thread_id = handler->thread_id[dt_get_id(thread)];
 
-	if (handler->server->n_ifaces == 0) {
-		return KNOT_EOK;
-	}
-
 	/* Set thread affinity to CPU core (same for UDP and XDP). */
 	unsigned cpu = dt_online_cpus();
 	if (cpu > 1) {
@@ -547,6 +542,7 @@ int udp_master(dthread_t *thread)
 
 	/* Choose processing API. */
 	udp_api_t *api = NULL;
+	void *api_ctx = NULL;
 	if (is_xdp_thread(handler->server, thread_id)) {
 #ifdef ENABLE_XDP
 		api = &xdp_mmsg_api;
@@ -560,7 +556,8 @@ int udp_master(dthread_t *thread)
 		api = &udp_msg_api;
 #endif
 	}
-	void *api_ctx = NULL;
+
+	int ret = KNOT_EOK;
 
 	/* Create big enough memory cushion. */
 	knot_mm_t mm;
@@ -576,15 +573,15 @@ int udp_master(dthread_t *thread)
 	/* Allocate descriptors for the configured interfaces. */
 	bool quic = false;
 	void *xdp_socket = NULL;
-	size_t nifs = handler->server->n_ifaces;
 	fdset_t fds;
-	if (fdset_init(&fds, nifs, 1) != KNOT_EOK) {
+	ret = fdset_init(&fds, handler->server->n_ifaces, 1);
+	if (ret != KNOT_EOK) {
 		goto finish;
 	}
-	unsigned nfds = udp_set_ifaces(handler->server, nifs, &fds,
-	                               thread_id, &xdp_socket, &quic);
+	unsigned nfds = udp_set_ifaces(handler->server, handler->server->n_ifaces,
+	                               &fds, thread_id, &xdp_socket, &quic);
 	if (nfds == 0) {
-		goto finish;
+		goto finish; /* Terminate on zero interfaces. */
 	}
 
 #ifdef ENABLE_QUIC
@@ -592,6 +589,7 @@ int udp_master(dthread_t *thread)
 		udp.quic_idle_close= conf()->cache.srv_quic_idle_close * 1000000000LU;
 		udp.quic_table = quic_make_table(handler->server);
 		if (udp.quic_table == NULL) {
+			ret = KNOT_ENOMEM;
 			goto finish;
 		}
 	}
@@ -600,6 +598,7 @@ int udp_master(dthread_t *thread)
 	/* Initialize the networking API. */
 	api_ctx = api->udp_init(&udp, xdp_socket);
 	if (api_ctx == NULL) {
+		ret = KNOT_ENOMEM;
 		goto finish;
 	}
 
@@ -640,5 +639,5 @@ finish:
 	mp_delete(mm.ctx);
 	fdset_clear(&fds);
 
-	return KNOT_EOK;
+	return ret;
 }
