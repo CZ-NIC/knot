@@ -36,7 +36,7 @@
 #include "knot/common/stats.h"
 
 /*! \brief TCP context data. */
-typedef struct tcp_context {
+typedef struct {
 	knot_layer_t layer;              /*!< Query processing layer. */
 	server_t *server;                /*!< Name server structure. */
 	struct iovec iov[2];             /*!< TX/RX buffers. */
@@ -405,13 +405,12 @@ int tcp_master(dthread_t *thread)
 		}
 	}
 
-	/* Prepare initial buffer for listening and bound sockets. */
-	if (fdset_init(&tcp.set, FDSET_RESIZE_STEP, 2) != KNOT_EOK) {
-		ret = KNOT_ENOMEM;
+	/* Initialize descriptors for the configured interfaces and bound sockets. */
+	ret = fdset_init(&tcp.set, FDSET_RESIZE_STEP, 2);
+	if (ret != KNOT_EOK) {
 		goto finish;
 	}
 
-	/* Set descriptors for the configured interfaces. */
 	bool tls = false;
 	tcp.client_threshold = tcp_set_ifaces(handler->server->ifaces,
 	                                      handler->server->n_ifaces,
