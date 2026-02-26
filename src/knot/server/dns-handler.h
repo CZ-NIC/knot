@@ -19,7 +19,13 @@
 #include <sys/eventfd.h>
 #endif
 
-/* Buffer identifiers. */
+/*! \brief Control message to fit IP_PKTINFO/IPv6_RECVPKTINFO and/or ECN. */
+typedef union {
+	struct cmsghdr cmsg;
+	uint8_t buf[CMSG_SPACE(sizeof(struct in6_pktinfo)) + CMSG_SPACE(sizeof(int))];
+} cmsg_buf_t;
+
+/*! \brief Buffer identifiers. */
 enum {
 	RX = 0,
 	TX = 1,
@@ -63,6 +69,7 @@ typedef struct dns_handler_network_layer_request {
 	struct iovec *rx;                     /*!< Received iovec. */
 	struct iovec *tx;                     /*!< Send iovec. */
 	knot_mm_t *mm;                        /*!< Processing memory context. */
+	struct sockaddr_storage proxied_addr; /*!< Proxied target address. */
 } dns_handler_network_layer_request_t;
 
 /*! \brief Network handler data to process the request. */
