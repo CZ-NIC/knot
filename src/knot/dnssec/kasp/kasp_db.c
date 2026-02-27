@@ -445,7 +445,7 @@ int kasp_db_delete_keys(knot_lmdb_db_t *db, const knot_dname_t *zone_name,
 				ret = make_trash_key(&txn, &txn.cur_key, &txn.cur_val, delay);
 			} else {
 				ret = kdnssec_delete_from_keystores(keystores, key_id,
-				                                    orphan ? NULL : zone_name, true);
+				                                    zone_name, true);
 				ret = (ret == KNOT_ENOENT) ? KNOT_EOK : ret;
 				// Note: if error, it isn't sure that there still is a key to delete.
 			}
