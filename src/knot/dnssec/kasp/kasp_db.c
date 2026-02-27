@@ -425,7 +425,6 @@ int kasp_db_delete_keys(knot_lmdb_db_t *db, const knot_dname_t *zone_name,
 		keystores = ctx.keystores;
 		delay = trash ? ctx.policy->trash_delay : 0;
 	}
-
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -433,7 +432,6 @@ int kasp_db_delete_keys(knot_lmdb_db_t *db, const knot_dname_t *zone_name,
 	MDB_val prefix = make_key_str(KASPDBKEY_PARAMS, zone_name, NULL);
 	knot_lmdb_txn_t txn = { 0 };
 	knot_lmdb_begin(db, &txn, true);
-
 	knot_lmdb_foreach(&txn, &prefix) {
 		char *key_id = NULL;
 		if (!unmake_key_str(&txn.cur_key, &key_id)) {
