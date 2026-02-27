@@ -1792,8 +1792,8 @@ static int orphans_purge(ctl_args_t *args)
 				// Purge keys. (It needs to be requested explicitly.)
 				if (MATCH_AND_FILTER(args, CTL_FILTER_PURGE_KEYS)) {
 					if (knot_lmdb_open(&args->server->kaspdb) == KNOT_EOK) {
-						ret = kasp_db_delete_keys(&args->server->kaspdb, zone_name,
-						                          true, false, false);
+						ret = kasp_db_delete_keys_orphan(&args->server->kaspdb,
+						                                 zone_name, false, false);
 						log_if_orphans_error(zone_name, ret, "keys", &failed);
 					}
 				}

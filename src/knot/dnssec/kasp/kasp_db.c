@@ -407,24 +407,10 @@ int kasp_db_delete_key(knot_lmdb_db_t *db, const knot_dname_t *zone_name, const 
 	return txn.ret;
 }
 
-int kasp_db_delete_keys(knot_lmdb_db_t *db, const knot_dname_t *zone_name,
-                        bool orphan, bool best, bool trash)
+static int kasp_db_delete_keys_kstores(knot_lmdb_db_t *db, const knot_dname_t *zone_name,
+	                               knot_kasp_keystore_t *keystores, uint32_t delay, bool best)
 {
-	int ret;
-	knot_kasp_keystore_t *keystores = NULL;
-	kdnssec_ctx_t ctx = { 0 };
-	uint32_t delay = 0;
-
-	if (orphan) {
-		ret = init_all_keystores(conf(), &keystores);
-	} else {
-		ret = kdnssec_ctx_init(conf(), &ctx, zone_name, db, NULL);
-		keystores = ctx.keystores;
-		delay = trash ? ctx.policy->trash_delay : 0;
-	}
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
+	int ret = KNOT_EOK;
 
 	MDB_val prefix = make_key_str(KASPDBKEY_PARAMS, zone_name, NULL);
 	knot_lmdb_txn_t txn = { 0 };
@@ -465,13 +451,41 @@ int kasp_db_delete_keys(knot_lmdb_db_t *db, const knot_dname_t *zone_name,
 	knot_lmdb_commit(&txn);
 	free(prefix.mv_data);
 
-	if (orphan) {
-		deinit_all_keystores(&keystores);
-	} else {
-		kdnssec_ctx_deinit(&ctx);
+	return (ret == KNOT_EOK) ? txn.ret : ret;
+}
+
+int kasp_db_delete_keys(knot_lmdb_db_t *db, const knot_dname_t *zone_name,
+                        bool best, bool trash)
+{
+	kdnssec_ctx_t ctx = { 0 };
+	int ret = kdnssec_ctx_init(conf(), &ctx, zone_name, db, NULL);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+	knot_kasp_keystore_t *keystores = ctx.keystores;
+	uint32_t delay = trash ? ctx.policy->trash_delay : 0;
+
+	ret = kasp_db_delete_keys_kstores(db, zone_name, keystores, delay, best);
+
+	kdnssec_ctx_deinit(&ctx);
+
+	return ret;
+}
+
+int kasp_db_delete_keys_orphan(knot_lmdb_db_t *db, const knot_dname_t *zone_name,
+                               bool best, bool trash)
+{
+	knot_kasp_keystore_t *keystores = NULL;
+	int ret = init_all_keystores(conf(), &keystores);
+	if (ret != KNOT_EOK) {
+		return ret;
 	}
 
-	return (ret == KNOT_EOK) ? txn.ret : ret;
+	ret = kasp_db_delete_keys_kstores(db, zone_name, keystores, 0, best);
+
+	deinit_all_keystores(&keystores);
+
+	return ret;
 }
 
 int kasp_db_delete_all(knot_lmdb_db_t *db, const knot_dname_t *zone)
@@ -870,7 +884,7 @@ static int kasp_db_backup_generic(const knot_dname_t *zone, knot_lmdb_db_t *db, 
 {
 	// For restore, remove zones's all keys from KASP DB and keystores
 	// (use the trash-bin if configured). For backup, do nothing (target db is empty).
-	int ret = kasp_db_delete_keys(backup_db, zone, false, false, true);
+	int ret = kasp_db_delete_keys(backup_db, zone, false, true);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
