@@ -532,7 +532,6 @@ int kasp_db_sweep_keys(knot_lmdb_db_t *db, sweep_cb keep_zone, void *cb_data)
 
 	knot_lmdb_txn_t txn = { 0 };
 	knot_lmdb_begin(db, &txn, true);
-
 	knot_lmdb_forwhole(&txn) {
 		if (!is_trash_related(&txn.cur_key) &&
 		    (!is_key_related(&txn.cur_key) ||
