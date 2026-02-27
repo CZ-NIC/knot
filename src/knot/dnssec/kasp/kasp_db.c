@@ -540,14 +540,11 @@ int kasp_db_sweep_keys(knot_lmdb_db_t *db, sweep_cb keep_zone, void *cb_data)
 		}
 		char *key_id = NULL;
 		if (unmake_key_str(&txn.cur_key, &key_id)) {
-#ifndef NDEBUG
-			bool _assert_trash = is_trash_related(&txn.cur_key);
-#endif
 			knot_lmdb_cursor_swap(&txn);
 			size_t count = keyid_inuse(&txn, key_id, NULL);
 			knot_lmdb_cursor_swap(&txn); // Restore the regular cursor.
 
-			assert(count > 0 || _assert_trash);
+			assert(count > 0 || is_trash_related(&txn.cur_key));
 			if (count < 2) {
 				ret = kdnssec_delete_from_keystores(keystores, key_id, NULL, true);
 				ret = (ret == KNOT_ENOENT) ? KNOT_EOK : ret;
