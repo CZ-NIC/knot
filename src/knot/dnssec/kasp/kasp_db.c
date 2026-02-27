@@ -353,6 +353,8 @@ static int make_trash_key(knot_lmdb_txn_t *txn, MDB_val *key, MDB_val *val, uint
 		ret = knot_lmdb_insert(txn, &nkey, &nval) ? KNOT_EOK : KNOT_ERROR;
 		free(nkey.mv_data);
 		free(nval.mv_data);
+	} else {
+		ret = KNOT_EMALF;
 	}
 
 	return ret;
