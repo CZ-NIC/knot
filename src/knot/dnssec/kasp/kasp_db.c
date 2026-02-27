@@ -370,7 +370,6 @@ static int kasp_db_untrash_key(knot_lmdb_txn_t *from_txn, knot_lmdb_txn_t *to_tx
 	if (!unmake_key_str(&from_txn->cur_key, &str)) {
 		return KNOT_EMALF;
 	}
-
 	MDB_val del_pref = make_key_str(KASPDBKEY_TRASH, NULL, str);
 	knot_lmdb_del_prefix(to_txn, &del_pref);
 	free(del_pref.mv_data);
