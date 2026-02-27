@@ -84,6 +84,8 @@ enum {
 	KNOT_EDNS_OPTION_CHAIN         = 13,
 	/*! \brief EDNS Extended error code. */
 	KNOT_EDNS_OPTION_EDE           = 15,
+	/*! \brief EDNS DNS Report Channel code. */
+	KNOT_EDNS_OPTION_REPORT_CHANNEL= 18,
 	/*! \brief EDNS Zone version option code. */
 	KNOT_EDNS_OPTION_ZONEVERSION   = 19,
 
