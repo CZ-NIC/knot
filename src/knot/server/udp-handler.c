@@ -20,6 +20,7 @@
 #include <sys/uio.h>
 #endif /* HAVE_SYS_UIO_H */
 #include <unistd.h>
+#include <urcu.h>
 
 #include "knot/common/fdset.h"
 #include "knot/common/log.h"
@@ -226,7 +227,7 @@ static int udp_msg_recv(int fd, void *d)
 	} else {
 		network_dns_request_t *udp_req = rq->req_mgr->allocate_network_request_func(rq->req_mgr);
 		if (udp_req == NULL) {
-			server_stats_increment_counter(server_stats_udp_no_req_obj, 1);
+			stats_server_increment(server_stats_udp_no_req_obj);
 			return 0; // Dont process incoming, let the async handler free a request.
 		}
 
@@ -268,6 +269,15 @@ static void udp_msg_handle(udp_context_t *ctx, const iface_t *iface, void *d)
 	} else {
 		udp_handler(ctx, rq->udp_req);
 	}
+#ifdef ENABLE_ASYNC_QUERY_HANDLING
+	if (dns_handler_request_is_async(rq->udp_req->dns_req)) {
+		// Save udp source state
+		rq->udp_req->msg_namelen_received = rq->msg[RX].msg_namelen;
+		rq->udp_req->msg_controllen_received = rq->msg[RX].msg_controllen;
+		// Release the request
+		rq->udp_req = NULL;
+	}
+#endif
 }
 
 static void udp_send_single_response(network_dns_request_t *udp_req, struct msghdr *msghdr_tx)
@@ -382,12 +392,12 @@ static void allocate_or_pack_udp_req(udp_mmsg_ctx_t *rq)
 
 	rq->udp_reqs_available = reqs_allocated;
 	if (reqs_allocated == 0) {
-		server_stats_increment_counter(server_stats_udp_no_req_obj, 1);
+		stats_server_increment(server_stats_udp_no_req_obj);
 	}
 
 	rq->udp_reqs_fully_allocated = (reqs_allocated == RECVMMSG_BATCHLEN);
 	if (!rq->udp_reqs_fully_allocated) {
-		server_stats_increment_counter(server_stats_udp_req_batch_limited, 1);
+		stats_server_increment(server_stats_udp_req_batch_limited);
 	}
 }
 
@@ -443,10 +453,21 @@ static void udp_mmsg_handle(udp_context_t *ctx, const iface_t *iface, void *d)
 			udp_handler(ctx, rq->udp_reqs[j]);
 		}
 
+#ifdef ENABLE_ASYNC_QUERY_HANDLING
+		if (dns_handler_request_is_async(rq->udp_reqs[j]->dns_req)) {
+			// Save udp source state
+			rq->udp_reqs[j]->msg_namelen_received = rx->msg_namelen;
+			rq->udp_reqs[j]->msg_controllen_received = rx->msg_controllen;
+
+			tx->msg_iov->iov_len = 0; // Asynced request has nothing to send
+			rq->udp_reqs[j] = NULL;
+			rq->udp_reqs_fully_allocated = false;
+		}
+#endif
 		if (tx->msg_iov->iov_len > 0) {
 			rq->msgs[TX][j].msg_len = tx->msg_iov->iov_len;
 			j++;
-		} else {
+		} else if (rq->udp_reqs[j] != NULL) {
 			/* Reset tainted output context. */
 			rq->req_mgr->restore_network_request_func(rq->req_mgr, rq->udp_reqs[i]);
 		}
@@ -598,6 +619,41 @@ static unsigned udp_set_ifaces(const server_t *server, size_t n_ifaces, fdset_t 
 	return fdset_get_length(fds);
 }
 
+#ifdef ENABLE_ASYNC_QUERY_HANDLING
+static bool use_numa = false;
+static bool udp_use_async = false;
+static atomic_shared_dns_request_manager_t udp_shared_req_mgr[KNOT_MAX_NUMA];
+static size_t udp_req_pool_size;
+
+int init_udp_async(size_t pool_size, bool numa_enabled)
+{
+	for (int i = 0; i < KNOT_MAX_NUMA; i++) {
+		init_shared_req_mgr(udp_shared_req_mgr[i]);
+	}
+	udp_req_pool_size = pool_size;
+	udp_use_async = true;
+	use_numa = numa_enabled;
+	return KNOT_EOK;
+}
+
+static void udp_async_query_completed_callback(dns_request_handler_context_t *net, dns_handler_request_t *req)
+{
+	udp_context_t *udp = caa_container_of(net, udp_context_t, dns_handler);
+	network_dns_request_t *udp_req = caa_container_of(req, network_dns_request_t, dns_req);
+
+	// Prepare response and send it
+	struct msghdr txmsg;
+	udp_set_msghdr_from_req(&txmsg, udp_req, TX);
+	txmsg.msg_namelen = udp_req->msg_namelen_received;
+	txmsg.msg_controllen = udp_req->msg_controllen_received;
+	txmsg.msg_control = (txmsg.msg_controllen != 0) ? &udp_req->pktinfo.cmsg : NULL;
+	udp_send_single_response(udp_req, &txmsg);
+
+	// Free the request
+	udp->req_mgr->free_network_request_func(udp->req_mgr, udp_req);
+}
+#endif
+
 int udp_master(dthread_t *thread)
 {
 	if (thread == NULL || thread->data == NULL) {
@@ -607,11 +663,19 @@ int udp_master(dthread_t *thread)
 	iohandler_t *handler = (iohandler_t *)thread->data;
 	int thread_id = handler->thread_id[dt_get_id(thread)];
 
+	_unused_ int numa_node = 0;
 	/* Set thread affinity to CPU core (same for UDP and XDP). */
 	unsigned cpu = dt_online_cpus();
 	if (cpu > 1) {
 		unsigned cpu_mask = (dt_get_id(thread) % cpu);
 		dt_setaffinity(thread, &cpu_mask, 1);
+#ifdef KNOT_ENABLE_NUMA
+		if (use_numa) {
+			int cpu_numa_node = numa_node_of_cpu(cpu_mask);
+			numa_node =  cpu_numa_node % KNOT_MAX_NUMA;
+			log_info("UDP thread %d using numa %d, original %d", thread_id, numa_node, cpu_numa_node);
+		}
+#endif
 	}
 
 	int ret = KNOT_EOK;
@@ -631,12 +695,24 @@ int udp_master(dthread_t *thread)
 	} else {
 #ifdef ENABLE_RECVMMSG
 		api = &udp_mmsg_api;
-		udp.req_mgr = network_dns_request_manager_knot_mm_create(
-			KNOT_WIRE_MAX_UDP_PKTSIZE, 16 * MM_DEFAULT_BLKSIZE);
+		udp.req_mgr =
+#ifdef ENABLE_ASYNC_QUERY_HANDLING
+			udp_use_async ?
+				network_dns_request_pool_manager_create(&udp_shared_req_mgr[numa_node],
+					KNOT_WIRE_MAX_UDP_PKTSIZE, 16 * MM_DEFAULT_BLKSIZE, udp_req_pool_size) :
+#endif
+				network_dns_request_manager_knot_mm_create(
+					KNOT_WIRE_MAX_UDP_PKTSIZE, 16 * MM_DEFAULT_BLKSIZE);
 #else
 		api = &udp_msg_api;
-		udp.req_mgr = network_dns_request_manager_basic_create(
-			KNOT_WIRE_MAX_UDP_PKTSIZE, 16 * MM_DEFAULT_BLKSIZE);
+		udp.req_mgr =
+#ifdef ENABLE_ASYNC_QUERY_HANDLING
+			udp_use_async ?
+				network_dns_request_pool_manager_create(&udp_shared_req_mgr[numa_node],
+					KNOT_WIRE_MAX_UDP_PKTSIZE, 16 * MM_DEFAULT_BLKSIZE, udp_req_pool_size) :
+#endif
+				network_dns_request_manager_basic_create(
+					KNOT_WIRE_MAX_UDP_PKTSIZE, 16 * MM_DEFAULT_BLKSIZE);
 #endif
 	}
 	if (udp.req_mgr == NULL) {
@@ -647,8 +723,14 @@ int udp_master(dthread_t *thread)
 	/* Allocate descriptors for the configured interfaces. */
 	bool quic = false;
 	void *xdp_socket = NULL;
+	size_t fds_size = handler->server->n_ifaces;
+#ifdef ENABLE_ASYNC_QUERY_HANDLING
+	if (udp_use_async) {
+		fds_size++;
+	}
+#endif
 	fdset_t fds;
-	ret = fdset_init(&fds, handler->server->n_ifaces, 1);
+	ret = fdset_init(&fds, fds_size, 1);
 	if (ret != KNOT_EOK) {
 		goto finish;
 	}
@@ -670,10 +752,21 @@ int udp_master(dthread_t *thread)
 #endif // ENABLE_QUIC
 
 	/* Initialize UDP answering context. */
-	ret = initialize_dns_handle(&udp.dns_handler, handler->server, thread_id, NULL);
+	ret = initialize_dns_handle(&udp.dns_handler, handler->server, thread_id, NULL
+#ifdef ENABLE_ASYNC_QUERY_HANDLING
+	                           ,udp_async_query_completed_callback
+#endif
+	                           );
 	if (ret != KNOT_EOK) {
 		goto finish;
 	}
+
+#ifdef ENABLE_ASYNC_QUERY_HANDLING
+	int async_completed_notification = dns_request_handler_context_get_async_notify_handle(&udp.dns_handler);
+	if (fdset_add(&fds, async_completed_notification, FDSET_POLLIN, NULL) < 0) {
+		goto finish;
+	}
+#endif
 
 	/* Initialize the networking API. */
 	api_ctx = api->udp_init(&udp, xdp_socket);
@@ -698,12 +791,21 @@ int udp_master(dthread_t *thread)
 			if (!fdset_it_is_pollin(&it)) {
 				continue;
 			}
-			server_stats_increment_counter(server_stats_udp_received, 1);
-			if (api->udp_recv(fdset_it_get_fd(&it), api_ctx) > 0) {
-				const iface_t *iface = fdset_it_get_ctx(&it, 0);
-				assert(iface);
-				api->udp_handle(&udp, iface, api_ctx);
-				api->udp_send(api_ctx);
+			int ready_handle = fdset_it_get_fd(&it);
+#ifdef ENABLE_ASYNC_QUERY_HANDLING
+			if (ready_handle == async_completed_notification) {
+				stats_server_increment(server_stats_udp_async_done);
+				handle_dns_request_async_completed_queries(&udp.dns_handler);
+			} else
+#endif
+			{
+				stats_server_increment(server_stats_udp_received);
+				if (api->udp_recv(ready_handle, api_ctx) > 0) {
+					const iface_t *iface = fdset_it_get_ctx(&it, 0);
+					assert(iface);
+					api->udp_handle(&udp, iface, api_ctx);
+					api->udp_send(api_ctx);
+				}
 			}
 		}
 
@@ -712,6 +814,13 @@ int udp_master(dthread_t *thread)
 	}
 
 finish:
+#ifdef ENABLE_ASYNC_QUERY_HANDLING
+	{
+		struct timespec five_sec = { 5, 0 };
+		nanosleep(&five_sec, &five_sec);
+	}
+#endif
+
 	cleanup_dns_handle(&udp.dns_handler);
 	api->udp_deinit(api_ctx);
 	if (udp.req_mgr) {
