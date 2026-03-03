@@ -13,6 +13,8 @@
 
 #define MAX_DEPTH 16
 
+#define NO_INDENT NULL
+
 enum {
 	BLOCK_INVALID = 0,
 	BLOCK_OBJECT,
@@ -42,8 +44,6 @@ struct jsonw {
 	bool json_lines;
 };
 
-static const char *DEFAULT_INDENT = "\t";
-
 static void start_block(jsonw_t *w, int type)
 {
 	assert(w->top > 0);
@@ -68,7 +68,7 @@ static struct block *cur_block(jsonw_t *w)
 /*! Insert new line and indent for the next write. */
 static void wrap(jsonw_t *w)
 {
-	if (w->json_lines)
+	if (w->indent == NO_INDENT)
 		return;
 
 	if (!w->wrap) {
@@ -135,13 +135,7 @@ jsonw_t *jsonw_new(FILE *out, const char *indent)
 	}
 
 	w->out = out;
-	if (indent) {
-		w->indent = indent;
-		w->json_lines = false;
-	} else {
-		w->indent = DEFAULT_INDENT;
-		w->json_lines = true;
-	}
+	w->indent = indent;
 	w->top = MAX_DEPTH;
 
 	return w;
@@ -265,6 +259,6 @@ void jsonw_end(jsonw_t *w)
 		break;
 	}
 
-	if (w->json_lines && w->top == MAX_DEPTH)
+	if (w->indent == NO_INDENT && w->top == MAX_DEPTH)
 		fputc('\n', w->out);
 }
