@@ -38,6 +38,8 @@ struct jsonw {
 	int top;
 	/*! Newline needed indication. */
 	bool wrap;
+
+	bool json_lines;
 };
 
 static const char *DEFAULT_INDENT = "\t";
@@ -66,6 +68,9 @@ static struct block *cur_block(jsonw_t *w)
 /*! Insert new line and indent for the next write. */
 static void wrap(jsonw_t *w)
 {
+	if (w->json_lines)
+		return;
+
 	if (!w->wrap) {
 		w->wrap = true;
 		return;
@@ -130,7 +135,13 @@ jsonw_t *jsonw_new(FILE *out, const char *indent)
 	}
 
 	w->out = out;
-	w->indent = indent ? indent : DEFAULT_INDENT;
+	if (indent) {
+		w->indent = indent;
+		w->json_lines = false;
+	} else {
+		w->indent = DEFAULT_INDENT;
+		w->json_lines = true;
+	}
 	w->top = MAX_DEPTH;
 
 	return w;
@@ -253,4 +264,7 @@ void jsonw_end(jsonw_t *w)
 		(void)fprintf(w->out, "]");
 		break;
 	}
+
+	if (w->json_lines && w->top == MAX_DEPTH)
+		fputc('\n', w->out);
 }

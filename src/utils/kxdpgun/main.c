@@ -1299,7 +1299,7 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 			}
 			break;
 		case 'j':
-			if ((ctx->jw = jsonw_new(stdout, JSON_INDENT)) == NULL) {
+			if ((ctx->jw = jsonw_new(stdout, NULL)) == NULL) {
 				ERR2("failed to use JSON");
 				return false;
 			}
