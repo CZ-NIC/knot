@@ -1355,10 +1355,6 @@ int main(int argc, char *argv[])
 		goto err;
 	}
 
-	if (JSON_MODE(ctx)) {
-		jsonw_list(ctx.jw, NULL); // wrap the json in a list, for syntactic correctness
-	}
-
 	thread_ctxs = calloc(ctx.n_threads, sizeof(*thread_ctxs));
 	threads = calloc(ctx.n_threads, sizeof(*threads));
 	if (thread_ctxs == NULL || threads == NULL) {
@@ -1425,7 +1421,6 @@ err:
 	free(threads);
 	free_global_payloads();
 	if (JSON_MODE(ctx)) {
-		jsonw_end(ctx.jw);
 		jsonw_free(&ctx.jw);
 	}
 	return ecode;
