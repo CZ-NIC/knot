@@ -115,6 +115,12 @@ static MDB_val make_key_str(keyclass_t kclass, const knot_dname_t *dname, const 
 	}
 }
 
+static knot_dname_t *cur_key_dname(knot_lmdb_txn_t *txn)
+{
+	assert(txn != NULL);
+	return (knot_dname_t *)txn->cur_key.mv_data + 1;
+}
+
 static MDB_val make_key_time(keyclass_t kclass, const knot_dname_t *dname, knot_time_t time)
 {
 	char tmp[21];
@@ -501,7 +507,7 @@ int kasp_db_sweep(knot_lmdb_db_t *db, sweep_cb keep_zone, void *cb_data)
 	knot_lmdb_begin(db, &txn, true);
 	knot_lmdb_forwhole(&txn) {
 		if (is_zone_related(&txn.cur_key) &&
-		    !keep_zone((const knot_dname_t *)txn.cur_key.mv_data + 1, cb_data)) {
+		    !keep_zone(cur_key_dname(&txn), cb_data)) {
 			knot_lmdb_del_cur(&txn);
 		}
 	}
@@ -530,7 +536,7 @@ int kasp_db_sweep_keys(knot_lmdb_db_t *db, sweep_cb keep_zone, void *cb_data)
 	knot_lmdb_forwhole(&txn) {
 		if (!is_trash_related(&txn.cur_key) &&
 		    (!is_key_related(&txn.cur_key) ||
-		     keep_zone((const knot_dname_t *)txn.cur_key.mv_data + 1, cb_data))) {
+		     keep_zone(cur_key_dname(&txn), cb_data))) {
 			continue;
 		}
 		char *key_id = NULL;
