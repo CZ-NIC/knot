@@ -914,14 +914,13 @@ static void test_conf_io_list(void)
 	      "server.edns-client-subnet\n"
 	      "server.answer-rotation\n"
 	      "server.automatic-acl\n"
-	      "server.dbus-event"
+	      "server.dbus-event\n"
 #ifdef ENABLE_ASYNC_QUERY_HANDLING
-	      "\n"
 	      "server.enable-numa\n"
 	      "server.udp-async-req\n"
-	      "server.tcp-async-req"
+	      "server.tcp-async-req\n"
 #endif
-	      ;
+	      "server.disable-any";
 	ok(strcmp(ref, out) == 0, "compare result");
 
 	// List item options.
@@ -993,6 +992,7 @@ static const yp_item_t desc_server[] = {
 	{ C_UDP_ASYNC_REQS,       YP_TINT,  YP_VNONE },
 	{ C_TCP_ASYNC_REQS,       YP_TINT,  YP_VNONE },
 #endif
+	{ C_DISABLE_ANY,          YP_TBOOL, YP_VNONE },
 	{ NULL }
 };
 
