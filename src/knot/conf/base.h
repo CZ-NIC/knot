@@ -174,6 +174,11 @@ typedef struct {
 		bool srv_auto_acl;
 		bool srv_proxy_enabled;
 		bool srv_has_version;
+#ifdef ENABLE_ASYNC_QUERY_HANDLING
+		bool srv_numa_enabled;
+		uint32_t srv_udp_async_reqs;
+		uint32_t srv_tcp_async_reqs;
+#endif
 	} cache;
 
 	/*! List of dynamically loaded modules. */

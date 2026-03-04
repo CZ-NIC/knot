@@ -1461,6 +1461,32 @@ conf_remote_t conf_remote_txn(
 	return out;
 }
 
+#ifdef ENABLE_ASYNC_QUERY_HANDLING
+bool conf_is_numa_enabled_txn(
+	conf_t *conf,
+	knot_db_txn_t *txn)
+{
+	conf_val_t val = conf_get_txn(conf, txn, C_SRV, C_ENABLE_NUMA);
+	return conf_bool(&val);
+}
+
+size_t conf_udp_async_req_txn(
+	conf_t *conf,
+	knot_db_txn_t *txn)
+{
+	conf_val_t val = conf_get_txn(conf, txn, C_SRV, C_UDP_ASYNC_REQS);
+	return conf_int(&val);
+}
+
+size_t conf_tcp_async_req_txn(
+	conf_t *conf,
+	knot_db_txn_t *txn)
+{
+	conf_val_t val = conf_get_txn(conf, txn, C_SRV, C_TCP_ASYNC_REQS);
+	return conf_int(&val);
+}
+#endif
+
 int conf_xdp_iface(
 	struct sockaddr_storage *addr,
 	conf_xdp_iface_t *iface)
