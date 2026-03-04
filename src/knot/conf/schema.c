@@ -256,6 +256,7 @@ static const yp_item_t desc_server[] = {
 	{ C_UDP_ASYNC_REQS,       YP_TINT,  YP_VINT = { 0, UINT32_MAX, 4 * 1024 } },
 	{ C_TCP_ASYNC_REQS,       YP_TINT,  YP_VINT = { 0, UINT32_MAX, 1 * 1024 } },
 #endif
+	{ C_DISABLE_ANY,          YP_TBOOL, YP_VNONE },
 	{ C_COMMENT,              YP_TSTR,  YP_VNONE },
 	/* Legacy items.*/
 	{ C_TCP_FASTOPEN,         YP_TBOOL, YP_VNONE, YP_FNONE, { legacy_item } },
