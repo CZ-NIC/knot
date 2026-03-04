@@ -204,6 +204,12 @@
 #define C_ZSK_LIFETIME		"\x0C""zsk-lifetime"
 #define C_ZSK_SIZE		"\x08""zsk-size"
 
+#ifdef ENABLE_ASYNC_QUERY_HANDLING
+#define C_ENABLE_NUMA		"\x0b""enable-numa"
+#define C_UDP_ASYNC_REQS	"\x0d""udp-async-req"
+#define C_TCP_ASYNC_REQS	"\x0d""tcp-async-req"
+#endif
+
 // Legacy items.
 #define C_TCP_FASTOPEN		"\x0C""tcp-fastopen"
 

@@ -129,6 +129,11 @@ static void init_cache(
 	static size_t running_quic_clients;
 	static size_t running_quic_outbufs;
 	static size_t running_quic_idle;
+#ifdef ENABLE_ASYNC_QUERY_HANDLING
+	static bool running_numa;
+	static size_t running_udp_async;
+	static size_t running_tcp_async;
+#endif
 
 	if (first_init || reinit_cache) {
 		running_tcp_reuseport = conf_get_bool(conf, C_SRV, C_TCP_REUSEPORT);
@@ -151,6 +156,11 @@ static void init_cache(
 		running_quic_outbufs = conf_get_int(conf, C_SRV, C_QUIC_OUTBUF_MAX_SIZE);
 		running_quic_idle = conf_get_int(conf, C_SRV, C_QUIC_IDLE_CLOSE);
 
+#ifdef ENABLE_ASYNC_QUERY_HANDLING
+		running_numa = conf_is_numa_enabled(conf);
+		running_udp_async = conf_udp_async_req(conf);
+		running_tcp_async = conf_tcp_async_req(conf);
+#endif
 		first_init = false;
 	}
 
@@ -280,6 +290,12 @@ static void init_cache(
 
 	val = conf_get(conf, C_DB, C_TIMER_DB_SYNC);
 	conf->cache.db_timer_db_sync = conf_int(&val);
+
+#ifdef ENABLE_ASYNC_QUERY_HANDLING
+	conf->cache.srv_numa_enabled = running_numa;
+	conf->cache.srv_udp_async_reqs = running_udp_async;
+	conf->cache.srv_tcp_async_reqs = running_tcp_async;
+#endif
 }
 
 int conf_new(
