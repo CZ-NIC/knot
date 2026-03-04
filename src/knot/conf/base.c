@@ -296,6 +296,9 @@ static void init_cache(
 	conf->cache.srv_udp_async_reqs = running_udp_async;
 	conf->cache.srv_tcp_async_reqs = running_tcp_async;
 #endif
+
+	val = conf_get(conf, C_SRV, C_DISABLE_ANY);
+	conf->cache.srv_disable_any = conf_bool(&val);
 }
 
 int conf_new(

@@ -178,6 +178,7 @@ typedef struct {
 		uint32_t srv_udp_async_reqs;
 		uint32_t srv_tcp_async_reqs;
 #endif
+		bool srv_disable_any;
 	} cache;
 
 	/*! List of dynamically loaded modules. */

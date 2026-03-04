@@ -209,6 +209,7 @@
 #define C_UDP_ASYNC_REQS	"\x0d""udp-async-req"
 #define C_TCP_ASYNC_REQS	"\x0d""tcp-async-req"
 #endif
+#define C_DISABLE_ANY		"\x0B""disable-any"
 
 // Legacy items.
 #define C_TCP_FASTOPEN		"\x0C""tcp-fastopen"
