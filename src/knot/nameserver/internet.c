@@ -12,6 +12,9 @@
 #include "knot/zone/serial.h"
 #include "contrib/mempattern.h"
 
+#define HINFO_RDLEN 9
+static const uint8_t HINFO_RDATA[HINFO_RDLEN] = { 0x07, 'r', 'f', 'c', '8', '4', '8', '2', 0x00 };
+
 /*! \brief Check if given node was already visited. */
 static int wildcard_has_visited(knotd_qdata_t *qdata, const zone_node_t *node)
 {
@@ -131,8 +134,17 @@ static int put_answer(knot_pkt_t *pkt, uint16_t type, knotd_qdata_t *qdata)
 	knot_rrset_t rrsigs = node_rrset(qdata->extra->node, KNOT_RRTYPE_RRSIG);
 	knot_rrset_t rrset;
 	switch (type) {
-	case KNOT_RRTYPE_ANY: /* Put one RRSet, not all. */
-		rrset = node_rrset_at(qdata->extra->node, 0);
+	case KNOT_RRTYPE_ANY:
+		if (conf()->cache.srv_disable_any) {
+			knot_rrset_init(&rrset, qdata->extra->node->owner, KNOT_RRTYPE_HINFO, KNOT_CLASS_IN, 300);
+			int ret = knot_rrset_add_rdata(&rrset, HINFO_RDATA, HINFO_RDLEN,  qdata->mm);
+			if (ret != KNOT_EOK) {
+				return ret;
+			}
+		} else {
+			/* Put one RRSet, not all. */
+			rrset = node_rrset_at(qdata->extra->node, 0);
+		}
 		break;
 	case KNOT_RRTYPE_RRSIG: /* Put some RRSIGs, not all. */
 		if (!knot_rrset_empty(&rrsigs)) {
