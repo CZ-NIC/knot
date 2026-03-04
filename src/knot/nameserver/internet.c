@@ -6,6 +6,7 @@
 #include "libknot/libknot.h"
 #include "knot/dnssec/rrset-sign.h"
 #include "knot/dnssec/zone-nsec.h"
+#include "knot/nameserver/query_state.h"
 #include "knot/nameserver/internet.h"
 #include "knot/nameserver/nsec_proofs.h"
 #include "knot/nameserver/query_module.h"
@@ -109,7 +110,7 @@ static bool dname_cname_cannot_synth(const knot_rrset_t *rrset, const knot_dname
 static bool have_dnssec(knotd_qdata_t *qdata)
 {
 	return knot_pkt_has_dnssec(qdata->query) &&
-	       qdata->extra->contents->dnssec;
+	       (qdata->extra->contents->dnssec || qdata->extra->zone->sign_ctx != NULL);
 }
 
 /*! \brief This is a wildcard-covered or any other terminal node for QNAME.
@@ -462,53 +463,130 @@ static knotd_in_state_t name_not_found(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 	return KNOTD_IN_STATE_MISS;
 }
 
-static knotd_in_state_t solve_name(knotd_in_state_t state, knot_pkt_t *pkt,
-                                   knotd_qdata_t *qdata)
-{
-	int ret = zone_contents_find_dname(qdata->extra->contents, qdata->name,
-	                                   &qdata->extra->node, &qdata->extra->encloser,
-	                                   &qdata->extra->previous, qdata->query->flags & KNOT_PF_NULLBYTE);
-
-	switch (ret) {
-	case ZONE_NAME_FOUND:
-		return name_found(pkt, qdata);
-	case ZONE_NAME_NOT_FOUND:
-		return name_not_found(pkt, qdata);
-	case KNOT_EOUTOFZONE:
-		assert(state == KNOTD_IN_STATE_FOLLOW); /* CNAME/DNAME chain only. */
-		return KNOTD_IN_STATE_HIT;
-	default:
-		return KNOTD_IN_STATE_ERROR;
+#ifdef ENABLE_ASYNC_QUERY_HANDLING
+#define HANDLE_ASYNC_STATE(state) \
+	if (state == KNOTD_IN_STATE_ASYNC) { \
+		return KNOT_STATE_ASYNC; \
 	}
+#else
+#define HANDLE_ASYNC_STATE(state)
+#endif
+
+#define HANDLE_STATE(state, state_machine) \
+	{ \
+		if (state == KNOTD_IN_STATE_TRUNC) { \
+			(state_machine)->step = NULL; \
+			return KNOT_STATE_DONE; \
+		} else if (state == KNOTD_IN_STATE_ERROR) { \
+			(state_machine)->step = NULL; \
+			return KNOT_STATE_FAIL; \
+		} \
+		HANDLE_ASYNC_STATE(state) \
+	}
+
+/*! \brief Helper for internet_query repetitive code. */
+#define SOLVE_STEP(solver, state, context, state_machine) \
+	state = (solver)(state, pkt, qdata, context); \
+	HANDLE_STATE(state, state_machine)
+
+static int solve_name(int state, knot_pkt_t *pkt, knotd_qdata_t *qdata, state_machine_t *state_machine)
+{
+	struct query_plan *plan = conf()->query_plan;
+	STATE_MACHINE_RUN_STATE(state_machine, state, KNOTD_IN_STATE_ASYNC, solve_name_state, SOLVE_NAME_HANDLE_INCOMING_STATE) {
+		STATE_MACHINE_COMPLETED_STATE(state_machine, state, KNOTD_IN_STATE_ASYNC, solve_name_state, SOLVE_NAME_HANDLE_INCOMING_STATE);
+		state_machine->solve_name_incoming_state = state;
+	}
+
+	STATE_MACHINE_RUN_STATE(state_machine, state, KNOTD_IN_STATE_ASYNC, solve_name_state, SOLVE_NAME_STAGE_LOOKUP) {
+		if (plan != NULL) {
+			WALK_LIST_RESUME(state_machine->step, plan->stage[KNOTD_STAGE_NAME_LOOKUP]) {
+				state = state_machine->step->in_hook(state, pkt, qdata, state_machine->step->ctx);
+				HANDLE_ASYNC_STATE(state);
+			}
+		}
+		STATE_MACHINE_COMPLETED_STATE(state_machine, state, KNOTD_IN_STATE_ASYNC, solve_name_state, SOLVE_NAME_STAGE_LOOKUP);
+	}
+
+	STATE_MACHINE_RUN_STATE(state_machine, state, KNOTD_IN_STATE_ASYNC, solve_name_state, SOLVE_NAME_STAGE_LOOKUP_DONE) {
+		STATE_MACHINE_COMPLETED_STATE(state_machine, state, KNOTD_IN_STATE_ASYNC, solve_name_state, SOLVE_NAME_STATE_BEGIN); // reset state so next call will execute from beginning
+		int ret;
+		if (state == KNOTD_IN_STATE_ERROR) {
+			return state;
+		} else if (state == KNOTD_IN_STATE_LOOKUPDONE) {
+			ret = qdata->extra->ext_result;
+			if (ret == KNOT_EOUTOFZONE) {
+				return KNOTD_IN_STATE_HIT;
+			}
+		} else {
+			ret = zone_contents_find_dname(qdata->extra->contents, qdata->name,
+			                               &qdata->extra->node, &qdata->extra->encloser,
+			                               &qdata->extra->previous, qdata->query->flags & KNOT_PF_NULLBYTE);
+		}
+
+		switch (ret) {
+		case ZONE_NAME_FOUND:
+			return name_found(pkt, qdata);
+		case ZONE_NAME_NOT_FOUND:
+			return name_not_found(pkt, qdata);
+		case KNOT_EOUTOFZONE:
+			assert(state_machine->solve_name_incoming_state == KNOTD_IN_STATE_FOLLOW); /* CNAME/DNAME chain only. */
+			return KNOTD_IN_STATE_HIT;
+		default:
+			return KNOTD_IN_STATE_ERROR;
+		}
+	}
+
+#ifdef ENABLE_ASYNC_QUERY_HANDLING
+	return state;
+#endif
 }
 
-static knotd_in_state_t solve_answer(knotd_in_state_t state, knot_pkt_t *pkt,
-                                     knotd_qdata_t *qdata, void *ctx)
+static knotd_in_state_t solve_answer(knotd_in_state_t state, knot_pkt_t *pkt, knotd_qdata_t *qdata,
+                                     state_machine_t *state_machine)
 {
-	int old_state = state;
+	STATE_MACHINE_RUN_STATE(state_machine, state, KNOTD_IN_STATE_ASYNC, solve_answer_state, SOLVE_ANSWER_HANDLE_INCOMING_STATE) {
+		STATE_MACHINE_COMPLETED_STATE(state_machine, state, KNOTD_IN_STATE_ASYNC, solve_answer_state, SOLVE_ANSWER_HANDLE_INCOMING_STATE);
+		state_machine->solve_answer_old_state = state;
 
-	/* Do not solve if already solved, e.g. in a module. */
-	if (state == KNOTD_IN_STATE_HIT) {
-		return state;
+		/* Do not solve if already solved, e.g. in a module. */
+		if (state == KNOTD_IN_STATE_HIT) {
+			return state;
+		}
 	}
 
 	/* Get answer to QNAME. */
-	state = solve_name(state, pkt, qdata);
-
-	/* Promote NODATA from a module if nothing found in zone. */
-	if (state == KNOTD_IN_STATE_MISS && old_state == KNOTD_IN_STATE_NODATA) {
-		state = old_state;
+	STATE_MACHINE_RUN_STATE(state_machine, state, KNOTD_IN_STATE_ASYNC, solve_answer_state, SOLVE_ANSWER_SOLVE_NAME_FIRST) {
+		state = solve_name(state, pkt, qdata, state_machine);
+		STATE_MACHINE_COMPLETED_STATE(state_machine, state, KNOTD_IN_STATE_ASYNC, solve_answer_state, SOLVE_ANSWER_SOLVE_NAME_FIRST);
 	}
 
-	/* Is authoritative answer unless referral.
-	 * Must check before we chase the CNAME chain. */
-	if (state != KNOTD_IN_STATE_DELEG) {
-		knot_wire_set_aa(pkt->wire);
+	STATE_MACHINE_RUN_STATE(state_machine, state, KNOTD_IN_STATE_ASYNC, solve_answer_state, SOLVE_ANSWER_SOLVE_NAME_FIRST_DONE) {
+		STATE_MACHINE_COMPLETED_STATE(state_machine, state, KNOTD_IN_STATE_ASYNC, solve_answer_state, SOLVE_ANSWER_SOLVE_NAME_FIRST_DONE);
+		/* Promote NODATA from a module if nothing found in zone. */
+		if (state == KNOTD_IN_STATE_MISS && state_machine->solve_answer_old_state == KNOTD_IN_STATE_NODATA) {
+			state = state_machine->solve_answer_old_state;
+		}
+
+		/* Is authoritative answer unless referral.
+		 * Must check before we chase the CNAME chain. */
+		if (state != KNOTD_IN_STATE_DELEG) {
+			knot_wire_set_aa(pkt->wire);
+		}
 	}
 
-	/* Additional resolving for CNAME/DNAME chain. */
-	while (state == KNOTD_IN_STATE_FOLLOW) {
-		state = solve_name(state, pkt, qdata);
+	STATE_MACHINE_RUN_STATE(state_machine, state, KNOTD_IN_STATE_ASYNC, solve_answer_state, SOLVE_ANSWER_SOLVE_NAME_FOLLOW) {
+		/* Additional resolving for CNAME/DNAME chain. */
+		while (state == KNOTD_IN_STATE_FOLLOW || state_machine->solve_answer_loop_in_async) {
+			state_machine->solve_answer_loop_in_async = false;
+			state = solve_name(state, pkt, qdata, state_machine);
+#ifdef ENABLE_ASYNC_QUERY_HANDLING
+			if (state == KNOT_STATE_ASYNC) {
+				state_machine->solve_answer_loop_in_async = true;
+				break;
+			}
+#endif
+		}
+		STATE_MACHINE_COMPLETED_STATE(state_machine, state, KNOTD_IN_STATE_ASYNC, solve_answer_state, SOLVE_ANSWER_SOLVE_NAME_FOLLOW);
 	}
 
 	return state;
@@ -644,74 +722,128 @@ static knotd_in_state_t solve_additional_dnssec(knotd_in_state_t state, knot_pkt
 	}
 }
 
-/*! \brief Helper for internet_query repetitive code. */
-#define SOLVE_STEP(solver, state, context) \
-	state = (solver)(state, pkt, qdata, context); \
-	if (state == KNOTD_IN_STATE_TRUNC) { \
-		return KNOT_STATE_DONE; \
-	} else if (state == KNOTD_IN_STATE_ERROR) { \
-		return KNOT_STATE_FAIL; \
-	}
-
-static knot_layer_state_t answer_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
+static int answer_query(knot_pkt_t *pkt, knotd_qdata_t *qdata, state_machine_t *state_machine)
 {
-	knotd_in_state_t state = KNOTD_IN_STATE_BEGIN;
+	int state = state_machine->process_query_next_state_in;
+	// Ideally the code should handle the answer state (on resume) as part of individual path below when it resumes.
+	// Since all code path below returns state immediately following failure, the next line handles all those cases for async on resume.
+	// If any code path handles error differently (in the entire calltree) on resume from async, then error code should be handled by individual code path.
+	HANDLE_STATE(state, state_machine);
+
 	struct query_plan *plan = qdata->extra->zone->query_plan;
-	struct query_step *step;
 
 	bool with_dnssec = have_dnssec(qdata);
 
 	/* Resolve PREANSWER. */
-	if (plan != NULL) {
-		WALK_LIST(step, plan->stage[KNOTD_STAGE_PREANSWER]) {
-			assert(step->type == QUERY_HOOK_TYPE_IN);
-			SOLVE_STEP(step->in_hook, state, step->ctx);
+	STATE_MACHINE_RUN_STATE(state_machine, state, KNOTD_IN_STATE_ASYNC, answer_query_state, ANSWER_QUERY_STATE_DONE_PREANSWER) {
+		if (plan != NULL) {
+			WALK_LIST_RESUME(state_machine->step, plan->stage[KNOTD_STAGE_PREANSWER]) {
+				assert(state_machine->step->type == QUERY_HOOK_TYPE_IN);
+				SOLVE_STEP(state_machine->step->in_hook, state, state_machine->step->ctx, state_machine);
+			}
 		}
+		STATE_MACHINE_COMPLETED_STATE(state_machine, state, KNOTD_IN_STATE_ASYNC, answer_query_state, ANSWER_QUERY_STATE_DONE_PREANSWER);
 	}
 
 	/* Resolve ANSWER. */
-	knot_pkt_begin(pkt, KNOT_ANSWER);
-	SOLVE_STEP(solve_answer, state, NULL);
-	if (with_dnssec) {
-		SOLVE_STEP(solve_answer_dnssec, state, NULL);
+	STATE_MACHINE_RUN_STATE(state_machine, state, KNOTD_IN_STATE_ASYNC, answer_query_state, ANSWER_QUERY_STATE_DONE_ANSWER_BEGIN) {
+		STATE_MACHINE_COMPLETED_STATE(state_machine, state, KNOTD_IN_STATE_ASYNC, answer_query_state, ANSWER_QUERY_STATE_DONE_ANSWER_BEGIN);
+		knot_pkt_begin(pkt, KNOT_ANSWER);
 	}
-	if (plan != NULL) {
-		WALK_LIST(step, plan->stage[KNOTD_STAGE_ANSWER]) {
-			assert(step->type == QUERY_HOOK_TYPE_IN);
-			SOLVE_STEP(step->in_hook, state, step->ctx);
+
+	STATE_MACHINE_RUN_STATE(state_machine, state, KNOTD_IN_STATE_ASYNC, answer_query_state, ANSWER_QUERY_STATE_DONE_SOLVE_ANSWER) {
+		state = solve_answer(state, pkt, qdata, state_machine);
+		HANDLE_STATE(state, state_machine);
+		STATE_MACHINE_COMPLETED_STATE(state_machine, state, KNOTD_IN_STATE_ASYNC, answer_query_state, ANSWER_QUERY_STATE_DONE_SOLVE_ANSWER);
+	}
+
+	STATE_MACHINE_RUN_STATE(state_machine, state, KNOTD_IN_STATE_ASYNC, answer_query_state, ANSWER_QUERY_STATE_DONE_SOLVE_ANSWER_DNSSEC) {
+		STATE_MACHINE_COMPLETED_STATE(state_machine, state, KNOTD_IN_STATE_ASYNC, answer_query_state, ANSWER_QUERY_STATE_DONE_SOLVE_ANSWER_DNSSEC);
+		if (with_dnssec) {
+			SOLVE_STEP(solve_answer_dnssec, state, NULL, state_machine);
 		}
+	}
+
+	STATE_MACHINE_RUN_STATE(state_machine, state, KNOTD_IN_STATE_ASYNC, answer_query_state, ANSWER_QUERY_STATE_DONE_STAGE_ANSWER) {
+		if (plan != NULL) {
+			WALK_LIST_RESUME(state_machine->step, plan->stage[KNOTD_STAGE_ANSWER]) {
+				assert(state_machine->step->type == QUERY_HOOK_TYPE_IN);
+				SOLVE_STEP(state_machine->step->in_hook, state, state_machine->step->ctx, state_machine);
+			}
+		}
+		STATE_MACHINE_COMPLETED_STATE(state_machine, state, KNOTD_IN_STATE_ASYNC, answer_query_state, ANSWER_QUERY_STATE_DONE_STAGE_ANSWER);
 	}
 
 	/* Resolve AUTHORITY. */
-	knot_pkt_begin(pkt, KNOT_AUTHORITY);
-	SOLVE_STEP(solve_authority, state, NULL);
-	if (with_dnssec) {
-		SOLVE_STEP(solve_authority_dnssec, state, NULL);
+	STATE_MACHINE_RUN_STATE(state_machine, state, KNOTD_IN_STATE_ASYNC, answer_query_state, ANSWER_QUERY_STATE_DONE_AUTH_BEGIN) {
+		STATE_MACHINE_COMPLETED_STATE(state_machine, state, KNOTD_IN_STATE_ASYNC, answer_query_state, ANSWER_QUERY_STATE_DONE_AUTH_BEGIN);
+		knot_pkt_begin(pkt, KNOT_AUTHORITY);
 	}
-	if (plan != NULL) {
-		WALK_LIST(step, plan->stage[KNOTD_STAGE_AUTHORITY]) {
-			assert(step->type == QUERY_HOOK_TYPE_IN);
-			SOLVE_STEP(step->in_hook, state, step->ctx);
+
+	STATE_MACHINE_RUN_STATE(state_machine, state, KNOTD_IN_STATE_ASYNC, answer_query_state, ANSWER_QUERY_STATE_DONE_SOLVE_AUTH) {
+		STATE_MACHINE_COMPLETED_STATE(state_machine, state, KNOTD_IN_STATE_ASYNC, answer_query_state, ANSWER_QUERY_STATE_DONE_SOLVE_AUTH);
+		SOLVE_STEP(solve_authority, state, NULL, state_machine);
+	}
+
+	STATE_MACHINE_RUN_STATE(state_machine, state, KNOTD_IN_STATE_ASYNC, answer_query_state, ANSWER_QUERY_STATE_DONE_SOLVE_AUTH_DNSSEC) {
+		STATE_MACHINE_COMPLETED_STATE(state_machine, state, KNOTD_IN_STATE_ASYNC, answer_query_state, ANSWER_QUERY_STATE_DONE_SOLVE_AUTH_DNSSEC);
+		/* Azure onlinesign module generate nsec record based on black lies. So not calling solve_authority_dnssec to add nsec data
+		   for azure online signing.
+		*/
+		if (with_dnssec && qdata->extra->zone->sign_ctx == NULL) {
+			SOLVE_STEP(solve_authority_dnssec, state, NULL, state_machine);
 		}
+	}
+
+	STATE_MACHINE_RUN_STATE(state_machine, state, KNOTD_IN_STATE_ASYNC, answer_query_state, ANSWER_QUERY_STATE_DONE_STAGE_AUTH) {
+		if (plan != NULL) {
+			WALK_LIST_RESUME(state_machine->step, plan->stage[KNOTD_STAGE_AUTHORITY]) {
+				assert(state_machine->step->type == QUERY_HOOK_TYPE_IN);
+				SOLVE_STEP(state_machine->step->in_hook, state, state_machine->step->ctx, state_machine);
+			}
+		}
+		STATE_MACHINE_COMPLETED_STATE(state_machine, state, KNOTD_IN_STATE_ASYNC, answer_query_state, ANSWER_QUERY_STATE_DONE_STAGE_AUTH);
 	}
 
 	/* Resolve ADDITIONAL. */
-	knot_pkt_begin(pkt, KNOT_ADDITIONAL);
-	SOLVE_STEP(solve_additional, state, NULL);
-	if (with_dnssec) {
-		SOLVE_STEP(solve_additional_dnssec, state, NULL);
+	STATE_MACHINE_RUN_STATE(state_machine, state, KNOTD_IN_STATE_ASYNC, answer_query_state, ANSWER_QUERY_STATE_DONE_ADDITIONAL_BEGIN) {
+		STATE_MACHINE_COMPLETED_STATE(state_machine, state, KNOTD_IN_STATE_ASYNC, answer_query_state, ANSWER_QUERY_STATE_DONE_ADDITIONAL_BEGIN);
+		knot_pkt_begin(pkt, KNOT_ADDITIONAL);
 	}
-	if (plan != NULL) {
-		WALK_LIST(step, plan->stage[KNOTD_STAGE_ADDITIONAL]) {
-			assert(step->type == QUERY_HOOK_TYPE_IN);
-			SOLVE_STEP(step->in_hook, state, step->ctx);
+
+	STATE_MACHINE_RUN_STATE(state_machine, state, KNOTD_IN_STATE_ASYNC, answer_query_state, ANSWER_QUERY_STATE_DONE_SOLVE_ADDITIONAL) {
+		STATE_MACHINE_COMPLETED_STATE(state_machine, state, KNOTD_IN_STATE_ASYNC, answer_query_state, ANSWER_QUERY_STATE_DONE_SOLVE_ADDITIONAL);
+		SOLVE_STEP(solve_additional, state, NULL, state_machine);
+	}
+
+	STATE_MACHINE_RUN_STATE(state_machine, state, KNOTD_IN_STATE_ASYNC, answer_query_state, ANSWER_QUERY_STATE_DONE_SOLVE_AADDITIONAL_DNSSEC) {
+		STATE_MACHINE_COMPLETED_STATE(state_machine, state, KNOTD_IN_STATE_ASYNC, answer_query_state, ANSWER_QUERY_STATE_DONE_SOLVE_AADDITIONAL_DNSSEC);
+		if (with_dnssec) {
+			SOLVE_STEP(solve_additional_dnssec, state, NULL, state_machine);
 		}
 	}
 
-	/* Write resulting RCODE. */
-	knot_wire_set_rcode(pkt->wire, qdata->rcode);
+	STATE_MACHINE_RUN_STATE(state_machine, state, KNOTD_IN_STATE_ASYNC, answer_query_state, ANSWER_QUERY_STATE_DONE_STAGE_AADDITIONAL) {
+		if (plan != NULL) {
+			WALK_LIST_RESUME(state_machine->step, plan->stage[KNOTD_STAGE_ADDITIONAL]) {
+				assert(state_machine->step->type == QUERY_HOOK_TYPE_IN);
+				SOLVE_STEP(state_machine->step->in_hook, state, state_machine->step->ctx, state_machine);
+			}
+		}
+		STATE_MACHINE_COMPLETED_STATE(state_machine, state, KNOTD_IN_STATE_ASYNC, answer_query_state, ANSWER_QUERY_STATE_DONE_STAGE_AADDITIONAL);
+	}
 
+	/* Write resulting RCODE. */
+	STATE_MACHINE_RUN_STATE(state_machine, state, KNOTD_IN_STATE_ASYNC, answer_query_state, ANSWER_QUERY_STATE_DONE_SET_ERROR) {
+		STATE_MACHINE_COMPLETED_STATE(state_machine, state, KNOTD_IN_STATE_ASYNC, answer_query_state, ANSWER_QUERY_STATE_DONE_SET_ERROR);
+		knot_wire_set_rcode(pkt->wire, qdata->rcode);
+	}
+
+#ifdef ENABLE_ASYNC_QUERY_HANDLING
+	return state == KNOTD_IN_STATE_ASYNC ? KNOT_STATE_ASYNC : KNOT_STATE_DONE;
+#else
 	return KNOT_STATE_DONE;
+#endif
 }
 
 knot_layer_state_t internet_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
@@ -720,27 +852,32 @@ knot_layer_state_t internet_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 		return KNOT_STATE_FAIL;
 	}
 
-	/* Check if valid zone. */
-	NS_NEED_ZONE(qdata, KNOT_RCODE_REFUSED);
+	state_machine_t *state = qdata->state;
 
-	/* Check if a TSIG is present. */
-	if (knot_pkt_has_tsig(qdata->query)) {
-		NS_NEED_AUTH(qdata, ACL_ACTION_QUERY);
+	STATE_MACHINE_RUN_STATE(state, KNOTD_STATE_ZONE_LOOKUPDONE, KNOT_STATE_ASYNC, internet_process_query_state, INTERNET_PROCESS_QUERY_STATE_DONE_PREPROCESS) {
+		/* Check if valid zone. */
+		NS_NEED_ZONE(qdata, KNOT_RCODE_REFUSED);
 
-		/* Reserve space for TSIG. */
-		int ret = knot_pkt_reserve(pkt, knot_tsig_wire_size(&qdata->sign.tsig_key));
-		if (ret != KNOT_EOK) {
-			return KNOT_STATE_FAIL;
+		/* Check if a TSIG is present. */
+		if (knot_pkt_has_tsig(qdata->query)) {
+			NS_NEED_AUTH(qdata, ACL_ACTION_QUERY);
+
+			/* Reserve space for TSIG. */
+			int ret = knot_pkt_reserve(pkt, knot_tsig_wire_size(&qdata->sign.tsig_key));
+			if (ret != KNOT_EOK) {
+				return KNOT_STATE_FAIL;
+			}
+		} else if (qdata->extra->zone->is_catalog_flag) {
+			NS_NEED_AUTH(qdata, ACL_ACTION_QUERY);
 		}
-	} else if (qdata->extra->zone->is_catalog_flag) {
-		NS_NEED_AUTH(qdata, ACL_ACTION_QUERY);
+
+		/* Check if the zone is not empty or expired. */
+		NS_NEED_ZONE_CONTENTS(qdata);
+
+		/* Get answer to QNAME. */
+		qdata->name = knot_pkt_qname(qdata->query);
+		STATE_MACHINE_COMPLETED_STATE(state, KNOTD_STATE_ZONE_LOOKUPDONE, KNOT_STATE_ASYNC, internet_process_query_state, INTERNET_PROCESS_QUERY_STATE_DONE_PREPROCESS);
 	}
 
-	/* Check if the zone is not empty or expired. */
-	NS_NEED_ZONE_CONTENTS(qdata);
-
-	/* Get answer to QNAME. */
-	qdata->name = knot_pkt_qname(qdata->query);
-
-	return answer_query(pkt, qdata);
+	return answer_query(pkt, qdata, state);
 }
