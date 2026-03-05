@@ -19,6 +19,7 @@
  #define ATOMIC_ADD(dst, val)  (void)atomic_fetch_add_explicit(&(dst), (val), memory_order_relaxed)
  #define ATOMIC_SUB(dst, val)  (void)atomic_fetch_sub_explicit(&(dst), (val), memory_order_relaxed)
  #define ATOMIC_XCHG(dst, val) atomic_exchange_explicit(&(dst), (val), memory_order_relaxed)
+ #define ATOMIC_CMPXCHG(dst, exp, des) atomic_compare_exchange_weak(&(dst), &(exp), (des))
 
  typedef atomic_uint_fast16_t knot_atomic_uint16_t;
  typedef atomic_uint_fast64_t knot_atomic_uint64_t;
@@ -37,6 +38,7 @@
  #define ATOMIC_ADD(dst, val)  __atomic_add_fetch(&(dst), (val), __ATOMIC_RELAXED)
  #define ATOMIC_SUB(dst, val)  __atomic_sub_fetch(&(dst), (val), __ATOMIC_RELAXED)
  #define ATOMIC_XCHG(dst, val) __atomic_exchange_n(&(dst), (val), __ATOMIC_RELAXED)
+ #define ATOMIC_CMPXCHG(dst, exp, des) __atomic_compare_exchange_n(&(dst), &(exp), (des), __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST)
 
  typedef uint16_t knot_atomic_uint16_t;
  typedef uint64_t knot_atomic_uint64_t;
@@ -88,6 +90,20 @@
 	knot_spin_lock((knot_spin_t *)&(dst).lock); \
 	typeof((dst).value.non_vol) _z = (typeof((dst).value.non_vol))(dst).value.vol; \
 	(dst).value.vol = (val); \
+	knot_spin_unlock((knot_spin_t *)&(dst).lock); \
+	_z; \
+ })
+
+#define ATOMIC_CMPXCHG(dst, exp, des) ({ \
+	bool _z; \
+	knot_spin_lock((knot_spin_t *)&(dst).lock); \
+	if ((dst).value.vol == (exp)) { \
+		(dst).value.vol = (des); \
+		_z = true; \
+	} else { \
+		(exp) = (dst).value.vol; \
+		_z = false; \
+	} \
 	knot_spin_unlock((knot_spin_t *)&(dst).lock); \
 	_z; \
  })

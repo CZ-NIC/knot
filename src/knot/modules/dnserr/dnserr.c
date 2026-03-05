@@ -5,7 +5,7 @@
 
 #include <netinet/in.h>
 
-#include "contrib/spinlock.h"
+#include "contrib/atomic.h"
 #include "contrib/time.h"
 #include "contrib/wire_ctx.h"
 #include "knot/include/module.h"
@@ -33,9 +33,22 @@ typedef struct {
 	knot_dname_storage_t record;
 } log_tuple_t;
 
+enum state {
+	EMPTY = 0,
+	RESERVED = 1,
+	FULL = 2
+};
+
 typedef struct {
+	knot_atomic_uint16_t state;
+	log_tuple_t data;
+} log_set_el_t;
+
+typedef struct {
+	knot_atomic_bool lock;
+	knot_atomic_size_t workers;
 	size_t size;
-	log_tuple_t *table;
+	log_set_el_t *table;
 } log_set_t;
 
 typedef struct {
@@ -44,7 +57,6 @@ typedef struct {
 	const knot_dname_t *report_channel;
 	int timeout;
 	uint16_t report_channel_size;
-	knot_spin_t log_cache_lock;
 	bool log;
 } dnserr_ctx_t;
 
@@ -77,6 +89,9 @@ static bool log_tuple_eq(const log_tuple_t *a, const log_tuple_t *b)
 
 static int hashset_add(log_set_t *set, const log_tuple_t *val)
 {
+	while (ATOMIC_GET(set->lock) == true) {} // HashSet is waiting to be flushed
+	ATOMIC_ADD(set->workers, 1); // Register worker in HashSet
+
 	/* NOTE: After some testing, limit 10 ought to be enough
 	 * A larger number of iterations (search depth) is a waste of CPU time
 	 * and has no real impact on HIT/MISS (except for disproportionately large
@@ -86,38 +101,66 @@ static int hashset_add(log_set_t *set, const log_tuple_t *val)
 	uint64_t h = log_tuple_hash(val);
 	int i = 1;
 	for (; i < limit; ++i) {
-		if (log_tuple_eq(val, &set->table[h % set->size])) {
-			return KNOT_EEXIST;
+		uint16_t wanted = RESERVED;
+		uint_fast16_t expected = EMPTY;
+		
+		bool empty = false;
+		while (!(empty = ATOMIC_CMPXCHG(set->table[h % set->size].state, expected, wanted))) {
+			if (expected == FULL) {
+				break;
+			}
+			expected = EMPTY;
 		}
-		if (set->table[h % set->size].err == 0) {
+		if (empty) {
 			break;
 		}
+
+		bool equals = log_tuple_eq(val, &set->table[h % set->size].data);
+		if (equals) {
+			ATOMIC_SUB(set->workers, 1);
+			return KNOT_EEXIST;
+		}
+
 		// Quadratic probing
 		h += i * i;
 	}
 	if (i == limit) {
+		ATOMIC_SUB(set->workers, 1);
 		return KNOT_ENOMEM;
 	}
-	memcpy(&set->table[h % set->size], val, sizeof(*val));
+
+	memcpy(&set->table[h % set->size].data, val, sizeof(*val));
+	ATOMIC_SET(set->table[h % set->size].state, FULL);
+	ATOMIC_SUB(set->workers, 1);
+
 	return KNOT_EOK;
 }
 
 static void flush_set(knotd_mod_t *mod, log_set_t *set)
 {
+	bool exp = false, des = true;
+	while(!ATOMIC_CMPXCHG(set->lock, exp, des)) {
+		exp = false;
+	}
+	while(ATOMIC_GET(set->workers) != 0) {}
+
 	char record_str[KNOT_DNAME_TXT_MAXLEN];
 	char qtype_str[32];
-	for (log_tuple_t *el = set->table; el != set->table + set->size; ++el) {
-		if (el->err == 0) {
+	for (log_set_el_t *el = set->table; el != set->table + set->size; ++el) {
+		while (ATOMIC_GET(el->state) == RESERVED) {}
+		if (ATOMIC_GET(el->state) == EMPTY) {
 			continue;
 		}
 
-		knot_dname_to_str(record_str, el->record, KNOT_DNAME_TXT_MAXLEN);
-		knot_rrtype_to_string(el->qtype, qtype_str, sizeof(qtype_str));
+		knot_dname_to_str(record_str, el->data.record, KNOT_DNAME_TXT_MAXLEN);
+		knot_rrtype_to_string(el->data.qtype, qtype_str, sizeof(qtype_str));
 
-		knotd_mod_log(mod, LOG_WARNING, LOG_MESSAGE_FMT, el->err, record_str,
+		knotd_mod_log(mod, LOG_WARNING, LOG_MESSAGE_FMT, el->data.err, record_str,
 		              qtype_str);
-		el->err = 0;
+		ATOMIC_SET(el->state, EMPTY);
 	}
+
+	ATOMIC_SET(set->lock, false);
 }
 
 static int parse_int_label(const uint8_t *dname)
@@ -280,10 +323,7 @@ static knotd_in_state_t dnserr_query(knotd_in_state_t state, knot_pkt_t *pkt,
 		// For each QTYPE store one event into hashset
 		for (int idx = 0; idx < parsed.qtypes_cnt; ++idx) {
 			ev.qtype = parsed.qtypes[idx];
-
-			knot_spin_lock(&ctx->log_cache_lock);
 			hashset_add(&ctx->log_cache, &ev);
-			knot_spin_unlock(&ctx->log_cache_lock);
 		}
 
 		struct timespec now = time_now();
@@ -315,12 +355,11 @@ int dnserr_load(knotd_mod_t *mod)
 		knotd_conf_t conf_cachesize = knotd_conf_mod(mod, MOD_CACHESIZE);
 		size_t size = conf_cachesize.single.integer;
 		ctx->log_cache.size = size;
-		ctx->log_cache.table = calloc(size, sizeof(log_tuple_t));
+		ctx->log_cache.table = calloc(size, sizeof(log_set_el_t));
+		ATOMIC_INIT(ctx->log_cache.lock, false);
 
 		knotd_conf_t conf_timeout = knotd_conf_mod(mod, MOD_TIMEOUT);
 		ctx->timeout = conf_timeout.single.integer;
-
-		knot_spin_init(&ctx->log_cache_lock);
 	}
 
 	knotd_mod_ctx_set(mod, ctx);
@@ -335,7 +374,7 @@ void dnserr_unload(knotd_mod_t *mod)
 	dnserr_ctx_t *ctx = knotd_mod_ctx(mod);
 	flush_set(mod, &ctx->log_cache);
 	free(ctx->log_cache.table);
-	knot_spin_destroy(&ctx->log_cache_lock);
+	ATOMIC_DEINIT(ctx->log_cache.lock);
 	free(ctx);
 }
 
