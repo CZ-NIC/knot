@@ -12,13 +12,27 @@
 #ifdef HAVE_C11_ATOMIC           /* C11 */
  #include <stdatomic.h>
 
- #define ATOMIC_INIT(dst, val) atomic_store_explicit(&(dst), (val), memory_order_relaxed)
+ #define MO_RELAXED memory_order_relaxed
+ #define MO_CONSUME memory_order_consume
+ #define MO_ACQUIRE memory_order_acquire
+ #define MO_RELEASE memory_order_release
+ #define MO_ACQ_REL memory_order_acq_rel
+ #define MO_SEQ_CST memory_order_seq_cst
+
+ #define ATOMIC_INIT_EX(dst, val, memorder) atomic_store_explicit(&(dst), (val), (memorder))
+ #define ATOMIC_SET_EX(dst, val, memorder)  atomic_store_explicit(&(dst), (val), (memorder))
+ #define ATOMIC_GET_EX(src, memorder)       atomic_load_explicit(&(src), (memorder))
+ #define ATOMIC_ADD_EX(dst, val, memorder)  (void)atomic_fetch_add_explicit(&(dst), (val), (memorder))
+ #define ATOMIC_SUB_EX(dst, val, memorder)  (void)atomic_fetch_sub_explicit(&(dst), (val), (memorder))
+ #define ATOMIC_XCHG_EX(dst, val, memorder) atomic_exchange_explicit(&(dst), (val), (memorder))
+
+ #define ATOMIC_INIT(dst, val) ATOMIC_INIT_EX(dst, val, MO_RELAXED)
  #define ATOMIC_DEINIT(dst)
- #define ATOMIC_SET(dst, val)  atomic_store_explicit(&(dst), (val), memory_order_relaxed)
- #define ATOMIC_GET(src)       atomic_load_explicit(&(src), memory_order_relaxed)
- #define ATOMIC_ADD(dst, val)  (void)atomic_fetch_add_explicit(&(dst), (val), memory_order_relaxed)
- #define ATOMIC_SUB(dst, val)  (void)atomic_fetch_sub_explicit(&(dst), (val), memory_order_relaxed)
- #define ATOMIC_XCHG(dst, val) atomic_exchange_explicit(&(dst), (val), memory_order_relaxed)
+ #define ATOMIC_SET(dst, val)  ATOMIC_SET_EX(dst, val, MO_RELAXED)
+ #define ATOMIC_GET(src)       ATOMIC_GET_EX(src, MO_RELAXED)
+ #define ATOMIC_ADD(dst, val)  ATOMIC_ADD_EX(dst, val, MO_RELAXED)
+ #define ATOMIC_SUB(dst, val)  ATOMIC_SUB_EX(dst, val, MO_RELAXED)
+ #define ATOMIC_XCHG(dst, val) ATOMIC_XCHG_EX(dst, val, MO_RELAXED)
 
  typedef atomic_uint_fast16_t knot_atomic_uint16_t;
  typedef atomic_uint_fast64_t knot_atomic_uint64_t;
@@ -30,13 +44,27 @@
  #include <stdbool.h>
  #include <stddef.h>
 
- #define ATOMIC_INIT(dst, val) __atomic_store_n(&(dst), (val), __ATOMIC_RELAXED)
+ #define MO_RELAXED __ATOMIC_RELAXED
+ #define MO_CONSUME __ATOMIC_CONSUME
+ #define MO_ACQUIRE __ATOMIC_ACQUIRE
+ #define MO_RELEASE __ATOMIC_RELEASE
+ #define MO_ACQ_REL __ATOMIC_ACQ_REL
+ #define MO_SEQ_CST __ATOMIC_SEQ_CST
+
+ #define ATOMIC_INIT_EX(dst, val, memorder) __atomic_store_n(&(dst), (val), (memorder))
+ #define ATOMIC_SET_EX(dst, val, memorder)  __atomic_store_n(&(dst), (val), (memorder))
+ #define ATOMIC_GET_EX(src, memorder)       __atomic_load_n(&(src), (memorder))
+ #define ATOMIC_ADD_EX(dst, val, memorder)  __atomic_add_fetch(&(dst), (val), (memorder))
+ #define ATOMIC_SUB_EX(dst, val, memorder)  __atomic_sub_fetch(&(dst), (val), (memorder))
+ #define ATOMIC_XCHG_EX(dst, val, memorder) __atomic_exchange_n(&(dst), (val), (memorder))
+
+ #define ATOMIC_INIT(dst, val) ATOMIC_INIT_EX(&(dst), (val), MO_RELAXED)
  #define ATOMIC_DEINIT(dst)
- #define ATOMIC_SET(dst, val)  __atomic_store_n(&(dst), (val), __ATOMIC_RELAXED)
- #define ATOMIC_GET(src)       __atomic_load_n(&(src), __ATOMIC_RELAXED)
- #define ATOMIC_ADD(dst, val)  __atomic_add_fetch(&(dst), (val), __ATOMIC_RELAXED)
- #define ATOMIC_SUB(dst, val)  __atomic_sub_fetch(&(dst), (val), __ATOMIC_RELAXED)
- #define ATOMIC_XCHG(dst, val) __atomic_exchange_n(&(dst), (val), __ATOMIC_RELAXED)
+ #define ATOMIC_SET(dst, val)  ATOMIC_SET_EX(&(dst), (val), MO_RELAXED)
+ #define ATOMIC_GET(src)       ATOMIC_GET_EX(&(src), MO_RELAXED)
+ #define ATOMIC_ADD(dst, val)  ATOMIC_ADD_EX(&(dst), (val), MO_RELAXED)
+ #define ATOMIC_SUB(dst, val)  ATOMIC_SUB_EX(&(dst), (val), MO_RELAXED)
+ #define ATOMIC_XCHG(dst, val) ATOMIC_XCHG_EX(&(dst), (val), MO_RELAXED)
 
  typedef uint16_t knot_atomic_uint16_t;
  typedef uint64_t knot_atomic_uint64_t;
@@ -49,6 +77,13 @@
  #include <stddef.h>
 
  #include "contrib/spinlock.h"
+
+#define MO_RELAXED
+#define MO_CONSUME
+#define MO_ACQUIRE
+#define MO_RELEASE
+#define MO_ACQ_REL
+#define MO_SEQ_CST
 
  #define ATOMIC_SET(dst, val) ({ \
 	knot_spin_lock((knot_spin_t *)&(dst).lock); \
@@ -91,6 +126,13 @@
 	knot_spin_unlock((knot_spin_t *)&(dst).lock); \
 	_z; \
  })
+
+ #define ATOMIC_INIT_EX(dst, val, memorder) ATOMIC_INIT(dst, val)
+ #define ATOMIC_SET_EX(dst, val, memorder)  ATOMIC_SET(dst, val)
+ #define ATOMIC_GET_EX(src, memorder)       ATOMIC_GET(src)
+ #define ATOMIC_ADD_EX(dst, val, memorder)  ATOMIC_ADD(dst, val)
+ #define ATOMIC_SUB_EX(dst, val, memorder)  ATOMIC_SUB(dst, val)
+ #define ATOMIC_XCHG_EX(dst, val, memorder) ATOMIC_XCHG(dst, val)
 
  #define ATOMIC_T(x) struct { \
 	knot_spin_t lock; \
