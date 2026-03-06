@@ -146,7 +146,7 @@ docker:knot-dns:fedora:
   stage: build
   script:
     - autoreconf -fi
-    - ./configure --disable-fastparser --enable-quic $EXTRA_CONFIGURE || ( cat config.log && exit 1 )
+    - ./configure --disable-fastparser --disable-quic --without-module-azuredb --without-module-azurednssec --enable-async-query --with-module-delay --enable-throttle-dnstap-logs --with-module-dnstap $EXTRA_CONFIGURE || ( cat config.log && exit 1 )
     - make all V=1
   artifacts:
     untracked: true

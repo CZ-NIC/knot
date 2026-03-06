@@ -832,6 +832,13 @@ AS_IF([test -n "$sanitizer_CFLAGS"], [CFLAGS="$CFLAGS $sanitizer_CFLAGS"])
 AM_CONDITIONAL([FUZZER], [test "$with_fuzzer" != "no"])
 AM_CONDITIONAL([OSS_FUZZ], [test "$with_oss_fuzz" != "no"])
 
+AC_ARG_ENABLE([testing],
+    AS_HELP_STRING([--enable-testing], [enable workarounds needed for functional testing]),
+    [], [enable_testing=no])
+
+AS_IF([test "$enable_testing" != "no"], [
+    AC_DEFINE([ENABLE_TESTING], [1], [Define to 1 to enable testing compatibility])])
+
 AC_ARG_ENABLE([trailing-bytes],
     AS_HELP_STRING([--enable-trailing-bytes=yes|no], [enable trailing bytes in DNS query [default=no]]),
     [], [enable_trailing_bytes=no])

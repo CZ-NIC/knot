@@ -387,12 +387,16 @@ static knotd_in_state_t name_found(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 	    && qtype != KNOT_RRTYPE_RRSIG
 	    && qtype != KNOT_RRTYPE_NSEC
 	    && qtype != KNOT_RRTYPE_ANY) {
+#ifdef ENABLE_TESTING
+		return follow_cname(pkt, KNOT_RRTYPE_CNAME, qdata);
+#else
 		knotd_in_state_t next_state = follow_cname(pkt, KNOT_RRTYPE_CNAME, qdata);
 		if (next_state == KNOTD_IN_STATE_FOLLOW) {
 			/* No need to follow, as the CNAME chain is disabled. */
 			return KNOTD_IN_STATE_HIT;
 		}
 		return next_state;
+#endif
 	}
 
 	uint16_t old_rrcount = pkt->rrset_count;
