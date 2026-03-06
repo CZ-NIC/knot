@@ -4,7 +4,6 @@
  */
 
 #include <stdatomic.h>
-#include <time.h>
 
 #include "knot/modules/rrl/functions.h"
 #include "knot/modules/rrl/kru.h"
@@ -24,10 +23,6 @@
 #define RRL_V4_PREFIXES_CNT (sizeof(RRL_V4_PREFIXES) / sizeof(*RRL_V4_PREFIXES))
 #define RRL_V6_PREFIXES_CNT (sizeof(RRL_V6_PREFIXES) / sizeof(*RRL_V6_PREFIXES))
 #define RRL_MAX_PREFIXES_CNT ((RRL_V4_PREFIXES_CNT > RRL_V6_PREFIXES_CNT) ? RRL_V4_PREFIXES_CNT : RRL_V6_PREFIXES_CNT)
-
-#ifndef CLOCK_MONOTONIC_COARSE
-#define CLOCK_MONOTONIC_COARSE CLOCK_MONOTONIC
-#endif
 
 #define RRL_LIMIT_KOEF 1/2 // Avoid probabilistic rounding wherever possible.
 
