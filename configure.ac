@@ -1004,6 +1004,13 @@ AS_IF([test "$enable_trafficmanager" = yes], [
 AS_IF([test "$enable_trafficmanager" = yes], [AC_DEFINE([USE_TRAFFICMANAGER], [1], [Define to 1 to enable TrafficManager module.])])
 AM_CONDITIONAL([USE_TRAFFICMANAGER], [test "$enable_trafficmanager" = yes])
 
+AC_ARG_ENABLE([testing],
+    AS_HELP_STRING([--enable-testing], [enable workarounds needed for functional testing]),
+    [], [enable_testing=no])
+
+AS_IF([test "$enable_testing" != "no"], [
+    AC_DEFINE([ENABLE_TESTING], [1], [Define to 1 to enable testing compatibility])])
+
 # Strip -fdebug-prefix-map= parameters from flags for better reproducibility of binaries.
 filtered_cflags=$(echo -n "$CFLAGS" | \
                   sed 's/[[^[:alnum:]]]-f[[^[:space:]]]*-prefix-map=[[^[:space:]]]*//g')
