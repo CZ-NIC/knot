@@ -821,10 +821,12 @@ finish:
 	}
 
 #ifdef ENABLE_ASYNC_QUERY_HANDLING
+#ifndef ENABLE_TESTING
 	{
 		struct timespec five_sec = { 5, 0 };
 		nanosleep(&five_sec, &five_sec);
 	}
+#endif
 #endif
 
 	cleanup_dns_handle(&udp.dns_handler);
