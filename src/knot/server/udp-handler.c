@@ -815,7 +815,7 @@ int udp_master(dthread_t *thread)
 finish:
 #ifdef ENABLE_ASYNC_QUERY_HANDLING
 	{
-		struct timespec five_sec = { 5, 0 };
+		struct timespec five_sec = { 0, 0 };
 		nanosleep(&five_sec, &five_sec);
 	}
 #endif
