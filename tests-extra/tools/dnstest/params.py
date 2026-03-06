@@ -82,6 +82,8 @@ bind_bin = get_binary("KNOT_TEST_BIND", "named")
 bind_ctl = get_binary("KNOT_TEST_BINDC", "rndc")
 # KNOT_TEST_BIND_CHECKCONF - Bind checkconf binary.
 bind_checkconf_bin = get_binary("KNOT_TEST_BIND_CHECKCONF", "named-checkconf")
+# KNOT_TEST_UNALIAS - Script for ALIAS resolving.
+unalias_bin = get_binary("KNOT_TEST_UNALIAS", repo_binary("scripts/redis_unalias.py"))
 
 # KNOT_TEST_OUTS_DIR - working directories location.
 outs_dir = get_param("KNOT_TEST_OUTS_DIR", "/tmp")

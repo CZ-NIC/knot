@@ -1422,6 +1422,7 @@
 	    | "DSYNC"i      %{ type_num(KNOT_RRTYPE_DSYNC, &rdata_tail); }
 	    | "RESINFO"i    %{ type_num(KNOT_RRTYPE_RESINFO, &rdata_tail); }
 	    | "WALLET"i     %{ type_num(KNOT_RRTYPE_WALLET, &rdata_tail); }
+	    | "ALIAS"i      %{ type_num(KNOT_RRTYPE_ALIAS, &rdata_tail); }
 	    | "TYPE"i      . num16 # TYPE0-TYPE65535.
 	    ) $!_type_error %_ret . all_wchar;
 	type_num = alnum ${ fhold; fcall type_num_; };
@@ -1492,6 +1493,7 @@
 	    | "DSYNC"i      %{ window_add_bit(KNOT_RRTYPE_DSYNC, s); }
 	    | "RESINFO"i    %{ window_add_bit(KNOT_RRTYPE_RESINFO, s); }
 	    | "WALLET"i     %{ window_add_bit(KNOT_RRTYPE_WALLET, s); }
+	    | "ALIAS"i      %{ window_add_bit(KNOT_RRTYPE_ALIAS, s); }
 	    | "TYPE"i      . type_bitmap # TYPE0-TYPE65535.
 	    );
 
@@ -2091,6 +2093,7 @@
 		case KNOT_RRTYPE_CNAME:
 		case KNOT_RRTYPE_PTR:
 		case KNOT_RRTYPE_DNAME:
+		case KNOT_RRTYPE_ALIAS:
 			fcall r_data_ns;
 		case KNOT_RRTYPE_SOA:
 			fcall r_data_soa;
@@ -2227,6 +2230,7 @@
 		case KNOT_RRTYPE_DSYNC:
 		case KNOT_RRTYPE_RESINFO:
 		case KNOT_RRTYPE_WALLET:
+		case KNOT_RRTYPE_ALIAS:
 			fcall nonempty_hex_r_data;
 		// Next types can have empty rdata.
 		case KNOT_RRTYPE_APL:
@@ -2314,6 +2318,7 @@
 		| "DSYNC"i      %{ s->r_type = KNOT_RRTYPE_DSYNC; }
 		| "RESINFO"i    %{ s->r_type = KNOT_RRTYPE_RESINFO; }
 		| "WALLET"i     %{ s->r_type = KNOT_RRTYPE_WALLET; }
+		| "ALIAS"i      %{ s->r_type = KNOT_RRTYPE_ALIAS; }
 		| "TYPE"i      . type_number
 		) $!_r_type_error;
 	# END
