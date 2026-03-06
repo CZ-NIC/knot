@@ -10,6 +10,7 @@
 
 #include "contrib/strtonum.h"
 #include "contrib/wire_ctx.h"
+#include "knot/dnssec/kasp/kasp_zone.h"
 #include "knot/dnssec/key_records.h"
 #include "knot/dnssec/zone-keys.h"
 
@@ -274,6 +275,7 @@ static key_params_t *txn2params(knot_lmdb_txn_t *txn)
 		if (!params_deserialize(&txn->cur_val, p) ||
 		    !unmake_key_str(&txn->cur_key, &p->id)) {
 			txn->ret = KNOT_EMALF;
+			free_key_params(p);
 			free(p);
 			p = NULL;
 		}
@@ -296,6 +298,10 @@ int kasp_db_list_keys(knot_lmdb_db_t *db, const knot_dname_t *zone_name, list_t 
 	knot_lmdb_abort(&txn);
 	free(prefix.mv_data);
 	if (txn.ret != KNOT_EOK) {
+		ptrnode_t *n;
+		WALK_LIST(n, *dst) {
+			free_key_params(n->d);
+		}
 		ptrlist_deep_free(dst, NULL);
 		return txn.ret;
 	}
