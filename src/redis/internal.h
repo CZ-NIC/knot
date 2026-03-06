@@ -2295,7 +2295,9 @@ static void upd_commit(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t
 static int upd_dump(RedisModuleCtx *ctx, index_k index_key, const arg_dname_t *origin,
                     const arg_dname_t *opt_owner, const uint16_t *opt_rtype, dump_mode_t mode)
 {
-	RedisModule_Assert(RedisModule_KeyType(index_key) == REDISMODULE_KEYTYPE_ZSET);
+	int zone_keytype = RedisModule_KeyType(index_key);
+	RedisModule_Assert(zone_keytype == REDISMODULE_KEYTYPE_EMPTY ||
+	                   zone_keytype == REDISMODULE_KEYTYPE_ZSET);
 
 	char buf[128 * 1024];
 
