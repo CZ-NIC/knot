@@ -1065,6 +1065,7 @@ static void zone_store_bin_format(RedisModuleCtx *ctx, const arg_dname_t *origin
 			.size = zone_data_len,
 			.rdata = (knot_rdata_t *)zone_data
 		};
+		ALIGN_RDATASET(new_rdataset);
 		if (knot_rdataset_merge(&rrset->rrs, &new_rdataset, &mm) != KNOT_EOK) {
 			RedisModule_FreeString(ctx, rrset_keyname);
 			RedisModule_CloseKey(rrset_key);

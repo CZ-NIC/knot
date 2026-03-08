@@ -236,3 +236,13 @@ static knot_dname_t *dname_from_str(const char *ptr, size_t len, uint8_t *out, a
 
 	return out;
 }
+
+#define ALIGN_RDATASET(rdataset) { \
+	if (((uintptr_t)rdataset.rdata % 2) != 0) { \
+		uint8_t *tmp = alloca(rdataset.size); \
+		if (tmp != NULL) { \
+			memcpy(tmp, (void *)rdataset.rdata, rdataset.size); \
+			rdataset.rdata = (knot_rdata_t *)tmp; \
+		} \
+	} \
+}

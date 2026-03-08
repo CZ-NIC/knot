@@ -584,6 +584,9 @@ static int upd_add_bin(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 		.size = rdata_len,
 		.rdata = (knot_rdata_t *)rdata
 	};
+	if (merge) {
+		ALIGN_RDATASET(rdataset);
+	}
 
 	upd_add_bin_format(ctx, &origin, &txn, &owner, ttl, rtype, &rdataset, merge);
 	return REDISMODULE_OK;
