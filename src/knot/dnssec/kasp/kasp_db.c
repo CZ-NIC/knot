@@ -3,10 +3,10 @@
  *  For more information, see <https://www.knot-dns.cz/>
  */
 
-#include "knot/dnssec/kasp/kasp_db.h"
-
 #include <inttypes.h>
 #include <stdio.h>
+
+#include "knot/dnssec/kasp/kasp_db.h"
 
 #include "contrib/strtonum.h"
 #include "contrib/wire_ctx.h"
