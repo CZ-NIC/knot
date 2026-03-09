@@ -53,7 +53,7 @@ typedef struct {
 #endif // ENABLE_QUIC
 } udp_context_t;
 
-static void udp_handler(dns_request_handler_context_t *dns_handler, network_dns_request_t *req)
+static void udp_handler(udp_context_t *udp, network_dns_request_t *req)
 {
 	knotd_qdata_params_t *params = &req->dns_req.req_data.params;
 
@@ -61,7 +61,7 @@ static void udp_handler(dns_request_handler_context_t *dns_handler, network_dns_
 		return;
 	}
 
-	handle_dns_request(dns_handler, &req->dns_req);
+	handle_dns_request(&udp->dns_handler, &req->dns_req);
 
 	(void)process_query_proto(params, KNOTD_STAGE_PROTO_END);
 }
@@ -256,17 +256,18 @@ static void udp_msg_handle(udp_context_t *ctx, const iface_t *iface, void *d)
 
 	init_dns_request(&ctx->dns_handler, &rq->udp_req->dns_req, rq->fd,
 	                 iface->tls ? KNOTD_QUERY_PROTO_QUIC : KNOTD_QUERY_PROTO_UDP);
+	knotd_qdata_params_t *params = &rq->udp_req->dns_req.req_data.params;
 
 	/* Process received pkt. */
 	if (iface->tls) {
 #ifdef ENABLE_QUIC
-		quic_handler(&ctx->dns_handler.layer, rq->udp_req, ctx->quic_idle_close,
-		             ctx->quic_table, p_ecn);
+		quic_handler(params, &ctx->dns_handler.layer, ctx->quic_idle_close,
+		             ctx->quic_table, &rq->udp_req->iov[RX], &rq->msg[TX], p_ecn);
 #else
 		assert(0);
 #endif // ENABLE_QUIC
 	} else {
-		udp_handler(&ctx->dns_handler, rq->udp_req);
+		udp_handler(ctx, rq->udp_req);
 	}
 #ifdef ENABLE_ASYNC_QUERY_HANDLING
 	if (dns_handler_request_is_async(rq->udp_req->dns_req)) {
@@ -439,16 +440,16 @@ static void udp_mmsg_handle(udp_context_t *ctx, const iface_t *iface, void *d)
 
 		init_dns_request(&ctx->dns_handler, &rq->udp_reqs[j]->dns_req, rq->fd,
 		                 iface->tls ? KNOTD_QUERY_PROTO_QUIC : KNOTD_QUERY_PROTO_UDP);
-
+		knotd_qdata_params_t *params = &rq->udp_reqs[j]->dns_req.req_data.params;
 		if (iface->tls) {
 #ifdef ENABLE_QUIC
-			quic_handler(&ctx->dns_handler, rq->udp_reqs[j],
-			             ctx->quic_idle_close,ctx->quic_table, p_ecn);
+			quic_handler(params, &ctx->dns_handler.layer, ctx->quic_idle_close,
+			             ctx->quic_table, rx->msg_iov, tx, p_ecn);
 #else
 		assert(0);
 #endif // ENABLE_QUIC
 		} else {
-			udp_handler(&ctx->dns_handler, rq->udp_reqs[j]);
+			udp_handler(ctx, rq->udp_reqs[j]);
 		}
 
 #ifdef ENABLE_ASYNC_QUERY_HANDLING
@@ -617,20 +618,6 @@ static unsigned udp_set_ifaces(const server_t *server, size_t n_ifaces, fdset_t 
 	return fdset_get_length(fds);
 }
 
-static int quic_send_produced_result(dns_request_handler_context_t *dns_handler,
-                                     dns_handler_request_t *req, size_t size)
-{
-	udp_context_t *udp = caa_container_of(dns_handler, udp_context_t, dns_handler);
-	knot_quic_conn_t *quic_conn = req->req_data.params.quic_conn;
-
-	if (knot_quic_stream_add_data(quic_conn, req->req_data.params.quic_stream,
-	                              req->handler_data.ans->wire, size) == NULL) {
-		return 0;
-	}
-
-	return size;
-}
-
 #ifdef ENABLE_ASYNC_QUERY_HANDLING
 static bool use_numa = false;
 static bool udp_use_async = false;
@@ -764,8 +751,7 @@ int udp_master(dthread_t *thread)
 #endif // ENABLE_QUIC
 
 	/* Initialize UDP answering context. */
-	ret = initialize_dns_handle(&udp.dns_handler, handler->server, thread_id,
-	                            quic_send_produced_result
+	ret = initialize_dns_handle(&udp.dns_handler, handler->server, thread_id, NULL
 #ifdef ENABLE_ASYNC_QUERY_HANDLING
 	                           ,udp_async_query_completed_callback
 #endif
