@@ -399,7 +399,7 @@ static int backup_keystore(conf_t *conf, zone_t *zone, zone_backup_ctx_t *ctx)
 
 	list_t key_params;
 	init_list(&key_params);
-	ret = kasp_db_list_keys(zone_kaspdb(zone), zone->name, &key_params);
+	ret = kasp_db_list_keys(zone_kaspdb(zone), zone->name, &key_params, false);
 	ret = (ret == KNOT_ENOENT ? KNOT_EOK : ret);
 	if (ret != KNOT_EOK) {
 		LOG_FAIL("keystore list");
