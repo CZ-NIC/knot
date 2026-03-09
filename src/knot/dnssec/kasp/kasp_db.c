@@ -240,6 +240,25 @@ static MDB_val trash_serialize(const key_params_t *params,
 	                          params->keytag, params->algorithm, flags);
 }
 
+// For trash keys, timers in key_params_t are used with the following meaning:
+// params->timing.created ->  deleted, i.e. time when the key has been moved to the trash bin
+// params->timing.remove  ->  discard, i.e. time when the key will be discarded from the trash bin
+
+static bool trash_deserialize(const MDB_val *val, key_params_t *params)
+{
+	uint8_t flags;
+
+	if (knot_lmdb_unmake_key(val->mv_data, val->mv_size, "LLHBB",
+	                         &params->timing.remove, &params->timing.created,
+	                         &params->keytag, &params->algorithm, &flags)) {
+		bool flags_ok = flags_deserialize(params, flags);
+		if (flags_ok && (params->is_ksk || !params->is_csk)) {
+			return true;
+		}
+	}
+	return false;
+}
+
 static key_params_t *txn2params(knot_lmdb_txn_t *txn)
 {
 	key_params_t *p = calloc(1, sizeof(*p));
@@ -257,14 +276,62 @@ static key_params_t *txn2params(knot_lmdb_txn_t *txn)
 	return p;
 }
 
-int kasp_db_list_keys(knot_lmdb_db_t *db, const knot_dname_t *zone_name, list_t *dst)
+static key_params_t *txn2params_trash(knot_lmdb_txn_t *txn, const knot_dname_t *zone_name)
+{
+	uint8_t kclass = 0;
+	const char *kid;
+	const knot_dname_t *kdname;
+
+	if (!knot_lmdb_unmake_key(txn->cur_key.mv_data, txn->cur_key.mv_size,
+	                          "BSN", &kclass, &kid, &kdname)) {
+		txn->ret = KNOT_EMALF;
+		return NULL;
+	}
+	assert(kclass == KASPDBKEY_TRASH);
+
+	if (zone_name != NULL && !knot_dname_is_equal(zone_name, kdname)) {
+		// Not an error, just skip this key.
+		return NULL;
+	}
+
+	key_params_t *p;
+	char *id = NULL;
+	knot_dname_t *dname = NULL;
+	if ((p = calloc(1, sizeof(*p))) == NULL ||
+	    (id = strdup(kid)) == NULL ||
+	    (dname = knot_dname_copy(kdname, NULL)) == NULL) {
+		txn->ret = KNOT_ENOMEM;
+		goto fail;
+	}
+	p->id = id;
+	p->dname = dname;
+
+	if (!trash_deserialize(&txn->cur_val, p)) {
+		txn->ret = KNOT_EMALF;
+		goto fail;
+	}
+
+	return p;
+
+fail:
+	free(p);
+	free(id);
+	knot_dname_free(dname, NULL);
+	return NULL;
+}
+
+int kasp_db_list_keys(knot_lmdb_db_t *db, const knot_dname_t *zone_name, list_t *dst,
+                      bool trash)
 {
 	init_list(dst);
 	knot_lmdb_txn_t txn = { 0 };
-	MDB_val prefix = make_key_str(KASPDBKEY_PARAMS, zone_name, NULL);
+	MDB_val prefix = trash ? knot_lmdb_make_key("B", KASPDBKEY_TRASH) :
+	                         make_key_str(KASPDBKEY_PARAMS, zone_name, NULL);
 	knot_lmdb_begin(db, &txn, false);
 	knot_lmdb_foreach(&txn, &prefix) {
-		key_params_t *p = txn2params(&txn);
+		key_params_t *p;
+		p = trash ? txn2params_trash(&txn, zone_name) :
+		            txn2params(&txn);
 		if (p != NULL) {
 			ptrlist_add(dst, p, NULL);
 		}
