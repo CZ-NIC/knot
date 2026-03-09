@@ -237,8 +237,7 @@ static MDB_val trash_serialize(const key_params_t *params, uint64_t expir)
 	return knot_lmdb_make_key("LHBB", expir, params->keytag, params->algorithm, flags);
 }
 
-// For future use.
-_unused_ static bool trash_deserialize(const MDB_val *val, key_params_t *params)
+static bool trash_deserialize(const MDB_val *val, key_params_t *params)
 {
 	uint8_t flags;
 
@@ -280,14 +279,62 @@ static key_params_t *txn2params(knot_lmdb_txn_t *txn)
 	return p;
 }
 
-int kasp_db_list_keys(knot_lmdb_db_t *db, const knot_dname_t *zone_name, list_t *dst)
+static key_params_t *txn2params_trash(knot_lmdb_txn_t *txn, const knot_dname_t *zone_name)
+{
+	const uint8_t kclass;
+	const char *kid;
+	const knot_dname_t *kdname;
+
+	if (!knot_lmdb_unmake_key(txn->cur_key.mv_data, txn->cur_key.mv_size,
+	                          "BSN", &kclass, &kid, &kdname)) {
+		txn->ret = KNOT_EMALF;
+		return NULL;
+	}
+	assert(kclass == KASPDBKEY_TRASH);
+
+	if (zone_name != NULL && knot_dname_cmp(zone_name, kdname)) {
+		// Not an error, just skip this key.
+		return NULL;
+	}
+
+	key_params_t *p;
+	char *id = NULL;
+	knot_dname_t *dname = NULL;
+	if ((p = calloc(1, sizeof(*p))) == NULL ||
+	    (id = strdup(kid)) == NULL ||
+	    (dname = knot_dname_copy(kdname, NULL)) == NULL) {
+		txn->ret = KNOT_ENOMEM;
+		goto fail;
+	}
+	p->id = id;
+	p->dname = dname;
+
+	if (!trash_deserialize(&txn->cur_val, p)) {
+		txn->ret = KNOT_EMALF;
+		goto fail;
+	}
+
+	return p;
+
+fail:
+	free(p);
+	free(id);
+	free(dname);
+	return NULL;
+}
+
+int kasp_db_list_keys(knot_lmdb_db_t *db, const knot_dname_t *zone_name, list_t *dst,
+                      bool trash)
 {
 	init_list(dst);
 	knot_lmdb_txn_t txn = { 0 };
-	MDB_val prefix = make_key_str(KASPDBKEY_PARAMS, zone_name, NULL);
+	MDB_val prefix = trash ? knot_lmdb_make_key("B", KASPDBKEY_TRASH) :
+	                         make_key_str(KASPDBKEY_PARAMS, zone_name, NULL);
 	knot_lmdb_begin(db, &txn, false);
 	knot_lmdb_foreach(&txn, &prefix) {
-		key_params_t *p = txn2params(&txn);
+		key_params_t *p;
+		p = trash ? txn2params_trash(&txn, zone_name) :
+		            txn2params(&txn);
 		if (p != NULL) {
 			ptrlist_add(dst, p, NULL);
 		}
