@@ -238,18 +238,15 @@ static MDB_val trash_serialize(const key_params_t *params, uint64_t expir)
 }
 
 // For future use.
-_unused_ static bool trash_deserialize(const MDB_val *val, key_params_t *params, uint64_t *expir)
+_unused_ static bool trash_deserialize(const MDB_val *val, key_params_t *params)
 {
-	uint64_t exp;
 	uint8_t flags;
 
 	if (knot_lmdb_unmake_key(val->mv_data, val->mv_size, "LHBB",
-	                         &exp, &params->keytag, &params->algorithm, &flags)) {
+	                         &params->timing.remove, &params->keytag, &params->algorithm,
+	                         &flags)) {
 		bool flags_ok = flags_deserialize(params, flags);
 		if (flags_ok && (params->is_ksk || !params->is_csk)) {
-			if (expir != NULL) {
-				*expir = exp;
-			}
 			return true;
 		}
 	}
