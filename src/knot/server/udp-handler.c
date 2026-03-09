@@ -455,8 +455,8 @@ static void udp_mmsg_handle(udp_context_t *ctx, const iface_t *iface, void *d)
 #ifdef ENABLE_ASYNC_QUERY_HANDLING
 		if (dns_handler_request_is_async(rq->udp_reqs[j]->dns_req)) {
 			// Save udp source state
-			rq->udp_reqs[j]->msg_namelen_received = rq->msgs[RX][i].msg_hdr.msg_namelen;
-			rq->udp_reqs[j]->msg_controllen_received = rq->msgs[RX][i].msg_hdr.msg_controllen;
+			rq->udp_reqs[j]->msg_namelen_received = rx->msg_namelen;
+			rq->udp_reqs[j]->msg_controllen_received = rx->msg_controllen;
 
 			tx->msg_iov->iov_len = 0; // Asynced request has nothing to send
 			rq->udp_reqs[j] = NULL;
@@ -639,7 +639,7 @@ static void udp_async_query_completed_callback(dns_request_handler_context_t *ne
 {
 	udp_context_t *udp = caa_container_of(net, udp_context_t, dns_handler);
 	network_dns_request_t *udp_req = caa_container_of(req, network_dns_request_t, dns_req);
-//TODO
+
 	// Prepare response and send it
 	struct msghdr txmsg;
 	udp_set_msghdr_from_req(&txmsg, udp_req, TX);
