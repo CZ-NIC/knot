@@ -170,7 +170,7 @@ int kasp_zone_load(knot_kasp_zone_t *zone,
 
 	list_t key_params;
 	init_list(&key_params);
-	int ret = kasp_db_list_keys(kdb, zone_name, &key_params);
+	int ret = kasp_db_list_keys(kdb, zone_name, &key_params, false);
 	if (ret == KNOT_ENOENT) {
 		zone->keys = NULL;
 		zone->num_keys = 0;
@@ -302,8 +302,9 @@ void free_key_params(key_params_t *parm)
 {
 	if (parm != NULL) {
 		free(parm->id);
+		free(parm->dname);
 		dnssec_binary_free(&parm->public_key);
-		memset(parm, 0 , sizeof(*parm));
+		memset(parm, 0, sizeof(*parm));
 	}
 }
 
