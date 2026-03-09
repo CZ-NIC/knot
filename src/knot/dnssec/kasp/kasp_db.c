@@ -337,6 +337,8 @@ int kasp_db_list_keys(knot_lmdb_db_t *db, const knot_dname_t *zone_name, list_t 
 		            txn2params(&txn);
 		if (p != NULL) {
 			ptrlist_add(dst, p, NULL);
+		} else if (txn.ret != KNOT_EOK) {
+			break;
 		}
 	}
 	knot_lmdb_abort(&txn);
