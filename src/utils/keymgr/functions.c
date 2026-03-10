@@ -1068,15 +1068,15 @@ static void print_key_json(const knot_kasp_key_t *key, key_info_t *info,
 }
 
 typedef struct {
-	knot_time_t val;
-	knot_kasp_key_t *key;
+	knot_time_t key;
+	void *val;
 } key_sort_item_t;
 
 static int key_sort(const void *a, const void *b)
 {
-	const key_sort_item_t *key_a = a;
-	const key_sort_item_t *key_b = b;
-	return knot_time_cmp(key_a->val, key_b->val);
+	const key_sort_item_t *item_a = a;
+	const key_sort_item_t *item_b = b;
+	return knot_time_cmp(item_a->key, item_b->key);
 }
 
 static key_info_t key_missing(kdnssec_ctx_t *ctx, const knot_kasp_key_t *key)
@@ -1123,16 +1123,16 @@ int keymgr_list_keys(kdnssec_ctx_t *ctx, keymgr_list_params_t *params)
 		key_sort_item_t items[ctx->zone->num_keys];
 		for (size_t i = 0; i < ctx->zone->num_keys; i++) {
 			knot_kasp_key_t *key = &ctx->zone->keys[i];
-			items[i].key = key;
+			items[i].val = key;
 			if (knot_time_cmp(key->timing.pre_active, key->timing.publish) < 0) {
-				items[i].val = key->timing.pre_active;
+				items[i].key = key->timing.pre_active;
 			} else {
-				items[i].val = key->timing.publish;
+				items[i].key = key->timing.publish;
 			}
 		}
 		qsort(&items, ctx->zone->num_keys, sizeof(items[0]), key_sort);
 		for (size_t i = 0; i < ctx->zone->num_keys; i++) {
-			knot_kasp_key_t *key = items[i].key;
+			knot_kasp_key_t *key = items[i].val;
 			key_info_t info = key_missing(ctx, key);
 			print_key_brief(key, &info, params);
 		}
