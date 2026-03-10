@@ -7,8 +7,11 @@
 
 # requirements redis[hiredis]
 from argparse import ArgumentError, ArgumentParser
+from concurrent.futures import ProcessPoolExecutor
 from contextlib import contextmanager
 from enum import IntEnum
+from functools import partial
+from multiprocessing import Lock
 from re import sub
 from redis import Redis
 from redis.exceptions import ConnectionError, ResponseError, TimeoutError
@@ -34,6 +37,18 @@ class Stats:
             f'Zones:   {self.new + self.updated}\t(new: {self.new}, updated: {self.updated})\n' + \
             f'Aliases: {self.resolved + self.not_found}\t(resolved: {self.resolved}, unknown: {self.not_found})\n' + \
             f'Records: {self.ipv4 + self.ipv6}\t(A: {self.resolved}, AAAA: {self.ipv6})'
+
+    def __add__(self, rhs):
+        self.new += rhs.new
+        self.updated += rhs.updated
+        self.resolved += rhs.resolved
+        self.ipv4 += rhs.ipv4
+        self.ipv6 += rhs.ipv6
+        self.not_found += rhs.not_found
+
+        return self
+
+stdout_lock = Lock()
 
 def arg_parser():
     parser = ArgumentParser(
@@ -190,12 +205,7 @@ def knot_zone_transaction(conn, zone, inst, dryrun):
         raise
     else:
         if dryrun:
-            zone_str = dname_to_str(zone)
-            resp = conn.execute_command('KNOT.ZONE.LOAD', zone_str, txn_to_str(txn))
             conn.execute_command('KNOT_BIN.ZONE.ABORT', zone, txn)
-            print(f'=== FULL {zone_str} ===')
-            for record in resp:
-                print(*[x.decode() for x in record], sep=' ')
         else:
             conn.execute_command('KNOT_BIN.ZONE.COMMIT', zone, txn)
 
@@ -212,17 +222,7 @@ def knot_upd_transaction(conn, zone, inst, dryrun):
         raise
     else:
         if dryrun:
-            zone_str = dname_to_str(zone)
-            resp = conn.execute_command('KNOT.UPD.DIFF', zone_str, txn_to_str(txn))
             conn.execute_command('KNOT_BIN.UPD.ABORT', zone, txn)
-            print(f'=== UPDATE {zone_str} ===')
-            for diff in resp:
-                for rem in diff[0]:
-                    print('- ', end='')
-                    print(*[x.decode() for x in rem], sep=' ')
-                for add in diff[1]:
-                    print('+ ', end='')
-                    print(*[x.decode() for x in add], sep=' ')
         else:
             if conn.execute_command('KNOT_BIN.UPD.DIFF', zone, txn):
                 conn.execute_command('KNOT_BIN.UPD.COMMIT', zone, txn)
@@ -231,12 +231,12 @@ def knot_upd_transaction(conn, zone, inst, dryrun):
 
 def store_zone_record(conn, zone, txn, record):
     resp = conn.execute_command('KNOT_BIN.ZONE.STORE', zone, txn,
-                                record[0], record[1], record[2], record[3], record[4], "M")
+                                record[0], record[1], record[2], record[3],
+                                record[4], "M")
     if resp != b'OK':
         raise Exception("Failed to store record")
 
-def resolve_zone_record(conn, zone, txn, record):
-    global stats
+def resolve_zone_record(conn, stats, zone, txn, record):
     for dname in rdata_to_dname_list(record[4]):
         try:
             resp = getaddrinfo(dname, None, type=SOCK_DGRAM)
@@ -270,8 +270,7 @@ def remove_upd_record(conn, zone, txn, record):
     if resp != b'OK':
         raise Exception("Failed to delete record")
 
-def resolve_upd_record(conn, zone, txn, record):
-    global stats
+def resolve_upd_record(conn, stats, zone, txn, record):
     for dname in rdata_to_dname_list(record[4]):
         try:
             resp = getaddrinfo(dname, None, type=SOCK_DGRAM)
@@ -292,16 +291,28 @@ def resolve_upd_record(conn, zone, txn, record):
         except (gaierror, UnicodeEncodeError): # Not found - skip
             stats.not_found += 1
 
-def convert_zone_new(conn, zone, input, output, dryrun):
+def convert_zone_new(conn, stats, zone, input, output, dryrun):
+    global stdout_lock
+
     input_resp = conn.execute_command('KNOT_BIN.ZONE.LOAD', zone, int_to_bytes(input))
     with knot_zone_transaction(conn, zone, output, dryrun) as txn:
         for r in input_resp:
             if r[1] == RRType.ALIAS:
-                resolve_zone_record(conn, zone, txn, r)
+                resolve_zone_record(conn, stats, zone, txn, r)
             else:
                 store_zone_record(conn, zone, txn, r)
+        if dryrun:
+            zone_str = dname_to_str(zone)
+            resp = conn.execute_command('KNOT.ZONE.LOAD', zone_str, txn_to_str(txn))
+            stdout_lock.acquire()
+            print(f'=== FULL {zone_str} ===')
+            for record in resp:
+                print(*[x.decode() for x in record], sep=' ')
+            stdout_lock.release()
 
-def convert_zone_existing(conn, zone, input, output, dryrun):
+def convert_zone_existing(conn, stats, zone, input, output, dryrun):
+    global stdout_lock
+
     input_resp = conn.execute_command('KNOT_BIN.ZONE.LOAD', zone, int_to_bytes(input))
     old_resp = conn.execute_command('KNOT_BIN.ZONE.LOAD', zone, int_to_bytes(output))
     with knot_upd_transaction(conn, zone, output, dryrun) as txn:
@@ -312,27 +323,63 @@ def convert_zone_existing(conn, zone, input, output, dryrun):
             remove_upd_record(conn, zone, txn, r)
         for r in input_resp:
             if r[1] == RRType.ALIAS:
-                resolve_upd_record(conn, zone, txn, r)
+                resolve_upd_record(conn, stats, zone, txn, r)
             else:
                 if r[1] == RRType.SOA:
                     input_soa = r
                     continue
                 store_upd_record(conn, zone, txn, r)
-
         if conn.execute_command('KNOT_BIN.UPD.DIFF', zone, txn):
             remove_upd_record(conn, zone, txn, current_soa)
             new_serial = (get_serial(current_soa[4]) + 1) % (2**32)
             input_soa[4] = set_serial(input_soa[4], new_serial)
             store_upd_record(conn, zone, txn, input_soa)
 
-def convert_zone(conn, zone, input, output, dryrun):
-    global stats
-    if not zone[1]:
-        convert_zone_new(conn, zone[0], input, output, dryrun)
+        if dryrun:
+            zone_str = dname_to_str(zone)
+            resp = conn.execute_command('KNOT.UPD.DIFF', zone_str, txn_to_str(txn))
+            stdout_lock.acquire()
+            print(f'=== UPDATE {zone_str} ===')
+            for diff in resp:
+                for rem in diff[0]:
+                    print('- ', end='')
+                    print(*[x.decode() for x in rem], sep=' ')
+                for add in diff[1]:
+                    print('+ ', end='')
+                    print(*[x.decode() for x in add], sep=' ')
+            stdout_lock.release()
+
+def convert_zone(conf, zone):
+    stats = Stats()
+
+    zonename = zone[0]
+    exists = zone[1]
+
+    input = conf.input_instance
+    output = conf.output_instance
+    dryrun = conf.dry_run
+
+    conn = Redis(
+        host = conf.addr,
+        port = conf.port,
+        ssl = conf.tls,
+        ssl_certfile = conf.tls_cert,
+        ssl_keyfile = conf.tls_key,
+        ssl_ca_certs = conf.tls_ca,
+        ssl_cert_reqs = conf.tls_insecure,
+        socket_timeout = 60,
+    )
+
+    if not exists:
+        convert_zone_new(conn, stats, zonename, input, output, dryrun)
         stats.new += 1
     else:
-        convert_zone_existing(conn, zone[0], input, output, dryrun)
+        convert_zone_existing(conn, stats, zonename, input, output, dryrun)
         stats.updated += 1
+
+    conn.close()
+
+    return stats
 
 def list_zones(conn, input, output):
     input_mask = 1 << (input - 1)
@@ -343,7 +390,6 @@ def list_zones(conn, input, output):
     return map(lambda x: (x[0], (bytes_to_int(x[1]) & output_mask) != 0), filtered)
 
 def main():
-    global stats
     stats = Stats()
     args = arg_parser()
     try:
@@ -356,10 +402,19 @@ def main():
             ssl_keyfile=conf.tls_key,
             ssl_ca_certs=conf.tls_ca,
             ssl_cert_reqs=conf.tls_insecure,
-            socket_timeout=5
+            socket_timeout = 60,
         )
-        for zone in list_zones(conn, conf.input_instance, conf.output_instance):
-            convert_zone(conn, zone, conf.input_instance, conf.output_instance, conf.dry_run)
+
+        executor = ProcessPoolExecutor()
+        zones = list(list_zones(conn, conf.input_instance, conf.output_instance))
+        conn.close()
+        for s in executor.map(partial(convert_zone, conf), zones):
+            stats += s
+        executor.shutdown(wait=True)
+
+        if conf.print_stats:
+            print("Statistics\n----------")
+            print(stats)
     except ConnectionError as e:
         err = sub(r'^Error\s+-?\d+\s+', 'Error: ', e.args[0])
         print(err, file=stderr)
@@ -371,10 +426,8 @@ def main():
         print("Error: " + e.message, file=stderr)
         args.print_help()
         exit(1)
-
-    if conf.print_stats:
-        print("Statistics\n----------")
-        print(stats)
+    except Exception as e:
+        exit(1)
 
 if __name__ == "__main__":
     main()
