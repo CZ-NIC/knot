@@ -15,6 +15,8 @@ from redis.exceptions import ConnectionError, ResponseError, TimeoutError
 from socket import AF_INET, AF_INET6, SOCK_DGRAM, gaierror, getaddrinfo, inet_pton
 from sys import exit, stderr
 
+import asyncio
+
 class RRType(IntEnum):
     A = 1
     SOA = 6
@@ -235,7 +237,7 @@ def store_zone_record(conn, zone, txn, record):
     if resp != b'OK':
         raise Exception("Failed to store record")
 
-def resolve_zone_record(conn, zone, txn, record):
+async def resolve_zone_record(conn, zone, txn, record):
     global stats
     for dname in rdata_to_dname_list(record[4]):
         try:
@@ -270,7 +272,7 @@ def remove_upd_record(conn, zone, txn, record):
     if resp != b'OK':
         raise Exception("Failed to delete record")
 
-def resolve_upd_record(conn, zone, txn, record):
+async def resolve_upd_record(conn, zone, txn, record):
     global stats
     for dname in rdata_to_dname_list(record[4]):
         try:
@@ -292,16 +294,20 @@ def resolve_upd_record(conn, zone, txn, record):
         except (gaierror, UnicodeEncodeError): # Not found - skip
             stats.not_found += 1
 
-def convert_zone_new(conn, zone, input, output, dryrun):
+async def convert_zone_new(conn, zone, input, output, dryrun):
     input_resp = conn.execute_command('KNOT_BIN.ZONE.LOAD', zone, int_to_bytes(input))
     with knot_zone_transaction(conn, zone, output, dryrun) as txn:
+        tasks = []
         for r in input_resp:
             if r[1] == RRType.ALIAS:
-                resolve_zone_record(conn, zone, txn, r)
+                tasks.append(asyncio.create_task(
+                    resolve_zone_record(conn, zone, txn, r)
+                ))
             else:
                 store_zone_record(conn, zone, txn, r)
+        await asyncio.gather(*tasks)
 
-def convert_zone_existing(conn, zone, input, output, dryrun):
+async def convert_zone_existing(conn, zone, input, output, dryrun):
     input_resp = conn.execute_command('KNOT_BIN.ZONE.LOAD', zone, int_to_bytes(input))
     old_resp = conn.execute_command('KNOT_BIN.ZONE.LOAD', zone, int_to_bytes(output))
     with knot_upd_transaction(conn, zone, output, dryrun) as txn:
@@ -310,29 +316,49 @@ def convert_zone_existing(conn, zone, input, output, dryrun):
                 current_soa = r
                 continue
             remove_upd_record(conn, zone, txn, r)
+        tasks = []
         for r in input_resp:
             if r[1] == RRType.ALIAS:
-                resolve_upd_record(conn, zone, txn, r)
+                tasks.append(asyncio.create_task(
+                    resolve_upd_record(conn, zone, txn, r)
+                ))
             else:
                 if r[1] == RRType.SOA:
                     input_soa = r
                     continue
                 store_upd_record(conn, zone, txn, r)
-
+        await asyncio.gather(*tasks)
         if conn.execute_command('KNOT_BIN.UPD.DIFF', zone, txn):
             remove_upd_record(conn, zone, txn, current_soa)
             new_serial = (get_serial(current_soa[4]) + 1) % (2**32)
             input_soa[4] = set_serial(input_soa[4], new_serial)
             store_upd_record(conn, zone, txn, input_soa)
 
-def convert_zone(conn, zone, input, output, dryrun):
+async def convert_zone(conf, zone):
     global stats
+
+    input = conf.input_instance
+    output = conf.output_instance
+    dryrun = conf.dry_run
+
+    conn = Redis(
+        host=conf.addr,
+        port=conf.port,
+        ssl=conf.tls,
+        ssl_certfile=conf.tls_cert,
+        ssl_keyfile=conf.tls_key,
+        ssl_ca_certs=conf.tls_ca,
+        ssl_cert_reqs=conf.tls_insecure,
+        socket_timeout=5
+    )
+
     if not zone[1]:
-        convert_zone_new(conn, zone[0], input, output, dryrun)
+        await convert_zone_new(conn, zone[0], input, output, dryrun)
         stats.new += 1
     else:
-        convert_zone_existing(conn, zone[0], input, output, dryrun)
+        await convert_zone_existing(conn, zone[0], input, output, dryrun)
         stats.updated += 1
+    conn.close()
 
 def list_zones(conn, input, output):
     input_mask = 1 << (input - 1)
@@ -342,7 +368,7 @@ def list_zones(conn, input, output):
     filtered = filter(lambda x: (bytes_to_int(x[1]) & input_mask) != 0, resp)
     return map(lambda x: (x[0], (bytes_to_int(x[1]) & output_mask) != 0), filtered)
 
-def main():
+async def main():
     global stats
     stats = Stats()
     args = arg_parser()
@@ -358,8 +384,12 @@ def main():
             ssl_cert_reqs=conf.tls_insecure,
             socket_timeout=5
         )
+        tasks = []
         for zone in list_zones(conn, conf.input_instance, conf.output_instance):
-            convert_zone(conn, zone, conf.input_instance, conf.output_instance, conf.dry_run)
+            tasks.append(asyncio.create_task(
+                convert_zone(conf, zone)
+            ))
+        await asyncio.gather(*tasks)
     except ConnectionError as e:
         err = sub(r'^Error\s+-?\d+\s+', 'Error: ', e.args[0])
         print(err, file=stderr)
@@ -377,4 +407,4 @@ def main():
         print(stats)
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
