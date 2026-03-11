@@ -412,11 +412,13 @@ int kasp_db_delete_keys(knot_lmdb_db_t *db, const knot_dname_t *zone_name,
 {
 	int ret;
 	knot_kasp_keystore_t *keystores = NULL;
+	keystore_dynarray_t kss = { 0 };
 	kdnssec_ctx_t ctx = { 0 };
 	uint32_t delay = 0;
 
 	if (orphan) {
-		ret = init_all_keystores(conf(), &keystores);
+		ret = init_all_keystores(conf(), &kss);
+		keystores = keystore_dynarray_arr(&kss);
 	} else {
 		ret = kdnssec_ctx_init(conf(), &ctx, zone_name, db, NULL);
 		keystores = ctx.keystores;
@@ -466,7 +468,8 @@ int kasp_db_delete_keys(knot_lmdb_db_t *db, const knot_dname_t *zone_name,
 	free(prefix.mv_data);
 
 	if (orphan) {
-		deinit_all_keystores(&keystores);
+		deinit_all_keystores(&keystores, false);
+		keystore_dynarray_free(&kss);
 	} else {
 		kdnssec_ctx_deinit(&ctx);
 	}
@@ -519,11 +522,12 @@ int kasp_db_sweep_keys(knot_lmdb_db_t *db, sweep_cb keep_zone, void *cb_data)
 		return ret;
 	}
 
-	knot_kasp_keystore_t *keystores = NULL;
-	ret = init_all_keystores(conf(), &keystores);
+	keystore_dynarray_t kss = { 0 };
+	ret = init_all_keystores(conf(), &kss);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
+	knot_kasp_keystore_t *keystores = keystore_dynarray_arr(&kss);
 
 	knot_lmdb_txn_t txn = { 0 };
 	knot_lmdb_begin(db, &txn, true);
@@ -555,7 +559,8 @@ int kasp_db_sweep_keys(knot_lmdb_db_t *db, sweep_cb keep_zone, void *cb_data)
 	}
 
 	knot_lmdb_commit(&txn);
-	deinit_all_keystores(&keystores);
+	deinit_all_keystores(&keystores, false);
+	keystore_dynarray_free(&kss);
 	return (ret == KNOT_EOK) ? txn.ret : ret;
 }
 

@@ -19,6 +19,8 @@ typedef struct {
 	knot_time_t nsec3_salt_created;
 } knot_kasp_zone_t;
 
+knot_dynarray_declare(keystore, knot_kasp_keystore_t, DYNARRAY_VISIBILITY_NORMAL, 2);
+
 int kasp_zone_load(knot_kasp_zone_t *zone,
                    const knot_dname_t *zone_name,
                    knot_lmdb_db_t *kdb,
@@ -36,17 +38,17 @@ void kasp_zone_free(knot_kasp_zone_t **zone);
 
 void free_key_params(key_params_t *parm);
 
-void zone_deinit_keystore(knot_kasp_keystore_t **keystores);
+void zone_deinit_keystore(knot_kasp_keystore_t **keystores, bool deallocate);
 
 int zone_init_keystore(conf_t *conf, conf_val_t *policy_id, conf_val_t *keystore_id,
-                       knot_kasp_keystore_t **keystores);
+                       knot_kasp_keystore_t **keystores, keystore_dynarray_t *kss);
 
-inline static void deinit_all_keystores(knot_kasp_keystore_t **keystores)
+inline static void deinit_all_keystores(knot_kasp_keystore_t **keystores, bool deallocate)
 {
-	zone_deinit_keystore(keystores);
+	zone_deinit_keystore(keystores, deallocate);
 }
 
-int init_all_keystores(conf_t *conf, knot_kasp_keystore_t **keystores);
+int init_all_keystores(conf_t *conf, keystore_dynarray_t *kss);
 
 int kasp_zone_keys_from_rr(knot_kasp_zone_t *zone,
                            const knot_rdataset_t *zone_dnskey,

@@ -370,7 +370,7 @@ static int backup_keystore(conf_t *conf, zone_t *zone, zone_backup_ctx_t *ctx)
 
 	conf_val_t policy_id = get_zone_policy(conf, zone->name);
 
-	int ret = zone_init_keystore(conf, &policy_id, NULL, &from);
+	int ret = zone_init_keystore(conf, &policy_id, NULL, &from, NULL);
 	if (ret != KNOT_EOK) {
 		LOG_FAIL("keystore init");
 		return ret;
@@ -379,7 +379,7 @@ static int backup_keystore(conf_t *conf, zone_t *zone, zone_backup_ctx_t *ctx)
 	to = calloc(1, sizeof(*to));
 	if (to == NULL) {
 		LOG_FAIL("out of memory");
-		zone_deinit_keystore(&from);
+		zone_deinit_keystore(&from, true);
 		return KNOT_ENOMEM;
 	}
 
@@ -419,8 +419,8 @@ static int backup_keystore(conf_t *conf, zone_t *zone, zone_backup_ctx_t *ctx)
 	ptrlist_deep_free(&key_params, NULL);
 
 done:
-	zone_deinit_keystore(&to);
-	zone_deinit_keystore(&from);
+	zone_deinit_keystore(&to, true);
+	zone_deinit_keystore(&from, true);
 	return ret;
 }
 

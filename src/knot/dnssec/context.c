@@ -230,7 +230,7 @@ int kdnssec_ctx_init(conf_t *conf, kdnssec_ctx_t *ctx, const knot_dname_t *zone_
 	conf_id_fix_default(&policy_id);
 	policy_load(ctx->policy, conf, &policy_id, ctx->zone->dname);
 
-	ret = zone_init_keystore(conf, &policy_id, NULL, &ctx->keystores);
+	ret = zone_init_keystore(conf, &policy_id, NULL, &ctx->keystores, NULL);
 	if (ret != KNOT_EOK) {
 		goto init_error;
 	}
@@ -289,7 +289,7 @@ void kdnssec_ctx_deinit(kdnssec_ctx_t *ctx)
 		free(ctx->policy);
 	}
 	key_records_clear(&ctx->offline_records);
-	zone_deinit_keystore(&ctx->keystores);
+	zone_deinit_keystore(&ctx->keystores, true);
 	kasp_zone_free(&ctx->zone);
 	free(ctx->kasp_zone_path);
 

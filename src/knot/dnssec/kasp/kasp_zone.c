@@ -11,6 +11,8 @@
 
 // FIXME DNSSEC errors versus knot errors
 
+knot_dynarray_define(keystore, knot_kasp_keystore_t, DYNARRAY_VISIBILITY_NORMAL);
+
 /*!
  * Check if key parameters allow to create a key.
  */
@@ -307,33 +309,33 @@ void free_key_params(key_params_t *parm)
 	}
 }
 
-static void _zone_deinit_keystore(knot_kasp_keystore_t **keystores, bool deallocate)
+static void _zone_deinit_keystore(knot_kasp_keystore_t *keystores)
 {
-	if (keystores != NULL && *keystores != NULL) {
-		for (size_t i = 0; i < (*keystores)[0].count; i++) {
-			dnssec_keystore_deinit((*keystores)[i].keystore);
-		}
-		if (deallocate) {
-			free(*keystores);
-			*keystores = NULL;
+	if (keystores != NULL) {
+		for (size_t i = 0; i < (keystores)[0].count; i++) {
+			dnssec_keystore_deinit((keystores)[i].keystore);
 		}
 	}
 }
 
-void zone_deinit_keystore(knot_kasp_keystore_t **keystores)
+void zone_deinit_keystore(knot_kasp_keystore_t **keystores, bool deallocate)
 {
-	_zone_deinit_keystore(keystores, true);
+	_zone_deinit_keystore(*keystores);
+	if (deallocate) {
+		free(*keystores);
+		*keystores = NULL;
+	}
 }
 
 int zone_init_keystore(conf_t *conf, conf_val_t *policy_id, conf_val_t *keystore_id,
-                       knot_kasp_keystore_t **keystores)
+                       knot_kasp_keystore_t **keystores, keystore_dynarray_t *kss)
 {
-	if (keystores == NULL ||
+	if ((bool)(keystores == NULL) == (bool)(kss == NULL) ||
 	    (bool)(policy_id == NULL) == (bool)(keystore_id == NULL)) {
 		return KNOT_EINVAL;
 	}
 
-	bool allocate = (*keystores == NULL);
+	bool allocate = (keystores != NULL && *keystores == NULL);
 
 	char *zone_path = conf_db(conf, C_KASP_DB);
 	if (zone_path == NULL) {
@@ -360,9 +362,10 @@ int zone_init_keystore(conf_t *conf, conf_val_t *policy_id, conf_val_t *keystore
 		}
 	}
 
+	const static knot_kasp_keystore_t kszero = { 0 };
 	int ret = KNOT_EOK;
 	for (size_t i = 0; i < ks_count && ret == KNOT_EOK; i++) {
-		knot_kasp_keystore_t *ks = *keystores + i;
+		knot_kasp_keystore_t *ks = kss == NULL ? *keystores + i : keystore_dynarray_add(kss, &kszero);
 
 		ks->name = conf_str(keystore_id);
 		conf_val_t val = conf_id_get(conf, C_KEYSTORE, C_BACKEND, keystore_id);
@@ -383,96 +386,56 @@ int zone_init_keystore(conf_t *conf, conf_val_t *policy_id, conf_val_t *keystore
 	}
 
 	if (ret != KNOT_EOK) {
-		_zone_deinit_keystore(keystores, allocate);
+		if (kss != NULL) {
+			_zone_deinit_keystore(keystore_dynarray_arr(kss));
+		} else {
+                        zone_deinit_keystore(keystores, allocate);
+		}
+
 	}
 
 	free(zone_path);
 	return ret;
 }
 
-/*!
- * \brief Iterate through confdb and init all keystores or count all C_KEYSTORE records.
- *
- * \param conf       Configuration.
- * \param keystores  Array of keystores to be initialized or NULL to count C_KEYSTORE
- *                   records.
- * \param count      In: size of keystores array,
- *                   Out: count of initialized keystores / count of C_KEYSTORE's in confdb.
- *
- * \note             After this function returns an error, only the count of keystores
- *                   from the beginning of keystores array shall be deinitialized.
- *
- * \return KNOT_E*
- */
-static int _init_keystores(conf_t *conf, knot_kasp_keystore_t *keystores, size_t *count)
+static int _init_keystores(conf_t *conf, keystore_dynarray_t *kss)
 {
-	size_t n = 0;
-	knot_kasp_keystore_t *ks = keystores;
 	int ret = KNOT_EOK;
 
 	for (conf_iter_t iter = conf_iter(conf, C_KEYSTORE);
-	     iter.code == KNOT_EOK; conf_iter_next(conf, &iter)) {
+	     iter.code == KNOT_EOK && ret == KNOT_EOK; conf_iter_next(conf, &iter)) {
 		conf_val_t id = conf_iter_id(conf, &iter);
-		if (keystores != NULL) {
-			// The number of configured keystores may have changed.
-			if (n < *count) {
-				ret = zone_init_keystore(conf, NULL, &id, &ks);
-				if (ret != KNOT_EOK) {
-					log_error("failed to initialize keystore %s (%s)",
-					          conf_str(&id), knot_strerror(ret));
-					break;
-				}
-				ks++;
-			} else {
-				log_error("unexpected keystores added");
-				ret = KNOT_ERROR;
-				break;
-			}
+		ret = zone_init_keystore(conf, NULL, &id, NULL, kss);
+		if (ret != KNOT_EOK) {
+			log_error("failed to initialize keystore %s (%s)",
+			          conf_str(&id), knot_strerror(ret));
 		}
-		n++;
 	}
-
-	if (keystores != NULL && ret == KNOT_EOK && n < *count) {
-		log_error("missing keystores");
-		ret = KNOT_ERROR;
-	}
-
-	*count = n;
 	return ret;
 }
 
-int init_all_keystores(conf_t *conf, knot_kasp_keystore_t **keystores)
+int init_all_keystores(conf_t *conf, keystore_dynarray_t *kss)
 {
-	assert(keystores != NULL);
-	assert(*keystores == NULL);
-
-	// Count the configured keystores first.
-	size_t count = 0;
-	(void)_init_keystores(conf, NULL, &count);
-
-	// Allocate an array (also for the default keystore).
-	*keystores = calloc(count + 1, sizeof(**keystores));
-	if (*keystores == NULL) {
-		return KNOT_ENOMEM;
-	}
+	assert(kss != NULL);
 
 	// Initialize the default keystore.
 	conf_val_t null_policy_id = { 0 };
-	int ret = zone_init_keystore(conf, &null_policy_id, NULL, keystores);
+	int ret = zone_init_keystore(conf, &null_policy_id, NULL, NULL, kss);
 	if (ret != KNOT_EOK) {
 		log_error("failed to initialize default keystore (%s)", knot_strerror(ret));
-		(*keystores)[0].count = 0;
-		deinit_all_keystores(keystores);
 		return ret;
 	}
 
 	// Initialize all configured keystores (up to count).
-	ret = _init_keystores(conf, *keystores + 1, &count);
-	(*keystores)[0].count = ++count;  // Add the default keystore.
+	ret = _init_keystores(conf, kss);
 	if (ret != KNOT_EOK) {
 		// An error already logged in _init_keystores().
-		deinit_all_keystores(keystores);
+		_zone_deinit_keystore(keystore_dynarray_arr(kss));
 		return ret;
+	}
+
+	knot_dynarray_foreach(keystore, knot_kasp_keystore_t, ks, *kss) {
+		ks->count = kss->size;
 	}
 
 	return ret;

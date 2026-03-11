@@ -206,7 +206,7 @@ static int init_keystore(dnssec_keystore_t **store, const char *keystore_id,
 
 	knot_kasp_keystore_t *keystores = NULL;
 
-	int ret = zone_init_keystore(conf(), NULL, &id, &keystores);
+	int ret = zone_init_keystore(conf(), NULL, &id, &keystores, NULL);
 	if (ret != KNOT_EOK) {
 		ERR2("failed to open '%s' keystore (%s)", keystore_id, knot_strerror(ret));
 		return ret;
