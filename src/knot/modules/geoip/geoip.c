@@ -528,11 +528,11 @@ static int parse_rr(check_ctx_t *check, yp_parser_t *yp, zs_scanner_t *scanner,
 			view->rrsets = alloc_ret;
 			view->avail *= 2;
 		}
-		add_rr = &view->rrsets[view->count++];
 		knot_dname_t *owner_cpy = knot_dname_copy(owner, NULL);
 		if (owner_cpy == NULL) {
 			return KNOT_ENOMEM;
 		}
+		add_rr = &view->rrsets[view->count++];
 		knot_rrset_init(add_rr, owner_cpy, rr_type, KNOT_CLASS_IN, ttl);
 	}
 
