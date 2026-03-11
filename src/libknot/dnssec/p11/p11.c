@@ -5,6 +5,7 @@
 
 #include <assert.h>
 #include <gnutls/pkcs11.h>
+#include <pthread.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -15,6 +16,7 @@
 
 #define PKCS11_MODULES_MAX 16
 
+static pthread_mutex_t pkcs11_modules_lock = PTHREAD_MUTEX_INITIALIZER;
 static char *pkcs11_modules[PKCS11_MODULES_MAX] = { 0 };
 static int pkcs11_modules_count = 0;
 
@@ -37,30 +39,38 @@ int p11_reinit(void)
 
 int p11_load_module(const char *module)
 {
+	pthread_mutex_lock(&pkcs11_modules_lock);
+
 	for (int i = 0; i < pkcs11_modules_count; i++) {
 		if (strcmp(pkcs11_modules[i], module) == 0) {
+			pthread_mutex_unlock(&pkcs11_modules_lock);
 			return KNOT_EOK;
 		}
 	}
 
 	assert(pkcs11_modules_count <= PKCS11_MODULES_MAX);
 	if (pkcs11_modules_count == PKCS11_MODULES_MAX) {
+		pthread_mutex_unlock(&pkcs11_modules_lock);
 		return KNOT_ERANGE;
 	}
 
 	char *copy = strdup(module);
 	if (!copy) {
+		pthread_mutex_unlock(&pkcs11_modules_lock);
 		return KNOT_ENOMEM;
 	}
 
 	int r = gnutls_pkcs11_add_provider(module, NULL);
 	if (r != GNUTLS_E_SUCCESS) {
 		free(copy);
+		pthread_mutex_unlock(&pkcs11_modules_lock);
 		return KNOT_P11_ELOAD;
 	}
 
 	pkcs11_modules[pkcs11_modules_count] = copy;
 	pkcs11_modules_count += 1;
+
+	pthread_mutex_unlock(&pkcs11_modules_lock);
 
 	return KNOT_EOK;
 }
