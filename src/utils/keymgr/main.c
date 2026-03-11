@@ -137,11 +137,27 @@ static int key_command(int argc, char *argv[], int opt_ind, knot_lmdb_db_t *kasp
 	knot_dname_to_lower(zone_name);
 
 	kdnssec_ctx_t kctx = { 0 };
+	int ret;
 
-	int ret = kdnssec_ctx_init(conf(), &kctx, zone_name, kaspdb, NULL);
-	if (ret != KNOT_EOK) {
-		ERR2("failed to initialize KASP (%s)", knot_strerror(ret));
-		goto main_end;
+	if (same_command(argv[1], "trash-list", false) ||
+	    same_command(argv[1], "trash-delete", false)) {
+		kctx.kasp_db = kaspdb;
+		ret = init_all_keystores(conf(), &kctx.keystores);
+		if (ret != KNOT_EOK) {
+			ERR2("failed to initialize keystores (%s)", knot_strerror(ret));
+			goto main_end;
+		}
+
+		if (strncmp(id_str, "--", 3)) {
+			kctx.validation_mode = true; // Abused parameter validation_mode.
+			zone_name = NULL;
+		}
+	} else {
+		ret = kdnssec_ctx_init(conf(), &kctx, zone_name, kaspdb, NULL);
+		if (ret != KNOT_EOK) {
+			ERR2("failed to initialize KASP (%s)", knot_strerror(ret));
+			goto main_end;
+		}
 	}
 
 #define CHECK_MISSING_ARG(msg) \
@@ -210,6 +226,15 @@ static int key_command(int argc, char *argv[], int opt_ind, knot_lmdb_db_t *kasp
 			list_params->format = TIME_PRINT_ISO8601;
 		}
 		ret = keymgr_list_keys(&kctx, list_params);
+		print_ok_on_succes = false;
+	} else if (same_command(argv[1], "trash-list", false)) {
+		list_params->format = TIME_PRINT_UNIX;
+		if (argc > 2 && same_command(argv[2], "human", false)) {
+			list_params->format = TIME_PRINT_HUMAN_MIXED;
+		} else if (argc > 2 && same_command(argv[2], "iso", false)) {
+			list_params->format = TIME_PRINT_ISO8601;
+		}
+		ret = keymgr_list_trash(&kctx, zone_name, list_params);
 		print_ok_on_succes = false;
 	} else if (same_command(argv[1], "ds", false) || same_command(argv[1], "dnskey", false)) {
 		int (*generate_rr)(const knot_dname_t *, const knot_kasp_key_t *) = keymgr_generate_dnskey;
