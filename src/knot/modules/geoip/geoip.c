@@ -317,6 +317,8 @@ static int finalize_geo_view(check_ctx_t *check, geo_view_t *view, knot_dname_t 
 {
 	if (view == NULL || view->count == 0) {
 		return KNOT_EOK;
+	} else if (owner == NULL) {
+		return KNOT_EMALF;
 	}
 
 	int ret = KNOT_EOK;
@@ -496,6 +498,10 @@ static int parse_view(check_ctx_t *check, geoip_ctx_t *ctx, yp_parser_t *yp, geo
 static int parse_rr(check_ctx_t *check, yp_parser_t *yp, zs_scanner_t *scanner,
                     knot_dname_t *owner, geo_view_t *view, uint32_t ttl)
 {
+	if (owner == NULL) {
+		return KNOT_EMALF;
+	}
+
 	uint16_t rr_type = KNOT_RRTYPE_A;
 	if (knot_rrtype_from_string(yp->key, &rr_type) != 0) {
 		geo_log(check, LOG_ERR, "invalid RR type '%s' on line %zu",
