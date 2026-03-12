@@ -7,6 +7,7 @@
 
 # requirements redis[hiredis]
 from argparse import ArgumentError, ArgumentParser
+from concurrent.futures import ProcessPoolExecutor
 from contextlib import contextmanager
 from enum import IntEnum
 from re import sub
@@ -14,8 +15,6 @@ from redis import Redis
 from redis.exceptions import ConnectionError, ResponseError, TimeoutError
 from socket import AF_INET, AF_INET6, SOCK_DGRAM, gaierror, getaddrinfo, inet_pton
 from sys import exit, stderr
-
-import asyncio
 
 class RRType(IntEnum):
     A = 1
@@ -36,6 +35,16 @@ class Stats:
             f'Zones:   {self.new + self.updated}\t(new: {self.new}, updated: {self.updated})\n' + \
             f'Aliases: {self.resolved + self.not_found}\t(resolved: {self.resolved}, unknown: {self.not_found})\n' + \
             f'Records: {self.ipv4 + self.ipv6}\t(A: {self.resolved}, AAAA: {self.ipv6})'
+    
+    def __add__(self, rhs):
+        self.new += rhs.new
+        self.updated += rhs.updated
+        self.resolved += rhs.resolved
+        self.ipv4 += rhs.ipv4
+        self.ipv6 += rhs.ipv6
+        self.not_found += rhs.not_found
+
+        return self
 
 def arg_parser():
     parser = ArgumentParser(
@@ -237,8 +246,18 @@ def store_zone_record(conn, zone, txn, record):
     if resp != b'OK':
         raise Exception("Failed to store record")
 
-async def resolve_zone_record(conn, zone, txn, record):
-    global stats
+def resolve_zone_record(conf, zone, txn, record):
+    stats = Stats()
+    conn = Redis(
+        host=conf.addr,
+        port=conf.port,
+        ssl=conf.tls,
+        ssl_certfile=conf.tls_cert,
+        ssl_keyfile=conf.tls_key,
+        ssl_ca_certs=conf.tls_ca,
+        ssl_cert_reqs=conf.tls_insecure,
+        socket_timeout=5
+    )
     for dname in rdata_to_dname_list(record[4]):
         try:
             resp = getaddrinfo(dname, None, type=SOCK_DGRAM)
@@ -259,6 +278,7 @@ async def resolve_zone_record(conn, zone, txn, record):
             stats.resolved += 1
         except (gaierror, UnicodeEncodeError): # Not found - skip
             stats.not_found += 1
+    return stats
 
 def store_upd_record(conn, zone, txn, record):
     resp = conn.execute_command('KNOT_BIN.UPD.ADD', zone, txn,
@@ -272,8 +292,18 @@ def remove_upd_record(conn, zone, txn, record):
     if resp != b'OK':
         raise Exception("Failed to delete record")
 
-async def resolve_upd_record(conn, zone, txn, record):
-    global stats
+def resolve_upd_record(conf, zone, txn, record):
+    stats = Stats()
+    conn = Redis(
+        host=conf.addr,
+        port=conf.port,
+        ssl=conf.tls,
+        ssl_certfile=conf.tls_cert,
+        ssl_keyfile=conf.tls_key,
+        ssl_ca_certs=conf.tls_ca,
+        ssl_cert_reqs=conf.tls_insecure,
+        socket_timeout=5
+    )
     for dname in rdata_to_dname_list(record[4]):
         try:
             resp = getaddrinfo(dname, None, type=SOCK_DGRAM)
@@ -293,21 +323,25 @@ async def resolve_upd_record(conn, zone, txn, record):
             stats.resolved += 1
         except (gaierror, UnicodeEncodeError): # Not found - skip
             stats.not_found += 1
+    return stats
 
-async def convert_zone_new(conn, zone, input, output, dryrun):
+def convert_zone_new(stats, conn, conf, zone, input, output, dryrun):
     input_resp = conn.execute_command('KNOT_BIN.ZONE.LOAD', zone, int_to_bytes(input))
     with knot_zone_transaction(conn, zone, output, dryrun) as txn:
         tasks = []
-        for r in input_resp:
-            if r[1] == RRType.ALIAS:
-                tasks.append(asyncio.create_task(
-                    resolve_zone_record(conn, zone, txn, r)
-                ))
-            else:
-                store_zone_record(conn, zone, txn, r)
-        await asyncio.gather(*tasks)
+        with ProcessPoolExecutor() as pool:
+            for r in input_resp:
+                if r[1] == RRType.ALIAS:
+                    tasks.append(pool.submit(
+                        resolve_zone_record, conf, zone, txn, r
+                    ))
+                else:
+                    store_zone_record(conn, zone, txn, r)
+            for t in tasks:
+                stats += t.result()
+            pool.shutdown(wait=True)
 
-async def convert_zone_existing(conn, zone, input, output, dryrun):
+def convert_zone_existing(stats, conn, conf, zone, input, output, dryrun):
     input_resp = conn.execute_command('KNOT_BIN.ZONE.LOAD', zone, int_to_bytes(input))
     old_resp = conn.execute_command('KNOT_BIN.ZONE.LOAD', zone, int_to_bytes(output))
     with knot_upd_transaction(conn, zone, output, dryrun) as txn:
@@ -317,25 +351,28 @@ async def convert_zone_existing(conn, zone, input, output, dryrun):
                 continue
             remove_upd_record(conn, zone, txn, r)
         tasks = []
-        for r in input_resp:
-            if r[1] == RRType.ALIAS:
-                tasks.append(asyncio.create_task(
-                    resolve_upd_record(conn, zone, txn, r)
-                ))
-            else:
-                if r[1] == RRType.SOA:
-                    input_soa = r
-                    continue
-                store_upd_record(conn, zone, txn, r)
-        await asyncio.gather(*tasks)
+        with ProcessPoolExecutor() as pool:
+            for r in input_resp:
+                if r[1] == RRType.ALIAS:
+                    tasks.append(pool.submit(
+                        resolve_upd_record, conf, zone, txn, r
+                    ))
+                else:
+                    if r[1] == RRType.SOA:
+                        input_soa = r
+                        continue
+                    store_upd_record(conn, zone, txn, r)
+            for t in tasks:
+                stats += t.result()
+            pool.shutdown(wait=True)
         if conn.execute_command('KNOT_BIN.UPD.DIFF', zone, txn):
             remove_upd_record(conn, zone, txn, current_soa)
             new_serial = (get_serial(current_soa[4]) + 1) % (2**32)
             input_soa[4] = set_serial(input_soa[4], new_serial)
             store_upd_record(conn, zone, txn, input_soa)
 
-async def convert_zone(conf, zone):
-    global stats
+def convert_zone(conf, zone):
+    stats = Stats()
 
     input = conf.input_instance
     output = conf.output_instance
@@ -353,12 +390,13 @@ async def convert_zone(conf, zone):
     )
 
     if not zone[1]:
-        await convert_zone_new(conn, zone[0], input, output, dryrun)
+        convert_zone_new(stats, conn, conf, zone[0], input, output, dryrun)
         stats.new += 1
     else:
-        await convert_zone_existing(conn, zone[0], input, output, dryrun)
+        convert_zone_existing(stats, conn, conf, zone[0], input, output, dryrun)
         stats.updated += 1
     conn.close()
+    return stats
 
 def list_zones(conn, input, output):
     input_mask = 1 << (input - 1)
@@ -368,8 +406,7 @@ def list_zones(conn, input, output):
     filtered = filter(lambda x: (bytes_to_int(x[1]) & input_mask) != 0, resp)
     return map(lambda x: (x[0], (bytes_to_int(x[1]) & output_mask) != 0), filtered)
 
-async def main():
-    global stats
+def main():
     stats = Stats()
     args = arg_parser()
     try:
@@ -384,12 +421,16 @@ async def main():
             ssl_cert_reqs=conf.tls_insecure,
             socket_timeout=5
         )
-        tasks = []
-        for zone in list_zones(conn, conf.input_instance, conf.output_instance):
-            tasks.append(asyncio.create_task(
-                convert_zone(conf, zone)
-            ))
-        await asyncio.gather(*tasks)
+
+        with ProcessPoolExecutor() as pool:
+            tasks = []
+            for zone in list_zones(conn, conf.input_instance, conf.output_instance):
+                tasks.append(pool.submit(
+                    convert_zone, conf, zone
+                ))
+            for future in tasks:
+                stats += future.result()
+            pool.shutdown(wait=True)
     except ConnectionError as e:
         err = sub(r'^Error\s+-?\d+\s+', 'Error: ', e.args[0])
         print(err, file=stderr)
@@ -401,10 +442,12 @@ async def main():
         print("Error: " + e.message, file=stderr)
         args.print_help()
         exit(1)
+    except Exception as e:
+        pass
 
     if conf.print_stats:
         print("Statistics\n----------")
         print(stats)
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()
