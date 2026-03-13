@@ -1,7 +1,7 @@
 .. _mod-dnserr:
 
 ``dnserr`` — DNS Error Reporting
-=========================================
+================================
 
 The `mod-dnserr` module implements RFC-9567. It allows authoritative
 DNS servers to communicate with clients (resolvers) to identify and log
@@ -15,14 +15,14 @@ with `example.com`, they should send a report to `agent-domain.com`.
 
 ::
 
-	mod-dnserr:
-	  - id: default
-	    send-report-channel: agent-domain.com
+   mod-dnserr:
+     - id: default
+       send-report-channel: agent-domain.com
 
-	zone:
-	  - domain: example.com
-	    file: example.com.zone
-	    module: mod-dnserr/default
+zone:
+  - domain: example.com
+    file: example.com.zone
+    module: mod-dnserr/default
 
 Use this configuration on the server responsible for `agent-domain.com`
 to capture incoming error reports. The `log-cache-size`` tracks unique events
@@ -41,8 +41,6 @@ flushed to log file.
 	  - domain: agent-domain.com
 	    file: agent-domain.com.zone
 	    module: mod-dnserr/agent
-
-
 
 Module reference
 ----------------

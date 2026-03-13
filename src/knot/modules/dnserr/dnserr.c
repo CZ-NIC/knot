@@ -7,24 +7,24 @@
 #include <netinet/in.h>
 
 #include "contrib/atomic.h"
+#include "contrib/sockaddr.h"
 #include "contrib/time.h"
 #include "contrib/wire_ctx.h"
 #include "knot/include/module.h"
 #include "libknot/descriptor.h"
 
-#define MOD_REPORT_CHANNEL "\x13""send-report-channel"
-#define MOD_LOG_REPORTS    "\x12""log-report-channel"
-#define MOD_CACHESIZE      "\x0e""log-cache-size"
-#define MOD_TIMEOUT        "\x0b""log-timeout"
+#define MOD_CHANNEL	"\x0e""report-channel"
+#define MOD_AGENT	"\x05""agent"
+#define MOD_CACHESIZE	"\x0e""log-cache-size"
+#define MOD_TIMEOUT	"\x0b""log-timeout"
 
 #define RESPONSE        "\x0f""Report received"
-#define LOG_MESSAGE_FMT "client reported error with errno %d for record '%s' with type '%s'"
 
 const yp_item_t dnserr_conf[] = {
-	{ MOD_REPORT_CHANNEL, YP_TDNAME, YP_VNONE },
-	{ MOD_LOG_REPORTS,    YP_TBOOL,  YP_VNONE },
-	{ MOD_CACHESIZE,      YP_TINT,   YP_VINT =  { 1, INT32_MAX, 1000 }},
-	{ MOD_TIMEOUT,        YP_TINT,   YP_VINT =  { 1, 36*24*3600, 10, YP_STIME }},
+	{ MOD_CHANNEL,    YP_TDNAME, YP_VNONE },
+	{ MOD_AGENT,      YP_TBOOL,  YP_VNONE },
+	{ MOD_CACHESIZE,  YP_TINT,   YP_VINT =  { 1, INT32_MAX, 1000 }},
+	{ MOD_TIMEOUT,    YP_TINT,   YP_VINT =  { 1, 36*24*3600, 10, YP_STIME }},
 	{ NULL }
 };
 
@@ -32,6 +32,7 @@ typedef struct {
 	uint16_t err;
 	uint16_t qtype;
 	knot_dname_storage_t record;
+	struct sockaddr_storage addr;
 } log_tuple_t;
 
 enum state {
@@ -56,8 +57,8 @@ typedef struct {
 	knot_atomic_millis_t last_flush;
 	const knot_dname_t *report_channel;
 	int timeout;
-	uint16_t report_channel_size;
-	bool log;
+	uint8_t report_channel_size;
+	bool agent;
 } dnserr_ctx_t;
 
 typedef struct {
@@ -67,6 +68,20 @@ typedef struct {
 	int err;
 	uint8_t qtypes_cnt;
 } dnserr_parsed_t;
+
+int dnserr_conf_check(knotd_conf_check_args_t *args)
+{
+	knotd_conf_t conf_agent = knotd_conf_check_item(args, MOD_AGENT);
+	if (!conf_agent.single.boolean) {
+		knotd_conf_t conf_channel = knotd_conf_check_item(args, MOD_CHANNEL);
+		if (conf_channel.count == 0 || conf_channel.single.dname[0] == '\0') {
+			args->err_str = "no valid report channel specified";
+			return KNOT_EINVAL;
+		}
+	}
+
+	return KNOT_EOK;
+}
 
 static uint64_t log_tuple_hash(const log_tuple_t *val)
 {
@@ -133,7 +148,8 @@ static int hashset_add(log_set_t *set, const log_tuple_t *val)
 
 static void flush_set(knotd_mod_t *mod, log_set_t *set)
 {
-	char record_str[KNOT_DNAME_TXT_MAXLEN];
+	char addr_str[SOCKADDR_STRLEN];
+	char owner_str[KNOT_DNAME_TXT_MAXLEN];
 	char qtype_str[32];
 
 	pthread_rwlock_wrlock(&set->flush_lock);
@@ -143,11 +159,16 @@ static void flush_set(knotd_mod_t *mod, log_set_t *set)
 			pthread_rwlock_unlock(&el->lock);
 			continue;
 		}
-		knot_dname_to_str(record_str, el->data.record, KNOT_DNAME_TXT_MAXLEN);
-		knot_rrtype_to_string(el->data.qtype, qtype_str, sizeof(qtype_str));
 
-		knotd_mod_log(mod, LOG_WARNING, LOG_MESSAGE_FMT, el->data.err, record_str,
-		              qtype_str);
+		if (sockaddr_tostr(addr_str, sizeof(addr_str), &el->data.addr) > 0 &&
+		    knot_dname_to_str(owner_str, el->data.record, sizeof(owner_str)) != NULL &&
+		    knot_rrtype_to_string(el->data.qtype, qtype_str, sizeof(qtype_str))) {
+			knotd_mod_log(mod, LOG_NOTICE, "report, qname '%s', qtype %s, error %u, client %s",
+			              owner_str, qtype_str, el->data.err, addr_str);
+		} else {
+			knotd_mod_log(mod, LOG_ERR, "failed to log report");
+		}
+
 		pthread_rwlock_unlock(&el->lock);
 	}
 	pthread_rwlock_unlock(&set->flush_lock);
@@ -247,30 +268,7 @@ static knotd_in_state_t dnserr_query(knotd_in_state_t state, knot_pkt_t *pkt,
 
 	dnserr_ctx_t *ctx = knotd_mod_ctx(mod);
 
-	// Tests for some reason generate queries with 'qdata->opt_rr.rrs.count > 0'
-	// and it breaks server... Don't know how else to fix this right now..
-	if (ctx->report_channel != NULL && qdata->opt_rr.rrs.count > 0) {
-		uint8_t *option = NULL;
-		uint16_t option_size = ctx->report_channel_size;
-		int ret = knot_edns_reserve_option(&qdata->opt_rr,
-		                                   KNOT_EDNS_OPTION_REPORT_CHANNEL,
-		                                   option_size, &option, qdata->mm);
-		if (ret != KNOT_EOK) {
-			return KNOTD_IN_STATE_ERROR;
-		}
-
-		ret = knot_edns_domainagent_write(option, option_size, ctx->report_channel);
-		if (ret != KNOT_EOK) {
-			return KNOTD_IN_STATE_ERROR;
-		}
-
-		ret = knot_pkt_reserve(pkt, KNOT_EDNS_OPTION_HDRLEN + option_size);
-		if (ret != KNOT_EOK) {
-			return KNOTD_IN_STATE_ERROR;
-		}
-	}
-
-	if (ctx->log) {
+	if (ctx->agent) {
 		const uint16_t qtype = knot_pkt_qtype(qdata->query);
 		const uint16_t qclass = knot_pkt_qclass(qdata->query);
 		if (qclass != KNOT_CLASS_IN || qtype != KNOT_RRTYPE_TXT) {
@@ -305,7 +303,8 @@ static knotd_in_state_t dnserr_query(knotd_in_state_t state, knot_pkt_t *pkt,
 		}
 
 		log_tuple_t ev = {
-			.err = parsed.err
+			.err = parsed.err,
+			.addr = *knotd_qdata_remote_addr(qdata)
 		};
 		memcpy(ev.record, parsed.record, parsed.record_end - parsed.record);
 		ev.record[parsed.record_end - parsed.record] = '\0';
@@ -329,10 +328,29 @@ static knotd_in_state_t dnserr_query(knotd_in_state_t state, knot_pkt_t *pkt,
 			}
 		} while (ATOMIC_CMPXCHG(ctx->last_flush, last, now));
 		if (flush) {
-				flush_set(mod, &ctx->log_cache);
+			flush_set(mod, &ctx->log_cache);
 		}
 
 		return KNOTD_IN_STATE_HIT;
+	} else if (!knot_rrset_empty(&qdata->opt_rr)) {
+		uint8_t *option = NULL;
+		uint8_t option_size = ctx->report_channel_size;
+		int ret = knot_edns_reserve_option(&qdata->opt_rr,
+		                                   KNOT_EDNS_OPTION_REPORT_CHANNEL,
+		                                   option_size, &option, qdata->mm);
+		if (ret != KNOT_EOK) {
+			return KNOTD_IN_STATE_ERROR;
+		}
+
+		ret = knot_edns_domainagent_write(option, option_size, ctx->report_channel);
+		if (ret != KNOT_EOK) {
+			return KNOTD_IN_STATE_ERROR;
+		}
+
+		ret = knot_pkt_reserve(pkt, KNOT_EDNS_OPTION_HDRLEN + option_size);
+		if (ret != KNOT_EOK) {
+			return KNOTD_IN_STATE_ERROR;
+		}
 	}
 
 	return state;
@@ -345,13 +363,10 @@ int dnserr_load(knotd_mod_t *mod)
 		return KNOT_ENOMEM;
 	}
 
-	knotd_conf_t conf_agent = knotd_conf_mod(mod, MOD_REPORT_CHANNEL);
-	ctx->report_channel = conf_agent.single.dname;
-	ctx->report_channel_size = knot_dname_size(ctx->report_channel);
-	knotd_conf_t conf_log = knotd_conf_mod(mod, MOD_LOG_REPORTS);
-	ctx->log = conf_log.single.boolean;
+	knotd_conf_t conf_log = knotd_conf_mod(mod, MOD_AGENT);
+	ctx->agent = conf_log.single.boolean;
 
-	if (ctx->log) {
+	if (ctx->agent) {
 		knotd_conf_t conf_cachesize = knotd_conf_mod(mod, MOD_CACHESIZE);
 		size_t size = conf_cachesize.single.integer;
 		pthread_rwlock_init(&ctx->log_cache.flush_lock, NULL);
@@ -363,6 +378,10 @@ int dnserr_load(knotd_mod_t *mod)
 
 		knotd_conf_t conf_timeout = knotd_conf_mod(mod, MOD_TIMEOUT);
 		ctx->timeout = conf_timeout.single.integer;
+	} else {
+		knotd_conf_t conf_agent = knotd_conf_mod(mod, MOD_CHANNEL);
+		ctx->report_channel = conf_agent.single.dname;
+		ctx->report_channel_size = knot_dname_size(ctx->report_channel);
 	}
 
 	knotd_mod_ctx_set(mod, ctx);
@@ -388,5 +407,5 @@ void dnserr_unload(knotd_mod_t *mod)
 	free(ctx);
 }
 
-KNOTD_MOD_API(dnserr, KNOTD_MOD_FLAG_SCOPE_ZONE | KNOTD_MOD_FLAG_OPT_CONF,
-              dnserr_load, dnserr_unload, dnserr_conf, NULL);
+KNOTD_MOD_API(dnserr, KNOTD_MOD_FLAG_SCOPE_ZONE,
+              dnserr_load, dnserr_unload, dnserr_conf, dnserr_conf_check);
