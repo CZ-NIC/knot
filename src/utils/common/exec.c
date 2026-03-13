@@ -392,7 +392,7 @@ static void print_section_opt(const knot_pkt_t *packet, const style_t *style)
 			print_expire(opt_data, opt_len);
 			break;
 		case KNOT_EDNS_OPTION_REPORT_CHANNEL:
-			printf(";; REPORT CHANNEL: ");
+			printf(";; REPORTCHANNEL: ");
 			print_dname(opt_data, opt_len);
 			break;
 		case KNOT_EDNS_OPTION_ZONEVERSION:
