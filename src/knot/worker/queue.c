@@ -32,6 +32,15 @@ void worker_queue_enqueue(worker_queue_t *queue, worker_task_t *task)
 	ptrlist_add(&queue->list, task, &queue->mm_ctx);
 }
 
+void worker_queue_remove(worker_queue_t *queue, worker_task_t *task)
+{
+	if (!queue || !task) {
+		return;
+	}
+
+	ptrlist_find_rem(&queue->list, task, &queue->mm_ctx);
+}
+
 worker_task_t *worker_queue_dequeue(worker_queue_t *queue)
 {
 	if (!queue) {

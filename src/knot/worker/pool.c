@@ -213,6 +213,17 @@ void worker_pool_assign(worker_pool_t *pool, struct task *task)
 	pthread_mutex_unlock(&pool->lock);
 }
 
+void worker_pool_unassign(worker_pool_t *pool, struct task *task)
+{
+	if (!pool || !task) {
+		return;
+	}
+
+	pthread_mutex_lock(&pool->lock);
+	worker_queue_remove(&pool->tasks, task);
+	pthread_mutex_unlock(&pool->lock);
+}
+
 void worker_pool_clear(worker_pool_t *pool)
 {
 	if (!pool) {
