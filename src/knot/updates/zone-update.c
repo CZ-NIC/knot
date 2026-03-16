@@ -1287,6 +1287,12 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 	return KNOT_EOK;
 }
 
+static int no_change(const knot_rrset_t *rr, void *ctx)
+{
+	(void)ctx;
+	return knot_rrset_empty(rr) ? KNOT_EOK : 1;
+}
+
 bool zone_update_no_change(zone_update_t *update)
 {
 	if (update == NULL) {
@@ -1294,9 +1300,8 @@ bool zone_update_no_change(zone_update_t *update)
 	}
 
 	if (update->flags & UPDATE_NO_CHSET) {
-		zone_diff_t diff;
-		get_zone_diff(&diff, update);
-		return (zone_diff_serialized_size(diff) == 0);
+		return zone_update_foreach(update, false, no_change, NULL) == KNOT_EOK &&
+		       zone_update_foreach(update, true, no_change, NULL) == KNOT_EOK;
 	} else if (update->flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) {
 		return changeset_empty(&update->change);
 	} else {
