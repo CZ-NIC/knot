@@ -324,6 +324,7 @@ void zone_events_deinit(zone_t *zone)
 
 	evsched_cancel(events->event);
 	evsched_event_free(events->event);
+	worker_pool_unassign(events->pool, &events->task);
 
 	pthread_mutex_unlock(&events->mx);
 	pthread_mutex_destroy(&events->mx);

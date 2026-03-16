@@ -70,6 +70,11 @@ void worker_pool_wait_cb(worker_pool_t *pool, wait_callback_t cb);
 void worker_pool_assign(worker_pool_t *pool, struct task *task);
 
 /*!
+ * \brief Revert assignment of a specific task to the worker pool.
+ */
+void worker_pool_unassign(worker_pool_t *pool, struct task *task);
+
+/*!
  * \brief Clear all tasks enqueued in pool processing queue.
  */
 void worker_pool_clear(worker_pool_t *pool);
