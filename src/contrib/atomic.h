@@ -25,24 +25,6 @@
  typedef atomic_size_t knot_atomic_size_t;
  typedef _Atomic (void *) knot_atomic_ptr_t;
  typedef atomic_bool knot_atomic_bool;
-#elif defined(HAVE_GCC_ATOMIC)   /* GCC __atomic */
- #include <stdint.h>
- #include <stdbool.h>
- #include <stddef.h>
-
- #define ATOMIC_INIT(dst, val) __atomic_store_n(&(dst), (val), __ATOMIC_RELAXED)
- #define ATOMIC_DEINIT(dst)
- #define ATOMIC_SET(dst, val)  __atomic_store_n(&(dst), (val), __ATOMIC_RELAXED)
- #define ATOMIC_GET(src)       __atomic_load_n(&(src), __ATOMIC_RELAXED)
- #define ATOMIC_ADD(dst, val)  __atomic_add_fetch(&(dst), (val), __ATOMIC_RELAXED)
- #define ATOMIC_SUB(dst, val)  __atomic_sub_fetch(&(dst), (val), __ATOMIC_RELAXED)
- #define ATOMIC_XCHG(dst, val) __atomic_exchange_n(&(dst), (val), __ATOMIC_RELAXED)
-
- typedef uint16_t knot_atomic_uint16_t;
- typedef uint64_t knot_atomic_uint64_t;
- typedef size_t knot_atomic_size_t;
- typedef void* knot_atomic_ptr_t;
- typedef bool knot_atomic_bool;
 #else                            /* Fallback using spinlocks. Much slower. */
  #include <stdint.h>
  #include <stdbool.h>
