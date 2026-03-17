@@ -11,7 +11,7 @@
 #include "knot/server/dthreads.h"
 
 #define THREADS 16
-#if defined(HAVE_C11_ATOMIC) || defined(HAVE_GCC_ATOMIC)
+#if defined(HAVE_C11_ATOMIC)
   #define CYCLES1 100000
   #define CYCLES2 2000000
   #define CYCLES3 100000
