@@ -93,10 +93,7 @@ static knotd_in_state_t whoami_query(knotd_in_state_t state, knot_pkt_t *pkt,
 
 int whoami_load(knotd_mod_t *mod)
 {
-	/* Hook to the query plan. */
-	knotd_mod_in_hook(mod, KNOTD_STAGE_ANSWER, whoami_query);
-
-	return KNOT_EOK;
+	return knotd_mod_in_hook(mod, KNOTD_STAGE_ANSWER, whoami_query);
 }
 
 KNOTD_MOD_API(whoami, KNOTD_MOD_FLAG_SCOPE_ZONE | KNOTD_MOD_FLAG_OPT_CONF,
