@@ -280,6 +280,7 @@ int cookies_load(knotd_mod_t *mod)
 		ret = dnssec_random_buffer((uint8_t *)gen_secret, sizeof(gen_secret));
 		if (ret != KNOT_EOK) {
 			free(ctx);
+			knotd_mod_ctx_set(mod, NULL);
 			return ret;
 		}
 		ATOMIC_SET(ctx->secret[0].variable, gen_secret[0]);
@@ -293,6 +294,7 @@ int cookies_load(knotd_mod_t *mod)
 		if (thread_create_nosignal(&ctx->update_secret, update_secret, (void *)mod)) {
 			knotd_mod_log(mod, LOG_ERR, "failed to create the secret rollover thread");
 			free(ctx);
+			knotd_mod_ctx_set(mod, NULL);
 			return KNOT_ERROR;
 		}
 	}

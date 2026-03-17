@@ -187,6 +187,8 @@ static void ctx_free(rrl_ctx_t *ctx)
 	free(ctx);
 }
 
+#define CHECK_RET(cmd) if ((ret = (cmd)) != KNOT_EOK) return ret;
+
 int rrl_load(knotd_mod_t *mod)
 {
 	rrl_ctx_t *ctx = calloc(1, sizeof(rrl_ctx_t));
@@ -254,13 +256,13 @@ int rrl_load(knotd_mod_t *mod)
 	knotd_mod_ctx_set(mod, ctx);
 
 	if (rate_limit > 0) {
-		knotd_mod_hook(mod, KNOTD_STAGE_BEGIN, ratelimit_apply);
+		CHECK_RET(knotd_mod_hook(mod, KNOTD_STAGE_BEGIN, ratelimit_apply));
 	}
 
 	if (time_limit > 0) {
 		// Note that these two callbacks aren't executed IF PER-ZONE module!
-		knotd_mod_proto_hook(mod, KNOTD_STAGE_PROTO_BEGIN, protolimit_start);
-		knotd_mod_proto_hook(mod, KNOTD_STAGE_PROTO_END, protolimit_end);
+		CHECK_RET(knotd_mod_proto_hook(mod, KNOTD_STAGE_PROTO_BEGIN, protolimit_start));
+		CHECK_RET(knotd_mod_proto_hook(mod, KNOTD_STAGE_PROTO_END, protolimit_end));
 	}
 
 	return KNOT_EOK;

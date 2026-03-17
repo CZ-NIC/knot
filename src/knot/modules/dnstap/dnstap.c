@@ -343,10 +343,16 @@ int dnstap_load(knotd_mod_t *mod)
 
 	/* Hook to the query plan. */
 	if (log_queries) {
-		knotd_mod_hook(mod, KNOTD_STAGE_BEGIN, dnstap_message_log_query);
+		int ret = knotd_mod_hook(mod, KNOTD_STAGE_BEGIN, dnstap_message_log_query);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
 	}
 	if (log_responses) {
-		knotd_mod_hook(mod, KNOTD_STAGE_END, dnstap_message_log_response);
+		int ret = knotd_mod_hook(mod, KNOTD_STAGE_END, dnstap_message_log_response);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
 	}
 
 	return KNOT_EOK;
