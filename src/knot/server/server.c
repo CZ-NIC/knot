@@ -1104,9 +1104,6 @@ void server_deinit(server_t *server)
 	/* Free remaining interfaces. */
 	server_deinit_iface_list(server->ifaces, server->n_ifaces);
 
-	/* Free threads and event handlers. */
-	worker_pool_destroy(server->workers);
-
 	/* Free eventual timer DB syncing thread. */
 	dt_delete(&server->timerdb_sync);
 
@@ -1115,6 +1112,9 @@ void server_deinit(server_t *server)
 
 	/* Free zone database. */
 	knot_zonedb_deep_free(&server->zone_db, true);
+
+	/* Free threads and event handlers. */
+	worker_pool_destroy(server->workers);
 
 	/* Free remaining events. */
 	evsched_deinit(&server->sched);

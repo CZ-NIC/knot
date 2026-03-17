@@ -669,6 +669,8 @@ int load_nsec_bitmap(online_sign_ctx_t *ctx, knotd_conf_t *conf)
 	return KNOT_EOK;
 }
 
+#define CHECK_RET(cmd) if ((ret = (cmd)) != KNOT_EOK) return ret;
+
 int online_sign_load(knotd_mod_t *mod)
 {
 	knotd_conf_t conf = knotd_conf_zone(mod, C_DNSSEC_SIGNING,
@@ -702,15 +704,15 @@ int online_sign_load(knotd_mod_t *mod)
 
 	knotd_mod_ctx_set(mod, ctx);
 
-	knotd_mod_in_hook(mod, KNOTD_STAGE_ANSWER, pre_routine);
+	CHECK_RET(knotd_mod_in_hook(mod, KNOTD_STAGE_ANSWER, pre_routine));
 
-	knotd_mod_in_hook(mod, KNOTD_STAGE_ANSWER, synth_answer);
-	knotd_mod_in_hook(mod, KNOTD_STAGE_ANSWER, sign_section);
+	CHECK_RET(knotd_mod_in_hook(mod, KNOTD_STAGE_ANSWER, synth_answer));
+	CHECK_RET(knotd_mod_in_hook(mod, KNOTD_STAGE_ANSWER, sign_section));
 
-	knotd_mod_in_hook(mod, KNOTD_STAGE_AUTHORITY, synth_authority);
-	knotd_mod_in_hook(mod, KNOTD_STAGE_AUTHORITY, sign_section);
+	CHECK_RET(knotd_mod_in_hook(mod, KNOTD_STAGE_AUTHORITY, synth_authority));
+	CHECK_RET(knotd_mod_in_hook(mod, KNOTD_STAGE_AUTHORITY, sign_section));
 
-	knotd_mod_in_hook(mod, KNOTD_STAGE_ADDITIONAL, sign_section);
+	CHECK_RET(knotd_mod_in_hook(mod, KNOTD_STAGE_ADDITIONAL, sign_section));
 
 	return KNOT_EOK;
 }

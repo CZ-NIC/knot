@@ -42,6 +42,11 @@ void worker_queue_deinit(worker_queue_t *queue);
 void worker_queue_enqueue(worker_queue_t *queue, worker_task_t *task);
 
 /*!
+ * \brief Revert insertion of this task to the queue.
+ */
+void worker_queue_remove(worker_queue_t *queue, worker_task_t *task);
+
+/*!
  * \brief Remove item from the queue.
  *
  * \return Task or NULL if the queue is empty.
