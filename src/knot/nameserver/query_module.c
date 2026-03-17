@@ -172,6 +172,9 @@ void query_module_close(knotd_mod_t *module)
 		return;
 	}
 
+	if (module->ctx != NULL && module->api->unload != NULL) {
+		module->api->unload(module);
+	}
 	module_reset(NULL, module, NULL);
 	conf_free_mod_id(module->id);
 	free(module);

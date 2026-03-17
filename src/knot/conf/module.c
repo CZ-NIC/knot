@@ -451,9 +451,6 @@ void conf_deactivate_modules(
 	// Free query modules list.
 	knotd_mod_t *mod, *next;
 	WALK_LIST_DELSAFE(mod, next, *query_modules) {
-		if (mod->api->unload != NULL) {
-			mod->api->unload(mod);
-		}
 		query_module_close(mod);
 	}
 	init_list(query_modules);
