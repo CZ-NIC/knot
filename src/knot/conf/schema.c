@@ -274,6 +274,7 @@ static const yp_item_t desc_xdp[] = {
 	{ C_RING_SIZE,            YP_TINT,  YP_VINT = { 4, 32768, 2048 } },
 	{ C_BUSYPOLL_BUDGET,      YP_TINT,  YP_VINT = { 0, UINT16_MAX, 0 } },
 	{ C_BUSYPOLL_TIMEOUT,     YP_TINT,  YP_VINT = { 1, UINT16_MAX, 20 } },
+	{ C_COPY,                 YP_TBOOL, YP_VNONE },
 	{ C_COMMENT,              YP_TSTR,  YP_VNONE },
 	{ NULL }
 };

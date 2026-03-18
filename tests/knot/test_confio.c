@@ -1000,6 +1000,7 @@ static const yp_item_t desc_xdp[] = {
 	{ C_RING_SIZE,          YP_TINT,  YP_VNONE },
 	{ C_BUSYPOLL_BUDGET,    YP_TINT,  YP_VNONE },
 	{ C_BUSYPOLL_TIMEOUT,   YP_TINT,  YP_VNONE },
+	{ C_COPY,               YP_TBOOL, YP_VNONE },
 	{ NULL }
 };
 

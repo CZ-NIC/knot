@@ -784,6 +784,7 @@ static int configure_sockets(conf_t *conf, server_t *s)
 		.ring_size = conf->cache.xdp_ring_size,
 		.busy_poll_budget = conf->cache.xdp_busypoll_budget,
 		.busy_poll_timeout = conf->cache.xdp_busypoll_timeout,
+		.force_copy = conf->cache.xdp_copy,
 	};
 	unsigned thread_id = s->handlers[IO_UDP].handler.unit->size +
 	                     s->handlers[IO_TCP].handler.unit->size;

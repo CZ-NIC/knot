@@ -40,6 +40,7 @@
 #define C_CLEAR			"\x05""clear"
 #define C_COMMENT		"\x07""comment"
 #define C_CONFIG		"\x06""config"
+#define C_COPY			"\x04""copy"
 #define C_CTL			"\x07""control"
 #define C_DB			"\x08""database"
 #define C_DBUS_EVENT		"\x0A""dbus-event"

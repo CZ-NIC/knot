@@ -174,6 +174,7 @@ typedef struct {
 		bool srv_auto_acl;
 		bool srv_proxy_enabled;
 		bool srv_has_version;
+		bool xdp_copy;
 	} cache;
 
 	/*! List of dynamically loaded modules. */

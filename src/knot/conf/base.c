@@ -236,6 +236,9 @@ static void init_cache(
 
 	conf->cache.xdp_busypoll_timeout = running_busypoll_timeout;
 
+	val = conf_get(conf, C_XDP, C_COPY);
+	conf->cache.xdp_copy = conf_bool(&val);
+
 	val = conf_get(conf, C_CTL, C_TIMEOUT);
 	conf->cache.ctl_timeout = conf_int(&val) * 1000;
 	/* infinite_adjust() call isn't needed, 0 is adjusted later anyway. */
