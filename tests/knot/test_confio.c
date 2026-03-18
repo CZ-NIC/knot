@@ -995,6 +995,7 @@ static const yp_item_t desc_xdp[] = {
 	{ C_TCP_IDLE_RESET,     YP_TINT,  YP_VNONE },
 	{ C_TCP_RESEND,         YP_TINT,  YP_VNONE },
 	{ C_ROUTE_CHECK,        YP_TBOOL, YP_VNONE },
+	{ C_ZERO_COPY,          YP_TBOOL, YP_VNONE },
 	{ C_RING_SIZE,          YP_TINT,  YP_VNONE },
 	{ C_BUSYPOLL_BUDGET,    YP_TINT,  YP_VNONE },
 	{ C_BUSYPOLL_TIMEOUT,   YP_TINT,  YP_VNONE },
