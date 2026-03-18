@@ -119,6 +119,7 @@ static void init_cache(
 	static bool   running_xdp_tcp;
 	static uint16_t running_xdp_quic;
 	static bool   running_route_check;
+	static bool   running_zero_copy;
 	static uint16_t running_ring_size;
 	static uint16_t running_busypoll_budget;
 	static uint16_t running_busypoll_timeout;
@@ -140,6 +141,7 @@ static void init_cache(
 			running_xdp_quic = conf_get_int(conf, C_XDP, C_QUIC_PORT);
 		}
 		running_route_check = conf_get_bool(conf, C_XDP, C_ROUTE_CHECK);
+		running_zero_copy = conf_get_bool(conf, C_XDP, C_ZERO_COPY);
 		running_ring_size = conf_get_int(conf, C_XDP, C_RING_SIZE);
 		running_busypoll_budget = conf_get_int(conf, C_XDP, C_BUSYPOLL_BUDGET);
 		running_busypoll_timeout = conf_get_int(conf, C_XDP, C_BUSYPOLL_TIMEOUT);
@@ -226,6 +228,8 @@ static void init_cache(
 	conf->cache.xdp_quic = running_xdp_quic;
 
 	conf->cache.xdp_route_check = running_route_check;
+
+	conf->cache.xdp_zero_copy = running_zero_copy;
 
 	conf->cache.xdp_ring_size = running_ring_size;
 

@@ -329,8 +329,10 @@ static iface_t *server_init_xdp_iface(struct sockaddr_storage *addr, bool route_
 		}
 
 		knot_xdp_mode_t mode = knot_eth_xdp_mode(if_nametoindex(iface.name));
-		log_info("%s, queues %d, %s mode%s", msg, iface.queues,
-		         (mode == KNOT_XDP_MODE_FULL ? "native" : "emulated"),
+		bool native = (mode == KNOT_XDP_MODE_FULL);
+		log_info("%s, queues %d, %s%s mode%s", msg, iface.queues,
+		         (native ? "native" : "emulated"),
+		         (native && xdp_config->force_copy ? "/copy" : ""),
 		         route_check ? ", route check" : "");
 	}
 
@@ -765,6 +767,7 @@ static int configure_sockets(conf_t *conf, server_t *s)
 		.ring_size = conf->cache.xdp_ring_size,
 		.busy_poll_budget = conf->cache.xdp_busypoll_budget,
 		.busy_poll_timeout = conf->cache.xdp_busypoll_timeout,
+		.force_copy = !conf->cache.xdp_zero_copy,
 	};
 	unsigned thread_id = s->handlers[IO_UDP].handler.unit->size +
 	                     s->handlers[IO_TCP].handler.unit->size;
@@ -1432,6 +1435,7 @@ static void warn_server_reconfigure(conf_t *conf, server_t *server)
 	static bool warn_xdp_tcp = true;
 	static bool warn_xdp_quic = true;
 	static bool warn_route_check = true;
+	static bool warn_zero_copy = true;
 	static bool warn_ring_size = true;
 	static bool warn_busypoll_budget = true;
 	static bool warn_busypoll_timeout = true;
@@ -1491,6 +1495,11 @@ static void warn_server_reconfigure(conf_t *conf, server_t *server)
 	if (warn_route_check && conf->cache.xdp_route_check != conf_get_bool(conf, C_XDP, C_ROUTE_CHECK)) {
 		log_warning(msg, &C_ROUTE_CHECK[1]);
 		warn_route_check = false;
+	}
+
+	if (warn_zero_copy && conf->cache.xdp_zero_copy != conf_get_bool(conf, C_XDP, C_ZERO_COPY)) {
+		log_warning(msg, &C_ZERO_COPY[1]);
+		warn_zero_copy = false;
 	}
 
 	if (warn_ring_size && conf->cache.xdp_ring_size != conf_get_int(conf, C_XDP, C_RING_SIZE)) {
