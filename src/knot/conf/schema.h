@@ -187,6 +187,7 @@
 #define C_VERSION		"\x07""version"
 #define C_VIA			"\x03""via"
 #define C_XDP			"\x03""xdp"
+#define C_ZERO_COPY		"\x09""zero-copy"
 #define C_ZONE			"\x04""zone"
 #define C_ZONEFILE_LOAD		"\x0D""zonefile-load"
 #define C_ZONEFILE_SKIP		"\x0D""zonefile-skip"

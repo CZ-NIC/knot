@@ -765,6 +765,7 @@ Various options related to XDP listening, especially TCP.
      tcp-idle-reset-timeout: TIME
      tcp-resend-timeout: TIME
      route-check: BOOL
+     zero-copy: BOOL
      ring-size: INT
      busypoll-budget: INT
      busypoll-timeout: INT
@@ -949,6 +950,19 @@ Change of this parameter requires restart of the Knot server to take effect.
    Only VLAN 802.1Q is supported.
 
 *Default:* ``off``
+
+.. _xdp_zero-copy:
+
+zero-copy
+---------
+
+If enabled and supported by the configured network device, zero-copy mode
+can be used. For testing purposes or if there is an issue with the kernel
+or device driver, disabling zero-copy may help, at the cost of lower performance.
+
+Change of this parameter requires restart of the Knot server to take effect.
+
+*Default:* ``on``
 
 .. _xdp_ring-size:
 
