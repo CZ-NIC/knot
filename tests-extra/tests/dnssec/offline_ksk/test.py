@@ -5,10 +5,12 @@ Test of offline signing using KSR and SKR with pre-planned KSK rollover and auto
 """
 
 import random
+from subprocess import check_output, DEVNULL
 
 from dnstest.utils import *
 from dnstest.keys import Keymgr
 from dnstest.test import Test
+from dnstest.params import bind_dnssec_ksr
 
 def cripple_skr(skr_in, skr_out):
     rrsigs_total = 9
@@ -118,7 +120,11 @@ ON_SLAVE = random.choice([True, False])
 IXFR = random.choice([True, False]) if ON_SLAVE else False
 SIGNER_BIND = random.choice([True, False])
 
-check_log("On-slave signing %s, IXFR enabled %s, Bind9 as signer %s" % (ON_SLAVE, IXFR, SIGNER_BIND))
+DNSSEC_KSR_VER = None if bind_dnssec_ksr is None or bind_dnssec_ksr == "" else check_output([ bind_dnssec_ksr, "-V" ], stderr=DEVNULL).decode('utf-8').split('.')[1]
+if DNSSEC_KSR_VER is None or int(DNSSEC_KSR_VER) < 21:
+    SIGNER_BIND = False
+
+check_log("On-slave signing %s, IXFR enabled %s, Bind9 as signer %s, dnssec-ksr version %s" % (ON_SLAVE, IXFR, SIGNER_BIND, str(DNSSEC_KSR_VER)))
 
 t = Test()
 
