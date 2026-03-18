@@ -12,13 +12,14 @@
 #ifdef HAVE_C11_ATOMIC           /* C11 */
  #include <stdatomic.h>
 
- #define ATOMIC_INIT(dst, val) atomic_store_explicit(&(dst), (val), memory_order_relaxed)
+ #define ATOMIC_INIT(dst, val)         atomic_store_explicit(&(dst), (val), memory_order_relaxed)
  #define ATOMIC_DEINIT(dst)
- #define ATOMIC_SET(dst, val)  atomic_store_explicit(&(dst), (val), memory_order_relaxed)
- #define ATOMIC_GET(src)       atomic_load_explicit(&(src), memory_order_relaxed)
- #define ATOMIC_ADD(dst, val)  (void)atomic_fetch_add_explicit(&(dst), (val), memory_order_relaxed)
- #define ATOMIC_SUB(dst, val)  (void)atomic_fetch_sub_explicit(&(dst), (val), memory_order_relaxed)
- #define ATOMIC_XCHG(dst, val) atomic_exchange_explicit(&(dst), (val), memory_order_relaxed)
+ #define ATOMIC_SET(dst, val)          atomic_store_explicit(&(dst), (val), memory_order_relaxed)
+ #define ATOMIC_GET(src)               atomic_load_explicit(&(src), memory_order_relaxed)
+ #define ATOMIC_ADD(dst, val)          (void)atomic_fetch_add_explicit(&(dst), (val), memory_order_relaxed)
+ #define ATOMIC_SUB(dst, val)          (void)atomic_fetch_sub_explicit(&(dst), (val), memory_order_relaxed)
+ #define ATOMIC_XCHG(dst, val)         atomic_exchange_explicit(&(dst), (val), memory_order_relaxed)
+ #define ATOMIC_CMPXCHG(dst, exp, des) atomic_compare_exchange_weak(&(dst), &(exp), (des))
 
  typedef atomic_uint_fast16_t knot_atomic_uint16_t;
  typedef atomic_uint_fast64_t knot_atomic_uint64_t;
@@ -70,6 +71,20 @@
 	knot_spin_lock((knot_spin_t *)&(dst).lock); \
 	typeof((dst).value.non_vol) _z = (typeof((dst).value.non_vol))(dst).value.vol; \
 	(dst).value.vol = (val); \
+	knot_spin_unlock((knot_spin_t *)&(dst).lock); \
+	_z; \
+ })
+
+#define ATOMIC_CMPXCHG(dst, exp, des) ({ \
+	bool _z; \
+	knot_spin_lock((knot_spin_t *)&(dst).lock); \
+	if ((dst).value.vol == (exp)) { \
+		(dst).value.vol = (des); \
+		_z = true; \
+	} else { \
+		(exp) = (dst).value.vol; \
+		_z = false; \
+	} \
 	knot_spin_unlock((knot_spin_t *)&(dst).lock); \
 	_z; \
  })
