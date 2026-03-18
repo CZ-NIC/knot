@@ -82,6 +82,8 @@ bind_bin = get_binary("KNOT_TEST_BIND", "named")
 bind_ctl = get_binary("KNOT_TEST_BINDC", "rndc")
 # KNOT_TEST_BIND_CHECKCONF - Bind checkconf binary.
 bind_checkconf_bin = get_binary("KNOT_TEST_BIND_CHECKCONF", "named-checkconf")
+# KNOT_TEST_DNSSEC_KSR - Bind Offline KSK signer.
+bind_dnssec_ksr = get_binary("KNOT_TEST_BIND_KSR", "dnssec-ksr")
 # KNOT_TEST_UNALIAS - Script for ALIAS resolving.
 unalias_bin = get_binary("KNOT_TEST_UNALIAS", repo_binary("scripts/redis_unalias.py"))
 

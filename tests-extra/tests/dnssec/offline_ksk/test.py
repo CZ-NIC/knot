@@ -5,10 +5,12 @@ Test of offline signing using KSR and SKR with pre-planned KSK rollover and auto
 """
 
 import random
+from subprocess import check_output, DEVNULL
 
 from dnstest.utils import *
 from dnstest.keys import Keymgr
 from dnstest.test import Test
+from dnstest.params import bind_dnssec_ksr
 
 def cripple_skr(skr_in, skr_out):
     rrsigs_total = 9
@@ -23,6 +25,10 @@ def cripple_skr(skr_in, skr_out):
                 if len(linesplit) > 2 and linesplit[2] == "RRSIG":
                     after_rrsig = 0
                     rrsig_now += 1
+                elif len(linesplit) > 3 and linesplit[3] == "RRSIG":
+                    rrsig_now += 1
+                    if rrsig_now == rrsig_chosen:
+                        lineout = linein.lower() # Bind9-style RRSIG is crippled directly
                 else:
                     after_rrsig += 1
                     if after_rrsig == 3 and rrsig_now == rrsig_chosen:
@@ -112,8 +118,13 @@ def writef(filename, contents):
 
 ON_SLAVE = random.choice([True, False])
 IXFR = random.choice([True, False]) if ON_SLAVE else False
+SIGNER_BIND = random.choice([True, False])
 
-check_log("On-slave signing %s, IXFR enabled %s" % (ON_SLAVE, IXFR))
+DNSSEC_KSR_VER = None if bind_dnssec_ksr is None or bind_dnssec_ksr == "" else check_output([ bind_dnssec_ksr, "-V" ], stderr=DEVNULL).decode('utf-8').split('.')[1]
+if DNSSEC_KSR_VER is None or int(DNSSEC_KSR_VER) < 21:
+    SIGNER_BIND = False
+
+check_log("On-slave signing %s, IXFR enabled %s, Bind9 as signer %s, dnssec-ksr version %s" % (ON_SLAVE, IXFR, SIGNER_BIND, str(DNSSEC_KSR_VER)))
 
 t = Test()
 
@@ -154,10 +165,7 @@ knot.dnssec(zone).rrsig_pre_refresh = 1
 # options without any effect
 knot.dnssec(zone).ksk_lifetime = NONSENSE
 
-# needed for keymgr
-knot.gen_confile()
-
-signer = t.server("knot")
+signer = t.server("bind" if SIGNER_BIND else "knot")
 t.link(zone, signer)
 
 # KSK side
@@ -178,7 +186,7 @@ signer.dnssec(zone).ksk_lifetime = NONSENSE * 2
 signer.dnssec(zone).propagation_delay = int(NONSENSE / 10)
 
 # needed for keymgr
-signer.gen_confile()
+t.generate_conf()
 
 def tickf(when):
     return "+%d" % (STARTUP + when * TICK)
@@ -195,7 +203,7 @@ SKR_BROKEN = SKR + "_broken"
 Keymgr.run_check(knot.confile, ZONE, "pregenerate", "+20", "+" + str(FUTURE))
 _, out, _ = Keymgr.run_check(knot.confile, ZONE, "generate-ksr", "+0", "+" + str(FUTURE))
 writef(KSR, out)
-_, out, _ = Keymgr.run_check(signer.confile, ZONE, "sign-ksr", KSR)
+out = signer.sign_ksr(ZONE, KSR)
 writef(SKR, out)
 
 cripple_skr(SKR, SKR_BROKEN)
@@ -210,13 +218,15 @@ Keymgr.run_check(knot.confile, ZONE, "import-skr", SKR)
 TICK_SAFE = TICK + TICK // 2;
 
 # run it and see if the signing and rollovers work well
-t.start()
+if ON_SLAVE:
+    master.start()
+knot.start()
 knot.zone_wait(zone)
 check_zone(knot, zone, 2, 1, 1, "init")
 
 zone_update(master, knot, zone, ON_SLAVE)
 wait_for_dnskey_count(t, knot, 3, STARTUP + TICK_SAFE * 2)
-check_zone(knot, zone, 3, 2, 1, "KSK rollover: publish")
+check_zone(knot, zone, 3, 1 if SIGNER_BIND else 2, 1, "KSK rollover: publish")
 
 zone_update(master, knot, zone, ON_SLAVE)
 wait_for_dnskey_count(t, knot, 2, TICK_SAFE * 3)
@@ -244,7 +254,7 @@ SKR = SKR + "2"
 Keymgr.run_check(knot.confile, ZONE, "pregenerate", "+" + str(FUTURE))
 _, out, _ = Keymgr.run_check(knot.confile, ZONE, "generate-ksr", "+0", "+" + str(FUTURE))
 writef(KSR, out)
-_, out, _ = Keymgr.run_check(signer.confile, ZONE, "sign-ksr", KSR)
+out = signer.sign_ksr(ZONE, KSR)
 writef(SKR, out)
 Keymgr.run_check(knot.confile, ZONE, "import-skr", SKR)
 
@@ -255,7 +265,7 @@ check_zone(knot, zone, 2, 1, 1, "init2")
 
 zone_update(master, knot, zone, ON_SLAVE)
 wait_for_dnskey_count(t, knot, 3, STARTUP + TICK_SAFE)
-check_zone(knot, zone, 3, 2, 1, "KSK rollover2: publish")
+check_zone(knot, zone, 3, 1 if SIGNER_BIND else 2, 1, "KSK rollover2: publish")
 
 zone_update(master, knot, zone, ON_SLAVE)
 wait_for_dnskey_count(t, knot, 2, TICK_SAFE * 3)
@@ -271,46 +281,49 @@ check_zone(knot, zone, 2, 1, 1, "ZSK rollover2: done")
 
 # prepare algorithm roll-over: delete pre-generated ZSKs, arrange all the timestamps
 
-_, out, _ = Keymgr.run_check(knot.confile, ZONE, "list")
-for line in out.split('\n'):
-    if len(line) > 0 and line.split()[-1] == "remove=0": # only one key with this property
-        last_zsk = line.split()[0]
+if not SIGNER_BIND:
+    _, out, _ = Keymgr.run_check(knot.confile, ZONE, "list")
+    for line in out.split('\n'):
+        if len(line) > 0 and line.split()[-1] == "remove=0": # only one key with this property
+            last_zsk = line.split()[0]
 
-algtick = 5
-now = int(time.time())
-preactive = now + algtick
-publish = preactive + algtick
-postactive = publish + algtick
-remove = postactive + algtick
+    algtick = 5
+    now = int(time.time())
+    preactive = now + algtick
+    publish = preactive + algtick
+    postactive = publish + algtick
+    remove = postactive + algtick
 
-key_ksk4 = signer.key_gen(ZONE, ksk="true", algorithm="ECDSAP256SHA256", created="+0", pre_active=str(preactive), publish=str(publish), ready=str(publish), active=str(postactive))
-key_zsk2 = knot.key_gen(ZONE, ksk="false", algorithm="ECDSAP256SHA256", created="+0", pre_active=str(preactive), publish=str(publish), active=str(postactive))
-signer.key_set(ZONE, key_ksk3, post_active=str(postactive), remove=str(remove))
-knot.key_set(ZONE, last_zsk, post_active=str(postactive), remove=str(remove))
+    key_ksk4 = signer.key_gen(ZONE, ksk="true", algorithm="ECDSAP256SHA256", created="+0",
+               pre_active=str(preactive), publish=str(publish), ready=str(publish), active=str(postactive))
+    key_zsk2 = knot.key_gen(ZONE, ksk="false", algorithm="ECDSAP256SHA256", created="+0",
+               pre_active=str(preactive), publish=str(publish), active=str(postactive))
+    signer.key_set(ZONE, key_ksk3, post_active=str(postactive), remove=str(remove))
+    knot.key_set(ZONE, last_zsk, post_active=str(postactive), remove=str(remove))
 
-KSR = KSR + "3"
-SKR = SKR + "3"
-_, out, _ = Keymgr.run_check(knot.confile, ZONE, "generate-ksr", "+0", str(remove + 1))
-writef(KSR, out)
-_, out, _ = Keymgr.run_check(signer.confile, ZONE, "sign-ksr", KSR)
-writef(SKR, out)
-Keymgr.run_check(knot.confile, ZONE, "import-skr", SKR)
-knot.ctl("zone-keys-load")
+    KSR = KSR + "3"
+    SKR = SKR + "3"
+    _, out, _ = Keymgr.run_check(knot.confile, ZONE, "generate-ksr", "+0", str(remove + 1))
+    writef(KSR, out)
+    out = signer.sign_ksr(ZONE, KSR)
+    writef(SKR, out)
+    Keymgr.run_check(knot.confile, ZONE, "import-skr", SKR)
+    knot.ctl("zone-keys-load")
 
-zone_update(master, knot, zone, ON_SLAVE)
-wait_for_rrsig_count(t, knot, "SOA", 2, algtick + 2)
-check_zone(knot, zone, 2, 1, 2, "alg roll: pre-active")
+    zone_update(master, knot, zone, ON_SLAVE)
+    wait_for_rrsig_count(t, knot, "SOA", 2, algtick + 2)
+    check_zone(knot, zone, 2, 1, 2, "alg roll: pre-active")
 
-zone_update(master, knot, zone, ON_SLAVE)
-wait_for_dnskey_count(t, knot, 4, algtick + 2)
-check_zone(knot, zone, 4, 2, 2, "alg roll: published")
+    zone_update(master, knot, zone, ON_SLAVE)
+    wait_for_dnskey_count(t, knot, 4, algtick + 2)
+    check_zone(knot, zone, 4, 2, 2, "alg roll: published")
 
-zone_update(master, knot, zone, ON_SLAVE)
-wait_for_dnskey_count(t, knot, 2, algtick + 2)
-check_zone(knot, zone, 2, 2, 2, "alg roll: post-active")
+    zone_update(master, knot, zone, ON_SLAVE)
+    wait_for_dnskey_count(t, knot, 2, algtick + 2)
+    check_zone(knot, zone, 2, 2, 2, "alg roll: post-active")
 
-zone_update(master, knot, zone, ON_SLAVE)
-wait_for_rrsig_count(t, knot, "SOA", 1, algtick + 2)
-check_zone(knot, zone, 2, 1, 1, "alg roll: finished")
+    zone_update(master, knot, zone, ON_SLAVE)
+    wait_for_rrsig_count(t, knot, "SOA", 1, algtick + 2)
+    check_zone(knot, zone, 2, 1, 1, "alg roll: finished")
 
 t.end()

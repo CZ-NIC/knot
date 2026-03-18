@@ -1005,6 +1005,10 @@ class Server(object):
     def dnssec(self, zone):
         return self.conf_ss("policy", zone)
 
+    def key_timer_params(self, **new_params):
+        nested_list = [ self.key_timer_param(par_name, par_val) for par_name, par_val in new_params.items() ]
+        return [ x for xs in nested_list for x in xs ]
+
     def enable_nsec3(self, zone, **args):
         zone = zone_arg_check(zone)
 
@@ -1113,6 +1117,37 @@ class Bind(Server):
 
     def bind_version(self):
         return tuple(map(int, run([self.daemon_bin, '-v'], stdout=PIPE, stderr=PIPE, text=True).stdout.replace('BIND ', '').split('-')[0].split('.')))
+
+    def key_timer_param(self, timer_name, timer_val):
+        ktpmap = { 'publish': '-P', 'active': '-A', 'retire': '-I', 'revoke': '-R', 'remove': '-D' }
+        ktpmap |= { 'algorithm': '-a', 'size': '-b' }
+        ignore = [ 'ksk', 'zsk', 'created', 'ready' ]
+        if timer_name == "ksk" and str(timer_val).lower()[0] in [ "y", "t", "1" ]:
+            return [ '-f', 'KSK' ]
+        if timer_name in ignore:
+            return []
+        if timer_name not in ktpmap:
+            assert(0)
+        return [ ktpmap[timer_name], str(timer_val) ]
+
+    def key_gen(self, zone_name, **new_params):
+        z = self.zones[zone_name]
+        alg = "ecdsa256" if z.dnssec.algorithm is None else z.dnssec.algorithm
+        ps = [ 'dnssec-keygen', '-n', 'ZONE', '-K', self.keydir ]
+        if z.dnssec.nsec3:
+            ps += ['-3']
+        out = check_output(ps + self.key_timer_params(algorithm=alg, **new_params) + [z.name], stderr=DEVNULL)
+        return out.decode('ascii').strip()
+
+    def key_set(self, zone_name, key_id, **new_values):
+        ps = [ 'dnssec-settime', '-K', self.keydir ]
+        check_output(ps + self.key_timer_params(**new_values) + [key_id], stderr=DEVNULL)
+
+    def sign_ksr(self, zone_name, ksr_file):
+        ps = [ params.bind_dnssec_ksr, '-i', 'now', '-e', '+1h', '-k', zone_name, '-l', self.confile,
+               '-K', self.keydir, '-f', ksr_file, 'sign' ]
+        out = check_output(ps + [zone_name], stderr=open(os.path.join(self.dir, "dnssec_ksr.err"), mode="a"))
+        return out.decode('utf-8')
 
     def check_option(self, option):
         proc = Popen([params.bind_checkconf_bin, "/dev/fd/0"],
@@ -1230,7 +1265,7 @@ class Bind(Server):
             s.begin("keys")
             zsk_life = "unlimited" if z.dnssec.zsk_lifetime is None else z.dnssec.zsk_lifetime
             ksk_life = "unlimited" if z.dnssec.ksk_lifetime is None else z.dnssec.ksk_lifetime
-            alg = "ecdsa256" if z.dnssec.alg is None else z.dnssec.alg
+            alg = "ecdsa256" if z.dnssec.algorithm is None else z.dnssec.algorithm
             if z.dnssec.single_type_signing:
                 s.item("csk", "lifetime %s algorithm %s" % (ksk_life, alg))
             else:
@@ -1352,18 +1387,12 @@ class Bind(Server):
         for zname in self.zones:
             z = self.zones[zname]
             z.dnssec = self.dnssec(z)
-            if z.dnssec.enable != True:
+            if z.dnssec.enable != True or z.dnssec.offline_ksk == True:
                 continue
 
             # unrelated: generate keys as Bind won't do
-            ps = [ 'dnssec-keygen', '-n', 'ZONE', '-a', 'ECDSA256', '-K', self.keydir ]
-            if z.dnssec.nsec3:
-                ps += ['-3']
-            k1 = check_output(ps + [z.name], stderr=DEVNULL)
-            k2 = check_output(ps + ["-f", "KSK"] + [z.name], stderr=DEVNULL)
-
-            k1 = self.keydir + '/' + k1.rstrip().decode('ascii')
-            k2 = self.keydir + '/' + k2.rstrip().decode('ascii')
+            k1 = os.path.join(self.keydir, self.key_gen(zname))
+            k2 = os.path.join(self.keydir, self.key_gen(zname, ksk="True"))
 
             # Append to zone
             with open(z.zfile.path, 'a') as outf:
@@ -1430,14 +1459,17 @@ class Knot(Server):
         else:
             self.ctl("%szone-flush" % params, wait=wait)
 
+    def key_timer_param(self, timer_name, timer_val):
+        return [ timer_name + "=" + timer_val ]
+
     def key_gen(self, zone_name, **new_params):
-        set_params = [ option + "=" + value for option, value in new_params.items() ]
+        set_params = self.key_timer_params(**new_params)
         res = dnstest.keys.Keymgr.run_check(self.confile, zone_name, "generate", *set_params)
         errcode, stdo, stde = res
         return stdo.split()[-1]
 
     def key_set(self, zone_name, key_id, **new_values):
-        set_params = [ option + "=" + value for option, value in new_values.items() ]
+        set_params = self.key_timer_params(**new_values)
         dnstest.keys.Keymgr.run_check(self.confile, zone_name, "set", key_id, *set_params)
 
     def key_import_bind(self, zone_name):
@@ -1450,6 +1482,10 @@ class Knot(Server):
             m = re.match(r'K(?P<name>[^+]+)\+(?P<algo>\d+)\+(?P<tag>\d+)\.private', pkey)
             if m and m.group("name") == zone_name.lower():
                 dnstest.keys.Keymgr.run_check(self.confile, zone_name, "import-bind", pkey_path)
+
+    def sign_ksr(self, zone_name, ksr_file):
+        _, out, _ = dnstest.keys.Keymgr.run_check(self.confile, zone_name, "sign-ksr", ksr_file)
+        return out
 
     def _on_str_hex(self, conf, name, value):
         if value == True:
