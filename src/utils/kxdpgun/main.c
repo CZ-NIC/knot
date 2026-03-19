@@ -1299,7 +1299,7 @@ static bool get_opts(int argc, char *argv[], xdp_gun_ctx_t *ctx)
 			}
 			break;
 		case 'j':
-			if ((ctx->jw = jsonw_new(stdout, JSON_INDENT)) == NULL) {
+			if ((ctx->jw = jsonw_new(stdout, NO_INDENT)) == NULL) {
 				ERR2("failed to use JSON");
 				return false;
 			}
@@ -1353,10 +1353,6 @@ int main(int argc, char *argv[])
 
 	if (!get_opts(argc, argv, &ctx)) {
 		goto err;
-	}
-
-	if (JSON_MODE(ctx)) {
-		jsonw_list(ctx.jw, NULL); // wrap the json in a list, for syntactic correctness
 	}
 
 	thread_ctxs = calloc(ctx.n_threads, sizeof(*thread_ctxs));
@@ -1425,7 +1421,6 @@ err:
 	free(threads);
 	free_global_payloads();
 	if (JSON_MODE(ctx)) {
-		jsonw_end(ctx.jw);
 		jsonw_free(&ctx.jw);
 	}
 	return ecode;

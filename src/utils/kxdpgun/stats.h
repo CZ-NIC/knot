@@ -16,7 +16,7 @@
 
 #define STATS_SECTION_SEP "--------------------------------------------------------------"
 
-#define JSON_INDENT		"  "
+#define NO_INDENT		NULL
 #define STATS_SCHEMA_VERSION	20240530
 
 #define DURATION_US(st) (((st).until - (st).since) / 1000)

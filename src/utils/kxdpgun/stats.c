@@ -139,8 +139,8 @@ void json_thrd_summary(const xdp_gun_ctx_t *ctx, const kxdpgun_stats_t *st)
 
 	jsonw_object(ctx->jw, NULL);
 	{
-		jsonw_str(w, "type", "thread_summary");
 		jsonw_ulong(w, "runid", ctx->runid);
+		jsonw_str(w, "type", "thread_summary");
 		jsonw_ulong(w, "subid", ctx->thread_id);
 		jsonw_ulong(w, "qry_sent", st->qry_sent);
 		jsonw_ulong(w, "ans_recv", st->ans_recv);
