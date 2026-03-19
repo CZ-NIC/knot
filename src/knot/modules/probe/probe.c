@@ -57,11 +57,11 @@ static knotd_state_t export(knotd_state_t state, knot_pkt_t *pkt,
 	if (ctx->min_diff_ns > 0) {
 		struct timespec now = time_now();
 		uint64_t now_ns = 1000000000 * now.tv_sec + now.tv_nsec;
-		uint64_t last_ns = ATOMIC_GET(ctx->last_times[idx]);
+		uint64_t last_ns = ATOMIC_GET_SOFT(ctx->last_times[idx]);
 		if (now_ns - last_ns < ctx->min_diff_ns) {
 			return state;
 		}
-		ATOMIC_SET(ctx->last_times[idx], now_ns);
+		ATOMIC_SET_SOFT(ctx->last_times[idx], now_ns);
 	}
 
 	// Prepare data sources.

@@ -64,10 +64,10 @@ static void update_ctr(cookies_ctx_t *ctx)
 {
 	assert(ctx);
 
-	if (ATOMIC_GET(ctx->badcookie_ctr) < ctx->badcookie_slip) {
-		ATOMIC_ADD(ctx->badcookie_ctr, 1);
+	if (ATOMIC_GET_SOFT(ctx->badcookie_ctr) < ctx->badcookie_slip) {
+		ATOMIC_ADD_SOFT(ctx->badcookie_ctr, 1);
 	} else {
-		ATOMIC_SET(ctx->badcookie_ctr, BADCOOKIE_CTR_INIT);
+		ATOMIC_SET_SOFT(ctx->badcookie_ctr, BADCOOKIE_CTR_INIT);
 	}
 }
 
@@ -196,7 +196,7 @@ static knotd_state_t cookies_process(knotd_state_t state, knot_pkt_t *pkt,
 			}
 
 			return state;
-		} else if (ATOMIC_GET(ctx->badcookie_ctr) > BADCOOKIE_CTR_INIT) {
+		} else if (ATOMIC_GET_SOFT(ctx->badcookie_ctr) > BADCOOKIE_CTR_INIT) {
 			// Silently drop the response.
 			update_ctr(ctx);
 			knotd_mod_stats_incr(mod, qdata->params->thread_id, 1, 0, 1);

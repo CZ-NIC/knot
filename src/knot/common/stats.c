@@ -22,7 +22,7 @@ static uint64_t stats_get_counter(knot_atomic_uint64_t **stats_vals, uint32_t of
 {
 	uint64_t res = 0;
 	for (unsigned i = 0; i < threads; i++) {
-		res += ATOMIC_GET(stats_vals[i][offset]);
+		res += ATOMIC_GET_SOFT(stats_vals[i][offset]);
 	}
 	return res;
 }
@@ -127,9 +127,9 @@ int stats_server(stats_dump_ctr_f fcn, stats_dump_ctx_t *ctx)
 	}
 
 	DUMP_VAL(params, "zone-count", knot_zonedb_size(ctx->server->zone_db));
-	DUMP_VAL(params, "zone-update-error", ATOMIC_GET(ctx->server->stats.zone_update_error));
-	DUMP_VAL(params, "tcp-io-timeout", ATOMIC_GET(ctx->server->stats.tcp_io_timeout));
-	DUMP_VAL(params, "tcp-idle-timeout", ATOMIC_GET(ctx->server->stats.tcp_idle_timeout));
+	DUMP_VAL(params, "zone-update-error", ATOMIC_GET_SOFT(ctx->server->stats.zone_update_error));
+	DUMP_VAL(params, "tcp-io-timeout", ATOMIC_GET_SOFT(ctx->server->stats.tcp_io_timeout));
+	DUMP_VAL(params, "tcp-idle-timeout", ATOMIC_GET_SOFT(ctx->server->stats.tcp_idle_timeout));
 
 	return KNOT_EOK;
 }

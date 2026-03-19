@@ -80,7 +80,7 @@ static void sigusr_handler(int signo)
 {
 	assert(signo == SIGUSR1);
 	if (global_stats.collected == 0) {
-		ATOMIC_ADD(stats_trigger, 1);
+		ATOMIC_ADD_SOFT(stats_trigger, 1);
 	}
 }
 
@@ -735,13 +735,13 @@ void *xdp_gun_thread(void *_ctx)
 		if (ctx->thread_id == 0 && ctx->stats_period_ns != 0 && global_stats.collected == 0
 		    && (duration_ns - (periodic_stats.since - local_stats.since)) >= ctx->stats_period_ns) {
 			ATOMIC_SET(stats_switch, STATS_PERIODIC);
-			ATOMIC_ADD(stats_trigger, 1);
+			ATOMIC_ADD_SOFT(stats_trigger, 1);
 		}
 
 		if (xdp_trigger == KXDPGUN_STOP && ctx->duration > duration_us) {
 			ctx->duration = duration_us;
 		}
-		uint64_t tmp_stats_trigger = ATOMIC_GET(stats_trigger);
+		uint64_t tmp_stats_trigger = ATOMIC_GET_SOFT(stats_trigger);
 		if (duration_us < ctx->duration && tmp_stats_trigger > stats_triggered) {
 			bool tmp_stats_switch = ATOMIC_GET(stats_switch);
 			stats_triggered = tmp_stats_trigger;
