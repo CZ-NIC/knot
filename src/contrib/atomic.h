@@ -21,6 +21,11 @@
  #define ATOMIC_XCHG(dst, val)         atomic_exchange(&(dst), (val))
  #define ATOMIC_CMPXCHG(dst, exp, des) atomic_compare_exchange_weak(&(dst), &(exp), (des))
 
+ #define ATOMIC_SET_SOFT(dst, val)     atomic_store_explicit(&(dst), (val), memory_order_relaxed)
+ #define ATOMIC_GET_SOFT(src)          atomic_load_explicit(&(src), memory_order_relaxed)
+ #define ATOMIC_ADD_SOFT(dst, val)     (void)atomic_fetch_add_explicit(&(dst), (val), memory_order_relaxed)
+ #define ATOMIC_SUB_SOFT(dst, val)     (void)atomic_fetch_sub_explicit(&(dst), (val), memory_order_relaxed)
+
  typedef atomic_uint_fast16_t knot_atomic_uint16_t;
  typedef atomic_uint_fast64_t knot_atomic_uint64_t;
  typedef atomic_size_t knot_atomic_size_t;
@@ -88,6 +93,11 @@
 	knot_spin_unlock((knot_spin_t *)&(dst).lock); \
 	_z; \
  })
+
+ #define ATOMIC_SET_SOFT ATOMIC_SET
+ #define ATOMIC_GET_SOFT ATOMIC_GET
+ #define ATOMIC_ADD_SOFT ATOMIC_ADD
+ #define ATOMIC_SUB_SOFT ATOMIC_SUB
 
  #define ATOMIC_T(x) struct { \
 	knot_spin_t lock; \
