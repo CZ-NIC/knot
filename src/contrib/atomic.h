@@ -12,13 +12,13 @@
 #ifdef HAVE_C11_ATOMIC           /* C11 */
  #include <stdatomic.h>
 
- #define ATOMIC_INIT(dst, val)         atomic_store_explicit(&(dst), (val), memory_order_relaxed)
+ #define ATOMIC_INIT(dst, val)         atomic_store(&(dst), (val))
  #define ATOMIC_DEINIT(dst)
- #define ATOMIC_SET(dst, val)          atomic_store_explicit(&(dst), (val), memory_order_relaxed)
- #define ATOMIC_GET(src)               atomic_load_explicit(&(src), memory_order_relaxed)
- #define ATOMIC_ADD(dst, val)          (void)atomic_fetch_add_explicit(&(dst), (val), memory_order_relaxed)
- #define ATOMIC_SUB(dst, val)          (void)atomic_fetch_sub_explicit(&(dst), (val), memory_order_relaxed)
- #define ATOMIC_XCHG(dst, val)         atomic_exchange_explicit(&(dst), (val), memory_order_relaxed)
+ #define ATOMIC_SET(dst, val)          atomic_store(&(dst), (val))
+ #define ATOMIC_GET(src)               atomic_load(&(src))
+ #define ATOMIC_ADD(dst, val)          (void)atomic_fetch_add(&(dst), (val))
+ #define ATOMIC_SUB(dst, val)          (void)atomic_fetch_sub(&(dst), (val))
+ #define ATOMIC_XCHG(dst, val)         atomic_exchange(&(dst), (val))
  #define ATOMIC_CMPXCHG(dst, exp, des) atomic_compare_exchange_weak(&(dst), &(exp), (des))
 
  typedef atomic_uint_fast16_t knot_atomic_uint16_t;
