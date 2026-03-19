@@ -1059,7 +1059,7 @@ time_t zone_bootstrap_next(uint8_t *count)
 void zone_update_error(conf_t *conf, zone_t *zone)
 {
 	if (conf != NULL && zone != NULL) {
-		ATOMIC_ADD(zone->server->stats.zone_update_error, 1);
+		ATOMIC_ADD_SOFT(zone->server->stats.zone_update_error, 1);
 		if (conf->cache.srv_dbus_event & DBUS_EVENT_ZONE_UPDATED) {
 			dbus_emit_zone_updated(zone->name, false, 0);
 		}

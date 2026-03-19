@@ -88,7 +88,7 @@ static fdset_sweep_state_t tcp_sweep(fdset_t *set, int idx, void *data)
 	assert(set && fd >= 0);
 
 	server_t *server = data;
-	ATOMIC_ADD(server->stats.tcp_idle_timeout, 1);
+	ATOMIC_ADD_SOFT(server->stats.tcp_idle_timeout, 1);
 
 	if (log_enabled_debug()) {
 		/* Best-effort, name and shame. */
@@ -114,7 +114,7 @@ static void tcp_log_error(const struct sockaddr_storage *ss, const char *operati
 		return;
 	}
 
-	ATOMIC_ADD(server->stats.tcp_io_timeout, 1);
+	ATOMIC_ADD_SOFT(server->stats.tcp_io_timeout, 1);
 
 	if (log_enabled_debug()) {
 		char addr_str[SOCKADDR_STRLEN];

@@ -373,21 +373,21 @@ _public_
 void knotd_mod_stats_incr(knotd_mod_t *mod, unsigned thr_id, uint32_t ctr_id,
                           uint32_t idx, uint64_t val)
 {
-	STATS_BODY(ATOMIC_ADD)
+	STATS_BODY(ATOMIC_ADD_SOFT)
 }
 
 _public_
 void knotd_mod_stats_decr(knotd_mod_t *mod, unsigned thr_id, uint32_t ctr_id,
                           uint32_t idx, uint64_t val)
 {
-	STATS_BODY(ATOMIC_SUB)
+	STATS_BODY(ATOMIC_SUB_SOFT)
 }
 
 _public_
 void knotd_mod_stats_store(knotd_mod_t *mod, unsigned thr_id, uint32_t ctr_id,
                            uint32_t idx, uint64_t val)
 {
-	STATS_BODY(ATOMIC_SET)
+	STATS_BODY(ATOMIC_SET_SOFT)
 }
 
 _public_
