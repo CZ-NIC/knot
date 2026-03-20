@@ -248,6 +248,10 @@ popd
 %install
 make install DESTDIR=%{buildroot}
 
+if [ -f %{buildroot}%{_bindir}/keymgr ]; then
+  mv %{buildroot}%{_sbindir}/keymgr %{buildroot}%{_bindir}/keymgr
+fi
+
 # install python3-libknot
 pushd python/libknot
 %if %{PYPROJECT}
@@ -379,7 +383,7 @@ getent passwd knot >/dev/null || \
 %{_mandir}/man1/kzonesign.*
 
 %files keymgr
-%{_sbindir}/keymgr
+%{_bindir}/keymgr
 %{_mandir}/man8/keymgr.*
 
 %files module-dnstap
