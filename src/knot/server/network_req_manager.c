@@ -65,8 +65,7 @@ void network_dns_request_manager_basic_free_mem(struct network_dns_request_manag
 static network_dns_request_t* network_dns_request_manager_basic_allocate_req(network_dns_request_manager_t *mgr)
 {
 	network_dns_request_manager_basic_t *this = caa_container_of(mgr, network_dns_request_manager_basic_t, base);
-	network_dns_request_t *req = NULL;
-	req = calloc(1, sizeof(network_dns_request_t));
+	network_dns_request_t *req = calloc(1, sizeof(*req));
 	if (req == NULL) {
 		return NULL;
 	}
@@ -83,7 +82,7 @@ static network_dns_request_t* network_dns_request_manager_basic_allocate_req(net
 	req->dns_req.req_data.rx = &req->iov[RX];
 	req->dns_req.req_data.tx = &req->iov[TX];
 	req->dns_req.req_data.mm = &this->query_processing_mm;
-	req->dns_req.req_data.xdp_msg = NULL;
+	//req->dns_req.req_data.xdp_msg = NULL;
 
 	return req;
 }
@@ -173,7 +172,7 @@ static network_dns_request_t* network_dns_request_manager_knot_mm_allocate_req(n
 	req->dns_req.req_data.rx = &req->iov[RX];
 	req->dns_req.req_data.tx = &req->iov[TX];
 	req->dns_req.req_data.mm = &this->query_processing_mm;
-	req->dns_req.req_data.xdp_msg = NULL;
+	//req->dns_req.req_data.xdp_msg = NULL;
 
 	return req;
 }
@@ -330,7 +329,7 @@ static network_dns_request_t* network_dns_request_pool_manager_real_allocate(net
 		return NULL;
 	}
 	mm_ctx_mempool(req->dns_req.req_data.mm, this->memory_size);
-	req->dns_req.req_data.xdp_msg = NULL;
+	//req->dns_req.req_data.xdp_msg = NULL;
 
 	return req;
 }
