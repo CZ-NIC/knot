@@ -11,9 +11,10 @@ from concurrent.futures import ProcessPoolExecutor
 from contextlib import asynccontextmanager
 from enum import IntEnum
 from functools import partial
+from multiprocessing import Lock
 from re import sub
-from redis import Connection, Redis
-from redis.asyncio import ConnectionPool, Redis as aRedis
+from redis import Redis
+from redis.asyncio import Redis as aRedis
 from redis.exceptions import ConnectionError, ResponseError, TimeoutError
 from socket import AF_INET, AF_INET6, SOCK_DGRAM, gaierror, getaddrinfo, inet_pton
 from sys import exit, stderr
@@ -48,6 +49,8 @@ class Stats:
         self.ipv6 += rhs.ipv6
         self.not_found += rhs.not_found
 
+        return self
+
 class ConnPool():
     def __init__(self, params):
         self.pool = []
@@ -65,6 +68,8 @@ class ConnPool():
         while len(self.pool) != 0:
             c = self.pool.pop()
             await c.aclose()
+
+stdout_lock = Lock()
 
 def arg_parser():
     parser = ArgumentParser(
@@ -221,12 +226,7 @@ async def knot_zone_transaction(conn, zone, inst, dryrun):
         raise
     else:
         if dryrun:
-            zone_str = dname_to_str(zone)
-            resp = await conn.execute_command('KNOT.ZONE.LOAD', zone_str, txn_to_str(txn))
             await conn.execute_command('KNOT_BIN.ZONE.ABORT', zone, txn)
-            print(f'=== FULL {zone_str} ===')
-            for record in resp:
-                print(*[x.decode() for x in record], sep=' ')
         else:
             await conn.execute_command('KNOT_BIN.ZONE.COMMIT', zone, txn)
 
@@ -243,17 +243,7 @@ async def knot_upd_transaction(conn, zone, inst, dryrun):
         raise
     else:
         if dryrun:
-            zone_str = dname_to_str(zone)
-            resp = await conn.execute_command('KNOT.UPD.DIFF', zone_str, txn_to_str(txn)), asyncio.get_event_loop()
-            await conn.execute_command('KNOT_BIN.UPD.ABORT', zone, txn), asyncio.get_event_loop()
-            print(f'=== UPDATE {zone_str} ===')
-            for diff in resp:
-                for rem in diff[0]:
-                    print('- ', end='')
-                    print(*[x.decode() for x in rem], sep=' ')
-                for add in diff[1]:
-                    print('+ ', end='')
-                    print(*[x.decode() for x in add], sep=' ')
+            await conn.execute_command('KNOT_BIN.UPD.ABORT', zone, txn)
         else:
             if await conn.execute_command('KNOT_BIN.UPD.DIFF', zone, txn):
                 await conn.execute_command('KNOT_BIN.UPD.COMMIT', zone, txn)
@@ -322,26 +312,31 @@ async def resolve_upd_record(conn, stats, zone, txn, record):
             stats.not_found += 1
 
 async def convert_zone_new(pool, stats, zone, input, output, dryrun):
+    global stdout_lock
     conn = await pool.aquire()
 
     input_resp = conn.execute_command('KNOT_BIN.ZONE.LOAD', zone, int_to_bytes(input))
     async with knot_zone_transaction(conn, zone, output, dryrun) as txn:
-        # tasks = []
+        tasks = []
         for r in await input_resp:
             if r[1] == RRType.ALIAS:
-                await resolve_zone_record(conn, stats, zone, txn, r)
-                # tasks.append(
-                #     resolve_zone_record(conn, stats, zone, txn, r)
-                # )
+                tasks.append(resolve_zone_record(conn, stats, zone, txn, r))
             else:
-                await store_zone_record(conn, zone, txn, r)
-                # tasks.append(
-                #     store_zone_record(conn, zone, txn, r)
-                # )
-        # await asyncio.gather(*tasks)
+                tasks.append(store_zone_record(conn, zone, txn, r))
+        if tasks:
+            await asyncio.gather(*tasks)
+        if dryrun:
+            zone_str = dname_to_str(zone)
+            resp = conn.execute_command('KNOT.ZONE.LOAD', zone_str, txn_to_str(txn))
+            stdout_lock.acquire()
+            print(f'=== FULL {zone_str} ===')
+            for record in await resp:
+                print(*[x.decode() for x in record], sep=' ')
+            stdout_lock.release()
     await pool.release(conn)
 
 async def convert_zone_existing(pool, stats, zone, input, output, dryrun):
+    global stdout_lock
     conn = await pool.aquire()
 
     input_resp = conn.execute_command('KNOT_BIN.ZONE.LOAD', zone, int_to_bytes(input))
@@ -352,22 +347,36 @@ async def convert_zone_existing(pool, stats, zone, input, output, dryrun):
                 current_soa = r
                 continue
             await remove_upd_record(conn, zone, txn, r)
-        # tasks = []
+        tasks = []
         for r in await input_resp:
             if r[1] == RRType.ALIAS:
-                await resolve_upd_record(conn, stats, zone, txn, r)
+                tasks.append(resolve_upd_record(conn, stats, zone, txn, r))
             else:
                 if r[1] == RRType.SOA:
                     input_soa = r
                     continue
-                await store_upd_record(conn, zone, txn, r)
-        # await asyncio.gather(*tasks)
+                tasks.append(store_upd_record(conn, zone, txn, r))
+        if tasks:
+            await asyncio.gather(*tasks)
         if await conn.execute_command('KNOT_BIN.UPD.DIFF', zone, txn):
             await remove_upd_record(conn, zone, txn, current_soa)
             new_serial = (get_serial(current_soa[4]) + 1) % (2**32)
             input_soa[4] = set_serial(input_soa[4], new_serial)
             await store_upd_record(conn, zone, txn, input_soa)
 
+        if dryrun:
+            zone_str = dname_to_str(zone)
+            resp = await conn.execute_command('KNOT.UPD.DIFF', zone_str, txn_to_str(txn))
+            stdout_lock.acquire()
+            print(f'=== UPDATE {zone_str} ===')
+            for diff in resp:
+                for rem in diff[0]:
+                    print('- ', end='')
+                    print(*[x.decode() for x in rem], sep=' ')
+                for add in diff[1]:
+                    print('+ ', end='')
+                    print(*[x.decode() for x in add], sep=' ')
+            stdout_lock.release()
     await pool.release(conn)
 
 async def convert_zone_async(conf, zone):
@@ -429,7 +438,8 @@ def main():
             socket_timeout=5
         )
         # TODO unlimit max_workers
-        executor = ProcessPoolExecutor(max_workers=1)
+        executor = ProcessPoolExecutor()
+        # executor = ProcessPoolExecutor(max_workers=1)
         zones = list(list_zones(conn, conf.input_instance, conf.output_instance))
         conn.close()
         for s in executor.map(partial(convert_zone, conf), zones):
