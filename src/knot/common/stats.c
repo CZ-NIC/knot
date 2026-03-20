@@ -22,6 +22,15 @@ const char* stats_server_names[] = {
 	"zone-update-error",
 	"tcp-io-timeout",
 	"tcp-idle-timeout",
+	"udp_received",
+	"udp_async_done",
+	"udp_no_req_obj",
+	"udp_req_batch_limited",
+	"tcp_accept",
+	"tcp_received",
+	"tcp_async_done",
+	"tcp_no_req_obj",
+	"tcp_multiple_req",
 };
 
 #define STATS_SERVER_COUNT (sizeof(stats_server_names) / sizeof(stats_server_names[0]))
