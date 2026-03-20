@@ -1020,6 +1020,8 @@ int server_init(server_t *server, int bg_workers)
 
 	memset(server, 0, sizeof(server_t));
 
+	stats_server_walk(STATS_SERVER_INIT);
+
 	if (evsched_init(&server->sched, server) != KNOT_EOK) {
 		return KNOT_ENOMEM;
 	}
@@ -1082,6 +1084,8 @@ void server_deinit(server_t *server)
 	if (server == NULL) {
 		return;
 	}
+
+	stats_server_walk(STATS_SERVER_DEINIT);
 
 	zone_backups_deinit(&server->backup_ctxs);
 
@@ -1556,9 +1560,7 @@ int server_reload(server_t *server, reload_t mode)
 			return ret;
 		}
 
-		ATOMIC_SET_SOFT(server->stats.tcp_io_timeout, 0);
-		ATOMIC_SET_SOFT(server->stats.tcp_idle_timeout, 0);
-		ATOMIC_SET_SOFT(server->stats.zone_update_error, 0);
+		stats_server_walk(STATS_SERVER_RESET);
 	}
 
 	conf_update_flag_t upd_flags = CONF_UPD_FNOFREE;

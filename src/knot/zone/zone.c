@@ -11,6 +11,7 @@
 
 #include "knot/common/dbus.h"
 #include "knot/common/log.h"
+#include "knot/common/stats.h"
 #include "knot/conf/module.h"
 #include "knot/dnssec/kasp/kasp_db.h"
 #include "knot/events/replan.h"
@@ -1059,7 +1060,7 @@ time_t zone_bootstrap_next(uint8_t *count)
 void zone_update_error(conf_t *conf, zone_t *zone)
 {
 	if (conf != NULL && zone != NULL) {
-		ATOMIC_ADD_SOFT(zone->server->stats.zone_update_error, 1);
+		stats_server_increment(stats_server_zone_upd_err);
 		if (conf->cache.srv_dbus_event & DBUS_EVENT_ZONE_UPDATED) {
 			dbus_emit_zone_updated(zone->name, false, 0);
 		}

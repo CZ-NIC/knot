@@ -23,6 +23,7 @@
 #include "knot/server/tcp-handler.h"
 #include "knot/common/log.h"
 #include "knot/common/fdset.h"
+#include "knot/common/stats.h"
 #include "knot/nameserver/process_query.h"
 #include "knot/query/layer.h"
 #include "libknot/quic/tls.h"
@@ -82,13 +83,12 @@ static void free_tls_ctx(fdset_t *set, int idx)
 	}
 }
 
-static fdset_sweep_state_t tcp_sweep(fdset_t *set, int idx, void *data)
+static fdset_sweep_state_t tcp_sweep(fdset_t *set, int idx, _unused_ void *data)
 {
 	const int fd = fdset_get_fd(set, idx);
 	assert(set && fd >= 0);
 
-	server_t *server = data;
-	ATOMIC_ADD_SOFT(server->stats.tcp_idle_timeout, 1);
+	stats_server_increment(stats_server_tcp_idle_timeout);
 
 	if (log_enabled_debug()) {
 		/* Best-effort, name and shame. */
@@ -114,7 +114,7 @@ static void tcp_log_error(const struct sockaddr_storage *ss, const char *operati
 		return;
 	}
 
-	ATOMIC_ADD_SOFT(server->stats.tcp_io_timeout, 1);
+	stats_server_increment(stats_server_tcp_io_timeout);
 
 	if (log_enabled_debug()) {
 		char addr_str[SOCKADDR_STRLEN];

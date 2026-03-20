@@ -45,6 +45,34 @@ typedef struct {
 } stats_dump_ctx_t;
 
 /*!
+ * \brief Server statistic counters.
+ */
+typedef enum {
+	stats_server_zone_upd_err,
+	stats_server_tcp_io_timeout,
+	stats_server_tcp_idle_timeout,
+} stats_server_counter_t;
+
+/*!
+ * \brief Operation on server statistic counters.
+ */
+typedef enum {
+	STATS_SERVER_INIT,
+	STATS_SERVER_RESET,
+	STATS_SERVER_DEINIT,
+} stats_server_mode_t;
+
+/*!
+ * \brief Perfom given operation on server statistic counters.
+ */
+void stats_server_walk(const stats_server_mode_t mode);
+
+/*!
+ * \brief Increment a server statistic counter.
+ */
+void stats_server_increment(stats_server_counter_t counter);
+
+/*!
  * \brief Statistic metric dump callback.
  */
 typedef int (*stats_dump_ctr_f)(stats_dump_params_t *, stats_dump_ctx_t *);
