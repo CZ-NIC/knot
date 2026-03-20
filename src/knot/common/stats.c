@@ -3,6 +3,7 @@
  *  For more information, see <https://www.knot-dns.cz/>
  */
 
+#include <assert.h>
 #include <inttypes.h>
 #include <sys/stat.h>
 #include <time.h>
@@ -16,6 +17,32 @@
 #include "knot/common/log.h"
 #include "knot/nameserver/query_module.h"
 #include "libknot/xdp.h"
+
+const char* stats_server_names[] = {
+	"zone-update-error",
+	"tcp-io-timeout",
+	"tcp-idle-timeout",
+};
+
+#define STATS_SERVER_COUNT (sizeof(stats_server_names) / sizeof(stats_server_names[0]))
+static knot_atomic_uint64_t stats_server_ctrs[STATS_SERVER_COUNT];
+
+void stats_server_increment(stats_server_counter_t counter)
+{
+	assert(counter < STATS_SERVER_COUNT);
+	ATOMIC_ADD_SOFT(stats_server_ctrs[counter], 1);
+}
+
+void stats_server_walk(const stats_server_mode_t mode)
+{
+	for (int i = 0; i < STATS_SERVER_COUNT; i++) {
+		switch (mode) {
+		case STATS_SERVER_INIT: ATOMIC_INIT(stats_server_ctrs[i], 0); break;
+		case STATS_SERVER_RESET: ATOMIC_SET(stats_server_ctrs[i], 0); break;
+		case STATS_SERVER_DEINIT: ATOMIC_DEINIT(stats_server_ctrs[i]); break;
+		}
+	}
+}
 
 static uint64_t stats_get_counter(knot_atomic_uint64_t **stats_vals, uint32_t offset,
                                   unsigned threads)
@@ -127,9 +154,9 @@ int stats_server(stats_dump_ctr_f fcn, stats_dump_ctx_t *ctx)
 	}
 
 	DUMP_VAL(params, "zone-count", knot_zonedb_size(ctx->server->zone_db));
-	DUMP_VAL(params, "zone-update-error", ATOMIC_GET_SOFT(ctx->server->stats.zone_update_error));
-	DUMP_VAL(params, "tcp-io-timeout", ATOMIC_GET_SOFT(ctx->server->stats.tcp_io_timeout));
-	DUMP_VAL(params, "tcp-idle-timeout", ATOMIC_GET_SOFT(ctx->server->stats.tcp_idle_timeout));
+	for (int i = 0; i < STATS_SERVER_COUNT; i++) {
+		DUMP_VAL(params, stats_server_names[i], ATOMIC_GET_SOFT(stats_server_ctrs[i]));
+	}
 
 	return KNOT_EOK;
 }
