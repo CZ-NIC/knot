@@ -1,2 +1,0 @@
-d /run/knot       0755 knot knot - -
-d /var/lib/knot   0700 knot knot - -
