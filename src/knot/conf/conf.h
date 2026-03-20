@@ -903,7 +903,7 @@ static inline size_t conf_lmdb_readers(
 		return 126;
 	}
 	return conf_udp_threads(conf) + conf_tcp_threads(conf) +
-	       conf_bg_threads(conf) + conf_xdp_threads(conf) + 2; // Main thread, utils.
+	       conf_bg_threads(conf) + conf_xdp_threads(conf) + 5; // Main thread, utils.
 }
 
 /*!
