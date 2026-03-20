@@ -51,24 +51,6 @@ class Stats:
 
         return self
 
-class ConnPool():
-    def __init__(self, params):
-        self.pool = []
-        self.params = params
-
-    async def aquire(self):
-        if len(self.pool) != 0:
-            return self.pool.pop()
-        return aRedis(**self.params)
-
-    async def release(self, conn):
-        self.pool.append(conn)
-
-    async def close(self):
-        while len(self.pool) != 0:
-            c = self.pool.pop()
-            await c.aclose()
-
 stdout_lock = Lock()
 
 def arg_parser():
@@ -311,20 +293,17 @@ async def resolve_upd_record(conn, stats, zone, txn, record):
         except (gaierror, UnicodeEncodeError): # Not found - skip
             stats.not_found += 1
 
-async def convert_zone_new(pool, stats, zone, input, output, dryrun):
+async def convert_zone_new(conn, stats, zone, input, output, dryrun):
     global stdout_lock
-    conn = await pool.aquire()
 
     input_resp = conn.execute_command('KNOT_BIN.ZONE.LOAD', zone, int_to_bytes(input))
     async with knot_zone_transaction(conn, zone, output, dryrun) as txn:
-        tasks = []
+        
         for r in await input_resp:
             if r[1] == RRType.ALIAS:
-                tasks.append(resolve_zone_record(conn, stats, zone, txn, r))
+                await resolve_zone_record(conn, stats, zone, txn, r)
             else:
-                tasks.append(store_zone_record(conn, zone, txn, r))
-        if tasks:
-            await asyncio.gather(*tasks)
+                await store_zone_record(conn, zone, txn, r)
         if dryrun:
             zone_str = dname_to_str(zone)
             resp = conn.execute_command('KNOT.ZONE.LOAD', zone_str, txn_to_str(txn))
@@ -333,11 +312,9 @@ async def convert_zone_new(pool, stats, zone, input, output, dryrun):
             for record in await resp:
                 print(*[x.decode() for x in record], sep=' ')
             stdout_lock.release()
-    await pool.release(conn)
 
-async def convert_zone_existing(pool, stats, zone, input, output, dryrun):
+async def convert_zone_existing(conn, stats, zone, input, output, dryrun):
     global stdout_lock
-    conn = await pool.aquire()
 
     input_resp = conn.execute_command('KNOT_BIN.ZONE.LOAD', zone, int_to_bytes(input))
     old_resp = conn.execute_command('KNOT_BIN.ZONE.LOAD', zone, int_to_bytes(output))
@@ -347,17 +324,14 @@ async def convert_zone_existing(pool, stats, zone, input, output, dryrun):
                 current_soa = r
                 continue
             await remove_upd_record(conn, zone, txn, r)
-        tasks = []
         for r in await input_resp:
             if r[1] == RRType.ALIAS:
-                tasks.append(resolve_upd_record(conn, stats, zone, txn, r))
+                await resolve_upd_record(conn, stats, zone, txn, r)
             else:
                 if r[1] == RRType.SOA:
                     input_soa = r
                     continue
-                tasks.append(store_upd_record(conn, zone, txn, r))
-        if tasks:
-            await asyncio.gather(*tasks)
+                await store_upd_record(conn, zone, txn, r)
         if await conn.execute_command('KNOT_BIN.UPD.DIFF', zone, txn):
             await remove_upd_record(conn, zone, txn, current_soa)
             new_serial = (get_serial(current_soa[4]) + 1) % (2**32)
@@ -377,7 +351,6 @@ async def convert_zone_existing(pool, stats, zone, input, output, dryrun):
                     print('+ ', end='')
                     print(*[x.decode() for x in add], sep=' ')
             stdout_lock.release()
-    await pool.release(conn)
 
 async def convert_zone_async(conf, zone):
     stats = Stats()
@@ -389,25 +362,25 @@ async def convert_zone_async(conf, zone):
     output = conf.output_instance
     dryrun = conf.dry_run
 
-    pool = ConnPool({
-        "host": conf.addr,
-        "port": conf.port,
-        "ssl": conf.tls,
-        "ssl_certfile": conf.tls_cert,
-        "ssl_keyfile": conf.tls_key,
-        "ssl_ca_certs": conf.tls_ca,
-        "ssl_cert_reqs": conf.tls_insecure,
-        "socket_timeout": 5,
-    })
+    conn = aRedis(
+        host = conf.addr,
+        port = conf.port,
+        ssl = conf.tls,
+        ssl_certfile = conf.tls_cert,
+        ssl_keyfile = conf.tls_key,
+        ssl_ca_certs = conf.tls_ca,
+        ssl_cert_reqs = conf.tls_insecure,
+        socket_timeout = 5,
+    )
 
     if not exists:
-        await convert_zone_new(pool, stats, zonename, input, output, dryrun)
+        await convert_zone_new(conn, stats, zonename, input, output, dryrun)
         stats.new += 1
     else:
-        await convert_zone_existing(pool, stats, zonename, input, output, dryrun)
+        await convert_zone_existing(conn, stats, zonename, input, output, dryrun)
         stats.updated += 1
 
-    await pool.close()
+    await conn.close()
 
     return stats
 
