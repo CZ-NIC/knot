@@ -51,6 +51,15 @@ typedef enum {
 	stats_server_zone_upd_err,
 	stats_server_tcp_io_timeout,
 	stats_server_tcp_idle_timeout,
+	server_stats_udp_received,
+	server_stats_udp_async_done,
+	server_stats_udp_no_req_obj,
+	server_stats_udp_req_batch_limited,
+	server_stats_tcp_accept,
+	server_stats_tcp_received,
+	server_stats_tcp_async_done,
+	server_stats_tcp_no_req_obj,
+	server_stats_tcp_multiple_req,
 } stats_server_counter_t;
 
 /*!
