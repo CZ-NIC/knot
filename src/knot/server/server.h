@@ -87,12 +87,6 @@ typedef struct server {
 	/*! \brief Server state tracking. */
 	volatile unsigned state;
 
-	struct {
-		knot_atomic_uint64_t tcp_io_timeout;
-		knot_atomic_uint64_t tcp_idle_timeout;
-		knot_atomic_uint64_t zone_update_error;
-	} stats;
-
 	knot_zonedb_t *zone_db;
 	knot_lmdb_db_t timerdb;
 	knot_lmdb_db_t journaldb;
