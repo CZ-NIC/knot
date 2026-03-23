@@ -380,7 +380,7 @@ async def convert_zone_async(conf, zone):
         await convert_zone_existing(conn, stats, zonename, input, output, dryrun)
         stats.updated += 1
 
-    await conn.close()
+    await conn.aclose()
 
     return stats
 
@@ -408,16 +408,19 @@ def main():
             ssl_keyfile=conf.tls_key,
             ssl_ca_certs=conf.tls_ca,
             ssl_cert_reqs=conf.tls_insecure,
-            socket_timeout=5
+            socket_timeout=60
         )
-        # TODO unlimit max_workers
+
         executor = ProcessPoolExecutor()
-        # executor = ProcessPoolExecutor(max_workers=1)
         zones = list(list_zones(conn, conf.input_instance, conf.output_instance))
         conn.close()
         for s in executor.map(partial(convert_zone, conf), zones):
             stats += s
         executor.shutdown(wait=True)
+
+        if conf.print_stats:
+            print("Statistics\n----------")
+            print(stats)
     except ConnectionError as e:
         err = sub(r'^Error\s+-?\d+\s+', 'Error: ', e.args[0])
         print(err, file=stderr)
@@ -429,10 +432,8 @@ def main():
         print("Error: " + e.message, file=stderr)
         args.print_help()
         exit(1)
-
-    if conf.print_stats:
-        print("Statistics\n----------")
-        print(stats)
+    except Exception as e:
+        exit(1)
 
 if __name__ == "__main__":
     main()
