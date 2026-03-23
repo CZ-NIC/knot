@@ -50,12 +50,16 @@ void collect_periodic_stats(kxdpgun_stats_t *into, const kxdpgun_stats_t *what)
 
 void plain_stats_header(const xdp_gun_ctx_t *ctx)
 {
-	INFO2("using interface %s, XDP threads %u, IPv%c/%s%s%s, %s mode", ctx->dev, ctx->n_threads,
+	knot_xdp_mode_t mode = knot_eth_xdp_mode(if_nametoindex(ctx->dev));
+	bool native = (mode == KNOT_XDP_MODE_FULL);
+	INFO2("using interface %s, XDP threads %u, IPv%c/%s%s%s, %s%s mode",
+	      ctx->dev, ctx->n_threads,
 	      (ctx->ipv6 ? '6' : '4'),
 	      (ctx->tcp ? "TCP" : ctx->quic ? "QUIC" : "UDP"),
 	      (ctx->sending_mode[0] != '\0' ? " mode " : ""),
 	      (ctx->sending_mode[0] != '\0' ? ctx->sending_mode : ""),
-	      (knot_eth_xdp_mode(if_nametoindex(ctx->dev)) == KNOT_XDP_MODE_FULL ? "native" : "emulated"));
+	      (native ? "native" : "emulated"),
+	      (native && ctx->xdp_config.force_copy ? "/copy" : ""));
 	puts(STATS_SECTION_SEP);
 }
 
