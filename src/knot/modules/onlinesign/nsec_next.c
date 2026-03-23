@@ -16,42 +16,50 @@ static bool inc_label(const uint8_t *buffer, uint8_t **label_ptr)
 	assert(label_ptr && *label_ptr);
 	assert(buffer <= *label_ptr && *label_ptr < buffer + KNOT_DNAME_MAXLEN);
 
-	const uint8_t *label = *label_ptr;
-	const uint8_t len    = *label;
+	uint8_t *label = *label_ptr;
+	const uint8_t len = *label;
 	const uint8_t *first = *label_ptr + 1;
-	const uint8_t *last  = *label_ptr + len;
+	uint8_t *last = *label_ptr + len;
 
-	assert(len <= KNOT_DNAME_MAXLABELLEN);
+	assert(len > 0 && len <= KNOT_DNAME_MAXLABELLEN);
 
-	// jump over trailing 0xff chars
-	uint8_t *scan = (uint8_t *)last;
-	while (scan >= first && *scan == 0xff) {
-		scan -= 1;
-	}
+	// append a zero byte at the end whenever possible
+	if (len < KNOT_DNAME_MAXLABELLEN && label > buffer) {
+		uint8_t *label_new = label - 1;
+		*label_new = len + 1;
+		memmove(label_new + 1, first, len);
+		label_new[len + 1] = 0x00;
 
-	// increase in place
-	if (scan >= first) {
-		if (*scan == 'A' - 1) {
-			*scan = 'Z' + 1;
-		} else {
-			*scan += 1;
-		}
-		memset(scan + 1, 0x00, last - scan);
+		*label_ptr = label_new;
 		return true;
 	}
 
-	// check name and label boundaries
-	if (scan - 1 < buffer || len == KNOT_DNAME_MAXLABELLEN) {
-		return false;
+	// strip trailing 0xff chars
+	if (*last == 0xff) {
+		unsigned num0xff = 1;
+		while (num0xff < len && *(last - num0xff) == 0xff) {
+			num0xff += 1;
+		}
+
+		if (num0xff == len) {
+			// impossible to increment label, strip it and increment next label
+			return false;
+		}
+
+		uint8_t *label_new = label + num0xff;
+		memmove(label_new + 1, first, len - num0xff);
+		*label_new = len - num0xff;
+
+		*label_ptr = label_new;
+		// pointer 'last' still valid, able to further manipulate with that one
 	}
 
-	// append a zero byte at the end of the label
-	scan -= 1;
-	scan[0] = len + 1;
-	memmove(scan + 1, first, len);
-	scan[len + 1] = 0x00;
-
-	*label_ptr = scan;
+	// increase in place, skip possible upper-case result
+	if (*last == 'A' - 1) {
+		*last = 'Z' + 1;
+	} else {
+		*last += 1;
+	}
 
 	return true;
 }
