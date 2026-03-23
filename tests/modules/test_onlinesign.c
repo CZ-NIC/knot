@@ -109,14 +109,14 @@ int main(int argc, char *argv[])
 		"increment first label (binary)",
 		"\x08""walrus\xff\xff" LONG_SUFFIX,
 		APEX,
-		"\x08""walrut\x00\x00" LONG_SUFFIX
+		"\x06""walrut" LONG_SUFFIX
 	);
 
 	test_nsec_next(
-		"increment first label (in place)",
+		"append zero octet to first label",
 		"\x07""lobster" LONG_SUFFIX,
 		APEX,
-		"\x07""lobstes" LONG_SUFFIX
+		"\x08""lobster\x00" LONG_SUFFIX
 	);
 
 	test_nsec_next(
@@ -129,21 +129,21 @@ int main(int argc, char *argv[])
 	// name too long
 
 	test_nsec_next(
-		"name to long, strip label and increase next (simple)",
+		"name too long, strip label and append next (simple)",
 		"\x03""\xff\xff\xff""\x04""newt" LONG_SUFFIX,
 		APEX,
-		"\x04""newu" LONG_SUFFIX
+		"\x05""newt\x00" LONG_SUFFIX
 	);
 
 	test_nsec_next(
-		"name to long, strip label and increase next (binary)",
+		"name too long, strip label and append next (binary)",
 		"\x03""\xff\xff\xff""\x04""cc\xff\xff" LONG_SUFFIX,
 		APEX,
-		"\x04""cd\x00\x00" LONG_SUFFIX
+		"\x05""cc\xff\xff\x00" LONG_SUFFIX
 	);
 
 	test_nsec_next(
-		"name to long, strip label and increase next (extend)",
+		"name too long, strip label and append next (extend)",
 		"\x04""\xff\xff\xff\xff""\x03""\xff\xff\xff" LONG_SUFFIX,
 		APEX,
 		"\x04""\xff\xff\xff\x00" LONG_SUFFIX
@@ -166,24 +166,24 @@ int main(int argc, char *argv[])
 	assert(sizeof(PAD_LABEL) == 41 + 1);
 
 	test_nsec_next(
-		"label too long, strip and increase next (simple)",
+		"label too long, strip and append next (simple)",
 		MAX_LABEL "\x08""mandrill" MAX_LABEL MAX_LABEL PAD_LABEL APEX,
 		APEX,
-		"\x08""mandrilm" MAX_LABEL MAX_LABEL PAD_LABEL APEX
+		"\x09""mandrill\x00" MAX_LABEL MAX_LABEL PAD_LABEL APEX
 	);
 
 	test_nsec_next(
-		"label too long, strip and increase next (extend)",
+		"label too long, strip and append next (extend)",
 		MAX_LABEL "\x07""\xff\xff\xff\xff\xff\xff\xff" MAX_LABEL MAX_LABEL PAD_LABEL APEX,
 		APEX,
 		"\x08""\xff\xff\xff\xff\xff\xff\xff\x00" MAX_LABEL MAX_LABEL PAD_LABEL APEX
 	);
 
 	test_nsec_next(
-		"label too long, strip multiple",
+		"label too long, strip multiple, append next next",
 		MAX_LABEL MAX_LABEL "\x08""flamingo" MAX_LABEL PAD_LABEL APEX,
 		APEX,
-		"\x08""flamingp" MAX_LABEL PAD_LABEL APEX
+		"\x09""flamingo\x00" MAX_LABEL PAD_LABEL APEX
 	);
 
 	test_nsec_next(
@@ -197,6 +197,19 @@ int main(int argc, char *argv[])
 		MAX_LABEL MAX_LABEL MAX_LABEL APEX,
 		APEX,
 		APEX
+	);
+
+	test_nsec_next(
+		"strip multiple labels and append short one",
+		"\x2f" /* 47 */
+		"\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff"
+		"\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff"
+		"\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff"
+		"\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff"
+		"\xff\xff\xff\xff\xff\xff\xff"
+		MAX_LABEL MAX_LABEL MAX_LABEL "\x01""w" APEX,
+		APEX,
+		"\x02""w\x00" APEX
 	);
 
 	return 0;
