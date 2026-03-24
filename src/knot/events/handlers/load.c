@@ -508,8 +508,10 @@ load_end:
 		               (uint32_t)MAX(zone->timers->next_expire - time(NULL), 0));
 	}
 
-	log_zone_info(zone->name, "loaded, serial %s -> %u%s, %zu bytes%s",
-	              old_serial_str, middle_serial, new_serial_str, zone->contents->size, expires_in);
+	log_zone_info(zone->name, "loaded, serial %s -> %u%s, %zu bytes%s%s",
+	              old_serial_str, middle_serial, new_serial_str, zone->contents->size,
+	              (zone->contents->nodes->flags & ZONE_TREE_DELEG_AWARE) ? ", DELEG-aware" : "",
+	              expires_in);
 
 	if (zone->cat_members != NULL) {
 		catalog_update_clear(zone->cat_members);
