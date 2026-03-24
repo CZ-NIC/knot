@@ -82,7 +82,6 @@ static network_dns_request_t* network_dns_request_manager_basic_allocate_req(net
 	req->dns_req.req_data.rx = &req->iov[RX];
 	req->dns_req.req_data.tx = &req->iov[TX];
 	req->dns_req.req_data.mm = &this->query_processing_mm;
-	//req->dns_req.req_data.xdp_msg = NULL;
 
 	return req;
 }
