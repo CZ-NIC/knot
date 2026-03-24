@@ -743,7 +743,7 @@ knot_layer_state_t internet_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 	qdata->name = knot_pkt_qname(qdata->query);
 	qdata->deleg_aware = (
 	        knot_pkt_has_deleg_aware(qdata->query) &&
-	        (qdata->extra->contents->nodes->flags & ZONE_TREE_DNSKEY_ADT)
+	        (qdata->extra->contents->nodes->flags & ZONE_TREE_DELEG_AWARE)
         );
 	if (qdata->deleg_aware) {
 		knot_edns_set_de(&qdata->opt_rr);

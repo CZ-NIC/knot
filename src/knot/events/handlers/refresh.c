@@ -265,7 +265,7 @@ static void xfr_log_publish(const struct refresh_data *data,
 	REFRESH_LOG(LOG_INFO, data,
 	            "zone updated, %0.2f seconds, serial %s -> %u%s%s%s",
 	            duration, old_info, new_serial, master_info,
-	            (data->zone->contents->nodes->flags & ZONE_TREE_DNSKEY_ADT) ? ", DELEG-aware" : "", expires_in);
+	            (data->zone->contents->nodes->flags & ZONE_TREE_DELEG_AWARE) ? ", DELEG-aware" : "", expires_in);
 }
 
 static void xfr_log_read_ms(const knot_dname_t *zone, int ret)

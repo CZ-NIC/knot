@@ -38,7 +38,7 @@ int adjust_cb_flags(zone_node_t *node, adjust_ctx_t *ctx)
 	assert(!(node->flags & NODE_FLAGS_DELETED));
 
 	if (parent == NULL && knot_dnssec_has_adt(ctx->zone)) {
-                ctx->zone->nodes->flags |= ZONE_TREE_DNSKEY_ADT;
+                ctx->zone->nodes->flags |= ZONE_TREE_DELEG_AWARE;
 	}
 
 	node->flags &= ~(NODE_FLAGS_DELEG | NODE_FLAGS_NONAUTH | NODE_FLAGS_SUBTREE_AUTH | NODE_FLAGS_SUBTREE_DATA | NODE_FLAGS_NONAUTH_DELEG);

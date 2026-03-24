@@ -505,7 +505,7 @@ load_end:
 
 	log_zone_info(zone->name, "loaded, serial %s -> %u%s, %zu bytes%s%s",
 	              old_serial_str, middle_serial, new_serial_str, zone->contents->size,
-	              (zone->contents->nodes->flags & ZONE_TREE_DNSKEY_ADT) ? ", DELEG-aware" : "", expires_in);
+	              (zone->contents->nodes->flags & ZONE_TREE_DELEG_AWARE) ? ", DELEG-aware" : "", expires_in);
 
 	if (zone->cat_members != NULL) {
 		catalog_update_clear(zone->cat_members);
