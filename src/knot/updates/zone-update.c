@@ -1174,7 +1174,7 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 	}
 
         if ((update->new_cont->nodes->flags & ZONE_TREE_CONTAINS_DELEG) &&
-            !knot_dnssec_has_adt(update->new_cont)) {
+            node_rrtype_exists(update->new_cont->apex, KNOT_RRTYPE_DNSKEY) && !knot_dnssec_has_adt(update->new_cont)) {
 		log_zone_warning(update->zone->name, "Contains DELEG record(s) but missing ADT bit in DNSKEY.");
 	}
 
