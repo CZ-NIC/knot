@@ -2760,6 +2760,7 @@ Definition of zones served by the server.
      acl: acl_id ...
      master-pin-tolerance: TIME
      provide-ixfr: BOOL
+     deleg-aware: BOOL | auto
      semantic-checks: BOOL | soft
      default-ttl: TIME
      zonefile-sync: TIME
@@ -2979,6 +2980,21 @@ If disabled, the server is forced to respond with AXFR to IXFR queries.
 If enabled, IXFR requests are responded normally.
 
 *Default:* ``on``
+
+.. _zone_deleg-aware:
+
+deleg-aware
+-----------
+
+Controls zone DELEG awareness.
+
+Possible values:
+
+- ``auto`` – DELEG awareness is determined by the presence of the ADT bit in any apex DNSKEY.
+- ``off`` – DELEG awareness is disabled.
+- ``on`` – DELEG awareness is enabled (useful for DELEG-aware unsigned zones).
+
+*Default:* ``auto``
 
 .. _zone_semantic-checks:
 
