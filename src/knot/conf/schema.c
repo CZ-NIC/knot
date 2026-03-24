@@ -126,6 +126,15 @@ static const knot_lookup_t serial_policies[] = {
 	{ 0, NULL }
 };
 
+static const knot_lookup_t deleg_aware_opt[] = {
+        { DELEG_AWARE_AUTO,     "auto" },
+        { DELEG_AWARE_OFF,      "off" },
+        { DELEG_AWARE_OFF,      "false" },
+        { DELEG_AWARE_ON,       "on" },
+        { DELEG_AWARE_ON,       "true" },
+        { 0, NULL }
+};
+
 static const knot_lookup_t semantic_checks[] = {
 	{ SEMCHECKS_OFF,  "off" },
 	{ SEMCHECKS_OFF,  "false" },
@@ -492,6 +501,7 @@ static const yp_item_t desc_external[] = {
 	{ C_ACL,                 YP_TREF,  YP_VREF = { C_ACL }, YP_FMULTI, { check_ref } }, \
 	{ C_MASTER_PIN_TOL,      YP_TINT,  YP_VINT = { 0, UINT32_MAX, 0, YP_STIME } }, \
 	{ C_PROVIDE_IXFR,        YP_TBOOL, YP_VBOOL = { true } }, \
+	{ C_DELEG_AWARE,         YP_TOPT,  YP_VOPT = { deleg_aware_opt, DELEG_AWARE_AUTO }, FLAGS }, \
 	{ C_SEM_CHECKS,          YP_TOPT,  YP_VOPT = { semantic_checks, SEMCHECKS_OFF }, FLAGS }, \
 	{ C_DEFAULT_TTL,         YP_TINT,  YP_VINT = { 1, INT32_MAX, DEFAULT_TTL, YP_STIME }, FLAGS }, \
 	{ C_ZONEFILE_SYNC,       YP_TINT,  YP_VINT = { -1, INT32_MAX, 0, YP_STIME } }, \
