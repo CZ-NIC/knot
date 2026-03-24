@@ -47,6 +47,7 @@
 #define C_DDNS_MASTER		"\x0B""ddns-master"
 #define C_DEFAULT_TTL		"\x0B""default-ttl"
 #define C_DELEG_ADT             "\x09""deleg-adt"
+#define C_DELEG_AWARE           "\x0B""deleg-aware"
 #define C_DENY			"\x04""deny"
 #define C_DNSKEY_MGMT		"\x11""dnskey-management"
 #define C_DNSKEY_SYNC		"\x0B""dnskey-sync"
@@ -243,6 +244,12 @@ enum {
 	SERIAL_POLICY_INCREMENT  = 1,
 	SERIAL_POLICY_UNIXTIME   = 2,
 	SERIAL_POLICY_DATESERIAL = 3,
+};
+
+enum {
+	DELEG_AWARE_AUTO = 0,
+	DELEG_AWARE_OFF  = 1,
+	DELEG_AWARE_ON   = 2,
 };
 
 enum {
