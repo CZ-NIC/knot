@@ -1025,6 +1025,8 @@ static void print_key_full(const knot_kasp_key_t *key, key_info_t *info,
 	       (key->is_for_later ? "yes" : "no "), (info->missing ? "yes" : "no "));
 	if (info->ks_name != NULL) {
 		printf(" keystore=%s/%s", KS_TYPE(info), info->ks_name);
+	} else {
+		printf(" keystore=default");
 	}
 
 	static char buf[100];
