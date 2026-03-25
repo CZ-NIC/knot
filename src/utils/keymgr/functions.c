@@ -987,6 +987,7 @@ static void print_key_brief(const knot_kasp_key_t *key, key_info_t *info,
 		printf(" %s%sfor-later%s", COL_BOLD(c), COL_MGNT(c), COL_RST(c));
 	}
 
+	assert(info->missing || info->ks_name);
 	if (info->missing) {
 		printf(" %s%smissing%s", COL_BOLD(c), COL_YELW(c), COL_RST(c));
 	} else if (info->ks_count > 1 && info->ks_name != NULL) {
@@ -1024,7 +1025,13 @@ static void print_key_full(const knot_kasp_key_t *key, key_info_t *info,
 	       dnssec_key_get_keytag(key->key), (int)dnssec_key_get_algorithm(key->key),
 	       dnssec_key_get_size(key->key), (key->is_pub_only ? "yes" : "no "),
 	       (key->is_for_later ? "yes" : "no "), (info->missing ? "yes" : "no "));
-	if (info->ks_name != NULL) {
+
+	assert(info->missing || info->ks_name);
+	if (info->missing) {
+		printf(" keystore=-");
+	} else if (info->ks_name == NULL) {
+		printf(" keystore=PEM");
+	} else {
 		printf(" keystore=%s/%s", KS_TYPE(info), info->ks_name);
 	}
 
@@ -1050,10 +1057,16 @@ static void print_key_json(const knot_kasp_key_t *key, key_info_t *info,
 	jsonw_bool(w,  "public-only", key->is_pub_only);
 	jsonw_bool(w,  "for-later", key->is_for_later);
 	jsonw_bool(w,  "missing", info->missing);
-	if (info->ks_name != NULL) {
-	jsonw_str(w,   "keystore", info->ks_name);
-	jsonw_str(w,   "backend", KS_TYPE(info));
+
+	char *ks_type = "-";
+	char *ks_name = ks_type;
+	assert(info->missing || info->ks_name);
+	if (!info->missing) {
+		ks_type = KS_TYPE(info);
+		ks_name = (info->ks_name == NULL) ? ks_name : (char *)info->ks_name;
 	}
+	jsonw_str(w,   "backend", ks_type);
+	jsonw_str(w,   "keystore", ks_name);
 
 	static char buf[100];
 	for (const timer_ctx_t *t = &timers[0]; t->name != NULL; t++) {
