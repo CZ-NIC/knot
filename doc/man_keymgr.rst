@@ -140,6 +140,10 @@ Commands
   Import a key (specified by full key ID) from another zone as shared. After this, the key is
   owned by both zones equally.
 
+**trash-list** [*timestamp_format*]
+  Prints the list of key IDs and parameters of deleted keys kept in the "trash bin" belonging to the zone.
+  For a list of all deleted keys without respect to zones, use **--** or **-** as *zone_name*.
+
 Keystore commands
 .................
 
