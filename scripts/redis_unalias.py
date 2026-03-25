@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 # Copyright (C) CZ.NIC, z.s.p.o. and contributors
 # SPDX-License-Identifier: GPL-2.0-or-later
 # For more information, see <https://www.knot-dns.cz/>
@@ -13,8 +14,7 @@ from enum import IntEnum
 from functools import partial
 from multiprocessing import Lock
 from re import sub
-from redis import Redis
-from redis.asyncio import Redis as aRedis
+from redis.asyncio import Redis
 from redis.exceptions import ConnectionError, ResponseError, TimeoutError
 from socket import AF_INET, AF_INET6, SOCK_DGRAM, gaierror, getaddrinfo, inet_pton
 from sys import exit, stderr
@@ -340,10 +340,10 @@ async def convert_zone_existing(conn, stats, zone, input, output, dryrun):
 
         if dryrun:
             zone_str = dname_to_str(zone)
-            resp = await conn.execute_command('KNOT.UPD.DIFF', zone_str, txn_to_str(txn))
+            resp = conn.execute_command('KNOT.UPD.DIFF', zone_str, txn_to_str(txn))
             stdout_lock.acquire()
             print(f'=== UPDATE {zone_str} ===')
-            for diff in resp:
+            for diff in await resp:
                 for rem in diff[0]:
                     print('- ', end='')
                     print(*[x.decode() for x in rem], sep=' ')
@@ -362,7 +362,7 @@ async def convert_zone_async(conf, zone):
     output = conf.output_instance
     dryrun = conf.dry_run
 
-    conn = aRedis(
+    conn = Redis(
         host = conf.addr,
         port = conf.port,
         ssl = conf.tls,
@@ -370,7 +370,7 @@ async def convert_zone_async(conf, zone):
         ssl_keyfile = conf.tls_key,
         ssl_ca_certs = conf.tls_ca,
         ssl_cert_reqs = conf.tls_insecure,
-        socket_timeout = 5,
+        socket_timeout = 60,
     )
 
     if not exists:
@@ -387,15 +387,16 @@ async def convert_zone_async(conf, zone):
 def convert_zone(conf, zone):
     return asyncio.run(convert_zone_async(conf, zone))
 
-def list_zones(conn, input, output):
+
+async def list_zones(conn, input, output):
     input_mask = 1 << (input - 1)
     output_mask = 1 << (output - 1)
 
     resp = conn.execute_command('KNOT_BIN.ZONE.LIST')
-    filtered = filter(lambda x: (bytes_to_int(x[1]) & input_mask) != 0, resp)
+    filtered = filter(lambda x: (bytes_to_int(x[1]) & input_mask) != 0, await resp)
     return map(lambda x: (x[0], (bytes_to_int(x[1]) & output_mask) != 0), filtered)
 
-def main():
+async def main():
     stats = Stats()
     args = arg_parser()
     try:
@@ -412,8 +413,8 @@ def main():
         )
 
         executor = ProcessPoolExecutor()
-        zones = list(list_zones(conn, conf.input_instance, conf.output_instance))
-        conn.close()
+        zones = await list_zones(conn, conf.input_instance, conf.output_instance)
+        await conn.aclose()
         for s in executor.map(partial(convert_zone, conf), zones):
             stats += s
         executor.shutdown(wait=True)
@@ -436,4 +437,4 @@ def main():
         exit(1)
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
