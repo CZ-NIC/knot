@@ -42,7 +42,8 @@ static int handle_dns_request_continue(dns_request_handler_context_t *dns_handle
 #endif
 		{
 			/* Send, if response generation passed and wasn't ignored. */
-			if (dns_handler->send_result && ans->size > 0 && knot_layer_send_state(dns_handler->layer.state)) {
+			if (dns_req->req_data.params.proto == KNOTD_QUERY_PROTO_UDP && ans->size > 0 && knot_layer_send_state(dns_handler->layer.state)) {
+				assert(dns_handler->send_result);
 				int sent = dns_handler->send_result(dns_handler, dns_req, ans->size);
 				if (sent != ans->size) {
 					ret = KNOT_EOF;
