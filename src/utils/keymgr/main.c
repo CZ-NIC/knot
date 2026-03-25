@@ -10,6 +10,7 @@
 
 #include "contrib/strtonum.h"
 #include "knot/dnssec/zone-keys.h"
+#include "knot/journal/knot_lmdb.h"
 #include "libknot/dnssec/crypto.h"
 #include "libknot/libknot.h"
 #include "utils/common/msg.h"
@@ -76,6 +77,8 @@ static void print_help(void)
 	       "                 (syntax: delete <key_spec>)\n"
 	       "  set           Set existing key's timing attribute.\n"
 	       "                 (syntax: set <key_spec> <attribute_name>=<value>...)\n"
+	       "  trash-list    List deleted DNSSEC keys kept in the \"trash bin\".\n"
+	       "                 For all deleted keys without respect to zones, use '--' as <zone_name>.\n"
 	       "\n"
 	       "Keystore commands:\n"
 	       "  keystore-test   Conduct some tests on the specified keystore.\n"
@@ -149,11 +152,35 @@ static int key_command(int argc, char *argv[], int opt_ind, knot_lmdb_db_t *kasp
 	knot_dname_to_lower(zone_name);
 
 	kdnssec_ctx_t kctx = { 0 };
+	int ret;
 
-	int ret = kdnssec_ctx_init(conf(), &kctx, zone_name, kaspdb, NULL);
-	if (ret != KNOT_EOK) {
-		ERR2("failed to initialize KASP (%s)", knot_strerror(ret));
-		goto main_end;
+	if (same_command(argv[1], "trash-list", false)) {
+		// We can't init full kctx.
+		kctx.kasp_db = kaspdb;
+		ret = knot_lmdb_open(kaspdb);
+		if (ret != KNOT_EOK) {
+			goto main_end;
+		}
+
+		ret = init_all_keystores(conf(), &kctx.keystores);
+		if (ret != KNOT_EOK) {
+			ERR2("failed to initialize keystores (%s)", knot_strerror(ret));
+			knot_lmdb_close(kaspdb);
+			goto main_end;
+		}
+
+		if (!strncmp(id_str, "-", 2) ||
+		    !strncmp(id_str, "--", 3)) {
+			kctx.validation_mode = true; // Abused member validation_mode as "all zones".
+			knot_dname_free(zone_name, NULL);
+			zone_name = NULL;
+		}
+	} else {
+		ret = kdnssec_ctx_init(conf(), &kctx, zone_name, kaspdb, NULL);
+		if (ret != KNOT_EOK) {
+			ERR2("failed to initialize KASP (%s)", knot_strerror(ret));
+			goto main_end;
+		}
 	}
 
 #define CHECK_MISSING_ARG(msg) \
@@ -246,7 +273,7 @@ static int key_command(int argc, char *argv[], int opt_ind, knot_lmdb_db_t *kasp
 		if (ret == KNOT_EOK) {
 			ret = kasp_db_share_key(kctx.kasp_db, other_zone, kctx.zone->dname, key_to_share);
 		}
-		free(other_zone);
+		knot_dname_free(other_zone, NULL);
 		free(key_to_share);
 	} else if (same_command(argv[1], "delete", false)) {
 		CHECK_MISSING_ARG("Key is not specified");
@@ -255,6 +282,10 @@ static int key_command(int argc, char *argv[], int opt_ind, knot_lmdb_db_t *kasp
 		if (ret == KNOT_EOK) {
 			ret = kdnssec_delete_key(&kctx, key2del, true);
 		}
+	} else if (same_command(argv[1], "trash-list", false)) {
+		list_params->format = get_time_format(argc, argv);
+		ret = keymgr_list_trash(&kctx, zone_name, list_params);
+		print_ok_on_succes = false;
 	} else if (same_command(argv[1], "pregenerate", false)) {
 		CHECK_MISSING_ARG("Timestamp to not specified");
 		ret = keymgr_pregenerate_zsks(&kctx, argc > 3 ? argv[2] : NULL,
@@ -312,7 +343,7 @@ static int key_command(int argc, char *argv[], int opt_ind, knot_lmdb_db_t *kasp
 
 main_end:
 	kdnssec_ctx_deinit(&kctx);
-	free(zone_name);
+	knot_dname_free(zone_name, NULL);
 
 	return ret;
 }
@@ -404,6 +435,11 @@ int main(int argc, char *argv[])
 			print_help();
 			goto failure;
 		}
+	}
+
+	// "--" has also a special meaning for getopt, therefore reprocess it.
+	if (optind > 1 && !strncmp(argv[optind - 1], "--", 3)) {
+		optind--;
 	}
 
 	signal_ctx.color = list_params.color;
