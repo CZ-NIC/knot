@@ -19,6 +19,8 @@
 #define NO_INDENT		NULL
 #define STATS_SCHEMA_VERSION	20240530
 
+#define ETH_L1_OVERHEAD		20
+
 #define DURATION_US(st) (((st).until - (st).since) / 1000)
 #define DURATION_NS(st) ((st).until - (st).since)
 
@@ -42,6 +44,7 @@ typedef struct {
 	uint64_t	wire_recv;
 	uint64_t	errors;
 	uint64_t	lost;
+	uint64_t	pkts_recv;
 	uint64_t	rcodes_recv[RCODE_MAX];
 } kxdpgun_stats_t;
 

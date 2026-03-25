@@ -717,6 +717,7 @@ void *xdp_gun_thread(void *_ctx)
 					}
 				}
 				periodic_stats.wire_recv += wire;
+				periodic_stats.pkts_recv += recvd;
 				knot_xdp_recv_finish(xsk, pkts, recvd);
 				pfd.revents = 0;
 			}
