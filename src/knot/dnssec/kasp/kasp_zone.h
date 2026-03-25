@@ -19,6 +19,9 @@ typedef struct {
 	knot_time_t nsec3_salt_created;
 } knot_kasp_zone_t;
 
+int params2kaspkey(const knot_dname_t *dname, key_params_t *params,
+                   knot_kasp_key_t *key);
+
 int kasp_zone_load(knot_kasp_zone_t *zone,
                    const knot_dname_t *zone_name,
                    knot_lmdb_db_t *kdb,
