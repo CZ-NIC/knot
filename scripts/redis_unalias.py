@@ -8,18 +8,15 @@
 # requirements redis[hiredis]
 from argparse import ArgumentError, ArgumentParser
 from concurrent.futures import ProcessPoolExecutor
-from contextlib import asynccontextmanager
+from contextlib import contextmanager
 from enum import IntEnum
 from functools import partial
 from multiprocessing import Lock
 from re import sub
 from redis import Redis
-from redis.asyncio import Redis as aRedis
 from redis.exceptions import ConnectionError, ResponseError, TimeoutError
 from socket import AF_INET, AF_INET6, SOCK_DGRAM, gaierror, getaddrinfo, inet_pton
 from sys import exit, stderr
-
-import asyncio
 
 class RRType(IntEnum):
     A = 1
@@ -195,50 +192,51 @@ def set_serial(rdata, serial):
     b[len(b) - 21 : len(b) - 17] = serial.to_bytes(4, 'big')
     return bytes(b)
 
-@asynccontextmanager
-async def knot_zone_transaction(conn, zone, inst, dryrun):
+@contextmanager
+def knot_zone_transaction(conn, zone, inst, dryrun):
     txn = None
     try:
         instance = int_to_bytes(inst)
-        txn = await conn.execute_command('KNOT_BIN.ZONE.BEGIN', zone, instance)
+        txn = conn.execute_command('KNOT_BIN.ZONE.BEGIN', zone, instance)
         yield txn
     except:
         if txn:
-            await conn.execute_command('KNOT_BIN.ZONE.ABORT', zone, txn)
+            conn.execute_command('KNOT_BIN.ZONE.ABORT', zone, txn)
         raise
     else:
         if dryrun:
-            await conn.execute_command('KNOT_BIN.ZONE.ABORT', zone, txn)
+            conn.execute_command('KNOT_BIN.ZONE.ABORT', zone, txn)
         else:
-            await conn.execute_command('KNOT_BIN.ZONE.COMMIT', zone, txn)
+            conn.execute_command('KNOT_BIN.ZONE.COMMIT', zone, txn)
 
-@asynccontextmanager
-async def knot_upd_transaction(conn, zone, inst, dryrun):
+@contextmanager
+def knot_upd_transaction(conn, zone, inst, dryrun):
     txn = None
     try:
         instance = int_to_bytes(inst)
-        txn = await conn.execute_command('KNOT_BIN.UPD.BEGIN', zone, instance)
+        txn = conn.execute_command('KNOT_BIN.UPD.BEGIN', zone, instance)
         yield txn
     except:
         if txn:
-            await conn.execute_command('KNOT_BIN.UPD.ABORT', zone, txn)
+            conn.execute_command('KNOT_BIN.UPD.ABORT', zone, txn)
         raise
     else:
         if dryrun:
-            await conn.execute_command('KNOT_BIN.UPD.ABORT', zone, txn)
+            conn.execute_command('KNOT_BIN.UPD.ABORT', zone, txn)
         else:
-            if await conn.execute_command('KNOT_BIN.UPD.DIFF', zone, txn):
-                await conn.execute_command('KNOT_BIN.UPD.COMMIT', zone, txn)
+            if conn.execute_command('KNOT_BIN.UPD.DIFF', zone, txn):
+                conn.execute_command('KNOT_BIN.UPD.COMMIT', zone, txn)
             else:
-                await conn.execute_command('KNOT_BIN.UPD.ABORT', zone, txn)
+                conn.execute_command('KNOT_BIN.UPD.ABORT', zone, txn)
 
-async def store_zone_record(conn, zone, txn, record):
+def store_zone_record(conn, zone, txn, record):
     resp = conn.execute_command('KNOT_BIN.ZONE.STORE', zone, txn,
-                                record[0], record[1], record[2], record[3], record[4], "M")
-    if await resp != b'OK':
+                                record[0], record[1], record[2], record[3],
+                                record[4], "M")
+    if resp != b'OK':
         raise Exception("Failed to store record")
 
-async def resolve_zone_record(conn, stats, zone, txn, record):
+def resolve_zone_record(conn, stats, zone, txn, record):
     for dname in rdata_to_dname_list(record[4]):
         try:
             resp = getaddrinfo(dname, None, type=SOCK_DGRAM)
@@ -251,7 +249,7 @@ async def resolve_zone_record(conn, stats, zone, txn, record):
                 else:
                     continue
 
-                await store_zone_record(conn, zone, txn, new_record)
+                store_zone_record(conn, zone, txn, new_record)
                 if r[0] == AF_INET:
                     stats.ipv4 += 1
                 else:
@@ -260,19 +258,19 @@ async def resolve_zone_record(conn, stats, zone, txn, record):
         except (gaierror, UnicodeEncodeError): # Not found - skip
             stats.not_found += 1
 
-async def store_upd_record(conn, zone, txn, record):
+def store_upd_record(conn, zone, txn, record):
     resp = conn.execute_command('KNOT_BIN.UPD.ADD', zone, txn,
                                 record[0], record[1], record[2], record[3], record[4], "M")
-    if await resp != b'OK':
+    if resp != b'OK':
         raise Exception("Failed to insert record")
 
-async def remove_upd_record(conn, zone, txn, record):
+def remove_upd_record(conn, zone, txn, record):
     resp = conn.execute_command('KNOT_BIN.UPD.REM', zone, txn,
                                 record[0], record[1], record[2], record[3], record[4])
-    if await resp != b'OK':
+    if resp != b'OK':
         raise Exception("Failed to delete record")
 
-async def resolve_upd_record(conn, stats, zone, txn, record):
+def resolve_upd_record(conn, stats, zone, txn, record):
     for dname in rdata_to_dname_list(record[4]):
         try:
             resp = getaddrinfo(dname, None, type=SOCK_DGRAM)
@@ -284,7 +282,7 @@ async def resolve_upd_record(conn, stats, zone, txn, record):
                     new_record.extend([af_to_rtype(r[0]), record[2], 1, size + bin])
                 else:
                     continue
-                await store_upd_record(conn, zone, txn, new_record)
+                store_upd_record(conn, zone, txn, new_record)
                 if r[0] == AF_INET:
                     stats.ipv4 += 1
                 else:
@@ -293,54 +291,53 @@ async def resolve_upd_record(conn, stats, zone, txn, record):
         except (gaierror, UnicodeEncodeError): # Not found - skip
             stats.not_found += 1
 
-async def convert_zone_new(conn, stats, zone, input, output, dryrun):
+def convert_zone_new(conn, stats, zone, input, output, dryrun):
     global stdout_lock
 
     input_resp = conn.execute_command('KNOT_BIN.ZONE.LOAD', zone, int_to_bytes(input))
-    async with knot_zone_transaction(conn, zone, output, dryrun) as txn:
-        
-        for r in await input_resp:
+    with knot_zone_transaction(conn, zone, output, dryrun) as txn:
+        for r in input_resp:
             if r[1] == RRType.ALIAS:
-                await resolve_zone_record(conn, stats, zone, txn, r)
+                resolve_zone_record(conn, stats, zone, txn, r)
             else:
-                await store_zone_record(conn, zone, txn, r)
+                store_zone_record(conn, zone, txn, r)
         if dryrun:
             zone_str = dname_to_str(zone)
             resp = conn.execute_command('KNOT.ZONE.LOAD', zone_str, txn_to_str(txn))
             stdout_lock.acquire()
             print(f'=== FULL {zone_str} ===')
-            for record in await resp:
+            for record in resp:
                 print(*[x.decode() for x in record], sep=' ')
             stdout_lock.release()
 
-async def convert_zone_existing(conn, stats, zone, input, output, dryrun):
+def convert_zone_existing(conn, stats, zone, input, output, dryrun):
     global stdout_lock
 
     input_resp = conn.execute_command('KNOT_BIN.ZONE.LOAD', zone, int_to_bytes(input))
     old_resp = conn.execute_command('KNOT_BIN.ZONE.LOAD', zone, int_to_bytes(output))
-    async with knot_upd_transaction(conn, zone, output, dryrun) as txn:
-        for r in await old_resp:
+    with knot_upd_transaction(conn, zone, output, dryrun) as txn:
+        for r in old_resp:
             if r[1] == RRType.SOA:
                 current_soa = r
                 continue
-            await remove_upd_record(conn, zone, txn, r)
-        for r in await input_resp:
+            remove_upd_record(conn, zone, txn, r)
+        for r in input_resp:
             if r[1] == RRType.ALIAS:
-                await resolve_upd_record(conn, stats, zone, txn, r)
+                resolve_upd_record(conn, stats, zone, txn, r)
             else:
                 if r[1] == RRType.SOA:
                     input_soa = r
                     continue
-                await store_upd_record(conn, zone, txn, r)
-        if await conn.execute_command('KNOT_BIN.UPD.DIFF', zone, txn):
-            await remove_upd_record(conn, zone, txn, current_soa)
+                store_upd_record(conn, zone, txn, r)
+        if conn.execute_command('KNOT_BIN.UPD.DIFF', zone, txn):
+            remove_upd_record(conn, zone, txn, current_soa)
             new_serial = (get_serial(current_soa[4]) + 1) % (2**32)
             input_soa[4] = set_serial(input_soa[4], new_serial)
-            await store_upd_record(conn, zone, txn, input_soa)
+            store_upd_record(conn, zone, txn, input_soa)
 
         if dryrun:
             zone_str = dname_to_str(zone)
-            resp = await conn.execute_command('KNOT.UPD.DIFF', zone_str, txn_to_str(txn))
+            resp = conn.execute_command('KNOT.UPD.DIFF', zone_str, txn_to_str(txn))
             stdout_lock.acquire()
             print(f'=== UPDATE {zone_str} ===')
             for diff in resp:
@@ -352,7 +349,7 @@ async def convert_zone_existing(conn, stats, zone, input, output, dryrun):
                     print(*[x.decode() for x in add], sep=' ')
             stdout_lock.release()
 
-async def convert_zone_async(conf, zone):
+def convert_zone(conf, zone):
     stats = Stats()
 
     zonename = zone[0]
@@ -362,7 +359,7 @@ async def convert_zone_async(conf, zone):
     output = conf.output_instance
     dryrun = conf.dry_run
 
-    conn = aRedis(
+    conn = Redis(
         host = conf.addr,
         port = conf.port,
         ssl = conf.tls,
@@ -374,18 +371,15 @@ async def convert_zone_async(conf, zone):
     )
 
     if not exists:
-        await convert_zone_new(conn, stats, zonename, input, output, dryrun)
+        convert_zone_new(conn, stats, zonename, input, output, dryrun)
         stats.new += 1
     else:
-        await convert_zone_existing(conn, stats, zonename, input, output, dryrun)
+        convert_zone_existing(conn, stats, zonename, input, output, dryrun)
         stats.updated += 1
 
-    await conn.aclose()
+    conn.close()
 
     return stats
-
-def convert_zone(conf, zone):
-    return asyncio.run(convert_zone_async(conf, zone))
 
 def list_zones(conn, input, output):
     input_mask = 1 << (input - 1)
@@ -408,7 +402,7 @@ def main():
             ssl_keyfile=conf.tls_key,
             ssl_ca_certs=conf.tls_ca,
             ssl_cert_reqs=conf.tls_insecure,
-            socket_timeout=60
+            socket_timeout=5
         )
 
         executor = ProcessPoolExecutor()
