@@ -7,6 +7,8 @@
 
 #include "knot/include/module.h"
 #include "knot/query/layer.h"
+#include "knot/server/dns-handler.h"
+#include "knot/server/network_req_manager.h"
 #include "libknot/quic/quic_conn.h"
 #include "libknot/xdp/tcp_iobuf.h"
 
@@ -25,9 +27,8 @@ struct server;
  * \param mh_out        Msghdr for outgoing packets.
  * \param p_ecn         Pointer on in/out ECN in cmsg header.
  */
-void quic_handler(knotd_qdata_params_t *params, knot_layer_t *layer,
-                  uint64_t idle_close, knot_quic_table_t *table,
-                  struct iovec *rx, struct msghdr *mh_out, int *p_ecn);
+void quic_handler(dns_request_handler_context_t *dns_handler, network_dns_request_t *req,
+                  uint64_t idle_close, knot_quic_table_t *table, int *p_ecn);
 
 /*!
  * \brief Allocate QUIC connection table.
