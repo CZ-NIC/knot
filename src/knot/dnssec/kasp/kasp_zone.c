@@ -51,15 +51,20 @@ static int dnskey_guess_flags(dnssec_key_t *key, uint16_t keytag)
 }
 
 static int params2dnskey(const knot_dname_t *dname, key_params_t *params,
-			 dnssec_key_t **key_ptr)
+                         dnssec_key_t **key_ptr)
 {
 	assert(dname);
 	assert(params);
 	assert(key_ptr);
 
-	int ret = key_params_check(params);
-	if (ret != KNOT_EOK) {
-		return ret;
+	const bool trash = (params->dname != NULL);
+	int ret;
+	if (!trash) {
+		// Trash keys don't contain pubkey data.
+		ret = key_params_check(params);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
 	}
 
 	dnssec_key_t *key = NULL;
@@ -76,16 +81,18 @@ static int params2dnskey(const knot_dname_t *dname, key_params_t *params,
 
 	dnssec_key_set_algorithm(key, params->algorithm);
 
-	ret = dnssec_key_set_pubkey(key, &params->public_key);
-	if (ret != KNOT_EOK) {
-		dnssec_key_free(key);
-		return ret;
-	}
+	if (!trash) {
+		ret = dnssec_key_set_pubkey(key, &params->public_key);
+		if (ret != KNOT_EOK) {
+			dnssec_key_free(key);
+			return ret;
+		}
 
-	ret = dnskey_guess_flags(key, params->keytag);
-	if (ret != KNOT_EOK) {
-		dnssec_key_free(key);
-		return ret;
+		ret = dnskey_guess_flags(key, params->keytag);
+		if (ret != KNOT_EOK) {
+			dnssec_key_free(key);
+			return ret;
+		}
 	}
 
 	*key_ptr = key;
@@ -93,8 +100,8 @@ static int params2dnskey(const knot_dname_t *dname, key_params_t *params,
 	return KNOT_EOK;
 }
 
-static int params2kaspkey(const knot_dname_t *dname, key_params_t *params,
-			  knot_kasp_key_t *key)
+int params2kaspkey(const knot_dname_t *dname, key_params_t *params,
+                   knot_kasp_key_t *key)
 {
 	assert(dname != NULL);
 	assert(params != NULL);
