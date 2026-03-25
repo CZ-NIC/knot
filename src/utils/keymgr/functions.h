@@ -46,6 +46,8 @@ int keymgr_set_timing(knot_kasp_key_t *key, int argc, char *argv[]);
 
 int keymgr_list_keys(kdnssec_ctx_t *ctx, keymgr_list_params_t *params);
 
+int keymgr_list_trash(kdnssec_ctx_t *ctx, const knot_dname_t *zone_name, keymgr_list_params_t *params);
+
 int keymgr_generate_ds(const knot_dname_t *dname, const knot_kasp_key_t *key);
 
 int keymgr_generate_dnskey(const knot_dname_t *dname, const knot_kasp_key_t *key);
