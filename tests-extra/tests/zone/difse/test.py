@@ -9,6 +9,7 @@ from dnstest.test import Test
 import dnstest.params
 from subprocess import PIPE, Popen
 import random
+import time
 
 def journal_changesets(server, zone):
     zij = 0
@@ -44,11 +45,14 @@ t.link(zone, knot)
 knot.conf_zone(zone).zonefile_sync = "-1"
 knot.conf_zone(zone).journal_content = "all"
 knot.conf_zone(zone).zonefile_load = "difference-no-serial"
+knot.conf_zone(zone).serial_policy = "unixtime"
 
 knot.update_zonefile(zone, version=start_version)
 
 t.start()
 serial = knot.zone_wait(zone)
+if serial < time.time() - 20 or serial > time.time():
+    set_err("Not adjusted initial loaded serial to policy.")
 check_journal(knot, zone[0], 1, 0)
 
 knot.update_zonefile(zone, version=start_version+1)

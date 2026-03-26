@@ -28,6 +28,7 @@ serial = knot.zone_wait(zone)
 
 knot.conf_zone(zone).journal_content = "all"
 knot.conf_zone(zone).zonefile_load = "difference-no-serial"
+knot.conf_zone(zone).serial_policy = "unixtime"
 if purge_beforehand:
     knot.ctl("zone-purge -f +expire example.")
 
