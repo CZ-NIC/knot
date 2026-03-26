@@ -37,7 +37,7 @@ int adjust_cb_flags(zone_node_t *node, adjust_ctx_t *ctx)
 
 	assert(!(node->flags & NODE_FLAGS_DELETED));
 
-	if (parent == NULL) {
+	if (parent == NULL && conf() != NULL) {
 		conf_val_t val = conf_zone_get(conf(), C_DELEG_AWARE, ctx->zone->apex->owner);
 		ctx->zone->nodes->flags &= ~ZONE_TREE_DELEG_AWARE;
 		if (conf_opt(&val) == DELEG_AWARE_ON || (conf_opt(&val) == DELEG_AWARE_AUTO && knot_dnssec_has_adt(ctx->zone))) {
