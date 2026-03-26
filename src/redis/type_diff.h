@@ -105,7 +105,7 @@ static void diff_free(void *value)
 
 static int diff_aof_rewrite(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 {
-	if (argc != 7) {
+	if (argc != 8) {
 		return RedisModule_WrongArity(ctx);
 	}
 
