@@ -42,6 +42,7 @@ void collect_periodic_stats(kxdpgun_stats_t *into, const kxdpgun_stats_t *what)
 	into->size_recv   += what->size_recv;
 	into->wire_recv   += what->wire_recv;
 	into->lost        += what->lost;
+	into->pkts_recv   += what->pkts_recv;
 	into->errors      += what->errors;
 	for (int i = 0; i < RCODE_MAX; i++) {
 		into->rcodes_recv[i] += what->rcodes_recv[i];
@@ -173,6 +174,22 @@ static void format_with_separators(uint64_t num, char output[static 64])
 	output[i] = '\0';
 }
 
+static void si_transform(float number, char *out, size_t out_size)
+{
+	static const char si[] = " KMGT";
+	unsigned i = 0;
+	while (number >= 1000 && i < sizeof(si)) {
+		number /= 1000;
+		i++;
+	}
+	(void)snprintf(out, out_size, (i == 0) ? "%.2f " : "%.2f %c", number, si[i]);
+}
+
+static inline uint64_t calculate_line_rate(const kxdpgun_stats_t *st)
+{
+	return (st->wire_recv + (st->pkts_recv * ETH_L1_OVERHEAD)) * 8;
+}
+
 void plain_stats(const xdp_gun_ctx_t *ctx, kxdpgun_stats_t *st, stats_type_t stt)
 {
 	printf("%s metrics:\n", (stt == STATS_SUM) ? "cumulative" : "periodic");
@@ -210,10 +227,17 @@ void plain_stats(const xdp_gun_ctx_t *ctx, kxdpgun_stats_t *st, stats_type_t stt
 		printf("total reset:       %"PRIu64" (%s pps) (%f %%)\n",
 		       st->rst_recv, pretty_print_pps, pct(st->rst_recv));
 		}
-		printf("average DNS reply size: %"PRIu64" B\n",
-		       st->ans_recv > 0 ? st->size_recv / st->ans_recv : 0);
-		printf("average Ethernet reply rate: %"PRIu64" bps (%.2f Mbps)\n",
-		       ps(st->wire_recv * 8), ps((float)st->wire_recv * 8 / (1000 * 1000)));
+		uint64_t average_dns_size = st->ans_recv > 0 ? st->size_recv / st->ans_recv : 0;
+		printf("average DNS reply size: %"PRIu64" B\n", average_dns_size);
+		char si_value[9];
+		uint64_t l2_throughput = ps(st->wire_recv * 8);
+		si_transform((float)l2_throughput, si_value, sizeof(si_value));
+		printf("average L2 throughput: %"PRIu64" bps (%sbps)\n",
+		       l2_throughput, si_value);
+		uint64_t l1_throughput = ps(calculate_line_rate(st));
+		si_transform((float)l1_throughput, si_value, sizeof(si_value));
+		printf("average L1 throughput: %"PRIu64" bps (%sbps)\n",
+		       l1_throughput, si_value);
 
 		for (int i = 0; i < RCODE_MAX; i++) {
 			if (st->rcodes_recv[i] > 0) {
