@@ -51,7 +51,8 @@ static inline
 uint8_t knot_nsec3param_salt_len(const knot_rdata_t *rdata)
 {
 	assert(rdata);
-	return *(rdata->data + 4);
+	uint8_t val = *(rdata->data + 4);
+	return (5 + val == rdata->len) ? val : 0;
 }
 
 static inline
