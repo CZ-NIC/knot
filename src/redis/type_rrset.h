@@ -107,7 +107,10 @@ static int rrset_aof_rewrite(RedisModuleCtx *ctx, RedisModuleString **argv, int 
 
 	size_t rdataset_strlen;
 	const char *rdataset_str = RedisModule_StringPtrLen(argv[4], &rdataset_strlen);
-	if (rdataset_strlen != 0) {
+	if (rdataset_strlen > UINT32_MAX) {
+		RedisModule_CloseKey(rrset_key);
+		return RedisModule_ReplyWithError(ctx, RDB_EMALF);
+	} else if (rdataset_strlen != 0) {
 		rrset->rrs.rdata = RedisModule_Alloc(rdataset_strlen);
 		rrset->rrs.size = rdataset_strlen;
 		memcpy(rrset->rrs.rdata, rdataset_str, rdataset_strlen);

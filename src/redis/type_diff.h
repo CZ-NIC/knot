@@ -128,12 +128,18 @@ static int diff_aof_rewrite(RedisModuleCtx *ctx, RedisModuleString **argv, int a
 	diff->add_rrs.count = add_rrs_count_val;
 
 	size_t add_rrs_len = 0;
-	diff->add_rrs.rdata = (knot_rdata_t *)RedisModule_StringPtrLen(argv[3], &add_rrs_len);
+	const char *rdataset_str = RedisModule_StringPtrLen(argv[3], &add_rrs_len);
 	if (add_rrs_len > UINT32_MAX) {
 		RedisModule_CloseKey(diff_key);
 		return RedisModule_ReplyWithError(ctx, RDB_EMALF);
+	} else if (add_rrs_len != 0) {
+		diff->add_rrs.rdata = RedisModule_Alloc(add_rrs_len);
+		diff->add_rrs.size = add_rrs_len;
+		memcpy(diff->add_rrs.rdata, rdataset_str, add_rrs_len);
+	} else {
+		diff->add_rrs.rdata = NULL;
+		diff->add_rrs.size = 0;
 	}
-	diff->add_rrs.size = add_rrs_len;
 
 	long long rem_rrs_count_val = 0;
 	ret = RedisModule_StringToLongLong(argv[4], &rem_rrs_count_val);
@@ -147,12 +153,18 @@ static int diff_aof_rewrite(RedisModuleCtx *ctx, RedisModuleString **argv, int a
 	diff->rem_rrs.count = rem_rrs_count_val;
 
 	size_t rem_rrs_len = 0;
-	diff->rem_rrs.rdata = (knot_rdata_t *)RedisModule_StringPtrLen(argv[5], &rem_rrs_len);
+	rdataset_str = RedisModule_StringPtrLen(argv[5], &rem_rrs_len);
 	if (rem_rrs_len > UINT32_MAX) {
 		RedisModule_CloseKey(diff_key);
 		return RedisModule_ReplyWithError(ctx, RDB_EMALF);
+	} else if (rem_rrs_len != 0) {
+		diff->rem_rrs.rdata = RedisModule_Alloc(rem_rrs_len);
+		diff->rem_rrs.size = rem_rrs_len;
+		memcpy(diff->rem_rrs.rdata, rdataset_str, rem_rrs_len);
+	} else {
+		diff->rem_rrs.rdata = NULL;
+		diff->rem_rrs.size = 0;
 	}
-	diff->rem_rrs.size = rem_rrs_len;
 
 	long long ttl_val = 0;
 	ret = RedisModule_StringToLongLong(argv[6], &ttl_val);
