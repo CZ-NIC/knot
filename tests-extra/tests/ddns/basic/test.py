@@ -242,7 +242,7 @@ def do_normal_tests(master, zone, dnssec=False):
     up.send("NOERROR")
     resp = master.dig("svcb.ddns.", "SVCB", dnssec=dnssec)
     resp.check(rcode="NOERROR")
-    resp.check_record(section="additional", name="*.svcbtarget.ddns.", rtype="AAAA", ttl=3600, rdata="1::3")
+    resp.check_record(section="additional", name="target.svcb.svcbtarget.ddns.", rtype="AAAA", ttl=3600, rdata="1::3")
     resp.check_count(1, rtype="AAAA", section="additional")
     if dnssec:
         resp.check_count(2, rtype="RRSIG", section="additional")
@@ -254,7 +254,7 @@ def do_normal_tests(master, zone, dnssec=False):
     up.send("NOERROR")
     resp = master.dig("svcb.ddns.", "SVCB", dnssec=dnssec)
     resp.check(rcode="NOERROR")
-    resp.check_record(section="additional", name="*.svcbtarget.ddns.", rtype="AAAA", ttl=3600, rdata="1::3")
+    resp.check_record(section="additional", name="target.svcb.svcbtarget.ddns.", rtype="AAAA", ttl=3600, rdata="1::3")
     resp.check_count(1, rtype="AAAA", section="additional")
     if dnssec:
         resp.check_count(2, rtype="RRSIG", section="additional")
