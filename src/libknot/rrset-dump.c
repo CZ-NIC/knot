@@ -490,6 +490,7 @@ static void wire_len_data_encode_to_str(rrset_dump_params_t *p,
 	}
 
 	if (in_len > 0) {
+		CHECK_INMAX(in_len)
 		// Encode data directly to the output.
 		int ret = enc(p->in, in_len, (uint8_t *)(p->out), p->out_max);
 		CHECK_RET_POSITIVE
@@ -547,6 +548,8 @@ static void wire_data_omit(rrset_dump_params_t *p,
 		p->in += len_len;
 		p->in_max -= len_len;
 	}
+
+	CHECK_INMAX(in_len)
 
 	const char *omit_message = "[omitted]";
 	const size_t omlen = strlen(omit_message);
