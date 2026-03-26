@@ -479,7 +479,7 @@ int keymgr_import_bind(kdnssec_ctx_t *ctx, const char *import_file, bool pub_onl
 	kkey->key = key;
 	kkey->timing = timing;
 	kkey->is_pub_only = pub_only;
-	kkey->is_ksk = (dnssec_key_get_flags(kkey->key) == DNSKEY_FLAGS_KSK);
+	kkey->is_ksk = (dnssec_key_get_flags(kkey->key) & KNOT_DNSKEY_FLAG_SEP);
 	kkey->is_zsk = !kkey->is_ksk;
 
 	// append to zone
@@ -603,7 +603,7 @@ static int import_key(kdnssec_ctx_t *ctx, unsigned backend, const char *param,
 	if (ret != KNOT_EOK) {
 		goto fail;
 	}
-	dnssec_key_set_flags(key, dnskey_flags(flags & DNSKEY_GENERATE_SEP_ON, false));
+	dnssec_key_set_flags(key, dnskey_flags(flags & DNSKEY_GENERATE_SEP_ON, ctx->policy->deleg_aware));
 	dnssec_key_set_algorithm(key, ctx->policy->algorithm);
 
 	// fill key structure from keystore (incl. pubkey from privkey computation)
@@ -918,7 +918,7 @@ int keymgr_set_timing(knot_kasp_key_t *key, int argc, char *argv[])
 			normalize_generate_flags(&flags);
 			key->is_ksk = (flags & DNSKEY_GENERATE_KSK);
 			key->is_zsk = (flags & DNSKEY_GENERATE_ZSK);
-			return dnssec_key_set_flags(key->key, dnskey_flags(flags & DNSKEY_GENERATE_SEP_ON, false));
+			return dnssec_key_set_flags(key->key, dnskey_flags(flags & DNSKEY_GENERATE_SEP_ON, dnssec_key_get_flags(key->key) & KNOT_DNSKEY_FLAG_ADT));
 		}
 		return KNOT_EOK;
 	}
