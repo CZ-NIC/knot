@@ -84,10 +84,8 @@ int main(int argc, char *argv[])
 	// 5. ANY
 	descr = knot_get_rdata_descriptor(255);
 	ok(strcmp(descr->type_name, "ANY") == 0, "get ANY descriptor name");
-	ok(descr->block_types[0] == KNOT_RDATA_WF_REMAINDER,
+	ok(descr->block_types[0] == KNOT_RDATA_WF_END,
 	   "get ANY descriptor 1. item type");
-	ok(descr->block_types[1] == KNOT_RDATA_WF_END,
-	   "get ANY descriptor 2. item type");
 
 	ret = knot_rrtype_to_string(255, name, BUF_LEN);
 	ok(ret != -1, "get ANY ret");
