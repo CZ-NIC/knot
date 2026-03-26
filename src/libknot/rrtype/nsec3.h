@@ -46,7 +46,8 @@ static inline
 uint8_t knot_nsec3_salt_len(const knot_rdata_t *rdata)
 {
 	assert(rdata);
-	return *(rdata->data + 4);
+	uint8_t val = *(rdata->data + 4);
+	return (6 + val <= rdata->len) ? val : 0;
 }
 
 static inline
@@ -60,7 +61,8 @@ static inline
 uint8_t knot_nsec3_next_len(const knot_rdata_t *rdata)
 {
 	assert(rdata);
-	return *(rdata->data + 5 + knot_nsec3_salt_len(rdata));
+	uint8_t val = *(rdata->data + 5 + knot_nsec3_salt_len(rdata));
+	return (6 + knot_nsec3_salt_len(rdata) + val <= rdata->len) ? val : 0;
 }
 
 static inline
