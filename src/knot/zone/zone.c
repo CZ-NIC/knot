@@ -847,6 +847,9 @@ int zone_master_try(conf_t *conf, zone_t *zone, zone_master_cb callback,
 		};
 		ret = try_remote(conf, zone, callback, callback_data, err_str,
 		                 preferred_id, &preferred, &fallback, "notifier ");
+		if (ret == KNOT_EOK && !fallback.was_refresh) {
+			log_zone_warning(zone->name, "NOTIFYing master is %s", fallback.was_outdated ? "outdated" : "up-to-date");
+		}
 		if ((ret == KNOT_EOK && !preferred_2x) || !fallback.remote) {
 			return ret; // Success or local error.
 		}
@@ -854,10 +857,10 @@ int zone_master_try(conf_t *conf, zone_t *zone, zone_master_cb callback,
 
 	/* Try the last server. */
 
+	zone_master_fallback_t fallback = {
+	        true, true, true, pin_tolerance
+	};
 	if (last_idx >= 0 && last_idx != preferred_idx) {
-		zone_master_fallback_t fallback = {
-			true, true, true, pin_tolerance
-		};
 		ret = try_remote(conf, zone, callback, callback_data, err_str,
 		                 last_id, &last, &fallback, "pinned ");
 		if (!fallback.remote) {
@@ -869,7 +872,7 @@ int zone_master_try(conf_t *conf, zone_t *zone, zone_master_cb callback,
 
 	conf_val_reset(&masters);
 	conf_mix_iter_init(conf, &masters, &iter);
-	zone_master_fallback_t fallback = { true, true, false, pin_tolerance };
+	fallback.trying_last = false;
 	for (idx = 0; iter.id->code == KNOT_EOK && fallback.remote; idx++) {
 		if (idx != last_idx && idx != preferred_idx) {
 			fallback.address = true;
@@ -881,6 +884,10 @@ int zone_master_try(conf_t *conf, zone_t *zone, zone_master_cb callback,
 			}
 		}
 		conf_mix_iter_next(&iter);
+	}
+
+	if (fallback.was_outdated && (!fallback.was_refresh && !fallback.was_uptodate)) {
+		log_zone_warning(zone->name, "all masters are outdated");
 	}
 
 	return ret == KNOT_EOK ? KNOT_EOK : KNOT_ENOMASTER;

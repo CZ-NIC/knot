@@ -295,6 +295,10 @@ typedef struct {
 	bool remote;      //!< Fallback to next remote server is required.
 	bool trying_last; //!< This master try is for the same server as last time.
 	uint32_t pin_tol; //!< Configured master pin tolerance (0 for no pin).
+
+	bool was_refresh;  //!< During the refresh event, some successful refresh took place.
+	bool was_uptodate; //!< Some of the attempted primaries was up-to-date.
+	bool was_outdated; //!< Some of the attempted primaries was outdated.
 } zone_master_fallback_t;
 
 typedef int (*zone_master_cb)(conf_t *conf, zone_t *zone, const conf_remote_t *remote,
