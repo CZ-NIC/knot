@@ -36,7 +36,7 @@ int main(int argc, char *argv[])
 	// 1. TYPE0
 	descr = knot_get_rdata_descriptor(0);
 	ok(descr->type_name == 0, "get TYPE0 descriptor name");
-	ok(descr->block_types[0] == KNOT_RDATA_WF_REMAINDER,
+	ok(descr->block_types[0] == KNOT_RDATA_WF_REMAINDER_MAYEMPTY,
 	   "get TYPE0 descriptor 1. item type");
 	ok(descr->block_types[1] == KNOT_RDATA_WF_END,
 	   "get TYPE0 descriptor 2. item type");
@@ -72,7 +72,7 @@ int main(int argc, char *argv[])
 	// 4. TYPE38 (A6)
 	descr = knot_get_rdata_descriptor(38);
 	ok(descr->type_name == 0, "get TYPE38 descriptor name");
-	ok(descr->block_types[0] == KNOT_RDATA_WF_REMAINDER,
+	ok(descr->block_types[0] == KNOT_RDATA_WF_REMAINDER_MAYEMPTY,
 	   "get TYPE38 descriptor 1. item type");
 	ok(descr->block_types[1] == KNOT_RDATA_WF_END,
 	   "get TYPE38 descriptor 2. item type");
@@ -94,7 +94,7 @@ int main(int argc, char *argv[])
 	// 6. TYPE65535
 	descr = knot_get_rdata_descriptor(65535);
 	ok(descr->type_name == 0, "get TYPE65535 descriptor name");
-	ok(descr->block_types[0] == KNOT_RDATA_WF_REMAINDER,
+	ok(descr->block_types[0] == KNOT_RDATA_WF_REMAINDER_MAYEMPTY,
 	   "get TYPE65535 descriptor 1. item type");
 	ok(descr->block_types[1] == KNOT_RDATA_WF_END,
 	   "get TYPE65535 descriptor 2. item type");

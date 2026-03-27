@@ -413,6 +413,7 @@ static int rdata_traverse_write(const uint8_t **src, size_t *src_avail,
 			ret = write_rdata_naptr_header(src, src_avail, dst, dst_avail);
 			break;
 		case KNOT_RDATA_WF_REMAINDER:
+		case KNOT_RDATA_WF_REMAINDER_MAYEMPTY:
 			ret = write_rdata_fixed(src, src_avail, dst, dst_avail, *src_avail);
 			break;
 		default:
@@ -622,6 +623,7 @@ static int rdata_traverse_parse(const uint8_t **src, size_t *src_avail,
 			ret = write_rdata_naptr_header(src, src_avail, dst, dst_avail);
 			break;
 		case KNOT_RDATA_WF_REMAINDER:
+		case KNOT_RDATA_WF_REMAINDER_MAYEMPTY:
 			ret = write_rdata_fixed(src, src_avail, dst, dst_avail, *src_avail);
 			break;
 		default:
