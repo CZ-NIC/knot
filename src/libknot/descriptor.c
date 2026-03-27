@@ -389,6 +389,14 @@ bool knot_rrtype_should_be_lowercased(const uint16_t type)
 }
 
 _public_
+bool knot_rrtype_allows_empty(const uint16_t type)
+{
+	const knot_rdata_descriptor_t *descr = knot_get_rdata_descriptor(type);
+	// NOTE obsolete types' descriptors don't have this
+	return descr->block_types[0] == KNOT_RDATA_WF_REMAINDER_MAYEMPTY;
+}
+
+_public_
 int knot_opt_code_to_string(const uint16_t code, char *out, const size_t out_len)
 {
 	if (out == NULL) {

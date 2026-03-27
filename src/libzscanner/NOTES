@@ -18,6 +18,7 @@
 - timestamps in RRSIG are limited to the end of year 2225
 - zscanner doesn't make semantic control of parser rdata
 - the following zone is considered ok with two records
+- LP rdata are lower cased but shouldn't be
 """
 .       a       (
         1.1.1.1
