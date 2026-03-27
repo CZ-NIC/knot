@@ -158,6 +158,8 @@ enum knot_rdata_wireformat {
 	KNOT_RDATA_WF_NAPTR_HEADER,
 	/*!< Final part of a record. */
 	KNOT_RDATA_WF_REMAINDER,
+	/*!< Final part that is allowed to be empty. */
+	KNOT_RDATA_WF_REMAINDER_MAYEMPTY,
 	/*!< The last descriptor in array. */
 	KNOT_RDATA_WF_END                  =   0
 };

@@ -177,6 +177,11 @@ int knot_rdata_to_canonical(knot_rdata_t *rdata, uint16_t type)
 			pos += ret;
 			break;
 		case KNOT_RDATA_WF_REMAINDER:
+			if (pos >= endpos) {
+				return KNOT_EMALF;
+			}
+			break;
+		case KNOT_RDATA_WF_REMAINDER_MAYEMPTY:
 			break;
 		default:
 			/* Fixed size block */
