@@ -408,6 +408,7 @@ static int axfr_finalize(struct refresh_data *data)
 	                master_serial, dnssec_enable || data->reverse_or_include, bootstrap);
 
 	data->fallback->remote = false;
+	data->fallback->was_refresh = true;
 	zone_set_last_master(data->zone, (const struct sockaddr_storage *)data->remote);
 
 	return KNOT_EOK;
@@ -697,6 +698,7 @@ static int ixfr_finalize(struct refresh_data *data)
 
 	if (old_serial != zone_contents_serial(data->zone->contents)) {
 		data->fallback->remote = false;
+		data->fallback->was_refresh = true;
 		zone_set_last_master(data->zone, (const struct sockaddr_storage *)data->remote);
 	}
 
@@ -1149,11 +1151,13 @@ static int soa_query_consume(knot_layer_t *layer, knot_pkt_t *pkt)
 		REFRESH_LOG_PROTO(LOG_INFO, data,
 		                  "remote serial %u, zone is up-to-date%s",
 		                  remote_serial, expires_in);
+		data->fallback->was_uptodate = true;
 		return KNOT_STATE_DONE;
 	} else {
 		finalize_timers_noexpire(data);
 		REFRESH_LOG_PROTO(LOG_INFO, data,
 		                  "remote serial %u, remote is outdated", remote_serial);
+		data->fallback->was_outdated = true;
 		return KNOT_STATE_DONE;
 	}
 }

@@ -235,20 +235,23 @@ zonefile_loaded:
 		}
 
 		// If configured and possible, fix the SOA serial of zonefile.
+		uint32_t serial = zone->zonefile.serial;
 		zone_contents_t *relevant = (zone->contents != NULL ? zone->contents : journal_conts);
-		if (zf_conts != NULL && zf_from == ZONEFILE_LOAD_DIFSE && relevant != NULL) {
-			uint32_t serial = zone_contents_serial(relevant);
-			uint32_t set = serial_next(serial, conf, zone->name, SERIAL_POLICY_AUTO, 1);
-			zone_contents_set_soa_serial(zf_conts, set);
-			log_zone_info(zone->name, "%s loaded%s%.0u, serial updated %u -> %u",
-			              zone_src, (db_enabled ? ", instance " : ""),
-			              db_instance, zone->zonefile.serial, set);
-			zone->zonefile.serial = set;
-		} else {
-			log_zone_info(zone->name, "%s loaded%s%.0u, serial %u",
-			              zone_src, (db_enabled ? ", instance " : ""),
-			              db_instance, zone->zonefile.serial);
+		if (zf_conts != NULL && zf_from == ZONEFILE_LOAD_DIFSE) {
+			serial = zone_contents_serial(relevant != NULL ? relevant : zf_conts);
+			uint32_t set = serial_next(serial, conf, zone->name, SERIAL_POLICY_AUTO, relevant != NULL ? 1 : 0);
+			if (set != serial) {
+				zone_contents_set_soa_serial(zf_conts, set);
+				zone->zonefile.serial = set;
+			}
 		}
+
+		log_zone_info(zone->name, "%s loaded%s%.0u, serial %s%.0u%s%u",
+		              zone_src, (db_enabled ? ", instance " : ""), db_instance,
+		              (serial != zone->zonefile.serial ? "updated " : ""),
+		              (serial != zone->zonefile.serial ? serial : 0),
+		              (serial != zone->zonefile.serial ? " -> " : ""),
+		              zone->zonefile.serial);
 
 		// If configured and appliable to zonefile, load journal changes.
 		if (load_from != JOURNAL_CONTENT_NONE) {
@@ -436,6 +439,7 @@ load_end:
 
 	// If the change is only automatically incremented SOA serial, make it no change.
 	if (zf_from == ZONEFILE_LOAD_DIFSE && (up.flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) &&
+	    serial_next(zone->zonefile.serial, conf, zone->name, SERIAL_POLICY_AUTO, 0) != zone_contents_serial(up.new_cont) &&
 	    (ret = zone_update_differs_just_serial(&up, update_zonemd)) == KNOT_EOK) {
 		changeset_t *cpy;
 		ret = zone_update_to_changeset(&up, &cpy);
