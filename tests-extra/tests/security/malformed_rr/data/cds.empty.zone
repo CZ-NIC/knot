@@ -1,0 +1,7 @@
+@	SOA	dns1 hostmaster 1 10800 3600 1209600 7200
+	NS	dns1
+dns1	A	192.0.2.1
+@ CDS \# 0
+@ RRSIG SOA 0 2 3600 20491231235959 20200101010101 0 cds.short. aW52YWxpZA== ;; RRSIG for SOA denotes "signed" zone
+@ DNSKEY 257 3 0 aW52YWxpZA==
+@ CDNSKEY 257 3 0 aW52YWxpZA== ;; CDNSKEY and DNSKEY presence is checked before CDS processig
