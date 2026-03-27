@@ -9,6 +9,7 @@
 #include <unistd.h>
 
 #include "contrib/strtonum.h"
+#include "knot/dnssec/kasp/kasp_db.h"
 #include "knot/dnssec/zone-keys.h"
 #include "knot/journal/knot_lmdb.h"
 #include "libknot/dnssec/crypto.h"
@@ -79,6 +80,10 @@ static void print_help(void)
 	       "                 (syntax: set <key_spec> <attribute_name>=<value>...)\n"
 	       "  trash-list    List deleted DNSSEC keys kept in the \"trash bin\".\n"
 	       "                 For all deleted keys without respect to zones, use '--' as <zone_name>.\n"
+	       "  trash-discard Discard deleted DNSSEC keys from the \"trash bin\".\n"
+	       "                 For all deleted keys belonging to a zone, use '--' as <key_id>.\n"
+	       "                 For all deleted keys of all zones, use '--' as <zone_name> and as <key_id>.\n"
+	       "                 (syntax: trash-discard <key_id>)\n"
 	       "\n"
 	       "Keystore commands:\n"
 	       "  keystore-test   Conduct some tests on the specified keystore.\n"
@@ -142,7 +147,8 @@ static int key_command(int argc, char *argv[], int opt_ind, knot_lmdb_db_t *kasp
 	kdnssec_ctx_t kctx = { 0 };
 	int ret;
 
-	if (same_command(argv[1], "trash-list", false)) {
+	if (same_command(argv[1], "trash-list", false) ||
+	    same_command(argv[1], "trash-discard", false)) {
 		// We can't init full kctx.
 		kctx.kasp_db = kaspdb;
 		ret = knot_lmdb_open(kaspdb);
@@ -284,6 +290,10 @@ static int key_command(int argc, char *argv[], int opt_ind, knot_lmdb_db_t *kasp
 		}
 		ret = keymgr_list_trash(&kctx, zone_name, list_params);
 		print_ok_on_succes = false;
+	} else if (same_command(argv[1], "trash-discard", false)) {
+		CHECK_MISSING_ARG("Key ID not specified");
+		bool all = !strncmp(argv[2], "-", 2) || !strncmp(argv[2], "--", 3);
+		ret = kasp_db_delete_trash(kaspdb, zone_name, all ? NULL : argv[2]);
 	} else if (same_command(argv[1], "pregenerate", false)) {
 		CHECK_MISSING_ARG("Timestamp to not specified");
 		ret = keymgr_pregenerate_zsks(&kctx, argc > 3 ? argv[2] : NULL,
