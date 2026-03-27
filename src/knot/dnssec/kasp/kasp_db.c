@@ -103,8 +103,9 @@ static MDB_val make_key_str(keyclass_t kclass, const knot_dname_t *dname, const 
 			return knot_lmdb_make_key("BNS", (int)kclass, dname, str);
 		}
 	case KASPDBKEY_TRASH:
-		assert(str != NULL);
-		if (dname == NULL) {
+		if (str == NULL) {
+			return knot_lmdb_make_key("B", (int)kclass);
+		} else if (dname == NULL) {
 			return knot_lmdb_make_key("BS", (int)kclass, str);
 		} else {
 			return knot_lmdb_make_key("BSN", (int)kclass, str, dname);
@@ -545,6 +546,70 @@ int kasp_db_delete_all(knot_lmdb_db_t *db, const knot_dname_t *zone)
 	knot_lmdb_commit(&txn);
 	free(prefix.mv_data);
 	return txn.ret;
+}
+
+int kasp_db_delete_trash(knot_lmdb_db_t *db, const knot_dname_t *zone_name, char *key_id)
+{
+	assert(db);
+
+	knot_kasp_keystore_t *keystores = NULL;
+	int ret = init_all_keystores(conf(), &keystores);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	knot_lmdb_txn_t txn = { 0 };
+	knot_lmdb_begin(db, &txn, true);
+	if (key_id != NULL) {
+		// Remove just one trash key.
+		// In this case, zone_name is ignored.
+		ret = kdnssec_delete_from_keystores(keystores, key_id, NULL, true);
+		ret = (ret == KNOT_ENOENT) ? KNOT_EOK : ret;
+		if (ret == KNOT_EOK) {
+			MDB_val prefix = make_key_str(KASPDBKEY_TRASH, NULL, key_id);
+			knot_lmdb_del_prefix(&txn, &prefix);
+			free(prefix.mv_data);
+		}
+	} else {
+		// Remove all trash keys belonging to the zone, or all trash keys.
+		bool failed = false;
+		MDB_val prefix = make_key_str(KASPDBKEY_TRASH, NULL, NULL);
+		knot_lmdb_foreach(&txn, &prefix) {
+			uint8_t kclass;
+			char *id;
+			knot_dname_t *dname;
+			bool b = knot_lmdb_unmake_key(txn.cur_key.mv_data, txn.cur_key.mv_size,
+			                              "BSN", &kclass, &id, &dname);
+			assert(kclass == KASPDBKEY_TRASH);
+			if (b && *id != '\0' && *dname != '\0') {
+				if (zone_name != NULL && knot_dname_cmp(dname, zone_name)) {
+					// Another zone, skip this key.
+					continue;
+				}
+
+				ret = kdnssec_delete_from_keystores(keystores, id, dname, true);
+				ret = (ret == KNOT_ENOENT) ? KNOT_EOK : ret;
+				if (ret != KNOT_EOK) {
+					// Note: it isn't sure that there still is a key to delete.
+					failed = true;
+					continue;
+				}
+			} else {
+				// Corrupted or uncompatible KASP DB? Stop all other deletes, but
+				// commit deletes of KASP records related to already removed keys.
+				ret = KNOT_EMALF;
+				break;
+			}
+
+			knot_lmdb_del_cur(&txn);
+		}
+		free(prefix.mv_data);
+		ret = (failed) ? KNOT_ERROR : ret;
+	}
+
+	knot_lmdb_commit(&txn);
+	deinit_all_keystores(&keystores);
+	return (ret == KNOT_EOK) ? txn.ret : ret;
 }
 
 int kasp_db_sweep(knot_lmdb_db_t *db, sweep_cb keep_zone, void *cb_data)

@@ -144,6 +144,11 @@ Commands
   Prints the list of key IDs and parameters of deleted keys kept in the "trash bin" belonging to the zone.
   For a list of all deleted keys without respect to zones, use **--** or **-** as *zone_name*.
 
+**trash-discard** *key_ID*
+  Remove the specified key from the "trash bin", discarding it. Remove of a single key doesn't depend
+  on *zone_name*. If **--** or **-** is specified as *key_ID*, remove all trash keys belonging to the zone.
+  If **--** or **-** is specified both as *zone_name* and *key_ID*, empty all "trash bin".
+
 Keystore commands
 .................
 

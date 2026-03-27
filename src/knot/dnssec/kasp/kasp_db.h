@@ -89,6 +89,21 @@ int kasp_db_delete_keys(knot_lmdb_db_t *db, const knot_dname_t *zone_name,
 int kasp_db_delete_all(knot_lmdb_db_t *db, const knot_dname_t *zone_name);
 
 /*!
+ * \brief Remove a trash key/keys from the "trash bin" (discard them permanently).
+ *
+ * \note  If key_id is set, remove only that key,
+ * \note  if zone_name is set, remove all keys belonging to that zone,
+ * \note  if neither key_id nor zone_name is set, remove all trash keys.
+ *
+ * \param db            KASP db
+ * \param zone_name     zone to remove from
+ * \param key_id        ID of the key to be removed
+ *
+ * \return KNOT_E*
+ */
+int kasp_db_delete_trash(knot_lmdb_db_t *db, const knot_dname_t *zone_name, char *key_id);
+
+/*!
  * \brief Selectively delete zones from the database.
  *
  * \param db         KASP database.
