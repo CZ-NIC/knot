@@ -298,6 +298,11 @@ int knot_rrtype_additional_needed(const uint16_t type);
 bool knot_rrtype_should_be_lowercased(const uint16_t type);
 
 /*!
+ * \brief Tells whether rdata on given RR type may be legally empty.
+ */
+bool knot_rrtype_allows_empty(const uint16_t type);
+
+/*!
  * \brief Translates option code to string.
  *
  * \param code     Code of the option to translate.

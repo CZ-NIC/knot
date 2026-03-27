@@ -640,13 +640,9 @@ static int rdata_traverse_parse(const uint8_t **src, size_t *src_avail,
 	return KNOT_EOK;
 }
 
-static bool allow_zero_rdata(const knot_rrset_t *rr,
-                             const knot_rdata_descriptor_t *desc)
+static bool allow_zero_rdata(const knot_rrset_t *rr)
 {
-	return rr->rclass != KNOT_CLASS_IN ||  // NONE and ANY for DDNS
-	       rr->type == KNOT_RRTYPE_APL ||  // APL RR type
-	       rr->type == KNOT_RRTYPE_NULL || // NULL RR type
-	       desc->type_name == NULL;        // Unknown RR type
+	return rr->rclass != KNOT_CLASS_IN /* DDNS */ || knot_rrtype_allows_empty(rr->type);
 }
 
 static int parse_rdata(const uint8_t *pkt_wire, size_t *pos, size_t pkt_size,
@@ -662,7 +658,7 @@ static int parse_rdata(const uint8_t *pkt_wire, size_t *pos, size_t pkt_size,
 	}
 
 	if (rdlength == 0) {
-		if (allow_zero_rdata(rrset, desc)) {
+		if (allow_zero_rdata(rrset)) {
 			return knot_rrset_add_rdata(rrset, NULL, 0, mm);
 		} else {
 			return KNOT_EMALF;

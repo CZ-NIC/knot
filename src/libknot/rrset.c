@@ -136,51 +136,53 @@ bool knot_rrset_is_nsec3rel(const knot_rrset_t *rr)
 	         && knot_rrsig_type_covered(rr->rrs.rdata) == KNOT_RRTYPE_NSEC3));
 }
 
-_public_
-int knot_rrset_rr_to_canonical(knot_rrset_t *rrset)
+static int rdata_to_canonical(knot_rdata_t *rdata, uint16_t type)
 {
-	if (rrset == NULL || rrset->rrs.count != 1) {
+	if (rdata == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	/* Convert owner for all RRSets. */
-	knot_dname_to_lower(rrset->owner);
-
-	/* Convert DNAMEs in RDATA only for RFC4034 types. */
-	if (!knot_rrtype_should_be_lowercased(rrset->type)) {
-		return KNOT_EOK;
-	}
-
-	const knot_rdata_descriptor_t *desc = knot_get_rdata_descriptor(rrset->type);
-	if (desc->type_name == NULL) {
-		desc = knot_get_obsolete_rdata_descriptor(rrset->type);
-	}
-
-	uint16_t rdlen = rrset->rrs.rdata->len;
-	uint8_t *pos = rrset->rrs.rdata->data;
-	uint8_t *endpos = pos + rdlen;
-
-	/* No RDATA */
+	/*
+	 * NOTE - the non/zero rdata length MUST be guarded elsewhere.
+	 * In case of incoming pkt this is rrset-wire.c:allow_zero_rdata()
+	 *   (including the exceptions for DDNS)
+	 * in case of zonefile, ctl or Redis it is scanner-body.rl:_hex_r_data
+	 */
+	const uint16_t rdlen = rdata->len;
 	if (rdlen == 0) {
 		return KNOT_EOK;
 	}
 
-	/* Otherwise, whole and not malformed RDATA are expected. */
+	const knot_rdata_descriptor_t *desc = knot_get_rdata_descriptor(type);
+	if (desc->type_name == NULL) {
+		desc = knot_get_obsolete_rdata_descriptor(type);
+	}
+
+	uint8_t *pos = rdata->data;
+	uint8_t *endpos = pos + rdlen;
+
+	/* Check the RDATA items against the corresponding descriptor, lower case if needed. */
 	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; ++i) {
-		int type = desc->block_types[i];
-		switch (type) {
+		int ret, block_type = desc->block_types[i];
+		switch (block_type) {
 		case KNOT_RDATA_WF_COMPRESSIBLE_DNAME:
 		case KNOT_RDATA_WF_DECOMPRESSIBLE_DNAME:
 		case KNOT_RDATA_WF_FIXED_DNAME:
-			knot_dname_to_lower(pos);
-			pos += knot_dname_size(pos);
+			ret = knot_dname_wire_check(pos, endpos, NULL);
+			if (ret <= 0) {
+				return KNOT_EMALF;
+			}
+			/* Convert DNAME in RDATA if needed. */
+			if (knot_rrtype_should_be_lowercased(type)) {
+				knot_dname_to_lower(pos);
+			}
+			pos += ret;
 			break;
 		case KNOT_RDATA_WF_NAPTR_HEADER:
-			; int ret = knot_naptr_header_size(pos, endpos);
+			ret = knot_naptr_header_size(pos, endpos);
 			if (ret < 0) {
 				return ret;
 			}
-
 			pos += ret;
 			break;
 		case KNOT_RDATA_WF_REMAINDER:
@@ -192,12 +194,28 @@ int knot_rrset_rr_to_canonical(knot_rrset_t *rrset)
 			break;
 		default:
 			/* Fixed size block */
-			assert(type > 0);
-			pos += type;
+			assert(block_type > 0);
+			pos += block_type;
+			if (pos > endpos) {
+				return KNOT_EMALF;
+			}
 		}
 	}
 
 	return KNOT_EOK;
+}
+
+_public_
+int knot_rrset_rr_to_canonical(knot_rrset_t *rrset)
+{
+	if (rrset == NULL || rrset->rrs.count != 1) {
+		return KNOT_EINVAL;
+	}
+
+	/* Convert owner for all RRSets. */
+	knot_dname_to_lower(rrset->owner);
+
+	return rdata_to_canonical(rrset->rrs.rdata, rrset->type);
 }
 
 _public_

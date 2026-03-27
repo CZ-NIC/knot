@@ -102,6 +102,8 @@ static void process_data(zs_scanner_t *scanner)
 		return;
 	}
 
+	assert(scanner->r_data_length > 0 || knot_rrtype_allows_empty(scanner->r_type));
+
 	knot_dname_t *owner = knot_dname_copy(scanner->r_owner, NULL);
 	if (owner == NULL) {
 		zc->ret = KNOT_ENOMEM;

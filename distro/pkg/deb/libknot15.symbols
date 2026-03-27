@@ -174,6 +174,7 @@ libknot.so.15 libknot15 #MINVER#
  knot_rrset_txt_dump_edns@Base 3.4.0
  knot_rrset_txt_dump_header@Base 3.4.0
  knot_rrtype_additional_needed@Base 3.4.0
+ knot_rrtype_allows_empty@Base 3.4.10
  knot_rrtype_from_string@Base 3.4.0
  knot_rrtype_is_dnssec@Base 3.4.0
  knot_rrtype_is_metatype@Base 3.4.0
