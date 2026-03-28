@@ -160,6 +160,9 @@ struct zs_scanner {
 	/*! Indication of a non-applied backslash. */
 	bool     pending_backslash;
 
+	/*! If not generic format, apply lower casing on rdata. */
+	bool     to_lower;
+
 	/*! Pointer to the actual dname storage (origin/owner/rdata). */
 	uint8_t  *dname;
 	/*! Pointer to the actual dname length storage. */
@@ -250,19 +253,24 @@ struct zs_scanner {
 	uint32_t r_ttl;
 	/*! Type of the current record data. */
 	uint16_t r_type;
+	/*! Generic rdata indication (skipped item checks and lower casing). */
+	bool     r_data_generic;
 	/*! Length of the current rdata. */
 	uint32_t r_data_length;
 	/*! Current rdata. */
 	uint8_t  r_data[ZS_MAX_RDATA_LENGTH];
 
-	/*
-	 * Example: a. IN 60 MX 1 b. ; A comment
+	/* Example:
 	 *
-	 *          r_owner_length = 3
+	 * INPUT:   a. IN 60 MX 1 B. ; A comment
+	 *          to_lower = true
+	 *
+	 * OUTPUT:  r_owner_length = 3
 	 *          r_owner = 016100
 	 *          r_class = 1
 	 *          r_ttl = 60
 	 *          r_type = 15
+	 *          r_data_generic = false
 	 *          r_data_length = 5
 	 *          r_data = 0001016200
 	 *          buffer_length = 11

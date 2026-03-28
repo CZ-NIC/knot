@@ -45,6 +45,7 @@ static void help(void)
 	       "     1        Debug output (DEFAULT).\n"
 	       "     2        Test output.\n"
 	       " -b <num>     Divide hex string to blocks of length <num>.\n"
+	       " -l           Enable rdata lower casing.\n"
 	       " -s           State parsing mode.\n"
 	       " -t           Launch unit tests.\n"
 	       " -h           Print this help.\n");
@@ -140,12 +141,13 @@ static int include(zs_scanner_t *s)
 
 int main(int argc, char *argv[])
 {
-	int mode = DEFAULT_MODE, block = 0, state = 0, test = 0;
+	int mode = DEFAULT_MODE, block = 0, lower = 0, state = 0, test = 0;
 
 	// Command line long options.
 	struct option opts[] = {
 		{ "mode",  required_argument, NULL, 'm' },
 		{ "block", required_argument, NULL, 'b' },
+		{ "lower", no_argument,       NULL, 'l' },
 		{ "state", no_argument,       NULL, 's' },
 		{ "test",  no_argument,       NULL, 't' },
 		{ "help",  no_argument,       NULL, 'h' },
@@ -154,13 +156,16 @@ int main(int argc, char *argv[])
 
 	// Parsed command line arguments.
 	int opt = 0, li = 0;
-	while ((opt = getopt_long(argc, argv, "m:b:sth", opts, &li)) != -1) {
+	while ((opt = getopt_long(argc, argv, "m:b:lsth", opts, &li)) != -1) {
 		switch (opt) {
 		case 'm':
 			mode = atoi(optarg);
 			break;
 		case 'b':
 			block = atoi(optarg);
+			break;
+		case 'l':
+			lower = 1;
 			break;
 		case 's':
 			state = 1;
@@ -200,6 +205,9 @@ int main(int argc, char *argv[])
 		printf("Scanner init error!\n");
 		free(s);
 		return EXIT_FAILURE;
+	}
+	if (lower) {
+		s->to_lower = true;
 	}
 	if (zs_set_input_file(s, zone_file) != 0) {
 		printf("Scanner file error!\n");

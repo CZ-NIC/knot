@@ -5988,6 +5988,7 @@ tr72:
 		rdata_tail = s->r_data;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -6079,6 +6080,7 @@ tr72:
 	goto st6;
 tr75:
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -6175,6 +6177,7 @@ tr99:
 		}
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -6266,6 +6269,7 @@ tr99:
 	goto st6;
 tr100:
 	{
+		s->r_data_generic = true;
 		switch (s->r_type) {
 		// Next types must not have empty rdata.
 		case KNOT_RRTYPE_A:
@@ -6330,6 +6334,7 @@ tr171:
 		rdata_tail = s->r_data;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -6425,6 +6430,7 @@ tr193:
 		rdata_tail = s->r_data;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -6520,6 +6526,7 @@ tr201:
 		rdata_tail = s->r_data;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -6615,6 +6622,7 @@ tr211:
 		rdata_tail = s->r_data;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -6710,6 +6718,7 @@ tr222:
 		rdata_tail = s->r_data;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -6805,6 +6814,7 @@ tr233:
 		rdata_tail = s->r_data;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -6900,6 +6910,7 @@ tr247:
 		rdata_tail = s->r_data;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -6995,6 +7006,7 @@ tr259:
 		rdata_tail = s->r_data;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -7090,6 +7102,7 @@ tr270:
 		rdata_tail = s->r_data;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -7185,6 +7198,7 @@ tr278:
 		rdata_tail = s->r_data;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -7280,6 +7294,7 @@ tr291:
 		rdata_tail = s->r_data;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -7375,6 +7390,7 @@ tr300:
 		rdata_tail = s->r_data;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -7470,6 +7486,7 @@ tr313:
 		rdata_tail = s->r_data;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -7565,6 +7582,7 @@ tr324:
 		rdata_tail = s->r_data;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -7660,6 +7678,7 @@ tr368:
 		rdata_tail = s->r_data;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -7755,6 +7774,7 @@ tr379:
 		rdata_tail = s->r_data;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -7850,6 +7870,7 @@ tr387:
 		rdata_tail = s->r_data;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -7945,6 +7966,7 @@ tr400:
 		rdata_tail = s->r_data;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -8040,6 +8062,7 @@ tr409:
 		rdata_tail = s->r_data;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -8135,6 +8158,7 @@ tr418:
 		rdata_tail = s->r_data;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -8230,6 +8254,7 @@ tr426:
 		rdata_tail = s->r_data;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -8325,6 +8350,7 @@ tr439:
 		rdata_tail = s->r_data;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -8420,6 +8446,7 @@ tr447:
 		rdata_tail = s->r_data;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -8515,6 +8542,7 @@ tr461:
 		rdata_tail = s->r_data;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -8610,6 +8638,7 @@ tr470:
 		rdata_tail = s->r_data;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -8705,6 +8734,7 @@ tr479:
 		rdata_tail = s->r_data;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -8800,6 +8830,7 @@ tr489:
 		rdata_tail = s->r_data;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -8895,6 +8926,7 @@ tr498:
 		rdata_tail = s->r_data;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -8990,6 +9022,7 @@ tr510:
 		rdata_tail = s->r_data;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -9085,6 +9118,7 @@ tr527:
 		rdata_tail = s->r_data;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -9180,6 +9214,7 @@ tr537:
 		rdata_tail = s->r_data;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -9275,6 +9310,7 @@ tr548:
 		rdata_tail = s->r_data;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -9370,6 +9406,7 @@ tr559:
 		rdata_tail = s->r_data;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -9465,6 +9502,7 @@ tr567:
 		rdata_tail = s->r_data;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -9560,6 +9598,7 @@ tr585:
 		rdata_tail = s->r_data;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -9655,6 +9694,7 @@ tr594:
 		rdata_tail = s->r_data;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -9750,6 +9790,7 @@ tr603:
 		rdata_tail = s->r_data;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -9845,6 +9886,7 @@ tr612:
 		rdata_tail = s->r_data;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -9940,6 +9982,7 @@ tr623:
 		rdata_tail = s->r_data;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -10035,6 +10078,7 @@ tr633:
 		rdata_tail = s->r_data;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -10130,6 +10174,7 @@ tr646:
 		rdata_tail = s->r_data;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -10225,6 +10270,7 @@ tr655:
 		rdata_tail = s->r_data;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -10327,6 +10373,7 @@ tr669:
 		rdata_tail = s->r_data;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -10422,6 +10469,7 @@ tr679:
 		rdata_tail = s->r_data;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -10517,6 +10565,7 @@ tr692:
 		rdata_tail = s->r_data;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -10612,6 +10661,7 @@ tr705:
 		rdata_tail = s->r_data;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -10707,6 +10757,7 @@ tr956:
 		rdata_tail = s->r_data;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -10802,6 +10853,7 @@ tr967:
 		rdata_tail = s->r_data;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -10897,6 +10949,7 @@ tr976:
 		rdata_tail = s->r_data;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -11661,6 +11714,7 @@ tr73:
 		s->line_counter++;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -11755,6 +11809,7 @@ tr83:
 		s->line_counter++;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -11853,6 +11908,7 @@ tr172:
 		s->line_counter++;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -11951,6 +12007,7 @@ tr194:
 		s->line_counter++;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -12049,6 +12106,7 @@ tr202:
 		s->line_counter++;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -12147,6 +12205,7 @@ tr212:
 		s->line_counter++;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -12245,6 +12304,7 @@ tr223:
 		s->line_counter++;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -12343,6 +12403,7 @@ tr234:
 		s->line_counter++;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -12441,6 +12502,7 @@ tr248:
 		s->line_counter++;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -12539,6 +12601,7 @@ tr260:
 		s->line_counter++;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -12637,6 +12700,7 @@ tr271:
 		s->line_counter++;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -12735,6 +12799,7 @@ tr279:
 		s->line_counter++;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -12833,6 +12898,7 @@ tr292:
 		s->line_counter++;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -12931,6 +12997,7 @@ tr301:
 		s->line_counter++;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -13029,6 +13096,7 @@ tr314:
 		s->line_counter++;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -13127,6 +13195,7 @@ tr325:
 		s->line_counter++;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -13225,6 +13294,7 @@ tr369:
 		s->line_counter++;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -13323,6 +13393,7 @@ tr380:
 		s->line_counter++;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -13421,6 +13492,7 @@ tr388:
 		s->line_counter++;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -13519,6 +13591,7 @@ tr401:
 		s->line_counter++;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -13617,6 +13690,7 @@ tr410:
 		s->line_counter++;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -13715,6 +13789,7 @@ tr419:
 		s->line_counter++;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -13813,6 +13888,7 @@ tr427:
 		s->line_counter++;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -13911,6 +13987,7 @@ tr440:
 		s->line_counter++;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -14009,6 +14086,7 @@ tr448:
 		s->line_counter++;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -14107,6 +14185,7 @@ tr462:
 		s->line_counter++;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -14205,6 +14284,7 @@ tr471:
 		s->line_counter++;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -14303,6 +14383,7 @@ tr480:
 		s->line_counter++;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -14401,6 +14482,7 @@ tr490:
 		s->line_counter++;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -14499,6 +14581,7 @@ tr499:
 		s->line_counter++;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -14597,6 +14680,7 @@ tr511:
 		s->line_counter++;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -14695,6 +14779,7 @@ tr528:
 		s->line_counter++;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -14793,6 +14878,7 @@ tr538:
 		s->line_counter++;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -14891,6 +14977,7 @@ tr549:
 		s->line_counter++;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -14989,6 +15076,7 @@ tr560:
 		s->line_counter++;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -15087,6 +15175,7 @@ tr568:
 		s->line_counter++;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -15185,6 +15274,7 @@ tr586:
 		s->line_counter++;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -15283,6 +15373,7 @@ tr595:
 		s->line_counter++;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -15381,6 +15472,7 @@ tr604:
 		s->line_counter++;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -15479,6 +15571,7 @@ tr613:
 		s->line_counter++;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -15577,6 +15670,7 @@ tr624:
 		s->line_counter++;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -15675,6 +15769,7 @@ tr634:
 		s->line_counter++;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -15773,6 +15868,7 @@ tr647:
 		s->line_counter++;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -15871,6 +15967,7 @@ tr656:
 		s->line_counter++;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -15976,6 +16073,7 @@ tr670:
 		s->line_counter++;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -16074,6 +16172,7 @@ tr680:
 		s->line_counter++;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -16172,6 +16271,7 @@ tr693:
 		s->line_counter++;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -16270,6 +16370,7 @@ tr706:
 		s->line_counter++;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -16368,6 +16469,7 @@ tr957:
 		s->line_counter++;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -16466,6 +16568,7 @@ tr968:
 		s->line_counter++;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -16564,6 +16667,7 @@ tr977:
 		s->line_counter++;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -17223,6 +17327,7 @@ tr123:
 		}
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -17574,6 +17679,7 @@ tr74:
 		s->buffer_length = 0;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -17668,6 +17774,7 @@ tr84:
 		s->buffer_length = 0;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -17766,6 +17873,7 @@ tr173:
 		s->buffer_length = 0;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -17864,6 +17972,7 @@ tr195:
 		s->buffer_length = 0;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -17962,6 +18071,7 @@ tr203:
 		s->buffer_length = 0;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -18060,6 +18170,7 @@ tr213:
 		s->buffer_length = 0;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -18158,6 +18269,7 @@ tr224:
 		s->buffer_length = 0;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -18256,6 +18368,7 @@ tr235:
 		s->buffer_length = 0;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -18354,6 +18467,7 @@ tr249:
 		s->buffer_length = 0;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -18452,6 +18566,7 @@ tr261:
 		s->buffer_length = 0;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -18550,6 +18665,7 @@ tr272:
 		s->buffer_length = 0;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -18648,6 +18764,7 @@ tr280:
 		s->buffer_length = 0;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -18746,6 +18863,7 @@ tr293:
 		s->buffer_length = 0;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -18844,6 +18962,7 @@ tr302:
 		s->buffer_length = 0;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -18942,6 +19061,7 @@ tr315:
 		s->buffer_length = 0;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -19040,6 +19160,7 @@ tr326:
 		s->buffer_length = 0;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -19138,6 +19259,7 @@ tr370:
 		s->buffer_length = 0;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -19236,6 +19358,7 @@ tr381:
 		s->buffer_length = 0;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -19334,6 +19457,7 @@ tr389:
 		s->buffer_length = 0;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -19432,6 +19556,7 @@ tr402:
 		s->buffer_length = 0;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -19530,6 +19655,7 @@ tr411:
 		s->buffer_length = 0;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -19628,6 +19754,7 @@ tr420:
 		s->buffer_length = 0;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -19726,6 +19853,7 @@ tr428:
 		s->buffer_length = 0;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -19824,6 +19952,7 @@ tr441:
 		s->buffer_length = 0;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -19922,6 +20051,7 @@ tr449:
 		s->buffer_length = 0;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -20020,6 +20150,7 @@ tr463:
 		s->buffer_length = 0;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -20118,6 +20249,7 @@ tr472:
 		s->buffer_length = 0;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -20216,6 +20348,7 @@ tr481:
 		s->buffer_length = 0;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -20314,6 +20447,7 @@ tr491:
 		s->buffer_length = 0;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -20412,6 +20546,7 @@ tr500:
 		s->buffer_length = 0;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -20510,6 +20645,7 @@ tr512:
 		s->buffer_length = 0;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -20608,6 +20744,7 @@ tr529:
 		s->buffer_length = 0;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -20706,6 +20843,7 @@ tr539:
 		s->buffer_length = 0;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -20804,6 +20942,7 @@ tr550:
 		s->buffer_length = 0;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -20902,6 +21041,7 @@ tr561:
 		s->buffer_length = 0;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -21000,6 +21140,7 @@ tr569:
 		s->buffer_length = 0;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -21098,6 +21239,7 @@ tr587:
 		s->buffer_length = 0;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -21196,6 +21338,7 @@ tr596:
 		s->buffer_length = 0;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -21294,6 +21437,7 @@ tr605:
 		s->buffer_length = 0;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -21392,6 +21536,7 @@ tr614:
 		s->buffer_length = 0;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -21490,6 +21635,7 @@ tr625:
 		s->buffer_length = 0;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -21588,6 +21734,7 @@ tr635:
 		s->buffer_length = 0;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -21686,6 +21833,7 @@ tr648:
 		s->buffer_length = 0;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -21784,6 +21932,7 @@ tr657:
 		s->buffer_length = 0;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -21889,6 +22038,7 @@ tr671:
 		s->buffer_length = 0;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -21987,6 +22137,7 @@ tr681:
 		s->buffer_length = 0;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -22085,6 +22236,7 @@ tr694:
 		s->buffer_length = 0;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -22183,6 +22335,7 @@ tr707:
 		s->buffer_length = 0;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -22281,6 +22434,7 @@ tr958:
 		s->buffer_length = 0;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -22379,6 +22533,7 @@ tr969:
 		s->buffer_length = 0;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -22477,6 +22632,7 @@ tr978:
 		s->buffer_length = 0;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -28681,6 +28837,7 @@ tr124:
 		s->r_ttl = s->default_ttl;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -28919,6 +29076,7 @@ case 211:
 	goto tr85;
 tr107:
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -29041,6 +29199,7 @@ tr107:
 	goto st1450;
 tr114:
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -29159,6 +29318,7 @@ tr114:
 	goto st1450;
 tr144:
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -29257,6 +29417,7 @@ tr847:
 		rdata_tail = s->r_data;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -29379,6 +29540,7 @@ tr847:
 	goto st1450;
 tr4303:
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -29826,6 +29988,7 @@ case 213:
 	goto tr91;
 tr108:
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -29924,6 +30087,7 @@ tr108:
 	goto st214;
 tr115:
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -30022,6 +30186,7 @@ tr848:
 		rdata_tail = s->r_data;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -30279,6 +30444,7 @@ tr849:
 		s->line_counter++;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -30401,6 +30567,7 @@ tr855:
 		s->line_counter++;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -30769,6 +30936,7 @@ tr125:
 		s->r_ttl = s->default_ttl;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -30903,6 +31071,7 @@ tr126:
 		s->r_ttl = s->default_ttl;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -31033,6 +31202,7 @@ tr127:
 		s->r_ttl = s->default_ttl;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -31159,6 +31329,7 @@ tr128:
 		s->r_ttl = s->default_ttl;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -31287,6 +31458,7 @@ tr129:
 		s->r_ttl = s->default_ttl;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -31415,6 +31587,7 @@ tr130:
 		s->r_ttl = s->default_ttl;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -31543,6 +31716,7 @@ tr131:
 		s->r_ttl = s->default_ttl;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -31673,6 +31847,7 @@ tr132:
 		s->r_ttl = s->default_ttl;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -31801,6 +31976,7 @@ tr133:
 		s->r_ttl = s->default_ttl;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -31931,6 +32107,7 @@ tr134:
 		s->r_ttl = s->default_ttl;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -32057,6 +32234,7 @@ tr135:
 		s->r_ttl = s->default_ttl;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -32183,6 +32361,7 @@ tr136:
 		s->r_ttl = s->default_ttl;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -32313,6 +32492,7 @@ tr137:
 		s->r_ttl = s->default_ttl;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -32449,6 +32629,7 @@ tr138:
 		s->r_ttl = s->default_ttl;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -32579,6 +32760,7 @@ tr139:
 		s->r_ttl = s->default_ttl;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -32705,6 +32887,7 @@ tr140:
 		s->r_ttl = s->default_ttl;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -32831,6 +33014,7 @@ tr141:
 		s->r_ttl = s->default_ttl;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -33310,6 +33494,7 @@ case 1452:
 	goto tr4375;
 tr4296:
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -33535,6 +33720,7 @@ case 244:
 	goto tr773;
 tr4299:
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -33675,6 +33861,7 @@ tr4376:
 		}
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -34028,6 +34215,7 @@ tr4377:
 		s->r_ttl = s->default_ttl;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -34323,6 +34511,7 @@ tr146:
 		s->line_counter++;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -34417,6 +34606,7 @@ tr920:
 		s->line_counter++;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -34542,6 +34732,7 @@ tr914:
 		rdata_tail = s->r_data;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -34664,6 +34855,7 @@ tr4305:
 		s->line_counter++;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -34873,6 +35065,7 @@ tr4378:
 		s->r_ttl = s->default_ttl;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -35012,6 +35205,7 @@ tr4379:
 		s->r_ttl = s->default_ttl;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -35147,6 +35341,7 @@ tr4380:
 		s->r_ttl = s->default_ttl;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -35278,6 +35473,7 @@ tr4381:
 		s->r_ttl = s->default_ttl;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -35411,6 +35607,7 @@ tr4382:
 		s->r_ttl = s->default_ttl;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -35544,6 +35741,7 @@ tr4383:
 		s->r_ttl = s->default_ttl;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -35677,6 +35875,7 @@ tr4384:
 		s->r_ttl = s->default_ttl;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -35812,6 +36011,7 @@ tr4385:
 		s->r_ttl = s->default_ttl;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -35945,6 +36145,7 @@ tr4386:
 		s->r_ttl = s->default_ttl;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -36080,6 +36281,7 @@ tr4387:
 		s->r_ttl = s->default_ttl;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -36211,6 +36413,7 @@ tr4388:
 		s->r_ttl = s->default_ttl;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -36342,6 +36545,7 @@ tr4389:
 		s->r_ttl = s->default_ttl;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -36477,6 +36681,7 @@ tr4390:
 		s->r_ttl = s->default_ttl;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -36618,6 +36823,7 @@ tr4391:
 		s->r_ttl = s->default_ttl;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -36753,6 +36959,7 @@ tr4392:
 		s->r_ttl = s->default_ttl;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -36884,6 +37091,7 @@ tr4393:
 		s->r_ttl = s->default_ttl;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -37015,6 +37223,7 @@ tr4394:
 		s->r_ttl = s->default_ttl;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -37196,6 +37405,7 @@ tr921:
 		}
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -37302,6 +37512,7 @@ tr923:
 		}
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -37408,6 +37619,7 @@ tr924:
 		}
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -37510,6 +37722,7 @@ tr925:
 		}
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -37677,6 +37890,7 @@ tr926:
 		}
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -37955,6 +38169,7 @@ tr876:
 		s->buffer_length = 0;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -38049,6 +38264,7 @@ tr1007:
 		s->buffer_length = 0;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -38154,6 +38370,7 @@ tr915:
 		rdata_tail = s->r_data;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -38252,6 +38469,7 @@ tr4374:
 		s->buffer_length = 0;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -38755,6 +38973,7 @@ case 283:
 	goto tr85;
 tr4304:
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -38853,6 +39072,7 @@ tr4304:
 	goto st284;
 tr145:
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -39102,6 +39322,7 @@ tr147:
 		s->buffer_length = 0;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -39196,6 +39417,7 @@ tr4306:
 		s->buffer_length = 0;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -39490,6 +39712,7 @@ tr116:
 		s->buffer_length = 0;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -39584,6 +39807,7 @@ tr109:
 		s->buffer_length = 0;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -39686,6 +39910,7 @@ tr850:
 		s->buffer_length = 0;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -40025,6 +40250,7 @@ tr839:
 		s->line_counter++;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -40126,6 +40352,7 @@ tr832:
 		rdata_tail = s->r_data;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -40304,6 +40531,7 @@ tr840:
 		s->buffer_length = 0;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -40405,6 +40633,7 @@ tr833:
 		rdata_tail = s->r_data;
 	}
 	{
+		s->r_data_generic = false;
 		p--;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -65469,6 +65698,11 @@ case 889:
 	goto tr77;
 tr2378:
 	{
+		if (s->to_lower) {
+			dname_to_lower(s->dname);
+		}
+	}
+	{
 		rdata_tail += s->dname_tmp_length;
 	}
 	{
@@ -65572,10 +65806,20 @@ tr2533:
 	goto st892;
 tr2380:
 	{
+		if (s->to_lower) {
+			dname_to_lower(s->dname);
+		}
+	}
+	{
 		rdata_tail += s->dname_tmp_length;
 	}
 	goto st892;
 tr2381:
+	{
+		if (s->to_lower) {
+			dname_to_lower(s->dname);
+		}
+	}
 	{
 		rdata_tail += s->dname_tmp_length;
 	}
@@ -65589,6 +65833,11 @@ tr2381:
 	goto st892;
 tr2382:
 	{
+		if (s->to_lower) {
+			dname_to_lower(s->dname);
+		}
+	}
+	{
 		rdata_tail += s->dname_tmp_length;
 	}
 	{
@@ -65600,6 +65849,11 @@ tr2382:
 	}
 	goto st892;
 tr2383:
+	{
+		if (s->to_lower) {
+			dname_to_lower(s->dname);
+		}
+	}
 	{
 		rdata_tail += s->dname_tmp_length;
 	}
@@ -65717,10 +65971,20 @@ tr2531:
 	goto st894;
 tr2391:
 	{
+		if (s->to_lower) {
+			dname_to_lower(s->dname);
+		}
+	}
+	{
 		rdata_tail += s->dname_tmp_length;
 	}
 	goto st894;
 tr2392:
+	{
+		if (s->to_lower) {
+			dname_to_lower(s->dname);
+		}
+	}
 	{
 		rdata_tail += s->dname_tmp_length;
 	}
@@ -65734,6 +65998,11 @@ tr2392:
 	goto st894;
 tr2393:
 	{
+		if (s->to_lower) {
+			dname_to_lower(s->dname);
+		}
+	}
+	{
 		rdata_tail += s->dname_tmp_length;
 	}
 	{
@@ -65745,6 +66014,11 @@ tr2393:
 	}
 	goto st894;
 tr2394:
+	{
+		if (s->to_lower) {
+			dname_to_lower(s->dname);
+		}
+	}
 	{
 		rdata_tail += s->dname_tmp_length;
 	}
@@ -68116,6 +68390,11 @@ tr2530:
 	goto st920;
 tr2395:
 	{
+		if (s->to_lower) {
+			dname_to_lower(s->dname);
+		}
+	}
+	{
 		rdata_tail += s->dname_tmp_length;
 	}
 	{
@@ -68162,6 +68441,11 @@ tr2532:
 	}
 	goto st921;
 tr2384:
+	{
+		if (s->to_lower) {
+			dname_to_lower(s->dname);
+		}
+	}
 	{
 		rdata_tail += s->dname_tmp_length;
 	}
@@ -68594,10 +68878,20 @@ tr2563:
 	goto st929;
 tr2550:
 	{
+		if (s->to_lower) {
+			dname_to_lower(s->dname);
+		}
+	}
+	{
 		rdata_tail += s->dname_tmp_length;
 	}
 	goto st929;
 tr2551:
+	{
+		if (s->to_lower) {
+			dname_to_lower(s->dname);
+		}
+	}
 	{
 		rdata_tail += s->dname_tmp_length;
 	}
@@ -68611,6 +68905,11 @@ tr2551:
 	goto st929;
 tr2552:
 	{
+		if (s->to_lower) {
+			dname_to_lower(s->dname);
+		}
+	}
+	{
 		rdata_tail += s->dname_tmp_length;
 	}
 	{
@@ -68622,6 +68921,11 @@ tr2552:
 	}
 	goto st929;
 tr2553:
+	{
+		if (s->to_lower) {
+			dname_to_lower(s->dname);
+		}
+	}
 	{
 		rdata_tail += s->dname_tmp_length;
 	}
@@ -68687,6 +68991,11 @@ case 930:
 	goto tr77;
 tr2561:
 	{
+		if (s->to_lower) {
+			dname_to_lower(s->dname);
+		}
+	}
+	{
 		rdata_tail += s->dname_tmp_length;
 	}
 	{
@@ -68711,6 +69020,11 @@ tr2562:
 	}
 	goto st931;
 tr2554:
+	{
+		if (s->to_lower) {
+			dname_to_lower(s->dname);
+		}
+	}
 	{
 		rdata_tail += s->dname_tmp_length;
 	}
@@ -68977,6 +69291,11 @@ case 935:
 		goto tr2577;
 	goto tr77;
 tr2577:
+	{
+		if (s->to_lower) {
+			dname_to_lower(s->dname);
+		}
+	}
 	{
 		rdata_tail += s->dname_tmp_length;
 	}
@@ -77205,6 +77524,11 @@ case 1005:
 	goto tr77;
 tr2899:
 	{
+		if (s->to_lower) {
+			dname_to_lower(s->dname);
+		}
+	}
+	{
 		rdata_tail += s->dname_tmp_length;
 	}
 	{
@@ -78366,6 +78690,11 @@ case 1020:
 		goto tr2964;
 	goto tr77;
 tr2964:
+	{
+		if (s->to_lower) {
+			dname_to_lower(s->dname);
+		}
+	}
 	{
 		rdata_tail += s->dname_tmp_length;
 	}
@@ -82446,43 +82775,6 @@ tr3268:
 		rdata_tail += ZS_INET6_ADDR_LENGTH;
 	}
 	goto st1079;
-tr3312:
-	{
-		rdata_tail += s->dname_tmp_length;
-	}
-	goto st1079;
-tr3313:
-	{
-		rdata_tail += s->dname_tmp_length;
-	}
-	{
-		if (s->multiline == true) {
-			ERR(ZS_LEFT_PARENTHESIS);
-			p--; {goto st316;}
-		}
-		s->multiline = true;
-	}
-	goto st1079;
-tr3314:
-	{
-		rdata_tail += s->dname_tmp_length;
-	}
-	{
-		if (s->multiline == false) {
-			ERR(ZS_RIGHT_PARENTHESIS);
-			p--; {goto st316;}
-		}
-		s->multiline = false;
-	}
-	goto st1079;
-tr3322:
-	{
-		rdata_tail += s->dname_tmp_length;
-	}
-	{
-		s->line_counter++;
-	}
-	goto st1079;
 tr3224:
 	{
 		s->buffer[s->buffer_length] = 0;
@@ -82620,6 +82912,43 @@ tr3278:
 		}
 		memcpy(rdata_tail, s->addr, ZS_INET6_ADDR_LENGTH);
 		rdata_tail += ZS_INET6_ADDR_LENGTH;
+	}
+	{
+		s->line_counter++;
+	}
+	goto st1079;
+tr3312:
+	{
+		rdata_tail += s->dname_tmp_length;
+	}
+	goto st1079;
+tr3313:
+	{
+		rdata_tail += s->dname_tmp_length;
+	}
+	{
+		if (s->multiline == true) {
+			ERR(ZS_LEFT_PARENTHESIS);
+			p--; {goto st316;}
+		}
+		s->multiline = true;
+	}
+	goto st1079;
+tr3314:
+	{
+		rdata_tail += s->dname_tmp_length;
+	}
+	{
+		if (s->multiline == false) {
+			ERR(ZS_RIGHT_PARENTHESIS);
+			p--; {goto st316;}
+		}
+		s->multiline = false;
+	}
+	goto st1079;
+tr3322:
+	{
+		rdata_tail += s->dname_tmp_length;
 	}
 	{
 		s->line_counter++;
@@ -82767,14 +83096,6 @@ tr3232:
 		p--; {cs = stack[--top];goto _again;}
 	}
 	goto st1514;
-tr3321:
-	{
-		rdata_tail += s->dname_tmp_length;
-	}
-	{
-		p--; {cs = stack[--top];goto _again;}
-	}
-	goto st1514;
 tr3277:
 	{
 		s->buffer[s->buffer_length] = 0;
@@ -82796,6 +83117,14 @@ tr3277:
 		p--; {cs = stack[--top];goto _again;}
 	}
 	goto st1514;
+tr3321:
+	{
+		rdata_tail += s->dname_tmp_length;
+	}
+	{
+		p--; {cs = stack[--top];goto _again;}
+	}
+	goto st1514;
 st1514:
 	if ( ++p == pe )
 		goto _test_eof1514;
@@ -82811,14 +83140,6 @@ tr3192:
 		if (s->buffer_length < sizeof(s->buffer) - 1) {
 			s->buffer[s->buffer_length++] = (*p);
 		}
-	}
-	goto st1081;
-tr3323:
-	{
-		rdata_tail += s->dname_tmp_length;
-	}
-	{
-		s->buffer_length = 0;
 	}
 	goto st1081;
 tr3234:
@@ -82858,6 +83179,14 @@ tr3279:
 		}
 		memcpy(rdata_tail, s->addr, ZS_INET6_ADDR_LENGTH);
 		rdata_tail += ZS_INET6_ADDR_LENGTH;
+	}
+	{
+		s->buffer_length = 0;
+	}
+	goto st1081;
+tr3323:
+	{
+		rdata_tail += s->dname_tmp_length;
 	}
 	{
 		s->buffer_length = 0;
@@ -82971,43 +83300,6 @@ tr3271:
 		}
 		memcpy(rdata_tail, s->addr, ZS_INET6_ADDR_LENGTH);
 		rdata_tail += ZS_INET6_ADDR_LENGTH;
-	}
-	goto st1082;
-tr3315:
-	{
-		rdata_tail += s->dname_tmp_length;
-	}
-	goto st1082;
-tr3316:
-	{
-		rdata_tail += s->dname_tmp_length;
-	}
-	{
-		if (s->multiline == true) {
-			ERR(ZS_LEFT_PARENTHESIS);
-			p--; {goto st316;}
-		}
-		s->multiline = true;
-	}
-	goto st1082;
-tr3317:
-	{
-		rdata_tail += s->dname_tmp_length;
-	}
-	{
-		if (s->multiline == false) {
-			ERR(ZS_RIGHT_PARENTHESIS);
-			p--; {goto st316;}
-		}
-		s->multiline = false;
-	}
-	goto st1082;
-tr3326:
-	{
-		rdata_tail += s->dname_tmp_length;
-	}
-	{
-		s->line_counter++;
 	}
 	goto st1082;
 tr3227:
@@ -83152,6 +83444,43 @@ tr3282:
 		s->line_counter++;
 	}
 	goto st1082;
+tr3315:
+	{
+		rdata_tail += s->dname_tmp_length;
+	}
+	goto st1082;
+tr3316:
+	{
+		rdata_tail += s->dname_tmp_length;
+	}
+	{
+		if (s->multiline == true) {
+			ERR(ZS_LEFT_PARENTHESIS);
+			p--; {goto st316;}
+		}
+		s->multiline = true;
+	}
+	goto st1082;
+tr3317:
+	{
+		rdata_tail += s->dname_tmp_length;
+	}
+	{
+		if (s->multiline == false) {
+			ERR(ZS_RIGHT_PARENTHESIS);
+			p--; {goto st316;}
+		}
+		s->multiline = false;
+	}
+	goto st1082;
+tr3326:
+	{
+		rdata_tail += s->dname_tmp_length;
+	}
+	{
+		s->line_counter++;
+	}
+	goto st1082;
 st1082:
 	if ( ++p == pe )
 		goto _test_eof1082;
@@ -83229,14 +83558,6 @@ tr3194:
 		}
 	}
 	goto st1083;
-tr3327:
-	{
-		rdata_tail += s->dname_tmp_length;
-	}
-	{
-		s->buffer_length = 0;
-	}
-	goto st1083;
 tr3238:
 	{
 		s->buffer[s->buffer_length] = 0;
@@ -83274,6 +83595,14 @@ tr3283:
 		}
 		memcpy(rdata_tail, s->addr, ZS_INET6_ADDR_LENGTH);
 		rdata_tail += ZS_INET6_ADDR_LENGTH;
+	}
+	{
+		s->buffer_length = 0;
+	}
+	goto st1083;
+tr3327:
+	{
+		rdata_tail += s->dname_tmp_length;
 	}
 	{
 		s->buffer_length = 0;
@@ -83621,43 +83950,6 @@ tr3274:
 		rdata_tail += ZS_INET6_ADDR_LENGTH;
 	}
 	goto st1084;
-tr3318:
-	{
-		rdata_tail += s->dname_tmp_length;
-	}
-	goto st1084;
-tr3319:
-	{
-		rdata_tail += s->dname_tmp_length;
-	}
-	{
-		if (s->multiline == true) {
-			ERR(ZS_LEFT_PARENTHESIS);
-			p--; {goto st316;}
-		}
-		s->multiline = true;
-	}
-	goto st1084;
-tr3320:
-	{
-		rdata_tail += s->dname_tmp_length;
-	}
-	{
-		if (s->multiline == false) {
-			ERR(ZS_RIGHT_PARENTHESIS);
-			p--; {goto st316;}
-		}
-		s->multiline = false;
-	}
-	goto st1084;
-tr3330:
-	{
-		rdata_tail += s->dname_tmp_length;
-	}
-	{
-		s->line_counter++;
-	}
-	goto st1084;
 tr3230:
 	{
 		s->buffer[s->buffer_length] = 0;
@@ -83795,6 +84087,43 @@ tr3286:
 		}
 		memcpy(rdata_tail, s->addr, ZS_INET6_ADDR_LENGTH);
 		rdata_tail += ZS_INET6_ADDR_LENGTH;
+	}
+	{
+		s->line_counter++;
+	}
+	goto st1084;
+tr3318:
+	{
+		rdata_tail += s->dname_tmp_length;
+	}
+	goto st1084;
+tr3319:
+	{
+		rdata_tail += s->dname_tmp_length;
+	}
+	{
+		if (s->multiline == true) {
+			ERR(ZS_LEFT_PARENTHESIS);
+			p--; {goto st316;}
+		}
+		s->multiline = true;
+	}
+	goto st1084;
+tr3320:
+	{
+		rdata_tail += s->dname_tmp_length;
+	}
+	{
+		if (s->multiline == false) {
+			ERR(ZS_RIGHT_PARENTHESIS);
+			p--; {goto st316;}
+		}
+		s->multiline = false;
+	}
+	goto st1084;
+tr3330:
+	{
+		rdata_tail += s->dname_tmp_length;
 	}
 	{
 		s->line_counter++;
@@ -84207,14 +84536,6 @@ tr3196:
 		}
 	}
 	goto st1085;
-tr3331:
-	{
-		rdata_tail += s->dname_tmp_length;
-	}
-	{
-		s->buffer_length = 0;
-	}
-	goto st1085;
 tr3242:
 	{
 		s->buffer[s->buffer_length] = 0;
@@ -84252,6 +84573,14 @@ tr3287:
 		}
 		memcpy(rdata_tail, s->addr, ZS_INET6_ADDR_LENGTH);
 		rdata_tail += ZS_INET6_ADDR_LENGTH;
+	}
+	{
+		s->buffer_length = 0;
+	}
+	goto st1085;
+tr3331:
+	{
+		rdata_tail += s->dname_tmp_length;
 	}
 	{
 		s->buffer_length = 0;
@@ -89251,10 +89580,20 @@ tr3453:
 	goto st1126;
 tr3440:
 	{
+		if (s->to_lower) {
+			dname_to_lower(s->dname);
+		}
+	}
+	{
 		rdata_tail += s->dname_tmp_length;
 	}
 	goto st1126;
 tr3441:
+	{
+		if (s->to_lower) {
+			dname_to_lower(s->dname);
+		}
+	}
 	{
 		rdata_tail += s->dname_tmp_length;
 	}
@@ -89268,6 +89607,11 @@ tr3441:
 	goto st1126;
 tr3442:
 	{
+		if (s->to_lower) {
+			dname_to_lower(s->dname);
+		}
+	}
+	{
 		rdata_tail += s->dname_tmp_length;
 	}
 	{
@@ -89279,6 +89623,11 @@ tr3442:
 	}
 	goto st1126;
 tr3443:
+	{
+		if (s->to_lower) {
+			dname_to_lower(s->dname);
+		}
+	}
 	{
 		rdata_tail += s->dname_tmp_length;
 	}
@@ -89367,6 +89716,11 @@ tr3452:
 	}
 	goto st1128;
 tr3444:
+	{
+		if (s->to_lower) {
+			dname_to_lower(s->dname);
+		}
+	}
 	{
 		rdata_tail += s->dname_tmp_length;
 	}

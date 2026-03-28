@@ -334,11 +334,17 @@
 	action _r_dname_init {
 		s->dname = rdata_tail;
 	}
+	action _r_dname_tolower {
+		if (s->to_lower) {
+			dname_to_lower(s->dname);
+		}
+	}
 	action _r_dname_exit {
 		rdata_tail += s->dname_tmp_length;
 	}
 
 	r_dname = dname >_r_dname_init %_r_dname_exit;
+	r_dname_lower = dname >_r_dname_init %_r_dname_tolower %_r_dname_exit;
 	# END
 
 	# BEGIN - Number processing
@@ -1948,11 +1954,11 @@
 		$!_r_data_error %_ret . all_wchar;
 
 	r_data_ns :=
-		(r_dname)
+		(r_dname_lower)
 		$!_r_data_error %_ret . all_wchar;
 
 	r_data_soa :=
-		(r_dname . sep . r_dname . sep . num32 . sep . time32 .
+		(r_dname_lower . sep . r_dname_lower . sep . num32 . sep . time32 .
 		 sep . time32 . sep . time32 . sep . time32)
 		$!_r_data_error %_ret . all_wchar;
 
@@ -1961,11 +1967,11 @@
 		$!_r_data_error %_ret . all_wchar;
 
 	r_data_minfo :=
-		(r_dname . sep . r_dname)
+		(r_dname_lower . sep . r_dname_lower)
 		$!_r_data_error %_ret . all_wchar;
 
 	r_data_mx :=
-		(num16 . sep . r_dname)
+		(num16 . sep . r_dname_lower)
 		$!_r_data_error %_ret . all_wchar;
 
 	r_data_txt :=
@@ -1981,12 +1987,12 @@
 		$!_r_data_error %_ret . end_wchar;
 
 	r_data_srv :=
-		(num16 . sep . num16 . sep . num16 . sep . r_dname)
+		(num16 . sep . num16 . sep . num16 . sep . r_dname_lower)
 		$!_r_data_error %_ret . all_wchar;
 
 	r_data_naptr :=
 		(num16 . sep . num16 . sep . text_string . sep . text_string .
-		 sep . text_string . sep . r_dname)
+		 sep . text_string . sep . r_dname_lower)
 		$!_r_data_error %_ret . all_wchar;
 
 	r_data_cert :=
@@ -2011,7 +2017,7 @@
 
 	r_data_rrsig :=
 		(type_num . sep . dns_alg . sep . num8 . sep . num32 . sep .
-		 timestamp . sep . timestamp . sep . num16 . sep . r_dname .
+		 timestamp . sep . timestamp . sep . num16 . sep . r_dname_lower .
 		 sep . base64)
 		$!_r_data_error %_ret . end_wchar;
 
@@ -2077,6 +2083,7 @@
 		$!_r_data_error %_ret . all_wchar;
 
 	action _text_r_data {
+		s->r_data_generic = false;
 		fhold;
 		switch (s->r_type) {
 		case KNOT_RRTYPE_A:
@@ -2166,6 +2173,7 @@
 		}
 	}
 	action _hex_r_data {
+		s->r_data_generic = true;
 		switch (s->r_type) {
 		// Next types must not have empty rdata.
 		case KNOT_RRTYPE_A:
