@@ -439,7 +439,7 @@ load_end:
 
 	// If the change is only automatically incremented SOA serial, make it no change.
 	if (zf_from == ZONEFILE_LOAD_DIFSE && (up.flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) &&
-	    serial_next(zone->zonefile.serial, conf, zone->name, SERIAL_POLICY_AUTO, 0) != zone_contents_serial(up.new_cont) &&
+	    serial_next(zone_update_from_serial(&up), conf, zone->name, SERIAL_POLICY_AUTO, 0) != zone_contents_serial(up.new_cont) &&
 	    (ret = zone_update_differs_just_serial(&up, update_zonemd)) == KNOT_EOK) {
 		changeset_t *cpy;
 		ret = zone_update_to_changeset(&up, &cpy);
