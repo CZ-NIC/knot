@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "contrib/tolower.h"
 #include "libzscanner/error.h"
 #include "libzscanner/functions.h"
 #include "libknot/endian.h"
@@ -845,6 +846,17 @@ void dname_to_str(const uint8_t  *data,
 
 	// Ending text string.
 	text[text_len] = 0;
+}
+
+void dname_to_lower(uint8_t *name)
+{
+	while (*name != '\0') {
+		uint8_t len = *name;
+		for (uint8_t i = 1; i <= len; ++i) {
+			name[i] = knot_tolower(name[i]);
+		}
+		name += 1 + len;
+	}
 }
 
 uint8_t loc64to8(uint64_t number)
