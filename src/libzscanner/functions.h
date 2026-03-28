@@ -87,6 +87,13 @@ void dname_to_str(const uint8_t  *data,
                   char *text);
 
 /*!
+ * \brief Applies lower casing on dname.
+ *
+ * \param name		Buffer containing wire-format dname.
+ */
+void dname_to_lower(uint8_t *name);
+
+/*!
  * \brief Converts unsigned integer to mantissa*10^(exponent).
  *
  * Given number is encoded as two 4-bit numbers. First part is mantissa [0-9],
