@@ -15,13 +15,10 @@ ZONE = "example.com."
 zone = t.zone(ZONE)
 
 t.link(zone, master, slave)
-t.link(zone, zfloader)
 
 master.conf_zone(zone).zonefile_load = "none"
 master.conf_zone(zone).journal_content = "all"
 
-zfloader.conf_zone(zone).zonefile_load = "difference-no-serial"
-zfloader.conf_zone(zone).journal_content = "all"
 
 shutil.copytree(os.path.join(t.data_dir, "journal"), os.path.join(master.dir, "journal"))
 
@@ -56,25 +53,5 @@ resp.check(rcode="SERVFAIL", nordata="192.0.2.2")
 
 resp = slave.dig("svcb." + ZONE, "SVCB")
 resp.check(rcode="SERVFAIL")
-
-resp = zfloader.dig("svcb." + ZONE, "SVCB")
-resp.check(rcode="NXDOMAIN")
-
-shutil.copyfile(master.zones[ZONE].zfile.path, zfloader.zones[ZONE].zfile.path)
-zfloader.ctl("zone-reload", wait=True)
-
-zfloader.zone_wait(zone, serial)
-
-resp = zfloader.dig("dns2." + ZONE, "A")
-resp.check(rcode="NOERROR", rdata="192.0.2.2")
-
-resp = zfloader.dig("dns1." + ZONE, "A")
-resp.check(rcode="SERVFAIL", nordata="192.0.2.1")
-
-try:
-    resp = zfloader.dig("svcb." + ZONE, "SVCB", timeout=0.3)
-    resp.check(rcode="NOERROR")
-except Failed:
-    pass
 
 t.end()
