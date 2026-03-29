@@ -631,8 +631,7 @@ static int rdata_traverse_parse(const uint8_t **src, size_t *src_avail,
 
 static bool allow_zero_rdata(const knot_rrset_t *rr)
 {
-	return rr->rclass == KNOT_CLASS_NONE || rr->rclass == KNOT_CLASS_ANY ||  // for DDNS
-	       knot_rrtype_allows_empty(rr->type);
+	return rr->rclass != KNOT_CLASS_IN /* DDNS */ || knot_rrtype_allows_empty(rr->type);
 }
 
 static int parse_rdata(const uint8_t *pkt_wire, size_t *pos, size_t pkt_size,

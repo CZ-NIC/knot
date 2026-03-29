@@ -132,37 +132,37 @@ int knot_rdata_to_canonical(knot_rdata_t *rdata, uint16_t type)
 		return KNOT_EINVAL;
 	}
 
-	const knot_rdata_descriptor_t *desc = knot_get_rdata_descriptor(type);
-	if (desc->type_name == NULL) {
-		desc = knot_get_obsolete_rdata_descriptor(type);
-	}
-
-	uint16_t rdlen = rdata->len;
-	uint8_t *pos = rdata->data;
-	uint8_t *endpos = pos + rdlen;
-
 	/*
 	 * NOTE - the non/zero rdata length MUST be guarded elsewhere.
 	 * In case of incoming pkt this is rrset-wire.c:allow_zero_rdata()
 	 *   (including the exceptions for DDNS)
 	 * in case of zonefile, ctl or Redis it is scanner-body.rl:_hex_r_data
 	 */
+	const uint16_t rdlen = rdata->len;
 	if (rdlen == 0) {
 		return KNOT_EOK;
 	}
 
-	/* Whole and not malformed RDATA are expected. */
+	const knot_rdata_descriptor_t *desc = knot_get_rdata_descriptor(type);
+	if (desc->type_name == NULL) {
+		desc = knot_get_obsolete_rdata_descriptor(type);
+	}
+
+	uint8_t *pos = rdata->data;
+	uint8_t *endpos = pos + rdlen;
+
+	/* Check the RDATA items against the corresponding descriptor, lower case if needed. */
 	for (int i = 0; desc->block_types[i] != KNOT_RDATA_WF_END; ++i) {
 		int ret, block_type = desc->block_types[i];
 		switch (block_type) {
 		case KNOT_RDATA_WF_COMPRESSIBLE_DNAME:
 		case KNOT_RDATA_WF_DECOMPRESSIBLE_DNAME:
 		case KNOT_RDATA_WF_FIXED_DNAME:
-		        ret = knot_dname_wire_check(pos, endpos, NULL);
-			if (ret < 0) {
-				return ret;
+			ret = knot_dname_wire_check(pos, endpos, NULL);
+			if (ret <= 0) {
+				return KNOT_EMALF;
 			}
-			/* Convert DNAMEs in RDATA only for RFC4034 types. */
+			/* Convert DNAME in RDATA if needed. */
 			if (knot_rrtype_should_be_lowercased(type)) {
 				knot_dname_to_lower(pos);
 			}
@@ -173,7 +173,6 @@ int knot_rdata_to_canonical(knot_rdata_t *rdata, uint16_t type)
 			if (ret < 0) {
 				return ret;
 			}
-
 			pos += ret;
 			break;
 		case KNOT_RDATA_WF_REMAINDER:

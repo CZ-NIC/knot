@@ -963,7 +963,7 @@ static void scanner_data(zs_scanner_t *s)
 	uint8_t buf[knot_rdata_size(s->r_data_length)];
 	knot_rdata_t *rdata = (knot_rdata_t *)buf;
 	knot_rdata_init(rdata, s->r_data_length, s->r_data);
-	if (knot_rdata_to_canonical(rdata, s->r_type) != KNOT_EOK) {
+	if (s->r_data_generic && knot_rdata_to_canonical(rdata, s->r_type) != KNOT_EOK) {
 		RedisModule_ReplyWithError(s_ctx->ctx, RDB_EMALF);
 		s_ctx->replied = true;
 		s->error.fatal = true;
@@ -1093,7 +1093,7 @@ static void run_scanner(scanner_ctx_t *s_ctx, const arg_dname_t *origin,
 	if (zs_init(&s, origin->txt, KNOT_CLASS_IN, s_ctx->dflt_ttl) != 0 ||
 	    zs_set_input_string(&s, data, data_len) != 0 ||
 	    zs_set_processing(&s, scanner_data, scanner_error, s_ctx) != 0 ||
-	    zs_parse_all(&s) != 0 || s.error.fatal) {
+	    (s.to_lower = true, zs_parse_all(&s) != 0) || s.error.fatal) {
 		if (!s_ctx->replied) {
 			RedisModule_ReplyWithError(s_ctx->ctx, RDB_EPARSE);
 		}

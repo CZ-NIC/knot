@@ -109,11 +109,15 @@ static void process_data(zs_scanner_t *scanner)
 		return;
 	}
 
-	ret = knot_rrset_rr_to_canonical(&rr);
-	if (ret != KNOT_EOK) {
-		knot_rrset_clear(&rr, NULL);
-		zl->ret = ret;
-		return;
+	if (scanner->r_data_generic) {
+		ret = knot_rrset_rr_to_canonical(&rr);
+		if (ret != KNOT_EOK) {
+			knot_rrset_clear(&rr, NULL);
+			zl->ret = ret;
+			return;
+		}
+	} else {
+		knot_dname_to_lower(rr.owner);
 	}
 
 	zl->ret = zcreator_step(zl->contents, &rr, zl->skip);
@@ -194,6 +198,7 @@ int zonefile_open(zloader_t *loader, const char *source, const knot_dname_t *ori
 		zs_deinit(&loader->scanner);
 		return KNOT_EFILE;
 	}
+	loader->scanner.to_lower = true;
 
 	loader->contents = zone_contents_new(origin, true);
 	if (loader->contents == NULL) {
