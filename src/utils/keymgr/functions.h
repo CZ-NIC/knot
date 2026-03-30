@@ -28,6 +28,8 @@ int keymgr_import_pem(kdnssec_ctx_t *ctx, const char *import_file, int argc, cha
 
 int keymgr_import_pkcs11(kdnssec_ctx_t *ctx, char *key_id, int argc, char *argv[]);
 
+int keymgr_import_trash(kdnssec_ctx_t *ctx, char *key_id, int argc, char *argv[]);
+
 int keymgr_nsec3_salt_print(kdnssec_ctx_t *ctx);
 
 int keymgr_nsec3_salt_set(kdnssec_ctx_t *ctx, const char *new_salt);

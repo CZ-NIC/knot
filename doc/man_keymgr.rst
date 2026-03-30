@@ -154,6 +154,12 @@ Commands
   set it to +60 days from the current clock time. Specified *zone_name* is unimportant here, it may also
   be **--** or **-**.
 
+**import-trash** *key_ID* [*arguments*...]
+  Re-import (recover) deleted DNSSEC key from the "trash bin". Some of the original key's parameters
+  (algorithm, size, and zsk, ksk, for-later flags) are re-used and can be overridden, the rest must be
+  set manually anew in the same way as in the generate command. Deleted key may be re-imported to a
+  different zone than what was the original zone. Original keystore and new keystore must match.
+
 Keystore commands
 .................
 

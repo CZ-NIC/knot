@@ -538,6 +538,18 @@ knot_kasp_keystore_t *knot_store_for_key(knot_kasp_keystore_t *keystores, bool k
 	return NULL;
 }
 
+bool knot_store_ok_for_key(knot_kasp_keystore_t *keystores, const char *kst_name, bool ksk)
+{
+	size_t len = strlen(kst_name);
+	for (size_t i = 0; i < keystores[0].count; i++) {
+		if ((ksk || !keystores[i].ksk_only) &&
+		     strncmp(keystores[i].name, kst_name, len) == 0) {
+			return true;
+		}
+	}
+	return false;
+}
+
 /*!
  * \brief Load private keys for active keys.
  */
