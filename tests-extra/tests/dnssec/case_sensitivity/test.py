@@ -30,7 +30,7 @@ serial = server.zone_wait(zone)
 scripts = [
     ("insensitive RRs", "modify-insensitive.awk", False),
     ("NSEC RR", "modify-nsec.awk", True),
-    ("LP RR", "modify-lp.awk", True),
+    ("DSYNC RR", "modify-dsync.awk", True),
 ]
 
 for name, script, resign in scripts:
