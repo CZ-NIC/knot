@@ -41,6 +41,9 @@ expect_error()
 	if [ $errors != $errors_exp ]; then
 		diag "expected errors $errors_exp but found $errors"
 	fi
+
+	asan=$(grep -c AddressSanitizer $LOG)
+	ok "$zonefile - check AddressSanitizer" test $asan -eq 0
 }
 
 #param zonefile [AUTO]
@@ -159,6 +162,9 @@ expect_error "cdnskey.delete.invalid.cds" 0 1 "$CDNSKEY_DELETE"
 expect_error "cdnskey.delete.invalid.cdnskey" 0 1 "$CDNSKEY_DELETE"
 expect_error "delegation.signed" 0 1 "$NSEC_RDATA_BITMAP"
 expect_error "nsec_nonauth.invalid" 0 1 "$NSEC_EXTRA"
+expect_error "cds.empty.zone" 0 0
+expect_error "cds.short.zone" 0 0
+expect_error "nsec3.short.zone" 0 0
 
 test_correct "soa.duplicate"
 test_correct "rrsig_ttl.signed"
