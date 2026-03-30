@@ -86,6 +86,8 @@ static void print_help(void)
 	       "                 (syntax: trash-discard <key_id>)\n"
 	       "  trash-touch   Replan automatic discard of the deleted key from the \"trash bin\". Default is +60 days from now.\n"
 	       "                 (syntax: trash-touch <key_id> [[discard=]<new_time>])\n"
+	       "  import-trash  Re-import (salvage) deleted key from the \"trash bin\". Override key's original parameters manually.\n"
+	       "                 (syntax: import-trash <key_id> <attribute_name>=<value>...)\n"
 	       "\n"
 	       "Keystore commands:\n"
 	       "  keystore-test   Conduct some tests on the specified keystore.\n"
@@ -301,6 +303,9 @@ static int key_command(int argc, char *argv[], int opt_ind, knot_lmdb_db_t *kasp
 	} else if (same_command(argv[1], "trash-touch", false)) {
 		CHECK_MISSING_ARG("Key ID to replan not specified");
 		ret = keymgr_trash_touch(&kctx, argv[2], argc > 3 ? argv[3] : "+60d");
+	} else if (same_command(argv[1], "import-trash", false)) {
+		CHECK_MISSING_ARG("Key ID to re-import not specified");
+		ret = keymgr_import_trash(&kctx, argv[2], argc - 3, argv + 3);
 	} else if (same_command(argv[1], "pregenerate", false)) {
 		CHECK_MISSING_ARG("Timestamp to not specified");
 		ret = keymgr_pregenerate_zsks(&kctx, argc > 3 ? argv[2] : NULL,

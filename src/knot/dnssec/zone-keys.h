@@ -156,6 +156,18 @@ int kdnssec_load_private(knot_kasp_keystore_t *keystores, const char *id,
 knot_kasp_keystore_t *knot_store_for_key(knot_kasp_keystore_t *keystores, bool ksk);
 
 /*!
+ * \brief Find out if there is a keystore of the same name suitable for the key.
+ *
+ * \param keystores    Array of keystores.
+ * \param kst_name     Required name of the keystore.
+ * \param ksk          If the generated key is a KSK or CSK.
+ *
+ * \return true if there is a suitable keystore of the given name, false otherwise
+ */
+bool knot_store_ok_for_key(knot_kasp_keystore_t *keystores, const char *kst_name,
+                           bool ksk);
+
+/*!
  * \brief Load zone keys and init cryptographic context.
  *
  * \param ctx            Zone signing context.
