@@ -11,6 +11,8 @@ knot = t.server("knot")
 zone = t.zone("duplicates.", storage=".")
 t.link(zone, knot)
 
+knot.conf_zone(zone).journal_content = "all"
+
 t.start()
 
 knot.zones_wait(zone)
@@ -23,6 +25,6 @@ count = 0
 for msg in resp.resp:
 	count += len(msg.answer)
 
-compare(count, 6, "AXFR record count")
+compare(count, 10, "AXFR record count")
 
 t.end()
