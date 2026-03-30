@@ -1431,6 +1431,8 @@ static int create_rrset(knot_rrset_t **rrset, zone_t *zone, ctl_args_t *args,
 	const char *data  = args->data[KNOT_CTL_IDX_DATA];
 	const char *ttl   = need_ttl ? args->data[KNOT_CTL_IDX_TTL] : NULL;
 
+	bool force = ctl_has_flag(args->data[KNOT_CTL_IDX_FLAGS], CTL_FLAG_FORCE);
+
 	// Prepare a buffer for a reconstructed record.
 	const size_t buff_len = sizeof(ctl_globals[args->thread_idx].txt_rr);
 	char *buff = ctl_globals[args->thread_idx].txt_rr;
@@ -1487,7 +1489,7 @@ static int create_rrset(knot_rrset_t **rrset, zone_t *zone, ctl_args_t *args,
 		goto parser_failed;
 	}
 
-	if (scanner->r_data_generic) {
+	if (scanner->r_data_generic && !force) {
 		ret = knot_rrset_rr_to_canonical(*rrset);
 	} else {
 		knot_dname_to_lower((*rrset)->owner);
