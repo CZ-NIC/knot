@@ -149,6 +149,12 @@ Commands
   on *zone_name*. If **--** or **-** is specified as *key_ID*, remove all trash keys belonging to
   *zone_name*. If **--** or **-** is specified both as *zone_name* and *key_ID*, empty the entire "trash bin".
 
+**import-trash** *key_ID* [*arguments*...]
+  Re-import (recover) deleted DNSSEC key from the "trash bin". Some of the original key's parameters
+  (algorithm, size, and zsk, ksk, for-later flags) are re-used and can be overridden, the rest must be
+  set manually anew in the same way as in the generate command. Deleted key may be re-imported to a
+  different zone than what was the original zone. Original keystore and new keystore must match.
+
 Keystore commands
 .................
 

@@ -84,6 +84,8 @@ static void print_help(void)
 	       "                 For all deleted keys belonging to a zone, use '--' as <key_id>.\n"
 	       "                 For all deleted keys of all zones, use '--' as <zone_name> and as <key_id>.\n"
 	       "                 (syntax: trash-discard <key_id>)\n"
+	       "  import-trash  Re-import (recover) deleted key from the \"trash bin\". Override key's original parameters manually.\n"
+	       "                 (syntax: import-trash <key_id> <attribute_name>=<value>...)\n"
 	       "\n"
 	       "Keystore commands:\n"
 	       "  keystore-test   Conduct some tests on the specified keystore.\n"
@@ -297,6 +299,9 @@ static int key_command(int argc, char *argv[], int opt_ind, knot_lmdb_db_t *kasp
 		bool all = !strncmp(argv[2], "-", 2) || !strncmp(argv[2], "--", 3);
 		ret = kasp_db_delete_trash(kaspdb, zone_name, all ? NULL : argv[2],
 		                           NULL, NULL);
+	} else if (same_command(argv[1], "import-trash", false)) {
+		CHECK_MISSING_ARG("Key ID to re-import not specified");
+		ret = keymgr_import_trash(&kctx, argv[2], argc - 3, argv + 3);
 	} else if (same_command(argv[1], "pregenerate", false)) {
 		CHECK_MISSING_ARG("Timestamp to not specified");
 		ret = keymgr_pregenerate_zsks(&kctx, argc > 3 ? argv[2] : NULL,
