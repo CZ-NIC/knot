@@ -84,6 +84,8 @@ static void print_help(void)
 	       "                 For all deleted keys belonging to a zone, use '--' as <key_id>.\n"
 	       "                 For all deleted keys of all zones, use '--' as <zone_name> and as <key_id>.\n"
 	       "                 (syntax: trash-discard <key_id>)\n"
+	       "  trash-touch   Replan automatic discard of the deleted key from the \"trash bin\". Default is +60 days from now.\n"
+	       "                 (syntax: trash-touch <key_id> [discard=<new_time>])\n"
 	       "\n"
 	       "Keystore commands:\n"
 	       "  keystore-test   Conduct some tests on the specified keystore.\n"
@@ -148,7 +150,8 @@ static int key_command(int argc, char *argv[], int opt_ind, knot_lmdb_db_t *kasp
 	int ret;
 
 	if (same_command(argv[1], "trash-list", false) ||
-	    same_command(argv[1], "trash-discard", false)) {
+	    same_command(argv[1], "trash-discard", false) ||
+	    same_command(argv[1], "trash-touch", false)) {
 		// We can't init full kctx.
 		kctx.kasp_db = kaspdb;
 		ret = knot_lmdb_open(kaspdb);
@@ -294,6 +297,9 @@ static int key_command(int argc, char *argv[], int opt_ind, knot_lmdb_db_t *kasp
 		CHECK_MISSING_ARG("Key ID not specified");
 		bool all = !strncmp(argv[2], "-", 2) || !strncmp(argv[2], "--", 3);
 		ret = kasp_db_delete_trash(kaspdb, zone_name, all ? NULL : argv[2]);
+	} else if (same_command(argv[1], "trash-touch", false)) {
+		CHECK_MISSING_ARG("Key ID to replan not specified");
+		ret = keymgr_trash_touch(&kctx, argv[2], argc > 3 ? argv[3] : "discard=+60d");
 	} else if (same_command(argv[1], "pregenerate", false)) {
 		CHECK_MISSING_ARG("Timestamp to not specified");
 		ret = keymgr_pregenerate_zsks(&kctx, argc > 3 ? argv[2] : NULL,

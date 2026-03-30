@@ -104,6 +104,17 @@ int kasp_db_delete_all(knot_lmdb_db_t *db, const knot_dname_t *zone_name);
 int kasp_db_delete_trash(knot_lmdb_db_t *db, const knot_dname_t *zone_name, char *key_id);
 
 /*!
+ * \brief Set the discard timer of a trash key record to a new value.
+ *
+ * \param db            KASP database.
+ * \param key_id        ID of the trash key to operate on.
+ * \param time          new discard timestamp to be set.
+ *
+ * \return KNOT_E*
+ */
+int kasp_db_trash_touch(knot_lmdb_db_t *db, char *key_id, knot_time_t time);
+
+/*!
  * \brief Selectively delete zones from the database.
  *
  * \param db         KASP database.

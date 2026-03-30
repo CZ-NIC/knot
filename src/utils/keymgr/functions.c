@@ -105,6 +105,18 @@ static bool init_timestamps(char *arg, knot_kasp_key_timing_t *timing)
 	return true;
 }
 
+static int get_timestamp(char *arg, const char *keyword, knot_time_t *time)
+{
+	int ret;
+	if (same_command(arg, keyword, true)) {
+		ret = parse_timestamp(strchr(arg, '=') + 1, time);
+	} else {
+		ret = KNOT_EINVAL;
+	}
+
+	return ret;
+}
+
 static bool str2bool(const char *s)
 {
 	switch (knot_tolower(s[0])) {
@@ -1406,4 +1418,19 @@ int keymgr_list_zones(knot_lmdb_db_t *kaspdb, bool json)
 
 	ptrlist_deep_free(&zones, NULL);
 	return KNOT_EOK;
+}
+
+int keymgr_trash_touch(kdnssec_ctx_t *ctx, char *key_id, char *arg)
+{
+	if (!dnssec_keyid_is_valid(key_id)) {
+		return KNOT_INVALID_KEY_ID;
+	}
+
+	knot_time_t time;
+	int ret = get_timestamp(arg, "discard=", &time);
+	if (ret == KNOT_EOK) {
+		ret = kasp_db_trash_touch(ctx->kasp_db, key_id, time);
+	}
+
+	return ret;
 }

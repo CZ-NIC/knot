@@ -612,6 +612,41 @@ int kasp_db_delete_trash(knot_lmdb_db_t *db, const knot_dname_t *zone_name, char
 	return (ret == KNOT_EOK) ? txn.ret : ret;
 }
 
+int kasp_db_trash_touch(knot_lmdb_db_t *db, char *key_id, knot_time_t time)
+{
+	assert(db);
+	assert(key_id);
+
+	knot_lmdb_txn_t txn = { 0 };
+	knot_lmdb_begin(db, &txn, true);
+	MDB_val prefix = make_key_str(KASPDBKEY_TRASH, NULL, key_id);
+
+	if (!knot_lmdb_find_prefix(&txn, &prefix)) {
+		knot_lmdb_abort(&txn);
+		free(prefix.mv_data);
+		return KNOT_ENOENT;
+	}
+
+	int ret = KNOT_EOK;
+	key_params_t params;
+	if (trash_deserialize(&txn.cur_val, &params)) {
+		MDB_val key = txn.cur_key;
+		MDB_val nval = trash_serialize(&params, time);
+
+		// Only the current record is expected, but be proactive.
+		knot_lmdb_del_prefix(&txn, &prefix);
+		knot_lmdb_insert(&txn, &key, &nval);
+		knot_lmdb_commit(&txn);
+		free(nval.mv_data);
+	} else {
+		knot_lmdb_abort(&txn);
+		ret = KNOT_EMALF;
+	}
+
+	free(prefix.mv_data);
+	return (ret == KNOT_EOK) ? txn.ret : ret;
+}
+
 int kasp_db_sweep(knot_lmdb_db_t *db, sweep_cb keep_zone, void *cb_data)
 {
 	if (knot_lmdb_exists(db) == KNOT_ENODB) {

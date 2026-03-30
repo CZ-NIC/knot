@@ -53,3 +53,5 @@ int keymgr_generate_ds(const knot_dname_t *dname, const knot_kasp_key_t *key);
 int keymgr_generate_dnskey(const knot_dname_t *dname, const knot_kasp_key_t *key);
 
 int keymgr_list_zones(knot_lmdb_db_t *kaspdb, bool json);
+
+int keymgr_trash_touch(kdnssec_ctx_t *ctx, char *key_id, char *arg);
