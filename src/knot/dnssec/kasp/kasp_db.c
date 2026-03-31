@@ -253,14 +253,16 @@ static bool trash_deserialize(const MDB_val *val, key_params_t *params)
 	return false;
 }
 
-// For future use.
-_unused_ static bool trash_expired(const MDB_val *val, knot_time_t now)
+static bool trash_expired(const MDB_val *val, void *data)
 {
+	knot_time_t now = *(knot_time_t *)data;
+
 	if (val->mv_size < sizeof(knot_time_t)) {
 		return false;
 	}
 
-	return ((knot_time_t)knot_wire_read_u64(val->mv_data) < now);
+	knot_time_t timestamp = (knot_time_t)knot_wire_read_u64(val->mv_data);
+	return (timestamp != 0 && timestamp < now);
 }
 
 static key_params_t *txn2params(knot_lmdb_txn_t *txn)
@@ -548,7 +550,8 @@ int kasp_db_delete_all(knot_lmdb_db_t *db, const knot_dname_t *zone)
 	return txn.ret;
 }
 
-int kasp_db_delete_trash(knot_lmdb_db_t *db, const knot_dname_t *zone_name, char *key_id)
+int kasp_db_delete_trash(knot_lmdb_db_t *db, const knot_dname_t *zone_name, char *key_id,
+                         bool (for_delete)(const MDB_val *, void *), void *cb_data)
 {
 	assert(db);
 
@@ -575,6 +578,11 @@ int kasp_db_delete_trash(knot_lmdb_db_t *db, const knot_dname_t *zone_name, char
 		bool failed = false;
 		MDB_val prefix = make_key_str(KASPDBKEY_TRASH, NULL, NULL);
 		knot_lmdb_foreach(&txn, &prefix) {
+			// For background garbage collector.
+			if (for_delete != NULL && !for_delete(&txn.cur_val, cb_data)) {
+				continue;
+			}
+
 			uint8_t kclass;
 			char *id;
 			knot_dname_t *dname;
@@ -592,6 +600,7 @@ int kasp_db_delete_trash(knot_lmdb_db_t *db, const knot_dname_t *zone_name, char
 				if (ret != KNOT_EOK) {
 					// Note: it isn't sure that there still is a key to delete.
 					failed = true;
+					ret = KNOT_EOK;
 					continue;
 				}
 			} else {
@@ -610,6 +619,14 @@ int kasp_db_delete_trash(knot_lmdb_db_t *db, const knot_dname_t *zone_name, char
 	knot_lmdb_commit(&txn);
 	deinit_all_keystores(&keystores);
 	return (ret == KNOT_EOK) ? txn.ret : ret;
+}
+
+int kasp_db_trash_gc(knot_lmdb_db_t *db)
+{
+	assert(db);
+
+	knot_time_t now = knot_time();
+	return kasp_db_delete_trash(db, NULL, NULL, trash_expired, &now);
 }
 
 int kasp_db_trash_touch(knot_lmdb_db_t *db, char *key_id, knot_time_t time)
