@@ -158,6 +158,8 @@ enum knot_rdata_wireformat {
 	KNOT_RDATA_WF_NAPTR_HEADER,
 	/*!< Final part of a record. */
 	KNOT_RDATA_WF_REMAINDER,
+	/*!< Final part that is allowed to be empty. */
+	KNOT_RDATA_WF_REMAINDER_MAYEMPTY,
 	/*!< The last descriptor in array. */
 	KNOT_RDATA_WF_END                  =   0
 };
@@ -287,6 +289,11 @@ int knot_rrtype_additional_needed(const uint16_t type);
  * \retval false Otherwise.
  */
 bool knot_rrtype_should_be_lowercased(const uint16_t type);
+
+/*!
+ * \brief Tells whether rdata on given RR type may be legally empty.
+ */
+bool knot_rrtype_allows_empty(const uint16_t type);
 
 /*!
  * \brief Translates option code to string.

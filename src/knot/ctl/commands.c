@@ -1431,6 +1431,8 @@ static int create_rrset(knot_rrset_t **rrset, zone_t *zone, ctl_args_t *args,
 	const char *data  = args->data[KNOT_CTL_IDX_DATA];
 	const char *ttl   = need_ttl ? args->data[KNOT_CTL_IDX_TTL] : NULL;
 
+	bool force = ctl_has_flag(args->data[KNOT_CTL_IDX_FLAGS], CTL_FLAG_FORCE);
+
 	// Prepare a buffer for a reconstructed record.
 	const size_t buff_len = sizeof(ctl_globals[args->thread_idx].txt_rr);
 	char *buff = ctl_globals[args->thread_idx].txt_rr;
@@ -1459,7 +1461,7 @@ static int create_rrset(knot_rrset_t **rrset, zone_t *zone, ctl_args_t *args,
 	zs_scanner_t *scanner = &ctl_globals[args->thread_idx].scanner;
 	if (zs_init(scanner, origin, KNOT_CLASS_IN, default_ttl) != 0 ||
 	    zs_set_input_string(scanner, buff, rdata_len) != 0 ||
-	    zs_parse_record(scanner) != 0 ||
+	    (scanner->to_lower = true, zs_parse_record(scanner) != 0) ||
 	    scanner->state != ZS_STATE_DATA) {
 		args->data[KNOT_CTL_IDX_ZONE] = origin; // Needed if called for all zones.
 		if (scanner->error.code == ZS_OK) { // If not ZS_STATE_DATA.
@@ -1487,9 +1489,17 @@ static int create_rrset(knot_rrset_t **rrset, zone_t *zone, ctl_args_t *args,
 		goto parser_failed;
 	}
 
-	ret = knot_rrset_rr_to_canonical(*rrset);
+	if (scanner->r_data_generic && !force) {
+		ret = knot_rrset_rr_to_canonical(*rrset);
+	} else {
+		knot_dname_to_lower((*rrset)->owner);
+	}
 parser_failed:
 	zs_deinit(scanner);
+
+	if (ret != KNOT_EOK) {
+		knot_rrset_free(*rrset, NULL);
+	}
 
 	return ret;
 }
@@ -1506,7 +1516,7 @@ static int zone_txn_set_l(zone_t *zone, ctl_args_t *args)
 		return KNOT_EINVAL;
 	}
 
-	knot_rrset_t *rrset;
+	knot_rrset_t *rrset = NULL;
 	int ret = create_rrset(&rrset, zone, args, true);
 	if (ret != KNOT_EOK) {
 		return ret;
@@ -1543,7 +1553,7 @@ static int zone_txn_unset_l(zone_t *zone, ctl_args_t *args)
 			return KNOT_EINVAL;
 		}
 
-		knot_rrset_t *rrset;
+		knot_rrset_t *rrset = NULL;
 		int ret = create_rrset(&rrset, zone, args, false);
 		if (ret != KNOT_EOK) {
 			return ret;
