@@ -292,9 +292,11 @@ int apply_replace_soa(apply_ctx_t *ctx, const knot_rrset_t *rr)
 
 	knot_rrset_t old_soa = node_rrset(contents->apex, KNOT_RRTYPE_SOA);
 
-	int ret = apply_remove_rr(ctx, &old_soa);
-	if (ret != KNOT_EOK) {
-		return ret;
+	if (!knot_rrset_empty(&old_soa)) {
+                int ret = apply_remove_rr(ctx, &old_soa);
+                if (ret != KNOT_EOK) {
+                        return ret;
+		}
 	}
 
 	// Check for SOA with proper serial but different rdata.
@@ -312,7 +314,7 @@ void apply_cleanup(apply_ctx_t *ctx)
 	}
 
 	if (ctx->flags & APPLY_UNIFY_FULL) {
-		zone_trees_unify_binodes(ctx->contents->nodes, ctx->contents->nsec3_nodes, true);
+		zone_trees_unify_binodes(ctx->contents->nodes, ctx->contents->nsec3_nodes, false);
 	} else {
 		zone_trees_unify_binodes(ctx->adjust_ptrs, NULL, false); // beware there might be duplicities in ctx->adjust_ptrs and ctx->node_ptrs, so we don't free here
 		zone_trees_unify_binodes(ctx->node_ptrs, ctx->nsec3_ptrs, true);

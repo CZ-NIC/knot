@@ -437,6 +437,10 @@ load_end:
 		}
 	}
 
+	zone_tree_t fake_tree = { .trie = up.new_cont->nodes->trie, .cow = NULL, .flags = up.new_cont->nodes->flags ^ ZONE_TREE_BINO_SECOND };
+	zone_contents_t fake_conts = { .nodes = &fake_tree, .apex = binode_counterpart(up.new_cont->apex) };
+	printf("zf_from %d difse %d up.flags %d incremental %d hybrid %d djs %d apex rrs %hu:%hu, soa %d:%d, serial %u:%u\n", zf_from, ZONEFILE_LOAD_DIFSE, up.flags, UPDATE_INCREMENTAL, UPDATE_HYBRID, zone_update_differs_just_serial(&up, update_zonemd), up.new_cont->apex->rrset_count, binode_counterpart(up.new_cont->apex)->rrset_count, node_rrtype_exists(up.new_cont->apex, KNOT_RRTYPE_SOA), node_rrtype_exists(binode_counterpart(up.new_cont->apex), KNOT_RRTYPE_SOA), zone_contents_serial(up.new_cont), zone_contents_serial(&fake_conts));
+
 	// If the change is only automatically incremented SOA serial, make it no change.
 	if (zf_from == ZONEFILE_LOAD_DIFSE && (up.flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) &&
 	    serial_next(zone_update_from_serial(&up), conf, zone->name, SERIAL_POLICY_AUTO, 0) != zone_contents_serial(up.new_cont) &&
@@ -462,10 +466,10 @@ load_end:
 			changeset_free(cpy);
 			// Revert automatic zone serial increment.
 			zone->zonefile.serial = zone_contents_serial(up.new_cont);
-			/* Reset possibly set the resigned flag. Note that dnssec
-			 * reschedule isn't reverted, but shouldn't be a problem
-			 * for non-empty zones as SOA, ZONEMD, and their RRSIGs
-			 * are always updated with other changes in the zone. */
+			// Reset possibly set the resigned flag. Note that dnssec
+                        // reschedule isn't reverted, but shouldn't be a problem
+                        // for non-empty zones as SOA, ZONEMD, and their RRSIGs
+                        // are always updated with other changes in the zone.
 			zone->zonefile.resigned = false;
 		}
 	}

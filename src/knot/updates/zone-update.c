@@ -37,14 +37,10 @@ static int init_incremental(zone_update_t *update, zone_t *zone, zone_contents_t
 		return ret;
 	}
 
-	if (update->flags & UPDATE_HYBRID) {
-		update->new_cont = old_contents;
-	} else {
-		ret = zone_contents_cow(old_contents, &update->new_cont);
-		if (ret != KNOT_EOK) {
-			changeset_clear(&update->change);
-			return ret;
-		}
+	ret = zone_contents_cow(old_contents, &update->new_cont);
+	if (ret != KNOT_EOK) {
+		changeset_clear(&update->change);
+		return ret;
 	}
 
 	uint32_t apply_flags = (update->flags & UPDATE_STRICT) ? APPLY_STRICT : 0;
@@ -217,7 +213,14 @@ int zone_update_from_contents(zone_update_t *update, zone_t *zone_without_conten
 	memset(update, 0, sizeof(*update));
 	update->zone = zone_without_contents;
 	update->flags = flags;
-	update->new_cont = new_cont;
+	if (flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) {
+		int ret = zone_contents_cow(new_cont, &update->new_cont);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+	} else {
+                update->new_cont = new_cont;
+	}
 
 	update->a_ctx = calloc(1, sizeof(*update->a_ctx));
 	if (update->a_ctx == NULL) {
@@ -341,12 +344,13 @@ const knot_rdataset_t *zone_update_from(zone_update_t *update)
 		return NULL;
 	}
 
-	if (update->flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) {
+	if (update->zone->contents != NULL) {
 		const zone_node_t *apex = update->zone->contents->apex;
 		return node_rdataset(apex, KNOT_RRTYPE_SOA);
+	} else {
+                const zone_node_t *apex_counter = binode_counterpart(update->new_cont->apex);
+                return node_rdataset(apex_counter, KNOT_RRTYPE_SOA); // may be NULL
 	}
-
-	return NULL;
 }
 
 uint32_t zone_update_from_serial(const zone_update_t *update)
@@ -480,7 +484,7 @@ int zone_update_add(zone_update_t *update, const knot_rrset_t *rrset)
 
 	int ret = KNOT_EOK;
 
-	if (update->flags & UPDATE_INCREMENTAL) {
+	if (update->flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) {
 		if (rrset->type == KNOT_RRTYPE_SOA) {
 			// replace previous SOA
 			ret = apply_replace_soa(update->a_ctx, rrset);
@@ -490,7 +494,7 @@ int zone_update_add(zone_update_t *update, const knot_rrset_t *rrset)
 				update_affected_rrtype(update, rrset->type);
 			}
 		}
-	} else if (update->flags & (UPDATE_FULL | UPDATE_HYBRID)) {
+	} else if (update->flags & UPDATE_FULL) {
 		if (rrset->type == KNOT_RRTYPE_SOA) {
 			/* replace previous SOA */
 			ret = replace_soa(update->new_cont, rrset);
@@ -549,7 +553,7 @@ int zone_update_remove(zone_update_t *update, const knot_rrset_t *rrset)
 
 	int ret = KNOT_EOK;
 
-	if (update->flags & UPDATE_INCREMENTAL) {
+	if (update->flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) {
 		if (rrset->type == KNOT_RRTYPE_SOA) {
 			/* SOA is replaced with addition */
 		} else {
@@ -558,7 +562,7 @@ int zone_update_remove(zone_update_t *update, const knot_rrset_t *rrset)
 				update_affected_rrtype(update, rrset->type);
 			}
 		}
-	} else if (update->flags & (UPDATE_FULL | UPDATE_HYBRID)) {
+	} else if (update->flags & UPDATE_FULL) {
 		zone_node_t *n = NULL;
 		ret = zone_contents_remove_rr(update->new_cont, rrset, &n);
 	} else {
