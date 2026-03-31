@@ -296,7 +296,8 @@ static int key_command(int argc, char *argv[], int opt_ind, knot_lmdb_db_t *kasp
 	} else if (same_command(argv[1], "trash-discard", false)) {
 		CHECK_MISSING_ARG("Key ID not specified");
 		bool all = !strncmp(argv[2], "-", 2) || !strncmp(argv[2], "--", 3);
-		ret = kasp_db_delete_trash(kaspdb, zone_name, all ? NULL : argv[2]);
+		ret = kasp_db_delete_trash(kaspdb, zone_name, all ? NULL : argv[2],
+		                           NULL, NULL);
 	} else if (same_command(argv[1], "trash-touch", false)) {
 		CHECK_MISSING_ARG("Key ID to replan not specified");
 		ret = keymgr_trash_touch(&kctx, argv[2], argc > 3 ? argv[3] : "+60d");
