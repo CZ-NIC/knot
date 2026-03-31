@@ -260,6 +260,18 @@ static bool trash_deserialize(const MDB_val *val, key_params_t *params)
 	return false;
 }
 
+static bool trash_expired(const MDB_val *val, void *data)
+{
+	knot_time_t now = *(knot_time_t *)data;
+
+	if (val->mv_size < sizeof(knot_time_t)) {
+		return false;
+	}
+
+	knot_time_t timestamp = (knot_time_t)knot_wire_read_u64(val->mv_data);
+	return (timestamp < now && timestamp != 0);
+}
+
 static key_params_t *txn2params(knot_lmdb_txn_t *txn)
 {
 	key_params_t *p = calloc(1, sizeof(*p));
@@ -546,7 +558,8 @@ int kasp_db_delete_all(knot_lmdb_db_t *db, const knot_dname_t *zone)
 	return txn.ret;
 }
 
-int kasp_db_delete_trash(knot_lmdb_db_t *db, const knot_dname_t *zone_name, char *key_id)
+int kasp_db_delete_trash(knot_lmdb_db_t *db, const knot_dname_t *zone_name, char *key_id,
+                         bool (for_delete)(const MDB_val *, void *), void *cb_data)
 {
 	assert(db);
 
@@ -575,8 +588,14 @@ int kasp_db_delete_trash(knot_lmdb_db_t *db, const knot_dname_t *zone_name, char
 	} else {
 		// Remove all trash keys belonging to the zone, or all trash keys.
 		bool failed = false;
+		bool fatal = false;
 		MDB_val prefix = make_key_str(KASPDBKEY_TRASH, NULL, NULL);
 		knot_lmdb_foreach(&txn, &prefix) {
+			// For background garbage collector.
+			if (for_delete != NULL && !for_delete(&txn.cur_val, cb_data)) {
+				continue;
+			}
+
 			uint8_t kclass;
 			char *id;
 			knot_dname_t *dname;
@@ -589,30 +608,41 @@ int kasp_db_delete_trash(knot_lmdb_db_t *db, const knot_dname_t *zone_name, char
 					continue;
 				}
 
+				// For background garbage collection, log errors as debug.
 				ret = kdnssec_delete_from_keystores(keystores, id, dname, true,
-				                                    false);
+				                                    for_delete != NULL ? true : false);
 				ret = (ret == KNOT_ENOENT) ? KNOT_EOK : ret;
 				if (ret != KNOT_EOK) {
 					// Note: it isn't sure that there still is a key to delete.
 					failed = true;
+					ret = KNOT_EOK;
 					continue;
 				}
 			} else {
 				// Corrupted or incompatible KASP DB? Stop all other deletes, but
 				// commit deletes of KASP records related to already removed keys.
 				ret = KNOT_EMALF;
+				fatal = true;
 				break;
 			}
 
 			knot_lmdb_del_cur(&txn);
 		}
 		free(prefix.mv_data);
-		ret = (failed) ? KNOT_ERROR : ret;
+		// For background garbage collection, suppress trivial 'failed' errors.
+		ret = (for_delete != NULL) ? ret : ((failed && !fatal) ? KNOT_ERROR : ret);
 	}
 
 	knot_lmdb_commit(&txn);
 	deinit_all_keystores(&keystores);
 	return (ret == KNOT_EOK) ? txn.ret : ret;
+}
+
+int kasp_db_trash_gc(knot_lmdb_db_t *db)
+{
+	assert(db);
+	knot_time_t now = knot_time();
+	return kasp_db_delete_trash(db, NULL, NULL, trash_expired, &now);
 }
 
 int kasp_db_sweep(knot_lmdb_db_t *db, sweep_cb keep_zone, void *cb_data)
