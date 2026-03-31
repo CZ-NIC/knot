@@ -98,10 +98,22 @@ int kasp_db_delete_all(knot_lmdb_db_t *db, const knot_dname_t *zone_name);
  * \param db            KASP db
  * \param zone_name     zone to remove from
  * \param key_id        ID of the key to be removed
+ * \param for_delete    optional filtering callback, or NULL
+ * \param cb_data       data passed to callback function, or NULL
  *
  * \return KNOT_E*
  */
-int kasp_db_delete_trash(knot_lmdb_db_t *db, const knot_dname_t *zone_name, char *key_id);
+int kasp_db_delete_trash(knot_lmdb_db_t *db, const knot_dname_t *zone_name, char *key_id,
+                         bool (for_delete)(const MDB_val *, void *), void *cb_data);
+
+/*!
+ * \brief Remove all expired trash keys from KASP DB (trash/garbage collector).
+ *
+ * \param db            KASP database.
+ *
+ * \return KNOT_E*
+ */
+int kasp_db_trash_gc(knot_lmdb_db_t *db);
 
 /*!
  * \brief Set the discard timer of a trash key record to a new value.
