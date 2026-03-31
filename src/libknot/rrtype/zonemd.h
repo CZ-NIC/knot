@@ -43,11 +43,12 @@ uint8_t knot_zonemd_algorithm(const knot_rdata_t *rdata)
 static inline
 size_t knot_zonemd_digest_size(const knot_rdata_t *rdata)
 {
+	size_t val = 0;
 	switch (knot_zonemd_algorithm(rdata)) {
-	case KNOT_ZONEMD_ALGORITHM_SHA384: return 48;
-	case KNOT_ZONEMD_ALGORITHM_SHA512: return 64;
-	default: return 0;
+	case KNOT_ZONEMD_ALGORITHM_SHA384: val = 48; break;
+	case KNOT_ZONEMD_ALGORITHM_SHA512: val = 64; break;
 	}
+	return val + 6 <= rdata->len ? val : 0;
 }
 
 static inline
