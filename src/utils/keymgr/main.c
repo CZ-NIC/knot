@@ -85,7 +85,7 @@ static void print_help(void)
 	       "                 For all deleted keys of all zones, use '--' as <zone_name> and as <key_id>.\n"
 	       "                 (syntax: trash-discard <key_id>)\n"
 	       "  trash-touch   Replan automatic discard of the deleted key from the \"trash bin\". Default is +60 days from now.\n"
-	       "                 (syntax: trash-touch <key_id> [discard=<new_time>])\n"
+	       "                 (syntax: trash-touch <key_id> [<new_time>])\n"
 	       "\n"
 	       "Keystore commands:\n"
 	       "  keystore-test   Conduct some tests on the specified keystore.\n"
@@ -299,7 +299,7 @@ static int key_command(int argc, char *argv[], int opt_ind, knot_lmdb_db_t *kasp
 		ret = kasp_db_delete_trash(kaspdb, zone_name, all ? NULL : argv[2]);
 	} else if (same_command(argv[1], "trash-touch", false)) {
 		CHECK_MISSING_ARG("Key ID to replan not specified");
-		ret = keymgr_trash_touch(&kctx, argv[2], argc > 3 ? argv[3] : "discard=+60d");
+		ret = keymgr_trash_touch(&kctx, argv[2], argc > 3 ? argv[3] : "+60d");
 	} else if (same_command(argv[1], "pregenerate", false)) {
 		CHECK_MISSING_ARG("Timestamp to not specified");
 		ret = keymgr_pregenerate_zsks(&kctx, argc > 3 ? argv[2] : NULL,

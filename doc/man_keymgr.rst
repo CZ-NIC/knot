@@ -149,7 +149,7 @@ Commands
   on *zone_name*. If **--** or **-** is specified as *key_ID*, remove all trash keys belonging to
   *zone_name*. If **--** or **-** is specified both as *zone_name* and *key_ID*, empty all "trash bin".
 
-**trash-touch** *key_ID* [**discard=** *new_time*]
+**trash-touch** *key_ID* [*new_time*]
   Replan automatic discard of the deleted key from the "trash bin" to *new_time*. If no time is specified,
   set it to +60 days from the current clock time. Specified *zone_name* is unimportant here, it may also
   be **--** or **-**.
