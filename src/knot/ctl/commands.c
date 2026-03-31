@@ -1497,6 +1497,10 @@ static int create_rrset(knot_rrset_t **rrset, zone_t *zone, ctl_args_t *args,
 parser_failed:
 	zs_deinit(scanner);
 
+	if (ret != KNOT_EOK) {
+		knot_rrset_free(*rrset, NULL);
+	}
+
 	return ret;
 }
 
@@ -1512,7 +1516,7 @@ static int zone_txn_set_l(zone_t *zone, ctl_args_t *args)
 		return KNOT_EINVAL;
 	}
 
-	knot_rrset_t *rrset;
+	knot_rrset_t *rrset = NULL;
 	int ret = create_rrset(&rrset, zone, args, true);
 	if (ret != KNOT_EOK) {
 		return ret;
@@ -1549,7 +1553,7 @@ static int zone_txn_unset_l(zone_t *zone, ctl_args_t *args)
 			return KNOT_EINVAL;
 		}
 
-		knot_rrset_t *rrset;
+		knot_rrset_t *rrset = NULL;
 		int ret = create_rrset(&rrset, zone, args, false);
 		if (ret != KNOT_EOK) {
 			return ret;
