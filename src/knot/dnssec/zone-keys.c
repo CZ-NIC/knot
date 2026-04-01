@@ -237,8 +237,21 @@ int kdnssec_share_key(kdnssec_ctx_t *ctx, const knot_dname_t *from_zone, const c
 	return ret;
 }
 
+void static delete_from_ksts_error_log(const knot_dname_t *zone, const char *kst_name,
+                                       char *key_id, int err, bool no_log)
+{
+	int level = no_log ? LOG_DEBUG : LOG_WARNING;
+	const char *msg = "keystore %s, attempt to remove key %s failed (%s)";
+	const char *errstr = knot_strerror(err);
+	if (zone == NULL) {
+		log_fmt(level, LOG_SOURCE_SERVER, msg, kst_name, key_id, errstr);
+	} else {
+		log_fmt_zone(level, LOG_SOURCE_ZONE, zone, NULL, msg, kst_name, key_id, errstr);
+	}
+}
+
 int kdnssec_delete_from_keystores(knot_kasp_keystore_t *keystores, char *key_id,
-                                  const knot_dname_t *dname, bool thorough)
+                                  const knot_dname_t *dname, bool thorough, bool no_log)
 {
 	int ret = KNOT_ENOENT;
 	bool found = false;
@@ -249,14 +262,7 @@ int kdnssec_delete_from_keystores(knot_kasp_keystore_t *keystores, char *key_id,
 		if (ret == KNOT_EOK) {
 			found = true;
 		} else if (ret != KNOT_ENOENT) {
-			const char *msg = "keystore %s, attempt to remove key %s failed (%s)";
-			const char *err = knot_strerror(ret);
-			if (dname == NULL) {
-				log_warning(msg, keystores[i].name, key_id, err);
-			} else {
-				log_zone_warning(dname, msg, keystores[i].name, key_id, err);
-			}
-
+			delete_from_ksts_error_log(dname, keystores[i].name, key_id, ret, no_log);
 			return ret;
 		}
 	}
@@ -288,7 +294,7 @@ int kdnssec_delete_key(kdnssec_ctx_t *ctx, knot_kasp_key_t *key_ptr, bool trash)
 
 	if (!key_still_used_in_keystore && !key_ptr->is_pub_only) {
 		ret = kdnssec_delete_from_keystores(ctx->keystores, key_ptr->id, ctx->zone->dname,
-		                                    false);
+		                                    false, false);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
