@@ -511,8 +511,9 @@ load_end:
 		catalog_update_clear(zone->cat_members);
 	}
 
-	// Schedule dependent events.
+	// Do initial maintenance and schedule dependent events.
 	if (dnssec_enable) {
+		key_trash_gc(zone->server);
 		event_dnssec_reschedule(conf, zone, &dnssec_refresh, false); // false since we handle NOTIFY below
 	}
 

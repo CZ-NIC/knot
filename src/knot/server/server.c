@@ -1060,6 +1060,8 @@ int server_init(server_t *server, int bg_workers)
 
 	zone_backups_init(&server->backup_ctxs);
 
+	knot_spin_init(&server->trash_gc.lock);
+
 	char *catalog_dir = conf_db(conf(), C_CATALOG_DB);
 	conf_val_t catalog_size = conf_db_param(conf(), C_CATALOG_DB_MAX_SIZE);
 	catalog_init(&server->catalog, catalog_dir, conf_int(&catalog_size));
@@ -1127,6 +1129,7 @@ void server_deinit(server_t *server)
 	evsched_deinit(&server->sched);
 
 	/* Deinit locks. */
+	knot_spin_destroy(&server->trash_gc.lock);
 	pthread_rwlock_destroy(&server->ctl_lock);
 
 	/* Free catalog zone context. */
