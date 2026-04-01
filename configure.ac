@@ -451,6 +451,15 @@ AC_ARG_WITH([memory-allocator],
   [], [with_memory_allocator=auto]
 )
 
+# DNSSEC key trash bin garbage collector
+trash_gc_interval=3600
+AC_ARG_WITH([gc_interval],
+  AS_HELP_STRING([--with-gc-interval=NUM],
+                 [Interval between two background trash garbage collector runs in seconds [default=3600]]),
+  [trash_gc_interval=$withval]
+)
+AC_DEFINE_UNQUOTED([TRASH_GC_INTERVAL], [$trash_gc_interval], [Key trash bin cleaning interval.])
+
 AS_IF([test "$enable_daemon" = "yes"], [
 
 # Systemd integration (2/2)
