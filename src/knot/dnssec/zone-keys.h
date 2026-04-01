@@ -109,11 +109,12 @@ int kdnssec_share_key(kdnssec_ctx_t *ctx, const knot_dname_t *from_zone, const c
  * \param key_id        ID of the key to be removed
  * \param dname         zone name for error logging or NULL
  * \param thorough      if true, try to remove all occurences of the key in all listed keystores
+ * \param no_log        if true, log_errors as debug rather than error or warning
  *
  * \return KNOT_E*
  */
 int kdnssec_delete_from_keystores(knot_kasp_keystore_t *keystores, char *key_id,
-                                  const knot_dname_t *dname, bool thorough);
+                                  const knot_dname_t *dname, bool thorough, bool no_log);
 
 /*!
  * \brief Remove key from zone.
