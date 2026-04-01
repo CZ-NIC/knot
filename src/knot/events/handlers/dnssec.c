@@ -103,6 +103,9 @@ int event_dnssec(conf_t *conf, zone_t *zone)
 	}
 
 done:
+	// Run key trash garbage collector if needed.
+	key_trash_gc(zone->server);
+
 	// Schedule dependent events
 	event_dnssec_reschedule(conf, zone, &resch, zone_changed);
 

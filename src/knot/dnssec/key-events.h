@@ -7,6 +7,7 @@
 
 #include "knot/dnssec/context.h"
 #include "knot/dnssec/zone-events.h"
+#include "knot/server/server.h"
 
 /*!
  * \brief Perform correct ZSK and KSK rollover action and plan next one.
@@ -69,3 +70,10 @@ bool zone_has_key_sbm(const kdnssec_ctx_t *ctx);
  * \return Jitter value.
  */
 unsigned dnskey_sync_jitter(conf_t *conf, zone_t *zone);
+
+/*!
+ * \brief Run key trash garbage collector if it's needed.
+ *
+ * \param server  Server structure.
+ */
+void key_trash_gc(server_t *server);

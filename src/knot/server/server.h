@@ -6,6 +6,7 @@
 #pragma once
 
 #include "contrib/atomic.h"
+#include "contrib/spinlock.h"
 #include "knot/catalog/catalog_update.h"
 #include "knot/common/evsched.h"
 #include "knot/common/fdset.h"
@@ -79,6 +80,23 @@ enum {
 };
 
 /*!
+ * \brief Key trash garbage collector states.
+ */
+typedef enum {
+	TRASH_GC_IDLE = 0,
+	TRASH_GC_RUNNING,
+} trash_gc_state_t;
+
+/*!
+ * \brief Key trash garbage collector control.
+ */
+typedef struct {
+	trash_gc_state_t state;
+	knot_time_t next;
+	knot_spin_t lock;
+} trash_gc_t;
+
+/*!
  * \brief Main server structure.
  *
  * Keeps references to all important structures needed for operation.
@@ -130,6 +148,9 @@ typedef struct server {
 
 	/*! \brief Crendentials context for QUIC. */
 	struct knot_creds *quic_creds;
+
+	/*! \brief Key trash garbage collector control. */
+	trash_gc_t trash_gc;
 } server_t;
 
 /*!
