@@ -1,3 +1,44 @@
+Knot DNS 3.5.4 (2026-04-02)
+===========================
+
+Features:
+---------
+ - knotd: configurable ZERO-COPY XDP mode (see 'xdp.zero-copy')
+ - mod-dnserr: module for DNS error reporting
+
+Improvements:
+-------------
+ - knotd: 'zone-update-error' statistic counter covers more situations
+ - knotd: 'zone.catalog-zone' configuration option is ignored if not needed
+ - knotd: dynamic reconfiguration logs item value in debug mode
+ - knotd: memory optimizations when reloading a zone file
+ - knotd: improved interoperability with Bind9 Offline KSK operations
+ - knotd: improved performance of updated zone check
+ - knotd: increased maximum configuration database reader limit by 3
+ - knotd: new warning logs if primaries are outdated during zone refresh
+ - kxdpgun: JSON output is stream of newline-delimited objects instead of a list
+ - kxdpgun: extended throughput statistics
+ - libs: support for loading private ALIAS record type
+ - libs: upgraded embedded libngtcp2 to 1.22.0
+ - debian: switched to sysusers.d and tmpfiles.d configurations (Thanks to Luca Boccassi)
+ - doc: various improvements
+
+Bugfixes:
+---------
+ - mod-onlinesign: incorrect next NSEC owner name leading to a DoS (Thanks to Shang Kunjie)
+ - knotd: server crash upon receiving a malformed resource record over XFR (Thanks to Haruto Kimura)
+ - knotd: generated catalog not updated if reconfigured without server restart
+ - knotd: some cross-zone reconfigurations not handled correctly
+ - knotd: configuration control transaction not recoverable after a semantic error
+ - knotd: zone loaded from Redis backend incrementally for non-continuous changes
+ - knotd: server crash when accessing an HSM in parallel by multiple background workers
+ - knotd: insufficient module unloading if error
+ - modules: some module hook registrations not checked for errors
+ - mod-geoip: server crash if record owner missing in configuration file
+ - libs: insufficient checks for malformed resource records (Thanks to Haruto Kimura)
+ - redis: incorrect arity check and use-after-free in AOF (Thanks to Haruto Kimura)
+ - redis: various issues when processing empty data
+
 Knot DNS 3.5.3 (2026-01-16)
 ===========================
 
