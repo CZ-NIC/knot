@@ -14,8 +14,6 @@
 #include "knot/dnssec/kasp/policy.h"
 #include "knot/journal/knot_lmdb.h"
 
-typedef struct kasp_db kasp_db_t;
-
 typedef enum { // the enum values MUST match those from keyclass_t !!
         KASPDB_SERIAL_MASTER = 0x5,
         KASPDB_SERIAL_LASTSIGNED = 0x6,
