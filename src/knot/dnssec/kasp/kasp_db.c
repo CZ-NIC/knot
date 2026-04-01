@@ -595,7 +595,9 @@ int kasp_db_delete_trash(knot_lmdb_db_t *db, const knot_dname_t *zone_name, char
 					continue;
 				}
 
-				ret = kdnssec_delete_from_keystores(keystores, id, dname, true);
+				// For background garbage collection, log errors as debug.
+				ret = kdnssec_delete_from_keystores(keystores, id, dname, true,
+				                                    for_delete != NULL ? true : false);
 				ret = (ret == KNOT_ENOENT) ? KNOT_EOK : ret;
 				if (ret != KNOT_EOK) {
 					// Note: it isn't sure that there still is a key to delete.
@@ -613,7 +615,8 @@ int kasp_db_delete_trash(knot_lmdb_db_t *db, const knot_dname_t *zone_name, char
 			knot_lmdb_del_cur(&txn);
 		}
 		free(prefix.mv_data);
-		ret = (failed) ? KNOT_ERROR : ret;
+		// For background garbage collection, suppress trivial 'failed' errors.
+		ret = (for_delete != NULL) ? ret : ((failed && ret == KNOT_EOK) ? KNOT_ERROR : ret);
 	}
 
 	knot_lmdb_commit(&txn);
