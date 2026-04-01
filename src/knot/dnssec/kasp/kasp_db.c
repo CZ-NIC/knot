@@ -503,7 +503,7 @@ int kasp_db_delete_keys(knot_lmdb_db_t *db, const knot_dname_t *zone_name,
 				ret = make_trash_key(&txn, &txn.cur_key, &txn.cur_val, delay);
 			} else {
 				ret = kdnssec_delete_from_keystores(keystores, key_id,
-				                                    zone_name, true);
+				                                    zone_name, true, false);
 				ret = (ret == KNOT_ENOENT) ? KNOT_EOK : ret;
 				// Note: if error, it isn't sure that there still is a key to delete.
 			}
@@ -563,7 +563,7 @@ int kasp_db_delete_trash(knot_lmdb_db_t *db, const knot_dname_t *zone_name, char
 		// In this case, zone_name is ignored.
 		MDB_val prefix = make_key_str(KASPDBKEY_TRASH, NULL, key_id);
 		if (knot_lmdb_find_prefix(&txn, &prefix)) {
-			ret = kdnssec_delete_from_keystores(keystores, key_id, NULL, true);
+			ret = kdnssec_delete_from_keystores(keystores, key_id, NULL, true, false);
 			ret = (ret == KNOT_ENOENT) ? KNOT_EOK : ret;
 			if (ret == KNOT_EOK) {
 				knot_lmdb_del_prefix(&txn, &prefix);
@@ -589,7 +589,8 @@ int kasp_db_delete_trash(knot_lmdb_db_t *db, const knot_dname_t *zone_name, char
 					continue;
 				}
 
-				ret = kdnssec_delete_from_keystores(keystores, id, dname, true);
+				ret = kdnssec_delete_from_keystores(keystores, id, dname, true,
+				                                    false);
 				ret = (ret == KNOT_ENOENT) ? KNOT_EOK : ret;
 				if (ret != KNOT_EOK) {
 					// Note: it isn't sure that there still is a key to delete.
@@ -667,7 +668,8 @@ int kasp_db_sweep_keys(knot_lmdb_db_t *db, sweep_cb keep_zone, void *cb_data)
 
 			assert(count > 0 || is_trash_related(&txn.cur_key));
 			if (count < 2) {
-				ret = kdnssec_delete_from_keystores(keystores, key_id, NULL, true);
+				ret = kdnssec_delete_from_keystores(keystores, key_id, NULL,
+				                                    true, false);
 				ret = (ret == KNOT_ENOENT) ? KNOT_EOK : ret;
 				if (ret != KNOT_EOK) {
 					// Note: it isn't sure that there still is a key to delete.
