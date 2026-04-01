@@ -18,6 +18,8 @@ knot_root = t.server("knot")
 root = t.zone(".")
 t.link(root, knot_root)
 
+knot.conf_zone(zone).journal_content = "none"
+
 def query_test(knot, bind, dnssec):
 
     ''' Negative answers. '''
