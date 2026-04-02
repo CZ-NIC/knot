@@ -1,3 +1,26 @@
+Knot DNS 3.4.10 (2026-04-02)
+============================
+
+Improvements:
+-------------
+ - knotd: DNSSEC signing not required for key restore
+ - doc: various improvements
+
+Bugfixes:
+---------
+ - mod-onlinesign: incorrect next NSEC owner name leading to a DoS (Thanks to Shang Kunjie)
+ - knotd: server crash upon receiving a malformed resource record over XFR (Thanks to Haruto Kimura)
+ - knotd: missing catalog update clear if error
+ - knotd: server crashes when outbound QUIC connection is closed unexpectedly
+ - knotd: UNIX socket path containing a single colon considered an IPv6 address
+ - knotd: configuration control transaction not recoverable after a semantic error
+ - knotd: server crash when accessing an HSM in parallel by multiple background workers
+ - libs: insufficient checks for malformed resource records (Thanks to Haruto Kimura)
+ - mod-geoip: server crash if record owner missing in configuration file
+ - keymgr: program crashes when importing a malformed key
+ - kdig: missing address context deinitialization when iterating over addresses
+ - kdig: missing AA flag on NOTIFY query
+
 Knot DNS 3.4.9 (2025-11-28)
 ===========================
 
