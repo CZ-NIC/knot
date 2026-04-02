@@ -3,13 +3,16 @@
  *  For more information, see <https://www.knot-dns.cz/>
  */
 
+#include <netdb.h>
 #include <netinet/in.h>
+#include <sys/types.h>
 #include <sys/socket.h>
 
 #include "contrib/dnstap/dnstap.h"
 #include "contrib/dnstap/dnstap.pb-c.h"
 #include "contrib/dnstap/message.h"
 #include "contrib/dnstap/writer.h"
+#include "contrib/sockaddr.c"
 #include "contrib/time.h"
 #include "knot/include/module.h"
 
@@ -175,12 +178,41 @@ static struct fstrm_writer* dnstap_tcp_writer(const char *address, const char *p
 	struct fstrm_writer_options *wopt = NULL;
 	struct fstrm_writer *writer = NULL;
 
+	const struct addrinfo hints = { 
+		.ai_family = AF_UNSPEC,
+		.ai_socktype = SOCK_STREAM
+	};
+	struct addrinfo *info = NULL;
+	int ret = getaddrinfo(address, port, &hints, &info);
+	if (ret != 0) {
+		// TODO some output log about unresolved address
+		goto finish;
+	}
+
+	char addr[SOCKADDR_STRLEN] = { 0 };
+	for (struct addrinfo *info_it = info; info_it != NULL; info_it = info_it->ai_next) {
+		int family = info_it->ai_family;
+		if (family != AF_INET && family != AF_INET6) {
+			continue;
+		}
+
+		sockaddr_port_set((struct sockaddr_storage *)info_it->ai_addr, 0);
+		ret = sockaddr_tostr(addr, SOCKADDR_STRLEN - 1, (const struct sockaddr_storage *)info_it->ai_addr);
+		if (ret > 0) {
+			break;
+		}
+	}
+	freeaddrinfo(info);
+	if (ret <= 0) {
+		goto finish;
+	}
+
 	opt =  fstrm_tcp_writer_options_init();
 	if (opt == NULL) {
 		goto finish;
 	}
 
-	fstrm_tcp_writer_options_set_socket_address(opt, address);
+	fstrm_tcp_writer_options_set_socket_address(opt, addr);
 	fstrm_tcp_writer_options_set_socket_port(opt, port);
 
 	wopt = fstrm_writer_options_init();
