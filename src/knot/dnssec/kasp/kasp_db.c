@@ -576,6 +576,7 @@ int kasp_db_delete_trash(knot_lmdb_db_t *db, const knot_dname_t *zone_name, char
 	} else {
 		// Remove all trash keys belonging to the zone, or all trash keys.
 		bool failed = false;
+		bool fatal = false;
 		MDB_val prefix = make_key_str(KASPDBKEY_TRASH, NULL, NULL);
 		knot_lmdb_foreach(&txn, &prefix) {
 			// For background garbage collector.
@@ -609,6 +610,7 @@ int kasp_db_delete_trash(knot_lmdb_db_t *db, const knot_dname_t *zone_name, char
 				// Corrupted or uncompatible KASP DB? Stop all other deletes, but
 				// commit deletes of KASP records related to already removed keys.
 				ret = KNOT_EMALF;
+				fatal = true;
 				break;
 			}
 
@@ -616,7 +618,7 @@ int kasp_db_delete_trash(knot_lmdb_db_t *db, const knot_dname_t *zone_name, char
 		}
 		free(prefix.mv_data);
 		// For background garbage collection, suppress trivial 'failed' errors.
-		ret = (for_delete != NULL) ? ret : ((failed && ret == KNOT_EOK) ? KNOT_ERROR : ret);
+		ret = (for_delete != NULL) ? ret : ((failed && !fatal) ? KNOT_ERROR : ret);
 	}
 
 	knot_lmdb_commit(&txn);
