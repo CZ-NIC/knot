@@ -1328,6 +1328,16 @@ class Bind(Server):
                     if self.disable_notify:
                         continue
                     if self.tsig:
+                        slaves += "%s port %i key %s" \
+                                  % (slave.addr, slave.tls_port or slave.port, self.tsig.name)
+                    else:
+                        slaves += "%s port %i" % (slave.addr, slave_tls_port or slave.port)
+                    if slave.tls_port:
+                        slaves += " tls %s" % (slave.name if slave.cert_key_file else "ephemeral")
+                    slaves += "; "
+
+                    # START - workaround for older Bind versions, remove in the future
+                    if self.tsig:
                         slaves += "%s port %s key %s" \
                                   % (slave.addr, slave.port, self.tsig.name)
                     else:
@@ -1335,6 +1345,7 @@ class Bind(Server):
                     if slave.tls_port:
                         slaves += " tls %s" % (slave.name if slave.cert_key_file else "ephemeral")
                     slaves += "; "
+                    # END
                 if slaves:
                     s.item("also-notify", "{ %s}" % slaves)
 
