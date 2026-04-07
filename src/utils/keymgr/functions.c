@@ -522,38 +522,10 @@ static void err_import_key(char *keyid, const char *file)
 	     (*file == '\0') ? "the keystore" : "file ", file );
 }
 
-static int import_key(kdnssec_ctx_t *ctx, unsigned backend, const char *param,
-                      int argc, char *argv[])
+static int store_key_in_keystore(const char *param, unsigned backend,
+                                 knot_kasp_keystore_t *keystore, char **keyid)
 {
-	if (ctx == NULL || param == NULL) {
-		return KNOT_EINVAL;
-	}
-
-	// parse params
-	knot_time_t now = knot_time();
-	knot_kasp_key_timing_t timing = { .publish = now, .active = now };
-	kdnssec_generate_flags_t flags = 0;
-	uint16_t keysize = 0;
-	if (!genkeyargs(argc, argv, false, &flags, &ctx->policy->algorithm,
-	                &keysize, &timing, NULL)) {
-		return KNOT_EINVAL;
-	}
-
-	knot_kasp_keystore_t *keystore = knot_store_for_key(ctx->keystores,
-	                                 (flags & DNSKEY_GENERATE_KSK));
-	if (keystore == NULL) {
-		return KNOT_DNSSEC_ENOKEYSTORE;
-	}
-
-	int ret = check_timers(&timing);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
-
-	normalize_generate_flags(&flags);
-
-	dnssec_key_t *key = NULL;
-	char *keyid = NULL;
+	int ret = KNOT_EOK;
 
 	if (backend == KEYSTORE_BACKEND_PEM) {
 		// open file
@@ -596,15 +568,60 @@ static int import_key(kdnssec_ctx_t *ctx, unsigned backend, const char *param,
 		}
 
 		// put pem to keystore
-		ret = dnssec_keystore_import(keystore->keystore, &pem, &keyid);
+		ret = dnssec_keystore_import(keystore->keystore, &pem, keyid);
 		dnssec_binary_free(&pem);
 		if (ret != KNOT_EOK) {
-			err_import_key(keyid, param);
+			err_import_key(*keyid, param);
 			goto fail;
 		}
 	} else {
 		assert(backend == KEYSTORE_BACKEND_PKCS11);
-		keyid = strdup(param);
+		*keyid = strdup(param);
+	}
+	return ret;
+
+fail:
+	free(*keyid);
+	return ret;
+}
+
+static int import_key(kdnssec_ctx_t *ctx, unsigned backend, const char *param,
+                      key_params_t *trash_params, int argc, char *argv[])
+{
+	if (ctx == NULL || param == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	// parse params
+	knot_time_t now = knot_time();
+	knot_kasp_key_timing_t timing = { .publish = now, .active = now };
+	kdnssec_generate_flags_t flags = 0;
+	uint16_t keysize = 0;
+	if (!genkeyargs(argc, argv, false, trash_params, &flags,
+	                &ctx->policy->algorithm, &keysize, &timing, NULL)) {
+		return KNOT_EINVAL;
+	}
+
+	knot_kasp_keystore_t *keystore = knot_store_for_key(ctx->keystores,
+	                                 (flags & DNSKEY_GENERATE_KSK));
+	if (keystore == NULL) {
+		return KNOT_DNSSEC_ENOKEYSTORE;
+	}
+
+	int ret = check_timers(&timing);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	normalize_generate_flags(&flags);
+
+	dnssec_key_t *key = NULL;
+	char *keyid = NULL;
+
+	// set the key in keystore and get back keyid
+	ret = store_key_in_keystore(param, backend, keystore, &keyid);
+	if (ret != KNIOT_EOK) {
+		goto fail;
 	}
 
 	// create dnssec key
