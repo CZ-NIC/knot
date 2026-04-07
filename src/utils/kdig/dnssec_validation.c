@@ -772,3 +772,8 @@ int kdig_dnssec_validate(knot_pkt_t *pkt, kdig_dnssec_ctx_t **dv_ctx,
 	}
 	return ret;
 }
+
+/* Dummy symbols for external dependencies that aren't accessed from kdig. */
+#define DUMMY_FUNC(name) void name(void) { }
+DUMMY_FUNC(urcu_memb_read_lock)
+DUMMY_FUNC(urcu_memb_read_unlock)
