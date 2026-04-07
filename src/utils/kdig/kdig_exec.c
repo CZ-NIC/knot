@@ -800,7 +800,7 @@ static int process_query_packet(const knot_pkt_t      *query,
 	}
 
 	if (query_ctx->dnssec_validation > 0) {
-#if HAVE_KDIG_VALIDATION + 0 == 1 && !defined(NO_DNSSEC_VALIDATION)
+#if !defined(NO_DNSSEC_VALIDATION)
 		knot_dname_t zone_name[KNOT_DNAME_MAXLEN] = { 0 };
 		uint16_t type_needed = 0;
 		struct kdig_dnssec_ctx *dv_ctx = query_ctx->dv_ctx;
@@ -834,7 +834,7 @@ static int process_query_packet(const knot_pkt_t      *query,
 		}
 #else
 		assert("DNSSEC validation support not compiled - faulty code path" && false);
-#endif // HAVE_KDIG_VALIDATION && !NO_DNSSEC_VALIDATION
+#endif // !NO_DNSSEC_VALIDATION
 	}
 
 	knot_pkt_free(reply);

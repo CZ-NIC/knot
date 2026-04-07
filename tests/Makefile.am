@@ -167,14 +167,12 @@ if HAVE_LIBUTILS
 check_PROGRAMS += \
 	utils/test_lookup
 
-if HAVE_KDIG_VALIDATION
 check_SCRIPTS += \
 	utils/test_kdig_validate
 
 utils/test_kdig_validate:
 	@$(edit) < $(top_srcdir)/tests/$@.in > $(top_builddir)/tests/$@
 	@chmod +x $(top_builddir)/tests/$@
-endif HAVE_KDIG_VALIDATION
 
 endif HAVE_LIBUTILS
 

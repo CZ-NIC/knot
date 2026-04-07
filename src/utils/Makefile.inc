@@ -59,11 +59,9 @@ kdig_SOURCES = \
 	utils/kdig/kdig_params.c		\
 	utils/kdig/kdig_params.h
 
-if HAVE_KDIG_VALIDATION
 kdig_SOURCES += \
 	utils/kdig/dnssec_validation.c		\
 	utils/kdig/dnssec_validation.h
-endif HAVE_KDIG_VALIDATION
 
 khost_SOURCES = \
 	utils/kdig/kdig_exec.c			\

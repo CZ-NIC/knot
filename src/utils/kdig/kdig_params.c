@@ -277,7 +277,6 @@ static int opt_nodoflag(const char *arg, void *query)
 
 static int opt_validate(const char *arg, void *query)
 {
-#if HAVE_KDIG_VALIDATION + 0 == 1 && !defined(NO_DNSSEC_VALIDATION)
 	query_t *q = query;
 
 	q->dnssec_validation = 3;
@@ -287,10 +286,6 @@ static int opt_validate(const char *arg, void *query)
 	q->flags.do_flag = true;
 
 	return KNOT_EOK;
-#else
-	ERR2("DNSSEC validation support not compiled");
-	return KNOT_ENOTSUP;
-#endif
 }
 
 static int opt_novalidate(const char *arg, void *query)
