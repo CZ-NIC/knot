@@ -86,8 +86,8 @@ knsupdate_SOURCES = \
 	utils/knsupdate/knsupdate_params.h
 
 kdig_CPPFLAGS          = $(libknotus_la_CPPFLAGS)
-kdig_LDADD             = $(libknotd_LIBS) $(libknotus_LIBS)
-kdig_LDFLAGS           = $(AM_LDFLAGS)
+kdig_LDADD             = libknotd.la $(libknotus_LIBS) $(lmdb_LIBS)
+kdig_LDFLAGS           = -Wl,--gc-sections
 khost_CPPFLAGS         = $(libknotus_la_CPPFLAGS) -DNO_DNSSEC_VALIDATION
 khost_LDADD            = $(libknotus_LIBS)
 knsec3hash_CPPFLAGS    = $(libknotus_la_CPPFLAGS)
