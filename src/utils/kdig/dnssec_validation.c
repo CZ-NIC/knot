@@ -782,8 +782,3 @@ void kdig_dnssec_free(kdig_dnssec_ctx_t *dv_ctx)
 		free(dv_ctx);
 	}
 }
-
-/* Dummy symbols for external dependencies that aren't accessed from kdig. */
-#define DUMMY_FUNC(name) void name(void) { }
-DUMMY_FUNC(urcu_memb_read_lock)
-DUMMY_FUNC(urcu_memb_read_unlock)
