@@ -59,6 +59,14 @@ kdig_SOURCES = \
 	utils/kdig/kdig_params.h
 
 if HAVE_KDIG_VALIDATION
+noinst_LTLIBRARIES += libdummy.la
+
+libdummy_la_CPPFLAGS = $(AM_CPPFLAGS) $(liburcu_CFLAGS) $(systemd_CFLAGS) \
+                       $(libdbus_CFLAGS) $(libhiredis_CFLAGS)
+
+libdummy_la_SOURCES = \
+	utils/common/dummy.c
+
 kdig_SOURCES += \
 	utils/kdig/dnssec_validation.c		\
 	utils/kdig/dnssec_validation.h
@@ -86,14 +94,18 @@ knsupdate_SOURCES = \
 	utils/knsupdate/knsupdate_params.h
 
 kdig_CPPFLAGS          = $(libknotus_la_CPPFLAGS)
-kdig_LDADD             = libknotd.la $(libknotus_LIBS) $(lmdb_LIBS)
-kdig_LDFLAGS           = -Wl,--gc-sections
-khost_CPPFLAGS         = $(libknotus_la_CPPFLAGS) -DNO_DNSSEC_VALIDATION
+kdig_LDADD             = $(libknotus_LIBS)
+khost_CPPFLAGS         = $(libknotus_la_CPPFLAGS)
 khost_LDADD            = $(libknotus_LIBS)
 knsec3hash_CPPFLAGS    = $(libknotus_la_CPPFLAGS)
 knsec3hash_LDADD       = libknot.la $(libcontrib_LIBS)
 knsupdate_CPPFLAGS     = $(libknotus_la_CPPFLAGS)
 knsupdate_LDADD        = $(libknotus_LIBS) libzscanner.la
+
+if HAVE_KDIG_VALIDATION
+kdig_LDADD             += libknotd.la libdummy.la $(libknotus_LIBS) $(lmdb_LIBS)
+khost_CPPFLAGS         += -DNO_DNSSEC_VALIDATION
+endif HAVE_KDIG_VALIDATION
 
 if HAVE_DNSTAP
 kdig_CPPFLAGS          += $(DNSTAP_CFLAGS)
