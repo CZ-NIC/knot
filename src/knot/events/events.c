@@ -493,9 +493,17 @@ void zone_events_freeze_blocking(zone_t *zone)
 
 void zone_events_start_answering(zone_t *zone)
 {
-	pthread_mutex_lock(&zone->events.mx);
-	zone->events.answering = true;
-	reschedule(&zone->events, true); // unlocks events->mx
+	if (!zone) {
+		return;
+	}
+
+	zone_events_t *events = &zone->events;
+
+	pthread_mutex_lock(&events->reschedule_lock);
+	pthread_mutex_lock(&events->mx);
+	events->answering = true;
+
+	reschedule(events, true); // unlocks events->mx
 }
 
 void zone_events_start(zone_t *zone)
