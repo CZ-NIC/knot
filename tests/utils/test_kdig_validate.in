@@ -5,17 +5,23 @@
 
 BUILDROOT="@top_builddir@"
 SRCROOT="@top_srcdir@"
-TMPDIR=/tmp
-PREFIX=ktv_$$_$(date +%s)
-SCN=$TMPDIR/${PREFIX}_scenario.txt
-CONF=$TMPDIR/${PREFIX}_knot.conf
-PORT=$(comm -23 <(seq 50000 65000 | sort) <(ss -Htan | awk '{print $4}' | cut -d':' -f2 | sort -u) | shuf | head -n 1)
-RUNDIR=$TMPDIR/${PREFIX}_knot
-VALGRIND=
 
 . "@top_srcdir@/tests/tap/libtap.sh"
 
-if [ "$2" == "v" ]; then
+if [ -f /etc/crypto-policies/config ]; then
+    diag "Test not compatible with RPM distributions (strict crypto policy)"
+    skip_all
+    exit 0
+fi
+
+TMPDIR=$(cd $(test_tmpdir) && pwd)
+SCN=$TMPDIR/scenario.txt
+CONF=$TMPDIR/knot.conf
+RUNDIR=$TMPDIR/knot
+LISTEN=$TMPDIR/sock
+VALGRIND=
+
+if [ "$2" = "v" ]; then
     VALGRIND="valgrind --leak-check=full --show-leak-kinds=all"
 fi
 
@@ -51,10 +57,14 @@ EOF
 
 cat << EOF > $CONF
 server:
-    listen: 0.0.0.0@$PORT
+    listen: $LISTEN
+    tcp-workers: 1
+    udp-workers: 1
+    background-workers: 1
     rundir: $RUNDIR
 database:
     storage: $RUNDIR
+    timer-db-max-size: 1M
 zone:
   - domain: example.com.
     storage: $RUNDIR
@@ -66,14 +76,15 @@ EOF
 
 plan $(( $(cat "$SCN" | wc -l) * 4 ))
 
-function q() {
-    echo "debug count $count"
+q() {
     QN="$2"
-    if [ "${QN: -1}" != "." ]; then
-        QN="$QN.example.com."
-    fi
-    echo "$1" $VALGRIND $BUILDROOT/src/kdig @127.0.0.1 -p $PORT +validate "$QN" -t "$3" >&2
-    RESP=$($VALGRIND $BUILDROOT/src/kdig @127.0.0.1 -p $PORT +validate "$QN" -t "$3" 2>&1)
+    case "$QN" in
+        *.) ;;
+        *) QN="$QN.example.com." ;;
+    esac
+    CMD="$VALGRIND $BUILDROOT/src/kdig @$LISTEN +tcp +validate +nocrypto $QN -t $3"
+    echo "$1 $CMD" >&2
+    RESP=$(sh -c "$CMD" 2>&1)
     echo "$RESP" >&2
     echo "$RESP" | grep -q "[^N]$4"
     ok "$1 outcome" test $? -eq 0
@@ -91,13 +102,13 @@ done
 i=0
 while read ZFILE QNAME QTYPE OUT POINT QNAME2 QTYPE2 OUT2 POINT2; do
     i=$((i+1))
-    if [ -n "$1" -a "$1" != "$i" ]; then
-	continue
+    if [ -n "$1" ] && [ "$1" != "$i" ]; then
+        continue
     fi
     NLOADED_WAS=$(grep -c 'loaded, serial' $RUNDIR/knot.log)
     cat $SRCROOT/tests/knot/semantic_check_data/$ZFILE > $RUNDIR/example.com.zone
     $BUILDROOT/src/knotc -s $RUNDIR/knot.sock -f zone-reload >&2
-    while [ $(grep -c 'loaded, serial' $RUNDIR/knot.log) == "$NLOADED_WAS" ]; do
+    while [ $(grep -c 'loaded, serial' $RUNDIR/knot.log) = "$NLOADED_WAS" ]; do
         sleep 0.02
     done
     q "(${i}a)" "$QNAME" "$QTYPE" "$OUT" "$POINT"

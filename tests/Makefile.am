@@ -30,7 +30,8 @@ EXTRA_DIST = \
 	knot/test_semantic_check.in		\
 	libzscanner/data			\
 	libzscanner/test_zscanner.in		\
-	libzscanner/TESTS
+	libzscanner/TESTS			\
+	utils/test_kdig_validate.in
 
 check_LTLIBRARIES = libtap.la
 
