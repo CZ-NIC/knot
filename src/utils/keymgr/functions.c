@@ -968,9 +968,15 @@ static void print_key_brief(const knot_kasp_key_t *key, key_info_t *info,
                             keymgr_list_params_t *params)
 {
 	const bool c = params->color;
+	const bool trash = info->trash;
 
-	printf("%s %s%5u%s ",
-	       key->id, COL_BOLD(c), dnssec_key_get_keytag(key->key), COL_RST(c));
+	printf("%s%s%s",
+	       trash ? COL_UNDR(c) : "",
+	       key->id,
+	       trash ? COL_RST(c) : "");
+
+	printf(" %s%5u%s ",
+	       COL_BOLD(c), dnssec_key_get_keytag(key->key), COL_RST(c));
 
 	printf("%s%s%s%s ",
 	       COL_BOLD(c),
@@ -1004,7 +1010,6 @@ static void print_key_brief(const knot_kasp_key_t *key, key_info_t *info,
 		printf(" %s%s/%s%s", COL_YELW(c), KS_TYPE(info), info->ks_name, COL_RST(c));
 	}
 
-	const bool trash = info->trash;
 	static knot_dname_txt_storage_t buf;
 	knot_time_t now = knot_time();
 	for (const timer_ctx_t *t = trash ? &trash_timers[0] : &timers[0];
