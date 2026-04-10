@@ -966,9 +966,15 @@ static void print_key_brief(const knot_kasp_key_t *key, key_info_t *info,
                             keymgr_list_params_t *params)
 {
 	const bool c = params->color;
+	const bool trash = info->trash;
 
-	printf("%s %s%5u%s ",
-	       key->id, COL_BOLD(c), dnssec_key_get_keytag(key->key), COL_RST(c));
+	printf("%s%s%s",
+	       trash ? COL_UNDR(c) : "",
+	       key->id,
+	       trash ? COL_RST(c) : "");
+
+	printf(" %s%5u%s ",
+	       COL_BOLD(c), dnssec_key_get_keytag(key->key), COL_RST(c));
 
 	printf("%s%s%s%s ",
 	       COL_BOLD(c),
@@ -1003,7 +1009,7 @@ static void print_key_brief(const knot_kasp_key_t *key, key_info_t *info,
 
 	static knot_dname_txt_storage_t buf;
 	knot_time_t now = knot_time();
-	for (const timer_ctx_t *t = info->trash ? &trash_timers[0] : &timers[0];
+	for (const timer_ctx_t *t = trash ? &trash_timers[0] : &timers[0];
 	     t->name != NULL; t++) {
 		knot_time_t *val = (void *)(&key->timing) + t->offset;
 		if (*val == 0) {
@@ -1022,7 +1028,7 @@ static void print_key_brief(const knot_kasp_key_t *key, key_info_t *info,
 		(void)knot_time_print(params->format, *val, buf, sizeof(buf));
 		printf(" %s%s%s=%s%s%s", UNDR, t->name, COL_RST(c), BOLD, buf, COL_RST(c));
 	}
-	if (info->trash && info->all_zones) {
+	if (trash && info->all_zones) {
 		if (knot_dname_to_str(buf, dnssec_key_get_dname(key->key),
 		                      sizeof(buf)) != NULL) {
 			printf(" zone=%s", buf);
@@ -1034,13 +1040,15 @@ static void print_key_brief(const knot_kasp_key_t *key, key_info_t *info,
 static void print_key_full(const knot_kasp_key_t *key, key_info_t *info,
                            keymgr_list_params_t *params)
 {
+	const bool trash = info->trash;
+
 	printf("%s ksk=%s zsk=%s tag=%05d algorithm=%-2d size=%-4u"
 	       " public-only=%s for-later=%s missing=%s trash=%s",
 	       key->id, (key->is_ksk ? "yes" : "no "), (key->is_zsk ? "yes" : "no "),
 	       dnssec_key_get_keytag(key->key), (int)dnssec_key_get_algorithm(key->key),
 	       dnssec_key_get_size(key->key), (key->is_pub_only ? "yes" : "no "),
 	       (key->is_for_later ? "yes" : "no "), (info->missing ? "yes" : "no "),
-	       (info->trash ? "yes" : "no "));
+	       (trash ? "yes" : "no "));
 	if (info->ks_name != NULL) {
 		printf(" keystore=%s/%s", KS_TYPE(info), info->ks_name);
 	} else {
@@ -1048,13 +1056,13 @@ static void print_key_full(const knot_kasp_key_t *key, key_info_t *info,
 	}
 
 	static knot_dname_txt_storage_t buf;
-	for (const timer_ctx_t *t = info->trash ? &trash_timers[0] : &timers[0];
+	for (const timer_ctx_t *t = trash ? &trash_timers[0] : &timers[0];
 	     t->name != NULL; t++) {
 		knot_time_t *val = (void *)(&key->timing) + t->offset;
 		(void)knot_time_print(params->format, *val, buf, sizeof(buf));
 		printf(" %s=%s", t->name, buf);
 	}
-	if (info->trash) {
+	if (trash) {
 		if (knot_dname_to_str(buf, dnssec_key_get_dname(key->key),
 		                      sizeof(buf)) != NULL) {
 			printf(" zone=%s", buf);
