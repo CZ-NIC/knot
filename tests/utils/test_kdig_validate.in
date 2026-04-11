@@ -64,12 +64,12 @@ EOF
 cat << EOF > $CONF
 server:
     rundir: $RUNDIR
-    listen: $LISTEN
+    listen: /tmp/listen.sock
     tcp-workers: 1
     udp-workers: 1
     background-workers: 1
 control:
-    listen: $SOCKDIR/ctl.sock
+    listen: /tmp/ctl.sock
 database:
     storage: $RUNDIR
     timer-db-max-size: 1M
