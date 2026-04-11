@@ -8,24 +8,19 @@ SRCROOT="@top_srcdir@"
 
 . "@top_srcdir@/tests/tap/libtap.sh"
 
-if [ -f /etc/crypto-policies/config ]; then
-    diag "Test not compatible with RPM distributions (strict crypto policy)"
+TMPDIR=$(cd $(test_tmpdir) && pwd)
+if [ -f /etc/crypto-policies/config ] || [ ${#TMPDIR} -gt 85 ]; then
+    diag "Test not compatible strict crypto policy or too long unix socket paths"
     skip_all
     exit 0
 fi
 
-TMPDIR=$(cd $(test_tmpdir) && pwd)
 SCN=$TMPDIR/scenario.txt
 CONF=$TMPDIR/knot.conf
-RUNDIR=$TMPDIR/knot
+RUNDIR=$TMPDIR/run
+LISTEN=$RUNDIR/listen
+LISTEN_CTL=$RUNDIR/ctl
 VALGRIND=
-
-# Avoid too long unix socket paths (happens within CI)
-SOCKDIR=$TMPDIR
-while [ ${#SOCKDIR} -gt 80 ]; do
-    SOCKDIR=$(dirname "$SOCKDIR")
-done
-LISTEN=$SOCKDIR/listen.sock
 
 if [ "$2" = "v" ]; then
     VALGRIND="valgrind --leak-check=full --show-leak-kinds=all"
@@ -64,15 +59,15 @@ EOF
 cat << EOF > $CONF
 server:
     rundir: $RUNDIR
-    listen: /tmp/listen.sock
+    listen: $LISTEN
     tcp-workers: 1
     udp-workers: 1
     background-workers: 1
 control:
-    listen: /tmp/ctl.sock
+    listen: $LISTEN_CTL
 database:
     storage: $RUNDIR
-    timer-db-max-size: 1M
+    timer-db-sync: never
 zone:
   - domain: example.com.
     storage: $RUNDIR
@@ -103,9 +98,6 @@ q() {
 rm -rf $RUNDIR; mkdir $RUNDIR
 $BUILDROOT/src/knotd -c $CONF > $RUNDIR/knot.log &
 PID=$!
-sleep 2
-cat $RUNDIR/knot.log
-exit 1
 while ! grep -q 'server started' $RUNDIR/knot.log; do
     continue
 done
@@ -118,7 +110,7 @@ while read ZFILE QNAME QTYPE OUT POINT QNAME2 QTYPE2 OUT2 POINT2; do
     fi
     NLOADED_WAS=$(grep -c 'loaded, serial' $RUNDIR/knot.log)
     cat $SRCROOT/tests/knot/semantic_check_data/$ZFILE > $RUNDIR/example.com.zone
-    $BUILDROOT/src/knotc -s $RUNDIR/knot.sock -f zone-reload >&2
+    $BUILDROOT/src/knotc -s $LISTEN_CTL -f zone-reload >&2
     while [ $(grep -c 'loaded, serial' $RUNDIR/knot.log) = "$NLOADED_WAS" ]; do
         sleep 0.02
     done
