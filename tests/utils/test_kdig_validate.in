@@ -18,8 +18,14 @@ TMPDIR=$(cd $(test_tmpdir) && pwd)
 SCN=$TMPDIR/scenario.txt
 CONF=$TMPDIR/knot.conf
 RUNDIR=$TMPDIR/knot
-LISTEN=$TMPDIR/sock
 VALGRIND=
+
+# Avoid too long unix socket path (happens within CI)
+LISTEN=$TMPDIR
+while [ ${#LISTEN} -gt 100 ]; do
+    LISTEN=$(dirname "$LISTEN")
+done
+LISTEN=$LISTEN/sock
 
 if [ "$2" = "v" ]; then
     VALGRIND="valgrind --leak-check=full --show-leak-kinds=all"
