@@ -25,7 +25,8 @@ SOCKDIR=$TMPDIR
 while [ ${#SOCKDIR} -gt 100 ]; do
     SOCKDIR=$(dirname "$SOCKDIR")
 done
-LISTEN=$SOCKDIR/listen.sock
+diag "$SOCKDIR"
+LISTEN=/tmp/listen.sock
 
 if [ "$2" = "v" ]; then
     VALGRIND="valgrind --leak-check=full --show-leak-kinds=all"
@@ -69,7 +70,7 @@ server:
     background-workers: 1
     rundir: $RUNDIR
 control:
-    listen: $SOCKDIR/ctl.sock
+    listen: /tmp/ctl.sock
 database:
     storage: $RUNDIR
     timer-db-max-size: 1M
