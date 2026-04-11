@@ -25,7 +25,6 @@ SOCKDIR=$TMPDIR
 while [ ${#SOCKDIR} -gt 80 ]; do
     SOCKDIR=$(dirname "$SOCKDIR")
 done
-diag "$SOCKDIR"
 LISTEN=$SOCKDIR/listen.sock
 
 if [ "$2" = "v" ]; then
@@ -101,8 +100,6 @@ q() {
     ok "$1 point" test $? -eq 0
 }
 
-cat $CONF
-exit 1
 rm -rf $RUNDIR; mkdir $RUNDIR
 $BUILDROOT/src/knotd -c $CONF > $RUNDIR/knot.log &
 PID=$!
