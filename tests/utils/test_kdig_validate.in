@@ -20,12 +20,12 @@ CONF=$TMPDIR/knot.conf
 RUNDIR=$TMPDIR/knot
 VALGRIND=
 
-# Avoid too long unix socket path (happens within CI)
-LISTEN=$TMPDIR
-while [ ${#LISTEN} -gt 100 ]; do
-    LISTEN=$(dirname "$LISTEN")
+# Avoid too long unix socket paths (happens within CI)
+SOCKDIR=$TMPDIR
+while [ ${#SOCKDIR} -gt 100 ]; do
+    SOCKDIR=$(dirname "$SOCKDIR")
 done
-LISTEN=/tmp/knot.sock
+LISTEN=$SOCKDIR/listen.sock
 
 if [ "$2" = "v" ]; then
     VALGRIND="valgrind --leak-check=full --show-leak-kinds=all"
@@ -68,6 +68,8 @@ server:
     udp-workers: 1
     background-workers: 1
     rundir: $RUNDIR
+control:
+    listen: $SOCKDIR/ctl.sock
 database:
     storage: $RUNDIR
     timer-db-max-size: 1M
@@ -103,7 +105,7 @@ $BUILDROOT/src/knotd -c $CONF > $RUNDIR/knot.log &
 PID=$!
 sleep 2
 cat $RUNDIR/knot.log
-exit 1
+
 while ! grep -q 'server started' $RUNDIR/knot.log; do
     continue
 done
