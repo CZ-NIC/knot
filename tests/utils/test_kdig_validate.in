@@ -27,6 +27,7 @@ while [ ${#SOCKDIR} -gt 100 ]; do
 done
 diag "$SOCKDIR"
 LISTEN=/tmp/listen.sock
+exit 1
 
 if [ "$2" = "v" ]; then
     VALGRIND="valgrind --leak-check=full --show-leak-kinds=all"
