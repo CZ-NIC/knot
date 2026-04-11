@@ -146,6 +146,7 @@ libknot.so.16 libknot16 #MINVER#
  knot_dname_to_str@Base 3.5.0
  knot_dname_to_wire@Base 3.5.0
  knot_dname_unpack@Base 3.5.0
+ knot_dname_wildcard@Base 3.6.0
  knot_dname_wire_check@Base 3.5.0
  knot_dname_with_null@Base 3.5.0
  knot_dnssec_alg_names@Base 3.5.0
