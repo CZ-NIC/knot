@@ -105,7 +105,7 @@ $BUILDROOT/src/knotd -c $CONF > $RUNDIR/knot.log &
 PID=$!
 sleep 2
 cat $RUNDIR/knot.log
-
+exit 1
 while ! grep -q 'server started' $RUNDIR/knot.log; do
     continue
 done

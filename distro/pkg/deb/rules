@@ -12,7 +12,7 @@ include /usr/share/dpkg/default.mk
 ifeq (maint,$(filter $(DEB_BUILD_OPTIONS),maint))
   FASTPARSER := --disable-fastparser
 else
-  FASTPARSER := --enable-fastparser
+  FASTPARSER := --disable-fastparser
 endif
 
 LIBKNOT_SYMBOLS := $(wildcard $(CURDIR)/debian/libknot*.symbols)
