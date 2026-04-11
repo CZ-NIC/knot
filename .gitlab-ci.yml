@@ -282,7 +282,7 @@ build:archive:
     - mkdir _build
     - cd _build
     - ../configure
-    - make distcheck V=1 DISTCHECK_CONFIGURE_FLAGS="--disable-static" -j2
+    - make distcheck V=1 DISTCHECK_CONFIGURE_FLAGS="--disable-static --disable-fastparser" -j2
     - make html singlehtml
   only:
     - master
