@@ -25,7 +25,7 @@ LISTEN=$TMPDIR
 while [ ${#LISTEN} -gt 100 ]; do
     LISTEN=$(dirname "$LISTEN")
 done
-LISTEN=$LISTEN/sock
+LISTEN=/tmp/knot.sock
 
 if [ "$2" = "v" ]; then
     VALGRIND="valgrind --leak-check=full --show-leak-kinds=all"
@@ -101,6 +101,9 @@ q() {
 rm -rf $RUNDIR; mkdir $RUNDIR
 $BUILDROOT/src/knotd -c $CONF > $RUNDIR/knot.log &
 PID=$!
+sleep 2
+cat $RUNDIR/knot.log
+exit 1
 while ! grep -q 'server started' $RUNDIR/knot.log; do
     continue
 done
