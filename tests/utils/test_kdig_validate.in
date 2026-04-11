@@ -22,12 +22,11 @@ VALGRIND=
 
 # Avoid too long unix socket paths (happens within CI)
 SOCKDIR=$TMPDIR
-while [ ${#SOCKDIR} -gt 100 ]; do
+while [ ${#SOCKDIR} -gt 80 ]; do
     SOCKDIR=$(dirname "$SOCKDIR")
 done
 diag "$SOCKDIR"
-LISTEN=/tmp/listen.sock
-exit 1
+LISTEN=$SOCKDIR/listen.sock
 
 if [ "$2" = "v" ]; then
     VALGRIND="valgrind --leak-check=full --show-leak-kinds=all"
@@ -65,13 +64,13 @@ EOF
 
 cat << EOF > $CONF
 server:
+    rundir: $RUNDIR
     listen: $LISTEN
     tcp-workers: 1
     udp-workers: 1
     background-workers: 1
-    rundir: $RUNDIR
 control:
-    listen: /tmp/ctl.sock
+    listen: $SOCKDIR/ctl.sock
 database:
     storage: $RUNDIR
     timer-db-max-size: 1M
@@ -102,6 +101,8 @@ q() {
     ok "$1 point" test $? -eq 0
 }
 
+cat $CONF
+exit 1
 rm -rf $RUNDIR; mkdir $RUNDIR
 $BUILDROOT/src/knotd -c $CONF > $RUNDIR/knot.log &
 PID=$!
