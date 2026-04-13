@@ -523,6 +523,7 @@ static int check_name(kdig_dnssec_ctx_t *ctx, const knot_dname_t *name,
 			return 1;
 		}
 		if (encloser == name) {
+			LOG_INF(level, name, "empty non-terminal detected, wildcard not applicable");
 			return KNOT_EOK;
 		}
 		if (knot_dname_is_wildcard(name)) {
