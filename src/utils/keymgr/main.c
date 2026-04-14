@@ -85,7 +85,7 @@ static void print_help(void)
 	       "                 For all deleted keys of all zones, use '--' as <zone_name> and as <key_id>.\n"
 	       "                 (syntax: trash-discard <key_id>)\n"
 	       "  trash-touch   Replan automatic discard of the deleted key from the \"trash bin\". Default is +60 days from now.\n"
-	       "                 (syntax: trash-touch <key_id> [<new_time>])\n"
+	       "                 (syntax: trash-touch <key_id> [[discard=]<new_time>])\n"
 	       "\n"
 	       "Keystore commands:\n"
 	       "  keystore-test   Conduct some tests on the specified keystore.\n"
