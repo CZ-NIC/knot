@@ -143,7 +143,7 @@ knotc_CPPFLAGS         = $(libknotus_la_CPPFLAGS)
 knotc_LDADD            = $(libknotd_LIBS) $(libknotus_LIBS)
 knotc_LDFLAGS          = $(AM_LDFLAGS) -rdynamic
 knotd_CPPFLAGS         = $(libknotus_la_CPPFLAGS) $(liburcu_CFLAGS) $(systemd_CFLAGS)
-knotd_LDADD            = $(malloc_LIBS) $(libknotd_LIBS) $(cap_ng_LIBS)
+knotd_LDADD            = $(libknotd_LIBS) $(cap_ng_LIBS) $(malloc_LIBS)
 knotd_LDFLAGS          = $(AM_LDFLAGS) -rdynamic
 
 if HAVE_UTILS
