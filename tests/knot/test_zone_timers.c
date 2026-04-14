@@ -30,6 +30,11 @@ static const zone_timers_t MOCK_TIMERS = {
 
 static bool timers_eq(const zone_timers_t *val, const zone_timers_t *ref)
 {
+	struct sockaddr_storage val_last_master = { 0 };
+	struct sockaddr_storage ref_last_master = { 0 };
+	memcpy(&val_last_master, &val->last_master, sizeof(val->last_master));
+	memcpy(&ref_last_master, &ref->last_master, sizeof(ref->last_master));
+
 	return	val->last_flush == ref->last_flush &&
 		val->flags == ref->flags &&
 		val->next_refresh == ref->next_refresh &&
@@ -38,8 +43,7 @@ static bool timers_eq(const zone_timers_t *val, const zone_timers_t *ref)
 		val->next_ds_push == ref->next_ds_push &&
 		val->catalog_member == ref->catalog_member &&
 		val->next_expire == ref->next_expire &&
-		sockaddr_cmp((struct sockaddr_storage *)&val->last_master,
-		             (struct sockaddr_storage *)&ref->last_master, false) == 0 &&
+		sockaddr_cmp(&val_last_master, &ref_last_master, false) == 0 &&
 		val->master_pin_hit == ref->master_pin_hit &&
 		(val->last_signed_serial == ref->last_signed_serial || !(val->flags & LAST_SIGNED_SERIAL_VALID));
 }
