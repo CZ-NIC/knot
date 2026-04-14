@@ -326,12 +326,12 @@ fail:
 	return NULL;
 }
 
-int kasp_db_list_keys(knot_lmdb_db_t *db, const knot_dname_t *zone_name, list_t *dst,
-                      bool trash)
+int kasp_db_list_keys(knot_lmdb_db_t *db, const knot_dname_t *zone_name,
+                      const char *key_id, list_t *dst, bool trash)
 {
 	init_list(dst);
 	knot_lmdb_txn_t txn = { 0 };
-	MDB_val prefix = trash ? knot_lmdb_make_key("B", KASPDBKEY_TRASH) :
+	MDB_val prefix = trash ? make_key_str(KASPDBKEY_TRASH, NULL, key_id) :
 	                         make_key_str(KASPDBKEY_PARAMS, zone_name, NULL);
 	knot_lmdb_begin(db, &txn, false);
 	knot_lmdb_foreach(&txn, &prefix) {
