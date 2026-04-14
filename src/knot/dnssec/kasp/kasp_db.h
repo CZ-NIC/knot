@@ -26,13 +26,14 @@ typedef enum { // the enum values MUST match those from keyclass_t !!
  * \param db            KASP db
  * \param zone_name     name of the zone in question
  *                      if NULL for trashed keys, list trashed keys belonging to any zone
+ * \param key_id        if not NULL, find a trash key of this key ID
  * \param dst           output if KNOT_EOK: ptrlist of keys' params
  * \param trash         if false, list all valid keys, if true, list all trashed keys
  *
  * \return KNOT_E* (KNOT_ENOENT if no keys)
  */
-int kasp_db_list_keys(knot_lmdb_db_t *db, const knot_dname_t *zone_name, list_t *dst,
-                      bool trash);
+int kasp_db_list_keys(knot_lmdb_db_t *db, const knot_dname_t *zone_name,
+                      const char *key_id, list_t *dst, bool trash);
 
 /*!
  * \brief Obtain the algorithm of a key.

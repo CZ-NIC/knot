@@ -1251,7 +1251,7 @@ int keymgr_list_trash(kdnssec_ctx_t *ctx, const knot_dname_t *zone_name,
 {
 	list_t tlist;
 	init_list(&tlist);
-	int ret = kasp_db_list_keys(ctx->kasp_db, zone_name, &tlist, true);
+	int ret = kasp_db_list_keys(ctx->kasp_db, zone_name, NULL, &tlist, true);
 	ret = (ret == KNOT_ENOENT) ? KNOT_EOK : ret;
 	if (ret != KNOT_EOK) {
 		ERR2("failed to list keys from KASP (%s)", knot_strerror(ret));
