@@ -83,7 +83,7 @@ int main(int argc, char *argv[])
 	ret = kasp_db_add_key(db, zone1, &params1);
 	is_int(KNOT_EOK, ret, "kasp_db: add key 1 eok");
 
-	ret = kasp_db_list_keys(db, zone1, &l, false);
+	ret = kasp_db_list_keys(db, zone1, NULL, &l, false);
 	is_int(KNOT_EOK, ret, "kasp_db: list keys 1 eok");
 	is_int(1, list_size(&l), "kasp_db: list keys reports one key 1");
 	params = ((ptrnode_t *)HEAD(l))->d;
@@ -91,7 +91,7 @@ int main(int argc, char *argv[])
 	free_params
 	ptrlist_deep_free(&l, NULL);
 
-	ret = kasp_db_list_keys(db, zone2, &l, false);
+	ret = kasp_db_list_keys(db, zone2, NULL, &l, false);
 	is_int(KNOT_ENOENT, ret, "kasp_db: list keys 1 enoent");
 	is_int(0, list_size(&l), "kasp_db: list keys reports no keys 1");
 	ptrlist_deep_free(&l, NULL);
@@ -99,7 +99,7 @@ int main(int argc, char *argv[])
 	ret = kasp_db_share_key(db, zone1, zone2, params1.id);
 	is_int(KNOT_EOK, ret, "kasp_db: share key eok");
 
-	ret = kasp_db_list_keys(db, zone2, &l, false);
+	ret = kasp_db_list_keys(db, zone2, NULL, &l, false);
 	is_int(KNOT_EOK, ret, "kasp_db: list keys 3 eok");
 	is_int(1, list_size(&l), "kasp_db: list keys reports one key 2");
 	params = ((ptrnode_t *)HEAD(l))->d;
@@ -109,7 +109,7 @@ int main(int argc, char *argv[])
 	ret = kasp_db_add_key(db, zone2, &params2);
 	is_int(KNOT_EOK, ret, "kasp_db: add key 2 eok");
 
-	ret = kasp_db_list_keys(db, zone2, &l, false);
+	ret = kasp_db_list_keys(db, zone2, NULL, &l, false);
 	is_int(KNOT_EOK, ret, "kasp_db: list keys 4 eok");
 	is_int(2, list_size(&l), "kasp_db: list keys reports two keys 1");
 	params = ((ptrnode_t *)TAIL(l))->d;
@@ -122,7 +122,7 @@ int main(int argc, char *argv[])
 	ret = kasp_db_delete_key(db, zone1, params1.id, 0, &ignore);
 	is_int(KNOT_EOK, ret, "kasp_db: delete key 1 eok");
 
-	ret = kasp_db_list_keys(db, zone1, &l, false);
+	ret = kasp_db_list_keys(db, zone1, NULL, &l, false);
 	is_int(KNOT_ENOENT, ret, "kasp_db: list keys 2 enoent");
 	is_int(list_size(&l), 0, "kasp_db: list keys reports no keys 2");
 	ptrlist_deep_free(&l, NULL);
@@ -147,7 +147,7 @@ int main(int argc, char *argv[])
 
 	ret = kasp_db_delete_all(db, zone2);
 	is_int(KNOT_EOK, ret, "kasp_db: delete all");
-	ret = kasp_db_list_keys(db, zone2, &l, false);
+	ret = kasp_db_list_keys(db, zone2, NULL, &l, false);
 	is_int(KNOT_EOK, ret, "kasp_db: do not delete keys");
 	is_int(2, list_size(&l), "kasp_db: list keys reports two keys 2");
 	params = ((ptrnode_t *)TAIL(l))->d;
