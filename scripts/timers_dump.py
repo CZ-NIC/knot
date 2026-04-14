@@ -86,7 +86,7 @@ class TimerDBInfo:
             label = dname[1:llen+1].decode("utf-8")
             dname = dname[llen+1:]
             labels.append(label)
-        return ".".join(labels)
+        return ".".join(labels) if labels else "."
 
     @classmethod
     def parse_timers(cls, binary):
