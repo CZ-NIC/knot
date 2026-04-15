@@ -2342,6 +2342,8 @@ is needed.
 
 *Default:* ``0``
 
+.. _policy_trash-delay:
+
 trash-delay
 -----------
 
