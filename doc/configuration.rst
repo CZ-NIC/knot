@@ -565,8 +565,9 @@ The signing process consists of the following steps:
 #. Processing KASP database events. (e.g. performing a step of a rollover).
 #. Updating the DNSKEY records. The whole DNSKEY set in zone apex is replaced
    by the keys from the KASP database. Note that keys added into the zone file
-   manually will be removed. To add an extra DNSKEY record into the set, the
-   key must be imported into the KASP database (possibly deactivated).
+   manually will be :ref:`removed<DNSSEC key delete and recovery>`. To add an
+   extra DNSKEY record into the set, the key must be imported into the KASP
+   database (possibly deactivated).
 #. Fixing the NSEC or NSEC3 chain.
 #. Removing expired signatures, invalid signatures, signatures expiring
    in a short time, and signatures issued by an unknown key.
