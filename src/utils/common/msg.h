@@ -37,7 +37,7 @@ int msg_debug(int level, const char *fmt, ...);
 /*! \brief Prints an error message if stdout is in a state of error. */
 inline static bool stdout_write_err(void)
 {
-	if (fflush(stdout) != 0) {
+	if (ferror(stdout) != 0) {
 		ERR2("failed writing output (%s)", strerror(errno));
 		return true;
 	}
