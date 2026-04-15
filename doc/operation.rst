@@ -720,7 +720,7 @@ Standard states:
   the updated DS records in parent zone to be acked by resolvers (KSK case) or synchronizing
   with KSK during algorithm rollover (ZSK case).
 - ``retired`` — The key is no longer used for signing. If ZSK, the key is still published in the zone.
-- ``removed`` — The key is not used in any way (in most cases such keys are deleted immediately).
+- ``removed`` — The key is not used in any way (such keys are usually moved to the :ref:`"trash bin"<DNSSEC key delete and recovery>`).
 
 Special states for algorithm rollover:
 
@@ -1393,6 +1393,43 @@ To achieve this, both keystores must be configured in the
 new KSKs are generated in the HSM, while ZSKs are generated in the second
 keystore.
 
+.. _DNSSEC key delete and recovery:
+
+DNSSEC key delete and recovery
+==============================
+
+Starting with Knot DNS XXXX, when a key is being removed or deleted, it's in fact
+moved to a virtual *"trash bin"* first to be stored there for a predefined time.
+After this time elapses, the key is finaly discarded automatically from the keystore.
+This solution allows key recovery if a key is needed in case of an accident, a mistake
+in configuration, or for troubleshooting.
+
+The *"trash bin"* for deleted DNSSEC keys is virtual indeed, deleted keys themselves
+are physically stored in the same keystores as before their deletion. Deleted keys
+in the *"trash bin"* can be handled with :doc:`keymgr<man_keymgr>` utility, using its
+commands ``trash-list``, ``trash-touch``, and ``trash-discard``. Recovery (in fact,
+a re-import) of a deleted key is done with :doc:`keymgr<man_keymgr>` ``import-trash``
+command. In re-import, a few of original key parameters are reused, but most of
+parameters must be specified manually as in other key imports — it's so, because
+most of the parameters lose their validity with key delete. It's also possible to
+re-import deleted key to a different zone than which the key belonged to prior it's
+deletion. The keystore that contains the key will remain the same and the zone to
+which the key is being re-imported must be configured to use this keystore.
+
+The time for which the keys are retained in the *"trash bin"* is configurable per
+DNSSEC policy as :ref:`policy_trash-delay` (prior to the key deletion, of course).
+
+The *"trash bin"* for any DNSSEC policy can be deactivated completely by setting
+:ref:`policy_trash-delay` to ``0``. In such a case, all keys are discarded immediately
+upon their deletion and never moved to the virtual *"trash bin"*.
+
+If needed, the *"trash bin"* can be emptied at will with either ``keymgr trash-discard``
+or ``knotc -f +keys +orphan zone-purge`` commands.
+
+.. NOTE::
+   Contents of the *"trash bin*" is not part of :ref:`online backup<Online backup>`
+   and restore.
+
 .. _Controlling a running daemon:
 
 Daemon controls
@@ -1478,6 +1515,8 @@ consistency, it's usually necessary to shut down the server, or at least freeze 
 the zones, before copying the data like zone files, KASP database, etc, to
 a backup location. To avoid this necessity, Knot DNS provides a feature to
 back up some or all of the zones seamlessly.
+
+.. _Online backup:
 
 Online backup
 -------------
