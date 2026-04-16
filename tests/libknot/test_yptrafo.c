@@ -135,9 +135,9 @@ static void str_test(const char *txt, const char *val)
 static void addr_test(const char *txt, bool port)
 {
 	int ret;
-	uint8_t b[64];
+	uint8_t b[128];
 	size_t b_len = sizeof(b);
-	char t[64];
+	char t[128];
 	size_t t_len = sizeof(t);
 	yp_item_t i = { NULL, YP_TADDR, YP_VNONE };
 
@@ -375,6 +375,7 @@ int main(int argc, char *argv[])
 	addr_test("2001:db8::1", true);
 	addr_test("::1@12345", false);
 	addr_test("/tmp/test.sock", true);
+	addr_test("/knot-3.6.dev0+1775816156.4373fdb0d/_build/sub/tests/tmp/knot/knot.sock", true);
 	addr_test("eth1@53", true);
 	addr_test("::1%lo", true);
 	addr_test("::1%2", true);

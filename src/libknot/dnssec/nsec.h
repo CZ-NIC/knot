@@ -50,6 +50,8 @@ void dnssec_nsec3_params_free(dnssec_nsec3_params_t *params);
 /*!
  * Parse NSEC3 parameters from NSEC3PARAM RDATA.
  *
+ * \note The function can be called on NSEC3 RDATA.
+ *
  * \param params  Output parameters.
  * \param rdata   NSEC3PARAM RDATA.
  *

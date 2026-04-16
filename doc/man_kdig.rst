@@ -177,6 +177,14 @@ Options
 **+**\ [\ **no**\ ]\ **dnssec**
   Same as **+**\ [\ **no**\ ]\ **doflag**
 
+**+**\ [\ **no**\ ]\ **validate**\[\ =\ *LEVEL*\]
+  Also query for DNSKEY, validate DNSSEC in the answer. Implies DO flag.
+  Optional argument specifies verbosity (1-3, default 3).
+
+  NOTICE: this is not a security feature, rather a debugging tool. Kdig
+  doesn't attempt to obtain nor validate the whole trust chain, therefore
+  an attacker can in theory spoof everything and Kdig concludes "valid".
+
 **+**\ [\ **no**\ ]\ **all**
   Show all packet sections.
 
