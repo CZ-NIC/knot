@@ -39,6 +39,7 @@ typedef struct {
 	bool missing;
 	bool trash;
 	bool all_zones;
+	uint16_t keytag;
 	jsonw_t *jsonw;
 } key_info_t;
 
@@ -1101,6 +1102,7 @@ static void print_key_brief(const knot_kasp_key_t *key, key_info_t *info,
 {
 	const bool c = params->color;
 	const bool trash = info->trash;
+	uint16_t keytag = trash ? info->keytag : dnssec_key_get_keytag(key->key);
 
 	printf("%s%s%s",
 	       trash ? COL_UNDR(c) : "",
@@ -1108,7 +1110,7 @@ static void print_key_brief(const knot_kasp_key_t *key, key_info_t *info,
 	       trash ? COL_RST(c) : "");
 
 	printf(" %s%5u%s ",
-	       COL_BOLD(c), dnssec_key_get_keytag(key->key), COL_RST(c));
+	       COL_BOLD(c), keytag, COL_RST(c));
 
 	printf("%s%s%s%s ",
 	       COL_BOLD(c),
@@ -1175,11 +1177,12 @@ static void print_key_full(const knot_kasp_key_t *key, key_info_t *info,
                            keymgr_list_params_t *params)
 {
 	const bool trash = info->trash;
+	uint16_t keytag = trash ? info->keytag : dnssec_key_get_keytag(key->key);
 
 	printf("%s ksk=%s zsk=%s tag=%05d algorithm=%-2d size=%-4u"
 	       " public-only=%s for-later=%s missing=%s trash=%s",
 	       key->id, (key->is_ksk ? "yes" : "no "), (key->is_zsk ? "yes" : "no "),
-	       dnssec_key_get_keytag(key->key), (int)dnssec_key_get_algorithm(key->key),
+	       keytag, (int)dnssec_key_get_algorithm(key->key),
 	       dnssec_key_get_size(key->key), (key->is_pub_only ? "yes" : "no "),
 	       (key->is_for_later ? "yes" : "no "), (info->missing ? "yes" : "no "),
 	       (trash ? "yes" : "no "));
@@ -1210,12 +1213,13 @@ static void print_key_json(const knot_kasp_key_t *key, key_info_t *info,
                            knot_time_print_t format, jsonw_t *w, const char *zone_name)
 {
 	const bool trash = info->trash;
+	uint16_t keytag = trash ? info->keytag : dnssec_key_get_keytag(key->key);
 
 	jsonw_str(w,   "zone", zone_name);
 	jsonw_str(w,   "id", key->id);
 	jsonw_bool(w,  "ksk", key->is_ksk);
 	jsonw_bool(w,  "zsk", key->is_zsk);
-	jsonw_int(w,   "tag", dnssec_key_get_keytag(key->key));
+	jsonw_int(w,   "tag", keytag);
 	jsonw_ulong(w, "algorithm", dnssec_key_get_algorithm(key->key));
 	jsonw_int(w,   "size", dnssec_key_get_size(key->key));
 	jsonw_bool(w,  "public-only", key->is_pub_only);
@@ -1333,6 +1337,7 @@ static int print_params_key(kdnssec_ctx_t *ctx, key_params_t *kparams,
 	}
 	key_info_t info = key_missing(ctx, &key);
 	info.trash = true;
+	info.keytag = kparams->keytag;
 	info.all_zones = ctx->validation_mode; // Abused ctx member validation_mode.
 	info.jsonw = jsonw;
 	print_cb(&key, &info, params);
