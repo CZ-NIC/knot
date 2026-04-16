@@ -6,6 +6,7 @@
 #include <stdlib.h>
 
 #include "libknot/dnssec/crypto.h"
+#include "utils/common/msg.h"
 #include "utils/knsupdate/knsupdate_exec.h"
 #include "utils/knsupdate/knsupdate_params.h"
 #include "libknot/libknot.h"
@@ -21,7 +22,7 @@ int main(int argc, char *argv[])
 	if (knsupdate_parse(&params, argc, argv) == KNOT_EOK) {
 		if (!params.stop) {
 			dnssec_crypto_init();
-			if (knsupdate_exec(&params) != KNOT_EOK) {
+			if (knsupdate_exec(&params) != KNOT_EOK || stdout_write_err()) {
 				ret = EXIT_FAILURE;
 			}
 			dnssec_crypto_cleanup();

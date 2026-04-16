@@ -423,6 +423,9 @@ int main(int argc, char *argv[])
 	}
 
 success:
+	if (stdout_write_err()) {
+		goto failure;
+	}
 	util_conf_deinit();
 	dnssec_crypto_cleanup();
 	return EXIT_SUCCESS;
