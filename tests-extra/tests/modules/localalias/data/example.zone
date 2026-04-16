@@ -1,0 +1,50 @@
+$ORIGIN example.
+$TTL 300
+@               IN SOA ns.example. mail.example. ( 1 3600 900 604800 300 )
+@               IN NS  ns.example.
+ns              IN A    192.0.2.254
+mx              IN A    192.0.2.253
+
+; Basic: pure ALIAS to a locally-served target.
+www             600 IN ALIAS web._ips.example.
+
+; ALIAS plus direct MX on the same node — both must be returnable.
+www             300 IN MX    10 mail.example.
+
+; ALIAS to a non-local target; should yield NODATA.
+external        300 IN ALIAS web.external.tld.
+
+; Multiple ALIAS rdata on one node; both targets' A records should merge.
+multi           300 IN ALIAS web._ips.example.
+multi           300 IN ALIAS alt._ips.example.
+
+; Self-referential ALIAS with no A on target — NODATA.
+loop            300 IN ALIAS loop.example.
+
+; Self-referential ALIAS with coexisting direct A.
+loop2           300 IN ALIAS loop2.example.
+loop2           300 IN A     10.0.0.4
+
+; Coexisting ALIAS + direct A; additive.
+both            300 IN ALIAS web._ips.example.
+both            300 IN A     10.0.0.3
+
+; TTL cap demonstration: alias_ttl=600, target_ttl=300 → synthesised ttl=300.
+lowttl          600 IN ALIAS web._ips.example.
+
+; Wildcard ALIAS plus a specific plain-A override.
+*.wild1         300 IN ALIAS web._ips.example.
+over.wild1      300 IN A     10.0.0.1
+
+; Wildcard plain A plus a specific ALIAS override.
+*.wild2         300 IN A     10.0.0.2
+login.wild2     300 IN ALIAS web._ips.example.
+
+; Wildcard ALIAS with a specific ALIAS override pointing at a different target.
+*.wild3         300 IN ALIAS web._ips.example.
+other.wild3     300 IN ALIAS alt._ips.example.
+
+; MX query on an ALIAS node whose target also has an MX — the two MX rrsets
+; must merge (additive).
+mixmx           300 IN ALIAS mail._ips.example.
+mixmx           300 IN MX    20 mx.example.
