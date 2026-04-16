@@ -25,6 +25,13 @@ const knot_dname_t *knot_cname_name(const knot_rdata_t *rdata)
 }
 
 static inline
+const knot_dname_t *knot_alias_name(const knot_rdata_t *rdata)
+{
+	assert(rdata);
+	return rdata->data;
+}
+
+static inline
 const knot_dname_t *knot_dname_target(const knot_rdata_t *rdata)
 {
 	assert(rdata);
@@ -74,6 +81,8 @@ const knot_dname_t *knot_rdata_name(const knot_rdata_t *rdata, uint16_t type)
 			return knot_srv_name(rdata);
 		case KNOT_RRTYPE_CNAME:
 			return knot_cname_name(rdata);
+		case KNOT_RRTYPE_ALIAS:
+			return knot_alias_name(rdata);
 		case KNOT_RRTYPE_DNAME:
 			return knot_dname_target(rdata);
 		case KNOT_RRTYPE_SVCB:
