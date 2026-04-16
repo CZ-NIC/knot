@@ -266,6 +266,7 @@ include $(srcdir)/knot/modules/dnserr/Makefile.inc
 include $(srcdir)/knot/modules/dnsproxy/Makefile.inc
 include $(srcdir)/knot/modules/dnstap/Makefile.inc
 include $(srcdir)/knot/modules/geoip/Makefile.inc
+include $(srcdir)/knot/modules/localalias/Makefile.inc
 include $(srcdir)/knot/modules/noudp/Makefile.inc
 include $(srcdir)/knot/modules/onlinesign/Makefile.inc
 include $(srcdir)/knot/modules/probe/Makefile.inc
