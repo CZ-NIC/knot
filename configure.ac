@@ -135,9 +135,10 @@ AM_CONDITIONAL([HAVE_PDFLATEX], test "$PDFLATEX" != "false")
 link_mode=$(test "$enable_shared" = "yes" && echo "shared" || echo "static")
 
 ######################
-# Generic dependencies
+# Library dependencies
 ######################
 
+# Fast (big) zone parser
 AC_ARG_ENABLE([fastparser],
     AS_HELP_STRING([--disable-fastparser], [Disable use of fast zone parser]),
     [], [AS_IF([test -d ".git"], [enable_fastparser=no], [enable_fastparser=yes])]
@@ -164,6 +165,7 @@ PKG_CHECK_MODULES([gnutls], [gnutls >= 3.6.12], [
 ], [
     AS_IF([test "$enable_redis" != "module"], [AC_MSG_ERROR([GnuTLS library not found])])
 ])
+
 # PKCS11 support
 AC_ARG_ENABLE([pkcs11],
    AS_HELP_STRING([--enable-pkcs11=auto|yes|no], [Support PKCS #11 [default=auto]]),
@@ -180,6 +182,7 @@ AM_CONDITIONAL([ENABLE_PKCS11], [test "$enable_pkcs11" = "yes"])
 AS_IF([test "$enable_pkcs11" != "no"], [
   AC_DEFINE([ENABLE_PKCS11], [1], [Define to 1 to enable PKCS #11 support using GnuTLS])])
 
+# recvmmsg() and sendmmsg() support
 AC_ARG_ENABLE([recvmmsg],
    AS_HELP_STRING([--enable-recvmmsg=auto|yes|no], [enable recvmmsg() network API [default=auto]]),
    [], [enable_recvmmsg=auto])
@@ -233,7 +236,7 @@ AC_SUBST([libbpf_LIBS])
 AS_IF([test "$enable_xdp" != "no"],[
     AC_DEFINE([ENABLE_XDP], [1], [Use eXpress Data Path.])])
 
-# Reuseport support
+# REUSEPORT support
 AS_CASE([$host_os],
   [freebsd*], [reuseport_opt=SO_REUSEPORT_LB],
   [*], [reuseport_opt=SO_REUSEPORT],
@@ -305,60 +308,68 @@ AS_IF([test "$enable_redis" = yes -o "$enable_redis" = client],[
 # Dependencies needed for Knot DNS daemon
 #########################################
 
-# Systemd integration
+# Systemd integration (configuration)
 AC_ARG_ENABLE([systemd],
-    AS_HELP_STRING([--enable-systemd=auto|yes|no], [enable systemd integration [default=auto]]),
-    [enable_systemd="$enableval"], [enable_systemd=auto])
+  AS_HELP_STRING([--enable-systemd=auto|yes|no], [enable systemd integration [default=auto]]),
+  [enable_systemd="$enableval"], [enable_systemd=auto])
 
+# D-Bus support (configuration)
 AC_ARG_ENABLE([dbus],
-    AS_HELP_STRING([--enable-dbus=auto|systemd|libdbus|no], [enable D-bus support [default=auto]]),
-    [enable_dbus="$enableval"], [enable_dbus=auto])
+  AS_HELP_STRING([--enable-dbus=auto|systemd|libdbus|no], [enable D-Bus support [default=auto]]),
+  [enable_dbus="$enableval"], [enable_dbus=auto])
 
-AS_IF([test "$enable_daemon" = "yes"],[
-
-AS_IF([test "$enable_systemd" != "no"],[
-  AS_CASE([$enable_systemd],
-    [auto],[PKG_CHECK_MODULES([systemd], [libsystemd], [enable_systemd=yes], [
-            PKG_CHECK_MODULES([systemd], [libsystemd-daemon libsystemd-journal], [enable_systemd=yes], [enable_systemd=no])])],
-    [yes],[PKG_CHECK_MODULES([systemd], [libsystemd], [], [
-            PKG_CHECK_MODULES([systemd], [libsystemd-daemon libsystemd-journal])])],
-    [*],[AC_MSG_ERROR([Invalid value of --enable-systemd.])])
-    ])
-
-AS_IF([test "$enable_systemd" = "yes"],[
-  AC_DEFINE([ENABLE_SYSTEMD], [1], [Use systemd integration.])])
-
-AS_IF([test "$enable_dbus" != "no"],[
-  AS_CASE([$enable_dbus],
-    [auto],[AS_IF([test "$enable_systemd" = "yes"],
-             [AC_DEFINE([ENABLE_DBUS_SYSTEMD], [1], [systemd D-Bus available])
-              enable_dbus=systemd],
-             [PKG_CHECK_MODULES([libdbus], [dbus-1],
-               [AC_DEFINE([ENABLE_DBUS_LIBDBUS], [1], [libdbus D-Bus available])
-                enable_dbus=libdbus],
-               [enable_dbus=no])])],
-    [systemd],[AS_IF([test "$enable_systemd" = "yes"],
-                [AC_DEFINE([ENABLE_DBUS_SYSTEMD], [1], [systemd D-Bus available])
-                 enable_dbus=systemd],
-                [AC_MSG_ERROR([systemd >= 221 not available.])])],
-    [libdbus],[PKG_CHECK_MODULES([libdbus], [dbus-1],
-                [AC_DEFINE([ENABLE_DBUS_LIBDBUS], [1], [libdbus D-Bus available])
-                 enable_dbus=libdbus],
-                [AC_MSG_ERROR([libdbus not available.])])],
-    [no],[enable_dbus=no],
-    [*],[AC_MSG_ERROR([Invalid value of --enable-dbus.])])
-    ])
-
-]) dnl enable_daemon
-
-# Socket polling method
-socket_polling=
+# Socket polling method (configuration)
 AC_ARG_WITH([socket-polling],
   AS_HELP_STRING([--with-socket-polling=auto|poll|epoll|kqueue|libkqueue],
                  [Use specific socket polling method [default=auto]]),
-  [socket_polling=$withval], [socket_polling=auto]
-)
+  [socket_polling=$withval], [socket_polling=auto])
 
+# Alternative memory allocator (configuration)
+AC_ARG_WITH([memory-allocator],
+  AS_HELP_STRING([--with-memory-allocator=auto|LIBRARY],
+                 [Use specific memory allocator for the server (e.g. jemalloc) [default=auto]]),
+  [memory_allocator=$withval], [memory_allocator=auto])
+
+AS_IF([test "$enable_daemon" = "yes"], [
+
+# Systemd integration (check)
+AS_IF([test "$enable_systemd" != "no"], [
+  AS_CASE([$enable_systemd],
+    [auto], [PKG_CHECK_MODULES([systemd], [libsystemd], [enable_systemd=yes], [
+             PKG_CHECK_MODULES([systemd], [libsystemd-daemon libsystemd-journal], [enable_systemd=yes], [enable_systemd=no])])],
+    [yes], [PKG_CHECK_MODULES([systemd], [libsystemd], [], [
+            PKG_CHECK_MODULES([systemd], [libsystemd-daemon libsystemd-journal])])],
+    [*], [AC_MSG_ERROR([Invalid value of --enable-systemd.])]
+  )
+])
+
+AS_IF([test "$enable_systemd" = "yes"], [
+  AC_DEFINE([ENABLE_SYSTEMD], [1], [Use systemd integration.])])
+
+# D-Bus support (check)
+AS_IF([test "$enable_dbus" != "no"], [
+  AS_CASE([$enable_dbus],
+    [auto], [AS_IF([test "$enable_systemd" = "yes"],
+              [AC_DEFINE([ENABLE_DBUS_SYSTEMD], [1], [systemd D-Bus available])
+               enable_dbus=systemd],
+              [PKG_CHECK_MODULES([libdbus], [dbus-1],
+                [AC_DEFINE([ENABLE_DBUS_LIBDBUS], [1], [libdbus D-Bus available])
+                 enable_dbus=libdbus],
+                [enable_dbus=no])])],
+    [systemd], [AS_IF([test "$enable_systemd" = "yes"],
+                 [AC_DEFINE([ENABLE_DBUS_SYSTEMD], [1], [systemd D-Bus available])
+                  enable_dbus=systemd],
+                 [AC_MSG_ERROR([systemd >= 221 not available.])])],
+    [libdbus], [PKG_CHECK_MODULES([libdbus], [dbus-1],
+                 [AC_DEFINE([ENABLE_DBUS_LIBDBUS], [1], [libdbus D-Bus available])
+                  enable_dbus=libdbus],
+                 [AC_MSG_ERROR([libdbus not available.])])],
+    [no], [enable_dbus=no],
+    [*], [AC_MSG_ERROR([Invalid value of --enable-dbus.])]
+  )
+])
+
+# Socket polling method (check)
 AS_CASE([$socket_polling],
   [auto], [AC_CHECK_FUNCS([kqueue],
              [AC_DEFINE([HAVE_KQUEUE], [1], [kqueue available])
@@ -383,27 +394,19 @@ AS_CASE([$socket_polling],
   [*], [AC_MSG_ERROR([Invalid value of --socket-polling.])]
 )
 
-# Alternative memory allocator
-malloc_LIBS=
-AC_ARG_WITH([memory-allocator],
-  AS_HELP_STRING([--with-memory-allocator=auto|LIBRARY],
-                 [Use specific memory allocator for the server (e.g. jemalloc) [default=auto]]),
-  AS_CASE([$withval],
-    [auto], [],
-    [*],    [malloc_LIBS="-l$withval"]
-  )
-  with_memory_allocator=[$withval]
+# Alternative memory allocator (check)
+AS_CASE([$memory_allocator],
+  [auto], [malloc_LIBS=""],
+  [*],    [malloc_LIBS="-l$memory_allocator"]
 )
-AS_IF([test "$with_memory_allocator" = ""], [with_memory_allocator="auto"])
 AC_SUBST([malloc_LIBS])
 
-AS_IF([test "$enable_daemon" = "yes"],[
-
+# Userspace RCU dependency
 PKG_CHECK_MODULES([liburcu], [liburcu], [], [
   AC_MSG_ERROR([liburcu not found])
 ])
 
-])
+]) dnl enable_daemon
 
 static_modules=""
 shared_modules=""
@@ -832,7 +835,7 @@ result_msg_base="
     Redis support:          ${enable_redis}
     Socket polling:         ${socket_polling}
     Atomic support:         ${atomic_type}
-    Memory allocator:       ${with_memory_allocator}
+    Memory allocator:       ${memory_allocator}
     Fast zone parser:       ${enable_fastparser}
     Utilities with IDN:     ${with_libidn}
     Utilities with DoH:     ${with_libnghttp2}
