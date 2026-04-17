@@ -630,9 +630,16 @@ AC_ARG_WITH(libnghttp2,
 )
 
 dnl DNSSEC validation in kdig
-AC_ARG_ENABLE([kdig_validation],
-  AS_HELP_STRING([--enable-kdig-validation=yes|no], [DNSSEC validation in kdig [default=yes]]),
-    [enable_kdig_validation="$enableval"], [enable_kdig_validation=yes])
+AC_ARG_ENABLE([kdig-validation],
+  AS_HELP_STRING([--disable-kdig-validation], [Disable DNSSEC validation in kdig]),
+  [], [enable_kdig_validation=yes])
+AS_IF([test "$enable_kdig_validation" != "yes" -o "$enable_utilities" != "yes" -o "$enable_daemon" != "yes"], [
+  enable_kdig_validation=no
+])
+AS_IF([test "$enable_kdig_validation" = "yes"], [
+  AC_DEFINE([HAVE_KDIG_VALIDATION], [1], [Define to 1 to enable DNSSEC validation in kdig.])
+])
+AM_CONDITIONAL([HAVE_KDIG_VALIDATION], [test "$enable_kdig_validation" = "yes"])
 
 AS_IF([test "$enable_utilities" = "yes"], [
   AS_IF([test "$with_libidn" != "no"], [
@@ -654,12 +661,6 @@ AS_IF([test "$enable_utilities" = "yes"], [
       AC_MSG_WARN([libnghttp2 not found])
     ])
   ])
-
-  AS_IF([test "$enable_daemon" = "no"], [enable_kdig_validation=no])
-  AS_IF([test "$enable_kdig_validation" != "no"], [
-    AC_DEFINE([HAVE_KDIG_VALIDATION], [1], [Define to 1 to enable DNSSEC validation in kdig.])
-  ])
-  AM_CONDITIONAL([HAVE_KDIG_VALIDATION], [test "$enable_kdig_validation" = yes])
 
   AS_IF([test "$enable_xdp" != "no"], [
     PKG_CHECK_MODULES([libmnl], [libmnl], [], [
