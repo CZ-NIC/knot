@@ -140,43 +140,43 @@ link_mode=$(test "$enable_shared" = "yes" && echo "shared" || echo "static")
 
 # Fast (big) zone parser
 AC_ARG_ENABLE([fastparser],
-    AS_HELP_STRING([--disable-fastparser], [Disable use of fast zone parser]),
-    [], [AS_IF([test -d ".git"], [enable_fastparser=no], [enable_fastparser=yes])]
+  AS_HELP_STRING([--disable-fastparser], [Disable use of fast zone parser]),
+  [], [AS_IF([test -d ".git"], [enable_fastparser=no], [enable_fastparser=yes])]
 )
 AM_CONDITIONAL([FAST_PARSER], [test "$enable_fastparser" = "yes"])
 
 # GnuTLS crypto backend
 PKG_CHECK_MODULES([gnutls], [gnutls >= 3.6.12], [
-    save_CFLAGS=$CFLAGS
-    save_LIBS=$LIBS
-    CFLAGS="$CFLAGS $gnutls_CFLAGS"
-    LIBS="$LIBS $gnutls_LIBS"
+  save_CFLAGS=$CFLAGS
+  save_LIBS=$LIBS
+  CFLAGS="$CFLAGS $gnutls_CFLAGS"
+  LIBS="$LIBS $gnutls_LIBS"
 
-    AC_CHECK_FUNC([gnutls_pkcs11_copy_pubkey],
-        [AC_DEFINE([HAVE_GNUTLS_PKCS11], [1], [gnutls_pkcs11_copy_pubkey available])
-         gnutls_pkcs11=yes], [gnutls_pkcs11=no])
+  AC_CHECK_FUNC([gnutls_pkcs11_copy_pubkey],
+    [AC_DEFINE([HAVE_GNUTLS_PKCS11], [1], [gnutls_pkcs11_copy_pubkey available])
+     gnutls_pkcs11=yes], [gnutls_pkcs11=no])
 
-    AC_CHECK_FUNC([gnutls_early_cipher_get],
-        [AC_DEFINE([HAVE_GNUTLS_QUIC], [1], [gnutls_early_cipher_get available])
-         gnutls_quic=yes], [gnutls_quic=no])
+  AC_CHECK_FUNC([gnutls_early_cipher_get],
+    [AC_DEFINE([HAVE_GNUTLS_QUIC], [1], [gnutls_early_cipher_get available])
+     gnutls_quic=yes], [gnutls_quic=no])
 
-    CFLAGS=$save_CFLAGS
-    LIBS=$save_LIBS
+  CFLAGS=$save_CFLAGS
+  LIBS=$save_LIBS
 ], [
-    AS_IF([test "$enable_redis" != "module"], [AC_MSG_ERROR([GnuTLS library not found])])
+  AS_IF([test "$enable_redis" != "module"], [AC_MSG_ERROR([GnuTLS library not found])])
 ])
 
 # PKCS11 support
 AC_ARG_ENABLE([pkcs11],
-   AS_HELP_STRING([--enable-pkcs11=auto|yes|no], [Support PKCS #11 [default=auto]]),
-   [], [enable_pkcs11=auto])
+  AS_HELP_STRING([--enable-pkcs11=auto|yes|no], [Support PKCS #11 [default=auto]]),
+  [], [enable_pkcs11=auto])
 
 AS_CASE([$enable_pkcs11],
-   [auto], [AS_IF([test "$gnutls_pkcs11" = "yes"], [enable_pkcs11=yes], [enable_pkcs11=no])],
-   [yes],  [AS_IF([test "$gnutls_pkcs11" = "yes"], [enable_pkcs11=yes], [
-     AC_MSG_ERROR([PKCS11 not available])])],
-   [no], [],
-   [*], [AC_MSG_ERROR([Invalid value of --enable-pkcs11.])]
+  [auto], [AS_IF([test "$gnutls_pkcs11" = "yes"], [enable_pkcs11=yes], [enable_pkcs11=no])],
+  [yes],  [AS_IF([test "$gnutls_pkcs11" = "yes"], [enable_pkcs11=yes], [
+    AC_MSG_ERROR([PKCS11 not available])])],
+  [no], [],
+  [*], [AC_MSG_ERROR([Invalid value of --enable-pkcs11.])]
 )
 AM_CONDITIONAL([ENABLE_PKCS11], [test "$enable_pkcs11" = "yes"])
 AS_IF([test "$enable_pkcs11" != "no"], [
@@ -184,20 +184,20 @@ AS_IF([test "$enable_pkcs11" != "no"], [
 
 # recvmmsg() and sendmmsg() support
 AC_ARG_ENABLE([recvmmsg],
-   AS_HELP_STRING([--enable-recvmmsg=auto|yes|no], [enable recvmmsg() network API [default=auto]]),
-   [], [enable_recvmmsg=auto])
+  AS_HELP_STRING([--enable-recvmmsg=auto|yes|no], [enable recvmmsg() network API [default=auto]]),
+  [], [enable_recvmmsg=auto])
 
 AS_CASE([$enable_recvmmsg],
-   [auto|yes],[
+  [auto|yes],[
       AC_CHECK_FUNC([recvmmsg],
                     [AC_CHECK_FUNC([sendmmsg],[enable_recvmmsg=yes],[enable_recvmmsg=no])],
                     [enable_recvmmsg=no])],
-   [no],[],
-   [*], [AC_MSG_ERROR([Invalid value of --enable-recvmmsg.]
+  [no],[],
+  [*], [AC_MSG_ERROR([Invalid value of --enable-recvmmsg.]
  )])
 
-AS_IF([test "$enable_recvmmsg" = yes],[
-   AC_DEFINE([ENABLE_RECVMMSG], [1], [Use recvmmsg().])])
+AS_IF([test "$enable_recvmmsg" = yes], [
+  AC_DEFINE([ENABLE_RECVMMSG], [1], [Use recvmmsg().])])
 
 # XDP support
 AC_ARG_ENABLE([xdp],
