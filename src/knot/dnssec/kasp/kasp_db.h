@@ -96,8 +96,8 @@ int kasp_db_delete_all(knot_lmdb_db_t *db, const knot_dname_t *zone_name);
  *
  * \param db            KASP db
  * \param zone_name     zone to remove from
- * \param key_id        ID of the key to be removed
- * \param for_delete    optional filtering callback, or NULL
+ * \param key_id        ID of the key to be removed, or NULL for any
+ * \param for_delete    optional filtering callback, or NULL for no filtering
  * \param cb_data       data passed to callback function, or NULL
  *
  * \return KNOT_E*
