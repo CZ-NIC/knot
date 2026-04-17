@@ -88,7 +88,7 @@ int kasp_db_delete_keys(knot_lmdb_db_t *db, const knot_dname_t *zone_name,
  * \return KNOT_E*
  */
 int kasp_db_delete_keys(knot_lmdb_db_t *db, const knot_dname_t *zone_name,
-                        bool orphan, bool best, bool trash);
+                        bool orphan, bool best, bool use_trash);
 
 /*!
  * \brief Remove all zone's keys from DB, including nsec3param, but exluding keys related to
