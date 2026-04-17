@@ -470,7 +470,7 @@ int kasp_db_delete_key(knot_lmdb_db_t *db, const knot_dname_t *zone_name, const 
 }
 
 int kasp_db_delete_keys(knot_lmdb_db_t *db, const knot_dname_t *zone_name,
-                        bool orphan, bool best, bool trash)
+                        bool orphan, bool best, bool use_trash)
 {
 	int ret;
 	knot_kasp_keystore_t *keystores = NULL;
@@ -482,7 +482,7 @@ int kasp_db_delete_keys(knot_lmdb_db_t *db, const knot_dname_t *zone_name,
 	} else {
 		ret = kdnssec_ctx_init(conf(), &ctx, zone_name, db, NULL);
 		keystores = ctx.keystores;
-		delay = trash ? ctx.policy->trash_delay : 0;
+		delay = use_trash ? ctx.policy->trash_delay : 0;
 	}
 	if (ret != KNOT_EOK) {
 		return ret;
