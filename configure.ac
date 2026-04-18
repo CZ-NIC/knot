@@ -309,41 +309,41 @@ AS_CASE([$enable_reuseport],
 )
 
 AS_IF([test "$enable_reuseport" = yes],[
-   AC_DEFINE([ENABLE_REUSEPORT], [1], [Use SO_REUSEPORT(_LB).])])
+  AC_DEFINE([ENABLE_REUSEPORT], [1], [Use SO_REUSEPORT(_LB).])])
 
 # Redis zone backend support
 AC_ARG_ENABLE([redis],
-   AS_HELP_STRING([--enable-redis=auto|yes|client|module|no], [enable Redis support [default=auto]]),
-   [], [enable_redis=auto])
+  AS_HELP_STRING([--enable-redis=auto|yes|client|module|no], [enable Redis support [default=auto]]),
+  [], [enable_redis=auto])
 
 redis_dir="${libdir}/knot/redis"
 AC_ARG_WITH([redisdir],
-   AS_HELP_STRING([--with-redisdir=path], [Destination of module for Redis [default=${libdir}/knot/redis]]),
-   [redis_dir=$withval])
+  AS_HELP_STRING([--with-redisdir=path], [Destination of module for Redis [default=${libdir}/knot/redis]]),
+  [redis_dir=$withval])
 AC_SUBST(redis_dir)
 
 AS_CASE([$enable_redis],
-   [auto],   [PKG_CHECK_MODULES([hiredis], [hiredis], [enable_redis=yes], [enable_redis=no])],
-   [yes],    [PKG_CHECK_MODULES([hiredis], [hiredis], [enable_redis=yes], [AC_MSG_ERROR([libhiredis not available])])],
-   [client], [PKG_CHECK_MODULES([hiredis], [hiredis], [enable_redis=client], [AC_MSG_ERROR([libhiredis not available])])],
-   [module], [AS_IF([test "$enable_shared" = "yes"], [enable_redis=module], [AC_MSG_ERROR([link mode has to be 'shared'])])],
-   [no], [],
-   [*], [AC_MSG_ERROR([Invalid value of --enable-redis.])]
+  [auto],   [PKG_CHECK_MODULES([hiredis], [hiredis], [enable_redis=yes], [enable_redis=no])],
+  [yes],    [PKG_CHECK_MODULES([hiredis], [hiredis], [enable_redis=yes], [AC_MSG_ERROR([libhiredis not available])])],
+  [client], [PKG_CHECK_MODULES([hiredis], [hiredis], [enable_redis=client], [AC_MSG_ERROR([libhiredis not available])])],
+  [module], [AS_IF([test "$enable_shared" = "yes"], [enable_redis=module], [AC_MSG_ERROR([link mode has to be 'shared'])])],
+  [no], [],
+  [*], [AC_MSG_ERROR([Invalid value of --enable-redis.])]
 )
 AM_CONDITIONAL([ENABLE_REDIS], [test "$enable_redis" != "no"])
 AM_CONDITIONAL([ENABLE_REDIS_MODULE], [test "$enable_redis" != "no" && test "$enable_redis" != "client" && test "$enable_shared" = "yes"])
 
 AS_IF([test "$enable_redis" = yes -o "$enable_redis" = client],[
-   AC_DEFINE([ENABLE_REDIS], [1], [Enable Redis support.])
-   AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <hiredis/hiredis.h>
-                                     #if (HIREDIS_MAJOR < 1) || (HIREDIS_MAJOR == 1 && HIREDIS_MINOR < 1)
-                                     #error "No TLS support in Redis (need >= 1.1.0)"
-                                     #endif]])],
-                  [AC_DEFINE([ENABLE_REDIS_TLS], [1], [Enable Redis TLS support.])],
-                  [enable_redis="yes (no TLS)"])
-   AS_IF([test "$enable_redis" = yes && test "$enable_shared" = yes],[
-      enable_redis="${enable_redis} module"
-   ])
+  AC_DEFINE([ENABLE_REDIS], [1], [Enable Redis support.])
+  AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <hiredis/hiredis.h>
+                                    #if (HIREDIS_MAJOR < 1) || (HIREDIS_MAJOR == 1 && HIREDIS_MINOR < 1)
+                                    #error "No TLS support in Redis (need >= 1.1.0)"
+                                    #endif]])],
+                 [AC_DEFINE([ENABLE_REDIS_TLS], [1], [Enable Redis TLS support.])],
+                 [enable_redis="yes (no TLS)"])
+  AS_IF([test "$enable_redis" = yes && test "$enable_shared" = yes],[
+    enable_redis="${enable_redis} module"
+  ])
 ])
 
 #########################################
