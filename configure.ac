@@ -311,23 +311,28 @@ AS_IF([test "$enable_redis" = yes -o "$enable_redis" = client],[
 # Systemd integration (configuration)
 AC_ARG_ENABLE([systemd],
   AS_HELP_STRING([--enable-systemd=auto|yes|no], [enable systemd integration [default=auto]]),
-  [enable_systemd="$enableval"], [enable_systemd=auto])
+  [], [enable_systemd=auto])
 
 # D-Bus support (configuration)
 AC_ARG_ENABLE([dbus],
   AS_HELP_STRING([--enable-dbus=auto|systemd|libdbus|no], [enable D-Bus support [default=auto]]),
-  [enable_dbus="$enableval"], [enable_dbus=auto])
+  [], [enable_dbus=auto])
+
+# POSIX capabilities (configuration)
+AC_ARG_ENABLE([cap-ng],
+  AS_HELP_STRING([--enable-cap-ng=auto|no], [enable POSIX capabilities [default=auto]]),
+  [], [enable_cap_ng=auto])
 
 # Socket polling method (configuration)
 AC_ARG_WITH([socket-polling],
   AS_HELP_STRING([--with-socket-polling=auto|poll|epoll|kqueue|libkqueue],
-                 [Use specific socket polling method [default=auto]]),
+                 [use specific socket polling method [default=auto]]),
   [socket_polling=$withval], [socket_polling=auto])
 
 # Alternative memory allocator (configuration)
 AC_ARG_WITH([memory-allocator],
   AS_HELP_STRING([--with-memory-allocator=auto|LIBRARY],
-                 [Use specific memory allocator for the server (e.g. jemalloc) [default=auto]]),
+                 [use specific memory allocator for the server (e.g. jemalloc) [default=auto]]),
   [memory_allocator=$withval], [memory_allocator=auto])
 
 AS_IF([test "$enable_daemon" = "yes"], [
@@ -368,6 +373,29 @@ AS_IF([test "$enable_dbus" != "no"], [
     [*], [AC_MSG_ERROR([Invalid value of --enable-dbus.])]
   )
 ])
+
+# POSIX capabilities (check)
+AS_IF([test "$enable_cap_ng" != "no"], [
+  PKG_CHECK_MODULES([cap_ng], [cap-ng], [enable_cap_ng=yes], [
+    enable_cap_ng=no
+    AC_CHECK_HEADER([cap-ng.h], [
+      save_LIBS="$LIBS"
+      AC_SEARCH_LIBS([capng_apply], [cap-ng], [
+        AS_IF([test "$ac_cv_search_capng_apply" != "none required"],
+          [cap_ng_LIBS="$ac_cv_search_capng_apply"], [cap_ng_LIBS=])
+        AC_SUBST([cap_ng_LIBS])
+        enable_cap_ng=yes
+      ])
+      LIBS="$save_LIBS"
+    ])
+  ])
+], [
+  enable_cap_ng=no
+  cap_ng_LIBS=
+])
+
+AS_IF([test "$enable_cap_ng" = "yes"],
+  [AC_DEFINE([ENABLE_CAP_NG], [1], [POSIX capabilities available.])])
 
 # Socket polling method (check)
 AS_CASE([$socket_polling],
@@ -468,7 +496,7 @@ AM_CONDITIONAL([HAVE_LIBDNSTAP], test "$enable_dnstap" != "no" -o \
 # MaxMind DB for the GeoIP module
 AC_ARG_ENABLE([maxminddb],
     AS_HELP_STRING([--enable-maxminddb=auto|yes|no], [enable MaxMind DB [default=auto]]),
-    [enable_maxminddb="$enableval"], [enable_maxminddb=auto])
+    [], [enable_maxminddb=auto])
 
 AS_IF([test "$enable_daemon" = "no"],[enable_maxminddb=no])
 AS_CASE([$enable_maxminddb],
@@ -672,35 +700,6 @@ AS_IF([test "$enable_utilities" = "yes"], [
     ])
   ])
 ]) # Knot DNS utilities dependencies
-
-AC_ARG_ENABLE([cap-ng],
-    AS_HELP_STRING([--enable-cap-ng=auto|no], [enable POSIX capabilities [default=auto]]),
-    [enable_cap_ng="$enableval"], [enable_cap_ng=auto])
-
-AS_IF([test "$enable_daemon" = "yes"], [
-
-AS_IF([test "$enable_cap_ng" != "no"],[
-  PKG_CHECK_MODULES([cap_ng], [cap-ng], [enable_cap_ng=yes], [
-    enable_cap_ng=no
-    AC_CHECK_HEADER([cap-ng.h], [
-      save_LIBS="$LIBS"
-      AC_SEARCH_LIBS([capng_apply], [cap-ng], [
-        AS_IF([test "$ac_cv_search_capng_apply" != "none required"],
-          [cap_ng_LIBS="$ac_cv_search_capng_apply"], [cap_ng_LIBS=])
-        AC_SUBST([cap_ng_LIBS])
-        enable_cap_ng=yes
-      ])
-      LIBS="$save_LIBS"
-    ])
-  ])
-], [
-  enable_cap_ng=no
-  cap_ng_LIBS=
-])])
-
-AS_IF([test "$enable_cap_ng" = yes],
-  [AC_DEFINE([ENABLE_CAP_NG], [1], [POSIX capabilities available])]
-)
 
 save_LIBS="$LIBS"
 AC_SEARCH_LIBS([pthread_create], [pthread], [
