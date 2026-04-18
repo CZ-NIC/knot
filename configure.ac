@@ -182,6 +182,38 @@ AM_CONDITIONAL([ENABLE_PKCS11], [test "$enable_pkcs11" = "yes"])
 AS_IF([test "$enable_pkcs11" != "no"], [
   AC_DEFINE([ENABLE_PKCS11], [1], [Define to 1 to enable PKCS #11 support using GnuTLS])])
 
+# QUIC support
+AC_ARG_ENABLE([quic],
+  AS_HELP_STRING([--enable-quic=auto|yes|no|embedded], [DoQ support (needs libngtcp2 >= 0.17.0, gnutls >= 3.7.3) [default=auto]]),
+  [], [enable_quic=auto])
+
+AS_CASE([$enable_quic],
+  [auto], [PKG_CHECK_MODULES([libngtcp2], [libngtcp2 >= 0.17.0 libngtcp2_crypto_gnutls], [enable_quic=yes], [enable_quic=no])],
+  [yes],  [PKG_CHECK_MODULES([libngtcp2], [libngtcp2 >= 0.17.0 libngtcp2_crypto_gnutls], [enable_quic=yes],
+            AS_IF([test "$gnutls_quic" = "yes"],
+              [enable_quic=embedded
+               embedded_libngtcp2_CFLAGS="-I\$(top_srcdir)/src/contrib/libngtcp2 -I\$(top_srcdir)/src/contrib/libngtcp2/ngtcp2/lib"
+               embedded_libngtcp2_LIBS=$libelf_LIBS
+               libngtcp2_CFLAGS="-I\$(top_srcdir)/src/contrib/libngtcp2"],
+              [enable_quic=no
+               AC_MSG_WARN([gnutls >= 3.7.3 is required for QUIC])]))],
+  [embedded], [enable_quic=embedded
+               embedded_libngtcp2_CFLAGS="-I\$(top_srcdir)/src/contrib/libngtcp2 -I\$(top_srcdir)/src/contrib/libngtcp2/ngtcp2/lib"
+               embedded_libngtcp2_LIBS=$libelf_LIBS
+               libngtcp2_CFLAGS="-I\$(top_srcdir)/src/contrib/libngtcp2"],
+  [no], [],
+  [*], [AC_MSG_ERROR([Invalid value of --enable-quic.])]
+)
+AM_CONDITIONAL([EMBEDDED_LIBNGTCP2], [test "$enable_quic" = "embedded"])
+AM_CONDITIONAL([ENABLE_QUIC], [test "$enable_quic" != "no"])
+AC_SUBST([embedded_libngtcp2_CFLAGS])
+AC_SUBST([embedded_libngtcp2_LIBS])
+AC_SUBST([libngtcp2_CFLAGS])
+AC_SUBST([libngtcp2_LIBS])
+
+AS_IF([test "$enable_quic" != "no"], [
+  AC_DEFINE([ENABLE_QUIC], [1], [Define to 1 to enable DoQ support using libngtcp2 and GnuTLS])])
+
 # recvmmsg() and sendmmsg() support
 AC_ARG_ENABLE([recvmmsg],
   AS_HELP_STRING([--enable-recvmmsg=auto|yes|no], [enable recvmmsg() network API [default=auto]]),
@@ -612,38 +644,6 @@ AS_IF([test "$enable_daemon" = "yes" -o "$enable_utilities" = "yes"], [
   libedit_CFLAGS=
   libedit_LIBS=
 ])
-
-# QUIC support
-AC_ARG_ENABLE([quic],
-   AS_HELP_STRING([--enable-quic=auto|yes|no|embedded], [Support DoQ (needs libngtcp2 >= 0.17.0, gnutls >= 3.7.3) [default=auto]]),
-   [], [enable_quic=auto])
-
-AS_CASE([$enable_quic],
-   [auto], [PKG_CHECK_MODULES([libngtcp2], [libngtcp2 >= 0.17.0 libngtcp2_crypto_gnutls], [enable_quic=yes], [enable_quic=no])],
-   [yes],  [PKG_CHECK_MODULES([libngtcp2], [libngtcp2 >= 0.17.0 libngtcp2_crypto_gnutls], [enable_quic=yes],
-             AS_IF([test "$gnutls_quic" = "yes"],
-                [enable_quic=embedded
-                 embedded_libngtcp2_CFLAGS="-I\$(top_srcdir)/src/contrib/libngtcp2 -I\$(top_srcdir)/src/contrib/libngtcp2/ngtcp2/lib"
-                 embedded_libngtcp2_LIBS=$libelf_LIBS
-                 libngtcp2_CFLAGS="-I\$(top_srcdir)/src/contrib/libngtcp2"],
-                [enable_quic=no
-                 AC_MSG_WARN([gnutls >= 3.7.3 is required for QUIC])]))],
-   [embedded], [enable_quic=embedded
-                embedded_libngtcp2_CFLAGS="-I\$(top_srcdir)/src/contrib/libngtcp2 -I\$(top_srcdir)/src/contrib/libngtcp2/ngtcp2/lib"
-                embedded_libngtcp2_LIBS=$libelf_LIBS
-                libngtcp2_CFLAGS="-I\$(top_srcdir)/src/contrib/libngtcp2"],
-   [no], [],
-   [*], [AC_MSG_ERROR([Invalid value of --enable-quic.])]
-)
-AM_CONDITIONAL([EMBEDDED_LIBNGTCP2], [test "$enable_quic" = "embedded"])
-AM_CONDITIONAL([ENABLE_QUIC], [test "$enable_quic" != "no"])
-AC_SUBST([embedded_libngtcp2_CFLAGS])
-AC_SUBST([embedded_libngtcp2_LIBS])
-AC_SUBST([libngtcp2_CFLAGS])
-AC_SUBST([libngtcp2_LIBS])
-
-AS_IF([test "$enable_quic" != "no"], [
-  AC_DEFINE([ENABLE_QUIC], [1], [Define to 1 to enable DoQ support using libngtcp2 and GnuTLS])])
 
 ############################################
 # Dependencies needed for Knot DNS utilities
