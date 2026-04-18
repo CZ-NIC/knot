@@ -199,6 +199,48 @@ AS_CASE([$enable_recvmmsg],
 AS_IF([test "$enable_recvmmsg" = yes], [
   AC_DEFINE([ENABLE_RECVMMSG], [1], [Use recvmmsg().])])
 
+# LMDB library
+AC_ARG_WITH([lmdb],
+  [AS_HELP_STRING([--with-lmdb=DIR], [explicit location where to find LMDB])])
+
+PKG_CHECK_MODULES([lmdb], [lmdb >= 0.9.15], [], [
+  save_CPPFLAGS=$CPPFLAGS
+  save_LIBS=$LIBS
+
+  have_lmdb=no
+
+  for try_lmdb in "$with_lmdb" "" "/usr/local" "/usr/pkg"; do
+    AS_IF([test -d "$try_lmdb"], [
+      lmdb_CFLAGS="-I$try_lmdb/include"
+      lmdb_LIBS="-L$try_lmdb/lib"
+    ],[
+      lmdb_CFLAGS=""
+      lmdb_LIBS=""
+    ])
+
+    CPPFLAGS="$save_CPPFLAGS $lmdb_CFLAGS"
+    LIBS="$save_LIBS $lmdb_LIBS"
+
+    AC_SEARCH_LIBS([mdb_txn_id], [lmdb], [
+      have_lmdb=yes
+      lmdb_LIBS="$lmdb_LIBS -llmdb"
+      AC_SUBST([lmdb_CFLAGS])
+      AC_SUBST([lmdb_LIBS])
+      break
+    ])
+
+    # do not cache result of AC_SEARCH_LIBS test
+    unset ac_cv_search_mdb_txn_id
+  done
+
+  CPPFLAGS="$save_CPPFLAGS"
+  LIBS="$save_LIBS"
+
+  AS_IF([test "$have_lmdb" = "no" && test "$enable_redis" != "module"], [
+    AC_MSG_ERROR([lmdb library not found])
+  ])
+])
+
 # XDP support
 AC_ARG_ENABLE([xdp],
   AS_HELP_STRING([--enable-xdp=auto|yes|no], [enable eXpress Data Path [default=auto]]),
@@ -529,46 +571,6 @@ AS_CASE([$enable_maxminddb],
 AS_IF([test "$enable_maxminddb" = yes], [AC_DEFINE([HAVE_MAXMINDDB], [1], [Define to 1 to enable MaxMind DB.])])
 AM_CONDITIONAL([HAVE_MAXMINDDB], [test "$enable_maxminddb" = yes])
 
-AC_ARG_WITH([lmdb],
-  [AS_HELP_STRING([--with-lmdb=DIR], [explicit location where to find LMDB])]
-)
-PKG_CHECK_MODULES([lmdb], [lmdb >= 0.9.15], [], [
-  save_CPPFLAGS=$CPPFLAGS
-  save_LIBS=$LIBS
-
-  have_lmdb=no
-
-  for try_lmdb in "$with_lmdb" "" "/usr/local" "/usr/pkg"; do
-    AS_IF([test -d "$try_lmdb"], [
-      lmdb_CFLAGS="-I$try_lmdb/include"
-      lmdb_LIBS="-L$try_lmdb/lib"
-    ],[
-      lmdb_CFLAGS=""
-      lmdb_LIBS=""
-    ])
-
-    CPPFLAGS="$save_CPPFLAGS $lmdb_CFLAGS"
-    LIBS="$save_LIBS $lmdb_LIBS"
-
-    AC_SEARCH_LIBS([mdb_txn_id], [lmdb], [
-      have_lmdb=yes
-      lmdb_LIBS="$lmdb_LIBS -llmdb"
-      AC_SUBST([lmdb_CFLAGS])
-      AC_SUBST([lmdb_LIBS])
-      break
-    ])
-
-    # do not cache result of AC_SEARCH_LIBS test
-    unset ac_cv_search_mdb_txn_id
-  done
-
-  CPPFLAGS="$save_CPPFLAGS"
-  LIBS="$save_LIBS"
-
-  AS_IF([test "$have_lmdb" = "no" && test "$enable_redis" != "module"], [
-    AC_MSG_ERROR([lmdb library not found])
-  ])
-])
 
 # LMDB mapping sizes
 conf_mapsize_default=500
