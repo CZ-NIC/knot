@@ -10,6 +10,7 @@
 
 #include "contrib/strtonum.h"
 #include "contrib/wire_ctx.h"
+#include "knot/conf/conf.h"
 #include "knot/dnssec/kasp/kasp_zone.h"
 #include "knot/dnssec/key_records.h"
 #include "knot/dnssec/zone-keys.h"
@@ -74,11 +75,6 @@ static bool is_zone_related(const MDB_val *key)
 static bool is_key_related(const MDB_val *key)
 {
 	return (*(uint8_t *)key->mv_data == KASPDBKEY_PARAMS);
-}
-
-static bool is_trash_related(const MDB_val *key)
-{
-	return (*(uint8_t *)key->mv_data == KASPDBKEY_TRASH);
 }
 
 static MDB_val make_key_str(keyclass_t kclass, const knot_dname_t *dname, const char *str)
@@ -480,21 +476,15 @@ int kasp_db_delete_key(knot_lmdb_db_t *db, const knot_dname_t *zone_name, const 
 int kasp_db_delete_keys(knot_lmdb_db_t *db, const knot_dname_t *zone_name,
                         bool orphan, bool best, bool use_trash)
 {
-	int ret;
-	knot_kasp_keystore_t *keystores = NULL;
 	kdnssec_ctx_t ctx = { 0 };
 	uint32_t delay = 0;
 
-	if (orphan) {
-		ret = init_all_keystores(conf(), &keystores);
-	} else {
-		ret = kdnssec_ctx_init(conf(), &ctx, zone_name, db, NULL);
-		keystores = ctx.keystores;
-		delay = (use_trash && ret == KNOT_EOK) ? ctx.policy->trash_delay : delay;
-	}
+	int ret = orphan ? kdnssec_orphan_ctx_init(conf(), &ctx) :
+	                   kdnssec_ctx_init(conf(), &ctx, zone_name, db, NULL);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
+	delay = use_trash ? ctx.policy->trash_delay : delay;
 
 	MDB_val prefix = make_key_str(KASPDBKEY_PARAMS, zone_name, NULL);
 	knot_lmdb_txn_t txn = { 0 };
@@ -514,7 +504,7 @@ int kasp_db_delete_keys(knot_lmdb_db_t *db, const knot_dname_t *zone_name,
 			if (delay > 0) {
 				ret = make_trash_key(&txn, &txn.cur_key, &txn.cur_val, delay);
 			} else {
-				ret = kdnssec_delete_from_keystores(keystores, key_id,
+				ret = kdnssec_delete_from_keystores(ctx.keystores, key_id,
 				                                    zone_name, true, false);
 				ret = (ret == KNOT_ENOENT) ? KNOT_EOK : ret;
 				// Note: if error, it isn't sure that there still is a key to delete.
@@ -536,7 +526,7 @@ int kasp_db_delete_keys(knot_lmdb_db_t *db, const knot_dname_t *zone_name,
 	free(prefix.mv_data);
 
 	if (orphan) {
-		deinit_all_keystores(&keystores);
+		kdnssec_orphan_ctx_deinit(&ctx);
 	} else {
 		kdnssec_ctx_deinit(&ctx);
 	}
@@ -676,33 +666,28 @@ int kasp_db_sweep_keys(knot_lmdb_db_t *db, sweep_cb keep_zone, void *cb_data)
 		return ret;
 	}
 
-	knot_kasp_keystore_t *keystores = NULL;
-	ret = init_all_keystores(conf(), &keystores);
-	if (ret != KNOT_EOK) {
-		return ret;
-	}
+	kdnssec_ctx_t ctx = { 0 };
+	ret = kdnssec_orphan_ctx_init(conf(), &ctx);
 
 	knot_lmdb_txn_t txn = { 0 };
 	knot_lmdb_begin(db, &txn, true);
 	knot_lmdb_forwhole(&txn) {
-		if (!is_trash_related(&txn.cur_key) &&
-		    (!is_key_related(&txn.cur_key) ||
-		     keep_zone(cur_key_dname(&txn), cb_data))) {
+		if (!is_key_related(&txn.cur_key) ||
+		    keep_zone(cur_key_dname(&txn), cb_data)) {
 			continue;
 		}
+
 		char *key_id = NULL;
 		if (unmake_key_str(&txn.cur_key, &key_id)) {
 			knot_lmdb_cursor_swap(&txn);
 			size_t count = keyid_inuse(&txn, key_id, NULL);
 			knot_lmdb_cursor_swap(&txn); // Restore the regular cursor.
 
-			assert(count > 0 || is_trash_related(&txn.cur_key));
-			if (count < 2) {
-				ret = kdnssec_delete_from_keystores(keystores, key_id, NULL,
-				                                    true, false);
-				ret = (ret == KNOT_ENOENT) ? KNOT_EOK : ret;
+			assert(count > 0);
+			if (count == 1) {
+				ret = make_trash_key(&txn, &txn.cur_key, &txn.cur_val,
+				                     ctx.policy->trash_delay);
 				if (ret != KNOT_EOK) {
-					// Note: it isn't sure that there still is a key to delete.
 					free(key_id);
 					break;
 				}
@@ -713,7 +698,7 @@ int kasp_db_sweep_keys(knot_lmdb_db_t *db, sweep_cb keep_zone, void *cb_data)
 	}
 
 	knot_lmdb_commit(&txn);
-	deinit_all_keystores(&keystores);
+	kdnssec_orphan_ctx_deinit(&ctx);
 	return (ret == KNOT_EOK) ? txn.ret : ret;
 }
 

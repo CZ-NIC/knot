@@ -1428,8 +1428,7 @@ The *"trash bin"* can be disabled completely for any DNSSEC policy by setting
 :ref:`policy_trash-delay` to ``0``. In such a case, all keys are discarded immediately
 upon their deletion and never moved to the virtual *"trash bin"*.
 
-If needed, the *"trash bin"* can be emptied at will with either ``keymgr trash-discard``
-or ``knotc -f +keys +orphan zone-purge`` commands.
+If needed, the *"trash bin"* can be emptied at will with ``keymgr trash-discard``.
 
 .. NOTE::
    Contents of the *"trash bin*" is not part of :ref:`online backup<Online backup>`
