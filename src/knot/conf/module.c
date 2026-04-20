@@ -440,7 +440,7 @@ void conf_deactivate_modules(
 	list_t *query_modules,
 	struct query_plan **query_plan)
 {
-	if (query_modules == NULL || query_plan == NULL) {
+	if (query_modules == NULL || query_plan == NULL || *query_plan == NULL) {
 		return;
 	}
 
