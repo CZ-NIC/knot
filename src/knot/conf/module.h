@@ -78,10 +78,11 @@ void conf_mod_unload_shared(
  * Activates configured query modules for the specified zone or for all zones.
  *
  * \param[in] conf           Configuration.
+ * \param[in] server         Server context.
  * \param[in] zone_name      Zone name, NULL for all zones.
  * \param[in] query_modules  Destination query modules list.
  * \param[in] query_plan     Destination query plan.
- * 
+ *
  * \return Error code, KNOT_EOK if success.
  */
 int conf_activate_modules(
