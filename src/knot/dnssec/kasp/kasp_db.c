@@ -123,6 +123,12 @@ static knot_dname_t *cur_key_dname(knot_lmdb_txn_t *txn)
 	return (knot_dname_t *)txn->cur_key.mv_data + 1;
 }
 
+static knot_dname_t *cur_trash_dname(knot_lmdb_txn_t *txn)
+{
+	char *str = (char *)cur_key_dname(txn);
+	return (knot_dname_t *)strchr(str, '\0') + 1;
+}
+
 static MDB_val make_key_time(keyclass_t kclass, const knot_dname_t *dname, knot_time_t time)
 {
 	char tmp[21];
@@ -669,6 +675,20 @@ int kasp_db_trash_touch(knot_lmdb_db_t *db, char *key_id, knot_time_t time)
 	return (ret == KNOT_EOK) ? txn.ret : ret;
 }
 
+int kasp_db_delete_keys_full(knot_lmdb_db_t *db, const knot_dname_t *zone_name,
+                             bool orphan, bool best, bool trash)
+{
+	assert(db);
+	assert(zone_name);
+
+	int ret = kasp_db_delete_keys(db, zone_name, orphan, best, !trash);
+	if (trash && ret == KNOT_EOK) {
+		ret = kasp_db_delete_trash(db, zone_name, NULL, NULL, NULL);
+	}
+
+	return ret;
+}
+
 int kasp_db_sweep(knot_lmdb_db_t *db, sweep_cb keep_zone, void *cb_data)
 {
 	if (knot_lmdb_exists(db) == KNOT_ENODB) {
@@ -709,11 +729,13 @@ int kasp_db_sweep_keys(knot_lmdb_db_t *db, sweep_cb keep_zone, void *cb_data)
 	knot_lmdb_txn_t txn = { 0 };
 	knot_lmdb_begin(db, &txn, true);
 	knot_lmdb_forwhole(&txn) {
-		if (!is_trash_related(&txn.cur_key) &&
-		    (!is_key_related(&txn.cur_key) ||
-		     keep_zone(cur_key_dname(&txn), cb_data))) {
+		bool kr = is_key_related(&txn.cur_key);
+		bool tr = is_trash_related(&txn.cur_key);
+		if (!(kr || tr) || (kr && keep_zone(cur_key_dname(&txn), cb_data)) ||
+		                   (tr && keep_zone(cur_trash_dname(&txn), cb_data))) {
 			continue;
 		}
+
 		char *key_id = NULL;
 		if (unmake_key_str(&txn.cur_key, &key_id)) {
 			knot_lmdb_cursor_swap(&txn);
