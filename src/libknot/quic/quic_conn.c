@@ -503,11 +503,11 @@ void knot_quic_stream_ack_data(knot_quic_conn_t *conn, int64_t stream_id,
 		conn->obufs_size -= first->len;
 		ATOMIC_SUB(conn->quic_table->obufs_size, first->len);
 		s->first_offset += first->len;
-		free(first);
 		if (s->unsent_obuf == first) {
 			s->unsent_obuf = EMPTY_LIST(*obs) ? NULL : HEAD(*obs);
 			s->unsent_offset = 0;
 		}
+		free(first);
 	}
 
 	if (EMPTY_LIST(*obs) && !keep_stream) {
@@ -577,12 +577,12 @@ void knot_quic_cleanup(knot_quic_conn_t *conns[], size_t n_conns)
 {
 	for (size_t i = 0; i < n_conns; i++) {
 		if (conns[i] != NULL && conns[i]->conn == NULL) {
-			free(conns[i]);
 			for (size_t j = i + 1; j < n_conns; j++) {
 				if (conns[j] == conns[i]) {
 					conns[j] = NULL;
 				}
 			}
+			free(conns[i]);
 		}
 	}
 }
