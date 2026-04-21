@@ -2362,7 +2362,7 @@ after this time following their deletion. Set this parameter to ``0`` to complet
 avoid using the "trash bin" for deleted DNSSEC keys and remove them immediately
 once they are deleted. The "trash bin" may be managed using ``keymgr``.
 
-*Default:* ``14d`` (14 days)
+*Default:* 2 * :ref:`policy_rrsig-lifetime`
 
 .. _policy_propagation-delay:
 
