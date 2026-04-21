@@ -2342,7 +2342,7 @@ avoid using the "trash bin" for deleted DNSSEC keys and remove them immediately
 once they are deleted. The "trash bin" may be managed using ``keymgr``, or it can
 be emptied with ``knotc -f zone-purge +keys +orphan --``.
 
-*Default:* ``14d`` (14 days)
+*Default:* 2 * :ref:`policy_rrsig-lifetime`
 
 .. _policy_propagation-delay:
 
