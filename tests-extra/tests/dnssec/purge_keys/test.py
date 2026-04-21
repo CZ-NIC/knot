@@ -78,6 +78,7 @@ kstore_hsm.link(server)
 
 server.dnssec(zones[0]).enable = True
 server.dnssec(zones[0]).propagation_delay = 1
+server.dnssec(zones[0]).trash_delay = 86400
 # Default keystore for zones[0], not configured.
 
 server.dnssec(zones[1]).enable = True

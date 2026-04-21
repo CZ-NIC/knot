@@ -67,13 +67,16 @@ static void policy_load(knot_kasp_policy_t *policy, conf_t *conf, conf_val_t *id
 	policy->delete_delay = conf_int(&val);
 
 	val = conf_id_get(conf, C_POLICY, C_TRASH_DELAY, id);
-	policy->trash_delay = conf_int(&val);
+	policy->trash_delay = conf_int(&val); // It will be corrected following C_RRSIG_LIFETIME.
 
 	val = conf_id_get(conf, C_POLICY, C_PROPAG_DELAY, id);
 	policy->propagation_delay = conf_int(&val);
 
 	val = conf_id_get(conf, C_POLICY, C_RRSIG_LIFETIME, id);
 	policy->rrsig_lifetime = conf_int(&val);
+	if (policy->trash_delay == YP_NIL) {
+		policy->trash_delay = 2 * policy->rrsig_lifetime;
+	}
 
 	val = conf_id_get(conf, C_POLICY, C_RRSIG_REFRESH, id);
 	num = conf_int(&val);
