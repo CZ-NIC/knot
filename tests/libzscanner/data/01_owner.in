@@ -10,6 +10,7 @@ tld		NS	@	; Relative form
 *		NS	@	; Alone asterisk
 *.*		NS	@	; More asterisks
 *a.a*a.**	NS	@	; Also possible
+\"a\"\,		NS	@	; Special characters
 @		NS	@	; Use origin
 0123456789	NS	@	; Digits
 0/25.2.0.192.in-addr.arpa.	NS	@	; CIDR notation
@@ -24,6 +25,12 @@ b.a.9.8.7.6.5.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.8.b.d.0.1.0.0.2.ip6.arpa.	NS	@	;
 
 ; KO
 &	NS	@	; Bad (unslashed) character
+a"	NS	@	; Unescaped special character
+a"b	NS	@	; Unescaped special character
+"b	NS	@	; Unescaped special character
+a,	NS	@	; Unescaped special character
+a,b	NS	@	; Unescaped special character
+,b	NS	@	; Unescaped special character
 	NS	@	; Bad previous
 .a	NS	@	; Leading dot
 @@	NS	@	; Double @@

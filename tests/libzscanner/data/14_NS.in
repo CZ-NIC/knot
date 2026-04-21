@@ -15,6 +15,7 @@ $TTL	1
 @	NS	ABCDEFGHIJKLMNOPQRSTUVWXYZ	; All upper-case letters
 @	NS	abcdefghijklmnopqrstuvwxyz	; All lower-case letters
 @	NS	\0320\ \\\"\.\@\*.tld.		; Label with special chars
+@	NS	\"a\"\,				; List-related special chars
 @	NS	b.a.9.8.7.6.5.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.8.b.d.0.1.0.0.2.ip6.arpa.	; IPv6 reverse
 @	NS	123456789012345678901234567890123456789012345678901234567890123.tld.		; Label of maximal length
 @	NS	123456789012345678901234567890123456789012345678901234567890123.123456789012345678901234567890123456789012345678901234567890123.123456789012345678901234567890123456789012345678901234567890123.1234567890123456789012345678901234567890123456789012345678901.	; Domain name of maximal length
@@ -30,6 +31,12 @@ $TTL	1
 @	NS	&				; Bad (unslashed) character
 @	NS	@@				; Double @@
 @	NS	..				; Missing label between dots
+@	NS	a"				; Unescaped special character
+@	NS	a"b				; Unescaped special character
+@	NS	"b				; Unescaped special character
+@	NS	a,				; Unescaped special character
+@	NS	a,b				; Unescaped special character
+@	NS	,b				; Unescaped special character
 @	NS	\1				; Slash notation requires 3 digits
 @	NS	\12				; Slash notation requires 3 digits
 @	NS	1234567890123456789012345678901234567890123456789012345678901234.tld.	; Label exceeded maximal length
