@@ -225,7 +225,7 @@ libknot.so.16 libknot16 #MINVER#
  knot_quic_conn_rtt@Base 3.5.0
  knot_quic_conn_stream_free@Base 3.5.0
  knot_quic_handle@Base 3.5.0
- knot_quic_hanle_expiry@Base 3.5.0
+ knot_quic_handle_expiry@Base 3.6.0
  knot_quic_send@Base 3.5.0
  knot_quic_session_available@Base 3.5.0
  knot_quic_session_load@Base 3.5.0
