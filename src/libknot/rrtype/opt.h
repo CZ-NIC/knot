@@ -28,6 +28,7 @@ enum {
 
 	/*! \brief Bit mask for DO bit. */
 	KNOT_EDNS_DO_MASK = (uint32_t)(1 << 15),
+	/*! \brief Bit mask for DE bit. */
 	KNOT_EDNS_DE_MASK = (uint32_t)(1 << 13),
 
 	/*! \brief Minimal UDP payload with EDNS enabled. */
@@ -262,6 +263,10 @@ bool knot_edns_do(const knot_rrset_t *opt_rr)
 	assert(opt_rr != NULL);
 	return opt_rr->ttl & KNOT_EDNS_DO_MASK;
 }
+
+/*!
+ * \brief Same as knot_edns_do() but for DE bit.
+ */
 static inline
 bool knot_edns_de(const knot_rrset_t *opt_rr)
 {
@@ -283,6 +288,10 @@ void knot_edns_set_do(knot_rrset_t *opt_rr)
 	assert(opt_rr != NULL);
 	opt_rr->ttl |= KNOT_EDNS_DO_MASK;
 }
+
+/*!
+ * \brief Same as knot_edns_set_do() but for DE bit.
+ */
 static inline
 void knot_edns_set_de(knot_rrset_t *opt_rr)
 {
