@@ -3022,6 +3022,7 @@ Mandatory checks:
 - Multiple DNAME records with the same owner exist (:rfc:`6672`)
 - NS record exists together with a DNAME record (:rfc:`6672`)
 - DS record exists at the zone apex (:rfc:`3658`)
+- DELEG record exists at the zone apex (TBD)
 
 (*) The marked check can't be weakened by the soft mode. All other mandatory checks
 are subject to the optional soft mode.
