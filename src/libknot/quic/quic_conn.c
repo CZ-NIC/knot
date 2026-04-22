@@ -135,7 +135,7 @@ void knot_quic_table_sweep(knot_quic_table_t *table, struct knot_quic_reply *swe
 			send_excessive_load(c, sweep_reply, table);
 			knot_quic_table_rem(c, table);
 		} else if (quic_conn_timeout(c, &now)) {
-			int ret = ngtcp2_conn_handle_expiry(c->conn, now);
+			int ret = knot_quic_hanle_expiry(c);
 			if (ret != NGTCP2_NO_ERROR) { // usually NGTCP2_ERR_IDLE_CLOSE or NGTCP2_ERR_HANDSHAKE_TIMEOUT
 				knot_sweep_stats_incr(stats, KNOT_SWEEP_CTR_TIMEOUT);
 				knot_quic_table_rem(c, table);
