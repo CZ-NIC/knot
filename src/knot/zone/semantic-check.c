@@ -31,6 +31,9 @@ static const char *error_messages[SEM_ERR_UNKNOWN + 1] = {
 	[SEM_ERR_DNAME_EXTRA_NS] =
 	"NS record exists beside DNAME",
 
+	[SEM_ERR_DELEG_APEX] =
+	"DELEG at the zone apex",
+
 	[SEM_ERR_NS_APEX] =
 	"missing NS at the zone apex",
 	[SEM_ERR_NS_GLUE] =
@@ -116,6 +119,7 @@ static int check_delegation(const zone_node_t *node, semchecks_data_t *data);
 static int check_nsec3param(const zone_node_t *node, semchecks_data_t *data);
 static int check_submission(const zone_node_t *node, semchecks_data_t *data);
 static int check_ds(const zone_node_t *node, semchecks_data_t *data);
+static int check_deleg(const zone_node_t *node, semchecks_data_t *data);
 
 struct check_function {
 	int (*function)(const zone_node_t *, semchecks_data_t *);
@@ -128,6 +132,7 @@ static const struct check_function CHECK_FUNCTIONS[] = {
 	{ check_dname,          MANDATORY | SOFT },
 	{ check_delegation,     MANDATORY | SOFT }, // mandatory for apex, optional for others
 	{ check_ds,             MANDATORY | SOFT }, // mandatory for apex, optional for others
+	{ check_deleg,          MANDATORY | SOFT }, // mandatory for apex
 	{ check_nsec3param,     DNSSEC },
 	{ check_submission,     DNSSEC },
 };
@@ -354,6 +359,22 @@ static int check_ds(const zone_node_t *node, semchecks_data_t *data)
 
 		data->handler->cb(data->handler, data->zone, node->owner,
 		                  err, info);
+	}
+
+	return KNOT_EOK;
+}
+
+static int check_deleg(const zone_node_t *node, semchecks_data_t *data)
+{
+	if (data->zone->apex != node) {
+		return KNOT_EOK;
+	}
+
+	const knot_rdataset_t *deleg_rrs = node_rdataset(node, KNOT_RRTYPE_DELEG);
+	if (deleg_rrs != NULL) {
+		data->handler->error = true;
+		data->handler->cb(data->handler, data->zone, node->owner,
+		                  SEM_ERR_DELEG_APEX, NULL);
 	}
 
 	return KNOT_EOK;
