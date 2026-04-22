@@ -222,7 +222,7 @@ static knotd_in_state_t solve_localalias(knotd_in_state_t state, knot_pkt_t *pkt
 			continue;
 		}
 		int ret = merge_target(tn, rtype, &pkt->mm, &synth);
-		if (ret == KNOT_ENOMEM) {
+		if (ret != KNOT_EOK && ret != KNOT_ENOENT) {
 			return KNOTD_IN_STATE_ERROR;
 		}
 	}
