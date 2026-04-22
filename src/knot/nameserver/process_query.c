@@ -187,11 +187,13 @@ static zone_t *answer_zone_find(const knot_pkt_t *query, knot_zonedb_t *zonedb)
 		return NULL;
 	}
 
-	/* In case of DS query, we strip the leftmost label when searching for
-	 * the zone (but use whole qname in search for the record), as the DS
+	/* In case of DS/DELEG query, we strip the leftmost label when searching for
+	 * the zone (but use whole qname in search for the record), as the DS/DELEG
 	 * records are only present in a parent zone.
 	 */
-	if ((qtype == KNOT_RRTYPE_DS || (qtype == KNOT_RRTYPE_DELEG && knot_pkt_has_deleg_aware(query))) && qname[0] != '\0') {
+	bool ds_query = (qtype == KNOT_RRTYPE_DS);
+	bool deleg_query = (qtype == KNOT_RRTYPE_DELEG) && knot_pkt_has_deleg_aware(query);
+	if ((ds_query || deleg_query) && qname[0] != '\0') {
 		const knot_dname_t *parent = knot_dname_next_label(qname);
 		zone = knot_zonedb_find_suffix(zonedb, parent);
 		/* If zone does not exist, search for its parent zone,
