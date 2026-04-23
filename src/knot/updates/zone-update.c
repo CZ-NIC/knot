@@ -1182,6 +1182,13 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 		return ret;
 	}
 
+	val = conf_zone_get(conf, C_DELEG_AWARE, update->zone->name);
+	update->new_cont->nodes->flags &= ~ZONE_TREE_DELEG_AWARE;
+	if (conf_opt(&val) == DELEG_AWARE_ON ||
+	    (conf_opt(&val) == DELEG_AWARE_AUTO && knot_dnssec_has_adt(update->new_cont))) {
+		update->new_cont->nodes->flags |= ZONE_TREE_DELEG_AWARE;
+	}
+
 	/* Check the zone size. */
 	val = conf_zone_get(conf, C_ZONE_MAX_SIZE, update->zone->name);
 	size_t size_limit = conf_int(&val);
