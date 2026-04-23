@@ -21,9 +21,9 @@ zone = t.zone("example.", storage=".") + \
        t.zone("_ips.example.", storage=".")
 t.link(zone, knot)
 
-# Attach the module to both zones.  No per-instance config.
+# Attach the module to example. only; _ips.example. is a target zone
+# and holds no ALIAS records of its own.  No per-instance config.
 knot.add_module(zone[0], ModLocalAlias())
-knot.add_module(zone[1], ModLocalAlias())
 
 t.start()
 
