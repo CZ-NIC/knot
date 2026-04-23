@@ -132,14 +132,17 @@ resp.check_count(2, rtype="MX", section="answer")
 resp.check_record(section="answer", rtype="MX", rdata="10 mx.example.")
 resp.check_record(section="answer", rtype="MX", rdata="20 mx.example.")
 
-# ----- 14. ANY returns the union of non-skipped types, no ALIAS ---------------
+# ----- 14. ANY is passed through to the standard resolver --------------------
+# The module doesn't intercept ANY; the raw ALIAS record is returned as-is,
+# with no synthesis from the target.  Knot's default for ANY is one rrset per
+# node (RFC 8482 style), so we use an ALIAS-only node for a deterministic
+# assertion.
 
-resp = knot.dig("www.example.", "ANY")
+resp = knot.dig("lowttl.example.", "ANY")
 resp.check(rcode="NOERROR", flags="QR AA")
-resp.check_record(section="answer", rtype="A", rdata="192.0.2.1")
-resp.check_record(section="answer", rtype="AAAA", rdata="2001:db8::1")
-resp.check_record(section="answer", rtype="MX", rdata="10 mail.example.")
-resp.check_count(0, rtype="TYPE65401", section="answer")
+resp.check_count(1, rtype="TYPE65401", section="answer")
+resp.check_count(0, rtype="A", section="answer")
+resp.check_count(0, rtype="AAAA", section="answer")
 
 # ----- 15. Plain (non-ALIAS) nodes are unaffected by the module ---------------
 

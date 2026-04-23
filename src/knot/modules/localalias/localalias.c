@@ -14,10 +14,9 @@
  * Hooked at KNOTD_STAGE_PREANSWER so that the standard put_answer path
  * never sees an ALIAS node for normal queries.  The client sees only
  * synthesised target records (or NODATA if the target is not served
- * locally).  An explicit TYPE65401 query returns the raw ALIAS record for
- * diagnostic purposes.  For qtype ANY we synthesise one rrset (the first
- * non-ALIAS type found on the target), matching RFC 8482's "one rrset"
- * strategy without leaking the raw ALIAS record.
+ * locally).  Explicit TYPE65401, RRSIG, NSEC and ANY queries are passed
+ * through to the standard resolver so it can return whatever is actually
+ * on the node (including the raw ALIAS record).
  *
  * Non-ALIAS nodes are passed through untouched; the normal resolver
  * handles them.
@@ -43,13 +42,6 @@
 #include "libknot/libknot.h"
 #include "libknot/rrtype/rdname.h"
 
-static inline bool skip_rrtype(uint16_t t)
-{
-	return t == KNOT_RRTYPE_ALIAS
-	    || t == KNOT_RRTYPE_RRSIG
-	    || t == KNOT_RRTYPE_NSEC;
-}
-
 /*!
  * \brief Find a locally-served target node.
  */
@@ -66,22 +58,6 @@ static const zone_node_t *find_target_node(server_t *server,
 		return NULL;
 	}
 	return tn;
-}
-
-/*!
- * \brief Pick the first non-skipped rrtype on a node (for ANY responses).
- *
- * Returns 0 if the node has no synthesis-eligible types.
- */
-static uint16_t first_synth_type(const zone_node_t *node)
-{
-	for (uint16_t i = 0; i < node->rrset_count; i++) {
-		knot_rrset_t rs = node_rrset_at(node, i);
-		if (!skip_rrtype(rs.type)) {
-			return rs.type;
-		}
-	}
-	return 0;
 }
 
 static int merge_target(const zone_node_t *tn, uint16_t rtype,
@@ -156,10 +132,12 @@ static knotd_in_state_t solve_localalias(knotd_in_state_t state, knot_pkt_t *pkt
 
 	uint16_t qtype = knot_pkt_qtype(pkt);
 
-	/* ALIAS/RRSIG/NSEC queries are handled by the normal resolver:
-	 * explicit TYPE65401 returns the raw ALIAS record for diagnostics. */
+	/* ALIAS/RRSIG/NSEC/ANY queries are handled by the normal resolver:
+	 * explicit TYPE65401 returns the raw ALIAS record for diagnostics,
+	 * and for ANY the standard answering routines return whatever is on
+	 * the node (including the raw ALIAS record). */
 	if (qtype == KNOT_RRTYPE_ALIAS || qtype == KNOT_RRTYPE_RRSIG
-	    || qtype == KNOT_RRTYPE_NSEC) {
+	    || qtype == KNOT_RRTYPE_NSEC || qtype == KNOT_RRTYPE_ANY) {
 		return state;
 	}
 
@@ -178,39 +156,12 @@ static knotd_in_state_t solve_localalias(knotd_in_state_t state, knot_pkt_t *pkt
 
 	server_t *server = (server_t *)qdata->params->server;
 
-	/* For qtype ANY, return one rrset (RFC 8482): the first non-skipped
-	 * type found on the first locally-served target, or on the alias node
-	 * itself as a fallback.  If there is nothing to synthesise, return
-	 * NODATA rather than leaking the raw ALIAS rdata. */
-	uint16_t rtype = qtype;
-	if (qtype == KNOT_RRTYPE_ANY) {
-		knot_rdata_t *rd = alias_rr.rrs.rdata;
-		for (uint16_t i = 0; i < alias_rr.rrs.count && rtype == KNOT_RRTYPE_ANY;
-		     i++, rd = knot_rdataset_next(rd)) {
-			const zone_node_t *tn = find_target_node(server,
-			                                         knot_alias_name(rd));
-			if (tn != NULL) {
-				uint16_t t = first_synth_type(tn);
-				if (t != 0) {
-					rtype = t;
-				}
-			}
-		}
-		if (rtype == KNOT_RRTYPE_ANY) {
-			rtype = first_synth_type(node);
-		}
-		if (rtype == 0 || rtype == KNOT_RRTYPE_ANY) {
-			qdata->rcode = KNOT_RCODE_NOERROR;
-			return KNOTD_IN_STATE_NODATA;
-		}
-	}
-
 	knot_dname_t *owner = knot_dname_copy(qdata->name, &pkt->mm);
 	if (owner == NULL) {
 		return KNOTD_IN_STATE_ERROR;
 	}
 	knot_rrset_t synth;
-	knot_rrset_init(&synth, owner, rtype, KNOT_CLASS_IN, alias_rr.ttl);
+	knot_rrset_init(&synth, owner, qtype, KNOT_CLASS_IN, alias_rr.ttl);
 
 	/* Merge records from each target. */
 	knot_rdata_t *rdata = alias_rr.rrs.rdata;
@@ -221,7 +172,7 @@ static knotd_in_state_t solve_localalias(knotd_in_state_t state, knot_pkt_t *pkt
 		if (tn == NULL) {
 			continue;
 		}
-		int ret = merge_target(tn, rtype, &pkt->mm, &synth);
+		int ret = merge_target(tn, qtype, &pkt->mm, &synth);
 		if (ret != KNOT_EOK && ret != KNOT_ENOENT) {
 			return KNOTD_IN_STATE_ERROR;
 		}
@@ -229,7 +180,7 @@ static knotd_in_state_t solve_localalias(knotd_in_state_t state, knot_pkt_t *pkt
 
 	/* Also merge direct records of this type on the alias node
 	 * (additive: ALIAS augments, not replaces). */
-	int ret = merge_target(node, rtype, &pkt->mm, &synth);
+	int ret = merge_target(node, qtype, &pkt->mm, &synth);
 	if (ret != KNOT_EOK && ret != KNOT_ENOENT) {
 		return KNOTD_IN_STATE_ERROR;
 	}
