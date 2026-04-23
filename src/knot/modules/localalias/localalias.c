@@ -229,18 +229,14 @@ static knotd_in_state_t solve_localalias(knotd_in_state_t state, knot_pkt_t *pkt
 
 	/* Also merge direct records of this type on the alias node
 	 * (additive: ALIAS augments, not replaces). */
-	knot_rrset_t direct = node_rrset(node, rtype);
-	if (!knot_rrset_empty(&direct)) {
-		synth.ttl = MIN(synth.ttl, direct.ttl);
-		int ret = knot_rdataset_merge(&synth.rrs, &direct.rrs, &pkt->mm);
-		if (ret != KNOT_EOK) {
-			return KNOTD_IN_STATE_ERROR;
-		}
+	int ret = merge_target(node, rtype, &pkt->mm, &synth);
+	if (ret != KNOT_EOK && ret != KNOT_ENOENT) {
+		return KNOTD_IN_STATE_ERROR;
 	}
 
 	if (!knot_rrset_empty(&synth)) {
-		int ret = knot_pkt_put(pkt, KNOT_COMPR_HINT_NONE, &synth,
-		                       KNOT_PF_FREE);
+		ret = knot_pkt_put(pkt, KNOT_COMPR_HINT_NONE, &synth,
+		                   KNOT_PF_FREE);
 		switch (ret) {
 		case KNOT_EOK:
 			knot_wire_set_aa(pkt->wire);
