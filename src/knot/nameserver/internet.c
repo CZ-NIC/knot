@@ -44,6 +44,12 @@ static int wildcard_visit(knotd_qdata_t *qdata, const zone_node_t *node,
 	return KNOT_EOK;
 }
 
+inline static bool node_is_deleg(const knotd_qdata_t *qdata, const zone_node_t *node)
+{
+	return (node->flags & NODE_FLAGS_DELEG_NS) ||
+	       (qdata->deleg_aware && (node->flags & NODE_FLAGS_DELEG_DELEG));
+}
+
 /*! \brief Synthesizes a CNAME RR from a DNAME. */
 static int dname_cname_synth(const knot_rrset_t *dname_rr,
                              const knot_dname_t *qname,
@@ -177,7 +183,7 @@ static int put_delegation(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 	}
 
 	uint16_t rr_type = KNOT_RRTYPE_NS;
-	if (qdata->deleg_aware && node_rrtype_exists(qdata->extra->node, KNOT_RRTYPE_DELEG)) {
+	if (qdata->deleg_aware && (qdata->extra->node->flags & NODE_FLAGS_DELEG_DELEG)) {
 		rr_type = KNOT_RRTYPE_DELEG;
 	}
 
@@ -366,13 +372,12 @@ static knotd_in_state_t name_found(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 {
 	uint16_t qtype = knot_pkt_qtype(pkt);
 
-	bool at_deleg = (qdata->extra->node->flags & NODE_FLAGS_DELEG);
+	bool at_deleg = node_is_deleg(qdata, qdata->extra->node);
 	bool below_deleg = (qdata->extra->node->flags & NODE_FLAGS_NONAUTH);
 	bool parent_side = (qtype == KNOT_RRTYPE_DS);
 	if (qdata->deleg_aware) {
 		parent_side = parent_side || (qtype == KNOT_RRTYPE_DELEG);
 	} else {
-		at_deleg = at_deleg && node_rrtype_exists(qdata->extra->node, KNOT_RRTYPE_NS);
 		below_deleg = below_deleg && !(qdata->extra->node->flags & NODE_FLAGS_NONAUTH_DELEG);
 	}
 
@@ -453,8 +458,7 @@ static knotd_in_state_t name_not_found(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 	}
 
 	/* Name is below delegation. */
-	if ((node->flags & NODE_FLAGS_DELEG) &&
-	    (qdata->deleg_aware || node_rrtype_exists(node, KNOT_RRTYPE_NS))) {
+	if (node_is_deleg(qdata, node)) {
 		qdata->extra->node = node;
 		return KNOTD_IN_STATE_DELEG;
 	}

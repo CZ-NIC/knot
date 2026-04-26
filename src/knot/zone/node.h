@@ -67,14 +67,14 @@ struct rr_data {
 enum node_flags {
 	/*! \brief Node is authoritative, default. */
 	NODE_FLAGS_AUTH =            0 << 0,
-	/*! \brief Node is a delegation point (i.e. marking a zone cut). */
-	NODE_FLAGS_DELEG =           1 << 0,
+	/*! \brief Node is a delegation point using NS (i.e. marking a zone cut). */
+	NODE_FLAGS_DELEG_NS =        1 << 0,
+	/*! \brief Node is a delegation point using DELEG (i.e. marking a zone cut). */
+	NODE_FLAGS_DELEG_DELEG =     1 << 1,
 	/*! \brief Node is not authoritative (i.e. below a zone cut). */
-	NODE_FLAGS_NONAUTH =         1 << 1,
+	NODE_FLAGS_NONAUTH =         1 << 2,
 	/*! \brief RRSIGs in node have been cryptographically validated by Knot. */
-	NODE_FLAGS_RRSIGS_VALID =    1 << 2,
-	/*! \brief Node is empty and will be deleted after update. */
-	NODE_FLAGS_EMPTY =           1 << 3,
+	NODE_FLAGS_RRSIGS_VALID =    1 << 3,
 	/*! \brief Node has a wildcard child. */
 	NODE_FLAGS_WILDCARD_CHILD =  1 << 4,
 	/*! \brief Is this NSEC3 node compatible with zone's NSEC3PARAMS ? */
@@ -98,6 +98,8 @@ enum node_flags {
 	/*! \brief Node is not authoritative due to being below a DELEG-only delegation. */
 	NODE_FLAGS_NONAUTH_DELEG =   1 << 14,
 };
+
+#define NODE_FLAGS_DELEG (NODE_FLAGS_DELEG_NS | NODE_FLAGS_DELEG_DELEG)
 
 typedef void (*node_addrem_cb)(zone_node_t *, void *);
 typedef zone_node_t *(*node_new_cb)(const knot_dname_t *, void *);
