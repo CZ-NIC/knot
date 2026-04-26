@@ -624,7 +624,7 @@ int nsec_prove_dp_security(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 
 	// Prove that DS and/or DELEG does not exist.
 	if (knot_rrset_empty(&rrset) ||
-	    (qdata->deleg_aware && !node_rrtype_exists(qdata->extra->node, KNOT_RRTYPE_DELEG))) {
+	    (qdata->deleg_aware && !(qdata->extra->node->flags & NODE_FLAGS_DELEG_DELEG))) {
 		ret = put_nodata(qdata->extra->node, qdata->extra->encloser, qdata->extra->previous,
 		                 qdata->extra->contents, qdata->name, qdata, pkt);
 	}

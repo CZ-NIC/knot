@@ -41,21 +41,23 @@ int adjust_cb_flags(zone_node_t *node, adjust_ctx_t *ctx)
 
 	if (parent && (parent->flags & NODE_FLAGS_DELEG || parent->flags & NODE_FLAGS_NONAUTH)) {
 		node->flags |= NODE_FLAGS_NONAUTH;
-		if (parent->flags & NODE_FLAGS_NONAUTH_DELEG ||
-		    ((parent->flags & NODE_FLAGS_DELEG) && !node_rrtype_exists(parent, KNOT_RRTYPE_NS))) {
+		if ((parent->flags & NODE_FLAGS_DELEG_DELEG) && !(parent->flags & NODE_FLAGS_DELEG_NS)) {
 			node->flags |= NODE_FLAGS_NONAUTH_DELEG;
 		}
-	} else if (node_rrtype_exists(node, KNOT_RRTYPE_DELEG) && node != ctx->zone->apex) {
-		ctx->zone->nodes->flags |= ZONE_TREE_CONTAINS_DELEG;
-		node->flags |= NODE_FLAGS_DELEG;
-		set_subt_auth = true;
-	} else if (node_rrtype_exists(node, KNOT_RRTYPE_NS) && node != ctx->zone->apex) {
-		node->flags |= NODE_FLAGS_DELEG;
-		if (node_rrtype_exists(node, KNOT_RRTYPE_DS)) {
+	} else {
+		if (node_rrtype_exists(node, KNOT_RRTYPE_DELEG) && node != ctx->zone->apex) {
+			ctx->zone->nodes->flags |= ZONE_TREE_CONTAINS_DELEG;
+			node->flags |= NODE_FLAGS_DELEG_DELEG;
 			set_subt_auth = true;
 		}
-	} else if (has_data) {
-		set_subt_auth = true;
+		if (node_rrtype_exists(node, KNOT_RRTYPE_NS) && node != ctx->zone->apex) {
+			node->flags |= NODE_FLAGS_DELEG_NS;
+			if (node_rrtype_exists(node, KNOT_RRTYPE_DS)) {
+				set_subt_auth = true;
+			}
+		} else if (has_data) {
+			set_subt_auth = true;
+		}
 	}
 
 	if (set_subt_auth) {
