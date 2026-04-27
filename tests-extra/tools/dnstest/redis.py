@@ -105,6 +105,10 @@ class Redis(object):
         self.proc = subprocess.Popen(prog)
 
         time.sleep(0.3)
+
+        if fsearch(self.wrk_file("redis.log"), "undefined symbol: __asan"):
+            raise Skip("Redis with ASAN not available")
+
         self.run_monitor()
 
     def run_monitor(self):
