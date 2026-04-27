@@ -26,178 +26,121 @@ static const char* dns_classes[][2] = {
  *
  * \note Variable and <character-string> items are not verified for rdata oversize!
  */
-static const knot_rdata_descriptor_t rdata_descriptors[] = {
-	[0]                      = { { KNOT_RDATA_WF_REMAINDER_MAYEMPTY,
-	                               KNOT_RDATA_WF_END }, NULL },
-	[KNOT_RRTYPE_A]          = { { 4, KNOT_RDATA_WF_END }, "A" },
-	[KNOT_RRTYPE_NS]         = { { KNOT_RDATA_WF_COMPRESSIBLE_DNAME,
-	                               KNOT_RDATA_WF_END }, "NS" },
-	[KNOT_RRTYPE_CNAME]      = { { KNOT_RDATA_WF_COMPRESSIBLE_DNAME,
-	                               KNOT_RDATA_WF_END }, "CNAME" },
-	[KNOT_RRTYPE_SOA]        = { { KNOT_RDATA_WF_COMPRESSIBLE_DNAME,
-	                               KNOT_RDATA_WF_COMPRESSIBLE_DNAME,
-	                               20, KNOT_RDATA_WF_END }, "SOA" },
-	[KNOT_RRTYPE_NULL]       = { { KNOT_RDATA_WF_REMAINDER_MAYEMPTY,
-	                               KNOT_RDATA_WF_END }, "NULL" },
-	[KNOT_RRTYPE_PTR]        = { { KNOT_RDATA_WF_COMPRESSIBLE_DNAME,
-	                               KNOT_RDATA_WF_END }, "PTR" },
-	[KNOT_RRTYPE_HINFO]      = { { KNOT_RDATA_WF_REMAINDER,
-	                               KNOT_RDATA_WF_END }, "HINFO" },
-	[KNOT_RRTYPE_MINFO]      = { { KNOT_RDATA_WF_COMPRESSIBLE_DNAME,
-	                               KNOT_RDATA_WF_COMPRESSIBLE_DNAME,
-	                               KNOT_RDATA_WF_END }, "MINFO" },
-	[KNOT_RRTYPE_MX]         = { { 2, KNOT_RDATA_WF_COMPRESSIBLE_DNAME,
-	                               KNOT_RDATA_WF_END }, "MX" },
-	[KNOT_RRTYPE_TXT]        = { { KNOT_RDATA_WF_REMAINDER,
-	                               KNOT_RDATA_WF_END }, "TXT" },
-	[KNOT_RRTYPE_RP]         = { { KNOT_RDATA_WF_DECOMPRESSIBLE_DNAME,
-	                               KNOT_RDATA_WF_DECOMPRESSIBLE_DNAME,
-	                               KNOT_RDATA_WF_END }, "RP" },
-	[KNOT_RRTYPE_AFSDB]      = { { 2, KNOT_RDATA_WF_DECOMPRESSIBLE_DNAME,
-	                               KNOT_RDATA_WF_END }, "AFSDB" },
-	[KNOT_RRTYPE_RT]         = { { 2, KNOT_RDATA_WF_DECOMPRESSIBLE_DNAME,
-	                               KNOT_RDATA_WF_END }, "RT" },
-	[KNOT_RRTYPE_SIG]        = { { 18, KNOT_RDATA_WF_DECOMPRESSIBLE_DNAME,
-	                               KNOT_RDATA_WF_REMAINDER,
-	                               KNOT_RDATA_WF_END }, "SIG" },
-	[KNOT_RRTYPE_KEY]        = { { 4, KNOT_RDATA_WF_REMAINDER,
-	                               KNOT_RDATA_WF_END }, "KEY" },
-	[KNOT_RRTYPE_AAAA]       = { { 16, KNOT_RDATA_WF_END }, "AAAA" },
-	[KNOT_RRTYPE_LOC]        = { { 16, KNOT_RDATA_WF_END }, "LOC" },
-	[KNOT_RRTYPE_SRV]        = { { 6, KNOT_RDATA_WF_DECOMPRESSIBLE_DNAME,
-	                               KNOT_RDATA_WF_END }, "SRV" },
-	[KNOT_RRTYPE_NAPTR]      = { { KNOT_RDATA_WF_NAPTR_HEADER,
-	                               KNOT_RDATA_WF_DECOMPRESSIBLE_DNAME,
-	                               KNOT_RDATA_WF_END }, "NAPTR" },
-	[KNOT_RRTYPE_KX]         = { { 2, KNOT_RDATA_WF_FIXED_DNAME,
-	                               KNOT_RDATA_WF_END }, "KX" },
-	[KNOT_RRTYPE_CERT]       = { { 5, KNOT_RDATA_WF_REMAINDER,
-	                               KNOT_RDATA_WF_END }, "CERT" },
-	[KNOT_RRTYPE_DNAME]      = { { KNOT_RDATA_WF_FIXED_DNAME,
-	                               KNOT_RDATA_WF_END }, "DNAME" },
-	[KNOT_RRTYPE_OPT]        = { { KNOT_RDATA_WF_REMAINDER_MAYEMPTY,
-	                               KNOT_RDATA_WF_END }, "OPT" },
-	[KNOT_RRTYPE_APL]        = { { KNOT_RDATA_WF_REMAINDER_MAYEMPTY,
-	                               KNOT_RDATA_WF_END }, "APL" },
-	[KNOT_RRTYPE_DS]         = { { 4, KNOT_RDATA_WF_REMAINDER,
-	                               KNOT_RDATA_WF_END }, "DS" },
-	[KNOT_RRTYPE_SSHFP]      = { { 2, KNOT_RDATA_WF_REMAINDER,
-	                               KNOT_RDATA_WF_END }, "SSHFP" },
-	[KNOT_RRTYPE_IPSECKEY]   = { { 3, KNOT_RDATA_WF_REMAINDER,
-	                               KNOT_RDATA_WF_END }, "IPSECKEY" },
-	[KNOT_RRTYPE_RRSIG]      = { { 18, KNOT_RDATA_WF_FIXED_DNAME,
-	                               KNOT_RDATA_WF_REMAINDER,
-	                               KNOT_RDATA_WF_END }, "RRSIG" },
-	[KNOT_RRTYPE_NSEC]       = { { KNOT_RDATA_WF_FIXED_DNAME,
-	                               KNOT_RDATA_WF_REMAINDER_MAYEMPTY,
-	                               KNOT_RDATA_WF_END }, "NSEC" },
-	[KNOT_RRTYPE_DNSKEY]     = { { 4, KNOT_RDATA_WF_REMAINDER,
-	                               KNOT_RDATA_WF_END }, "DNSKEY" },
-	[KNOT_RRTYPE_DHCID]      = { { KNOT_RDATA_WF_REMAINDER,
-	                               KNOT_RDATA_WF_END }, "DHCID" },
-	[KNOT_RRTYPE_NSEC3]      = { { 7, KNOT_RDATA_WF_REMAINDER_MAYEMPTY,
-	                               KNOT_RDATA_WF_END }, "NSEC3" },
-	[KNOT_RRTYPE_NSEC3PARAM] = { { 5, KNOT_RDATA_WF_REMAINDER_MAYEMPTY,
-	                               KNOT_RDATA_WF_END }, "NSEC3PARAM" },
-	[KNOT_RRTYPE_TLSA]       = { { 3, KNOT_RDATA_WF_REMAINDER,
-	                               KNOT_RDATA_WF_END }, "TLSA" },
-	[KNOT_RRTYPE_SMIMEA]     = { { KNOT_RDATA_WF_REMAINDER,
-	                               KNOT_RDATA_WF_END }, "SMIMEA" },
-	[KNOT_RRTYPE_CDS]        = { { 4, KNOT_RDATA_WF_REMAINDER,
-	                               KNOT_RDATA_WF_END }, "CDS" },
-	[KNOT_RRTYPE_CDNSKEY]    = { { 4, KNOT_RDATA_WF_REMAINDER,
-	                               KNOT_RDATA_WF_END }, "CDNSKEY" },
-	[KNOT_RRTYPE_OPENPGPKEY] = { { KNOT_RDATA_WF_REMAINDER,
-	                               KNOT_RDATA_WF_END }, "OPENPGPKEY" },
-	[KNOT_RRTYPE_CSYNC]      = { { 6, KNOT_RDATA_WF_REMAINDER_MAYEMPTY,
-	                               KNOT_RDATA_WF_END }, "CSYNC" },
-	[KNOT_RRTYPE_ZONEMD]     = { { 6, KNOT_RDATA_WF_REMAINDER,
-	                               KNOT_RDATA_WF_END }, "ZONEMD" },
-	[KNOT_RRTYPE_SVCB]       = { { 2, KNOT_RDATA_WF_FIXED_DNAME,
-	                               KNOT_RDATA_WF_REMAINDER_MAYEMPTY,
-	                               KNOT_RDATA_WF_END }, "SVCB" },
-	[KNOT_RRTYPE_HTTPS]      = { { 2, KNOT_RDATA_WF_FIXED_DNAME,
-	                               KNOT_RDATA_WF_REMAINDER_MAYEMPTY,
-	                               KNOT_RDATA_WF_END }, "HTTPS" },
-	[KNOT_RRTYPE_DSYNC]      = { { 5, KNOT_RDATA_WF_FIXED_DNAME,
-	                               KNOT_RDATA_WF_END }, "DSYNC" },
-	[KNOT_RRTYPE_SPF]        = { { KNOT_RDATA_WF_REMAINDER,
-	                               KNOT_RDATA_WF_END }, "SPF" },
-	[KNOT_RRTYPE_NID]        = { { 10, KNOT_RDATA_WF_END }, "NID" },
-	[KNOT_RRTYPE_L32]        = { { 6, KNOT_RDATA_WF_END }, "L32" },
-	[KNOT_RRTYPE_L64]        = { { 10, KNOT_RDATA_WF_END }, "L64" },
-	[KNOT_RRTYPE_LP]         = { { 2, KNOT_RDATA_WF_FIXED_DNAME,
-	                               KNOT_RDATA_WF_END }, "LP" },
-	[KNOT_RRTYPE_EUI48]      = { { 6, KNOT_RDATA_WF_END }, "EUI48" },
-	[KNOT_RRTYPE_EUI64]      = { { 8, KNOT_RDATA_WF_END }, "EUI64" },
-	[KNOT_RRTYPE_NXNAME]     = { { KNOT_RDATA_WF_END }, "NXNAME" },
-	[KNOT_RRTYPE_TKEY]       = { { KNOT_RDATA_WF_FIXED_DNAME,
-	                               KNOT_RDATA_WF_REMAINDER,
-	                               KNOT_RDATA_WF_END }, "TKEY" },
-	[KNOT_RRTYPE_TSIG]       = { { KNOT_RDATA_WF_FIXED_DNAME,
-	                               KNOT_RDATA_WF_REMAINDER,
-	                               KNOT_RDATA_WF_END }, "TSIG" },
-	[KNOT_RRTYPE_IXFR]       = { { KNOT_RDATA_WF_REMAINDER_MAYEMPTY,
-	                               KNOT_RDATA_WF_END }, "IXFR" },
-	[KNOT_RRTYPE_AXFR]       = { { KNOT_RDATA_WF_REMAINDER_MAYEMPTY,
-	                               KNOT_RDATA_WF_END }, "AXFR" },
-	[KNOT_RRTYPE_ANY]        = { { KNOT_RDATA_WF_END }, "ANY" },
-	[KNOT_RRTYPE_URI]        = { { 4, KNOT_RDATA_WF_REMAINDER,
-	                               KNOT_RDATA_WF_END }, "URI" },
-	[KNOT_RRTYPE_CAA]        = { { 1, KNOT_RDATA_WF_REMAINDER,
-	                               KNOT_RDATA_WF_END }, "CAA" },
-	[KNOT_RRTYPE_RESINFO]    = { { KNOT_RDATA_WF_REMAINDER,
-	                               KNOT_RDATA_WF_END }, "RESINFO" },
-	[KNOT_RRTYPE_WALLET]     = { { KNOT_RDATA_WF_REMAINDER,
-	                               KNOT_RDATA_WF_END }, "WALLET" },
-	[KNOT_RRTYPE_ALIAS]      = { { KNOT_RDATA_WF_DECOMPRESSIBLE_DNAME,
-	                               KNOT_RDATA_WF_END }, "ALIAS" },
-};
-
-#define MAX_RRTYPE sizeof(rdata_descriptors) / sizeof(knot_rdata_descriptor_t) - 1
+#define KRW(name) KNOT_RDATA_WF_ ## name
+#define DESCRIPTOR_TYPES(ITEM) \
+	ITEM(A, 4) \
+	ITEM(NS, KRW(COMPRESSIBLE_DNAME)) \
+	ITEM(CNAME, KRW(COMPRESSIBLE_DNAME)) \
+	ITEM(SOA, KRW(COMPRESSIBLE_DNAME), KRW(COMPRESSIBLE_DNAME), 20) \
+	ITEM(NULL, KRW(REMAINDER_MAYEMPTY)) \
+	ITEM(PTR, KRW(COMPRESSIBLE_DNAME)) \
+	ITEM(HINFO, KRW(REMAINDER)) \
+	ITEM(MINFO, KRW(COMPRESSIBLE_DNAME), KRW(COMPRESSIBLE_DNAME)) \
+	ITEM(MX, 2, KRW(COMPRESSIBLE_DNAME)) \
+	ITEM(TXT, KRW(REMAINDER)) \
+	ITEM(RP, KRW(DECOMPRESSIBLE_DNAME), KRW(DECOMPRESSIBLE_DNAME)) \
+	ITEM(AFSDB, 2, KRW(DECOMPRESSIBLE_DNAME)) \
+	ITEM(RT, 2, KRW(DECOMPRESSIBLE_DNAME)) \
+	ITEM(SIG, 18, KRW(DECOMPRESSIBLE_DNAME), KRW(REMAINDER)) \
+	ITEM(KEY, 4, KRW(REMAINDER)) \
+	ITEM(AAAA, 16) \
+	ITEM(LOC, 16) \
+	ITEM(SRV, 6, KRW(DECOMPRESSIBLE_DNAME)) \
+	ITEM(NAPTR, KRW(NAPTR_HEADER), KRW(DECOMPRESSIBLE_DNAME)) \
+	ITEM(KX, 2, KRW(FIXED_DNAME)) \
+	ITEM(CERT, 5, KRW(REMAINDER)) \
+	ITEM(DNAME, KRW(FIXED_DNAME)) \
+	ITEM(OPT, KRW(REMAINDER_MAYEMPTY)) \
+	ITEM(APL, KRW(REMAINDER_MAYEMPTY)) \
+	ITEM(DS, 4, KRW(REMAINDER)) \
+	ITEM(SSHFP, 2, KRW(REMAINDER)) \
+	ITEM(IPSECKEY, 3, KRW(REMAINDER)) \
+	ITEM(RRSIG, 18, KRW(FIXED_DNAME), KRW(REMAINDER)) \
+	ITEM(NSEC, KRW(FIXED_DNAME), KRW(REMAINDER_MAYEMPTY)) \
+	ITEM(DNSKEY, 4, KRW(REMAINDER)) \
+	ITEM(DHCID, KRW(REMAINDER)) \
+	ITEM(NSEC3, 7, KRW(REMAINDER_MAYEMPTY)) \
+	ITEM(NSEC3PARAM, 5, KRW(REMAINDER_MAYEMPTY)) \
+	ITEM(TLSA, 3, KRW(REMAINDER)) \
+	ITEM(SMIMEA, KRW(REMAINDER)) \
+	ITEM(CDS, 4, KRW(REMAINDER)) \
+	ITEM(CDNSKEY, 4, KRW(REMAINDER)) \
+	ITEM(OPENPGPKEY, KRW(REMAINDER)) \
+	ITEM(CSYNC, 6, KRW(REMAINDER_MAYEMPTY)) \
+	ITEM(ZONEMD, 6, KRW(REMAINDER)) \
+	ITEM(SVCB, 2, KRW(FIXED_DNAME), KRW(REMAINDER_MAYEMPTY)) \
+	ITEM(HTTPS, 2, KRW(FIXED_DNAME), KRW(REMAINDER_MAYEMPTY)) \
+	ITEM(DSYNC, 5, KRW(FIXED_DNAME)) \
+	ITEM(SPF, KRW(REMAINDER)) \
+	ITEM(NID, 10) \
+	ITEM(L32, 6) \
+	ITEM(L64, 10) \
+	ITEM(LP, 2, KRW(FIXED_DNAME)) \
+	ITEM(EUI48, 6) \
+	ITEM(EUI64, 8) \
+	ITEM(NXNAME, KRW(END)) /* redundant _END */ \
+	ITEM(TKEY, KRW(FIXED_DNAME), KRW(REMAINDER)) \
+	ITEM(TSIG, KRW(FIXED_DNAME), KRW(REMAINDER)) \
+	ITEM(IXFR, KRW(REMAINDER_MAYEMPTY)) \
+	ITEM(AXFR, KRW(REMAINDER_MAYEMPTY)) \
+	ITEM(ANY, KRW(END)) /* redundant _END */ \
+	ITEM(URI, 4, KRW(REMAINDER)) \
+	ITEM(CAA, 1, KRW(REMAINDER)) \
+	ITEM(RESINFO, KRW(REMAINDER)) \
+	ITEM(WALLET, KRW(REMAINDER)) \
+	ITEM(ALIAS, KRW(DECOMPRESSIBLE_DNAME))
 
 /*!
  * \brief Some (OBSOLETE) RR type descriptors.
  */
-static const knot_rdata_descriptor_t obsolete_rdata_descriptors[] = {
-	[0]                      = { { KNOT_RDATA_WF_REMAINDER,
-	                               KNOT_RDATA_WF_END }, NULL },
-	[KNOT_RRTYPE_MD]         = { { KNOT_RDATA_WF_DECOMPRESSIBLE_DNAME,
-	                               KNOT_RDATA_WF_END }, "MD" },
-	[KNOT_RRTYPE_MF]         = { { KNOT_RDATA_WF_DECOMPRESSIBLE_DNAME,
-	                               KNOT_RDATA_WF_END }, "MF" },
-	[KNOT_RRTYPE_MB]         = { { KNOT_RDATA_WF_DECOMPRESSIBLE_DNAME,
-	                               KNOT_RDATA_WF_END }, "MB" },
-	[KNOT_RRTYPE_MG]         = { { KNOT_RDATA_WF_DECOMPRESSIBLE_DNAME,
-	                               KNOT_RDATA_WF_END }, "MG" },
-	[KNOT_RRTYPE_MR]         = { { KNOT_RDATA_WF_DECOMPRESSIBLE_DNAME,
-	                               KNOT_RDATA_WF_END }, "MR" },
-	[KNOT_RRTYPE_PX]         = { { 2, KNOT_RDATA_WF_DECOMPRESSIBLE_DNAME,
-	                               KNOT_RDATA_WF_DECOMPRESSIBLE_DNAME,
-	                               KNOT_RDATA_WF_END }, "PX" },
-	[KNOT_RRTYPE_NXT]        = { { KNOT_RDATA_WF_DECOMPRESSIBLE_DNAME,
-	                               KNOT_RDATA_WF_REMAINDER,
-	                               KNOT_RDATA_WF_END }, "NXT" },
-};
+#define OBSOLETE_DESCRIPTOR_TYPES(ITEM) \
+	ITEM(MD, KRW(DECOMPRESSIBLE_DNAME)) \
+	ITEM(MF, KRW(DECOMPRESSIBLE_DNAME)) \
+	ITEM(MB, KRW(DECOMPRESSIBLE_DNAME)) \
+	ITEM(MG, KRW(DECOMPRESSIBLE_DNAME)) \
+	ITEM(MR, KRW(DECOMPRESSIBLE_DNAME)) \
+	ITEM(PX, 2, KRW(DECOMPRESSIBLE_DNAME), KRW(DECOMPRESSIBLE_DNAME)) \
+	ITEM(NXT, KRW(DECOMPRESSIBLE_DNAME), KRW(REMAINDER))
 
 _public_
 const knot_rdata_descriptor_t *knot_get_rdata_descriptor(const uint16_t type)
 {
-	if (type <= MAX_RRTYPE && rdata_descriptors[type].type_name != NULL) {
-		return &rdata_descriptors[type];
-	} else {
-		return &rdata_descriptors[0];
+	// We define descriptors as individual static variables.
+	#define DEF_ITEM(name, ...) static const knot_rdata_descriptor_t \
+		def_ ## name = {{__VA_ARGS__, KRW(END)}, #name};
+	DESCRIPTOR_TYPES(DEF_ITEM)
+	#undef DEF_ITEM
+
+	// The default is separate, as we want the name to be NULL.
+	static const knot_rdata_descriptor_t def_default =
+		{ { KRW(REMAINDER_MAYEMPTY), KRW(END) }, NULL };
+
+	switch (type) {
+	#define SWITCH_ITEM(name, ...) case KNOT_RRTYPE_ ## name: return &(def_ ## name);
+	DESCRIPTOR_TYPES(SWITCH_ITEM)
+	#undef SWITCH_ITEM
+	default: return &def_default;
 	}
 }
 
 _public_
 const knot_rdata_descriptor_t *knot_get_obsolete_rdata_descriptor(const uint16_t type)
 {
-	if (type <= KNOT_RRTYPE_NXT &&
-	    obsolete_rdata_descriptors[type].type_name != NULL) {
-		return &obsolete_rdata_descriptors[type];
-	} else {
-		return &obsolete_rdata_descriptors[0];
+	// We define descriptors as individual static variables.
+	#define DEF_ITEM(name, ...) static const knot_rdata_descriptor_t \
+		def_ ## name = {{__VA_ARGS__, KRW(END)}, #name};
+	OBSOLETE_DESCRIPTOR_TYPES(DEF_ITEM)
+	#undef DEF_ITEM
+
+	// The default is separate, as we want the name to be NULL.
+	static const knot_rdata_descriptor_t def_default =
+		{ { KRW(REMAINDER), KRW(END) }, NULL };
+
+	switch (type) {
+	#define SWITCH_ITEM(name, ...) case KNOT_RRTYPE_ ## name: return &(def_ ## name);
+	OBSOLETE_DESCRIPTOR_TYPES(SWITCH_ITEM)
+	#undef SWITCH_ITEM
+	default: return &def_default;
 	}
 }
 
@@ -234,15 +177,16 @@ int knot_rrtype_from_string(const char *name, uint16_t *num)
 		return KNOT_EINVAL;
 	}
 
-	int i;
-	char *end;
-	unsigned long n;
+	static const uint16_t described_types[] = {
+		#define CODE_ITEM(name, ...) KNOT_RRTYPE_ ## name,
+		DESCRIPTOR_TYPES(CODE_ITEM)
+		#undef CODE_ITEM
+	};
 
-	// Try to find name in descriptors table.
-	for (i = 0; i <= MAX_RRTYPE; i++) {
-		if (rdata_descriptors[i].type_name != NULL &&
-		    strcasecmp(rdata_descriptors[i].type_name, name) == 0) {
-			*num = i;
+	for (int i = 0; i < sizeof(described_types) / sizeof(described_types[0]); ++i) {
+		uint16_t type = described_types[i];
+		if (strcasecmp(name, knot_get_rdata_descriptor(type)->type_name) == 0) {
+			*num = type;
 			return KNOT_EOK;
 		}
 	}
@@ -255,12 +199,13 @@ int knot_rrtype_from_string(const char *name, uint16_t *num)
 	}
 
 	// The rest must be a number.
-	n = strtoul(name, &end, 10);
+	char *end;
+	unsigned long n = strtoul(name, &end, 10);
 	if (end == name || *end != '\0' || n > UINT16_MAX) {
 		return KNOT_ENOTYPE;
 	}
-
 	*num = n;
+
 	return KNOT_EOK;
 }
 
