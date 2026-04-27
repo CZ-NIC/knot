@@ -351,7 +351,7 @@ Keymgr.run_check(server.confile, zones[0].name, "delete", keys_zone0_zsks_now[0]
 Keymgr.run_check(server.confile, zones[1].name, "delete", keys_zone1_ksks_now[0])
 # Keep this: Keymgr.run_check(server.confile, zones[1].name, "delete", keys_zone1_zsks_now[0])
 Keymgr.run_check(server.confile, zones[2].name, "delete", keys_zone2_ksks_now[0], env=kstore_hsm.env())
-# Kepp this: Keymgr.run_check(server.confile, zones[2].name, "delete", keys_zone2_zsks_now[0], env=kstore_hsm.env())
+# Keep this: Keymgr.run_check(server.confile, zones[2].name, "delete", keys_zone2_zsks_now[0], env=kstore_hsm.env())
 Keymgr.run_check(server.confile, zones[3].name, "delete", keys_zone3_ksks_now[0])
 Keymgr.run_check(server.confile, zones[3].name, "delete", keys_zone3_zsks_now[0])
 # Verify that the keys are removed from the zones, but remain in keystores.
@@ -361,8 +361,8 @@ compare(zone_ksks_zsks(server, zones[2], kstore_hsm), ([], keys_zone2_zsks_now),
 compare(zone_ksks_zsks(server, zones[3]), ([], []), "deleted keys from zone %s" % zones[3].name)
 check_keys(kstore_def, 2, keys_zone0, None, 3 + 4, keys_zone1 + keys_zone3, None, 2 + 2, keys_zone2, None)
 
-# Test that "zone-purge -f +orphan +keys --" cleans the trash bin (removes trash from keystores).
-server.ctl("-f zone-purge +orphan +keys --", wait=True)
+# Test that "keymgr -- trash-discard --" cleans the trash bin (removes trash from keystores).
+Keymgr.run_check(server.confile, "--", "trash-discard", "--", env=kstore_hsm.env())
 check_keys(kstore_def, 0, None, keys_zone0, 1 + 4, keys_zone1_zsks_now, set(keys_zone1 + keys_zone3) - set(keys_zone1_zsks_now),
                                             1 + 2, keys_zone2_zsks_now, set(keys_zone2) - set (keys_zone2_zsks_now))
 check_keys(kstore_def2, 0, None, None, 1 + 4, keys2_zone0 + keys2_zone1, None, 1 + 2, keys2_zone2, None)
