@@ -299,6 +299,7 @@ static int pkcs8_generate_key(void *ctx, gnutls_pk_algorithm_t algorithm,
 		if (key_is_duplicate(r, handle, id, &pem)) {
 			return KNOT_EOK;
 		}
+		free(id);
 		return r;
 	}
 
@@ -306,6 +307,7 @@ static int pkcs8_generate_key(void *ctx, gnutls_pk_algorithm_t algorithm,
 
 	ssize_t wrote_count = write(file, pem.data, pem.size);
 	if (wrote_count == -1) {
+		free(id);
 		return knot_map_errno();
 	}
 
