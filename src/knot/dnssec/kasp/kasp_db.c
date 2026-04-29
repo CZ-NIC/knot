@@ -572,13 +572,17 @@ int kasp_db_delete_trash(knot_lmdb_db_t *db, const knot_dname_t *zone_name, char
 	if (key_id != NULL) {
 		// Remove just one trash key.
 		// In this case, zone_name is ignored.
-		ret = kdnssec_delete_from_keystores(keystores, key_id, NULL, true, false);
-		ret = (ret == KNOT_ENOENT) ? KNOT_EOK : ret;
-		if (ret == KNOT_EOK) {
-			MDB_val prefix = make_key_str(KASPDBKEY_TRASH, NULL, key_id);
-			knot_lmdb_del_prefix(&txn, &prefix);
-			free(prefix.mv_data);
+		MDB_val prefix = make_key_str(KASPDBKEY_TRASH, NULL, key_id);
+		if (knot_lmdb_find_prefix(&txn, &prefix)) {
+			ret = kdnssec_delete_from_keystores(keystores, key_id, NULL, true, false);
+			ret = (ret == KNOT_ENOENT) ? KNOT_EOK : ret;
+			if (ret == KNOT_EOK) {
+				knot_lmdb_del_prefix(&txn, &prefix);
+			}
+		} else {
+			ret = KNOT_ENOENT;
 		}
+		free(prefix.mv_data);
 	} else {
 		// Remove all trash keys belonging to the zone, or all trash keys.
 		bool failed = false;
