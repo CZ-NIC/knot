@@ -24,6 +24,22 @@ TESTS_DIR = "tests"
 log = None
 outs_dir = None
 
+def nothing():
+    pass
+
+def clear_line():
+    print("\r\x1b[K", end='')
+
+def progress_print(cntr, lock, func = nothing, *args, **kwargs):
+    if sys.stdout.isatty():
+        lock.acquire()
+        clear_line()
+        func(*args, **kwargs)
+        print(f"(Processed tests {cntr}/{TASK_COUNT})", end='', flush=True)
+        lock.release()
+    else:
+        func(*args, **kwargs)
+
 def save_traceback(outdir, exc):
     path = os.path.join(Context().out_dir, "traceback.log")
     with open(path, mode="a") as f:
@@ -132,6 +148,8 @@ def parse_args(cmd_args):
 
     return included
 
+TASK_COUNT = 0
+
 def log_failed(log_dir, msg, indent=True):
     fname = os.path.join(log_dir, "failed.log")
     first = False if os.path.isfile(fname) else True
@@ -142,7 +160,7 @@ def log_failed(log_dir, msg, indent=True):
     print("%s%s" % ("  " if indent else "", msg), file=file)
     file.close()
 
-def job(job_id, tasks, results, stop):
+def job(job_id, tasks, results, stop, done, print_lock):
     case_cnt = 0
     fail_cnt = 0
     skip_cnt = 0
@@ -150,6 +168,7 @@ def job(job_id, tasks, results, stop):
     ctx = Context()
 
     while True:
+        progress_print(done.value, print_lock)
         if tasks.empty() or (params.exit_on_error and stop.value):
             break
         test, case, repeat = tasks.get()
@@ -165,8 +184,9 @@ def job(job_id, tasks, results, stop):
         case_dir = os.path.join(test_dir, case)
         test_file = os.path.join(case_dir, "test.py")
         if not os.path.isfile(test_file):
-            log.error(case_str_err + "MISSING")
             skip_cnt += 1
+            done.value += 1
+            progress_print(done.value, print_lock, log.error, case_str_err + "MISSING")
             continue
 
         try:
@@ -185,7 +205,8 @@ def job(job_id, tasks, results, stop):
             ctx.err_msg = ""
         except OsError:
             msg = "EXCEPTION (no dir \'%s\')" % out_dir
-            log.error(case_str_err + msg)
+            done.value += 1
+            progress_print(done.value, print_lock, log.error, case_str_err + msg)
             log_failed(outs_dir, case_str_fail + msg)
             fail_cnt += 1
             stop.value = True
@@ -197,7 +218,7 @@ def job(job_id, tasks, results, stop):
             mod = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(mod)
         except dnstest.utils.Skip as exc:
-            log.error(case_str_err + "SKIPPED (%s)" % format(exc))
+            progress_print(done.value, print_lock, log.error, case_str_err + "SKIPPED (%s)" % format(exc))
             skip_cnt += 1
         except dnstest.utils.Failed as exc:
             save_traceback(ctx.out_dir, exc)
@@ -206,10 +227,11 @@ def job(job_id, tasks, results, stop):
             msg = "FAILED (%s)" % (desc if desc else exc.__class__.__name__)
             if ctx.err and ctx.err_msg:
                 msg += " AND (" + ctx.err_msg + ")"
-            log.error(case_str_err + msg)
+            progress_print(done.value, print_lock, log.error, case_str_err + msg)
             log_failed(outs_dir, case_str_fail + msg)
 
             if params.debug:
+                print()
                 traceback.print_exc()
 
             fail_cnt += 1
@@ -219,10 +241,11 @@ def job(job_id, tasks, results, stop):
 
             desc = format(exc)
             msg = "EXCEPTION (%s)" % (desc if desc else exc.__class__.__name__)
-            log.error(case_str_err + msg)
+            progress_print(done.value, print_lock, log.error, case_str_err + msg)
             log_failed(outs_dir, case_str_fail + msg)
 
             if params.debug:
+                print()
                 traceback.print_exc()
 
             fail_cnt += 1
@@ -230,8 +253,10 @@ def job(job_id, tasks, results, stop):
         except BaseException as exc:
             save_traceback(ctx.out_dir, exc)
             if params.debug:
+                print()
                 traceback.print_exc()
             else:
+                print()
                 log.info("INTERRUPTED")
                 # Stop servers if still running.
             if ctx.test:
@@ -241,13 +266,13 @@ def job(job_id, tasks, results, stop):
             if ctx.err:
                 msg = "FAILED" + \
                       ((" (" + ctx.err_msg + ")") if ctx.err_msg else "")
-                log.info(case_str_err + msg)
+                progress_print(done.value, print_lock, log.info, case_str_err + msg)
                 log_failed(outs_dir, case_str_fail + msg)
                 fail_cnt += 1
                 stop.value = True
             else:
-                log.info(case_str_err + "OK")
-
+                progress_print(done.value, print_lock, log.info, case_str_err + "OK")
+        done.value += 1
         # Stop servers if still running.
         if ctx.test:
             ctx.test.end()
@@ -258,12 +283,15 @@ def job(job_id, tasks, results, stop):
 def main(args):
     global log
     global outs_dir
+    global TASK_COUNT
 
     multiprocessing.set_start_method('fork')
 
     tasks = multiprocessing.Queue()
     results = multiprocessing.SimpleQueue()
     stop = multiprocessing.Value('i', False)
+    done = multiprocessing.Value('i', 0)
+    print_lock = multiprocessing.Lock()
 
     case_cnt = 0
     fail_cnt = 0
@@ -276,6 +304,9 @@ def main(args):
         for test, cases in included.items():
             for case in cases:
                 tasks.put((test, case, n), block=False)
+                TASK_COUNT += 1
+    if params.repeat == 0:
+        TASK_COUNT = '\u221e'
 
     timestamp = int(time.time())
     today = time.strftime("%Y-%m-%d", time.localtime(timestamp))
@@ -322,17 +353,19 @@ def main(args):
 
     ref_time = datetime.datetime.now().replace(microsecond=0)
 
+    progress_print(0, print_lock) # Expects we are at a newline
+
     if params.jobs > 1: # Multi-thread run
         threads = []
         for j in range(params.jobs):
-            t = multiprocessing.Process(target=job, args=(j + 1, tasks, results, stop))
+            t = multiprocessing.Process(target=job, args=(j + 1, tasks, results, stop, done, print_lock))
             threads.append(t)
             t.start()
 
         for thread in threads:
             thread.join()
     else: # Single-thread run
-        job(1, tasks, results, stop)
+        job(1, tasks, results, stop, done, print_lock)
 
     while not results.empty():
         a, b, c = results.get()
@@ -345,6 +378,8 @@ def main(args):
     msg_cases = "TEST CASES: %i" % case_cnt
     msg_skips = ", SKIPPED: %i" % skip_cnt if skip_cnt > 0 else ""
     msg_res = ", FAILED: %i" % fail_cnt if fail_cnt > 0 else ", SUCCESS"
+
+    clear_line()
     log.info(msg_time + msg_cases + msg_skips + msg_res)
 
     if fail_cnt:
