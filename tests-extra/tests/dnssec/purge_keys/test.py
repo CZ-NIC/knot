@@ -16,8 +16,7 @@ def zone_ksks_zsks(server, zone, keystore=None):
     env = keystore.env() if keystore is not None else None
     _, keys, _ = Keymgr.run_check(server.confile, zone.name, "list", env=env)
 
-    ksks = []
-    zsks = []
+    ksks, zsks = [], []
     for key in keys.strip().splitlines():
         cols = key.split()
         if cols[1] == "ksk=yes":
