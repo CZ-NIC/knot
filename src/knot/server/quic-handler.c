@@ -105,8 +105,8 @@ knot_quic_table_t *quic_make_table(struct server *server)
 	conf_t *pconf = conf();
 	size_t udp_pl = MIN(pconf->cache.srv_udp_max_payload_ipv4,
 	                    pconf->cache.srv_udp_max_payload_ipv6);
-	size_t quic_max_conns = pconf->cache.srv_quic_max_clients /
-	                        pconf->cache.srv_udp_threads;
+	size_t quic_max_conns = MAX(pconf->cache.srv_quic_max_clients /
+	                            pconf->cache.srv_udp_threads, 1);
 	size_t quic_max_inbufs= quic_max_conns * QUIC_IBUFS_PER_CONN;
 	size_t quic_max_obufs = pconf->cache.srv_quic_obuf_max_size;
 
