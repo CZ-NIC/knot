@@ -18,8 +18,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#define KNOT_MAX_RDATA_BLOCKS	8
-#define KNOT_MAX_RDATA_DNAMES	2	// Update this when defining new RR types!
+#define KNOT_MAX_RDATA_BLOCKS	6
 
 /*!
  * \brief Resource record class codes.
@@ -169,7 +168,7 @@ enum knot_rdata_wireformat {
  */
 typedef struct {
 	/*!< Item types describing rdata. */
-	const int  block_types[KNOT_MAX_RDATA_BLOCKS];
+	const int16_t block_types[KNOT_MAX_RDATA_BLOCKS];
 	/*!< RR type name. */
 	const char *type_name;
 } knot_rdata_descriptor_t;
