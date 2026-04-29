@@ -221,12 +221,8 @@ int knot_rrclass_from_string(const char *name, uint16_t *num)
 		return KNOT_EINVAL;
 	}
 
-	int i;
-	char *end;
-	unsigned long n;
-
 	// Try to find the name in classes table.
-	for (i = 0; i <= KNOT_CLASS_ANY; i++) {
+	for (int i = 0; i <= KNOT_CLASS_ANY; i++) {
 		const char **row = dns_classes[i];
 		if ((row[0] != NULL && strcasecmp(row[0], name) == 0) ||
 		    (row[1] != NULL && strcasecmp(row[1], name) == 0)) {
@@ -243,12 +239,13 @@ int knot_rrclass_from_string(const char *name, uint16_t *num)
 	}
 
 	// The rest must be a number.
-	n = strtoul(name, &end, 10);
+	char *end;
+	unsigned long n = strtoul(name, &end, 10);
 	if (end == name || *end != '\0' || n > UINT16_MAX) {
 		return KNOT_ENOCLASS;
 	}
-
 	*num = n;
+
 	return KNOT_EOK;
 }
 
