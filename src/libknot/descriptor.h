@@ -184,16 +184,6 @@ typedef struct {
 const knot_rdata_descriptor_t *knot_get_rdata_descriptor(const uint16_t type);
 
 /*!
- * \brief Gets rdata descriptor for given RR name (obsolete version).
- *
- * \param type Mnemonic of RR type whose descriptor should be returned.
- *
- * \retval RR descriptor for given name, NULL descriptor if
- *         unknown type.
- */
-const knot_rdata_descriptor_t *knot_get_obsolete_rdata_descriptor(const uint16_t type);
-
-/*!
  * \brief Converts numeric type representation to mnemonic string.
  *
  * \param rrtype  Type RR type code to be converted.

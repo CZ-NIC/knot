@@ -187,7 +187,6 @@ libknot.so.16 libknot16 #MINVER#
  knot_eth_rss@Base 3.5.0
  knot_eth_vlans@Base 3.5.0
  knot_eth_xdp_mode@Base 3.5.0
- knot_get_obsolete_rdata_descriptor@Base 3.5.0
  knot_get_rdata_descriptor@Base 3.5.0
  knot_naptr_header_size@Base 3.5.0
  knot_opcode_names@Base 3.5.0

@@ -109,6 +109,7 @@ const knot_rdata_descriptor_t *knot_get_rdata_descriptor(const uint16_t type)
 	#define DEF_ITEM(name, ...) static const knot_rdata_descriptor_t \
 		def_ ## name = {{__VA_ARGS__, KRW(END)}, #name};
 	DESCRIPTOR_TYPES(DEF_ITEM)
+	OBSOLETE_DESCRIPTOR_TYPES(DEF_ITEM)
 	#undef DEF_ITEM
 
 	// The default is separate, as we want the name to be NULL.
@@ -118,26 +119,6 @@ const knot_rdata_descriptor_t *knot_get_rdata_descriptor(const uint16_t type)
 	switch (type) {
 	#define SWITCH_ITEM(name, ...) case KNOT_RRTYPE_ ## name: return &(def_ ## name);
 	DESCRIPTOR_TYPES(SWITCH_ITEM)
-	#undef SWITCH_ITEM
-	default: return &def_default;
-	}
-}
-
-_public_
-const knot_rdata_descriptor_t *knot_get_obsolete_rdata_descriptor(const uint16_t type)
-{
-	// We define descriptors as individual static variables.
-	#define DEF_ITEM(name, ...) static const knot_rdata_descriptor_t \
-		def_ ## name = {{__VA_ARGS__, KRW(END)}, #name};
-	OBSOLETE_DESCRIPTOR_TYPES(DEF_ITEM)
-	#undef DEF_ITEM
-
-	// The default is separate, as we want the name to be NULL.
-	static const knot_rdata_descriptor_t def_default =
-		{ { KRW(REMAINDER), KRW(END) }, NULL };
-
-	switch (type) {
-	#define SWITCH_ITEM(name, ...) case KNOT_RRTYPE_ ## name: return &(def_ ## name);
 	OBSOLETE_DESCRIPTOR_TYPES(SWITCH_ITEM)
 	#undef SWITCH_ITEM
 	default: return &def_default;

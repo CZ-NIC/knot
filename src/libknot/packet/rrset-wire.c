@@ -642,9 +642,6 @@ static int parse_rdata(const uint8_t *pkt_wire, size_t *pos, size_t pkt_size,
 	assert(rrset);
 
 	const knot_rdata_descriptor_t *desc = knot_get_rdata_descriptor(rrset->type);
-	if (desc->type_name == NULL) {
-		desc = knot_get_obsolete_rdata_descriptor(rrset->type);
-	}
 
 	if (rdlength == 0) {
 		if (allow_zero_rdata(rrset)) {
