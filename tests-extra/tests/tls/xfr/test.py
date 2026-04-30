@@ -54,8 +54,6 @@ def upd_check_zones(master, slave, zones, prev_serials):
     t.xfr_diff(master, slave, zones, prev_serials)
     return serials
 
-master.check_quic()
-
 t.gen_ca()
 
 t.start()

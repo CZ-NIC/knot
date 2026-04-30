@@ -18,8 +18,6 @@ backup_dir2 = os.path.join(master.dir, "backup2")
 keyfile = os.path.join(master.dir, "keys", DFLT_QUIC_KEY_FILE)
 backup_keyfile = os.path.join(backup_dir, "keys", DFLT_QUIC_KEY_FILE)
 
-master.check_quic()
-
 t.start()
 
 master.zones_wait(zones)
