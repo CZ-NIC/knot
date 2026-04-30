@@ -964,8 +964,8 @@ unsigned dnskey_sync_jitter(conf_t *conf, zone_t *zone)
 	return dnssec_random_uint16_t() % 5;
 }
 
-#ifndef KNOT_TRASH_GC_INTERVAL
- #define KNOT_TRASH_GC_INTERVAL 3600
+#ifndef TRASH_GC_INTERVAL
+ #define TRASH_GC_INTERVAL 3600
 #endif
 
 void key_trash_gc(server_t *server)
@@ -996,9 +996,9 @@ void key_trash_gc(server_t *server)
 		log_debug("background DNSSEC key trash garbage collector finished");
 	}
 
-	knot_time_t next = knot_time_add(server->trash_gc.next, KNOT_TRASH_GC_INTERVAL);
+	knot_time_t next = knot_time_add(server->trash_gc.next, TRASH_GC_INTERVAL);
 	if (now > next) {
-		next = knot_time_add(now, KNOT_TRASH_GC_INTERVAL);
+		next = knot_time_add(now, TRASH_GC_INTERVAL);
 	}
 
 	knot_spin_lock(lock);
