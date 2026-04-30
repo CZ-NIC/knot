@@ -260,6 +260,7 @@ KNOTD_MOD_LDFLAGS  = $(AM_LDFLAGS) -module -shared -avoid-version
 pkglibdir = $(module_instdir)
 pkglib_LTLIBRARIES =
 
+include $(srcdir)/knot/modules/alias/Makefile.inc
 include $(srcdir)/knot/modules/authsignal/Makefile.inc
 include $(srcdir)/knot/modules/cookies/Makefile.inc
 include $(srcdir)/knot/modules/dnserr/Makefile.inc

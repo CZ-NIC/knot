@@ -1,0 +1,11 @@
+$ORIGIN _ips.example.
+$TTL 300
+@          IN SOA ns.example. mail.example. ( 1 3600 900 604800 300 )
+@          IN NS  ns.example.
+
+; Synthesis targets used by the alias zones.
+web        IN A    192.0.2.1
+web        IN AAAA 2001:db8::1
+alt        IN A    192.0.2.2
+mail       IN A    192.0.2.3
+mail       IN MX   10 mx.example.
