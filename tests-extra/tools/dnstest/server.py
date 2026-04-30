@@ -1592,6 +1592,7 @@ class Knot(Server):
         for addr in self.addr_extra:
             s.item_str("listen", "%s@%s" % (addr, self.port))
         if self.quic_port:
+            self.check_quic()
             s.item_str("listen-quic", "%s@%s" % (self.addr, self.quic_port))
         if self.tls_port:
             s.item_str("listen-tls", "%s@%s" % (self.addr, self.tls_port))

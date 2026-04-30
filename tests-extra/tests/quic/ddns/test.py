@@ -28,8 +28,6 @@ for z in zones:
     sender.conf_ss("dnskey-sync", z).remote = [ recver ]
     sender.dnssec(z).keytag_modulo = "0/1"
 
-sender.check_quic()
-
 t.start()
 
 s_sender = sender.zones_wait(zones)
