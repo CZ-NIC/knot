@@ -610,6 +610,12 @@ AC_SUBST([libngtcp2_LIBS])
 AS_IF([test "$enable_quic" != "no"], [
   AC_DEFINE([ENABLE_QUIC], [1], [Define to 1 to enable DoQ support using libngtcp2 and GnuTLS])])
 
+trash_gc_interval=3600
+AC_ARG_WITH([gc_interval],
+        AS_HELP_STRING([--trash-gc-interval=NUM], [Interval between two background trash garbage collector runs in seconds [default=3600]]),
+        [trash_gc_interval=$withval])
+AC_SUBST(trash_gc_interval)
+
 ############################################
 # Dependencies needed for Knot DNS utilities
 ############################################
@@ -828,6 +834,7 @@ result_msg_base="
     D-Bus support:          ${enable_dbus}
     POSIX capabilities:     ${enable_cap_ng}
     PKCS #11 support:       ${enable_pkcs11}
+    Trash GC interval:      ${trash_gc_interval}
 
     Code coverage:          ${enable_code_coverage}
     Sanitizer:              ${with_sanitizer}
