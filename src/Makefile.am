@@ -1,10 +1,11 @@
 AM_CPPFLAGS = \
-	-include $(top_builddir)/src/config.h	\
-	-DCONFIG_DIR='"${config_dir}"'		\
-	-DSTORAGE_DIR='"${storage_dir}"'	\
-	-DRUN_DIR='"${run_dir}"'		\
-	-DMODULE_DIR='"${module_dir}"'		\
-	-DMODULE_INSTDIR='"${module_instdir}"'
+	-include $(top_builddir)/src/config.h		\
+	-DCONFIG_DIR='"${config_dir}"'			\
+	-DSTORAGE_DIR='"${storage_dir}"'		\
+	-DRUN_DIR='"${run_dir}"'			\
+	-DMODULE_DIR='"${module_dir}"'			\
+	-DMODULE_INSTDIR='"${module_instdir}"'		\
+	-DTRASH_GC_INTERVAL='${trash_gc_interval}'
 
 AM_LDFLAGS = $(LT_NO_UNDEFINED)
 
