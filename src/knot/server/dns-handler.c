@@ -217,7 +217,7 @@ int handle_dns_request(dns_request_handler_context_t *dns_handler, dns_handler_r
 		dns_req->req_data.tx->iov_base, dns_req->req_data.tx->iov_len, dns_handler->layer.mm);
 
 	/* Process the query. */
-	handle_query(&dns_req->req_data.params, &dns_handler->layer, dns_req->req_data.rx, NULL);
+	handle_query(&dns_req->req_data.params, &dns_handler->layer, dns_req->req_data.rx, &dns_req->req_data.proxied_addr);
 
 	return handle_dns_request_continue(dns_handler, dns_req);
 }
