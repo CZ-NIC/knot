@@ -411,6 +411,7 @@ static_modules_declars=""
 static_modules_init=""
 doc_modules=""
 
+KNOT_MODULE([alias],       "yes", "non-shareable")
 KNOT_MODULE([authsignal],  "yes")
 KNOT_MODULE([cookies],     "yes")
 KNOT_MODULE([dnserr],      "yes")
