@@ -20,6 +20,7 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
+#include <dirent.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -30,10 +31,6 @@
 #include <sys/stat.h>
 
 int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size);
-
-#ifndef __AFL_LOOP
-
-#include <dirent.h>
 
 static void test_all_from(const char *dirname)
 {
@@ -118,23 +115,3 @@ int main(int argc, char **argv)
 
 	return 0;
 }
-
-#else
-
-int main(int argc, char **argv)
-{
-	unsigned char buf[64 * 1024];
-
-	while (__AFL_LOOP(10000)) {
-		int ret = fread(buf, 1, sizeof(buf), stdin);
-		if (ret < 0) {
-			return 0;
-		}
-
-		LLVMFuzzerTestOneInput(buf, ret);
-	}
-
-	return 0;
-}
-
-#endif /* __AFL_LOOP */

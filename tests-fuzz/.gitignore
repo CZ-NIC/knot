@@ -1,9 +1,6 @@
 /Makefile.in
 /Makefile
 
-/knotd_stdio
-/knotd_wrap/main.c
-
 *.trs
 *.log
 /fuzz_packet

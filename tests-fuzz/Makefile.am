@@ -14,47 +14,7 @@ FUZZERS = \
 
 check_PROGRAMS = $(FUZZERS)
 
-if HAVE_DAEMON
-# knotd_stdio (AFL)
-check_PROGRAMS += knotd_stdio
-
-nodist_knotd_stdio_SOURCES = knotd_wrap/main.c
-
-knotd_stdio_SOURCES = \
-	knotd_wrap/afl-loop.h			\
-	knotd_wrap/server.c			\
-	knotd_wrap/tcp-handler.c		\
-	knotd_wrap/udp-handler.c
-
-knotd_stdio_CPPFLAGS =				\
-	$(AM_CPPFLAGS)				\
-	$(libkqueue_CFLAGS)			\
-	$(liburcu_CFLAGS)			\
-	$(lmdb_CFLAGS)				\
-	$(systemd_CFLAGS)			\
-	$(libdbus_CFLAGS)
-
-knotd_stdio_LDADD = \
-	$(top_builddir)/src/libknotd.la		\
-	$(top_builddir)/src/libknot.la		\
-	$(top_builddir)/src/libcontrib.la	\
-	$(top_builddir)/src/libzscanner.la	\
-	$(cap_ng_LIBS)				\
-	$(gnutls_LIBS)				\
-	$(liburcu_LIBS)				\
-	$(lmdb_LIBS)				\
-	$(systemd_LIBS)				\
-	$(libdbus_LIBS)				\
-	$(hiredis_LIBS)
-
-BUILT_SOURCES = knotd_wrap/main.c
-CLEANFILES = knotd_wrap/main.c
-knotd_wrap/main.c: $(top_builddir)/src/utils/knotd/main.c
-	@echo '#include "knotd_wrap/afl-loop.h"' > $@
-	@$(SED) -e 's/for (;;)/while (__AFL_LOOP(10000))/' $(top_srcdir)/src/utils/knotd/main.c >> $@
-endif HAVE_DAEMON
-
-# Simple function wrappers (AFL, libFuzzer, tests)
+# Simple function wrappers (libFuzzer, tests)
 
 fuzz_packet_SOURCES    = fuzz_packet.c
 fuzz_packet_CPPFLAGS   = $(AM_CPPFLAGS)
