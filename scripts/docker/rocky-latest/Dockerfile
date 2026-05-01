@@ -6,6 +6,7 @@ RUN dnf -y install epel-release
 RUN dnf -y --enablerepo crb install \
 	'autoconf' \
 	'automake' \
+	'clang' \
 	'diffutils' \
 	'libtool' \
 	'make' \
@@ -24,5 +25,4 @@ RUN dnf -y --enablerepo crb install \
 	'pkgconfig(libsystemd)' \
 	'pkgconfig(liburcu)' \
 	'pkgconfig(libxdp)' \
-	'python3-sphinx' \
-	'systemd'
+	'python3-sphinx'
