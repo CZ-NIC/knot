@@ -1,6 +1,6 @@
 FROM fedora:latest
 LABEL maintainer="Knot DNS <knot-dns@labs.nic.cz>"
-ENV DEBIAN_FRONTEND noninteractive
+ENV DEBIAN_FRONTEND=noninteractive
 RUN dnf -y upgrade
 RUN dnf -y install \
 	'autoconf' \
