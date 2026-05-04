@@ -13,4 +13,4 @@ compat = 6
 
 [[distro.aliases]]
 name = "deb-nolibxdp"
-distro = ["debian == 11", "ubuntu == 20.04", "ubuntu == 22.04"]
+distro = ["ubuntu == 22.04"]
