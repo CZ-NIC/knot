@@ -334,11 +334,8 @@ static int event_loop(server_t *server, const char *socket, bool daemonize,
 
 	/* Notify systemd about successful start. */
 	systemd_ready_notify();
-	if (daemonize) {
-		log_info("starting server as a daemon, PID %lu", pid);
-	} else {
-		log_info("starting server in the foreground, PID %lu", pid);
-	}
+	log_info("starting server %s, PID %lu",
+	         daemonize ? "as a daemon" : "in the foreground", pid);
 
 	/* Server startup parameters. */
 	startup_data_t startup_data = {
