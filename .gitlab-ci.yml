@@ -404,10 +404,6 @@ pkg:ubuntu-22.04:
   <<: *pkg_test_deb
   image: $CI_REGISTRY/packaging/apkg/test/ubuntu-22.04
 
-pkg:ubuntu-20.04:
-  <<: *pkg_test_deb
-  image: $CI_REGISTRY/packaging/apkg/test/ubuntu-20.04
-
 pkg:fedora-41:
   <<: *pkg_test
   image: $CI_REGISTRY/packaging/apkg/test/fedora-41
