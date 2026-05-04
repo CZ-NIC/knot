@@ -386,7 +386,7 @@ static int rdata_traverse_write(const uint8_t **src, size_t *src_avail,
                                 const knot_rdata_descriptor_t *desc,
                                 knot_compr_t *compr, uint16_t hint)
 {
-	for (const int *type = desc->block_types; *type != KNOT_RDATA_WF_END; type++) {
+	for (const int16_t *type = desc->block_types; *type != KNOT_RDATA_WF_END; type++) {
 		int ret;
 		knot_compr_t *put_compr = NULL;
 		switch (*type) {
@@ -599,7 +599,7 @@ static int rdata_traverse_parse(const uint8_t **src, size_t *src_avail,
                                 const knot_rdata_descriptor_t *desc,
                                 const uint8_t *pkt_wire)
 {
-	for (const int *type = desc->block_types; *type != KNOT_RDATA_WF_END; type++) {
+	for (const int16_t *type = desc->block_types; *type != KNOT_RDATA_WF_END; type++) {
 		int ret;
 		switch (*type) {
 		case KNOT_RDATA_WF_COMPRESSIBLE_DNAME:
@@ -642,9 +642,6 @@ static int parse_rdata(const uint8_t *pkt_wire, size_t *pos, size_t pkt_size,
 	assert(rrset);
 
 	const knot_rdata_descriptor_t *desc = knot_get_rdata_descriptor(rrset->type);
-	if (desc->type_name == NULL) {
-		desc = knot_get_obsolete_rdata_descriptor(rrset->type);
-	}
 
 	if (rdlength == 0) {
 		if (allow_zero_rdata(rrset)) {

@@ -144,9 +144,6 @@ int knot_rdata_to_canonical(knot_rdata_t *rdata, uint16_t type)
 	}
 
 	const knot_rdata_descriptor_t *desc = knot_get_rdata_descriptor(type);
-	if (desc->type_name == NULL) {
-		desc = knot_get_obsolete_rdata_descriptor(type);
-	}
 
 	uint8_t *pos = rdata->data;
 	uint8_t *endpos = pos + rdlen;
