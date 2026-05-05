@@ -62,11 +62,10 @@ static void uq_free_reply(knot_quic_reply_t *r)
 	r->out_payload->iov_len = 0;
 }
 
-void quic_handler(dns_request_handler_context_t *dns_handler, network_dns_request_t *req,
-                  uint64_t idle_close, knot_quic_table_t *table, int *p_ecn)
+void quic_handler(knotd_qdata_params_t *params, knot_layer_t *layer,
+                  uint64_t idle_close, knot_quic_table_t *table,
+                  struct iovec *rx, struct msghdr *mh_out, int *p_ecn)
 {
-	knotd_qdata_params_t *params = &req->dns_req.req_data.params;
-
 	knot_quic_reply_t rpl = {
 		.ip_rem = params->remote,
 		.ip_loc = params->local,
@@ -74,7 +73,7 @@ void quic_handler(dns_request_handler_context_t *dns_handler, network_dns_reques
 		.out_payload = mh_out->msg_iov,
 		.sock = &params->socket,
 		.in_ctx = p_ecn,
-		.out_ctx = req->mh_out,
+		.out_ctx = mh_out,
 		.ecn = (p_ecn == NULL ? 0 : (*p_ecn & 0x3)),
 		.alloc_reply = uq_alloc_reply,
 		.send_reply = uq_send_reply,

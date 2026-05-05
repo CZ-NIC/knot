@@ -67,10 +67,22 @@ static void handle_quic_stream(knot_quic_conn_t *conn, int64_t stream_id, struct
                                knot_layer_t *layer, knotd_qdata_params_t *params, uint8_t *ans_buf,
                                size_t ans_buf_size)
 {
-	int ret = handle_dns_request(&tcp->dns_handler, &tcp_req->dns_req);
-	if (ret != KNOT_EOK) {
-		return;
+	// Consume the query.
+	handle_query(params, layer, inbuf, NULL);
+
+	// Process the reply.
+	knot_pkt_t *ans = knot_pkt_new(ans_buf, ans_buf_size, layer->mm);
+	while (active_state(layer->state)) {
+		knot_layer_produce(layer, ans);
+		if (!send_state(layer->state)) {
+			continue;
+		}
+		if (knot_quic_stream_add_data(conn, stream_id, ans->wire, ans->size) == NULL) {
+			break;
+		}
 	}
+
+	handle_finish(layer);
 
 	// Store the qdata params AUTH flag to the connection.
 	if (params->flags & KNOTD_QUERY_FLAG_AUTHORIZED) {
