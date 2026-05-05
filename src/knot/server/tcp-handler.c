@@ -3,29 +3,29 @@
  *  For more information, see <https://www.knot-dns.cz/>
  */
 
-#include <unistd.h>
-#include <fcntl.h>
 #include <errno.h>
+#include <fcntl.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/tcp.h>
 #include <netinet/in.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <urcu.h>
 #ifdef HAVE_SYS_UIO_H	// struct iovec (OpenBSD)
 #include <sys/uio.h>
 #endif // HAVE_SYS_UIO_H
+#include <unistd.h>
+#include <urcu.h>
 
-#include "knot/server/handler.h"
-#include "knot/server/server.h"
-#include "knot/server/tcp-handler.h"
-#include "knot/common/log.h"
 #include "knot/common/fdset.h"
+#include "knot/common/log.h"
 #include "knot/common/stats.h"
 #include "knot/nameserver/process_query.h"
 #include "knot/query/layer.h"
+#include "knot/server/handler.h"
+#include "knot/server/server.h"
+#include "knot/server/tcp-handler.h"
 #include "libknot/quic/tls.h"
 #include "contrib/macros.h"
 #include "contrib/mempattern.h"

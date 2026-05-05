@@ -21,10 +21,6 @@
 #endif /* HAVE_SYS_UIO_H */
 #include <unistd.h>
 
-#include "contrib/mempattern.h"
-#include "contrib/net.h"
-#include "contrib/sockaddr.h"
-#include "contrib/ucw/mempool.h"
 #include "knot/common/fdset.h"
 #include "knot/common/log.h"
 #include "knot/nameserver/process_query.h"
@@ -37,6 +33,10 @@
 #include "knot/server/udp-handler.h"
 #include "knot/server/xdp-handler.h"
 #include "libknot/xdp/tcp_iobuf.h"
+#include "contrib/mempattern.h"
+#include "contrib/net.h"
+#include "contrib/sockaddr.h"
+#include "contrib/ucw/mempool.h"
 
 /* Buffer identifiers. */
 enum {
