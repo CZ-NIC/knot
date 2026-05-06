@@ -92,7 +92,7 @@
  * Some tests are designed to close the connection, it is simpler
  * to create more connections and just use the next once the
  * terminal test finishes */
-#define CONN_COUNT 5
+#define CONN_COUNT 6
 
 /* Global variable is ugly, but cmocka setup doesn't allow
  * arguments so this is an acceptable hack for now */
@@ -207,7 +207,7 @@ static int setup(void **state)
 			goto loop_fail;
 		}
 
-		ctx->conns[i].net->quic.env = malloc(sizeof(struct test_env));
+		ctx->conns[i].net->quic.env = calloc(1, sizeof(struct test_env));
 		if (!ctx->conns[i].net->quic.env) {
 			goto loop_fail;
 		}
@@ -376,14 +376,20 @@ static void stream_data_split_to_ten_pkts(void **state)
 static void stream_data_send_half_of_query(void **state)
 {
 	qtest_state_t *ctx = *state;
+	reset_callbacks(ctx->conns[ctx->flc].net);
 	ctx->conns[ctx->flc].net->cbs->quic_send_dns_query = quic_send_dns_query_split;
 	ctx->conns[ctx->flc].net->cbs->quic_send_data = quic_send_data_split;
+	ctx->conns[ctx->flc].net->cbs->quic_recv = quic_recv_close_proto_violation;
 	ctx->conns[ctx->flc].net->quic.env->scenario = NGTCP2_WRITE_STREAM_FLAG_FIN;
 	ctx->conns[ctx->flc].net->quic.env->counter = 2;
+	assert(ctx->conns[ctx->flc].net->quic.env->extra == 0);
+	ctx->conns[ctx->flc].net->quic.env->extra = TEST_SEND_ONE_PAYLOAD;
+
 
 	assert_int_equal(process_query(HEAD(ctx->conns[ctx->flc].params.queries),
-				ctx->conns[ctx->flc].net), -1);
-	assert_int_equal(ctx->conns[ctx->flc].net->quic.last_err.error_code, NGTCP2_PROTOCOL_VIOLATION);
+				ctx->conns[ctx->flc].net), 0);
+	assert_int_equal(ctx->conns[ctx->flc].net->quic.last_err.error_code,
+			0x2/* DOQ_PROTOCOL_ERROR */);
 	burned_conn(ctx);
 }
 
@@ -405,6 +411,27 @@ static void multiple_parallel_streams(void **state)
 	ctx->conns[ctx->flc].net->cbs->quic_recv = quic_recv_with_ack;
 	ctx->conns[ctx->flc].net->quic.env->scenario = NGTCP2_WRITE_STREAM_FLAG_NONE;
 	ctx->conns[ctx->flc].net->quic.env->counter = 2;
+	assert_int_equal(process_query(HEAD(ctx->conns[ctx->flc].params.queries),
+				ctx->conns[ctx->flc].net), 0);
+}
+
+static void send_one_byte_at_a_time(void **state)
+{
+	qtest_state_t *ctx = *state;
+
+	if (ctx->flc + 1 >= CONN_COUNT) {
+		printf("Insufficient number of connection for this test, need >= 1");
+		assert_true(false);
+		return;
+	}
+
+	reset_callbacks(ctx->conns[ctx->flc].net);
+	ctx->conns[ctx->flc].net->cbs->quic_send_dns_query = quic_send_dns_query_split;
+	ctx->conns[ctx->flc].net->cbs->quic_send_data = quic_send_data_split;
+	ctx->conns[ctx->flc].net->quic.env->scenario = NGTCP2_WRITE_STREAM_FLAG_NONE;
+	/* -1 means send one byte at a time */
+	ctx->conns[ctx->flc].net->quic.env->counter = -1;
+
 	assert_int_equal(process_query(HEAD(ctx->conns[ctx->flc].params.queries),
 				ctx->conns[ctx->flc].net), 0);
 }
@@ -439,6 +466,7 @@ int main(int argc, char *argv[])
 		c_u_t(stream_data_split_to_ten_pkts),
 		c_u_t(stream_data_send_half_of_query),
 		c_u_t(multiple_parallel_streams),
+		c_u_t(send_one_byte_at_a_time),
 	};
 
 	return cmocka_run_group_tests(stream_tests, setup, teardown);

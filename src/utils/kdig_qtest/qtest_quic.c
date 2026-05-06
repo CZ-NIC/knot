@@ -543,6 +543,53 @@ int quic_send_data_stop_sending(quic_ctx_t *ctx, int sockfd, int family,
 	return KNOT_EOK;
 }
 
+
+/* TODO: Could also make one function which takes the required
+ * reponse and application error code as arguments and verify
+ * that they match the received ones */
+int quic_recv_close_proto_violation(quic_ctx_t *ctx, int sockfd)
+{
+	uint8_t enc_buf[MAX_PACKET_SIZE];
+	uint8_t msg_ctrl[CMSG_SPACE(sizeof(uint8_t))];
+	struct sockaddr_in6 from = { 0 };
+	struct iovec msg_iov = {
+		.iov_base = enc_buf,
+		.iov_len = sizeof(enc_buf)
+	};
+	struct msghdr msg = {
+		.msg_name = &from,
+		.msg_namelen = sizeof(from),
+		.msg_iov = &msg_iov,
+		.msg_iovlen = 1,
+		.msg_control = msg_ctrl,
+		.msg_controllen = sizeof(msg_ctrl),
+		.msg_flags = 0
+	};
+
+	ssize_t nwrite = recvmsg(sockfd, &msg, 0);
+	if (nwrite <= 0) {
+		return knot_map_errno();
+	}
+	ngtcp2_pkt_info *pi = &ctx->pi;
+	ctx->pi.ecn = net_cmsg_ecn(&msg);
+
+	int ret = ngtcp2_conn_read_pkt(ctx->conn,
+	                               ngtcp2_conn_get_path(ctx->conn),
+	                               pi, enc_buf, nwrite,
+	                               ctx->cbs->quic_timestamp());
+	if (ret != 0) {
+		const ngtcp2_ccerr *err = ngtcp2_conn_get_ccerr(ctx->conn);
+		if (err->type != NGTCP2_CCERR_TYPE_APPLICATION) {
+			return -1;
+		} 
+		ngtcp2_ccerr_set_application_error(&ctx->last_err,
+				err->error_code, err->reason, err->reasonlen);
+	}
+	/* return 0 if the result is what is expected */
+	return ret != NGTCP2_ERR_DRAINING;
+}
+
+
 int quic_recv(quic_ctx_t *ctx, int sockfd)
 {
 	uint8_t enc_buf[MAX_PACKET_SIZE];
@@ -866,8 +913,10 @@ int quic_ctx_connect(quic_ctx_t *ctx, int sockfd, struct addrinfo *dst_addr)
 	ctx->tls->sockfd = sockfd;
 
 	while (ctx->state != CONNECTED) {
-		ret = ctx->cbs->quic_send_data(ctx, sockfd,
-				dst_addr->ai_family, NULL, 0);
+		/* Do not interrupt the connection process */
+		ret = quic_send_data(ctx, sockfd, dst_addr->ai_family, NULL, 0);
+		// ret = ctx->cbs->quic_send_data(ctx, sockfd,
+		// 		dst_addr->ai_family, NULL, 0);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
@@ -885,7 +934,8 @@ int quic_ctx_connect(quic_ctx_t *ctx, int sockfd, struct addrinfo *dst_addr)
 			return knot_map_errno();
 		}
 
-		ret = ctx->cbs->quic_recv(ctx, sockfd);
+		ret = quic_recv(ctx, sockfd);
+		// ret = ctx->cbs->quic_recv(ctx, sockfd);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
@@ -920,7 +970,7 @@ int offset_span(ngtcp2_vec **vec, size_t *veclen, size_t sub)
 static int split_query_vector(const uint8_t *buf, const size_t buf_len, size_t n,
 		ngtcp2_vec ***datavs, size_t **sizes, void ***pointers)
 {
-	assert(n > 0 && buf_len > n);
+	assert(n > 0 && buf_len >= n);
 
 	size_t split_size = buf_len / n;
 	size_t remainder = buf_len % n;
@@ -934,13 +984,13 @@ static int split_query_vector(const uint8_t *buf, const size_t buf_len, size_t n
 		return KNOT_ENOMEM;
 	}
 
-	*pointers = malloc(n * 3 * sizeof(void *));
+	*pointers = malloc(n * 2 * sizeof(void *) + /* length_prefix */sizeof(void *));
 	if (!*pointers) {
 		free(*datavs);
 		free(*sizes);
 		return KNOT_ENOMEM;
 	}
-	
+
 	size_t offset = 0;
 	int i = 0;
 	int pi = 0;
@@ -950,23 +1000,33 @@ static int split_query_vector(const uint8_t *buf, const size_t buf_len, size_t n
 			goto loop_fail;
 		}
 		size_t chunk_size = split_size + ((i == n - 1) ? remainder : 0);
-		uint16_t pkt_size = htons(chunk_size);
-		(*datavs)[i][0].base = malloc(sizeof(uint16_t));
-		if (!(*datavs)[i][0].base)
-			goto loop_fail;
-		memcpy((*datavs)[i][0].base, &pkt_size, sizeof(uint16_t));
-		(*datavs)[i][0].len = sizeof(uint16_t);
+		if (i == 0) {
+			uint16_t pkt_size = htons(buf_len);
+			(*datavs)[i][0].base = malloc(sizeof(uint16_t));
+			if (!(*datavs)[i][0].base)
+				goto loop_fail;
+			memcpy((*datavs)[i][0].base, &pkt_size, sizeof(uint16_t));
+			(*datavs)[i][0].len = sizeof(uint16_t);
+			(*pointers)[pi++] = (*datavs)[i];
+			(*pointers)[pi++] = (*datavs)[i][0].base;
 
-		(*datavs)[i][1].base = malloc(chunk_size);
-		if (!(*datavs)[i][1].base)
-			goto loop_fail;
-		memcpy((*datavs)[i][1].base, buf + offset, chunk_size);
-		(*datavs)[i][1].len = chunk_size;
+			(*datavs)[i][1].base = malloc(chunk_size);
+			if (!(*datavs)[i][1].base)
+				goto loop_fail;
+			memcpy((*datavs)[i][1].base, buf + offset, chunk_size);
+			(*datavs)[i][1].len = chunk_size;
+			(*pointers)[pi++] = (*datavs)[i][1].base;
+		} else {
+			(*datavs)[i][0].base = malloc(chunk_size);
+			if (!(*datavs)[i][0].base)
+				goto loop_fail;
+			memcpy((*datavs)[i][0].base, buf + offset, chunk_size);
+			(*datavs)[i][0].len = chunk_size;
+			(*pointers)[pi++] = (*datavs)[i];
+			(*pointers)[pi++] = (*datavs)[i][0].base;
+		}
 
-		(*pointers)[pi++] = (*datavs)[i];
-		(*pointers)[pi++] = (*datavs)[i][0].base;
-		(*pointers)[pi++] = (*datavs)[i][1].base;
-		(*sizes)[i] = 2;
+		(*sizes)[i] = (i == 0) ? 2 : 1;
 		offset += chunk_size;
 	}
 	return pi;
@@ -977,7 +1037,7 @@ loop_fail:
 			break;
 		if ((*datavs)[k][0].base)
 			free((*datavs)[k][0].base);
-		if ((*datavs)[k][1].base)
+		if (k == 0 && (*datavs)[k][1].base)
 			free((*datavs)[k][1].base);
 		free((*datavs)[k]);
 	}
@@ -999,6 +1059,9 @@ void split_vector_free(void **p, size_t *sizes, size_t pcount, ngtcp2_vec **data
 	free(p);
 }
 
+/* send payload split into N packets, the N is read from ctx->env->counter,
+ * if the ctx->env->counter == -1 the N equals the buf_len, meaning
+ * we send the query one byte at a time */
 int quic_send_dns_query_split(quic_ctx_t *ctx, int sockfd, struct addrinfo *srv,
 	const uint8_t *buf, const size_t buf_len)
 {
@@ -1010,7 +1073,12 @@ int quic_send_dns_query_split(quic_ctx_t *ctx, int sockfd, struct addrinfo *srv,
 		return KNOT_ECONN;
 	}
 
-	size_t splits = ctx->env->counter;
+	size_t splits = 1;
+	if (ctx->env->counter > 0) {
+		 splits = ctx->env->counter;
+	} else if (ctx->env->counter == -1) {
+		splits = buf_len;
+	}
 	ngtcp2_vec **datavs = NULL;
 	size_t *sizes = NULL;
 	void **pointers = NULL;
@@ -1060,6 +1128,12 @@ int quic_send_dns_query_split(quic_ctx_t *ctx, int sockfd, struct addrinfo *srv,
 				++s;
 				datavlen = sizes[s];
 				pdatav = datavs[s];
+				if (ctx->env->scenario == NGTCP2_WRITE_STREAM_FLAG_FIN
+						&& s == 1
+						&& ctx->env->extra == TEST_SEND_ONE_PAYLOAD) {
+					/* Stop sending */
+					s = splits;
+				}
 			} else if (ret > 0) {
 				++s;
 				datavlen = 0;
@@ -1098,6 +1172,10 @@ int quic_send_dns_query_split(quic_ctx_t *ctx, int sockfd, struct addrinfo *srv,
 		ret = ctx->cbs->quic_recv(ctx, sockfd);
 		if (ret != KNOT_EOK) {
 			WARN("QUIC, failed to send");
+			split_vector_free(pointers, sizes, pcount, datavs);
+			return ret;
+		}
+		if (ctx->env->extra == TEST_SEND_ONE_PAYLOAD) {
 			split_vector_free(pointers, sizes, pcount, datavs);
 			return ret;
 		}

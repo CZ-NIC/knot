@@ -37,6 +37,7 @@ typedef struct srv_info srv_info_t;
 typedef enum net_flags net_flags_t;
 typedef struct net net_t;
 
+
 typedef enum {
 	/*! No error.  This is used when the connection or stream needs to be
 	    closed, but there is no error to signal. */
@@ -60,12 +61,18 @@ typedef enum {
 	DOQ_ERROR_RESERVED = 0xd098ea5e
 } quic_doq_error_t;
 
+/* testcase env extra flags */
+typedef enum {
+	TEST_SEND_ONE_PAYLOAD,
+} quic_extra_flags;
+
 typedef struct test_env {
 	uint64_t scenario;
 	int16_t counter;
 	char *buf;
 	size_t bufsize;
 	size_t bufend;
+	uint32_t extra;
 } test_env_t;
 
 typedef struct quic_ctx {
@@ -111,6 +118,7 @@ int quic_send_data_defer_second_packet(quic_ctx_t *ctx, int sockfd, int family,
 int quic_send_data_split(quic_ctx_t *ctx, int sockfd, int family,
 	ngtcp2_vec *datav, size_t datavlen);
 
+int quic_recv_close_proto_violation(quic_ctx_t *ctx, int sockfd);
 int quic_recv(quic_ctx_t *ctx, int sockfd);
 int quic_recv_with_ack(quic_ctx_t *ctx, int sockfd);
 

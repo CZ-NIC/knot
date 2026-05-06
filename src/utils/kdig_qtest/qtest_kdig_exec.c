@@ -20,6 +20,7 @@
 #include "contrib/sockaddr.h"
 #include "contrib/time.h"
 #include "contrib/ucw/lists.h"
+#include "utils/kdig_qtest/qtest_quic.h"
 
 #if USE_DNSTAP
 #include "contrib/dnstap/convert.h"
@@ -639,6 +640,10 @@ static int process_query_packet(const knot_pkt_t      *query,
 	if (ret != KNOT_EOK) {
 		net_close(net);
 		return -1;
+	}
+	if (net->quic.env->extra == TEST_SEND_ONE_PAYLOAD) {
+		net_close(net);
+		return ret;
 	}
 
 	// Get stop query time and start reply time.
