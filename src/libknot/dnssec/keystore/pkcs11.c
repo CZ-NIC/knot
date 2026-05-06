@@ -227,15 +227,13 @@ static int import_pem(const dnssec_binary_t *pem,
 	}
 
 	if (gnutls_privkey_init(&key) != GNUTLS_E_SUCCESS ||
-	    gnutls_pubkey_init(&pubkey) != GNUTLS_E_SUCCESS
-	) {
+	    gnutls_pubkey_init(&pubkey) != GNUTLS_E_SUCCESS) {
 		r = KNOT_ENOMEM;
 		goto fail;
 	}
 
 	if (gnutls_privkey_import_x509(key, x509_key, 0) != GNUTLS_E_SUCCESS ||
-	    gnutls_pubkey_import_privkey(pubkey, key, 0, 0) != GNUTLS_E_SUCCESS
-	) {
+	    gnutls_pubkey_import_privkey(pubkey, key, 0, 0) != GNUTLS_E_SUCCESS) {
 		r = KNOT_KEY_EIMPORT;
 		goto fail;
 	}
