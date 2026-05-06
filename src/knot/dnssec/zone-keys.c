@@ -62,7 +62,7 @@ static int generate_dnssec_key(dnssec_keystore_t *keystore,
 		goto fail;
 	}
 
-	dnssec_key_set_flags(*key, dnskey_flags(flags & DNSKEY_GENERATE_SEP_ON));
+	dnssec_key_set_flags(*key, dnskey_flags(flags & DNSKEY_GENERATE_SEP_ON, flags & DNSKEY_GENERATE_ADT_ON));
 	dnssec_key_set_algorithm(*key, alg);
 
 	ret = dnssec_keystore_get_private(keystore, *id, *key);
@@ -154,6 +154,9 @@ int kdnssec_generate_key(kdnssec_ctx_t *ctx, kdnssec_generate_flags_t flags,
 	assert(ctx->policy);
 
 	normalize_generate_flags(&flags);
+	if (ctx->policy->deleg_aware) {
+		flags |= DNSKEY_GENERATE_ADT_ON;
+	}
 
 	for (size_t i = 0; !(flags & DNSKEY_GENERATE_FOR_LATER) && i < ctx->zone->num_keys; i++) {
 		knot_kasp_key_t *k = &ctx->zone->keys[i];
@@ -311,7 +314,7 @@ static void fix_revoked_flag(knot_kasp_key_t *key)
 {
 	uint16_t flags = dnssec_key_get_flags(key->key);
 	if ((flags & DNSKEY_FLAGS_REVOKED) != DNSKEY_FLAGS_REVOKED) {
-		dnssec_key_set_flags(key->key, flags | DNSKEY_FLAGS_REVOKED); // FYI leading to change of keytag
+		dnssec_key_set_flags(key->key, (flags | DNSKEY_FLAGS_REVOKED) & ~KNOT_DNSKEY_FLAG_ADT); // FYI leading to change of keytag
 	}
 }
 

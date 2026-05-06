@@ -1182,6 +1182,13 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 		return ret;
 	}
 
+	val = conf_zone_get(conf, C_DELEG_AWARE, update->zone->name);
+	update->new_cont->nodes->flags &= ~ZONE_TREE_DELEG_AWARE;
+	if (conf_opt(&val) == DELEG_AWARE_ON ||
+	    (conf_opt(&val) == DELEG_AWARE_AUTO && knot_dnssec_has_adt(update->new_cont))) {
+		update->new_cont->nodes->flags |= ZONE_TREE_DELEG_AWARE;
+	}
+
 	/* Check the zone size. */
 	val = conf_zone_get(conf, C_ZONE_MAX_SIZE, update->zone->name);
 	size_t size_limit = conf_int(&val);
@@ -1189,6 +1196,11 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 	if (update->new_cont->size > size_limit) {
 		discard_adds_tree(update);
 		return KNOT_EZONESIZE;
+	}
+
+	if ((update->new_cont->nodes->flags & ZONE_TREE_CONTAINS_DELEG) &&
+	    node_rrtype_exists(update->new_cont->apex, KNOT_RRTYPE_DNSKEY) && !knot_dnssec_has_adt(update->new_cont)) {
+		log_zone_warning(update->zone->name, "contains DELEG record but no DNSKEY with ADT bit");
 	}
 
 	val = conf_zone_get(conf, C_DNSSEC_VALIDATION, update->zone->name);

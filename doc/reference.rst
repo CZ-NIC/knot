@@ -2109,6 +2109,7 @@ DNSSEC policy configuration.
      keytag-modulo: INT/INT
      ksk-lifetime: TIME
      zsk-lifetime: TIME
+     deleg-adt: BOOL
      delete-delay: TIME
      propagation-delay: TIME
      rrsig-lifetime: TIME
@@ -2317,6 +2318,16 @@ A period (in seconds) between ZSK activation and the next rollover initiation.
    Zero (aka infinity) value causes no ZSK rollover as a result.
 
 *Default:* ``30d`` (30 days)
+
+.. _policy_deleg-adt:
+
+deleg-adt
+---------
+
+All newly generated keys will have ADT bit set, signaling possible presence
+of DELEG RRs in the zone.
+
+*Default:* ``off``
 
 .. _policy_delete-delay:
 
@@ -2749,6 +2760,7 @@ Definition of zones served by the server.
      acl: acl_id ...
      master-pin-tolerance: TIME
      provide-ixfr: BOOL
+     deleg-aware: BOOL | auto
      semantic-checks: BOOL | soft
      default-ttl: TIME
      zonefile-sync: TIME
@@ -2969,6 +2981,21 @@ If enabled, IXFR requests are responded normally.
 
 *Default:* ``on``
 
+.. _zone_deleg-aware:
+
+deleg-aware
+-----------
+
+Controls zone DELEG awareness.
+
+Possible values:
+
+- ``auto`` – DELEG awareness is determined by the presence of the ADT bit in any apex DNSKEY.
+- ``off`` – DELEG awareness is disabled.
+- ``on`` – DELEG awareness is enabled (useful for DELEG-aware unsigned zones).
+
+*Default:* ``auto``
+
 .. _zone_semantic-checks:
 
 semantic-checks
@@ -2995,6 +3022,7 @@ Mandatory checks:
 - Multiple DNAME records with the same owner exist (:rfc:`6672`)
 - NS record exists together with a DNAME record (:rfc:`6672`)
 - DS record exists at the zone apex (:rfc:`3658`)
+- DELEG record exists at the zone apex (TBD)
 
 (*) The marked check can't be weakened by the soft mode. All other mandatory checks
 are subject to the optional soft mode.

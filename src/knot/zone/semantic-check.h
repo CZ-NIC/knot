@@ -33,6 +33,8 @@ typedef enum {
 	SEM_ERR_DNAME_MULTIPLE,
 	SEM_ERR_DNAME_EXTRA_NS,
 
+	SEM_ERR_DELEG_APEX,
+
 	// Optional checks.
 	SEM_ERR_NS_APEX,
 	SEM_ERR_NS_GLUE,

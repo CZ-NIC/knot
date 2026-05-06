@@ -365,6 +365,15 @@ static inline bool knot_pkt_has_dnssec(const knot_pkt_t *pkt)
 }
 
 /*!
+ * \brief Checks if DE bit is set in the packet's OPT RR.
+ */
+static inline bool knot_pkt_has_deleg_aware(const knot_pkt_t *pkt)
+{
+	assert(pkt);
+	return knot_pkt_has_edns(pkt) && knot_edns_de(pkt->opt_rr);
+}
+
+/*!
  * \brief Get specific EDNS option from a parsed packet.
  */
 static inline uint8_t *knot_pkt_edns_option(const knot_pkt_t *pkt, uint16_t code)
