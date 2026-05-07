@@ -180,7 +180,7 @@ void worker_pool_join(worker_pool_t *pool)
 	dt_join(pool->threads);
 }
 
-void worker_pool_wait_cb(worker_pool_t *pool, wait_callback_t cb)
+void worker_pool_wait(worker_pool_t *pool)
 {
 	if (!pool) {
 		return;
@@ -188,17 +188,9 @@ void worker_pool_wait_cb(worker_pool_t *pool, wait_callback_t cb)
 
 	pthread_mutex_lock(&pool->lock);
 	while (!EMPTY_LIST(pool->tasks.list) || pool->running > 0) {
-		if (cb != NULL) {
-			cb(pool);
-		}
 		pthread_cond_wait(&pool->wake, &pool->lock);
 	}
 	pthread_mutex_unlock(&pool->lock);
-}
-
-void worker_pool_wait(worker_pool_t *pool)
-{
-	worker_pool_wait_cb(pool, NULL);
 }
 
 void worker_pool_assign(worker_pool_t *pool, struct task *task)
