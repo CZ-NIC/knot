@@ -59,12 +59,6 @@ void worker_pool_join(worker_pool_t *pool);
 void worker_pool_wait(worker_pool_t *pool);
 
 /*!
- * \brief Wait till the number of pending tasks is zero. Callback emitted on
- *  thread wakeup can be specified.
- */
-void worker_pool_wait_cb(worker_pool_t *pool, wait_callback_t cb);
-
-/*!
  * \brief Assign a task to be performed by a worker in the pool.
  */
 void worker_pool_assign(worker_pool_t *pool, struct task *task);
