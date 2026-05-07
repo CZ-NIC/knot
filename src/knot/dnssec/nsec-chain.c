@@ -18,6 +18,11 @@ void bitmap_add_node_rrsets(dnssec_nsec_bitmap_t *bitmap, const zone_node_t *nod
 	bool deleg = node->flags & NODE_FLAGS_DELEG;
 	for (int i = 0; i < node->rrset_count; i++) {
 		knot_rrset_t rr = node_rrset_at(node, i);
+
+		if ((rr.type == KNOT_RRTYPE_DS || rr.type == KNOT_RRTYPE_NS) && node_parent(node) != NULL && strncmp((const char *)node_parent(node)->owner, "\x09switching", 10) == 0) {
+                        continue;
+		}
+
 		if (deleg && (rr.type != KNOT_RRTYPE_NS && rr.type != KNOT_RRTYPE_DS &&
 		              rr.type != KNOT_RRTYPE_NSEC && rr.type != KNOT_RRTYPE_DELEG)) {
 			if (rr.type != KNOT_RRTYPE_RRSIG) {

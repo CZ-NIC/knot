@@ -175,7 +175,7 @@ static knot_layer_state_t query_chaos(knot_pkt_t *pkt, knot_layer_t *ctx)
 }
 
 /*! \brief Find zone for given question. */
-static zone_t *answer_zone_find(const knot_pkt_t *query, knot_zonedb_t *zonedb)
+static zone_t *answer_zone_find(knot_pkt_t *query, knot_zonedb_t *zonedb)
 {
 	uint16_t qtype = knot_pkt_qtype(query);
 	uint16_t qclass = knot_pkt_qclass(query);
@@ -185,6 +185,21 @@ static zone_t *answer_zone_find(const knot_pkt_t *query, knot_zonedb_t *zonedb)
 	// search for zone only for IN and ANY classes
 	if (qclass != KNOT_CLASS_IN && qclass != KNOT_CLASS_ANY) {
 		return NULL;
+	}
+
+        static bool switching_state = false;
+	static time_t switching_last = 0;
+	char *switching_do = strcasestr((const char *)qname, "\x09switching");
+	if (switching_do != NULL) {
+		if (switching_last < time(NULL) - 4 && rand() % 2 == 1) {
+			switching_last = time(NULL);
+			log_debug("SWITCHING %d->%d", switching_state, !switching_state);
+			switching_state = !switching_state;
+		}
+		if (switching_state && switching_do != (void *)qname) {
+			query->flags |= 1024;
+			return knot_zonedb_find_suffix(zonedb, (const knot_dname_t *)switching_do);
+		}
 	}
 
 	/* In case of DS/DELEG query, we strip the leftmost label when searching for

@@ -40,11 +40,16 @@ int adjust_cb_flags(zone_node_t *node, adjust_ctx_t *ctx)
 	                 NODE_FLAGS_SUBTREE_DATA | NODE_FLAGS_NONAUTH_DELEG);
 
 	if (parent && (parent->flags & NODE_FLAGS_DELEG || parent->flags & NODE_FLAGS_NONAUTH)) {
+		if (node_parent(parent) != NULL && strncmp((char *)node_parent(parent)->owner, "\x09switching", 10) == 0) {
+                        goto skipsw;
+		}
+
 		node->flags |= NODE_FLAGS_NONAUTH;
 		if ((parent->flags & NODE_FLAGS_NONAUTH_DELEG) ||
 		    ((parent->flags & NODE_FLAGS_DELEG_DELEG) && !(parent->flags & NODE_FLAGS_DELEG_NS))) {
 			node->flags |= NODE_FLAGS_NONAUTH_DELEG;
 		}
+skipsw: ;
 	} else {
 		if (node_rrtype_exists(node, KNOT_RRTYPE_DELEG) && node != ctx->zone->apex) {
 			ctx->zone->nodes->flags |= ZONE_TREE_CONTAINS_DELEG;

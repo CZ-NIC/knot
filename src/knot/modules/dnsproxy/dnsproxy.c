@@ -5,6 +5,7 @@
 
 #include "contrib/net.h"
 #include "knot/include/module.h"
+#include "knot/common/log.h"
 #include "knot/conf/schema.h"
 #include "knot/query/capture.h" // Forces static module!
 #include "knot/query/requestor.h" // Forces static module!
@@ -46,6 +47,8 @@ typedef struct {
 	bool fallback;
 	bool catch_nxdomain;
 	int timeout;
+	bool do_skip;
+	time_t last_skip_switch;
 } dnsproxy_t;
 
 static int fwd(dnsproxy_t *proxy, knot_pkt_t *pkt, knotd_qdata_t *qdata, int addr_pos)
@@ -127,6 +130,16 @@ static knotd_state_t dnsproxy_fwd(knotd_state_t state, knot_pkt_t *pkt,
 	assert(pkt && qdata && mod);
 
 	dnsproxy_t *proxy = knotd_mod_ctx(mod);
+
+        if (proxy->last_skip_switch < time(NULL) - 4 && rand() % 2 == 1) {
+		log_debug("PRXYM switch %d->%d", !proxy->do_skip, proxy->do_skip);
+		proxy->last_skip_switch = time(NULL);
+		proxy->do_skip = !proxy->do_skip;
+        }
+        //log_debug("do %d fall %d addrcnt %zu", proxy->do_skip, proxy->fallback, proxy->addr.count);
+        if (proxy->do_skip) {
+		return state;
+        }
 
 	/* Forward only queries ending with REFUSED (no zone) or NXDOMAIN (if configured) */
 	if (proxy->fallback && !(qdata->rcode == KNOT_RCODE_REFUSED ||

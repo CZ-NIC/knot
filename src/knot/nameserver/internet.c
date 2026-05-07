@@ -372,6 +372,10 @@ static knotd_in_state_t name_found(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 {
 	uint16_t qtype = knot_pkt_qtype(pkt);
 
+	if ((qdata->query->flags & 1024) && (qtype == KNOT_RRTYPE_DS || qtype == KNOT_RRTYPE_NS)) {
+		return KNOTD_IN_STATE_NODATA;
+	}
+
 	bool at_deleg = node_is_deleg(qdata, qdata->extra->node);
 	bool below_deleg = (qdata->extra->node->flags & NODE_FLAGS_NONAUTH);
 	bool parent_side = (qtype == KNOT_RRTYPE_DS);
