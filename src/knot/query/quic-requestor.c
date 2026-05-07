@@ -57,7 +57,7 @@ static int quic_exchange(knot_quic_conn_t *conn, knot_quic_reply_t *r, int timeo
 
 		ret = net_msg_recv(fd, &msg, quic_timeout_ms);
 		if (ret == 0 || ret == KNOT_ECONN || ret == KNOT_ETIMEOUT) {
-			ret = knot_quic_hanle_expiry(conn);
+			ret = knot_quic_handle_expiry(conn);
 		}
 
 		timeout_remain -= quic_timeout_ms;

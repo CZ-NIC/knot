@@ -192,7 +192,7 @@ int64_t knot_quic_conn_next_timeout(knot_quic_conn_t *conn)
 }
 
 _public_
-int knot_quic_hanle_expiry(knot_quic_conn_t *conn)
+int knot_quic_handle_expiry(knot_quic_conn_t *conn)
 {
 	return ngtcp2_conn_handle_expiry(conn->conn, get_timestamp()) == NGTCP2_NO_ERROR ? KNOT_EOK : KNOT_ECONN;
 }
