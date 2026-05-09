@@ -126,6 +126,7 @@ libknot.so.16 libknot16 #MINVER#
  knot_db_lmdb_iter_del@Base 3.5.0
  knot_db_lmdb_txn_begin@Base 3.5.0
  knot_db_trie_api@Base 3.5.0
+ knot_deleg_info_names@Base 3.6.0
  knot_dname_cmp@Base 3.5.0
  knot_dname_copy@Base 3.5.0
  knot_dname_copy_lower@Base 3.5.0
