@@ -95,6 +95,7 @@ typedef enum {
  */
 typedef struct zs_scanner zs_scanner_t; // Forward declaration due to arguments.
 struct zs_scanner {
+	void (*free_func)(void *);
 	/*! Current state (Ragel internals). */
 	int      cs;
 	/*! Stack top (Ragel internals). */

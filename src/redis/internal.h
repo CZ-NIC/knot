@@ -1091,6 +1091,7 @@ static void run_scanner(scanner_ctx_t *s_ctx, const arg_dname_t *origin,
 {
 	zs_scanner_t s;
 	if (zs_init(&s, origin->txt, KNOT_CLASS_IN, s_ctx->dflt_ttl) != 0 ||
+	    (s.free_func = RedisModule_Free) == NULL ||
 	    zs_set_input_string(&s, data, data_len) != 0 ||
 	    zs_set_processing(&s, scanner_data, scanner_error, s_ctx) != 0 ||
 	    (s.to_lower = true, zs_parse_all(&s) != 0) || s.error.fatal) {

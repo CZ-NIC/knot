@@ -6529,6 +6529,7 @@ int zs_init(
 
 	memset(s, 0, sizeof(*s));
 
+	s->free_func = free;
 	// Nonzero initial scanner state.
 	s->cs = 1504;
 
@@ -6621,7 +6622,7 @@ void zs_deinit(
 	}
 
 	input_deinit(s, false);
-	free(s->path);
+	s->free_func(s->path);
 }
 
 static int set_input_string(
