@@ -59,7 +59,7 @@ knot_quic_table_t *knot_quic_table_new(size_t max_conns, size_t max_ibufs, size_
 		return NULL;
 	}
 
-	res->expiry_heap = malloc(sizeof(struct heap));
+	res->expiry_heap = malloc(HEAP_POOL_SIZE);
 	if (res->expiry_heap == NULL || !heap_init(res->expiry_heap, cmp_expiry_heap_nodes, 0)) {
 		free(res->expiry_heap);
 		gnutls_priority_deinit(res->priority);

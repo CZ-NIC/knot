@@ -22,6 +22,8 @@ struct heap {
    heap_val_t **data;
 };		/* Array follows */
 
+#define HEAP_POOL_SIZE     (sizeof(struct heap))
+#define HEAP_VAL_SIZE      (sizeof(heap_val_t*))
 #define INITIAL_HEAP_SIZE	512 /* initial heap size */
 #define HEAP_INCREASE_STEP	2 /* multiplier for each inflation, keep conservative */
 #define HEAP_DECREASE_THRESHOLD	2 /* threshold for deflation, keep conservative */

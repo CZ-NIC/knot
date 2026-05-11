@@ -54,7 +54,7 @@ int heap_init(struct heap *h, int (*cmp)(void *, void *), int init_size)
 	h->num = 0;
 	h->max_size = isize;
 	h->cmp = cmp;
-	h->data = malloc((isize + 1) * sizeof(heap_val_t*)); /* Temp element unused. */
+	h->data = malloc((isize + 1) * HEAP_VAL_SIZE); /* Temp element unused. */
 
 	return h->data ? 1 : 0;
 }
@@ -117,7 +117,7 @@ int heap_insert(struct heap *h, heap_val_t *e)
 {
 	if (h->num == h->max_size) {
 		h->max_size = h->max_size * HEAP_INCREASE_STEP;
-		h->data = realloc(h->data, (h->max_size + 1) * sizeof(heap_val_t*));
+		h->data = realloc(h->data, (h->max_size + 1) * HEAP_VAL_SIZE);
 		if (!h->data) {
 			return 0;
 		}
@@ -148,6 +148,6 @@ void heap_delete(struct heap *h, int e)
 
 	if ((h->num > INITIAL_HEAP_SIZE) && (h->num < h->max_size / HEAP_DECREASE_THRESHOLD)) {
 		h->max_size = h->max_size / HEAP_INCREASE_STEP;
-		h->data = realloc(h->data, (h->max_size + 1) * sizeof(heap_val_t*));
+		h->data = realloc(h->data, (h->max_size + 1) * HEAP_VAL_SIZE);
 	}
 }
