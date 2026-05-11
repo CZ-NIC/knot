@@ -444,6 +444,12 @@ class ModAuthSignal(KnotModule):
     mod_name = "authsignal"
     empty = True
 
+class ModAlias(KnotModule):
+    '''ALIAS synthesis from locally-served target zones'''
+
+    mod_name = "alias"
+    empty = True
+
 class ModDnsErr(KnotModule):
     '''DNS Error module'''
 
