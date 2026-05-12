@@ -1100,6 +1100,8 @@ static int zone_serial_set(zone_t *zone, ctl_args_t *args)
 			ret = zone_txn_commit_l(zone, args);
 		}
 		if (ret != KNOT_EOK) {
+			log_zone_error(zone->name, "failed to set SOA serial (%s)",
+			               knot_strerror(ret));
 			zone_txn_abort_l(zone, args);
 		}
 	}
@@ -1107,7 +1109,11 @@ static int zone_serial_set(zone_t *zone, ctl_args_t *args)
 
 	if (!serial_set_do && ret == KNOT_EOK) {
 		send_ctx_t *ctx = &ctl_globals[args->thread_idx].send_ctx;
+		ctx->data[KNOT_CTL_IDX_ZONE] = ctx->zone;
 		ctx->data[KNOT_CTL_IDX_DATA] = ctx->ttl;
+		if (knot_dname_to_str(ctx->zone, zone->name, sizeof(ctx->zone)) == NULL) {
+			ctx->zone[0] = '\0';
+		}
 		(void)snprintf(ctx->ttl, sizeof(ctx->ttl), "%u", return_serial);
 		ret = knot_ctl_send(args->ctl, KNOT_CTL_TYPE_DATA, &ctx->data);
 	}
