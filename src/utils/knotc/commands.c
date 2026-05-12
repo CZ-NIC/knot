@@ -330,7 +330,13 @@ static void format_data(cmd_args_t *args, knot_ctl_type_t data_type,
 			printf("error: (%s)", error);
 			*empty = false;
 		} else if (value != NULL) {
-			printf("%s", value);
+			printf("%s%s%s%s%s%s",
+			       (!(*empty)       ? "\n"       : ""),
+			       (args->all_zones ? "["        : ""),
+			       (args->all_zones ? zone       : ""),
+			       (args->all_zones ? "] "       : ""),
+			       (args->all_zones ? "serial: " : ""),
+			       value);
 			*empty = false;
 		}
 		break;
@@ -477,6 +483,8 @@ static int set_stats_items(cmd_args_t *args, knot_ctl_data_t *data)
 	if (args->argc > idx && args->desc->cmd == CTL_ZONE_STATS) {
 		if (strcmp(args->argv[idx], "--") != 0) {
 			(*data)[KNOT_CTL_IDX_ZONE] = args->argv[idx];
+		} else {
+			args->all_zones = true;
 		}
 		idx++;
 	}
@@ -597,6 +605,11 @@ static int cmd_zone_key_roll_ctl(cmd_args_t *args)
 		[KNOT_CTL_IDX_TYPE] = args->argv[1],
 	};
 
+	if (strcmp(data[KNOT_CTL_IDX_ZONE], "--") == 0) {
+		data[KNOT_CTL_IDX_ZONE] = NULL;
+		args->all_zones = true;
+	}
+
 	CTL_SEND_DATA
 	CTL_SEND_BLOCK
 
@@ -615,6 +628,11 @@ static int cmd_zone_serial_ctl(cmd_args_t *args)
 		[KNOT_CTL_IDX_FLAGS] = *args->flags ? args->flags : NULL,
 		[KNOT_CTL_IDX_ZONE] = args->argv[0],
 	};
+
+	if (strcmp(data[KNOT_CTL_IDX_ZONE], "--") == 0) {
+		data[KNOT_CTL_IDX_ZONE] = NULL;
+		args->all_zones = true;
+	}
 
 	if (args->argc > 1) {
 		bool incr = args->argv[1][0] == '+';
@@ -774,7 +792,6 @@ static int cmd_zone_ctl(cmd_args_t *args)
 	// Second, process zones.
 	int ret;
 	int sentzones = 0;
-	bool twodash = false;
 	for (int i = 0; i < args->argc; i++) {
 		// Skip filters.
 		if (args->argv[i][0] == '+') {
@@ -789,11 +806,11 @@ static int cmd_zone_ctl(cmd_args_t *args)
 			CTL_SEND_DATA
 			sentzones++;
 		} else {
-			twodash = true;
+			args->all_zones = true;
 		}
 	}
 
-	if ((args->desc->flags & CMD_FREQ_ZONE) && sentzones == 0 && !twodash) {
+	if ((args->desc->flags & CMD_FREQ_ZONE) && sentzones == 0 && !args->all_zones) {
 		log_error("zone must be specified (or -- for all zones)");
 		return KNOT_EDENIED;
 	}
@@ -849,6 +866,8 @@ static int set_node_items(cmd_args_t *args, knot_ctl_data_t *data, char *rdata,
 	assert(args->argc > idx);
 	if (strcmp(args->argv[idx], "--") != 0) {
 		(*data)[KNOT_CTL_IDX_ZONE] = args->argv[idx];
+	} else {
+		args->all_zones = true;
 	}
 	idx++;
 
