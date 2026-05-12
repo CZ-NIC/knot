@@ -5,6 +5,8 @@
 
 #pragma once
 
+#define strdup RedisModule_Strdup
+
 #include "libknot/attribute.h"
 #undef _public_
 #define _public_ _hidden_

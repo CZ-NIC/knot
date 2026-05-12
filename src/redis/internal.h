@@ -29,6 +29,10 @@
 #define raise(e)          return e
 #define return_ok         throw(KNOT_EOK, NULL)
 
+#define ZS_DEINIT(s) RedisModule_Free((s)->path); \
+                     (s)->path = NULL; \
+                     zs_deinit(s);
+
 typedef enum {
 	EVENT     = 1, // Keep synchronized with RDB_EVENT_KEY!
 	ZONES     = 2,
@@ -1097,10 +1101,10 @@ static void run_scanner(scanner_ctx_t *s_ctx, const arg_dname_t *origin,
 		if (!s_ctx->replied) {
 			RedisModule_ReplyWithError(s_ctx->ctx, RDB_EPARSE);
 		}
-		zs_deinit(&s);
+		ZS_DEINIT(&s);
 		return;
 	}
-	zs_deinit(&s);
+	ZS_DEINIT(&s);
 
 	RedisModule_ReplicateVerbatim(s_ctx->ctx);
 	RedisModule_ReplyWithSimpleString(s_ctx->ctx, RDB_RETURN_OK);
