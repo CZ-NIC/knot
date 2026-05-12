@@ -48,7 +48,7 @@ int dnssec_nsec3_params_from_rdata(dnssec_nsec3_params_t *params,
 	new_params.algorithm  = wire_ctx_read_u8(&wire);
 	new_params.flags      = wire_ctx_read_u8(&wire);
 	new_params.iterations = wire_ctx_read_u16(&wire);
-        if (new_params.iterations > 720) {
+	if (new_params.iterations > 720) {
 		free(new_params.salt.data);
 		return KNOT_ENSEC3PAR;
 	}
