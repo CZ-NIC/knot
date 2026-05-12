@@ -31,7 +31,14 @@
 #include "libknot/rrtype/soa.h"
 #include "libzscanner/error.c"
 #include "libzscanner/functions.c"
+
+#define strdup RedisModule_Strdup
+#define malloc RedisModule_Alloc
+#define free RedisModule_Free
 #include "libzscanner/scanner.c.t0"
+#undef strdup
+#undef malloc
+#undef free
 
 // Add a dummy symbol for unused but called function in rrset-dump.c.
 int dnssec_keytag(const dnssec_binary_t *rdata, uint16_t *keytag)
