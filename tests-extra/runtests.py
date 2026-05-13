@@ -28,7 +28,8 @@ def nothing():
     pass
 
 def clear_line():
-    print("\r\x1b[K", end='')
+    if sys.stdout.isatty():
+        print("\r\x1b[K", end='')
 
 def progress_print(cntr, lock, func = nothing, *args, **kwargs):
     if sys.stdout.isatty():
