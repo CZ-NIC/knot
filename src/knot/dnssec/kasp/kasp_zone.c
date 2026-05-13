@@ -9,8 +9,6 @@
 #include "knot/dnssec/zone-keys.h"
 #include "libknot/dnssec/binary.h"
 
-// FIXME DNSSEC errors versus knot errors
-
 /*!
  * Check if key parameters allow to create a key.
  */
