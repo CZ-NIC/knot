@@ -219,19 +219,19 @@ done:
 	return ret;
 }
 
-static bool genkeyargs(int argc, char *argv[], bool just_timing, key_params_t *trash_params,
+static bool genkeyargs(int argc, char *argv[], bool just_timing, key_params_t *known_params,
                        kdnssec_generate_flags_t *flags, dnssec_key_algorithm_t *algorithm,
                        uint16_t *keysize, knot_kasp_key_timing_t *timing,
                        const char **addtopolicy)
 {
 	// in case of trash re-import, fill-in already known parameters
-	if (trash_params != NULL) {
-		*algorithm = trash_params->algorithm;
-		*keysize = trash_params->public_key.size;
-		bitmap_set(flags, DNSKEY_GENERATE_KSK, trash_params->is_ksk);
-		bitmap_set(flags, DNSKEY_GENERATE_ZSK, trash_params->is_csk ||
-		                                       !trash_params->is_ksk);
-		bitmap_set(flags, DNSKEY_GENERATE_FOR_LATER, trash_params->is_for_later);
+	if (known_params != NULL) {
+		*algorithm = known_params->algorithm;
+		*keysize = known_params->public_key.size;
+		bitmap_set(flags, DNSKEY_GENERATE_KSK, known_params->is_ksk);
+		bitmap_set(flags, DNSKEY_GENERATE_ZSK, known_params->is_csk ||
+		                                       !known_params->is_ksk);
+		bitmap_set(flags, DNSKEY_GENERATE_FOR_LATER, known_params->is_for_later);
 	}
 
 	// generate algorithms field
