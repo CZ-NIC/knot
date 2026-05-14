@@ -135,7 +135,9 @@ int event_notify(conf_t *conf, zone_t *zone)
 	assert(zone);
 
 	if (zone_contents_is_empty(zone->contents)) {
-		return KNOT_EEMPTYZONE;
+		log_zone_debug(zone->name, "%s, zone is not loaded, skipping", log_operation_name(LOG_OPERATION_NOTIFY));
+		// EVENT_NOTIFY will be scheduled by zone load/refresh once that succeeds
+		return KNOT_EOK;
 	}
 
 	bool failed = false;
