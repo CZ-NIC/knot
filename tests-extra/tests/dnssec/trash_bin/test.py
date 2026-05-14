@@ -45,6 +45,13 @@ def check_key(server, zone, keystore, keyid, exists=True, trash=False):
     isset((keyid in keystore.keys()) is any,
           f"key {keyid} %sin keystore" % "" if any else "not ")
 
+def check_gc_interval():
+    res = run([self.daemon_bin, '-VV'], stdout=PIPE)
+    for line in res.stdout.decode('ascii').split("\n"):
+        if "    Configure: " in line:
+            return True if "'--with-gc-interval=30'" in line else False
+    return False
+
 t = Test()
 
 master = t.server("knot")
@@ -122,11 +129,11 @@ cur_trash_mod = list(set(cur_trash) - {zsk_touched})
 
 master.ctl("zone-thaw", wait=True)
 
-# The following checks require compile-time support in knotd binary.
+# The following checks require compile-time support in the knotd binary.
 # -DTRASH_GC_INTERVAL=30
-####gc_int = os.environ.get(TRASH_GC_INTERVAL)
-####if gc_int is not None:
-if False:
+if not check_gc_interval():
+    check_log("TRASH_GC_INTERVAL not tuned, skipping trash garbage collector test")
+else:
     # Let all known trash keys time out and wait for the next trash GC run.
     t.sleep(80)
 
