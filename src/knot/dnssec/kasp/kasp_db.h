@@ -96,7 +96,7 @@ int kasp_db_delete_all(knot_lmdb_db_t *db, const knot_dname_t *zone_name);
 int kasp_db_sweep(knot_lmdb_db_t *db, sweep_cb keep_zone, void *cb_data);
 
 /*!
- * \brief Selectively delete keys an their related data from the database.
+ * \brief Selectively delete keys and their related data from the database.
  *
  * \param db         KASP database.
  * \param keep_zone  Filtering callback.
