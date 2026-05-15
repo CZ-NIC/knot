@@ -32,6 +32,13 @@ struct ds_push_data {
 
 static const knot_rdata_t remove_cds = { 5, { 0, 0, 0, 0, 0 } };
 
+static void reschedule_next(zone_t *zone)
+{
+	time_t next_push = time(NULL) + DS_PUSH_RETRY;
+	zone->timers->next_ds_push = next_push;
+	zone_events_schedule_at(zone, ZONE_EVENT_DS_PUSH, next_push);
+}
+
 static int ds_push_begin(knot_layer_t *layer, void *params)
 {
 	layer->data = params;
@@ -217,7 +224,9 @@ int event_ds_push(conf_t *conf, zone_t *zone)
 	assert(zone);
 
 	if (zone_contents_is_empty(zone->contents)) {
-		return KNOT_EEMPTYZONE;
+		log_zone_debug(zone->name, "%s, zone is not loaded, will retry", log_operation_name(LOG_OPERATION_DS_PUSH));
+		reschedule_next(zone);
+		return KNOT_EOK;
 	}
 
 	int timeout = conf->cache.srv_tcp_remote_io_timeout;
@@ -245,9 +254,7 @@ int event_ds_push(conf_t *conf, zone_t *zone)
 		}
 
 		if (ret != KNOT_EOK) {
-			time_t next_push = time(NULL) + DS_PUSH_RETRY;
-			zone_events_schedule_at(zone, ZONE_EVENT_DS_PUSH, next_push);
-			zone->timers->next_ds_push = next_push;
+			reschedule_next(zone);
 		}
 		zone->timers->flags |= TIMERS_MODIFIED;
 
