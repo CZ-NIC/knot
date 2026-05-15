@@ -795,7 +795,7 @@ int keymgr_import_trash(kdnssec_ctx_t *ctx, char *key_id, int argc, char *argv[]
 		ret = init_all_keystores(conf(), &all_ctx.keystores);
 		if (ret == KNOT_EOK) {
 			ret = get_trash_params(&all_ctx, key_id, &params, &info);
-			if (ret == KNOT_EOK && info.missing) {
+			if (ret == KNOT_EOK && !info.missing) {
 				WARN2("key %s: stored in another keystore %s",
 				      key_id, info.ks_name);
 			}
