@@ -396,8 +396,8 @@ static int zone_load_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int argc
 		return RedisModule_WrongArity(ctx);
 	}
 
-	zone_load(ctx, &origin, &txn, (argc >= 4) ? &owner : NULL,
-	          (argc >= 5) ? &rtype : NULL, mode);
+	zone_load(ctx, &origin, &txn, (argc > 3) ? &owner : NULL,
+	          (argc > 4) ? &rtype : NULL, mode);
 	return REDISMODULE_OK;
 }
 
@@ -427,8 +427,8 @@ static int zone_load_bin(RedisModuleCtx *ctx, RedisModuleString **argv, int argc
 		return RedisModule_WrongArity(ctx);
 	}
 
-	zone_load(ctx, &origin, &txn, (argc >= 4) ? &owner : NULL,
-	          (argc >= 5) ? &rtype : NULL, DUMP_BIN);
+	zone_load(ctx, &origin, &txn, (argc > 3) ? &owner : NULL,
+	          (argc > 4) ? &rtype : NULL, DUMP_BIN);
 	return REDISMODULE_OK;
 }
 
@@ -482,16 +482,16 @@ static int zone_list_bin(RedisModuleCtx *ctx, RedisModuleString **argv, int argc
 static int zone_info_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 {
 	arg_dname_t origin;
-	if (argc >= 2) {
+	if (argc > 1) {
 		ARG_DNAME_TXT(argv[1], origin, NULL, "zone origin");
 	}
 
 	rdb_txn_t txn;
-	if (argc >= 3) {
+	if (argc > 2) {
 		ARG_INST_TXT(argv[2], txn);
 	}
 
-	zone_info(ctx, (argc >= 2) ? &origin : NULL, (argc >= 3) ? &txn : NULL);
+	zone_info(ctx, (argc > 1) ? &origin : NULL, (argc > 2) ? &txn : NULL);
 	return REDISMODULE_OK;
 }
 
@@ -741,8 +741,8 @@ static int upd_diff_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 		return RedisModule_WrongArity(ctx);
 	}
 
-	upd_diff(ctx, &origin, &txn, (argc >= 4) ? &owner : NULL,
-	         (argc >= 5) ? &rtype : NULL, mode);
+	upd_diff(ctx, &origin, &txn, (argc > 3) ? &owner : NULL,
+	         (argc > 4) ? &rtype : NULL, mode);
 	return REDISMODULE_OK;
 }
 
@@ -772,8 +772,8 @@ static int upd_diff_bin(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 		return RedisModule_WrongArity(ctx);
 	}
 
-	upd_diff(ctx, &origin, &txn, (argc >= 4) ? &owner : NULL,
-	         (argc >= 5) ? &rtype : NULL, DUMP_BIN);
+	upd_diff(ctx, &origin, &txn, (argc > 3) ? &owner : NULL,
+	         (argc > 4) ? &rtype : NULL, DUMP_BIN);
 	return REDISMODULE_OK;
 }
 
@@ -805,8 +805,8 @@ static int upd_load_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 		return RedisModule_WrongArity(ctx);
 	}
 
-	upd_load(ctx, &origin, &txn, serial, (argc >= 5) ? &owner : NULL,
-	         (argc >= 6) ? &rtype : NULL, mode);
+	upd_load(ctx, &origin, &txn, serial, (argc > 4) ? &owner : NULL,
+	         (argc > 5) ? &rtype : NULL, mode);
 	return REDISMODULE_OK;
 }
 
@@ -839,8 +839,8 @@ static int upd_load_bin(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 		return RedisModule_WrongArity(ctx);
 	}
 
-	upd_load(ctx, &origin, &txn, serial, (argc >= 5) ? &owner : NULL,
-	         (argc >= 6) ? &rtype : NULL, DUMP_BIN);
+	upd_load(ctx, &origin, &txn, serial, (argc > 4) ? &owner : NULL,
+	         (argc > 5) ? &rtype : NULL, DUMP_BIN);
 	return REDISMODULE_OK;
 }
 
