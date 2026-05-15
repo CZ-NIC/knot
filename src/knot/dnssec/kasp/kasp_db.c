@@ -66,8 +66,7 @@ static bool is_related_class(const keyclass_t* classes, const size_t classes_siz
 
 static bool is_zone_related(const MDB_val *key)
 {
-	return is_related_class(zone_classes, zone_classes_size,
-                                     *(uint8_t *)key->mv_data);
+	return is_related_class(zone_classes, zone_classes_size, *(uint8_t *)key->mv_data);
 }
 
 static bool is_key_related(const MDB_val *key)
