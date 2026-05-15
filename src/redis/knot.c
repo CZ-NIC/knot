@@ -793,12 +793,12 @@ static int upd_load_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 
 	arg_dname_t owner;
 	if (argc > 4) {
-		ARG_DNAME_TXT(argv[3], owner, &origin, "record owner");
+		ARG_DNAME_TXT(argv[4], owner, &origin, "record owner");
 	}
 
 	uint16_t rtype;
 	if (argc > 5) {
-		ARG_RTYPE_TXT(argv[4], rtype);
+		ARG_RTYPE_TXT(argv[5], rtype);
 	}
 
 	if (argc > 6) {
@@ -827,12 +827,12 @@ static int upd_load_bin(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 
 	arg_dname_t owner;
 	if (argc > 4) {
-		ARG_DNAME(argv[3], owner, "record owner");
+		ARG_DNAME(argv[4], owner, "record owner");
 	}
 
 	uint16_t rtype;
 	if (argc > 5) {
-		ARG_NUM(argv[4], rtype, "record type");
+		ARG_NUM(argv[5], rtype, "record type");
 	}
 
 	if (argc > 6) {
