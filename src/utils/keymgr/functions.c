@@ -801,7 +801,7 @@ int keymgr_import_trash(kdnssec_ctx_t *ctx, char *key_id, int argc, char *argv[]
 			}
 		}
 		deinit_all_keystores(&all_ctx.keystores);
-		return KNOT_ENOENT;
+		return KNOT_DNSSEC_ENOKEYSTORE;
 	}
 
 	if (!knot_store_ok_for_key(ctx->keystores, info.ks_name, params.is_ksk)) {
