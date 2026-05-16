@@ -804,13 +804,12 @@ int keymgr_import_trash(kdnssec_ctx_t *ctx, char *key_id, int argc, char *argv[]
 		return KNOT_ENOENT;
 	}
 
-	if (knot_store_ok_for_key(ctx->keystores, info.ks_name, params.is_ksk)) {
-		ret = import_key(ctx, info.backend, key_id, &params, argc, argv);
-	} else {
-		ret = KNOT_DNSSEC_ENOKEYSTORE;
+	if (!knot_store_ok_for_key(ctx->keystores, info.ks_name, params.is_ksk)) {
+		WARN2("key %s: policy configuration conflict for keystore %s and this key",
+		      key_id, info.ks_name);
 	}
 
-	return ret;
+	return import_key(ctx, info.backend, key_id, &params, argc, argv);
 }
 
 int keymgr_nsec3_salt_print(kdnssec_ctx_t *ctx)
