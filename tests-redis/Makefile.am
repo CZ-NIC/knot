@@ -1,12 +1,23 @@
-# Useful commands:
-#  python3 -m venv .venv
-#  source .venv/bin/activate
-#  pip3 install -r requirements.txt
-#  make test
+# Usage:
+#  make env
+#  make test <OSS_REDIS_PATH=/path/to/redis-server> <NO_VALGRIND=1>
+#  make clean
 
 EXTRA_DIST = config.txt requirements.txt test.py
 
-.PHONY: test
+.PHONY: env test clean-local
+
+PYTHON = python3
+VENV = .venv
+
+env:
+	$(PYTHON) -m venv $(VENV)
+	$(VENV)/bin/pip install -r requirements.txt
 
 test:
-	RLTest --randomize-ports --clear-logs --parallelism 4
+	$(VENV)/bin/RLTest --randomize-ports --clear-logs --parallelism 4 \
+	$(if $(OSS_REDIS_PATH),--oss-redis-path $(OSS_REDIS_PATH)) \
+	$(if $(NO_VALGRIND),,--use-valgrind)
+
+clean-local:
+	rm -rf $(VENV) __pycache__ logs
