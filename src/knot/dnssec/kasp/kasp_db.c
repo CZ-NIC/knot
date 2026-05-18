@@ -425,11 +425,18 @@ static int make_trash_key(knot_lmdb_txn_t *txn, MDB_val *key, MDB_val *val, uint
 			return KNOT_EMALF;
 		}
 		free(params.public_key.data);
+<<<<<<< HEAD
 		uint64_t now = knot_time();
 		MDB_val nkey = make_key_str(KASPDBKEY_TRASH, dname, str);
 		MDB_val nval = trash_serialize(&params, now, now + delay);
 		knot_lmdb_insert(txn, &nkey, &nval);
 		ret = txn->ret;
+=======
+		uint64_t now = (uint64_t)knot_time();
+		MDB_val nkey = make_key_str(KASPDBKEY_TRASH, dname, str);
+		MDB_val nval = trash_serialize(&params, now, now + delay);
+		ret = knot_lmdb_insert(txn, &nkey, &nval) ? KNOT_EOK : KNOT_ERROR;
+>>>>>>> cb671211c (fixup! kaspdb: add a configurable trash-key lifetime option)
 		free(nkey.mv_data);
 		free(nval.mv_data);
 	} else {
