@@ -676,7 +676,8 @@ int kasp_db_trash_touch(knot_lmdb_db_t *db, char *key_id, knot_time_t time)
 	key_params_t params;
 	if (trash_deserialize(&txn.cur_val, &params)) {
 		MDB_val key = txn.cur_key;
-		MDB_val nval = trash_serialize(&params, time);
+		MDB_val nval = trash_serialize(&params,
+		                               (uint64_t)params.timing.created, time);
 
 		// Only the current record is expected, but be proactive.
 		knot_lmdb_del_prefix(&txn, &prefix);
