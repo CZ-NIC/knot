@@ -2475,3 +2475,10 @@ static void upd_load(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t *
 	}
 	RedisModule_ReplySetArrayLength(ctx, counter);
 }
+
+static void geoip_load(RedisModuleCtx *ctx, const arg_dname_t *origin,
+                       rdb_txn_t *txn, const arg_dname_t *opt_owner,
+                       const uint16_t *opt_rtype, dump_mode_t mode)
+{
+	RedisModuleString *soa_rrset_keyname = rrset_keyname_construct(ctx, origin, txn, origin, KNOT_RRTYPE_SOA);
+}

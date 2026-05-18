@@ -65,6 +65,15 @@ static RedisModuleCommandArg zone_load_txt_info_args[] = {
 	{ 0 }
 };
 
+static RedisModuleCommandArg geoip_load_txt_info_args[] = {
+	// {"opt",      REDISMODULE_ARG_TYPE_PURE_TOKEN, -1, "--compact", NULL, NULL, REDISMODULE_CMD_ARG_OPTIONAL},
+	{"zone",     REDISMODULE_ARG_TYPE_STRING,     -1, NULL,        NULL, NULL, REDISMODULE_CMD_ARG_NONE},
+	{"instance", REDISMODULE_ARG_TYPE_INTEGER,    -1, NULL,        NULL, NULL, REDISMODULE_CMD_ARG_NONE},
+	{"owner",    REDISMODULE_ARG_TYPE_STRING,     -1, NULL,        NULL, NULL, REDISMODULE_CMD_ARG_OPTIONAL},
+	{"rtype",    REDISMODULE_ARG_TYPE_STRING,     -1, NULL,        NULL, NULL, REDISMODULE_CMD_ARG_OPTIONAL},
+	{ 0 }
+};
+
 static RedisModuleCommandArg zone_list_txt_info_args[] = {
 	{"opt", REDISMODULE_ARG_TYPE_PURE_TOKEN, -1, "--instances", NULL, NULL, REDISMODULE_CMD_ARG_OPTIONAL},
 	{ 0 }
@@ -209,6 +218,15 @@ static const RedisModuleCommandInfo upd_load_txt_info = {
 	.since = "7.0.0",
 	.arity = -4,
 	.args = upd_load_txt_info_args,
+};
+
+static const RedisModuleCommandInfo geoip_load_txt_info = {
+	.version = REDISMODULE_COMMAND_INFO_VERSION,
+	.summary = "Load geoip configuration",
+	.complexity = "O(u), where u is the number of records in the retrieved updates",
+	.since = "7.0.0",
+	.arity = -3, //TODO revisit arity
+	.args = geoip_load_txt_info_args,
 };
 
 static int zone_begin_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
@@ -844,6 +862,38 @@ static int upd_load_bin(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 	return REDISMODULE_OK;
 }
 
+static int geoip_load_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
+{
+	if (argc < 3) {
+		return RedisModule_WrongArity(ctx);
+	}
+
+	arg_dname_t origin;
+	ARG_DNAME(argv[1], origin, "zone origin");
+
+	rdb_txn_t txn;
+	ARG_INST(argv[2], txn);
+
+	arg_dname_t owner;
+	if (argc > 3) {
+		ARG_DNAME(argv[3], owner, "record owner");
+	}
+
+	uint16_t rtype;
+	if (argc > 4) {
+		ARG_NUM(argv[4], rtype, "record type");
+	}
+
+	if (argc > 5) {
+		return RedisModule_WrongArity(ctx);
+	}
+
+	geoip_load(ctx, &origin, &txn, (argc >= 4) ? &owner : NULL,
+	           (argc >= 5) ? &rtype : NULL, DUMP_TXT);
+
+	return REDISMODULE_OK;
+}
+
 #define LOAD_ERROR(ctx, msg) { \
 	RedisModule_Log(ctx, REDISMODULE_LOGLEVEL_WARNING, RDB_E(msg)); \
 	RedisModule_ReplyWithError(ctx, RDB_E(msg)); \
@@ -914,6 +964,7 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 	    register_command_txt("KNOT.UPD.ABORT",     upd_abort_txt,     "write")      ||
 	    register_command_txt("KNOT.UPD.DIFF",      upd_diff_txt,      "readonly")   ||
 	    register_command_txt("KNOT.UPD.LOAD",      upd_load_txt,      "readonly")   ||
+		register_command_txt("KNOT.GEOIP.LOAD",    geoip_load_txt,    "readonly")   ||
 	    register_command_bin(RDB_CMD_ZONE_EXISTS,  zone_exists_bin,   "readonly")   ||
 	    register_command_bin(RDB_CMD_ZONE_BEGIN,   zone_begin_bin,    "write")      ||
 	    register_command_bin(RDB_CMD_ZONE_STORE,   zone_store_bin,    "write")      ||
