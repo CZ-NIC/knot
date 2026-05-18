@@ -260,9 +260,9 @@ static bool trash_deserialize(const MDB_val *val, key_params_t *params)
 {
 	uint8_t flags;
 
-	if (knot_lmdb_unmake_key(val->mv_data, val->mv_size, "LHBB",
-	                         &params->timing.remove, &params->keytag, &params->algorithm,
-				 &flags)) {
+	if (knot_lmdb_unmake_key(val->mv_data, val->mv_size, "LLHBB",
+	                         &params->timing.remove, &params->timing.created,
+	                         &params->keytag, &params->algorithm, &flags)) {
 		bool flags_ok = flags_deserialize(params, flags);
 		if (flags_ok && (params->is_ksk || !params->is_csk)) {
 			return true;
