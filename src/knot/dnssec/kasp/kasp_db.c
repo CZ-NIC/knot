@@ -222,11 +222,14 @@ static bool params_deserialize(const MDB_val *val, key_params_t *params)
 	return false;
 }
 
-static MDB_val trash_serialize(const key_params_t *params, uint64_t expir)
+static MDB_val trash_serialize(const key_params_t *params,
+                               uint64_t deleted, uint64_t expires)
 {
 	uint8_t flags = flags_serialize(params);
 
-	return knot_lmdb_make_key("LHBB", expir, params->keytag, params->algorithm, flags);
+	// expires must go first because of faster checking/deserialization.
+	return knot_lmdb_make_key("LLHBB", expires, deleted,
+	                          params->keytag, params->algorithm, flags);
 }
 
 static key_params_t *txn2params(knot_lmdb_txn_t *txn)
@@ -318,9 +321,9 @@ static int make_trash_key(knot_lmdb_txn_t *txn, MDB_val *key, MDB_val *val, uint
 			return KNOT_EMALF;
 		}
 		free(params.public_key.data);
-		uint64_t expir = (uint64_t)knot_time() + delay;
+		uint64_t now = knot_time();
 		MDB_val nkey = make_key_str(KASPDBKEY_TRASH, dname, str);
-		MDB_val nval = trash_serialize(&params, expir);
+		MDB_val nval = trash_serialize(&params, now, now + delay);
 		knot_lmdb_insert(txn, &nkey, &nval);
 		ret = txn->ret;
 		free(nkey.mv_data);
