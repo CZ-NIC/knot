@@ -1090,6 +1090,7 @@ static const timer_ctx_t timers[] = {
 };
 
 static const timer_ctx_t trash_timers[] = {
+	{ "deleted",       offsetof(knot_kasp_key_timing_t, created) },
 	{ "discard",       offsetof(knot_kasp_key_timing_t, remove) },
 	{ NULL }
 };
@@ -1159,6 +1160,10 @@ static void print_key_brief(const knot_kasp_key_t *key, key_info_t *info,
 				UNDR = "";
 				break;
 			}
+		}
+		if (trash && t == &trash_timers[0]) {
+			UNDR = "";
+			BOLD = "";
 		}
 		(void)knot_time_print(params->format, *val, buf, sizeof(buf));
 		printf(" %s%s%s=%s%s%s", UNDR, t->name, COL_RST(c), BOLD, buf, COL_RST(c));
@@ -1393,7 +1398,7 @@ int keymgr_list_trash(kdnssec_ctx_t *ctx, const knot_dname_t *zone_name,
 		size_t i = 0;
 		WALK_LIST(node, tlist) {
 			items[i].data = node->d;
-			items[i].key = ((key_params_t *)node->d)->timing.remove;
+			items[i].key = ((key_params_t *)node->d)->timing.created;
 			i++;
 		}
 		assert(i == tlist_size);
