@@ -241,7 +241,9 @@ static MDB_val trash_serialize(const key_params_t *params, uint64_t expir)
 {
 	uint8_t flags = flags_serialize(params);
 
-	return knot_lmdb_make_key("LHBB", expir, params->keytag, params->algorithm, flags);
+	// expir must go first.
+	return knot_lmdb_make_key("LLHBB", expir, deleted,
+	                          params->keytag, params->algorithm, flags);
 }
 
 static bool trash_deserialize(const MDB_val *val, key_params_t *params)
