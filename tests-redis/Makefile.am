@@ -1,20 +1,22 @@
 # Usage:
-#  make env
-#  make test <OSS_REDIS_PATH=/path/to/redis-server> <NO_VALGRIND=1>
+#  make test [OSS_REDIS_PATH=/path/to/redis-server] [NO_VALGRIND=1]
 #  make clean
 
 EXTRA_DIST = config.txt requirements.txt test.py
 
-.PHONY: env test clean-local
+.PHONY: test clean-local
 
 PYTHON = python3
 VENV = .venv
 
-env:
+# Create the virtualenv only if it doesn't already exist
+$(VENV):
 	$(PYTHON) -m venv $(VENV)
 	$(VENV)/bin/pip install -r requirements.txt
 
-test:
+env: $(VENV)
+
+test: env
 	$(VENV)/bin/RLTest --randomize-ports --clear-logs --parallelism 4 \
 	$(if $(OSS_REDIS_PATH),--oss-redis-path $(OSS_REDIS_PATH)) \
 	$(if $(NO_VALGRIND),,--use-valgrind)
