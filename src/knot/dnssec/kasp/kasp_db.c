@@ -347,7 +347,7 @@ static int kasp_db_untrash_key(knot_lmdb_txn_t *from_txn, knot_lmdb_txn_t *to_tx
 	free(del_pref.mv_data);
 	free(str);
 
-	return KNOT_EOK;
+	return to_txn->ret;
 }
 
 int kasp_db_delete_key(knot_lmdb_db_t *db, const knot_dname_t *zone_name, const char *key_id,
