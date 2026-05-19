@@ -401,6 +401,7 @@ int zone_init_keystore(conf_t *conf, conf_val_t *policy_id, conf_val_t *keystore
 	return ret;
 }
 
+// When used outside of zone event, beware of concurrent configuration change.
 int init_all_keystores(conf_t *conf, knot_kasp_keystore_t **keystores)
 {
 	assert(keystores != NULL);
