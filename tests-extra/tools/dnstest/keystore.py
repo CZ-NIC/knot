@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 
 import os
+import random
 import shutil
-import textwrap
 from subprocess import Popen, check_output
 from dnstest.context import Context
 from dnstest.utils import *
@@ -100,7 +100,7 @@ class KeystoreSoftHSM(Keystore):
         MAX_TRIES = 3
         for tries in range(MAX_TRIES):
             try:
-                output = check_output(['p11tool', '-d 9999', '--login', '--set-pin', self.passwd, '--list-keys', url],
+                output = check_output(['p11tool', '-d', '9999', '--login', '--set-pin', self.passwd, '--list-keys', url],
                                       env=dict(os.environ, **self.env()),
                                       stderr=open(Context().test.out_dir + "/p11tool.err", mode="a")).decode('ascii')
 
@@ -111,7 +111,7 @@ class KeystoreSoftHSM(Keystore):
                     return []
                 else:
                     if tries < MAX_TRIES - 1:
-                        time.sleep(1)
+                        time.sleep(random.uniform(0.4, 1.0))
 
         raise Failed("'p11tool --list-keys' failed")
 
