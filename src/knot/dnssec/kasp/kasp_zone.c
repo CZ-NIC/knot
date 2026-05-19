@@ -423,7 +423,6 @@ int init_all_keystores(conf_t *conf, knot_kasp_keystore_t **keystores)
 		deinit_all_keystores(keystores);
 		return ret;
 	}
-	(*keystores)[0].count++;
 	ks++;
 
 	// Initialize configured keystores.
