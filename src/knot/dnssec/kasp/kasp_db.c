@@ -321,7 +321,7 @@ static int make_trash_key(knot_lmdb_txn_t *txn, MDB_val *key, MDB_val *val, uint
 			return KNOT_EMALF;
 		}
 		free(params.public_key.data);
-		uint64_t now = (uint64_t)knot_time();
+		uint64_t now = knot_time();
 		MDB_val nkey = make_key_str(KASPDBKEY_TRASH, dname, str);
 		MDB_val nval = trash_serialize(&params, now, now + delay);
 		knot_lmdb_insert(txn, &nkey, &nval);
