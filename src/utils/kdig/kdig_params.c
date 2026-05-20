@@ -892,6 +892,7 @@ static int opt_https(const char *arg, void *query)
 	query_t *q = query;
 
 	q->https.enable = true;
+	q->quic.enable = false;
 
 	if (arg != NULL) {
 		const char *resource = strstr(arg, "://");
@@ -973,6 +974,7 @@ static int opt_quic(const char *arg, void *query)
 	query_t *q = query;
 
 	q->quic.enable = true;
+	q->https.enable = false;
 
 	opt_tls(arg, query);
 	opt_notcp(arg, query);
