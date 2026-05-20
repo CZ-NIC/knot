@@ -167,7 +167,7 @@ typedef struct {
 
 query_t *query_create(const char *owner, const query_t *config);
 void query_free(query_t *query);
-int complete_queries(list_t *queries, const query_t *conf);
+void complete_queries(list_t *queries, const query_t *conf);
 
 ednsopt_t *ednsopt_create(uint16_t code, uint16_t length, uint8_t *data);
 ednsopt_t *ednsopt_dup(const ednsopt_t *opt);

@@ -348,5 +348,7 @@ int khost_parse(kdig_params_t *params, int argc, char *argv[])
 	}
 
 	// Complete missing data in queries based on defaults.
-	return complete_queries(&params->queries, params->config);
+	complete_queries(&params->queries, params->config);
+
+	return KNOT_EOK;
 }

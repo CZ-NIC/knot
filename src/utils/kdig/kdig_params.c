@@ -690,7 +690,9 @@ static int opt_tls(const char *arg, void *query)
 	query_t *q = query;
 
 	q->tls.enable = true;
-
+	if (q->quic.enable) {
+		return KNOT_EOK;
+	}
 	return opt_tcp(arg, query);
 }
 
@@ -2318,13 +2320,13 @@ static bool compare_servers(list_t *s1, list_t *s2)
 	return true;
 }
 
-int complete_queries(list_t *queries, const query_t *conf)
+void complete_queries(list_t *queries, const query_t *conf)
 {
 	node_t  *n;
 
 	if (queries == NULL || conf == NULL) {
 		DBG_NULL;
-		return KNOT_EINVAL;
+		return;
 	}
 
 	// If there is no query, add default query: NS to ".".
@@ -2332,7 +2334,7 @@ int complete_queries(list_t *queries, const query_t *conf)
 		query_t *q = query_create(".", conf);
 		if (q == NULL) {
 			WARN("can't create query . NS IN");
-			return KNOT_EINVAL;
+			return;
 		}
 		q->class_num = KNOT_CLASS_IN;
 		q->type_num = KNOT_RRTYPE_NS;
@@ -2407,15 +2409,7 @@ int complete_queries(list_t *queries, const query_t *conf)
 			     "ignoring keepopen", q->owner);
 			q_prev->keepopen = false;
 		}
-
-		if ((q->quic.enable && q->https.enable) ||
-		    (q->quic.enable && q->protocol == PROTO_TCP)) {
-			ERR("incompatible transport parameters");
-			return KNOT_EINVAL;
-		}
 	}
-
-	return KNOT_EOK;
 }
 
 static void print_help(void)
@@ -2858,5 +2852,7 @@ int kdig_parse(kdig_params_t *params, int argc, char *argv[])
 	}
 
 	// Complete missing data in queries based on defaults.
-	return complete_queries(&params->queries, params->config);
+	complete_queries(&params->queries, params->config);
+
+	return KNOT_EOK;
 }
