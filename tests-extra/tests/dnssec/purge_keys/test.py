@@ -9,7 +9,7 @@ import random
 import shutil
 from dnstest.utils import *
 from dnstest.keys import Keymgr
-from dnstest.keystore import KeystoreDflt, KeystorePEM, KeystoreSoftHSM
+from dnstest.keystore import KeystorePEM, KeystoreSoftHSM
 from dnstest.test import Test
 
 def zone_ksks_zsks(server, zone, keystore=None):
@@ -70,7 +70,7 @@ server = t.server("knot")
 zones = t.zone_rnd(4, records=5)
 t.link(zones, server)
 
-kstore_def = KeystoreDflt("default keystore", server)
+kstore_def = KeystorePEM("default keystore", server_default=server)
 kstore_pem = KeystorePEM("keys1")
 kstore_hsm = KeystoreSoftHSM("keys2")
 kstore_hsm.link(server)
