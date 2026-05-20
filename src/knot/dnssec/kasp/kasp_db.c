@@ -11,6 +11,7 @@
 #include "contrib/strtonum.h"
 #include "contrib/wire_ctx.h"
 #include "knot/dnssec/key_records.h"
+#include "knot/dnssec/zone-keys.h"
 
 typedef enum {
 	KASPDBKEY_PARAMS = 0x1,
@@ -21,10 +22,17 @@ typedef enum {
 	KASPDBKEY_LASTSIGNEDSERIAL = 0x6,
 	KASPDBKEY_OFFLINE_RECORDS = 0x7,
 	KASPDBKEY_SAVED_TTLS = 0x8,
+	KASPDBKEY_TRASH = 0xf1,
 } keyclass_t;
 
-static const keyclass_t zone_related_classes[] = {
+#define NUM_TRASH_CLASSES 1   // Count of key trash classes.
+#define NUM_KEY_CLASSES   1   // Count of DNSSEC key related classes.
+static const keyclass_t ordered_classes[] = {
+	// Trash classes.
+	KASPDBKEY_TRASH,
+	// Key related classes.
 	KASPDBKEY_PARAMS,
+	// Zone related classes.
 	KASPDBKEY_NSEC3SALT,
 	KASPDBKEY_NSEC3TIME,
 	KASPDBKEY_MASTERSERIAL,
@@ -32,17 +40,24 @@ static const keyclass_t zone_related_classes[] = {
 	KASPDBKEY_OFFLINE_RECORDS,
 	KASPDBKEY_SAVED_TTLS,
 };
-static const size_t zone_related_classes_size = sizeof(zone_related_classes) / sizeof(*zone_related_classes);
+static const size_t ordered_classes_size = sizeof(ordered_classes) / sizeof(*ordered_classes);
 
-static const keyclass_t key_related_classes[] = {
-	KASPDBKEY_PARAMS,
-};
-static const size_t key_related_classes_size = sizeof(key_related_classes) / sizeof(*key_related_classes);
+// DNSSEC key metadata.
+static const keyclass_t *key_classes = ordered_classes + NUM_TRASH_CLASSES;
+static const size_t key_classes_size = NUM_KEY_CLASSES;
 
-static bool is_zone_related_class(uint8_t class)
+// Zone related classes (but not DNSSEC key metadata).
+static const keyclass_t *zone_classes = ordered_classes + NUM_TRASH_CLASSES + NUM_KEY_CLASSES;
+static const size_t zone_classes_size = ordered_classes_size - NUM_TRASH_CLASSES - NUM_KEY_CLASSES;
+
+// KASP related classes (including DNSSEC keys, for backup/restore).
+static const keyclass_t *kasp_classes = ordered_classes + NUM_TRASH_CLASSES;
+static const size_t kasp_classes_size = ordered_classes_size - NUM_TRASH_CLASSES;
+
+static bool is_related_class(const keyclass_t* classes, const size_t classes_size, uint8_t class)
 {
-	for (size_t i = 0; i < zone_related_classes_size; i++) {
-		if (zone_related_classes[i] == class) {
+	for (size_t i = 0; i < classes_size; i++) {
+		if (classes[i] == class) {
 			return true;
 		}
 	}
@@ -51,7 +66,17 @@ static bool is_zone_related_class(uint8_t class)
 
 static bool is_zone_related(const MDB_val *key)
 {
-	return is_zone_related_class(*(uint8_t *)key->mv_data);
+	return is_related_class(zone_classes, zone_classes_size, *(uint8_t *)key->mv_data);
+}
+
+static bool is_key_related(const MDB_val *key)
+{
+	return (*(uint8_t *)key->mv_data == KASPDBKEY_PARAMS);
+}
+
+static bool is_trash_related(const MDB_val *key)
+{
+	return (*(uint8_t *)key->mv_data == KASPDBKEY_TRASH);
 }
 
 static MDB_val make_key_str(keyclass_t kclass, const knot_dname_t *dname, const char *str)
@@ -75,6 +100,13 @@ static MDB_val make_key_str(keyclass_t kclass, const knot_dname_t *dname, const 
 		} else {
 			return knot_lmdb_make_key("BNS", (int)kclass, dname, str);
 		}
+	case KASPDBKEY_TRASH:
+		assert(str != NULL);
+		if (dname == NULL) {
+			return knot_lmdb_make_key("BS", (int)kclass, str);
+		} else {
+			return knot_lmdb_make_key("BSN", (int)kclass, str, dname);
+		}
 	default:
 		assert(0);
 		MDB_val empty = { 0 };
@@ -94,12 +126,19 @@ static bool unmake_key_str(const MDB_val *keyv, char **str)
 	uint8_t kclass;
 	const knot_dname_t *dname;
 	const char *s;
-	return (knot_lmdb_unmake_key(keyv->mv_data, keyv->mv_size, "BNS", &kclass, &dname, &s) &&
-		((*str = strdup(s)) != NULL));
+
+	bool b = (*(uint8_t *)keyv->mv_data == KASPDBKEY_TRASH) ?
+	         knot_lmdb_unmake_key(keyv->mv_data, keyv->mv_size, "BSN",
+	             &kclass, &s, &dname) :
+	         knot_lmdb_unmake_key(keyv->mv_data, keyv->mv_size, "BNS",
+	             &kclass, &dname, &s);
+
+	return b && ((*str = strdup(s)) != NULL);
 }
 
 static bool unmake_key_time(const MDB_val *keyv, knot_time_t *time)
 {
+	assert(*(uint8_t *)keyv->mv_data != KASPDBKEY_TRASH);
 	uint8_t kclass;
 	const knot_dname_t *dname;
 	const char *s;
@@ -107,13 +146,30 @@ static bool unmake_key_time(const MDB_val *keyv, knot_time_t *time)
 		str_to_u64(s, time) == KNOT_EOK);
 }
 
-static MDB_val params_serialize(const key_params_t *params)
+static uint8_t flags_serialize(const key_params_t *params)
 {
 	uint8_t flags = 0x02;
 	flags |= (params->is_ksk ? 0x01 : 0);
 	flags |= (params->is_pub_only ? 0x04 : 0);
 	flags |= (params->is_csk ? 0x08 : 0);
 	flags |= (params->is_for_later ? 0x10 : 0);
+
+	return flags;
+}
+
+static bool flags_deserialize(key_params_t *params, uint8_t flags)
+{
+	params->is_ksk = ((flags & 0x01) ? true : false);
+	params->is_pub_only = ((flags & 0x04) ? true : false);
+	params->is_csk = ((flags & 0x08) ? true : false);
+	params->is_for_later = ((flags & 0x10) ? true : false);
+
+	return (flags & 0x02);
+}
+
+static MDB_val params_serialize(const key_params_t *params)
+{
+	uint8_t flags = flags_serialize(params);
 
 	return knot_lmdb_make_key("LLHBBLLLLLLLLLDL", (uint64_t)params->public_key.size,
 		(uint64_t)sizeof(params->timing.revoke), params->keytag, params->algorithm, flags,
@@ -145,10 +201,7 @@ static bool params_deserialize(const MDB_val *val, key_params_t *params)
 		params->public_key.data, (size_t)keylen)) {
 
 		params->public_key.size = keylen;
-		params->is_ksk = ((flags & 0x01) ? true : false);
-		params->is_pub_only = ((flags & 0x04) ? true : false);
-		params->is_csk = ((flags & 0x08) ? true : false);
-		params->is_for_later = ((flags & 0x10) ? true : false);
+		bool flags_ok = flags_deserialize(params, flags);
 
 		if (future > 0) {
 			if (future < sizeof(params->timing.revoke)) {
@@ -160,13 +213,23 @@ static bool params_deserialize(const MDB_val *val, key_params_t *params)
 			params->timing.revoke = knot_wire_read_u64(val->mv_data + val->mv_size - future);
 		}
 
-		if ((flags & 0x02) && (params->is_ksk || !params->is_csk)) {
+		if (flags_ok && (params->is_ksk || !params->is_csk)) {
 			return true;
 		}
 	}
 	free(params->public_key.data);
 	params->public_key.data = NULL;
 	return false;
+}
+
+static MDB_val trash_serialize(const key_params_t *params,
+                               uint64_t deleted, uint64_t expires)
+{
+	uint8_t flags = flags_serialize(params);
+
+	// expires must go first because of faster checking/deserialization.
+	return knot_lmdb_make_key("LLHBB", expires, deleted,
+	                          params->keytag, params->algorithm, flags);
 }
 
 static key_params_t *txn2params(knot_lmdb_txn_t *txn)
@@ -223,48 +286,178 @@ int kasp_db_get_key_algorithm(knot_lmdb_db_t *db, const knot_dname_t *zone_name,
 	return ret;
 }
 
-static bool keyid_inuse(knot_lmdb_txn_t *txn, const char *key_id, key_params_t **params)
+static size_t keyid_inuse(knot_lmdb_txn_t *txn, const char *key_id, key_params_t **params)
 {
+	size_t count = 0;
 	uint8_t pf = KASPDBKEY_PARAMS;
 	MDB_val prefix = { sizeof(pf), &pf };
 	knot_lmdb_foreach(txn, &prefix) {
 		char *found_id = NULL;
 		if (unmake_key_str(&txn->cur_key, &found_id) &&
 		    strcmp(found_id, key_id) == 0) {
+			count++;
 			if (params != NULL) {
 				*params = txn2params(txn);
 			}
-			free(found_id);
-			return true;
 		}
 		free(found_id);
 	}
-	return false;
+	return count;
 }
 
+/*! \brief Make a trash record for the key in KASP DB. */
+static int make_trash_key(knot_lmdb_txn_t *txn, MDB_val *key, MDB_val *val, uint32_t delay)
+{
+	int ret = KNOT_EOK;
+	uint8_t kclass;
+	knot_dname_t *dname;
+	char *str;
 
-int kasp_db_delete_key(knot_lmdb_db_t *db, const knot_dname_t *zone_name, const char *key_id, bool *still_used)
+	if (knot_lmdb_unmake_key(key->mv_data, key->mv_size,
+	                         "BNS", &kclass, &dname, &str)) {
+		assert(kclass == KASPDBKEY_PARAMS);
+		key_params_t params;
+		if (!params_deserialize(val, &params)) {
+			return KNOT_EMALF;
+		}
+		free(params.public_key.data);
+		uint64_t now = knot_time();
+		MDB_val nkey = make_key_str(KASPDBKEY_TRASH, dname, str);
+		MDB_val nval = trash_serialize(&params, now, now + delay);
+		knot_lmdb_insert(txn, &nkey, &nval);
+		ret = txn->ret;
+		free(nkey.mv_data);
+		free(nval.mv_data);
+	} else {
+		ret = KNOT_EMALF;
+	}
+
+	return ret;
+}
+
+static int kasp_db_untrash_key(knot_lmdb_txn_t *from_txn, knot_lmdb_txn_t *to_txn, MDB_val *prefix)
+{
+	if (!is_key_related(prefix)) {
+		return KNOT_EOK;
+	}
+
+	char *str;
+	if (!unmake_key_str(&from_txn->cur_key, &str)) {
+		return KNOT_EMALF;
+	}
+	MDB_val del_pref = make_key_str(KASPDBKEY_TRASH, NULL, str);
+	knot_lmdb_del_prefix(to_txn, &del_pref);
+	free(del_pref.mv_data);
+	free(str);
+
+	return to_txn->ret;
+}
+
+int kasp_db_delete_key(knot_lmdb_db_t *db, const knot_dname_t *zone_name, const char *key_id,
+                       uint32_t delay, bool *still_used)
 {
 	MDB_val search = make_key_str(KASPDBKEY_PARAMS, zone_name, key_id);
 	knot_lmdb_txn_t txn = { 0 };
 	knot_lmdb_begin(db, &txn, true);
-	knot_lmdb_del_prefix(&txn, &search);
-	if (still_used != NULL) {
-		*still_used = keyid_inuse(&txn, key_id, NULL);
+	knot_lmdb_del_prefix_ret(&txn, &search);
+
+	if ((still_used != NULL || delay > 0) && txn.ret == KNOT_EOK) {
+		MDB_val key = txn.cur_key;
+		MDB_val val = txn.cur_val;
+		bool used = (keyid_inuse(&txn, key_id, NULL) > 0);
+		if (!used && delay > 0) {
+			int ret = make_trash_key(&txn, &key, &val, delay);
+			if (ret != KNOT_EOK) {
+				knot_lmdb_abort(&txn);
+				free(search.mv_data);
+				return ret;
+			}
+			used = true;
+		}
+		if (still_used != NULL) {
+			*still_used = used;
+		}
 	}
+
 	knot_lmdb_commit(&txn);
 	free(search.mv_data);
 	return txn.ret;
 }
 
+int kasp_db_delete_keys(knot_lmdb_db_t *db, const knot_dname_t *zone_name,
+                        bool orphan, bool best, bool use_trash)
+{
+	int ret;
+	knot_kasp_keystore_t *keystores = NULL;
+	kdnssec_ctx_t ctx = { 0 };
+	uint32_t delay = 0;
+
+	if (orphan) {
+		ret = init_all_keystores(conf(), &keystores);
+	} else {
+		ret = kdnssec_ctx_init(conf(), &ctx, zone_name, db, NULL);
+		keystores = ctx.keystores;
+		delay = use_trash ? ctx.policy->trash_delay : 0;
+	}
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	MDB_val prefix = make_key_str(KASPDBKEY_PARAMS, zone_name, NULL);
+	knot_lmdb_txn_t txn = { 0 };
+	knot_lmdb_begin(db, &txn, true);
+	knot_lmdb_foreach(&txn, &prefix) {
+		char *key_id = NULL;
+		if (!unmake_key_str(&txn.cur_key, &key_id)) {
+			continue;
+		}
+
+		knot_lmdb_cursor_swap(&txn);
+		size_t count = keyid_inuse(&txn, key_id, NULL);
+		knot_lmdb_cursor_swap(&txn); // Restore the regular cursor.
+
+		assert(count > 0);
+		if (count == 1) {
+			if (delay > 0) {
+				ret = make_trash_key(&txn, &txn.cur_key, &txn.cur_val, delay);
+			} else {
+				ret = kdnssec_delete_from_keystores(keystores, key_id,
+				                                    zone_name, true);
+				ret = (ret == KNOT_ENOENT) ? KNOT_EOK : ret;
+				// Note: if error, it isn't sure that there still is a key to delete.
+			}
+			if (ret != KNOT_EOK) {
+				free(key_id);
+				if (best) {
+					continue;
+				} else {
+					break;
+				}
+			}
+		}
+		knot_lmdb_del_cur(&txn);
+		free(key_id);
+	}
+
+	knot_lmdb_commit(&txn);
+	free(prefix.mv_data);
+
+	if (orphan) {
+		deinit_all_keystores(&keystores);
+	} else {
+		kdnssec_ctx_deinit(&ctx);
+	}
+
+	return (ret == KNOT_EOK) ? txn.ret : ret;
+}
 
 int kasp_db_delete_all(knot_lmdb_db_t *db, const knot_dname_t *zone)
 {
-	MDB_val prefix = make_key_str(KASPDBKEY_PARAMS, zone, NULL);
+	MDB_val prefix = make_key_str(zone_classes[0], zone, NULL);
 	knot_lmdb_txn_t txn = { 0 };
 	knot_lmdb_begin(db, &txn, true);
-	for (size_t i = 0; i < zone_related_classes_size && prefix.mv_data != NULL; i++) {
-		*(uint8_t *)prefix.mv_data = zone_related_classes[i];
+	for (size_t i = 0; i < zone_classes_size && prefix.mv_data != NULL; i++) {
+		*(uint8_t *)prefix.mv_data = zone_classes[i];
 		knot_lmdb_del_prefix(&txn, &prefix);
 	}
 	knot_lmdb_commit(&txn);
@@ -291,6 +484,56 @@ int kasp_db_sweep(knot_lmdb_db_t *db, sweep_cb keep_zone, void *cb_data)
 	}
 	knot_lmdb_commit(&txn);
 	return txn.ret;
+}
+
+int kasp_db_sweep_keys(knot_lmdb_db_t *db, sweep_cb keep_zone, void *cb_data)
+{
+	if (knot_lmdb_exists(db) == KNOT_ENODB) {
+		return KNOT_EOK;
+	}
+	int ret = knot_lmdb_open(db);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	knot_kasp_keystore_t *keystores = NULL;
+	ret = init_all_keystores(conf(), &keystores);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	knot_lmdb_txn_t txn = { 0 };
+	knot_lmdb_begin(db, &txn, true);
+	knot_lmdb_forwhole(&txn) {
+		if (!is_trash_related(&txn.cur_key) &&
+		    (!is_key_related(&txn.cur_key) ||
+		     keep_zone((const knot_dname_t *)txn.cur_key.mv_data + 1, cb_data))) {
+			continue;
+		}
+		char *key_id = NULL;
+		if (unmake_key_str(&txn.cur_key, &key_id)) {
+			knot_lmdb_cursor_swap(&txn);
+			size_t count = keyid_inuse(&txn, key_id, NULL);
+			knot_lmdb_cursor_swap(&txn); // Restore the regular cursor.
+
+			assert(count > 0 || is_trash_related(&txn.cur_key));
+			if (count < 2) {
+				ret = kdnssec_delete_from_keystores(keystores, key_id, NULL, true);
+				ret = (ret == KNOT_ENOENT) ? KNOT_EOK : ret;
+				if (ret != KNOT_EOK) {
+					// Note: it isn't sure that there still is a key to delete.
+					free(key_id);
+					break;
+				}
+			}
+		}
+		knot_lmdb_del_cur(&txn);
+		free(key_id);
+	}
+
+	knot_lmdb_commit(&txn);
+	deinit_all_keystores(&keystores);
+	return (ret == KNOT_EOK) ? txn.ret : ret;
 }
 
 int kasp_db_list_zones(knot_lmdb_db_t *db, list_t *zones)
@@ -327,9 +570,20 @@ int kasp_db_list_zones(knot_lmdb_db_t *db, list_t *zones)
 
 int kasp_db_add_key(knot_lmdb_db_t *db, const knot_dname_t *zone_name, const key_params_t *params)
 {
-	MDB_val v = params_serialize(params);
-	MDB_val k = make_key_str(KASPDBKEY_PARAMS, zone_name, params->id);
-	return knot_lmdb_quick_insert(db, k, v);
+	MDB_val val = params_serialize(params);
+	MDB_val key = make_key_str(KASPDBKEY_PARAMS, zone_name, params->id);
+	MDB_val del_prefix = make_key_str(KASPDBKEY_TRASH, NULL, params->id);
+	knot_lmdb_txn_t txn = { 0 };
+	knot_lmdb_begin(db, &txn, true);
+	knot_lmdb_insert(&txn, &key, &val);
+	// More than one KASPDBKEY_TRASH aren't expected, but none must remain.
+	knot_lmdb_del_prefix(&txn, &del_prefix);
+	free(key.mv_data);
+	free(val.mv_data);
+	free(del_prefix.mv_data);
+	knot_lmdb_commit(&txn);
+
+	return txn.ret;
 }
 
 int kasp_db_share_key(knot_lmdb_db_t *db, const knot_dname_t *zone_from,
@@ -591,6 +845,13 @@ void kasp_db_ensure_init(knot_lmdb_db_t *db, conf_t *conf)
 static int kasp_db_backup_generic(const knot_dname_t *zone, knot_lmdb_db_t *db, knot_lmdb_db_t *backup_db,
                                   const keyclass_t *classes, const size_t classes_size)
 {
+	// For restore, remove zones's all keys from KASP DB and keystores
+	// (use the trash-bin if configured). For backup, do nothing (target db is empty).
+	int ret = kasp_db_delete_keys(backup_db, zone, false, false, true);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
 	size_t n_prefs = classes_size;
 
 	// NOTE: for full KASP db backup, this must match number of record types
@@ -600,12 +861,12 @@ static int kasp_db_backup_generic(const knot_dname_t *zone, knot_lmdb_db_t *db, 
 		prefixes[i] = make_key_str(classes[i], zone, NULL);
 	}
 
-	if (classes == zone_related_classes) {
+	if (classes_size == kasp_classes_size) {
 		// we copy all policy-last records, that doesn't harm
 		prefixes[n_prefs++] = knot_lmdb_make_key("B", KASPDBKEY_POLICYLAST);
 	}
 
-	int ret = knot_lmdb_copy_prefixes(db, backup_db, prefixes, n_prefs);
+	ret = knot_lmdb_copy_prefixes(db, backup_db, prefixes, n_prefs, kasp_db_untrash_key);
 
 	for (int i = 0; i < n_prefs; i++) {
 		free(prefixes[i].mv_data);
@@ -616,11 +877,11 @@ static int kasp_db_backup_generic(const knot_dname_t *zone, knot_lmdb_db_t *db, 
 int kasp_db_backup(const knot_dname_t *zone, knot_lmdb_db_t *db, knot_lmdb_db_t *backup_db)
 {
 	return kasp_db_backup_generic(zone, db, backup_db,
-	                              zone_related_classes, zone_related_classes_size);
+	                              kasp_classes, kasp_classes_size);
 }
 
 int kasp_db_backup_keys(const knot_dname_t *zone, knot_lmdb_db_t *db, knot_lmdb_db_t *backup_db)
 {
 	return kasp_db_backup_generic(zone, db, backup_db,
-	                              key_related_classes, key_related_classes_size);
+	                              key_classes, key_classes_size);
 }

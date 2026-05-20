@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 
 import os
+import random
 import shutil
-from subprocess import Popen
+from subprocess import Popen, check_output
 from dnstest.context import Context
+from dnstest.server import Server
+from dnstest.utils import *
 
 class Keystore(object):
     def __init__(self, id: str, ksk_only: bool = None, key_label: bool = None):
@@ -12,17 +15,31 @@ class Keystore(object):
         self.key_label = key_label
 
 class KeystorePEM(Keystore):
-    def __init__(self, id: str, ksk_only: bool = None, key_label: bool = None):
+    def __init__(self, id: str, ksk_only: bool = None, key_label: bool = None,
+                 server_default: Server = None):
         super().__init__(id, ksk_only, key_label)
+        self.server = server_default
 
     def config(self):
-        return os.path.join(Context().test.out_dir, f"{self.backend()}-{self.id}")
+        if self.server:
+            return os.path.join(self.server.keydir, "keys")
+        else:
+            return os.path.join(Context().test.out_dir, f"{self.backend()}-{self.id}")
 
     def backend(self):
         return "pem"
 
+    def env(self):
+        return { }
+
     def clear(self):
         shutil.rmtree(self.config())
+
+    def keys(self):
+        return [name.removesuffix('.pem') for name in os.listdir(self.config())]
+
+    def has_key(self, id: str):
+        return id in self.keys()
 
 class KeystoreSoftHSM(Keystore):
     so_pin = "12345"
@@ -45,8 +62,38 @@ class KeystoreSoftHSM(Keystore):
     def config_file(self):
         return os.path.join(self.dir, "softhsm.conf")
 
+    def env(self):
+        return { "SOFTHSM2_CONF": self.config_file() }
+
     def clear(self):
         shutil.rmtree(os.path.join(self.dir, "tokens"))
+
+    def keys(self):
+        urls = check_output(['p11tool', '--list-token-urls'],
+                            env=dict(os.environ, **self.env())).decode('ascii')
+        url = ssearch(urls, r'(pkcs11:.*SoftHSM.*)')
+
+        # In case of concurrent access to SoftHSM, p11tool may fail or crash. Retry then.
+        MAX_TRIES = 3
+        for tries in range(MAX_TRIES):
+            try:
+                output = check_output(['p11tool', '-d', '9999', '--login', '--set-pin', self.passwd, '--list-keys', url],
+                                      env=dict(os.environ, **self.env()),
+                                      stderr=open(Context().test.out_dir + "/p11tool.err", mode="a")).decode('ascii')
+
+                return [key.removeprefix('ID: ').replace(":", "") for key in re.findall(r'(ID: .*)', output)]
+            except CalledProcessError as e:
+                # p11tool sets exit status to 2 if there aren't any keys in SoftHSM.
+                if e.returncode == 2:
+                    return []
+                else:
+                    if tries < MAX_TRIES - 1:
+                        time.sleep(random.uniform(0.4, 1.0))
+
+        raise Failed("'p11tool --list-keys' failed")
+
+    def has_key(self, id: str):
+        return id in self.keys()
 
     def init(self, keystore=None):
         if not os.path.isdir(self.dir):
@@ -55,6 +102,8 @@ class KeystoreSoftHSM(Keystore):
                 config = (
                     f"directories.tokendir = {self.dir}/tokens/\n"
                      "objectstore.backend = file\n"
+                     "slots.removable = false\n"
+                     "slots.mechanisms = ALL\n"
                      "log.level = INFO\n"
                 )
                 conf_file.write(config)
@@ -68,7 +117,7 @@ class KeystoreSoftHSM(Keystore):
                  f'--pin={self.passwd}', f'--so-pin={self.so_pin}', f'--module={self.so_path}'],
                     stdout=open(os.path.join(self.dir, "stdout"), mode='a'),
                     stderr=open(os.path.join(self.dir, "stderr"), mode='a'),
-                    env=dict(os.environ, SOFTHSM2_CONF=self.config_file()))
+                    env=dict(os.environ, **self.env()))
             init_process.wait()
 
     def link(self, server):

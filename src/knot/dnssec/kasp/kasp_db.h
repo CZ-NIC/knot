@@ -51,14 +51,31 @@ int kasp_db_get_key_algorithm(knot_lmdb_db_t *db, const knot_dname_t *zone_name,
  * \param db            KASP db
  * \param zone_name     zone to be removed from
  * \param key_id        ID of key to be removed
+ * \param delay         time to keep the key in trash (or delete it immediately if zero)
  * \param still_used    output if KNOT_EOK: is the key still in use by other zones?
  *
  * \return KNOT_E*
  */
-int kasp_db_delete_key(knot_lmdb_db_t *db, const knot_dname_t *zone_name, const char *key_id, bool *still_used);
+int kasp_db_delete_key(knot_lmdb_db_t *db, const knot_dname_t *zone_name, const char *key_id,
+                       uint32_t delay, bool *still_used);
 
 /*!
- * \brief Remove all zone's keys from DB, including nsec3param
+ * \brief Remove all keys from zone. Delete them if no zone has them anymore.
+ *
+ * \param db            KASP db
+ * \param zone_name     zone to remove from
+ * \param orphan        if true, remove keys of a non-existent zone (orphans)
+ * \param best          if true, continue with other keys even if one key fails
+ * \param use_trash     if true, move the key to trash instead of removing it
+ *
+ * \return KNOT_E*
+ */
+int kasp_db_delete_keys(knot_lmdb_db_t *db, const knot_dname_t *zone_name,
+                        bool orphan, bool best, bool use_trash);
+
+/*!
+ * \brief Remove all zone's keys from DB, including nsec3param, but exluding keys related to
+ *        zone's DNSSEC keys (i.e. DNSSEC keys metadata).
  *
  * \param db            KASP db
  * \param zone_name     zone to be removed
@@ -79,6 +96,17 @@ int kasp_db_delete_all(knot_lmdb_db_t *db, const knot_dname_t *zone_name);
 int kasp_db_sweep(knot_lmdb_db_t *db, sweep_cb keep_zone, void *cb_data);
 
 /*!
+ * \brief Selectively delete keys and their related data from the database.
+ *
+ * \param db         KASP database.
+ * \param keep_zone  Filtering callback.
+ * \param cb_data    Data passed to callback function.
+ *
+ * \return KNOT_E*
+ */
+int kasp_db_sweep_keys(knot_lmdb_db_t *db, sweep_cb keep_zone, void *cb_data);
+
+/*!
  * \brief List all zones that have at least one key in KASP db.
  *
  * \param db       KASP database.
@@ -90,10 +118,11 @@ int kasp_db_list_zones(knot_lmdb_db_t *db, list_t *zones);
 
 /*!
  * \brief Add a key to the DB (possibly overwrite) and link it to a zone.
+ *        Remove all trash records related to the key, if there are any.
  *
  * Stores new key with given params into KASP db. If a key with the same ID had been present
  * in KASP db already, its params get silently overwritten by those new params.
- * Moreover, the key ID is linked to the zone.
+ * Moreover, the key ID is linked to the zone and all related trash records are removed.
  *
  * \param db            KASP db
  * \param zone_name     name of the zone the new key shall belong to
@@ -269,7 +298,7 @@ int kasp_db_set_saved_ttls(knot_lmdb_db_t *db, const knot_dname_t *zone,
  * \brief Initialize KASP database according to conf, if not already.
  *
  * \param db      KASP DB to be initialized.
- * \param conf    COnfiguration to take options from.
+ * \param conf    Configuration to take options from.
  */
 void kasp_db_ensure_init(knot_lmdb_db_t *db, conf_t *conf);
 

@@ -49,7 +49,7 @@ void catalog_init(catalog_t *cat, const char *path, size_t mapsize);
 /*!
  * \brief Open the catalog LMDB, create it if not exists.
  *
- * \param cat   Catlog to be opened.
+ * \param cat   Catalog to be opened.
  *
  * \return KNOT_E*
  */

@@ -1467,7 +1467,7 @@ The PKCS #11 URI Scheme is defined in :rfc:`7512`.
 ksk-only
 --------
 
-Newly generated keys sre stored in this keystore only if they are KSKs or CSKs.
+Newly generated keys are stored in this keystore only if they are KSKs or CSKs.
 Zone signing keys will be stored in subsequent keystore without this option enabled.
 
 *Default:* ``off``
@@ -2111,6 +2111,7 @@ DNSSEC policy configuration.
      zsk-lifetime: TIME
      deleg-adt: BOOL
      delete-delay: TIME
+     trash-delay: TIME
      propagation-delay: TIME
      rrsig-lifetime: TIME
      rrsig-refresh: TIME
@@ -2340,6 +2341,16 @@ it completely. This might be useful in some troubleshooting cases when resurrect
 is needed.
 
 *Default:* ``0``
+
+.. _policy_trash-delay:
+
+trash-delay
+-----------
+
+Set this parameter to ``0`` to avoid storing deleted DNSSEC key in a "trash bin".
+The "trash bin" can be emptied with ``knotc -f zone-purge +keys +orphan --``.
+
+*Default:* ``14d`` (14 days)
 
 .. _policy_propagation-delay:
 

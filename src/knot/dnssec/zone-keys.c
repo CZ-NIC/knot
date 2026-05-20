@@ -240,7 +240,33 @@ int kdnssec_share_key(kdnssec_ctx_t *ctx, const knot_dname_t *from_zone, const c
 	return ret;
 }
 
-int kdnssec_delete_key(kdnssec_ctx_t *ctx, knot_kasp_key_t *key_ptr)
+int kdnssec_delete_from_keystores(knot_kasp_keystore_t *keystores, char *key_id,
+                                  const knot_dname_t *dname, bool thorough)
+{
+	int ret = KNOT_ENOENT;
+	bool found = false;
+
+	for (size_t i = 0; i < keystores[0].count && (!found || thorough); i++) {
+		ret = dnssec_keystore_remove(keystores[i].keystore, key_id);
+		if (ret == KNOT_EOK) {
+			found = true;
+		} else if (ret != KNOT_ENOENT) {
+			const char *msg = "keystore %s, attempt to remove key %s failed (%s)";
+			const char *err = knot_strerror(ret);
+			if (dname == NULL) {
+				log_warning(msg, keystores[i].name, key_id, err);
+			} else {
+				log_zone_warning(dname, msg, keystores[i].name, key_id, err);
+			}
+
+			return ret;
+		}
+	}
+
+	return found ? KNOT_EOK : ret;
+}
+
+int kdnssec_delete_key(kdnssec_ctx_t *ctx, knot_kasp_key_t *key_ptr, bool trash)
 {
 	assert(ctx);
 	assert(ctx->zone);
@@ -255,16 +281,16 @@ int kdnssec_delete_key(kdnssec_ctx_t *ctx, knot_kasp_key_t *key_ptr)
 	}
 
 	bool key_still_used_in_keystore = false;
-	int ret = kasp_db_delete_key(ctx->kasp_db, ctx->zone->dname, key_ptr->id, &key_still_used_in_keystore);
+	uint32_t delay = trash ? ctx->policy->trash_delay : 0;
+	int ret = kasp_db_delete_key(ctx->kasp_db, ctx->zone->dname, key_ptr->id,
+	                             delay, &key_still_used_in_keystore);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
 
 	if (!key_still_used_in_keystore && !key_ptr->is_pub_only) {
-		ret = KNOT_ENOENT;
-		for (size_t i = 0; i < ctx->keystores[0].count && ret == KNOT_ENOENT; i++) {
-			ret = dnssec_keystore_remove(ctx->keystores[i].keystore, key_ptr->id);
-		}
+		ret = kdnssec_delete_from_keystores(ctx->keystores, key_ptr->id,
+		                                    ctx->zone->dname, false);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}

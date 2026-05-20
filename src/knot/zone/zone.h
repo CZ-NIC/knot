@@ -64,20 +64,22 @@ typedef enum {
 	PURGE_ZONE_TIMERS   = 1 << 23, /*!< Purge the zone timers. */
 	PURGE_ZONE_ZONEFILE = 1 << 24, /*!< Purge the zone file. */
 	PURGE_ZONE_JOURNAL  = 1 << 25, /*!< Purge the zone journal. */
-	PURGE_ZONE_KASPDB   = 1 << 26, /*!< Purge KASP DB. */
-	PURGE_ZONE_CATALOG  = 1 << 27, /*!< Purge the catalog. */
-	PURGE_ZONE_EXPIRE   = 1 << 28, /*!< Expire the zone, free contents. */
+	PURGE_ZONE_KEYS     = 1 << 26, /*!< Purge keys and related metadata. */
+	PURGE_ZONE_KASPDB   = 1 << 27, /*!< Purge KASP DB. */
+	PURGE_ZONE_CATALOG  = 1 << 28, /*!< Purge the catalog. */
+	PURGE_ZONE_EXPIRE   = 1 << 29, /*!< Expire the zone, free contents. */
+	PURGE_ZONE_TRASH    = 1 << 30, /*!< When purging keys, purge also the keys in trash. */
 } purge_flag_t;
 
 /*!< All data. */
 #define PURGE_ZONE_DATA  (PURGE_ZONE_TIMERS | PURGE_ZONE_ZONEFILE | PURGE_ZONE_JOURNAL | \
                           PURGE_ZONE_KASPDB | PURGE_ZONE_CATALOG)
 
-/*!< Standard purge (respect C_ZONEFILE_SYNC param). */
-#define PURGE_ZONE_ALL   (PURGE_ZONE_DATA | PURGE_ZONE_BEST | PURGE_ZONE_LOG)
+/*!< Standard purge (including keys; respect C_ZONEFILE_SYNC param). */
+#define PURGE_ZONE_ALL   (PURGE_ZONE_DATA | PURGE_ZONE_KEYS | PURGE_ZONE_BEST | PURGE_ZONE_LOG)
 
 /*!< All purge-related flags. */
-#define PURGE_ZONE_FLAGS (PURGE_ZONE_ALL | PURGE_ZONE_NOSYNC | PURGE_ZONE_EXPIRE)
+#define PURGE_ZONE_FLAGS (PURGE_ZONE_ALL | PURGE_ZONE_NOSYNC | PURGE_ZONE_EXPIRE | PURGE_ZONE_TRASH)
 
 /*!
  * \brief Structure for holding DNS zone.

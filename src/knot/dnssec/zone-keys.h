@@ -103,6 +103,22 @@ int kdnssec_generate_key(kdnssec_ctx_t *ctx, kdnssec_generate_flags_t flags,
 int kdnssec_share_key(kdnssec_ctx_t *ctx, const knot_dname_t *from_zone, const char *key_id);
 
 /*!
+ * \brief Remove key from keystore (keystores).
+ *
+ * Deletes the key from key storage (PKCS8dir/PKCS11). Optionally delete also redundant
+ * occurences of the key.
+ *
+ * \param keystores     array of keystores
+ * \param key_id        ID of the key to be removed
+ * \param dname         zone name for error logging or NULL
+ * \param thorough      if true, try to remove all occurences of the key in all listed keystores
+ *
+ * \return KNOT_E*
+ */
+int kdnssec_delete_from_keystores(knot_kasp_keystore_t *keystores, char *key_id,
+                                  const knot_dname_t *dname, bool thorough);
+
+/*!
  * \brief Remove key from zone.
  *
  * Deletes the key in keystore, unlinks the key from the zone in KASP db,
@@ -111,10 +127,11 @@ int kdnssec_share_key(kdnssec_ctx_t *ctx, const knot_dname_t *from_zone, const c
  *
  * \param ctx           kasp context (zone, keystore, kaspdb) to be modified
  * \param key_ptr       pointer to key to be removed, must be inside keystore structure, NOT a copy of it!
+ * \param trash         if true, use the trash-bin as defined in kasp context->policy
  *
  * \return KNOT_E*
  */
-int kdnssec_delete_key(kdnssec_ctx_t *ctx, knot_kasp_key_t *key_ptr);
+int kdnssec_delete_key(kdnssec_ctx_t *ctx, knot_kasp_key_t *key_ptr, bool trash);
 
 /*!
  * \brief Load private key for given ID by searching all configured keystores.
