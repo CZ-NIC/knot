@@ -625,7 +625,7 @@ static int import_key(kdnssec_ctx_t *ctx, unsigned backend, const char *param,
 	dnssec_key_set_algorithm(key, ctx->policy->algorithm);
 
 	// fill key structure from keystore (incl. pubkey from privkey computation)
-	ret = kdnssec_load_private(ctx->keystores, keyid, key, NULL, NULL);
+	ret = kdnssec_load_private(ctx->keystores, keyid, key, NULL, NULL, NULL);
 	if (ret != KNOT_EOK) {
 		err_import_key(keyid, "");
 		goto fail;
@@ -973,6 +973,7 @@ typedef struct {
 	const char *ks_name;
 	size_t ks_count;
 	unsigned backend;
+	bool ksk_only;
 	bool missing;
 	bool trash;
 	bool all_zones;
@@ -1169,7 +1170,8 @@ static key_info_t key_missing(kdnssec_ctx_t *ctx, const knot_kasp_key_t *key)
 	key_info_t out = { .ks_count = ctx->keystores[0].count };
 	out.missing = !key->is_pub_only &&
 	              KNOT_EOK != kdnssec_load_private(ctx->keystores, key->id,
-	                                               key->key, &out.ks_name, &out.backend);
+	                                               key->key, &out.ks_name, &out.backend,
+	                                               &out.ksk_only);
 	return out;
 }
 

@@ -512,8 +512,8 @@ static int walk_algorithms(kdnssec_ctx_t *ctx, zone_keyset_t *keyset)
 	return KNOT_EOK;
 }
 
-int kdnssec_load_private(knot_kasp_keystore_t *keystores, const char *id,
-                         dnssec_key_t *key, const char **name, unsigned *backend)
+int kdnssec_load_private(knot_kasp_keystore_t *keystores, const char *id, dnssec_key_t *key,
+                         const char **name, unsigned *backend, bool *ksk_only)
 {
 	int ret = KNOT_ENOENT;
 	for (size_t i = 0; i < keystores[0].count && (ret == KNOT_ENOENT); i++) {
@@ -524,6 +524,9 @@ int kdnssec_load_private(knot_kasp_keystore_t *keystores, const char *id,
 			}
 			if (backend != NULL) {
 				*backend = keystores[i].backend;
+			}
+			if (ksk_only != NULL) {
+				*ksk_only = keystores[i].ksk_only;
 			}
 		}
 	}
@@ -553,7 +556,8 @@ static int load_private_keys(kdnssec_ctx_t *ctx, zone_keyset_t *keyset)
 		if (!key->is_active && !key->is_ksk_active_plus && !key->is_zsk_active_plus) {
 			continue;
 		}
-		int ret = kdnssec_load_private(ctx->keystores, key->id, key->key, NULL, NULL);
+		int ret = kdnssec_load_private(ctx->keystores, key->id, key->key,
+		                               NULL, NULL, NULL);
 		switch (ret) {
 		case KNOT_EOK:
 		case KNOT_EEXIST:

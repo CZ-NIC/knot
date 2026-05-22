@@ -226,7 +226,7 @@ static int backup_key(key_params_t *parm, const knot_dname_t *zname, bool restor
 	dnssec_key_set_algorithm(key, parm->algorithm);
 
 	unsigned backend;
-	ret = kdnssec_load_private(from, parm->id, key, NULL, &backend);
+	ret = kdnssec_load_private(from, parm->id, key, NULL, &backend, NULL);
 	if (ret == KNOT_EOK) {
 		// If restore, consider only the first configured keystore.
 		assert(to->count > 0);
