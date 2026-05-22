@@ -40,7 +40,8 @@ static const keyclass_t ordered_classes[] = {
 	KASPDBKEY_OFFLINE_RECORDS,
 	KASPDBKEY_SAVED_TTLS,
 };
-static const size_t ordered_classes_size = sizeof(ordered_classes) / sizeof(*ordered_classes);
+// This must be a macro because some compilers don't consider its value a constant.
+#define ORDERED_CLASSES_SIZE (sizeof(ordered_classes) / sizeof(*ordered_classes))
 
 // DNSSEC key metadata.
 static const keyclass_t *key_classes = ordered_classes + NUM_TRASH_CLASSES;
@@ -48,11 +49,11 @@ static const size_t key_classes_size = NUM_KEY_CLASSES;
 
 // Zone related classes (but not DNSSEC key metadata).
 static const keyclass_t *zone_classes = ordered_classes + NUM_TRASH_CLASSES + NUM_KEY_CLASSES;
-static const size_t zone_classes_size = ordered_classes_size - NUM_TRASH_CLASSES - NUM_KEY_CLASSES;
+static const size_t zone_classes_size = ORDERED_CLASSES_SIZE - NUM_TRASH_CLASSES - NUM_KEY_CLASSES;
 
 // KASP related classes (including DNSSEC keys, for backup/restore).
 static const keyclass_t *kasp_classes = ordered_classes + NUM_TRASH_CLASSES;
-static const size_t kasp_classes_size = ordered_classes_size - NUM_TRASH_CLASSES;
+static const size_t kasp_classes_size = ORDERED_CLASSES_SIZE - NUM_TRASH_CLASSES;
 
 static bool is_related_class(const keyclass_t* classes, const size_t classes_size, uint8_t class)
 {
