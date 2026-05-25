@@ -134,9 +134,9 @@ AM_CONDITIONAL([HAVE_PDFLATEX], test "$PDFLATEX" != "false")
 
 link_mode=$(test "$enable_shared" = "yes" && echo "shared" || echo "static")
 
-######################
-# Library dependencies
-######################
+###################################
+# Dependencies needed for libraries
+###################################
 
 # Fast (big) zone parser
 AC_ARG_ENABLE([fastparser],
@@ -174,7 +174,7 @@ AC_ARG_ENABLE([pkcs11],
 AS_CASE([$enable_pkcs11],
   [auto], [AS_IF([test "$gnutls_pkcs11" = "yes"], [enable_pkcs11=yes], [enable_pkcs11=no])],
   [yes],  [AS_IF([test "$gnutls_pkcs11" = "yes"], [enable_pkcs11=yes], [
-    AC_MSG_ERROR([PKCS11 not available])])],
+            AC_MSG_ERROR([PKCS11 not available])])],
   [no], [],
   [*], [AC_MSG_ERROR([Invalid value of --enable-pkcs11.])]
 )
@@ -189,14 +189,14 @@ AC_ARG_ENABLE([quic],
 
 AS_CASE([$enable_quic],
   [auto], [PKG_CHECK_MODULES([libngtcp2], [libngtcp2 >= 0.17.0 libngtcp2_crypto_gnutls], [enable_quic=yes], [enable_quic=no])],
-  [yes],  [PKG_CHECK_MODULES([libngtcp2], [libngtcp2 >= 0.17.0 libngtcp2_crypto_gnutls], [enable_quic=yes],
+  [yes],  [PKG_CHECK_MODULES([libngtcp2], [libngtcp2 >= 0.17.0 libngtcp2_crypto_gnutls], [enable_quic=yes], [
             AS_IF([test "$gnutls_quic" = "yes"],
               [enable_quic=embedded
                embedded_libngtcp2_CFLAGS="-I\$(top_srcdir)/src/contrib/libngtcp2 -I\$(top_srcdir)/src/contrib/libngtcp2/ngtcp2/lib"
                embedded_libngtcp2_LIBS=$libelf_LIBS
                libngtcp2_CFLAGS="-I\$(top_srcdir)/src/contrib/libngtcp2"],
               [enable_quic=no
-               AC_MSG_WARN([gnutls >= 3.7.3 is required for QUIC])]))],
+               AC_MSG_WARN([gnutls >= 3.7.3 is required for QUIC])])])],
   [embedded], [enable_quic=embedded
                embedded_libngtcp2_CFLAGS="-I\$(top_srcdir)/src/contrib/libngtcp2 -I\$(top_srcdir)/src/contrib/libngtcp2/ngtcp2/lib"
                embedded_libngtcp2_LIBS=$libelf_LIBS
@@ -220,13 +220,13 @@ AC_ARG_ENABLE([recvmmsg],
   [], [enable_recvmmsg=auto])
 
 AS_CASE([$enable_recvmmsg],
-  [auto|yes],[
+  [auto|yes], [
       AC_CHECK_FUNC([recvmmsg],
-                    [AC_CHECK_FUNC([sendmmsg],[enable_recvmmsg=yes],[enable_recvmmsg=no])],
+                    [AC_CHECK_FUNC([sendmmsg], [enable_recvmmsg=yes], [enable_recvmmsg=no])],
                     [enable_recvmmsg=no])],
-  [no],[],
-  [*], [AC_MSG_ERROR([Invalid value of --enable-recvmmsg.]
- )])
+  [no], [],
+  [*], [AC_MSG_ERROR([Invalid value of --enable-recvmmsg.])]
+)
 
 AS_IF([test "$enable_recvmmsg" = yes], [
   AC_DEFINE([ENABLE_RECVMMSG], [1], [Use recvmmsg().])])
@@ -302,13 +302,14 @@ AS_IF([test "$enable_xdp" = "yes"], [
      libbpf_CFLAGS="$libbpf_CFLAGS $libxdp_CFLAGS"
      libbpf_LIBS="$libbpf_LIBS $libxdp_LIBS"],
     [AS_IF([test "$libbpf1" = "yes"], [AC_MSG_ERROR([libxdp not available])])]
-  )]
-)
+  )
+])
 AC_SUBST([libbpf_CFLAGS])
 AC_SUBST([libbpf_LIBS])
 
-AS_IF([test "$enable_xdp" != "no"],[
-  AC_DEFINE([ENABLE_XDP], [1], [Use eXpress Data Path.])])
+AS_IF([test "$enable_xdp" != "no"], [
+  AC_DEFINE([ENABLE_XDP], [1], [Use eXpress Data Path.])
+])
 
 # REUSEPORT support
 AS_CASE([$host_os],
@@ -340,13 +341,15 @@ AS_CASE([$enable_reuseport],
   [*], [AC_MSG_ERROR([Invalid value of --enable-reuseport.])]
 )
 
-AS_IF([test "$enable_reuseport" = yes],[
-  AC_DEFINE([ENABLE_REUSEPORT], [1], [Use SO_REUSEPORT(_LB).])])
+AS_IF([test "$enable_reuseport" = yes], [
+  AC_DEFINE([ENABLE_REUSEPORT], [1], [Use SO_REUSEPORT(_LB).])
+])
 
 # Redis zone backend support
 AC_ARG_ENABLE([redis],
   AS_HELP_STRING([--enable-redis=auto|yes|client|module|no], [enable Redis support [default=auto]]),
-  [], [enable_redis=auto])
+  [], [enable_redis=auto]
+)
 
 redis_dir="${libdir}/knot/redis"
 AC_ARG_WITH([redisdir],
@@ -378,36 +381,41 @@ AS_IF([test "$enable_redis" = yes -o "$enable_redis" = client],[
   ])
 ])
 
-#########################################
-# Dependencies needed for Knot DNS daemon
-#########################################
+################################
+# Dependencies needed for daemon
+################################
 
 # Systemd integration (configuration)
 AC_ARG_ENABLE([systemd],
   AS_HELP_STRING([--enable-systemd=auto|yes|no], [enable systemd integration [default=auto]]),
-  [], [enable_systemd=auto])
+  [], [enable_systemd=auto]
+)
 
 # D-Bus support (configuration)
 AC_ARG_ENABLE([dbus],
   AS_HELP_STRING([--enable-dbus=auto|systemd|libdbus|no], [enable D-Bus support [default=auto]]),
-  [], [enable_dbus=auto])
+  [], [enable_dbus=auto]
+)
 
 # POSIX capabilities (configuration)
 AC_ARG_ENABLE([cap-ng],
   AS_HELP_STRING([--enable-cap-ng=auto|no], [enable POSIX capabilities [default=auto]]),
-  [], [enable_cap_ng=auto])
+  [], [enable_cap_ng=auto]
+)
 
 # Socket polling method (configuration)
 AC_ARG_WITH([socket-polling],
   AS_HELP_STRING([--with-socket-polling=auto|poll|epoll|kqueue|libkqueue],
                  [use specific socket polling method [default=auto]]),
-  [socket_polling=$withval], [socket_polling=auto])
+  [], [socket_polling=auto]
+)
 
 # Alternative memory allocator (configuration)
 AC_ARG_WITH([memory-allocator],
   AS_HELP_STRING([--with-memory-allocator=auto|LIBRARY],
                  [use specific memory allocator for the server (e.g. jemalloc) [default=auto]]),
-  [memory_allocator=$withval], [memory_allocator=auto])
+  [], [memory_allocator=auto]
+)
 
 AS_IF([test "$enable_daemon" = "yes"], [
 
@@ -419,11 +427,12 @@ AS_IF([test "$enable_systemd" != "no"], [
     [yes], [PKG_CHECK_MODULES([systemd], [libsystemd], [], [
             PKG_CHECK_MODULES([systemd], [libsystemd-daemon libsystemd-journal])])],
     [*], [AC_MSG_ERROR([Invalid value of --enable-systemd.])]
-  )
-])
+  )]
+)
 
 AS_IF([test "$enable_systemd" = "yes"], [
-  AC_DEFINE([ENABLE_SYSTEMD], [1], [Use systemd integration.])])
+  AC_DEFINE([ENABLE_SYSTEMD], [1], [Use systemd integration.])]
+)
 
 # D-Bus support (check)
 AS_IF([test "$enable_dbus" != "no"], [
@@ -445,8 +454,8 @@ AS_IF([test "$enable_dbus" != "no"], [
                  [AC_MSG_ERROR([libdbus not available.])])],
     [no], [enable_dbus=no],
     [*], [AC_MSG_ERROR([Invalid value of --enable-dbus.])]
-  )
-])
+  )]
+)
 
 # POSIX capabilities (check)
 AS_IF([test "$enable_cap_ng" != "no"], [
@@ -460,16 +469,15 @@ AS_IF([test "$enable_cap_ng" != "no"], [
         AC_SUBST([cap_ng_LIBS])
         enable_cap_ng=yes
       ])
-      LIBS="$save_LIBS"
-    ])
-  ])
+      LIBS="$save_LIBS"])])
 ], [
   enable_cap_ng=no
   cap_ng_LIBS=
 ])
 
 AS_IF([test "$enable_cap_ng" = "yes"],
-  [AC_DEFINE([ENABLE_CAP_NG], [1], [POSIX capabilities available.])])
+  [AC_DEFINE([ENABLE_CAP_NG], [1], [POSIX capabilities available.])]
+)
 
 # Socket polling method (check)
 AS_CASE([$socket_polling],
@@ -505,8 +513,8 @@ AC_SUBST([malloc_LIBS])
 
 # Userspace RCU dependency
 PKG_CHECK_MODULES([liburcu], [liburcu], [], [
-  AC_MSG_ERROR([liburcu not found])
-])
+  AC_MSG_ERROR([liburcu not found])]
+)
 
 ]) dnl enable_daemon
 
@@ -603,7 +611,6 @@ AS_CASE([$enable_maxminddb],
 AS_IF([test "$enable_maxminddb" = yes], [AC_DEFINE([HAVE_MAXMINDDB], [1], [Define to 1 to enable MaxMind DB.])])
 AM_CONDITIONAL([HAVE_MAXMINDDB], [test "$enable_maxminddb" = yes])
 
-
 # LMDB mapping sizes
 conf_mapsize_default=500
 AC_ARG_WITH([conf_mapsize],
@@ -645,28 +652,27 @@ AS_IF([test "$enable_daemon" = "yes" -o "$enable_utilities" = "yes"], [
   libedit_LIBS=
 ])
 
-############################################
-# Dependencies needed for Knot DNS utilities
-############################################
+###################################
+# Dependencies needed for utilities
+###################################
 
-dnl Check for libidn2.
+# IDN support in kdig (configuration)
 AC_ARG_WITH(libidn,
-  AS_HELP_STRING([--with-libidn=[DIR]], [Support IDN (needs GNU libidn2)]),
-  with_libidn=$withval,
-  with_libidn=yes
+  AS_HELP_STRING([--with-libidn=auto|yes|no], [Support IDN (needs GNU libidn2) [default=auto]]),
+  [], with_libidn=yes
 )
 
-dnl Check for libnghttp2.
+# HTTPS support in kdig (configuration)
 AC_ARG_WITH(libnghttp2,
-  AS_HELP_STRING([--with-libnghttp2=[DIR]], [Support DoH (needs libnghttp2)]),
-  with_libnghttp2=$withval,
-  with_libnghttp2=yes
+  AS_HELP_STRING([--with-libnghttp2=auto|yes|no], [Support DoH (needs libnghttp2) [default=auto]]),
+  [], with_libnghttp2=yes
 )
 
-dnl DNSSEC validation in kdig
+# DNSSEC validation in kdig (configuration, check)
 AC_ARG_ENABLE([kdig-validation],
   AS_HELP_STRING([--disable-kdig-validation], [Disable DNSSEC validation in kdig]),
-  [], [enable_kdig_validation=yes])
+  [], [enable_kdig_validation=yes]
+)
 AS_IF([test "$enable_kdig_validation" != "yes" -o "$enable_utilities" != "yes" -o "$enable_daemon" != "yes"], [
   enable_kdig_validation=no
 ])
@@ -676,32 +682,34 @@ AS_IF([test "$enable_kdig_validation" = "yes"], [
 AM_CONDITIONAL([HAVE_KDIG_VALIDATION], [test "$enable_kdig_validation" = "yes"])
 
 AS_IF([test "$enable_utilities" = "yes"], [
-  AS_IF([test "$with_libidn" != "no"], [
-    PKG_CHECK_MODULES([libidn2], [libidn2 >= 2.0.0], [
-      with_libidn=libidn2
-      AC_DEFINE([LIBIDN], [1], [Define to 1 to enable IDN support])
-    ], [
-      with_libidn=no
-      AC_MSG_WARN([libidn2 not found])
-    ])
-  ])
 
-  AS_IF([test "$with_libnghttp2" != "no"], [
-    PKG_CHECK_MODULES([libnghttp2], [libnghttp2], [
-      with_libnghttp2=libnghttp2
-      AC_DEFINE([LIBNGHTTP2], [1], [Define to 1 to enable DoH support])
-    ], [
-      with_libnghttp2=no
-      AC_MSG_WARN([libnghttp2 not found])
-    ])
+AS_IF([test "$with_libidn" != "no"], [
+  PKG_CHECK_MODULES([libidn2], [libidn2 >= 2.0.0], [
+    with_libidn=libidn2
+    AC_DEFINE([LIBIDN], [1], [Define to 1 to enable IDN support])
+  ], [
+    with_libidn=no
+    AC_MSG_WARN([libidn2 not found])
   ])
+])
 
-  AS_IF([test "$enable_xdp" != "no"], [
-    PKG_CHECK_MODULES([libmnl], [libmnl], [], [
-      AC_MSG_ERROR([libmnl not found])
-    ])
+AS_IF([test "$with_libnghttp2" != "no"], [
+  PKG_CHECK_MODULES([libnghttp2], [libnghttp2], [
+    with_libnghttp2=libnghttp2
+    AC_DEFINE([LIBNGHTTP2], [1], [Define to 1 to enable DoH support])
+  ], [
+    with_libnghttp2=no
+    AC_MSG_WARN([libnghttp2 not found])
   ])
-]) # Knot DNS utilities dependencies
+])
+
+AS_IF([test "$enable_xdp" != "no"], [
+  PKG_CHECK_MODULES([libmnl], [libmnl], [], [
+    AC_MSG_ERROR([libmnl not found])
+  ])
+])
+
+]) dnl enable_utilities
 
 save_LIBS="$LIBS"
 AC_SEARCH_LIBS([pthread_create], [pthread], [
