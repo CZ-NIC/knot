@@ -140,7 +140,8 @@ link_mode=$(test "$enable_shared" = "yes" && echo "shared" || echo "static")
 
 # Fast (big) zone parser
 AC_ARG_ENABLE([fastparser],
-  AS_HELP_STRING([--disable-fastparser], [Disable use of fast zone parser]),
+  AS_HELP_STRING([--disable-fastparser],
+                 [Disable use of fast zone parser]),
   [], [AS_IF([test -d ".git"], [enable_fastparser=no], [enable_fastparser=yes])]
 )
 AM_CONDITIONAL([FAST_PARSER], [test "$enable_fastparser" = "yes"])
@@ -168,8 +169,10 @@ PKG_CHECK_MODULES([gnutls], [gnutls >= 3.6.12], [
 
 # PKCS11 support
 AC_ARG_ENABLE([pkcs11],
-  AS_HELP_STRING([--enable-pkcs11=auto|yes|no], [Support PKCS #11 [default=auto]]),
-  [], [enable_pkcs11=auto])
+  AS_HELP_STRING([--enable-pkcs11=auto|yes|no],
+                 [Support PKCS #11 [default=auto]]),
+  [], [enable_pkcs11=auto]
+)
 
 AS_CASE([$enable_pkcs11],
   [auto], [AS_IF([test "$gnutls_pkcs11" = "yes"], [enable_pkcs11=yes], [enable_pkcs11=no])],
@@ -184,8 +187,10 @@ AS_IF([test "$enable_pkcs11" != "no"], [
 
 # QUIC support
 AC_ARG_ENABLE([quic],
-  AS_HELP_STRING([--enable-quic=auto|yes|no|embedded], [DoQ support (needs libngtcp2 >= 0.17.0, gnutls >= 3.7.3) [default=auto]]),
-  [], [enable_quic=auto])
+  AS_HELP_STRING([--enable-quic=auto|yes|no|embedded],
+                 [DoQ support (needs libngtcp2 >= 0.17.0, gnutls >= 3.7.3) [default=auto]]),
+  [], [enable_quic=auto]
+)
 
 AS_CASE([$enable_quic],
   [auto], [PKG_CHECK_MODULES([libngtcp2], [libngtcp2 >= 0.17.0 libngtcp2_crypto_gnutls], [enable_quic=yes], [enable_quic=no])],
@@ -212,12 +217,15 @@ AC_SUBST([libngtcp2_CFLAGS])
 AC_SUBST([libngtcp2_LIBS])
 
 AS_IF([test "$enable_quic" != "no"], [
-  AC_DEFINE([ENABLE_QUIC], [1], [Define to 1 to enable DoQ support using libngtcp2 and GnuTLS])])
+  AC_DEFINE([ENABLE_QUIC], [1], [Define to 1 to enable DoQ support using libngtcp2 and GnuTLS])]
+)
 
 # recvmmsg() and sendmmsg() support
 AC_ARG_ENABLE([recvmmsg],
-  AS_HELP_STRING([--enable-recvmmsg=auto|yes|no], [enable recvmmsg() network API [default=auto]]),
-  [], [enable_recvmmsg=auto])
+  AS_HELP_STRING([--enable-recvmmsg=auto|yes|no],
+                 [enable recvmmsg() network API [default=auto]]),
+  [], [enable_recvmmsg=auto]
+)
 
 AS_CASE([$enable_recvmmsg],
   [auto|yes], [
@@ -229,11 +237,14 @@ AS_CASE([$enable_recvmmsg],
 )
 
 AS_IF([test "$enable_recvmmsg" = yes], [
-  AC_DEFINE([ENABLE_RECVMMSG], [1], [Use recvmmsg().])])
+  AC_DEFINE([ENABLE_RECVMMSG], [1], [Use recvmmsg().])]
+)
 
 # LMDB library
 AC_ARG_WITH([lmdb],
-  [AS_HELP_STRING([--with-lmdb=DIR], [explicit location where to find LMDB])])
+  [AS_HELP_STRING([--with-lmdb=DIR],
+                  [explicit location where to find LMDB])]
+)
 
 PKG_CHECK_MODULES([lmdb], [lmdb >= 0.9.15], [], [
   save_CPPFLAGS=$CPPFLAGS
@@ -275,8 +286,10 @@ PKG_CHECK_MODULES([lmdb], [lmdb >= 0.9.15], [], [
 
 # XDP support
 AC_ARG_ENABLE([xdp],
-  AS_HELP_STRING([--enable-xdp=auto|yes|no], [enable eXpress Data Path [default=auto]]),
-  [], [enable_xdp=auto])
+  AS_HELP_STRING([--enable-xdp=auto|yes|no],
+                 [enable eXpress Data Path [default=auto]]),
+  [], [enable_xdp=auto]
+)
 
 PKG_CHECK_MODULES([libbpf], [libbpf],
   [save_LIBS=$LIBS
@@ -347,13 +360,15 @@ AS_IF([test "$enable_reuseport" = yes], [
 
 # Redis zone backend support
 AC_ARG_ENABLE([redis],
-  AS_HELP_STRING([--enable-redis=auto|yes|client|module|no], [enable Redis support [default=auto]]),
+  AS_HELP_STRING([--enable-redis=auto|yes|client|module|no],
+                 [enable Redis support [default=auto]]),
   [], [enable_redis=auto]
 )
 
 redis_dir="${libdir}/knot/redis"
 AC_ARG_WITH([redisdir],
-  AS_HELP_STRING([--with-redisdir=path], [Destination of module for Redis [default=${libdir}/knot/redis]]),
+  AS_HELP_STRING([--with-redisdir=path],
+                 [Destination of module for Redis [default=${libdir}/knot/redis]]),
   [redis_dir=$withval])
 AC_SUBST(redis_dir)
 
@@ -385,56 +400,63 @@ AS_IF([test "$enable_redis" = yes -o "$enable_redis" = client],[
 # Dependencies needed for daemon
 ################################
 
-# Systemd integration (configuration)
+## Parameter definitions ##
+
+# Systemd integration
 AC_ARG_ENABLE([systemd],
-  AS_HELP_STRING([--enable-systemd=auto|yes|no], [enable systemd integration [default=auto]]),
+  AS_HELP_STRING([--enable-systemd=auto|yes|no],
+                 [enable systemd integration [default=auto]]),
   [], [enable_systemd=auto]
 )
 
-# D-Bus support (configuration)
+# D-Bus support
 AC_ARG_ENABLE([dbus],
-  AS_HELP_STRING([--enable-dbus=auto|systemd|libdbus|no], [enable D-Bus support [default=auto]]),
+  AS_HELP_STRING([--enable-dbus=auto|systemd|libdbus|no],
+                 [enable D-Bus support [default=auto]]),
   [], [enable_dbus=auto]
 )
 
-# POSIX capabilities (configuration)
+# POSIX capabilities
 AC_ARG_ENABLE([cap-ng],
-  AS_HELP_STRING([--enable-cap-ng=auto|no], [enable POSIX capabilities [default=auto]]),
+  AS_HELP_STRING([--enable-cap-ng=auto|no],
+                 [enable POSIX capabilities [default=auto]]),
   [], [enable_cap_ng=auto]
 )
 
-# Socket polling method (configuration)
+# Socket polling method
 AC_ARG_WITH([socket-polling],
   AS_HELP_STRING([--with-socket-polling=auto|poll|epoll|kqueue|libkqueue],
                  [use specific socket polling method [default=auto]]),
   [], [socket_polling=auto]
 )
 
-# Alternative memory allocator (configuration)
+# Alternative memory allocator
 AC_ARG_WITH([memory-allocator],
   AS_HELP_STRING([--with-memory-allocator=auto|LIBRARY],
                  [use specific memory allocator for the server (e.g. jemalloc) [default=auto]]),
   [], [memory_allocator=auto]
 )
 
+## Parameter and mandatory dependency processing ##
+
 AS_IF([test "$enable_daemon" = "yes"], [
 
-# Systemd integration (check)
+# Systemd integration
 AS_IF([test "$enable_systemd" != "no"], [
   AS_CASE([$enable_systemd],
     [auto], [PKG_CHECK_MODULES([systemd], [libsystemd], [enable_systemd=yes], [
              PKG_CHECK_MODULES([systemd], [libsystemd-daemon libsystemd-journal], [enable_systemd=yes], [enable_systemd=no])])],
     [yes], [PKG_CHECK_MODULES([systemd], [libsystemd], [], [
             PKG_CHECK_MODULES([systemd], [libsystemd-daemon libsystemd-journal])])],
-    [*], [AC_MSG_ERROR([Invalid value of --enable-systemd.])]
-  )]
-)
+    [*], [AC_MSG_ERROR([invalid value of --enable-systemd])]
+  )
+])
 
 AS_IF([test "$enable_systemd" = "yes"], [
-  AC_DEFINE([ENABLE_SYSTEMD], [1], [Use systemd integration.])]
-)
+  AC_DEFINE([ENABLE_SYSTEMD], [1], [Use systemd integration.])
+])
 
-# D-Bus support (check)
+# D-Bus support
 AS_IF([test "$enable_dbus" != "no"], [
   AS_CASE([$enable_dbus],
     [auto], [AS_IF([test "$enable_systemd" = "yes"],
@@ -457,7 +479,7 @@ AS_IF([test "$enable_dbus" != "no"], [
   )]
 )
 
-# POSIX capabilities (check)
+# POSIX capabilities
 AS_IF([test "$enable_cap_ng" != "no"], [
   PKG_CHECK_MODULES([cap_ng], [cap-ng], [enable_cap_ng=yes], [
     enable_cap_ng=no
@@ -479,7 +501,7 @@ AS_IF([test "$enable_cap_ng" = "yes"],
   [AC_DEFINE([ENABLE_CAP_NG], [1], [POSIX capabilities available.])]
 )
 
-# Socket polling method (check)
+# Socket polling method
 AS_CASE([$socket_polling],
   [auto], [AC_CHECK_FUNCS([kqueue],
              [AC_DEFINE([HAVE_KQUEUE], [1], [kqueue available])
@@ -504,7 +526,7 @@ AS_CASE([$socket_polling],
   [*], [AC_MSG_ERROR([Invalid value of --socket-polling.])]
 )
 
-# Alternative memory allocator (check)
+# Alternative memory allocator
 AS_CASE([$memory_allocator],
   [auto], [malloc_LIBS=""],
   [*],    [malloc_LIBS="-l$memory_allocator"]
@@ -549,8 +571,10 @@ AM_SUBST_NOTMAKE([DOC_MODULES])
 
 # Check for Dnstap
 AC_ARG_ENABLE([dnstap],
-  AS_HELP_STRING([--enable-dnstap], [Enable dnstap support for kdig (requires fstrm, protobuf-c)]),
-  [], [enable_dnstap=no])
+  AS_HELP_STRING([--enable-dnstap],
+                 [Enable dnstap support for kdig (requires fstrm, protobuf-c)]),
+  [], [enable_dnstap=no]
+)
 
 AS_IF([test "$enable_dnstap" != "no" -o "$STATIC_MODULE_dnstap" != "no" -o "$SHARED_MODULE_dnstap" != "no"],[
   AC_PATH_PROG([PROTOC_C], [protoc])
@@ -577,18 +601,20 @@ AM_CONDITIONAL([HAVE_LIBDNSTAP], test "$enable_dnstap" != "no" -o \
                                       "$SHARED_MODULE_dnstap" != "no")
 # MaxMind DB for the GeoIP module
 AC_ARG_ENABLE([maxminddb],
-    AS_HELP_STRING([--enable-maxminddb=auto|yes|no], [enable MaxMind DB [default=auto]]),
-    [], [enable_maxminddb=auto])
+  AS_HELP_STRING([--enable-maxminddb=auto|yes|no],
+                 [enable MaxMind DB [default=auto]]),
+  [], [enable_maxminddb=auto]
+)
 
-AS_IF([test "$enable_daemon" = "no"],[enable_maxminddb=no])
+AS_IF([test "$enable_daemon" = "no"], [enable_maxminddb=no])
 AS_CASE([$enable_maxminddb],
-  [no],[],
-  [auto],[PKG_CHECK_MODULES([libmaxminddb], [libmaxminddb], [enable_maxminddb=yes], [enable_maxminddb=no])],
+  [no], [],
+  [auto], [PKG_CHECK_MODULES([libmaxminddb], [libmaxminddb], [enable_maxminddb=yes], [enable_maxminddb=no])],
   [yes], [PKG_CHECK_MODULES([libmaxminddb], [libmaxminddb])],
-  [*],[
+  [*], [
     save_CFLAGS="$CFLAGS"
     save_LIBS="$LIBS"
-    AS_IF([test "$enable_maxminddb" != ""],[
+    AS_IF([test "$enable_maxminddb" != ""], [
       LIBS="$LIBS -L$enable_maxminddb"
       CFLAGS="$CFLAGS -I$enable_maxminddb/include"
       ])
@@ -596,17 +622,17 @@ AS_CASE([$enable_maxminddb],
       AS_IF([test "$enable_maxminddb" != ""], [
         libmaxminddb_CFLAGS="-I$enable_maxminddb/include"
         libmaxminddb_LIBS="-L$enable_maxminddb -lmaxminddb"
-  ],[
+  ], [
   libmaxminddb_CFLAGS=""
   libmaxminddb_LIBS="$ac_cv_search_MMDB_open"
         ])
-      ],[AC_MSG_ERROR("not found in `$enable_maxminddb'")])
+      ], [AC_MSG_ERROR("not found in `$enable_maxminddb'")])
     CFLAGS="$save_CFLAGS"
     LIBS="$save_LIBS"
     AC_SUBST([libmaxminddb_CFLAGS])
     AC_SUBST([libmaxminddb_LIBS])
     enable_maxminddb=yes
-    ])
+])
 
 AS_IF([test "$enable_maxminddb" = yes], [AC_DEFINE([HAVE_MAXMINDDB], [1], [Define to 1 to enable MaxMind DB.])])
 AM_CONDITIONAL([HAVE_MAXMINDDB], [test "$enable_maxminddb" = yes])
@@ -614,14 +640,16 @@ AM_CONDITIONAL([HAVE_MAXMINDDB], [test "$enable_maxminddb" = yes])
 # LMDB mapping sizes
 conf_mapsize_default=500
 AC_ARG_WITH([conf_mapsize],
-    AS_HELP_STRING([--with-conf-mapsize=NUM], [Configuration DB mapsize in MiB [default=$conf_mapsize_default]]),
-    [conf_mapsize=$withval],[conf_mapsize=$conf_mapsize_default])
+  AS_HELP_STRING([--with-conf-mapsize=NUM],
+                 [Configuration DB mapsize in MiB [default=$conf_mapsize_default]]),
+  [conf_mapsize=$withval], [conf_mapsize=$conf_mapsize_default]
+)
 
 AS_CASE([$conf_mapsize],
-    [yes],[conf_mapsize=$conf_mapsize_default],
-    [no], [AC_MSG_ERROR([conf_mapsize must be a number])],
-    [*],  [AS_IF([test $conf_mapsize != $(( $conf_mapsize + 0 ))],
-                 [AC_MSG_ERROR(conf_mapsize must be an integer number)])])
+  [yes], [conf_mapsize=$conf_mapsize_default],
+  [no], [AC_MSG_ERROR([conf_mapsize must be a number])],
+  [*], [AS_IF([test $conf_mapsize != $(( $conf_mapsize + 0 ))],
+              [AC_MSG_ERROR(conf_mapsize must be an integer number)])])
 AC_DEFINE_UNQUOTED([CONF_MAPSIZE], [$conf_mapsize], [Configuration DB mapsize.])
 AC_SUBST(conf_mapsize)
 
@@ -657,20 +685,23 @@ AS_IF([test "$enable_daemon" = "yes" -o "$enable_utilities" = "yes"], [
 ###################################
 
 # IDN support in kdig (configuration)
-AC_ARG_WITH(libidn,
-  AS_HELP_STRING([--with-libidn=auto|yes|no], [Support IDN (needs GNU libidn2) [default=auto]]),
-  [], with_libidn=yes
+AC_ARG_WITH([libidn],
+  AS_HELP_STRING([--with-libidn=auto|yes|no],
+                 [Support IDN (needs GNU libidn2) [default=auto]]),
+  [], [with_libidn=yes]
 )
 
 # HTTPS support in kdig (configuration)
-AC_ARG_WITH(libnghttp2,
-  AS_HELP_STRING([--with-libnghttp2=auto|yes|no], [Support DoH (needs libnghttp2) [default=auto]]),
-  [], with_libnghttp2=yes
+AC_ARG_WITH([libnghttp2],
+  AS_HELP_STRING([--with-libnghttp2=auto|yes|no],
+                 [Support DoH (needs libnghttp2) [default=auto]]),
+  [], [with_libnghttp2=yes]
 )
 
 # DNSSEC validation in kdig (configuration, check)
 AC_ARG_ENABLE([kdig-validation],
-  AS_HELP_STRING([--disable-kdig-validation], [Disable DNSSEC validation in kdig]),
+  AS_HELP_STRING([--disable-kdig-validation],
+                 [Disable DNSSEC validation in kdig]),
   [], [enable_kdig_validation=yes]
 )
 AS_IF([test "$enable_kdig_validation" != "yes" -o "$enable_utilities" != "yes" -o "$enable_daemon" != "yes"], [
