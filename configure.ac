@@ -256,7 +256,7 @@ PKG_CHECK_MODULES([lmdb], [lmdb >= 0.9.15], [], [
     AS_IF([test -d "$try_lmdb"], [
       lmdb_CFLAGS="-I$try_lmdb/include"
       lmdb_LIBS="-L$try_lmdb/lib"
-    ],[
+    ], [
       lmdb_CFLAGS=""
       lmdb_LIBS=""
     ])
@@ -337,19 +337,14 @@ AC_ARG_ENABLE([reuseport],
 )
 
 AS_CASE([$enable_reuseport],
-  [auto], [
-    AS_CASE([$host_os],
-      [freebsd*|linux*], [AC_CHECK_DECL([$reuseport_opt],
-                                        [enable_reuseport=yes],
-                                        [enable_reuseport=no],
-                                        [#include <sys/socket.h>
-                                        ])],
-      [*], [enable_reuseport=no]
-    )],
+  [auto], [AS_CASE([$host_os],
+             [freebsd*|linux*], [AC_CHECK_DECL([$reuseport_opt],
+                                   [enable_reuseport=yes], [enable_reuseport=no],
+                                   [#include <sys/socket.h>])],
+             [*], [enable_reuseport=no])],
   [yes], [AC_CHECK_DECL([$reuseport_opt], [],
                         [AC_MSG_ERROR([SO_REUSEPORT(_LB) not supported.])],
-                        [#include <sys/socket.h>
-                        ])],
+                        [#include <sys/socket.h>])],
   [no], [],
   [*], [AC_MSG_ERROR([invalid value of --enable-reuseport])]
 )
@@ -605,29 +600,28 @@ AS_CASE([$enable_maxminddb],
   [no], [],
   [auto], [PKG_CHECK_MODULES([libmaxminddb], [libmaxminddb], [enable_maxminddb=yes], [enable_maxminddb=no])],
   [yes], [PKG_CHECK_MODULES([libmaxminddb], [libmaxminddb])],
-  [*], [
-    save_CFLAGS="$CFLAGS"
-    save_LIBS="$LIBS"
-    AS_IF([test "$enable_maxminddb" != ""], [
-      LIBS="$LIBS -L$enable_maxminddb"
-      CFLAGS="$CFLAGS -I$enable_maxminddb/include"
-      ])
-    AC_SEARCH_LIBS([MMDB_open], [maxminddb], [
-      AS_IF([test "$enable_maxminddb" != ""], [
-        libmaxminddb_CFLAGS="-I$enable_maxminddb/include"
-        libmaxminddb_LIBS="-L$enable_maxminddb -lmaxminddb"
-  ], [
-  libmaxminddb_CFLAGS=""
-  libmaxminddb_LIBS="$ac_cv_search_MMDB_open"
+  [*], [save_CFLAGS="$CFLAGS"
+        save_LIBS="$LIBS"
+        AS_IF([test "$enable_maxminddb" != ""], [
+          LIBS="$LIBS -L$enable_maxminddb"
+          CFLAGS="$CFLAGS -I$enable_maxminddb/include"
         ])
-      ], [AC_MSG_ERROR("not found in `$enable_maxminddb'")])
-    CFLAGS="$save_CFLAGS"
-    LIBS="$save_LIBS"
-    AC_SUBST([libmaxminddb_CFLAGS])
-    AC_SUBST([libmaxminddb_LIBS])
-    enable_maxminddb=yes
-])
-
+        AC_SEARCH_LIBS([MMDB_open], [maxminddb], [
+          AS_IF([test "$enable_maxminddb" != ""], [
+            libmaxminddb_CFLAGS="-I$enable_maxminddb/include"
+            libmaxminddb_LIBS="-L$enable_maxminddb -lmaxminddb"
+          ], [
+            libmaxminddb_CFLAGS=""
+            libmaxminddb_LIBS="$ac_cv_search_MMDB_open"]
+          )],
+          [AC_MSG_ERROR("not found in `$enable_maxminddb'")
+        ])
+        CFLAGS="$save_CFLAGS"
+        LIBS="$save_LIBS"
+        AC_SUBST([libmaxminddb_CFLAGS])
+        AC_SUBST([libmaxminddb_LIBS])
+        enable_maxminddb=yes]
+)
 AS_IF([test "$enable_maxminddb" = yes], [AC_DEFINE([HAVE_MAXMINDDB], [1], [Define to 1 to enable MaxMind DB.])])
 AM_CONDITIONAL([HAVE_MAXMINDDB], [test "$enable_maxminddb" = yes])
 
@@ -643,7 +637,8 @@ AS_CASE([$conf_mapsize],
   [yes], [conf_mapsize=$conf_mapsize_default],
   [no], [AC_MSG_ERROR([conf_mapsize must be a number])],
   [*], [AS_IF([test $conf_mapsize != $(( $conf_mapsize + 0 ))],
-              [AC_MSG_ERROR(conf_mapsize must be an integer number)])])
+              [AC_MSG_ERROR(conf_mapsize must be an integer number)])]
+)
 AC_DEFINE_UNQUOTED([CONF_MAPSIZE], [$conf_mapsize], [Configuration DB mapsize.])
 AC_SUBST(conf_mapsize)
 
@@ -660,8 +655,8 @@ AS_IF([test "$enable_daemon" = "yes" -o "$enable_utilities" = "yes"], [
       AC_CHECK_LIB([edit], [el_init], [
         with_libedit=yes
         libedit_CFLAGS=
-        libedit_LIBS="-ledit $libedit_deps"
-        ], [], [$libedit_deps]
+        libedit_LIBS="-ledit $libedit_deps"],
+        [], [$libedit_deps]
       )
     ])
   ])
@@ -744,7 +739,7 @@ AC_SEARCH_LIBS([pthread_create], [pthread], [
   AS_IF([test "$ac_cv_search_pthread_create" != "none required"],
     [pthread_LIBS="$ac_cv_search_pthread_create"], [pthread_LIBS=])
   AC_SUBST([pthread_LIBS])
-],[
+], [
   AC_MSG_ERROR([pthreads not found])
 ])
 LIBS="$save_LIBS"
@@ -754,7 +749,7 @@ AC_SEARCH_LIBS([dlopen], [dl], [
   AS_IF([test "$ac_cv_search_dlopen" != "none required"],
     [dlopen_LIBS="$ac_cv_search_dlopen"], [dlopen_LIBS=])
   AC_SUBST([dlopen_LIBS])
-],[
+], [
   AC_MSG_ERROR([dlopen not found])
 ])
 LIBS="$save_LIBS"
@@ -764,7 +759,7 @@ AC_SEARCH_LIBS([pow], [m], [
   AS_IF([test "$ac_cv_search_pow" != "none required"],
     [math_LIBS="$ac_cv_search_pow"], [math_LIBS=])
   AC_SUBST([math_LIBS])
-],[
+], [
   AC_MSG_ERROR([math not found])
 ])
 LIBS="$save_LIBS"
