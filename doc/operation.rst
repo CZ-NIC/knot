@@ -1434,6 +1434,48 @@ If needed, the *"trash bin"* can be emptied at will with ``keymgr trash-discard`
    Contents of the *"trash bin*" is not part of :ref:`online backup<Online backup>`
    and restore.
 
+.. _Cleanup of removed legacy DNSSEC keys:
+
+Cleanup of removed legacy DNSSEC keys
+=====================================
+
+In Knot DNS releases prior to 3.6.0, removed DNSSEC keys weren't moved to the "trash
+bin", and with the exception of automatic rollover, they weren't deleted from the
+keystore either — as a safety measure. These legacy keys may be deleted using external
+tools, like in the following example sequence of shell commands.
+
+.. CAUTION::
+   If the keystore is shared with another application, care must be taken not to
+   delete keys used by that application or other data in the keystore. The example
+   scripts below delete every keys not used by the current Knot DNS configuration!
+   As always, make a backup first!
+
+Example for a PEM keystore::
+
+   $ KEYSTORE=/var/lib/knot/keys/keys
+   $ knotc -b zone-freeze
+   $ keymgr -l | while read zone; do keymgr "${zone}" list; done | \
+              sed 's/ .*$/.pem\$/' | sort | uniq > ~/active_keys.pattern
+   $ keymgr -- trash-list | sed 's/ .*$/.pem\$/' >> ~/active_keys.pattern # Not needed in older releases.
+   $ find $KEYSTORE -maxdepth 1 -type f | grep -v -f ~/active_keys.pattern | xargs rm
+   $ knotc -b zone-thaw
+
+Example for a PKCS #11 keystore (using the ``p11tool`` utility from
+`GnuTLS <https://www.gnutls.org/>`_ suite)::
+
+   $ MYPIN=1234
+   $ MYTOKEN="pkcs11:token=knot;pin-value=$MYPIN /usr/lib64/pkcs11/libsofthsm2.so"
+   $ knotc -b zone-freeze
+   $ keymgr -l | while read zone; do keymgr "${zone}" list; done | \
+              sed 's/ .*$//' | sort | uniq > ~/active_keys
+   $ keymgr -- trash-list | sed 's/ .*$//' >> ~/active_keys # Not needed in older releases.
+   $ sed 's/../%&/g;s/[a-z]/\U&/g;s/^/id=/;s/$/\;/' < ~/active_keys > ~/active_keys.pattern
+   $ p11tool --login --list-all-privkeys --only-urls $MYTOKEN | \
+              grep -Fv -f ~/active_keys.pattern | \
+              xargs -n 1 p11tool --login --set-pin $MYPIN --batch --delete | \
+              grep -v -e '^$' -e '^[0-9]* objects deleted$'
+   $ knotc -b zone-thaw
+
 .. _Controlling a running daemon:
 
 Daemon controls
