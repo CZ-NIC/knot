@@ -696,14 +696,14 @@ AS_IF([test "$enable_daemon" = "yes" -o "$enable_utilities" = "yes"], [
 AC_ARG_WITH([libidn],
   AS_HELP_STRING([--with-libidn=auto|yes|no],
                  [Support IDN (needs GNU libidn2) [default=auto]]),
-  [], [with_libidn=yes]
+  [], [with_libidn=auto]
 )
 
 # HTTPS support in kdig (1/2)
 AC_ARG_WITH([libnghttp2],
   AS_HELP_STRING([--with-libnghttp2=auto|yes|no],
                  [Support DoH (needs libnghttp2) [default=auto]]),
-  [], [with_libnghttp2=yes]
+  [], [with_libnghttp2=auto]
 )
 
 AS_IF([test "$enable_utilities" = "yes"], [
