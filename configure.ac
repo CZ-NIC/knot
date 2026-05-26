@@ -378,7 +378,7 @@ AS_CASE([$enable_redis],
 AM_CONDITIONAL([ENABLE_REDIS], [test "$enable_redis" != "no"])
 AM_CONDITIONAL([ENABLE_REDIS_MODULE], [test "$enable_redis" != "no" && test "$enable_redis" != "client" && test "$enable_shared" = "yes"])
 
-AS_IF([test "$enable_redis" = yes -o "$enable_redis" = client],[
+AS_IF([test "$enable_redis" = yes -o "$enable_redis" = client], [
   AC_DEFINE([ENABLE_REDIS], [1], [Enable Redis support.])
   AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <hiredis/hiredis.h>
                                     #if (HIREDIS_MAJOR < 1) || (HIREDIS_MAJOR == 1 && HIREDIS_MINOR < 1)
@@ -386,7 +386,7 @@ AS_IF([test "$enable_redis" = yes -o "$enable_redis" = client],[
                                     #endif]])],
                  [AC_DEFINE([ENABLE_REDIS_TLS], [1], [Enable Redis TLS support.])],
                  [enable_redis="yes (no TLS)"])
-  AS_IF([test "$enable_redis" = yes && test "$enable_shared" = yes],[
+  AS_IF([test "$enable_redis" = yes && test "$enable_shared" = yes], [
     enable_redis="${enable_redis} module"
   ])
 ])
@@ -522,7 +522,7 @@ AS_CASE([$memory_allocator],
 )
 AC_SUBST([malloc_LIBS])
 
-# Userspace RCU dependency (1/1)
+# Userspace RCU dependency
 PKG_CHECK_MODULES([liburcu], [liburcu], [], [
   AC_MSG_ERROR([liburcu not found])
 ])
@@ -558,21 +558,25 @@ AM_SUBST_NOTMAKE([STATIC_MODULES_INIT])
 AC_SUBST([DOC_MODULES], [$(printf "$doc_modules")])
 AM_SUBST_NOTMAKE([DOC_MODULES])
 
-# Check for Dnstap
+########################################
+# Dependencies needed mostly for modules
+########################################
+
+# Dnstap support in kdig and/or mod-dnstap
 AC_ARG_ENABLE([dnstap],
   AS_HELP_STRING([--enable-dnstap],
                  [Enable dnstap support for kdig (requires fstrm, protobuf-c)]),
   [], [enable_dnstap=no]
 )
 
-AS_IF([test "$enable_dnstap" != "no" -o "$STATIC_MODULE_dnstap" != "no" -o "$SHARED_MODULE_dnstap" != "no"],[
+AS_IF([test "$enable_dnstap" != "no" -o "$STATIC_MODULE_dnstap" != "no" -o "$SHARED_MODULE_dnstap" != "no"], [
   AC_PATH_PROG([PROTOC_C], [protoc])
-  AS_IF([test -z "$PROTOC_C"],[
+  AS_IF([test -z "$PROTOC_C"], [
     AC_PATH_PROG([PROTOC_C], [protoc-c])
   ])
 
-  AS_IF([test -z "$PROTOC_C"],[
-    AC_MSG_ERROR([Neither protoc nor protoc-c found. Install protobuf-compiler and protobuf-c-compiler])
+  AS_IF([test -z "$PROTOC_C"], [
+    AC_MSG_ERROR([neither protoc nor protoc-c found, install protobuf-compiler and protobuf-c-compiler])
   ])
   PKG_CHECK_MODULES([libfstrm], [libfstrm])
   PKG_CHECK_MODULES([libprotobuf_c], [libprotobuf-c >= 1.0.0])
@@ -588,13 +592,13 @@ AM_CONDITIONAL([HAVE_DNSTAP], test "$enable_dnstap" != "no")
 AM_CONDITIONAL([HAVE_LIBDNSTAP], test "$enable_dnstap" != "no" -o \
                                       "$STATIC_MODULE_dnstap" != "no" -o \
                                       "$SHARED_MODULE_dnstap" != "no")
-# MaxMind DB for the GeoIP module
+
+# MaxMind DB for mod-geoip
 AC_ARG_ENABLE([maxminddb],
   AS_HELP_STRING([--enable-maxminddb=auto|yes|no],
                  [enable MaxMind DB [default=auto]]),
   [], [enable_maxminddb=auto]
 )
-
 AS_IF([test "$enable_daemon" = "no"], [enable_maxminddb=no])
 AS_CASE([$enable_maxminddb],
   [no], [],
@@ -625,24 +629,25 @@ AS_CASE([$enable_maxminddb],
 AS_IF([test "$enable_maxminddb" = yes], [AC_DEFINE([HAVE_MAXMINDDB], [1], [Define to 1 to enable MaxMind DB.])])
 AM_CONDITIONAL([HAVE_MAXMINDDB], [test "$enable_maxminddb" = yes])
 
-# LMDB mapping sizes
-conf_mapsize_default=500
-AC_ARG_WITH([conf_mapsize],
-  AS_HELP_STRING([--with-conf-mapsize=NUM],
-                 [Configuration DB mapsize in MiB [default=$conf_mapsize_default]]),
-  [conf_mapsize=$withval], [conf_mapsize=$conf_mapsize_default]
-)
+###################################
+# Dependencies needed for utilities
+###################################
 
-AS_CASE([$conf_mapsize],
-  [yes], [conf_mapsize=$conf_mapsize_default],
-  [no], [AC_MSG_ERROR([conf_mapsize must be a number])],
-  [*], [AS_IF([test $conf_mapsize != $(( $conf_mapsize + 0 ))],
-              [AC_MSG_ERROR(conf_mapsize must be an integer number)])]
+# DNSSEC validation in kdig
+AC_ARG_ENABLE([kdig-validation],
+  AS_HELP_STRING([--disable-kdig-validation],
+                 [Disable DNSSEC validation in kdig]),
+  [], [enable_kdig_validation=yes]
 )
-AC_DEFINE_UNQUOTED([CONF_MAPSIZE], [$conf_mapsize], [Configuration DB mapsize.])
-AC_SUBST(conf_mapsize)
+AS_IF([test "$enable_kdig_validation" != "yes" -o "$enable_utilities" != "yes" -o "$enable_daemon" != "yes"], [
+  enable_kdig_validation=no
+])
+AS_IF([test "$enable_kdig_validation" = "yes"], [
+  AC_DEFINE([HAVE_KDIG_VALIDATION], [1], [Define to 1 to enable DNSSEC validation in kdig.])
+])
+AM_CONDITIONAL([HAVE_KDIG_VALIDATION], [test "$enable_kdig_validation" = "yes"])
 
-# libedit
+# libedit in knotc and/or knsupdate
 AS_IF([test "$enable_daemon" = "yes" -o "$enable_utilities" = "yes"], [
   PKG_CHECK_MODULES([libedit], [libedit], [with_libedit=yes], [
     with_libedit=no
@@ -669,9 +674,23 @@ AS_IF([test "$enable_daemon" = "yes" -o "$enable_utilities" = "yes"], [
   libedit_LIBS=
 ])
 
-###################################
-# Dependencies needed for utilities
-###################################
+# LMDB mapping size for confdb
+conf_mapsize_default=500
+AC_ARG_WITH([conf_mapsize],
+  AS_HELP_STRING([--with-conf-mapsize=NUM],
+                 [Configuration DB mapsize in MiB [default=$conf_mapsize_default]]),
+  [conf_mapsize=$withval], [conf_mapsize=$conf_mapsize_default]
+)
+AS_IF([test "$enable_daemon" = "yes" -o "$enable_utilities" = "yes"], [
+  AS_CASE([$conf_mapsize],
+    [yes], [conf_mapsize=$conf_mapsize_default],
+    [no], [AC_MSG_ERROR([conf_mapsize must be a number])],
+    [*], [AS_IF([test $conf_mapsize != $(( $conf_mapsize + 0 ))],
+                [AC_MSG_ERROR(conf_mapsize must be an integer number)])]
+  )
+  AC_DEFINE_UNQUOTED([CONF_MAPSIZE], [$conf_mapsize], [Configuration DB mapsize.])
+  AC_SUBST(conf_mapsize)
+])
 
 # IDN support in kdig (1/2)
 AC_ARG_WITH([libidn],
@@ -686,20 +705,6 @@ AC_ARG_WITH([libnghttp2],
                  [Support DoH (needs libnghttp2) [default=auto]]),
   [], [with_libnghttp2=yes]
 )
-
-# DNSSEC validation in kdig (1/1)
-AC_ARG_ENABLE([kdig-validation],
-  AS_HELP_STRING([--disable-kdig-validation],
-                 [Disable DNSSEC validation in kdig]),
-  [], [enable_kdig_validation=yes]
-)
-AS_IF([test "$enable_kdig_validation" != "yes" -o "$enable_utilities" != "yes" -o "$enable_daemon" != "yes"], [
-  enable_kdig_validation=no
-])
-AS_IF([test "$enable_kdig_validation" = "yes"], [
-  AC_DEFINE([HAVE_KDIG_VALIDATION], [1], [Define to 1 to enable DNSSEC validation in kdig.])
-])
-AM_CONDITIONAL([HAVE_KDIG_VALIDATION], [test "$enable_kdig_validation" = "yes"])
 
 AS_IF([test "$enable_utilities" = "yes"], [
 
@@ -727,7 +732,7 @@ AS_IF([test "$with_libnghttp2" != "no"], [
   AC_DEFINE([LIBNGHTTP2], [1], [Define to 1 to enable DoH support.])
 ])
 
-# Netlink API for kxdpgun (1/1)
+# Netlink API for kxdpgun
 AS_IF([test "$enable_xdp" != "no"], [
   PKG_CHECK_MODULES([libmnl], [libmnl], [], [AC_MSG_ERROR([libmnl not available])])
 ])
