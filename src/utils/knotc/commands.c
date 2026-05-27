@@ -141,24 +141,53 @@ static int get_conf_key(char *key, knot_ctl_data_t *data)
 	return KNOT_EOK;
 }
 
-static void format_data(cmd_args_t *args, knot_ctl_type_t data_type,
-                        knot_ctl_data_t *data, bool *empty)
+typedef enum {
+	FIRST_LINE,
+	SOME_DATA,
+	NEXT_LINE,
+	RECV_ERR,
+} print_state_t;
+
+static const char *print_prefix(print_state_t *state)
 {
-	const char *error   = (*data)[KNOT_CTL_IDX_ERROR];
+	switch (*state) {
+	case FIRST_LINE: return "";
+	case SOME_DATA: return " ";
+	case NEXT_LINE: return "\n";
+	default: return "";
+	}
+}
+
+static void print_common(cmd_args_t *args, knot_ctl_data_t *data, print_state_t *state,
+                         const char *col)
+{
+	const char *error = (*data)[KNOT_CTL_IDX_ERROR];
+	const char *zone  = (*data)[KNOT_CTL_IDX_ZONE];
+
+	const char *color = "";
+	if (col != NULL) {
+		color = (col[0] != '\0') ? col : COL_BOLD(col);
+	}
+
+	if (error != NULL) {
+		printf("%serror: (%s)", print_prefix(state), error);
+		*state = SOME_DATA;
+	}
+
+	if (zone != NULL && (error != NULL || args->all_zones || args->desc->flags & CMD_FOPT_ZONE)) {
+		printf("%s[%s%s%s]", print_prefix(state), color, zone, COL_RST(col));
+		*state = SOME_DATA;
+	}
+}
+
+static void print_data_item(knot_ctl_data_t *data, print_state_t *state)
+{
 	const char *filters = (*data)[KNOT_CTL_IDX_FILTERS];
 	const char *key0    = (*data)[KNOT_CTL_IDX_SECTION];
 	const char *key1    = (*data)[KNOT_CTL_IDX_ITEM];
 	const char *id      = (*data)[KNOT_CTL_IDX_ID];
-	const char *zone    = (*data)[KNOT_CTL_IDX_ZONE];
 	const char *owner   = (*data)[KNOT_CTL_IDX_OWNER];
 	const char *ttl     = (*data)[KNOT_CTL_IDX_TTL];
-	const char *type    = (*data)[KNOT_CTL_IDX_TYPE];
-	const char *value   = (*data)[KNOT_CTL_IDX_DATA];
-
-	bool col = false;
-	char status_col[32] = "";
-
-	static bool first_status_item = true;
 
 	const char *sign = NULL;
 	if (ctl_has_flag(filters, CTL_FILTER_DIFF_ADD_R)) {
@@ -167,192 +196,204 @@ static void format_data(cmd_args_t *args, knot_ctl_type_t data_type,
 		sign = CTL_FILTER_DIFF_REM_R;
 	}
 
-	switch (args->desc->cmd) {
-	case CTL_STATUS:
-		if (error != NULL) {
-			printf("error: (%s)%s%s", error,
-			       (type != NULL) ? " "  : "",
-			       (type != NULL) ? type : "");
-		} else if (value != NULL) {
-			printf("%s", value);
-		} else if (ctl_has_flag(filters, CTL_FILTER_STATUS_LOADING)) {
-			printf("Loading");
-		} else {
-			printf("Running");
-		}
-		*empty = false;
-		break;
-	case CTL_STOP:
-	case CTL_RELOAD:
-	case CTL_CONF_BEGIN:
-	case CTL_CONF_ABORT:
-		// Only error message is expected here.
-		if (error != NULL) {
-			printf("error: (%s)", error);
-		}
-		break;
-	case CTL_ZONE_STATUS:
-		if (error == NULL) {
-			col =  args->extended ? args->color_force : args->color;
-		}
-		if (!ctl_has_flag(filters, CTL_FILTER_STATUS_EMPTY_R)) {
-			strlcat(status_col, COL_BOLD(col), sizeof(status_col));
-		}
-		if (ctl_has_flag(filters, CTL_FILTER_STATUS_SLAVE_R)) {
-			strlcat(status_col, COL_RED(col), sizeof(status_col));
-		} else {
-			strlcat(status_col, COL_GRN(col), sizeof(status_col));
-		}
-		if (ctl_has_flag(filters, CTL_FILTER_STATUS_MEMBER_R)) {
-			strlcat(status_col, COL_UNDR(col), sizeof(status_col));
-		}
-		// FALLTHROUGH
-	case CTL_ZONE_RELOAD:
-	case CTL_ZONE_REFRESH:
-	case CTL_ZONE_RETRANSFER:
-	case CTL_ZONE_NOTIFY:
-	case CTL_ZONE_FLUSH:
-	case CTL_ZONE_BACKUP:
-	case CTL_ZONE_RESTORE:
-	case CTL_ZONE_SIGN:
-	case CTL_ZONE_VALIDATE:
-	case CTL_ZONE_KEYS_LOAD:
-	case CTL_ZONE_KEY_ROLL:
-	case CTL_ZONE_KSK_SBM:
-	case CTL_ZONE_FREEZE:
-	case CTL_ZONE_THAW:
-	case CTL_ZONE_BEGIN:
-	case CTL_ZONE_COMMIT:
-	case CTL_ZONE_ABORT:
-	case CTL_ZONE_PURGE:
-		if (data_type == KNOT_CTL_TYPE_DATA) {
-			printf("%s%s%s%s%s%s%s%s%s%s",
-			       (!(*empty)     ? "\n"          : ""),
-			       (error != NULL ? "error: "     : ""),
-			       (zone  != NULL ? "["           : ""),
-			       (zone  != NULL ? status_col    : ""),
-			       (zone  != NULL ? zone          : ""),
-			       (zone  != NULL ? COL_RST(col)  : ""),
-			       (zone  != NULL ? "]"           : ""),
-			       (error != NULL ? " ("          : ""),
-			       (error != NULL ? error         : ""),
-			       (error != NULL ? ")"           : ""));
-			*empty = false;
-		}
-		if (args->desc->cmd == CTL_ZONE_STATUS && type != NULL) {
-			if (data_type == KNOT_CTL_TYPE_DATA) {
-				first_status_item = true;
-			}
-			if (!args->extended &&
-			    (value == 0 || strcmp(value, STATUS_EMPTY) == 0) &&
-			    strcmp(type, "serial") != 0) {
-				return;
-			}
+	if (key0 != NULL) {
+		printf("%s%s%s%s%s%s%s%s",
+		       print_prefix(state),
+		       (sign != NULL ? sign : ""),
+		       (key0 != NULL ? key0 : ""),
+		       (id   != NULL ? "["  : ""),
+		       (id   != NULL ? id   : ""),
+		       (id   != NULL ? "]"  : ""),
+		       (key1 != NULL ? "."  : ""),
+		       (key1 != NULL ? key1 : ""));
+		*state = SOME_DATA;
+	}
 
-			printf("%s %s: %s%s%s",
-			       (first_status_item ? "" : " |"),
-			       type, COL_BOLD(col), value, COL_RST(col));
-			first_status_item = false;
-		}
-		break;
-	case CTL_CONF_COMMIT: // Can return a check error context.
-	case CTL_CONF_LIST:
-	case CTL_CONF_READ:
-	case CTL_CONF_DIFF:
-	case CTL_CONF_GET:
-	case CTL_CONF_SET:
-	case CTL_CONF_UNSET:
-		if (data_type == KNOT_CTL_TYPE_DATA) {
-			printf("%s%s%s%s%s%s%s%s%s%s%s%s",
-			       (!(*empty)     ? "\n"       : ""),
-			       (error != NULL ? "error: (" : ""),
-			       (error != NULL ? error      : ""),
-			       (error != NULL ? ") "       : ""),
-			       (sign  != NULL ? sign       : ""),
-			       (key0  != NULL ? key0       : ""),
-			       (id    != NULL ? "["        : ""),
-			       (id    != NULL ? id         : ""),
-			       (id    != NULL ? "]"        : ""),
-			       (key1  != NULL ? "."        : ""),
-			       (key1  != NULL ? key1       : ""),
-			       (value != NULL ? " ="       : ""));
-			*empty = false;
-		}
-		if (value != NULL) {
-			printf(" %s", value);
-		}
-		break;
-	case CTL_ZONE_READ:
-	case CTL_ZONE_DIFF:
-	case CTL_ZONE_GET:
-	case CTL_ZONE_SET:
-	case CTL_ZONE_UNSET:
-		printf("%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s",
-		       (!(*empty)     ? "\n"       : ""),
-		       (error != NULL ? "error: (" : ""),
-		       (error != NULL ? error      : ""),
-		       (error != NULL ? ") "       : ""),
-		       (zone  != NULL ? "["        : ""),
-		       (zone  != NULL ? zone       : ""),
-		       (zone  != NULL ? "] "       : ""),
-		       (sign  != NULL ? sign       : ""),
-		       (owner != NULL ? owner      : ""),
-		       (ttl   != NULL ? " "        : ""),
-		       (ttl   != NULL ? ttl        : ""),
-		       (type  != NULL ? " "        : ""),
-		       (type  != NULL ? type       : ""),
-		       (value != NULL ? " "        : ""),
-		       (value != NULL ? value      : ""));
-		*empty = false;
-		break;
-	case CTL_STATS:
-	case CTL_ZONE_STATS:
-		printf("%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s",
-		       (!(*empty)     ? "\n"       : ""),
-		       (error != NULL ? "error: (" : ""),
-		       (error != NULL ? error      : ""),
-		       (error != NULL ? ") "       : ""),
-		       (zone  != NULL ? "["        : ""),
-		       (zone  != NULL ? zone       : ""),
-		       (zone  != NULL ? "] "       : ""),
-		       (key0  != NULL ? key0       : ""),
-		       (key1  != NULL ? "."        : ""),
-		       (key1  != NULL ? key1       : ""),
-		       (id    != NULL ? "["        : ""),
-		       (id    != NULL ? id         : ""),
-		       (id    != NULL ? "]"        : ""),
-		       (value != NULL ? " = "      : ""),
-		       (value != NULL ? value      : ""));
-		*empty = false;
-		break;
-	case CTL_ZONE_SERIAL_SET:
-		if (error != NULL) {
-			printf("error: (%s)", error);
-			*empty = false;
-		} else if (value != NULL) {
-			printf("%s", value);
-			*empty = false;
-		}
-		break;
-	default:
-		assert(0);
+	if (owner != NULL) {
+		printf("%s%s%s%s%s",
+		       print_prefix(state),
+		       (sign  != NULL ? sign  : ""),
+		       (owner != NULL ? owner : ""),
+		       (ttl   != NULL ? " "   : ""),
+		       (ttl   != NULL ? ttl   : ""));
+		*state = SOME_DATA;
 	}
 }
 
-static void format_block(ctl_cmd_t cmd, bool failed, bool empty)
+static void print_stats_item(knot_ctl_data_t *data, print_state_t *state,
+                             const char *col)
+{
+	const char *key0  = (*data)[KNOT_CTL_IDX_SECTION];
+	const char *key1  = (*data)[KNOT_CTL_IDX_ITEM];
+	const char *id    = (*data)[KNOT_CTL_IDX_ID];
+	const char *value = (*data)[KNOT_CTL_IDX_DATA];
+
+	if (key0 != NULL) {
+		printf("%s%s%s%s%s%s%s",
+		       print_prefix(state),
+		       (key0 != NULL ? key0 : ""),
+		       (key1 != NULL ? "."  : ""),
+		       (key1 != NULL ? key1 : ""),
+		       (id   != NULL ? "["  : ""),
+		       (id   != NULL ? id   : ""),
+		       (id   != NULL ? "]"  : ""));
+		if (value != NULL) {
+			printf(": %s%s%s", COL_BOLD(col), value, COL_RST(col));
+		}
+		*state = SOME_DATA;
+	}
+}
+
+static void print_value(knot_ctl_data_t *data, print_state_t *state)
+{
+	const char *type  = (*data)[KNOT_CTL_IDX_TYPE];
+	const char *value = (*data)[KNOT_CTL_IDX_DATA];
+
+	if (type != NULL) {
+		printf("%s%s", print_prefix(state), type);
+		*state = SOME_DATA;
+	}
+
+	if (value != NULL) {
+		printf("%s%s", print_prefix(state), value);
+		*state = SOME_DATA;
+	}
+}
+
+static void common_status_color(knot_ctl_data_t *data, char *col, size_t col_size)
+{
+	const char *filters = (*data)[KNOT_CTL_IDX_FILTERS];
+
+	if (col == NULL) {
+		return;
+	}
+
+	if (!ctl_has_flag(filters, CTL_FILTER_STATUS_EMPTY_R)) {
+		strlcat(col, COL_BOLD(col), col_size);
+	}
+	if (ctl_has_flag(filters, CTL_FILTER_STATUS_SLAVE_R)) {
+		strlcat(col, COL_RED(col), col_size);
+	} else {
+		strlcat(col, COL_GRN(col), col_size);
+	}
+	if (ctl_has_flag(filters, CTL_FILTER_STATUS_MEMBER_R)) {
+		strlcat(col, COL_UNDR(col), col_size);
+	}
+}
+
+static void print_status(cmd_args_t *args, knot_ctl_type_t data_type,
+                         knot_ctl_data_t *data, print_state_t *state,
+                         const char *col)
+{
+	const char *error   = (*data)[KNOT_CTL_IDX_ERROR];
+	const char *value   = (*data)[KNOT_CTL_IDX_DATA];
+	const char *filters = (*data)[KNOT_CTL_IDX_FILTERS];
+
+	if (error != NULL) {
+		printf("%serror: (%s)", print_prefix(state), error);
+	} else if (value != NULL) {
+		printf("%s%s", print_prefix(state), value);
+	} else if (ctl_has_flag(filters, CTL_FILTER_STATUS_LOADING)) {
+		printf("%sLoading", print_prefix(state));
+	} else {
+		printf("%sRunning", print_prefix(state));
+	}
+	*state = SOME_DATA;
+}
+
+static void print_zone_status_value(cmd_args_t *args, knot_ctl_type_t data_type,
+                                    knot_ctl_data_t *data, print_state_t *state,
+                                    const char *col)
+{
+	const char *type  = (*data)[KNOT_CTL_IDX_TYPE];
+	const char *value = (*data)[KNOT_CTL_IDX_DATA];
+
+	if (type == NULL) {
+		return;
+	}
+
+	static bool first_status_item = true;
+	if (data_type == KNOT_CTL_TYPE_DATA) {
+		first_status_item = true;
+	}
+
+	if (!args->extended &&
+	    (value == 0 || strcmp(value, STATUS_EMPTY) == 0) &&
+	    strcmp(type, "serial") != 0) {
+		return;
+	}
+
+	printf("%s %s: %s%s%s",
+	       (first_status_item ? "" : " |"),
+	       type, COL_BOLD(col), value, COL_RST(col));
+	*state = SOME_DATA;
+
+	first_status_item = false;
+}
+
+static void format_data(cmd_args_t *args, knot_ctl_type_t data_type,
+                        knot_ctl_data_t *data, print_state_t *state)
+{
+	const char *error = (*data)[KNOT_CTL_IDX_ERROR];
+
+	if (*state == RECV_ERR) {
+		return;
+	}
+
+	char color_buffer[32] = "";
+	char *color = NULL;
+	if ((args->extended || error != NULL) ? args->color_force : args->color) {
+		color = color_buffer;
+	}
+
+	switch (args->desc->cmd) {
+	case CTL_STATUS:
+		print_status(args, data_type, data, state, color);
+		break;
+	case CTL_STATS:
+	case CTL_ZONE_STATS:
+		print_common(args, data, state, color);
+		print_stats_item(data, state, color);
+		break;
+	case CTL_ZONE_STATUS:
+		if (data_type == KNOT_CTL_TYPE_DATA) {
+			common_status_color(data, color, sizeof(color_buffer));
+		}
+	default: // FALLTHGROUGH
+		if (data_type == KNOT_CTL_TYPE_DATA) {
+			print_common(args, data, state, color);
+			print_data_item(data, state);
+		}
+		if (args->desc->cmd == CTL_ZONE_STATUS) {
+			print_zone_status_value(args, data_type, data, state, color);
+		} else {
+			print_value(data, state);
+		}
+		break;
+	}
+
+	if (error != NULL) {
+		*state = RECV_ERR;
+	} else if (*state == SOME_DATA) {
+		*state = NEXT_LINE;
+	}
+}
+
+static void format_block(ctl_cmd_t cmd, print_state_t *state)
 {
 	switch (cmd) {
 	case CTL_STOP:
-		printf("%s\n", failed ? "" : "Stopped");
+		if (*state == FIRST_LINE) {
+			printf("Stopped");
+			*state = SOME_DATA;
+		}
 		break;
 	case CTL_RELOAD:
-		printf("%s\n", failed ? "" : "Reloaded");
+		if (*state == FIRST_LINE) {
+			printf("Reloaded");
+			*state = SOME_DATA;
+		}
 		break;
-	case CTL_CONF_BEGIN:
-	case CTL_CONF_COMMIT:
-	case CTL_CONF_ABORT:
-	case CTL_CONF_SET:
-	case CTL_CONF_UNSET:
 	case CTL_ZONE_RELOAD:
 	case CTL_ZONE_REFRESH:
 	case CTL_ZONE_RETRANSFER:
@@ -376,30 +417,28 @@ static void format_block(ctl_cmd_t cmd, bool failed, bool empty)
 	case CTL_ZONE_UNSET:
 	case CTL_ZONE_PURGE:
 	case CTL_ZONE_SERIAL_SET:
-		printf("%s\n", (failed || !empty) ? "" : "OK");
-		break;
-	case CTL_STATUS:
-	case CTL_ZONE_STATUS:
-	case CTL_ZONE_READ:
-	case CTL_ZONE_DIFF:
-	case CTL_ZONE_GET:
-	case CTL_CONF_LIST:
-	case CTL_CONF_READ:
-	case CTL_CONF_DIFF:
-	case CTL_CONF_GET:
-	case CTL_ZONE_STATS:
-	case CTL_STATS:
-		printf("%s", empty ? "" : "\n");
+	case CTL_CONF_BEGIN:
+	case CTL_CONF_COMMIT:
+	case CTL_CONF_ABORT:
+	case CTL_CONF_SET:
+	case CTL_CONF_UNSET:
+		if (*state == FIRST_LINE) {
+			printf("OK");
+			*state = SOME_DATA;
+		}
 		break;
 	default:
-		assert(0);
+		break;
+	}
+
+	if (*state != FIRST_LINE) {
+		printf("\n");
 	}
 }
 
 static int ctl_receive(cmd_args_t *args)
 {
-	bool failed = false;
-	bool empty = true;
+	print_state_t state = FIRST_LINE;
 
 	while (true) {
 		knot_ctl_type_t type;
@@ -416,19 +455,15 @@ static int ctl_receive(cmd_args_t *args)
 			log_error(CTL_LOG_STR" (%s)", knot_strerror(KNOT_EMALF));
 			return KNOT_EMALF;
 		case KNOT_CTL_TYPE_BLOCK:
-			format_block(args->desc->cmd, failed, empty);
-			return failed ? KNOT_ERROR : KNOT_EOK;
+			format_block(args->desc->cmd, &state);
+			return (state == RECV_ERR) ? KNOT_ERROR : KNOT_EOK;
 		case KNOT_CTL_TYPE_DATA:
 		case KNOT_CTL_TYPE_EXTRA:
-			format_data(args, type, &data, &empty);
+			format_data(args, type, &data, &state);
 			break;
 		default:
 			assert(0);
 			return KNOT_EINVAL;
-		}
-
-		if (data[KNOT_CTL_IDX_ERROR] != NULL) {
-			failed = true;
 		}
 	}
 
@@ -477,6 +512,8 @@ static int set_stats_items(cmd_args_t *args, knot_ctl_data_t *data)
 	if (args->argc > idx && args->desc->cmd == CTL_ZONE_STATS) {
 		if (strcmp(args->argv[idx], "--") != 0) {
 			(*data)[KNOT_CTL_IDX_ZONE] = args->argv[idx];
+		} else {
+			args->all_zones = true;
 		}
 		idx++;
 	}
@@ -597,6 +634,11 @@ static int cmd_zone_key_roll_ctl(cmd_args_t *args)
 		[KNOT_CTL_IDX_TYPE] = args->argv[1],
 	};
 
+	if (strcmp(data[KNOT_CTL_IDX_ZONE], "--") == 0) {
+		data[KNOT_CTL_IDX_ZONE] = NULL;
+		args->all_zones = true;
+	}
+
 	CTL_SEND_DATA
 	CTL_SEND_BLOCK
 
@@ -615,6 +657,11 @@ static int cmd_zone_serial_ctl(cmd_args_t *args)
 		[KNOT_CTL_IDX_FLAGS] = *args->flags ? args->flags : NULL,
 		[KNOT_CTL_IDX_ZONE] = args->argv[0],
 	};
+
+	if (strcmp(data[KNOT_CTL_IDX_ZONE], "--") == 0) {
+		data[KNOT_CTL_IDX_ZONE] = NULL;
+		args->all_zones = true;
+	}
 
 	if (args->argc > 1) {
 		bool incr = args->argv[1][0] == '+';
@@ -775,7 +822,6 @@ static int cmd_zone_ctl(cmd_args_t *args)
 	// Second, process zones.
 	int ret;
 	int sentzones = 0;
-	bool twodash = false;
 	for (int i = 0; i < args->argc; i++) {
 		// Skip filters.
 		if (args->argv[i][0] == '+') {
@@ -790,11 +836,11 @@ static int cmd_zone_ctl(cmd_args_t *args)
 			CTL_SEND_DATA
 			sentzones++;
 		} else {
-			twodash = true;
+			args->all_zones = true;
 		}
 	}
 
-	if ((args->desc->flags & CMD_FREQ_ZONE) && sentzones == 0 && !twodash) {
+	if ((args->desc->flags & CMD_FREQ_ZONE) && sentzones == 0 && !args->all_zones) {
 		log_error("zone must be specified (or -- for all zones)");
 		return KNOT_EDENIED;
 	}
@@ -850,6 +896,8 @@ static int set_node_items(cmd_args_t *args, knot_ctl_data_t *data, char *rdata,
 	assert(args->argc > idx);
 	if (strcmp(args->argv[idx], "--") != 0) {
 		(*data)[KNOT_CTL_IDX_ZONE] = args->argv[idx];
+	} else {
+		args->all_zones = true;
 	}
 	idx++;
 
