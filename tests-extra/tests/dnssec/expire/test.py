@@ -15,7 +15,7 @@ t.link(zones, master, slave, ixfr=True, ddns=True)
 
 for z in zones:
     master.dnssec(z).enable = True
-    master.dnssec(z).rrsig_lifetime = 10
+    master.dnssec(z).rrsig_lifetime = 20
     master.dnssec(z).rrsig_refresh = 1
     master.dnssec(z).rrsig_pre_refresh = 1
 
@@ -34,6 +34,18 @@ for z in zones:
          set_err("ZONE NOT EXPIRED")
 slave.ctl("zone-thaw")
 master.ctl("zone-thaw")
-slave.zones_wait(zones, serials)
+serials = slave.zones_wait(zones, serials)
+
+slave.stop() # let slave dump current timerDB
+slave.start()
+slave.zones_wait(zones, serials) # wait for next re-sign and sync
+master.stop()
+slave.ctl("zone-backup +backupdir " + slave.dir + "/backup", wait=True)
+slave.stop() # bug was: after backup, there is no timerDB dump
+slave.start() # starts with obsolete expire timer
+
+resp = slave.dig(z.name, "SOA", dnssec=True)
+resp.check(rcode="NOERROR")
+resp.check_count(1, "SOA")
 
 t.end()

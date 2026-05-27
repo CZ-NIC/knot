@@ -317,7 +317,7 @@ int selective_zone_purge(conf_t *conf, zone_t *zone, purge_flag_t params)
 
 		if (member) {
 			ret = zone_timers_write(&zone->server->timerdb, zone->name,
-			                        zone->timers);
+			                        zone->timers, false);
 		} else {
 			ret = zone_timers_sweep(&zone->server->timerdb,
 			                        dname_cmp_sweep_wrap, zone->name);
@@ -752,7 +752,7 @@ void zone_timers_commit(conf_t *conf, zone_t *zone)
 	}
 
 	if (conf->cache.db_timer_db_sync == TIMER_DB_SYNC_IMMEDIATE) {
-		int ret = zone_timers_write(&zone->server->timerdb, zone->name, zone->timers);
+		int ret = zone_timers_write(&zone->server->timerdb, zone->name, zone->timers, false);
 		if (ret != KNOT_EOK) {
 			log_zone_error(zone->name, "failed to update persistent timer DB (%s)",
 			               knot_strerror(ret));

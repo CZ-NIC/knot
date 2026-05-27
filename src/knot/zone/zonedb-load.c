@@ -104,7 +104,7 @@ static int configure_catalog(conf_t *conf, zone_t *zone, server_t *server)
 			zone->timers->catalog_member = time(NULL);
 			zone->timers->flags |= TIMERS_MODIFIED;
 			ret = zone_timers_write(&zone->server->timerdb, zone->name,
-			                        zone->timers);
+			                        zone->timers, false);
 			if (ret != KNOT_EOK) {
 				log_zone_error(zone->name, "failed to initialize catalog member zone (%s)",
 				               knot_strerror(ret));
