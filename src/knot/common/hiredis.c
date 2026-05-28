@@ -321,7 +321,7 @@ redisContext *rdb_connect(conf_t *conf, bool require_master, const char *info)
 
 	conf_val_t db_listen = conf_db_param(conf, C_ZONE_DB_LISTEN);
 	while (db_listen.code == KNOT_EOK) {
-		struct sockaddr_storage addr = conf_addr(&db_listen, NULL);
+		struct sockaddr_storage addr = conf_addr(&db_listen, NULL, NULL);
 
 		rdb = (void *)conn_pool_get(global_redis_pool, &addr, &addr);
 		if (rdb != NULL && (intptr_t)rdb != CONN_POOL_FD_INVALID) {
@@ -337,7 +337,7 @@ redisContext *rdb_connect(conf_t *conf, bool require_master, const char *info)
 
 	conf_val_reset(&db_listen);
 	while (db_listen.code == KNOT_EOK) {
-		struct sockaddr_storage addr = conf_addr(&db_listen, NULL);
+		struct sockaddr_storage addr = conf_addr(&db_listen, NULL, NULL);
 
 		if (rdb_addr_to_str(&addr, addr_str, sizeof(addr_str), &port) != KNOT_EOK ||
 		    (rdb = connect_addr(conf, addr_str, port)) == NULL) {

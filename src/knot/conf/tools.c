@@ -338,7 +338,7 @@ int check_xdp_listen(
 	                              C_LISTEN);
 	size_t count = conf_val_count(&xdp);
 	while (xdp.code == KNOT_EOK && count-- > 1) {
-		struct sockaddr_storage addr = conf_addr(&xdp, NULL);
+		struct sockaddr_storage addr = conf_addr(&xdp, NULL, NULL);
 		conf_xdp_iface_t if_prev;
 		ret = conf_xdp_iface(&addr, &if_prev);
 		if (ret != KNOT_EOK) {
@@ -579,7 +579,7 @@ static void check_mtu(knotd_conf_check_args_t *args, conf_val_t *xdp_listen)
 	}
 
 	while (xdp_listen->code == KNOT_EOK) {
-		struct sockaddr_storage addr = conf_addr(xdp_listen, NULL);
+		struct sockaddr_storage addr = conf_addr(xdp_listen, NULL, NULL);
 		conf_xdp_iface_t iface;
 		int ret = conf_xdp_iface(&addr, &iface);
 		if (ret != KNOT_EOK) {
@@ -602,13 +602,15 @@ static void check_mtu(knotd_conf_check_args_t *args, conf_val_t *xdp_listen)
 #endif
 }
 
-static bool listen_hit(const struct sockaddr_storage *ss1,
-                       const struct sockaddr_storage *ss2)
+static bool listen_hit(const struct sockaddr_storage *ss1, const char *dev1,
+                       const struct sockaddr_storage *ss2, const char *dev2)
 {
 	if (sockaddr_is_any(ss1) || sockaddr_is_any(ss2)) {
 		return ss1->ss_family == ss2->ss_family &&
+		       ((dev1 == NULL || dev2 == NULL) || strcmp(dev1, dev2) == 0) &&
 		       sockaddr_port(ss1) == sockaddr_port(ss2);
 	} else {
+		assert(dev1 == NULL && dev2 == NULL);
 		return sockaddr_cmp(ss1, ss2, false) == 0;
 	}
 }
@@ -623,11 +625,13 @@ static bool listen_overlaps(
 	size_t listen_count = conf_val_count(&listen_val);
 
 	for (size_t i = 0; listen_count > 0 && i < chk_listen_count; i++) {
-		struct sockaddr_storage chk_addr = conf_addr(chk_listen, NULL);
+		const char *chk_dev = NULL;
+		struct sockaddr_storage chk_addr = conf_addr(chk_listen, NULL, &chk_dev);
 
 		for (size_t j = 0; j < listen_count; j++) {
-			struct sockaddr_storage listen_addr = conf_addr(&listen_val, NULL);
-			if (listen_hit(&chk_addr, &listen_addr)) {
+			const char *listen_dev = NULL;
+			struct sockaddr_storage listen_addr = conf_addr(&listen_val, NULL, &listen_dev);
+			if (listen_hit(&chk_addr, chk_dev, &listen_addr, listen_dev)) {
 				return true;
 			}
 			conf_val_next(&listen_val);
@@ -715,7 +719,7 @@ int check_xdp(
 
 		while (xdp_listen.code == KNOT_EOK) {
 			conf_xdp_iface_t iface;
-			struct sockaddr_storage udp_addr = conf_addr(&xdp_listen, NULL);
+			struct sockaddr_storage udp_addr = conf_addr(&xdp_listen, NULL, NULL);
 			if (conf_xdp_iface(&udp_addr, &iface) == KNOT_EOK && iface.port == quic_port) {
 				args->err_str = "QUIC has to listen on different port than UDP";
 				return KNOT_EINVAL;

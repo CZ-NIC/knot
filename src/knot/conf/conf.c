@@ -724,6 +724,7 @@ const uint8_t* conf_data(
 struct sockaddr_storage conf_addr_alt(
 	conf_val_t *val,
 	const char *sock_base_dir,
+	const char **dev,
 	bool alternative)
 {
 	assert(val != NULL && val->item != NULL);
@@ -737,7 +738,7 @@ struct sockaddr_storage conf_addr_alt(
 		bool no_port;
 		conf_val(val);
 		assert(val->data);
-		out = yp_addr(val->data, &no_port, NULL);
+		out = yp_addr(val->data, &no_port, dev);
 
 		if (out.ss_family == AF_UNIX) {
 			// val->data[0] is socket type identifier!
@@ -779,7 +780,7 @@ bool conf_addr_match(
 	}
 
 	while (match->code == KNOT_EOK) {
-		struct sockaddr_storage maddr = conf_addr(match, NULL);
+		struct sockaddr_storage maddr = conf_addr(match, NULL, NULL);
 		if (sockaddr_cmp(&maddr, addr, true) == 0) {
 			return true;
 		}
@@ -1279,7 +1280,7 @@ size_t conf_xdp_threads_txn(
 
 	conf_val_t val = conf_get_txn(conf, txn, C_XDP, C_LISTEN);
 	while (val.code == KNOT_EOK) {
-		struct sockaddr_storage addr = conf_addr(&val, NULL);
+		struct sockaddr_storage addr = conf_addr(&val, NULL, NULL);
 		conf_xdp_iface_t iface;
 		int ret = conf_xdp_iface(&addr, &iface);
 		if (ret == KNOT_EOK) {
@@ -1416,22 +1417,22 @@ conf_remote_t conf_remote_txn(
 			conf_val(&val);
 		}
 
-		struct sockaddr_storage addr = conf_addr(&val, rundir);
+		struct sockaddr_storage addr = conf_addr(&val, rundir, NULL);
 		assert(addr.ss_family <= AF_INET6);
 		addr_skipped[addr.ss_family]++;
 
 		conf_val_next(&val);
 	}
 	// Index overflow causes empty socket.
-	out.addr = conf_addr_alt(&val, rundir, out.quic || out.tls);
+	out.addr = conf_addr_alt(&val, rundir, NULL, out.quic || out.tls);
 
 	// Get outgoing address if family matches (optional).
 	uint16_t via_pos = 0;
 	val = conf_id_get_txn(conf, txn, C_RMT, C_VIA, id);
 	while (val.code == KNOT_EOK) {
-		struct sockaddr_storage via = conf_addr(&val, rundir);
+		struct sockaddr_storage via = conf_addr(&val, rundir, NULL);
 		if (via.ss_family == out.addr.ss_family) {
-			out.via = conf_addr(&val, rundir); // Use this candidate.
+			out.via = conf_addr(&val, rundir, NULL); // Use this candidate.
 			if (addr_skipped[out.addr.ss_family] <= via_pos++) {
 				break;
 			}

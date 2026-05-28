@@ -181,7 +181,8 @@ int sockaddr_set_raw(struct sockaddr_storage *ss, int family,
 	return KNOT_EOK;
 }
 
-int sockaddr_tostr(char *buf, size_t maxlen, const struct sockaddr_storage *ss)
+int sockaddr_dev_tostr(char *buf, size_t maxlen, const struct sockaddr_storage *ss,
+                       const char *dev)
 {
 	if (ss == NULL || buf == NULL) {
 		return KNOT_EINVAL;
@@ -200,10 +201,17 @@ int sockaddr_tostr(char *buf, size_t maxlen, const struct sockaddr_storage *ss)
 			}
 			strlcat(buf, "%", maxlen);
 			strlcat(buf, if_str, maxlen);
+		} else if (dev != NULL) {
+			strlcat(buf, "%", maxlen);
+			strlcat(buf, dev, maxlen);
 		}
 	} else if (ss->ss_family == AF_INET) {
 		const struct sockaddr_in *s = (const struct sockaddr_in *)ss;
 		out = knot_inet_ntop(ss->ss_family, &s->sin_addr, buf, maxlen);
+		if (dev != NULL) {
+			strlcat(buf, "%", maxlen);
+			strlcat(buf, dev, maxlen);
+		}
 	} else if (ss->ss_family == AF_UNIX) {
 		const struct sockaddr_un *s = (const struct sockaddr_un *)ss;
 		const char *path = (s->sun_path[0] != '\0' ? s->sun_path : "UNIX socket");
