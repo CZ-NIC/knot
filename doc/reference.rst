@@ -217,9 +217,9 @@ General options related to the server.
      proxy-allowlist: ADDR[/INT] | ADDR-ADDR ...
      dbus-event: none | running | zone-updated | external-verify | ksk-submission | dnssec-invalid ...
      dbus-init-delay: TIME
-     listen: ADDR[@INT] | STR ...
-     listen-quic: ADDR[@INT] ...
-     listen-tls: ADDR[@INT] ...
+     listen: ADDR[%STR][@INT] | STR ...
+     listen-quic: ADDR[%STR][@INT] ...
+     listen-tls: ADDR[%STR][@INT] ...
 
 .. CAUTION::
    When you change configuration parameters dynamically or via configuration file
@@ -710,15 +710,22 @@ Change of this parameter requires restart of the Knot server to take effect.
 listen
 ------
 
-One or more IP addresses where the server listens for incoming queries.
-Optional port specification (default is 53) can be appended to each address
-using ``@`` separator. Use ``0.0.0.0`` for all configured IPv4 addresses or
-``::`` for all configured IPv6 addresses. Filesystem path can be specified
-for listening on local unix SOCK_STREAM socket. Non-absolute path
-(i.e. not starting with ``/``) is relative to :ref:`server_rundir`.
-Non-local address binding is automatically enabled if supported by the operating system.
+One or more IP addresses on which the server listens for incoming queries.
+An optional port specification (default is 53) can be appended to each address
+using the ``@`` separator. Use the wildcard address ``0.0.0.0`` for all configured
+IPv4 addresses or ``::`` for all configured IPv6 addresses. On Linux, a wildcard
+address can be followed by ``%`` and an interface name to limit wildcard binding
+to a specific interface. A filesystem path can be specified to listen
+on a local UNIX SOCK_STREAM socket. A non-absolute path (i.e. not starting with
+``/``) is interpreted relative to :ref:`server_rundir`. Binding to non-local
+addresses is automatically enabled if supported by the operating system.
 
 Change of this parameter requires restart of the Knot server to take effect.
+
+.. NOTE::
+   Non-local address binding or wildcard address binding to a specific
+   interface might require setting ``sysctl -w net.ipv4.ip_nonlocal_bind=1``
+   and ``sysctl -w net.ipv6.ip_nonlocal_bind=1``.
 
 *Default:* not set
 
@@ -727,8 +734,8 @@ Change of this parameter requires restart of the Knot server to take effect.
 listen-quic
 -----------
 
-One or more IP addresses and optionally ports (default is 853) where the server listens
-for incoming queries over QUIC protocol.
+One or more IP addresses and optionally ports (default is 853) on which the
+server listens for incoming queries over QUIC protocol.
 
 Change of this parameter requires restart of the Knot server to take effect.
 
@@ -739,8 +746,8 @@ Change of this parameter requires restart of the Knot server to take effect.
 listen-tls
 ----------
 
-One or more IP addresses and optionally ports (default is 853) where the server listens
-for incoming queries over TLS protocol (DoT).
+One or more IP addresses and optionally ports (default is 853) on which the
+server listens for incoming queries over TLS protocol (DoT).
 
 Change of this parameter requires restart of the Knot server to take effect.
 

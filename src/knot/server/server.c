@@ -352,13 +352,15 @@ static iface_t *server_init_xdp_iface(struct sockaddr_storage *addr, bool route_
  * \param tcp_thread_count  Number of created TCP workers.
  * \param tcp_reuseport     Indication if reuseport on TCP is enabled.
  * \param socket_affinity   Indication if CBPF should be attached.
+ * \param dev               Device name (otpional).
  *
  * \retval Pointer to a new initialized interface.
  * \retval NULL if error.
  */
 static iface_t *server_init_iface(struct sockaddr_storage *addr, bool tls,
                                   int udp_thread_count, int tcp_thread_count,
-                                  bool tcp_reuseport, bool socket_affinity)
+                                  bool tcp_reuseport, bool socket_affinity,
+                                  const char *dev)
 {
 	iface_t *new_if = calloc(1, sizeof(*new_if));
 	if (new_if == NULL) {
@@ -366,6 +368,8 @@ static iface_t *server_init_iface(struct sockaddr_storage *addr, bool tls,
 		return NULL;
 	}
 	memcpy(&new_if->addr, addr, sizeof(*addr));
+
+	new_if->dev = dev;
 
 	/* Convert to string address format. */
 	char addr_str[SOCKADDR_STRLEN] = { 0 };
@@ -407,10 +411,10 @@ static iface_t *server_init_iface(struct sockaddr_storage *addr, bool tls,
 
 	/* Create bound UDP sockets. */
 	for (int i = 0; i < udp_socket_count; i++) {
-		int sock = net_bound_socket(SOCK_DGRAM, addr, udp_bind_flags, unix_mode);
+		int sock = net_bound_socket(SOCK_DGRAM, addr, udp_bind_flags, unix_mode, dev);
 		if (sock == KNOT_EADDRNOTAVAIL) {
 			udp_bind_flags |= NET_BIND_NONLOCAL;
-			sock = net_bound_socket(SOCK_DGRAM, addr, udp_bind_flags, unix_mode);
+			sock = net_bound_socket(SOCK_DGRAM, addr, udp_bind_flags, unix_mode, dev);
 			if (sock >= 0 && warn_bind) {
 				log_warning("address %s UDP bound, but required nonlocal bind", addr_str);
 				warn_bind = false;
@@ -473,10 +477,10 @@ static iface_t *server_init_iface(struct sockaddr_storage *addr, bool tls,
 
 	/* Create bound TCP sockets. */
 	for (int i = 0; i < tcp_socket_count; i++) {
-		int sock = net_bound_socket(SOCK_STREAM, addr, tcp_bind_flags, unix_mode);
+		int sock = net_bound_socket(SOCK_STREAM, addr, tcp_bind_flags, unix_mode, dev);
 		if (sock == KNOT_EADDRNOTAVAIL) {
 			tcp_bind_flags |= NET_BIND_NONLOCAL;
-			sock = net_bound_socket(SOCK_STREAM, addr, tcp_bind_flags, unix_mode);
+			sock = net_bound_socket(SOCK_STREAM, addr, tcp_bind_flags, unix_mode, dev);
 			if (sock >= 0 && warn_bind) {
 				log_warning("address %s TCP bound, but required nonlocal bind", addr_str);
 				warn_bind = false;
@@ -723,13 +727,14 @@ static int configure_sockets(conf_t *conf, server_t *s)
 	bool socket_affinity = conf->cache.srv_socket_affinity;
 	char *rundir = conf_abs_path(&rundir_val, NULL);
 	while (listen_val.code == KNOT_EOK) {
-		struct sockaddr_storage addr = conf_addr(&listen_val, rundir);
+		const char *dev = NULL;
+		struct sockaddr_storage addr = conf_addr(&listen_val, rundir, &dev);
 		char addr_str[SOCKADDR_STRLEN] = { 0 };
-		sockaddr_tostr(addr_str, sizeof(addr_str), &addr);
+		sockaddr_dev_tostr(addr_str, sizeof(addr_str), &addr, dev);
 		log_info("binding to interface %s", addr_str);
 
 		iface_t *new_if = server_init_iface(&addr, false, size_udp, size_tcp,
-		                                    tcp_reuseport, socket_affinity);
+		                                    tcp_reuseport, socket_affinity, dev);
 		if (new_if == NULL) {
 			server_deinit_iface_list(newlist, nifs);
 			free(rundir);
@@ -741,13 +746,14 @@ static int configure_sockets(conf_t *conf, server_t *s)
 		conf_val_next(&listen_val);
 	}
 	while (liquic_val.code == KNOT_EOK) {
-		struct sockaddr_storage addr = conf_addr(&liquic_val, rundir);
+		const char *dev = NULL;
+		struct sockaddr_storage addr = conf_addr(&liquic_val, rundir, &dev);
 		char addr_str[SOCKADDR_STRLEN] = { 0 };
-		sockaddr_tostr(addr_str, sizeof(addr_str), &addr);
+		sockaddr_dev_tostr(addr_str, sizeof(addr_str), &addr, dev);
 		log_info("binding to QUIC interface %s", addr_str);
 
 		iface_t *new_if = server_init_iface(&addr, true, size_udp, 0,
-		                                    false, socket_affinity);
+		                                    false, socket_affinity, dev);
 		if (new_if == NULL) {
 			server_deinit_iface_list(newlist, nifs);
 			free(rundir);
@@ -760,13 +766,14 @@ static int configure_sockets(conf_t *conf, server_t *s)
 		conf_val_next(&liquic_val);
 	}
 	while (listls_val.code == KNOT_EOK) {
-		struct sockaddr_storage addr = conf_addr(&listls_val, rundir);
+		const char *dev = NULL;
+		struct sockaddr_storage addr = conf_addr(&listls_val, rundir, &dev);
 		char addr_str[SOCKADDR_STRLEN] = { 0 };
-		sockaddr_tostr(addr_str, sizeof(addr_str), &addr);
+		sockaddr_dev_tostr(addr_str, sizeof(addr_str), &addr, dev);
 		log_info("binding to TLS interface %s", addr_str);
 
 		iface_t *new_if = server_init_iface(&addr, true, 0, size_tcp,
-		                                    tcp_reuseport, socket_affinity);
+		                                    tcp_reuseport, socket_affinity, dev);
 		if (new_if == NULL) {
 			server_deinit_iface_list(newlist, nifs);
 			free(rundir);
@@ -791,7 +798,7 @@ static int configure_sockets(conf_t *conf, server_t *s)
 	unsigned thread_id = s->handlers[IO_UDP].handler.unit->size +
 	                     s->handlers[IO_TCP].handler.unit->size;
 	while (lisxdp_val.code == KNOT_EOK) {
-		struct sockaddr_storage addr = conf_addr(&lisxdp_val, NULL);
+		struct sockaddr_storage addr = conf_addr(&lisxdp_val, NULL, NULL);
 		char addr_str[SOCKADDR_STRLEN] = { 0 };
 		sockaddr_tostr(addr_str, sizeof(addr_str), &addr);
 		log_info("binding to XDP interface %s", addr_str);
@@ -1344,6 +1351,13 @@ static int reload_conf(conf_t *new_conf)
 	return KNOT_EOK;
 }
 
+static bool addr_iface_match(struct sockaddr_storage *addr, const char *dev, iface_t *iface)
+{
+	return sockaddr_cmp(addr, &iface->addr, false) == 0 &&
+	       ((dev == NULL && iface->dev == NULL) ||
+	        (dev != NULL && iface->dev != NULL && strcmp(dev, iface->dev) == 0));
+}
+
 /*! \brief Check if parameter listen(-xdp,-quic) has been changed since knotd started. */
 static bool listen_changed(conf_t *conf, server_t *server)
 {
@@ -1366,11 +1380,12 @@ static bool listen_changed(conf_t *conf, server_t *server)
 
 	/* Find matching interfaces. */
 	while (listen_val.code == KNOT_EOK) {
-		struct sockaddr_storage addr = conf_addr(&listen_val, rundir);
+		const char *dev = NULL;
+		struct sockaddr_storage addr = conf_addr(&listen_val, rundir, &dev);
 		bool found = false;
 		for (size_t i = 0; i < server->n_ifaces; i++) {
 			iface_t *iface = &server->ifaces[i];
-			if (sockaddr_cmp(&addr, &iface->addr, false) == 0 &&
+			if (addr_iface_match(&addr, dev, iface) &&
 			    !iface->tls && iface->fd_xdp_count == 0) {
 				matches++;
 				found = true;
@@ -1383,11 +1398,12 @@ static bool listen_changed(conf_t *conf, server_t *server)
 		conf_val_next(&listen_val);
 	}
 	while (liquic_val.code == KNOT_EOK) {
-		struct sockaddr_storage addr = conf_addr(&liquic_val, rundir);
+		const char *dev = NULL;
+		struct sockaddr_storage addr = conf_addr(&liquic_val, rundir, &dev);
 		bool found = false;
 		for (size_t i = 0; i < server->n_ifaces; i++) {
 			iface_t *iface = &server->ifaces[i];
-			if (sockaddr_cmp(&addr, &iface->addr, false) == 0 &&
+			if (addr_iface_match(&addr, dev, iface) &&
 			    iface->tls && iface->fd_udp_count > 0) {
 				matches++;
 				found = true;
@@ -1400,11 +1416,12 @@ static bool listen_changed(conf_t *conf, server_t *server)
 		conf_val_next(&liquic_val);
 	}
 	while (listls_val.code == KNOT_EOK) {
-		struct sockaddr_storage addr = conf_addr(&listls_val, rundir);
+		const char *dev = NULL;
+		struct sockaddr_storage addr = conf_addr(&listls_val, rundir, &dev);
 		bool found = false;
 		for (size_t i = 0; i < server->n_ifaces; i++) {
 			iface_t *iface = &server->ifaces[i];
-			if (sockaddr_cmp(&addr, &iface->addr, false) == 0 &&
+			if (addr_iface_match(&addr, dev, iface) &&
 			    iface->tls && iface->fd_tcp_count > 0) {
 				matches++;
 				found = true;
@@ -1419,7 +1436,7 @@ static bool listen_changed(conf_t *conf, server_t *server)
 	free(rundir);
 
 	while (lisxdp_val.code == KNOT_EOK) {
-		struct sockaddr_storage addr = conf_addr(&lisxdp_val, NULL);
+		struct sockaddr_storage addr = conf_addr(&lisxdp_val, NULL, NULL);
 		bool found = false;
 		for (size_t i = 0; i < server->n_ifaces; i++) {
 			iface_t *iface = &server->ifaces[i];

@@ -65,6 +65,7 @@ typedef struct {
 	unsigned xdp_first_thread_id;
 	bool anyaddr;
 	bool tls;
+	const char *dev;
 	struct knot_xdp_socket **xdp_sockets;
 	struct sockaddr_storage addr;
 } iface_t;

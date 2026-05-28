@@ -456,7 +456,7 @@ static void set_val(yp_type_t type, knotd_conf_val_t *item, conf_val_t *val)
 		item->dname = conf_dname(val);
 		break;
 	case YP_TADDR:
-		item->addr = conf_addr(val, NULL);
+		item->addr = conf_addr(val, NULL, NULL);
 		break;
 	case YP_TNET:
 		item->addr = conf_addr_range(val, &item->addr_max,

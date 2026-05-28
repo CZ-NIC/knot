@@ -107,10 +107,17 @@ int sockaddr_set_raw(struct sockaddr_storage *ss, int family,
  * \param buf     Destination for string representation.
  * \param maxlen  Maximum number of written bytes.
  * \param ss      Socket address (can be sockaddr_t).
+ * \param dev     Device name (optional).
  *
  * \return Number of bytes written on success, error code on failure.
  */
-int sockaddr_tostr(char *buf, size_t maxlen, const struct sockaddr_storage *ss);
+int sockaddr_dev_tostr(char *buf, size_t maxlen, const struct sockaddr_storage *ss,
+                       const char *dev);
+
+inline static int sockaddr_tostr(char *buf, size_t maxlen, const struct sockaddr_storage *ss)
+{
+	return sockaddr_dev_tostr(buf, maxlen, ss, NULL);
+}
 
 /*!
  * \brief Return port number from address.
