@@ -94,6 +94,12 @@ for i in range(1, 1000):
     resp = knot.dig("d" + str(random.randint(1, dname_count)) + ".example.com", "A", source=random_client)
     resp.check(rcode="NOERROR", rdata=random_client)
 
+    # check ANY response
+    name = "d" + str(random.randint(1, dname_count)) + ".example.com."
+    resp = knot.dig(name, "ANY", source=random_client)
+    resp.check(rcode="NOERROR")
+    resp.check_record(name=name, rtype="A", rdata=random_client, section="answer")
+
     # check NODATA response when querying different type
     resp = knot.dig("d" + str(random.randint(2, dname_count)) + ".example.com", "AAAA", source=random_client)
     resp.check(rcode="NOERROR")
@@ -120,6 +126,11 @@ for i in range(1, 1000):
     random_client = "127.255." + middle + ".0"
     resp = knot.dig("d" + str(random.randint(1, dname_count)) + ".example.com", "A", source=random_client)
     resp.check(rcode="NOERROR", rdata=random_client)
+
+    name = "d" + str(random.randint(1, dname_count)) + ".example.com."
+    resp = knot.dig(name, "ANY", source=random_client)
+    resp.check(rcode="NOERROR")
+    resp.check_record(name=name, rtype="A", rdata=random_client, section="answer")
 
     resp = knot.dig("d" + str(random.randint(2, dname_count)) + ".example.com", "AAAA", source=random_client)
     resp.check(rcode="NOERROR")
