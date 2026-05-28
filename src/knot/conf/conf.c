@@ -737,7 +737,7 @@ struct sockaddr_storage conf_addr_alt(
 		bool no_port;
 		conf_val(val);
 		assert(val->data);
-		out = yp_addr(val->data, &no_port);
+		out = yp_addr(val->data, &no_port, NULL);
 
 		if (out.ss_family == AF_UNIX) {
 			// val->data[0] is socket type identifier!
@@ -807,19 +807,30 @@ struct sockaddr_storage conf_addr_range(
 		conf_val(val);
 		assert(val->data);
 		uint8_t type = *val->data;
-		out = yp_addr_noport(val->data);
+		out = yp_addr_noport(val->data, NULL);
 		// addr_type, addr, format, formatted_data (port| addr| empty).
 		const uint8_t *format = val->data + sizeof(uint8_t);
-		if (type == 4) {
+		switch (type) {
+		case 4:
 			format += IPV4_PREFIXLEN / 8;
-		} else if (type == 6) {
+			break;
+		case 5:
+			format += IPV4_PREFIXLEN / 8;
+			format += strlen((const char *)format) + 1;
+			break;
+		case 6:
 			format += IPV6_PREFIXLEN / 8;
-		} else if (type == 7) {
+			break;
+		case 7:
+		case 8:
 			format += IPV6_PREFIXLEN / 8;
 			format += strlen((const char *)format) + 1;
-		} else {
+			break;
+		default:
 			format += strlen((const char *)format) + 1;
+			break;
 		}
+
 		// See addr_range_to_bin.
 		switch (*format) {
 		case 1:
@@ -827,7 +838,7 @@ struct sockaddr_storage conf_addr_range(
 			*prefix_len = yp_int(format + sizeof(uint8_t));
 			break;
 		case 2:
-			*max_ss = yp_addr_noport(format + sizeof(uint8_t));
+			*max_ss = yp_addr_noport(format + sizeof(uint8_t), NULL);
 			*prefix_len = -1;
 			break;
 		default:

@@ -132,7 +132,7 @@ static void str_test(const char *txt, const char *val)
 	ok(memcmp(txt, t, t_len) == 0, "compare");
 }
 
-static void addr_test(const char *txt, bool port)
+static void addr_test(const char *txt, bool port, const char *dev)
 {
 	int ret;
 	uint8_t b[128];
@@ -145,7 +145,9 @@ static void addr_test(const char *txt, bool port)
 	ret = yp_item_to_bin(&i, txt, strlen(txt), b, &b_len);
 	is_int(KNOT_EOK, ret, "txt to bin");
 	bool no_port;
-	yp_addr(b, &no_port);
+	const char *check_dev = NULL;
+	yp_addr(b, &no_port, &check_dev);
+	ok((dev == NULL && check_dev == NULL) || strcmp(dev, check_dev) == 0, "device");
 	ok(no_port == port, "compare port presence");
 	ret = yp_item_to_txt(&i, b, b_len, t, &t_len, YP_SNOQUOTE);
 	is_int(KNOT_EOK, ret, "bin to txt");
@@ -370,17 +372,22 @@ int main(int argc, char *argv[])
 	str_test("Test string!", "Test string!");
 
 	/* Address tests. */
-	addr_test("192.168.123.1", true);
-	addr_test("192.168.123.1@12345", false);
-	addr_test("2001:db8::1", true);
-	addr_test("::1@12345", false);
-	addr_test("/tmp/test.sock", true);
-	addr_test("/knot-3.6.dev0+1775816156.4373fdb0d/_build/sub/tests/tmp/knot/knot.sock", true);
-	addr_test("eth1@53", true);
-	addr_test("::1%lo", true);
-	addr_test("::1%2", true);
-	addr_test("::1%lo@12345", false);
-	addr_test("::1%4@12345", false);
+	addr_test("192.168.123.1", true, NULL);
+	addr_test("192.168.123.1@12345", false, NULL);
+	addr_test("2001:db8::1", true, NULL);
+	addr_test("::1@12345", false, NULL);
+	addr_test("/tmp/test.sock", true, NULL);
+	addr_test("/knot-3.6.dev0+1775816156.4373fdb0d/_build/sub/tests/tmp/knot/knot.sock", true, NULL);
+	addr_test("eth1@53", true, NULL);
+	addr_test("::1%lo", true, NULL);
+	addr_test("::1%2", true, NULL);
+	addr_test("::1%lo@12345", false, NULL);
+	addr_test("::1%4@12345", false, NULL);
+	addr_test("::%eth1", true, "eth1");
+	addr_test("::%eth1@53", false, "eth1");
+	addr_test("0.0.0.0%eth1", true, "eth1");
+	addr_test("0.0.0.0%eth1@53", false, "eth1");
+	addr_bad_test("192.168.123.1%eth1", KNOT_EINVAL);
 	addr_bad_test("192.168.123.x", KNOT_EINVAL);
 	addr_bad_test("192.168.123.1@", KNOT_EINVAL);
 	addr_bad_test("192.168.123.1@1x", KNOT_EINVAL);

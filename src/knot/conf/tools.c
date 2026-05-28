@@ -285,7 +285,7 @@ int check_listen(
 	knotd_conf_check_args_t *args)
 {
 	bool no_port;
-	struct sockaddr_storage ss = yp_addr(args->data, &no_port);
+	struct sockaddr_storage ss = yp_addr(args->data, &no_port, NULL);
 	if (!no_port && sockaddr_port(&ss) == 0) {
 		args->err_str = "invalid port";
 		return KNOT_EINVAL;
@@ -302,7 +302,7 @@ int check_db_listen(
 	return KNOT_ENOTSUP;
 #else
 	bool no_port;
-	struct sockaddr_storage ss = yp_addr(args->data, &no_port);
+	struct sockaddr_storage ss = yp_addr(args->data, &no_port, NULL);
 
 	int port;
 	char addr_str[SOCKADDR_STRLEN - SOCKADDR_STRLEN_EXT] = "\0";
@@ -323,7 +323,7 @@ int check_xdp_listen(
 	return KNOT_ENOTSUP;
 #else
 	bool no_port;
-	struct sockaddr_storage ss = yp_addr(args->data, &no_port);
+	struct sockaddr_storage ss = yp_addr(args->data, &no_port, NULL);
 	conf_xdp_iface_t if_new;
 	int ret = conf_xdp_iface(&ss, &if_new);
 	if (ret != KNOT_EOK) {

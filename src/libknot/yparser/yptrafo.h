@@ -101,11 +101,13 @@ inline static int64_t yp_int(
  * Converts binary value to address value.
  *
  * \param[in] data Binary value to transform.
+ * \param[out] dev Device name if specified (optional).
  *
  * \return Address value.
  */
 struct sockaddr_storage yp_addr_noport(
-	const uint8_t *data
+	const uint8_t *data,
+	const char **dev
 );
 
 /*!
@@ -113,12 +115,14 @@ struct sockaddr_storage yp_addr_noport(
  *
  * \param[in] data Binary value to transform.
  * \param[out] no_port No port indicator.
+ * \param[out] dev Device name if specified (optional).
  *
  * \return Address value.
  */
 struct sockaddr_storage yp_addr(
 	const uint8_t *data,
-	bool *no_port
+	bool *no_port,
+	const char **dev
 );
 
 /*!
