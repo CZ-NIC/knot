@@ -74,7 +74,7 @@ int main(int argc, char *argv[])
 	// create TCP server
 
 	struct sockaddr_storage addr = localhost();
-	int server = net_bound_socket(SOCK_STREAM, &addr, 0, 0);
+	int server = net_bound_socket(SOCK_STREAM, &addr, 0, 0, NULL);
 	ok(server >= 0, "server: bind socket");
 
 	r = listen(server, 1);

@@ -153,7 +153,7 @@ static void unlink_unix_socket(const struct sockaddr_storage *addr)
 }
 
 int net_bound_socket(int type, const struct sockaddr_storage *addr,
-                     net_bind_flag_t flags, mode_t unix_mode)
+                     net_bind_flag_t flags, mode_t unix_mode, const char *dev)
 {
 	/* Create socket. */
 	int sock = net_unbound_socket(type, addr);
@@ -192,6 +192,19 @@ int net_bound_socket(int type, const struct sockaddr_storage *addr,
 			close(sock);
 			return ret;
 		}
+	}
+
+	/* Bind to specified interface. */
+	if (dev != NULL) {
+#if defined(__linux__)
+		if (setsockopt(sock, SOL_SOCKET, SO_BINDTODEVICE, dev, strlen(dev) + 1) != 0) {
+			ret = knot_map_errno();
+			close(sock);
+			return ret;
+		}
+#else
+		return KNOT_ENOTSUP;
+#endif
 	}
 
 	/* Allow bind to non-local address. */
@@ -269,7 +282,7 @@ int net_connected_socket(int type, const struct sockaddr_storage *dst_addr,
 	/* Bind to specific source address - if set. */
 	int sock = -1;
 	if (src_addr && src_addr->ss_family != AF_UNSPEC) {
-		sock = net_bound_socket(type, src_addr, 0, 0);
+		sock = net_bound_socket(type, src_addr, 0, 0, NULL);
 	} else {
 		sock = net_unbound_socket(type, dst_addr);
 	}

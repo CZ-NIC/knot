@@ -139,7 +139,7 @@ int main(int argc, char *argv[])
 	sockaddr_set(&server, AF_INET, "127.0.0.1", 0);
 
 	/* Bind to random port. */
-	int responder_fd = net_bound_socket(SOCK_STREAM, &server, 0, 0);
+	int responder_fd = net_bound_socket(SOCK_STREAM, &server, 0, 0, NULL);
 	assert(responder_fd >= 0);
 	socklen_t addr_len = sockaddr_len(&server);
 	int ret = getsockname(responder_fd, (struct sockaddr *)&server, &addr_len);
