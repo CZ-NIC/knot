@@ -154,6 +154,7 @@ static zone_t *create_zone_reload(conf_t *conf, const knot_dname_t *name,
 		return NULL;
 	}
 
+	zone->started = old_zone->started;
 	zone->contents = old_zone->contents;
 	zone_set_flag(zone, zone_get_flag(old_zone, ~0, false));
 
