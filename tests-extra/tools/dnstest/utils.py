@@ -4,6 +4,7 @@ import enum
 import inspect
 import os
 import re
+import sys
 import time
 
 from dnstest.context import Context
@@ -139,3 +140,7 @@ def compare_sections(section1, srv1name, section2, srv2name, name):
 
     if different:
         detail_log(SEP)
+
+def clear_line():
+    if sys.stdout.isatty():
+        print("\r\x1b[K", end='')

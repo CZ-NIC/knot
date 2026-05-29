@@ -27,14 +27,10 @@ outs_dir = None
 def nothing():
     pass
 
-def clear_line():
-    if sys.stdout.isatty():
-        print("\r\x1b[K", end='')
-
 def progress_print(cntr, lock, func = nothing, *args, **kwargs):
     if sys.stdout.isatty():
         lock.acquire()
-        clear_line()
+        dnstest.utils.clear_line()
         func(*args, **kwargs)
         print(f"(Processed tests {cntr}/{TASK_COUNT})", end='', flush=True)
         lock.release()
