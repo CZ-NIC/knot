@@ -349,6 +349,7 @@ class Test(object):
         time.sleep(seconds)
 
     def pause(self, msg=None):
+        clear_line()
         input(test_info() + ((", " + msg) if msg else ""))
 
     def rel_sleep(self, seconds):
