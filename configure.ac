@@ -134,106 +134,196 @@ AM_CONDITIONAL([HAVE_PDFLATEX], test "$PDFLATEX" != "false")
 
 link_mode=$(test "$enable_shared" = "yes" && echo "shared" || echo "static")
 
-######################
-# Generic dependencies
-######################
+###################################
+# Dependencies needed for libraries
+###################################
 
+# Fast (big) zone parser
 AC_ARG_ENABLE([fastparser],
-    AS_HELP_STRING([--disable-fastparser], [Disable use of fast zone parser]),
-    [], [AS_IF([test -d ".git"], [enable_fastparser=no], [enable_fastparser=yes])]
+  AS_HELP_STRING([--disable-fastparser],
+                 [Disable use of fast zone parser]),
+  [], [AS_IF([test -d ".git"], [enable_fastparser=no], [enable_fastparser=yes])]
 )
 AM_CONDITIONAL([FAST_PARSER], [test "$enable_fastparser" = "yes"])
 
 # GnuTLS crypto backend
 PKG_CHECK_MODULES([gnutls], [gnutls >= 3.6.12], [
-    save_CFLAGS=$CFLAGS
-    save_LIBS=$LIBS
-    CFLAGS="$CFLAGS $gnutls_CFLAGS"
-    LIBS="$LIBS $gnutls_LIBS"
+  save_CFLAGS=$CFLAGS
+  save_LIBS=$LIBS
+  CFLAGS="$CFLAGS $gnutls_CFLAGS"
+  LIBS="$LIBS $gnutls_LIBS"
 
-    AC_CHECK_FUNC([gnutls_pkcs11_copy_pubkey],
-        [AC_DEFINE([HAVE_GNUTLS_PKCS11], [1], [gnutls_pkcs11_copy_pubkey available])
-         gnutls_pkcs11=yes], [gnutls_pkcs11=no])
+  AC_CHECK_FUNC([gnutls_pkcs11_copy_pubkey],
+    [AC_DEFINE([HAVE_GNUTLS_PKCS11], [1], [gnutls_pkcs11_copy_pubkey available])
+     gnutls_pkcs11=yes], [gnutls_pkcs11=no])
 
-    AC_CHECK_FUNC([gnutls_early_cipher_get],
-        [AC_DEFINE([HAVE_GNUTLS_QUIC], [1], [gnutls_early_cipher_get available])
-         gnutls_quic=yes], [gnutls_quic=no])
+  AC_CHECK_FUNC([gnutls_early_cipher_get],
+    [AC_DEFINE([HAVE_GNUTLS_QUIC], [1], [gnutls_early_cipher_get available])
+     gnutls_quic=yes], [gnutls_quic=no])
 
-    CFLAGS=$save_CFLAGS
-    LIBS=$save_LIBS
+  CFLAGS=$save_CFLAGS
+  LIBS=$save_LIBS
 ], [
-    AS_IF([test "$enable_redis" != "module"], [AC_MSG_ERROR([GnuTLS library not found])])
+  AS_IF([test "$enable_redis" != "module"], [AC_MSG_ERROR([GnuTLS library not found])])
 ])
+
 # PKCS11 support
 AC_ARG_ENABLE([pkcs11],
-   AS_HELP_STRING([--enable-pkcs11=auto|yes|no], [Support PKCS #11 [default=auto]]),
-   [], [enable_pkcs11=auto])
+  AS_HELP_STRING([--enable-pkcs11=auto|yes|no],
+                 [Support PKCS #11 [default=auto]]),
+  [], [enable_pkcs11=auto]
+)
 
 AS_CASE([$enable_pkcs11],
-   [auto], [AS_IF([test "$gnutls_pkcs11" = "yes"], [enable_pkcs11=yes], [enable_pkcs11=no])],
-   [yes],  [AS_IF([test "$gnutls_pkcs11" = "yes"], [enable_pkcs11=yes], [
-     AC_MSG_ERROR([PKCS11 not available])])],
-   [no], [],
-   [*], [AC_MSG_ERROR([Invalid value of --enable-pkcs11.])]
+  [auto], [AS_IF([test "$gnutls_pkcs11" = "yes"], [enable_pkcs11=yes], [enable_pkcs11=no])],
+  [yes], [AS_IF([test "$gnutls_pkcs11" = "yes"], [enable_pkcs11=yes], [
+            AC_MSG_ERROR([PKCS11 not available])])],
+  [no], [],
+  [*], [AC_MSG_ERROR([invalid value of --enable-pkcs11])]
 )
 AM_CONDITIONAL([ENABLE_PKCS11], [test "$enable_pkcs11" = "yes"])
 AS_IF([test "$enable_pkcs11" != "no"], [
-  AC_DEFINE([ENABLE_PKCS11], [1], [Define to 1 to enable PKCS #11 support using GnuTLS])])
+  AC_DEFINE([ENABLE_PKCS11], [1], [Define to 1 to enable PKCS #11 support using GnuTLS.])])
 
+# QUIC support
+AC_ARG_ENABLE([quic],
+  AS_HELP_STRING([--enable-quic=auto|yes|no|embedded],
+                 [DoQ support (needs libngtcp2 >= 0.17.0, gnutls >= 3.7.3) [default=auto]]),
+  [], [enable_quic=auto]
+)
+
+AS_CASE([$enable_quic],
+  [auto], [PKG_CHECK_MODULES([libngtcp2], [libngtcp2 >= 0.17.0 libngtcp2_crypto_gnutls], [enable_quic=yes], [enable_quic=no])],
+  [yes], [PKG_CHECK_MODULES([libngtcp2], [libngtcp2 >= 0.17.0 libngtcp2_crypto_gnutls], [enable_quic=yes], [
+            AS_IF([test "$gnutls_quic" = "yes"],
+              [enable_quic=embedded
+               embedded_libngtcp2_CFLAGS="-I\$(top_srcdir)/src/contrib/libngtcp2 -I\$(top_srcdir)/src/contrib/libngtcp2/ngtcp2/lib"
+               embedded_libngtcp2_LIBS=$libelf_LIBS
+               libngtcp2_CFLAGS="-I\$(top_srcdir)/src/contrib/libngtcp2"],
+              [enable_quic=no
+               AC_MSG_WARN([gnutls >= 3.7.3 is required for QUIC])])])],
+  [embedded], [enable_quic=embedded
+               embedded_libngtcp2_CFLAGS="-I\$(top_srcdir)/src/contrib/libngtcp2 -I\$(top_srcdir)/src/contrib/libngtcp2/ngtcp2/lib"
+               embedded_libngtcp2_LIBS=$libelf_LIBS
+               libngtcp2_CFLAGS="-I\$(top_srcdir)/src/contrib/libngtcp2"],
+  [no], [],
+  [*], [AC_MSG_ERROR([invalid value of --enable-quic])]
+)
+AM_CONDITIONAL([EMBEDDED_LIBNGTCP2], [test "$enable_quic" = "embedded"])
+AM_CONDITIONAL([ENABLE_QUIC], [test "$enable_quic" != "no"])
+AC_SUBST([embedded_libngtcp2_CFLAGS])
+AC_SUBST([embedded_libngtcp2_LIBS])
+AC_SUBST([libngtcp2_CFLAGS])
+AC_SUBST([libngtcp2_LIBS])
+
+AS_IF([test "$enable_quic" != "no"], [
+  AC_DEFINE([ENABLE_QUIC], [1], [Define to 1 to enable DoQ support using libngtcp2 and GnuTLS.])]
+)
+
+# recvmmsg() and sendmmsg() support
 AC_ARG_ENABLE([recvmmsg],
-   AS_HELP_STRING([--enable-recvmmsg=auto|yes|no], [enable recvmmsg() network API [default=auto]]),
-   [], [enable_recvmmsg=auto])
+  AS_HELP_STRING([--enable-recvmmsg=auto|yes|no],
+                 [enable recvmmsg() network API [default=auto]]),
+  [], [enable_recvmmsg=auto]
+)
 
 AS_CASE([$enable_recvmmsg],
-   [auto|yes],[
-      AC_CHECK_FUNC([recvmmsg],
-                    [AC_CHECK_FUNC([sendmmsg],[enable_recvmmsg=yes],[enable_recvmmsg=no])],
-                    [enable_recvmmsg=no])],
-   [no],[],
-   [*], [AC_MSG_ERROR([Invalid value of --enable-recvmmsg.]
- )])
+  [auto|yes], [AC_CHECK_FUNC([recvmmsg],
+                 [AC_CHECK_FUNC([sendmmsg], [enable_recvmmsg=yes], [enable_recvmmsg=no])],
+                 [enable_recvmmsg=no])],
+  [no], [],
+  [*], [AC_MSG_ERROR([invalid value of --enable-recvmmsg])]
+)
 
-AS_IF([test "$enable_recvmmsg" = yes],[
-   AC_DEFINE([ENABLE_RECVMMSG], [1], [Use recvmmsg().])])
+AS_IF([test "$enable_recvmmsg" = yes], [
+  AC_DEFINE([ENABLE_RECVMMSG], [1], [Use recvmmsg().])]
+)
+
+# LMDB library
+AC_ARG_WITH([lmdb],
+  [AS_HELP_STRING([--with-lmdb=DIR],
+                  [explicit location where to find LMDB])]
+)
+
+PKG_CHECK_MODULES([lmdb], [lmdb >= 0.9.15], [], [
+  save_CPPFLAGS=$CPPFLAGS
+  save_LIBS=$LIBS
+
+  have_lmdb=no
+
+  for try_lmdb in "$with_lmdb" "" "/usr/local" "/usr/pkg"; do
+    AS_IF([test -d "$try_lmdb"], [
+      lmdb_CFLAGS="-I$try_lmdb/include"
+      lmdb_LIBS="-L$try_lmdb/lib"
+    ], [
+      lmdb_CFLAGS=""
+      lmdb_LIBS=""
+    ])
+
+    CPPFLAGS="$save_CPPFLAGS $lmdb_CFLAGS"
+    LIBS="$save_LIBS $lmdb_LIBS"
+
+    AC_SEARCH_LIBS([mdb_txn_id], [lmdb], [
+      have_lmdb=yes
+      lmdb_LIBS="$lmdb_LIBS -llmdb"
+      AC_SUBST([lmdb_CFLAGS])
+      AC_SUBST([lmdb_LIBS])
+      break
+    ])
+
+    # do not cache result of AC_SEARCH_LIBS test
+    unset ac_cv_search_mdb_txn_id
+  done
+
+  CPPFLAGS="$save_CPPFLAGS"
+  LIBS="$save_LIBS"
+
+  AS_IF([test "$have_lmdb" = "no" && test "$enable_redis" != "module"], [
+    AC_MSG_ERROR([lmdb library not found])
+  ])
+])
 
 # XDP support
 AC_ARG_ENABLE([xdp],
-   AS_HELP_STRING([--enable-xdp=auto|yes|no], [enable eXpress Data Path [default=auto]]),
-   [], [enable_xdp=auto])
+  AS_HELP_STRING([--enable-xdp=auto|yes|no],
+                 [enable eXpress Data Path [default=auto]]),
+  [], [enable_xdp=auto]
+)
 
 PKG_CHECK_MODULES([libbpf], [libbpf],
-   [save_LIBS=$LIBS
-    LIBS="$LIBS $libbpf_LIBS"
-    AC_CHECK_FUNC([bpf_object__find_map_by_offset], [libbpf1=no], [libbpf1=yes])
-    LIBS=$save_LIBS
-    have_libbpf=yes],
-   [have_libbpf=no]
+  [save_LIBS=$LIBS
+   LIBS="$LIBS $libbpf_LIBS"
+   AC_CHECK_FUNC([bpf_object__find_map_by_offset], [libbpf1=no], [libbpf1=yes])
+   LIBS=$save_LIBS
+   have_libbpf=yes],
+  [have_libbpf=no]
 )
 
 AS_CASE([$enable_xdp],
-   [auto], [AS_IF([test "$have_libbpf" = "yes"], [enable_xdp=yes], [enable_xdp=no])],
-   [yes],  [AS_IF([test "$have_libbpf" = "yes"], [enable_xdp=yes], [AC_MSG_ERROR([libbpf not available])])],
-   [no], [],
-   [*], [AC_MSG_ERROR([Invalid value of --enable-xdp.])]
+  [auto], [AS_IF([test "$have_libbpf" = "yes"], [enable_xdp=yes], [enable_xdp=no])],
+  [yes], [AS_IF([test "$have_libbpf" = "yes"], [enable_xdp=yes], [AC_MSG_ERROR([libbpf not available])])],
+  [no], [],
+  [*], [AC_MSG_ERROR([invalid value of --enable-xdp])]
 )
 AM_CONDITIONAL([ENABLE_XDP], [test "$enable_xdp" != "no"])
 
 AS_IF([test "$enable_xdp" = "yes"], [
-   PKG_CHECK_MODULES([libxdp], [libxdp], [enable_xdp=libxdp], [enable_xdp=yes])
-   AS_IF([test "$enable_xdp" = "libxdp"],
-      [AC_DEFINE([USE_LIBXDP], [1], [Use libxdp.])
-       libbpf_CFLAGS="$libbpf_CFLAGS $libxdp_CFLAGS"
-       libbpf_LIBS="$libbpf_LIBS $libxdp_LIBS"],
-      [AS_IF([test "$libbpf1" = "yes"], [AC_MSG_ERROR([libxdp not available])])]
-   )]
-)
+  PKG_CHECK_MODULES([libxdp], [libxdp], [enable_xdp=libxdp], [enable_xdp=yes])
+  AS_IF([test "$enable_xdp" = "libxdp"],
+    [AC_DEFINE([USE_LIBXDP], [1], [Use libxdp.])
+     libbpf_CFLAGS="$libbpf_CFLAGS $libxdp_CFLAGS"
+     libbpf_LIBS="$libbpf_LIBS $libxdp_LIBS"],
+    [AS_IF([test "$libbpf1" = "yes"], [AC_MSG_ERROR([libxdp not available])])]
+  )
+])
 AC_SUBST([libbpf_CFLAGS])
 AC_SUBST([libbpf_LIBS])
 
-AS_IF([test "$enable_xdp" != "no"],[
-    AC_DEFINE([ENABLE_XDP], [1], [Use eXpress Data Path.])])
+AS_IF([test "$enable_xdp" != "no"], [
+  AC_DEFINE([ENABLE_XDP], [1], [Use eXpress Data Path.])
+])
 
-# Reuseport support
+# REUSEPORT support
 AS_CASE([$host_os],
   [freebsd*], [reuseport_opt=SO_REUSEPORT_LB],
   [*], [reuseport_opt=SO_REUSEPORT],
@@ -246,59 +336,58 @@ AC_ARG_ENABLE([reuseport],
 )
 
 AS_CASE([$enable_reuseport],
-  [auto], [
-    AS_CASE([$host_os],
-      [freebsd*|linux*], [AC_CHECK_DECL([$reuseport_opt],
-                                        [enable_reuseport=yes],
-                                        [enable_reuseport=no],
-                                        [#include <sys/socket.h>
-                                        ])],
-      [*], [enable_reuseport=no]
-    )],
+  [auto], [AS_CASE([$host_os],
+             [freebsd*|linux*], [AC_CHECK_DECL([$reuseport_opt],
+                                   [enable_reuseport=yes], [enable_reuseport=no],
+                                   [#include <sys/socket.h>])],
+             [*], [enable_reuseport=no])],
   [yes], [AC_CHECK_DECL([$reuseport_opt], [],
                         [AC_MSG_ERROR([SO_REUSEPORT(_LB) not supported.])],
-                        [#include <sys/socket.h>
-                        ])],
+                        [#include <sys/socket.h>])],
   [no], [],
-  [*], [AC_MSG_ERROR([Invalid value of --enable-reuseport.])]
+  [*], [AC_MSG_ERROR([invalid value of --enable-reuseport])]
 )
 
-AS_IF([test "$enable_reuseport" = yes],[
-   AC_DEFINE([ENABLE_REUSEPORT], [1], [Use SO_REUSEPORT(_LB).])])
+AS_IF([test "$enable_reuseport" = yes], [
+  AC_DEFINE([ENABLE_REUSEPORT], [1], [Use SO_REUSEPORT(_LB).])
+])
 
 # Redis zone backend support
 AC_ARG_ENABLE([redis],
-   AS_HELP_STRING([--enable-redis=auto|yes|client|module|no], [enable Redis support [default=auto]]),
-   [], [enable_redis=auto])
+  AS_HELP_STRING([--enable-redis=auto|yes|client|module|no],
+                 [enable Redis support [default=auto]]),
+  [], [enable_redis=auto]
+)
 
 redis_dir="${libdir}/knot/redis"
 AC_ARG_WITH([redisdir],
-   AS_HELP_STRING([--with-redisdir=path], [Destination of module for Redis [default=${libdir}/knot/redis]]),
-   [redis_dir=$withval])
+  AS_HELP_STRING([--with-redisdir=path],
+                 [Destination of module for Redis [default=${libdir}/knot/redis]]),
+  [redis_dir=$withval])
 AC_SUBST(redis_dir)
 
 AS_CASE([$enable_redis],
-   [auto],   [PKG_CHECK_MODULES([hiredis], [hiredis], [enable_redis=yes], [enable_redis=no])],
-   [yes],    [PKG_CHECK_MODULES([hiredis], [hiredis], [enable_redis=yes], [AC_MSG_ERROR([libhiredis not available])])],
-   [client], [PKG_CHECK_MODULES([hiredis], [hiredis], [enable_redis=client], [AC_MSG_ERROR([libhiredis not available])])],
-   [module], [AS_IF([test "$enable_shared" = "yes"], [enable_redis=module], [AC_MSG_ERROR([link mode has to be 'shared'])])],
-   [no], [],
-   [*], [AC_MSG_ERROR([Invalid value of --enable-redis.])]
+  [auto], [PKG_CHECK_MODULES([hiredis], [hiredis], [enable_redis=yes], [enable_redis=no])],
+  [yes], [PKG_CHECK_MODULES([hiredis], [hiredis], [enable_redis=yes], [AC_MSG_ERROR([libhiredis not available])])],
+  [client], [PKG_CHECK_MODULES([hiredis], [hiredis], [enable_redis=client], [AC_MSG_ERROR([libhiredis not available])])],
+  [module], [AS_IF([test "$enable_shared" = "yes"], [enable_redis=module], [AC_MSG_ERROR([link mode has to be 'shared'])])],
+  [no], [],
+  [*], [AC_MSG_ERROR([invalid value of --enable-redis])]
 )
 AM_CONDITIONAL([ENABLE_REDIS], [test "$enable_redis" != "no"])
 AM_CONDITIONAL([ENABLE_REDIS_MODULE], [test "$enable_redis" != "no" && test "$enable_redis" != "client" && test "$enable_shared" = "yes"])
 
-AS_IF([test "$enable_redis" = yes -o "$enable_redis" = client],[
-   AC_DEFINE([ENABLE_REDIS], [1], [Enable Redis support.])
-   AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <hiredis/hiredis.h>
-                                     #if (HIREDIS_MAJOR < 1) || (HIREDIS_MAJOR == 1 && HIREDIS_MINOR < 1)
-                                     #error "No TLS support in Redis (need >= 1.1.0)"
-                                     #endif]])],
-                  [AC_DEFINE([ENABLE_REDIS_TLS], [1], [Enable Redis TLS support.])],
-                  [enable_redis="yes (no TLS)"])
-   AS_IF([test "$enable_redis" = yes && test "$enable_shared" = yes],[
-      enable_redis="${enable_redis} module"
-   ])
+AS_IF([test "$enable_redis" = yes -o "$enable_redis" = client], [
+  AC_DEFINE([ENABLE_REDIS], [1], [Enable Redis support.])
+  AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <hiredis/hiredis.h>
+                                    #if (HIREDIS_MAJOR < 1) || (HIREDIS_MAJOR == 1 && HIREDIS_MINOR < 1)
+                                    #error "No TLS support in Redis (need >= 1.1.0)"
+                                    #endif]])],
+                 [AC_DEFINE([ENABLE_REDIS_TLS], [1], [Enable Redis TLS support.])],
+                 [enable_redis="yes (no TLS)"])
+  AS_IF([test "$enable_redis" = yes && test "$enable_shared" = yes], [
+    enable_redis="${enable_redis} module"
+  ])
 ])
 
 #########################################
@@ -498,46 +587,6 @@ AS_CASE([$enable_maxminddb],
 AS_IF([test "$enable_maxminddb" = yes], [AC_DEFINE([HAVE_MAXMINDDB], [1], [Define to 1 to enable MaxMind DB.])])
 AM_CONDITIONAL([HAVE_MAXMINDDB], [test "$enable_maxminddb" = yes])
 
-AC_ARG_WITH([lmdb],
-  [AS_HELP_STRING([--with-lmdb=DIR], [explicit location where to find LMDB])]
-)
-PKG_CHECK_MODULES([lmdb], [lmdb >= 0.9.15], [], [
-  save_CPPFLAGS=$CPPFLAGS
-  save_LIBS=$LIBS
-
-  have_lmdb=no
-
-  for try_lmdb in "$with_lmdb" "" "/usr/local" "/usr/pkg"; do
-    AS_IF([test -d "$try_lmdb"], [
-      lmdb_CFLAGS="-I$try_lmdb/include"
-      lmdb_LIBS="-L$try_lmdb/lib"
-    ],[
-      lmdb_CFLAGS=""
-      lmdb_LIBS=""
-    ])
-
-    CPPFLAGS="$save_CPPFLAGS $lmdb_CFLAGS"
-    LIBS="$save_LIBS $lmdb_LIBS"
-
-    AC_SEARCH_LIBS([mdb_txn_id], [lmdb], [
-      have_lmdb=yes
-      lmdb_LIBS="$lmdb_LIBS -llmdb"
-      AC_SUBST([lmdb_CFLAGS])
-      AC_SUBST([lmdb_LIBS])
-      break
-    ])
-
-    # do not cache result of AC_SEARCH_LIBS test
-    unset ac_cv_search_mdb_txn_id
-  done
-
-  CPPFLAGS="$save_CPPFLAGS"
-  LIBS="$save_LIBS"
-
-  AS_IF([test "$have_lmdb" = "no" && test "$enable_redis" != "module"], [
-    AC_MSG_ERROR([lmdb library not found])
-  ])
-])
 
 # LMDB mapping sizes
 conf_mapsize_default=500
@@ -579,38 +628,6 @@ AS_IF([test "$enable_daemon" = "yes" -o "$enable_utilities" = "yes"], [
   libedit_CFLAGS=
   libedit_LIBS=
 ])
-
-# QUIC support
-AC_ARG_ENABLE([quic],
-   AS_HELP_STRING([--enable-quic=auto|yes|no|embedded], [Support DoQ (needs libngtcp2 >= 0.17.0, gnutls >= 3.7.3) [default=auto]]),
-   [], [enable_quic=auto])
-
-AS_CASE([$enable_quic],
-   [auto], [PKG_CHECK_MODULES([libngtcp2], [libngtcp2 >= 0.17.0 libngtcp2_crypto_gnutls], [enable_quic=yes], [enable_quic=no])],
-   [yes],  [PKG_CHECK_MODULES([libngtcp2], [libngtcp2 >= 0.17.0 libngtcp2_crypto_gnutls], [enable_quic=yes],
-             AS_IF([test "$gnutls_quic" = "yes"],
-                [enable_quic=embedded
-                 embedded_libngtcp2_CFLAGS="-I\$(top_srcdir)/src/contrib/libngtcp2 -I\$(top_srcdir)/src/contrib/libngtcp2/ngtcp2/lib"
-                 embedded_libngtcp2_LIBS=$libelf_LIBS
-                 libngtcp2_CFLAGS="-I\$(top_srcdir)/src/contrib/libngtcp2"],
-                [enable_quic=no
-                 AC_MSG_WARN([gnutls >= 3.7.3 is required for QUIC])]))],
-   [embedded], [enable_quic=embedded
-                embedded_libngtcp2_CFLAGS="-I\$(top_srcdir)/src/contrib/libngtcp2 -I\$(top_srcdir)/src/contrib/libngtcp2/ngtcp2/lib"
-                embedded_libngtcp2_LIBS=$libelf_LIBS
-                libngtcp2_CFLAGS="-I\$(top_srcdir)/src/contrib/libngtcp2"],
-   [no], [],
-   [*], [AC_MSG_ERROR([Invalid value of --enable-quic.])]
-)
-AM_CONDITIONAL([EMBEDDED_LIBNGTCP2], [test "$enable_quic" = "embedded"])
-AM_CONDITIONAL([ENABLE_QUIC], [test "$enable_quic" != "no"])
-AC_SUBST([embedded_libngtcp2_CFLAGS])
-AC_SUBST([embedded_libngtcp2_LIBS])
-AC_SUBST([libngtcp2_CFLAGS])
-AC_SUBST([libngtcp2_LIBS])
-
-AS_IF([test "$enable_quic" != "no"], [
-  AC_DEFINE([ENABLE_QUIC], [1], [Define to 1 to enable DoQ support using libngtcp2 and GnuTLS])])
 
 ############################################
 # Dependencies needed for Knot DNS utilities
