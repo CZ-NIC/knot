@@ -557,19 +557,25 @@ AM_SUBST_NOTMAKE([STATIC_MODULES_INIT])
 AC_SUBST([DOC_MODULES], [$(printf "$doc_modules")])
 AM_SUBST_NOTMAKE([DOC_MODULES])
 
-# Check for Dnstap
-AC_ARG_ENABLE([dnstap],
-  AS_HELP_STRING([--enable-dnstap], [Enable dnstap support for kdig (requires fstrm, protobuf-c)]),
-  [], [enable_dnstap=no])
+########################################
+# Dependencies needed mostly for modules
+########################################
 
-AS_IF([test "$enable_dnstap" != "no" -o "$STATIC_MODULE_dnstap" != "no" -o "$SHARED_MODULE_dnstap" != "no"],[
+# Dnstap support in kdig and/or mod-dnstap
+AC_ARG_ENABLE([dnstap],
+  AS_HELP_STRING([--enable-dnstap],
+                 [Enable dnstap support for kdig (requires fstrm, protobuf-c)]),
+  [], [enable_dnstap=no]
+)
+
+AS_IF([test "$enable_dnstap" != "no" -o "$STATIC_MODULE_dnstap" != "no" -o "$SHARED_MODULE_dnstap" != "no"], [
   AC_PATH_PROG([PROTOC_C], [protoc])
-  AS_IF([test -z "$PROTOC_C"],[
+  AS_IF([test -z "$PROTOC_C"], [
     AC_PATH_PROG([PROTOC_C], [protoc-c])
   ])
 
-  AS_IF([test -z "$PROTOC_C"],[
-    AC_MSG_ERROR([Neither protoc nor protoc-c found. Install protobuf-compiler and protobuf-c-compiler])
+  AS_IF([test -z "$PROTOC_C"], [
+    AC_MSG_ERROR([neither protoc nor protoc-c found, install protobuf-compiler and protobuf-c-compiler])
   ])
   PKG_CHECK_MODULES([libfstrm], [libfstrm])
   PKG_CHECK_MODULES([libprotobuf_c], [libprotobuf-c >= 1.0.0])
@@ -578,46 +584,47 @@ AS_IF([test "$enable_dnstap" != "no" -o "$STATIC_MODULE_dnstap" != "no" -o "$SHA
 ])
 
 AS_IF([test "$enable_dnstap" != "no"],[
-  AC_DEFINE([USE_DNSTAP], [1], [Define to 1 to enable dnstap support for kdig])
+  AC_DEFINE([USE_DNSTAP], [1], [Define to 1 to enable dnstap support for kdig.])
 ])
 AM_CONDITIONAL([HAVE_DNSTAP], test "$enable_dnstap" != "no")
 
 AM_CONDITIONAL([HAVE_LIBDNSTAP], test "$enable_dnstap" != "no" -o \
                                       "$STATIC_MODULE_dnstap" != "no" -o \
                                       "$SHARED_MODULE_dnstap" != "no")
-# MaxMind DB for the GeoIP module
+
+# MaxMind DB for mod-geoip
 AC_ARG_ENABLE([maxminddb],
-    AS_HELP_STRING([--enable-maxminddb=auto|yes|no], [enable MaxMind DB [default=auto]]),
-    [enable_maxminddb="$enableval"], [enable_maxminddb=auto])
-
-AS_IF([test "$enable_daemon" = "no"],[enable_maxminddb=no])
+  AS_HELP_STRING([--enable-maxminddb=auto|yes|no],
+                 [enable MaxMind DB [default=auto]]),
+  [], [enable_maxminddb=auto]
+)
+AS_IF([test "$enable_daemon" = "no"], [enable_maxminddb=no])
 AS_CASE([$enable_maxminddb],
-  [no],[],
-  [auto],[PKG_CHECK_MODULES([libmaxminddb], [libmaxminddb], [enable_maxminddb=yes], [enable_maxminddb=no])],
+  [no], [],
+  [auto], [PKG_CHECK_MODULES([libmaxminddb], [libmaxminddb], [enable_maxminddb=yes], [enable_maxminddb=no])],
   [yes], [PKG_CHECK_MODULES([libmaxminddb], [libmaxminddb])],
-  [*],[
-    save_CFLAGS="$CFLAGS"
-    save_LIBS="$LIBS"
-    AS_IF([test "$enable_maxminddb" != ""],[
-      LIBS="$LIBS -L$enable_maxminddb"
-      CFLAGS="$CFLAGS -I$enable_maxminddb/include"
-      ])
-    AC_SEARCH_LIBS([MMDB_open], [maxminddb], [
-      AS_IF([test "$enable_maxminddb" != ""], [
-        libmaxminddb_CFLAGS="-I$enable_maxminddb/include"
-        libmaxminddb_LIBS="-L$enable_maxminddb -lmaxminddb"
-  ],[
-  libmaxminddb_CFLAGS=""
-  libmaxminddb_LIBS="$ac_cv_search_MMDB_open"
+  [*], [save_CFLAGS="$CFLAGS"
+        save_LIBS="$LIBS"
+        AS_IF([test "$enable_maxminddb" != ""], [
+          LIBS="$LIBS -L$enable_maxminddb"
+          CFLAGS="$CFLAGS -I$enable_maxminddb/include"
         ])
-      ],[AC_MSG_ERROR("not found in `$enable_maxminddb'")])
-    CFLAGS="$save_CFLAGS"
-    LIBS="$save_LIBS"
-    AC_SUBST([libmaxminddb_CFLAGS])
-    AC_SUBST([libmaxminddb_LIBS])
-    enable_maxminddb=yes
-    ])
-
+        AC_SEARCH_LIBS([MMDB_open], [maxminddb], [
+          AS_IF([test "$enable_maxminddb" != ""], [
+            libmaxminddb_CFLAGS="-I$enable_maxminddb/include"
+            libmaxminddb_LIBS="-L$enable_maxminddb -lmaxminddb"
+          ], [
+            libmaxminddb_CFLAGS=""
+            libmaxminddb_LIBS="$ac_cv_search_MMDB_open"]
+          )],
+          [AC_MSG_ERROR("not found in `$enable_maxminddb'")
+        ])
+        CFLAGS="$save_CFLAGS"
+        LIBS="$save_LIBS"
+        AC_SUBST([libmaxminddb_CFLAGS])
+        AC_SUBST([libmaxminddb_LIBS])
+        enable_maxminddb=yes]
+)
 AS_IF([test "$enable_maxminddb" = yes], [AC_DEFINE([HAVE_MAXMINDDB], [1], [Define to 1 to enable MaxMind DB.])])
 AM_CONDITIONAL([HAVE_MAXMINDDB], [test "$enable_maxminddb" = yes])
 
