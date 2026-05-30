@@ -24,7 +24,8 @@ AC_SUBST([KNOT_VERSION_MINOR], knot_VERSION_MINOR)
 AC_SUBST([KNOT_VERSION_PATCH], knot_VERSION_PATCH)
 
 AC_CONFIG_FILES([src/libknot/version.h
-                 src/libzscanner/version.h])
+                 src/libzscanner/version.h]
+)
 
 # Automatically update release date based on NEWS
 AC_PROG_SED
@@ -44,8 +45,9 @@ AC_SUBST([LDFLAG_EXCLUDE_LIBS], $ldflag_exclude_libs)
 
 # Get processor byte ordering
 AC_C_BIGENDIAN([endianity=big-endian], [endianity=little-endian])
-AS_IF([test "$endianity" = "little-endian"],[
-    AC_DEFINE([ENDIANITY_LITTLE], [1], [System is little-endian.])])
+AS_IF([test "$endianity" = "little-endian"], [
+  AC_DEFINE([ENDIANITY_LITTLE], [1], [System is little-endian.])
+])
 
 # Check if an archiver is available
 m4_ifdef([AM_PROG_AR], [AM_PROG_AR])
@@ -66,8 +68,8 @@ PKG_PROG_PKG_CONFIG
 m4_ifdef([PKG_INSTALLDIR], [PKG_INSTALLDIR], [AC_SUBST([pkgconfigdir], ['${libdir}/pkgconfig'])])
 AC_CONFIG_FILES([src/knotd.pc
                  src/libknot.pc
-                 src/libzscanner.pc
-                 ])
+                 src/libzscanner.pc]
+)
 
 # Default directories
 knot_prefix=$ac_default_prefix
@@ -75,49 +77,69 @@ AS_IF([test "$prefix" != NONE], [knot_prefix=$prefix])
 
 run_dir="${localstatedir}/run/knot"
 AC_ARG_WITH([rundir],
-        AS_HELP_STRING([--with-rundir=path], [Path to run-time variable data (pid, sockets...). [default=LOCALSTATEDIR/run/knot]]),
-        [run_dir=$withval])
+  AS_HELP_STRING([--with-rundir=path],
+                 [Path to run-time variable data (pid, sockets) [default=LOCALSTATEDIR/run/knot]]),
+  [run_dir=$withval]
+)
 AC_SUBST(run_dir)
 
 storage_dir="${localstatedir}/lib/knot"
 AC_ARG_WITH([storage],
-        AS_HELP_STRING([--with-storage=path], [Default storage directory (slave zones, persistent data). [default=LOCALSTATEDIR/lib/knot]]),
-        [storage_dir=$withval])
+  AS_HELP_STRING([--with-storage=path],
+                 [Default storage directory (zone and persistent data) [default=LOCALSTATEDIR/lib/knot]]),
+  [storage_dir=$withval]
+)
 AC_SUBST(storage_dir)
 
 config_dir="${sysconfdir}/knot"
 AC_ARG_WITH([configdir],
-        AS_HELP_STRING([--with-configdir=path], [Default directory for configuration. [default=SYSCONFDIR/knot]]),
-        [config_dir=$withval])
+  AS_HELP_STRING([--with-configdir=path],
+                 [Default directory for configuration [default=SYSCONFDIR/knot]]),
+  [config_dir=$withval]
+)
 AC_SUBST(config_dir)
 
 module_dir=
 module_instdir="${libdir}/knot/modules-${KNOT_VERSION_MAJOR}.${KNOT_VERSION_MINOR}"
 AC_ARG_WITH([moduledir],
-        AS_HELP_STRING([--with-moduledir=path], [Path to auto-loaded dynamic modules. [default not set]]),
-        [module_dir=$withval module_instdir=$module_dir])
+  AS_HELP_STRING([--with-moduledir=path],
+                 [Path to auto-loaded dynamic modules [default not set]]),
+  [module_dir=$withval module_instdir=$module_dir]
+)
 AC_SUBST(module_instdir)
 AC_SUBST(module_dir)
 
 # Build Knot DNS daemon
 AC_ARG_ENABLE([daemon],
-    AS_HELP_STRING([--disable-daemon], [Don't build Knot DNS main daemon]), [], [enable_daemon=yes])
+  AS_HELP_STRING([--disable-daemon],
+                 [Don't build Knot DNS daemon]),
+  [], [enable_daemon=yes]
+)
 AM_CONDITIONAL([HAVE_DAEMON], [test "$enable_daemon" = "yes"])
 
 # Build Knot DNS modules
 AC_ARG_ENABLE([modules],
-    AS_HELP_STRING([--disable-modules], [Don't build Knot DNS modules]), [], [enable_modules=yes])
+  AS_HELP_STRING([--disable-modules],
+                 [Don't build Knot DNS modules]),
+  [], [enable_modules=yes]
+)
 
 # Build Knot DNS utilities
 AC_ARG_ENABLE([utilities],
-    AS_HELP_STRING([--disable-utilities], [Don't build Knot DNS utilities]), [], [enable_utilities=yes])
+  AS_HELP_STRING([--disable-utilities],
+                 [Don't build Knot DNS utilities]),
+  [], [enable_utilities=yes]
+)
 AM_CONDITIONAL([HAVE_UTILS], [test "$enable_utilities" = "yes"])
 AM_CONDITIONAL([HAVE_LIBUTILS], test "$enable_utilities" != "no" -o \
                                      "$enable_daemon" != "no")
 
 # Build Knot DNS documentation
 AC_ARG_ENABLE([documentation],
-    AS_HELP_STRING([--disable-documentation], [Don't build Knot DNS documentation]), [], [enable_documentation=yes])
+  AS_HELP_STRING([--disable-documentation],
+                 [Don't build Knot DNS documentation]),
+  [], [enable_documentation=yes]
+)
 AS_IF([test "$enable_documentation" != "no"], [
   AC_PATH_PROG([SPHINXBUILD], [sphinx-build], [false])
   AS_IF([test "$SPHINXBUILD" != "false"], [
@@ -743,7 +765,7 @@ AC_SEARCH_LIBS([pthread_create], [pthread], [
   AS_IF([test "$ac_cv_search_pthread_create" != "none required"],
     [pthread_LIBS="$ac_cv_search_pthread_create"], [pthread_LIBS=])
   AC_SUBST([pthread_LIBS])
-],[
+], [
   AC_MSG_ERROR([pthreads not found])
 ])
 LIBS="$save_LIBS"
@@ -753,7 +775,7 @@ AC_SEARCH_LIBS([dlopen], [dl], [
   AS_IF([test "$ac_cv_search_dlopen" != "none required"],
     [dlopen_LIBS="$ac_cv_search_dlopen"], [dlopen_LIBS=])
   AC_SUBST([dlopen_LIBS])
-],[
+], [
   AC_MSG_ERROR([dlopen not found])
 ])
 LIBS="$save_LIBS"
@@ -763,7 +785,7 @@ AC_SEARCH_LIBS([pow], [m], [
   AS_IF([test "$ac_cv_search_pow" != "none required"],
     [math_LIBS="$ac_cv_search_pow"], [math_LIBS=])
   AC_SUBST([math_LIBS])
-],[
+], [
   AC_MSG_ERROR([math not found])
 ])
 LIBS="$save_LIBS"
@@ -796,7 +818,8 @@ AM_CONDITIONAL([USE_GNUTLS_MEMSET], [test "$explicit_bzero" = "no" -a "$explicit
 
 # Check for mandatory library functions.
 AC_CHECK_FUNC([vasprintf], [], [
-  AC_MSG_ERROR([vasprintf support in the libc is required])])
+  AC_MSG_ERROR([vasprintf support in the libc is required])
+])
 
 # Check for cpu_set_t/cpuset_t compatibility
 AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <pthread.h>]], [[cpu_set_t set; CPU_ZERO(&set);]])],
@@ -890,7 +913,7 @@ result_msg_base="
 
 result_msg_esc=$(echo -n "    Configure:$filtered_config_params\n$result_msg_base" | sed '$!s/$/\\n/' | tr -d '\n')
 
-AC_DEFINE_UNQUOTED([CONFIGURE_SUMMARY],["$result_msg_esc"],[Configure summary])
+AC_DEFINE_UNQUOTED([CONFIGURE_SUMMARY], ["$result_msg_esc"], [Configure summary])
 
 AC_CONFIG_FILES([Makefile
                  Doxyfile
@@ -911,13 +934,14 @@ AC_CONFIG_FILES([Makefile
                  src/Makefile
                  src/redis/Makefile
                  src/libknot/xdp/Makefile
-                 src/knot/modules/static_modules.h
-                 ])
+                 src/knot/modules/static_modules.h]
+)
 
 AC_CONFIG_FILES([doc/modules.rst],
                 [cp doc/modules.rst "${srcdir}"/doc/modules.rst 2>/dev/null
                  abs_srcdir=$(cd "${srcdir}" && pwd)
-                 ln -s -f "${abs_srcdir}"/src/knot/modules "${srcdir}"/doc 2>/dev/null])
+                 ln -s -f "${abs_srcdir}"/src/knot/modules "${srcdir}"/doc 2>/dev/null]
+)
 
 AC_OUTPUT
 AC_MSG_RESULT([
