@@ -628,22 +628,25 @@ AS_CASE([$enable_maxminddb],
 AS_IF([test "$enable_maxminddb" = yes], [AC_DEFINE([HAVE_MAXMINDDB], [1], [Define to 1 to enable MaxMind DB.])])
 AM_CONDITIONAL([HAVE_MAXMINDDB], [test "$enable_maxminddb" = yes])
 
+###################################
+# Dependencies needed for utilities
+###################################
 
-# LMDB mapping sizes
-conf_mapsize_default=500
-AC_ARG_WITH([conf_mapsize],
-    AS_HELP_STRING([--with-conf-mapsize=NUM], [Configuration DB mapsize in MiB [default=$conf_mapsize_default]]),
-    [conf_mapsize=$withval],[conf_mapsize=$conf_mapsize_default])
+# DNSSEC validation in kdig
+AC_ARG_ENABLE([kdig-validation],
+  AS_HELP_STRING([--disable-kdig-validation],
+                 [Disable DNSSEC validation in kdig]),
+  [], [enable_kdig_validation=yes]
+)
+AS_IF([test "$enable_kdig_validation" != "yes" -o "$enable_utilities" != "yes" -o "$enable_daemon" != "yes"], [
+  enable_kdig_validation=no
+])
+AS_IF([test "$enable_kdig_validation" = "yes"], [
+  AC_DEFINE([HAVE_KDIG_VALIDATION], [1], [Define to 1 to enable DNSSEC validation in kdig.])
+])
+AM_CONDITIONAL([HAVE_KDIG_VALIDATION], [test "$enable_kdig_validation" = "yes"])
 
-AS_CASE([$conf_mapsize],
-    [yes],[conf_mapsize=$conf_mapsize_default],
-    [no], [AC_MSG_ERROR([conf_mapsize must be a number])],
-    [*],  [AS_IF([test $conf_mapsize != $(( $conf_mapsize + 0 ))],
-                 [AC_MSG_ERROR(conf_mapsize must be an integer number)])])
-AC_DEFINE_UNQUOTED([CONF_MAPSIZE], [$conf_mapsize], [Configuration DB mapsize.])
-AC_SUBST(conf_mapsize)
-
-# libedit
+# libedit in knotc and/or knsupdate
 AS_IF([test "$enable_daemon" = "yes" -o "$enable_utilities" = "yes"], [
   PKG_CHECK_MODULES([libedit], [libedit], [with_libedit=yes], [
     with_libedit=no
@@ -656,8 +659,8 @@ AS_IF([test "$enable_daemon" = "yes" -o "$enable_utilities" = "yes"], [
       AC_CHECK_LIB([edit], [el_init], [
         with_libedit=yes
         libedit_CFLAGS=
-        libedit_LIBS="-ledit $libedit_deps"
-        ], [], [$libedit_deps]
+        libedit_LIBS="-ledit $libedit_deps"],
+        [], [$libedit_deps]
       )
     ])
   ])
@@ -670,63 +673,70 @@ AS_IF([test "$enable_daemon" = "yes" -o "$enable_utilities" = "yes"], [
   libedit_LIBS=
 ])
 
-############################################
-# Dependencies needed for Knot DNS utilities
-############################################
+# LMDB mapping size for confdb
+conf_mapsize_default=500
+AC_ARG_WITH([conf_mapsize],
+  AS_HELP_STRING([--with-conf-mapsize=NUM],
+                 [Configuration DB mapsize in MiB [default=$conf_mapsize_default]]),
+  [conf_mapsize=$withval], [conf_mapsize=$conf_mapsize_default]
+)
+AS_IF([test "$enable_daemon" = "yes" -o "$enable_utilities" = "yes"], [
+  AS_CASE([$conf_mapsize],
+    [yes], [conf_mapsize=$conf_mapsize_default],
+    [no], [AC_MSG_ERROR([conf_mapsize must be a number])],
+    [*], [AS_IF([test $conf_mapsize != $(( $conf_mapsize + 0 ))],
+                [AC_MSG_ERROR(conf_mapsize must be an integer number)])]
+  )
+  AC_DEFINE_UNQUOTED([CONF_MAPSIZE], [$conf_mapsize], [Configuration DB mapsize.])
+  AC_SUBST(conf_mapsize)
+])
 
-dnl Check for libidn2.
-AC_ARG_WITH(libidn,
-  AS_HELP_STRING([--with-libidn=[DIR]], [Support IDN (needs GNU libidn2)]),
-  with_libidn=$withval,
-  with_libidn=yes
+# IDN support in kdig (1/2)
+AC_ARG_WITH([libidn],
+  AS_HELP_STRING([--with-libidn=auto|yes|no],
+                 [Support IDN (needs GNU libidn2) [default=auto]]),
+  [], [with_libidn=auto]
 )
 
-dnl Check for libnghttp2.
-AC_ARG_WITH(libnghttp2,
-  AS_HELP_STRING([--with-libnghttp2=[DIR]], [Support DoH (needs libnghttp2)]),
-  with_libnghttp2=$withval,
-  with_libnghttp2=yes
+# HTTPS support in kdig (1/2)
+AC_ARG_WITH([libnghttp2],
+  AS_HELP_STRING([--with-libnghttp2=auto|yes|no],
+                 [Support DoH (needs libnghttp2) [default=auto]]),
+  [], [with_libnghttp2=auto]
 )
-
-dnl DNSSEC validation in kdig
-AC_ARG_ENABLE([kdig-validation],
-  AS_HELP_STRING([--disable-kdig-validation], [Disable DNSSEC validation in kdig]),
-  [], [enable_kdig_validation=yes])
-AS_IF([test "$enable_kdig_validation" != "yes" -o "$enable_utilities" != "yes" -o "$enable_daemon" != "yes"], [
-  enable_kdig_validation=no
-])
-AS_IF([test "$enable_kdig_validation" = "yes"], [
-  AC_DEFINE([HAVE_KDIG_VALIDATION], [1], [Define to 1 to enable DNSSEC validation in kdig.])
-])
-AM_CONDITIONAL([HAVE_KDIG_VALIDATION], [test "$enable_kdig_validation" = "yes"])
 
 AS_IF([test "$enable_utilities" = "yes"], [
-  AS_IF([test "$with_libidn" != "no"], [
-    PKG_CHECK_MODULES([libidn2], [libidn2 >= 2.0.0], [
-      with_libidn=libidn2
-      AC_DEFINE([LIBIDN], [1], [Define to 1 to enable IDN support])
-    ], [
-      with_libidn=no
-      AC_MSG_WARN([libidn2 not found])
-    ])
-  ])
 
-  AS_IF([test "$with_libnghttp2" != "no"], [
-    PKG_CHECK_MODULES([libnghttp2], [libnghttp2], [
-      with_libnghttp2=libnghttp2
-      AC_DEFINE([LIBNGHTTP2], [1], [Define to 1 to enable DoH support])
-    ], [
-      with_libnghttp2=no
-      AC_MSG_WARN([libnghttp2 not found])
-    ])
-  ])
+# IDN support in kdig (2/2)
+AS_CASE([$with_libidn],
+  [auto], [PKG_CHECK_MODULES([libidn2], [libidn2 >= 2.0.0], [with_libidn=libidn2], [with_libidn=no])],
+  [yes], [PKG_CHECK_MODULES([libidn2], [libidn2 >= 2.0.0], [with_libidn=libidn2], [
+            AC_MSG_ERROR([libidn2 not available])])],
+  [no], [],
+  [*], [AC_MSG_ERROR([invalid value of --with_libidn])]
+)
+AS_IF([test "$with_libidn" != "no"], [
+  AC_DEFINE([LIBIDN], [1], [Define to 1 to enable IDN support.])
+])
 
-  AS_IF([test "$enable_xdp" != "no"], [
-    PKG_CHECK_MODULES([libmnl], [libmnl], [], [
-      AC_MSG_ERROR([libmnl not found])
-    ])
-  ])
-]) # Knot DNS utilities dependencies
+# HTTPS support in kdig (2/2)
+AS_CASE([$with_libnghttp2],
+  [auto], [PKG_CHECK_MODULES([libnghttp2], [libnghttp2], [with_libnghttp2=libnghttp2], [with_libnghttp2=no])],
+  [yes], [PKG_CHECK_MODULES([libnghttp2], [libnghttp2], [with_libnghttp2=libnghttp2], [
+            AC_MSG_ERROR([libnghttp2 not available])])],
+  [no], [],
+  [*], [AC_MSG_ERROR([invalid value of --with_libnghttp2])]
+)
+AS_IF([test "$with_libnghttp2" != "no"], [
+  AC_DEFINE([LIBNGHTTP2], [1], [Define to 1 to enable DoH support.])
+])
+
+# Netlink API for kxdpgun
+AS_IF([test "$enable_xdp" != "no"], [
+  PKG_CHECK_MODULES([libmnl], [libmnl], [], [AC_MSG_ERROR([libmnl not available])])
+])
+
+]) dnl enable_utilities
 
 save_LIBS="$LIBS"
 AC_SEARCH_LIBS([pthread_create], [pthread], [
