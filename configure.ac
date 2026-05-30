@@ -743,7 +743,7 @@ AC_SEARCH_LIBS([pthread_create], [pthread], [
   AS_IF([test "$ac_cv_search_pthread_create" != "none required"],
     [pthread_LIBS="$ac_cv_search_pthread_create"], [pthread_LIBS=])
   AC_SUBST([pthread_LIBS])
-],[
+], [
   AC_MSG_ERROR([pthreads not found])
 ])
 LIBS="$save_LIBS"
@@ -753,7 +753,7 @@ AC_SEARCH_LIBS([dlopen], [dl], [
   AS_IF([test "$ac_cv_search_dlopen" != "none required"],
     [dlopen_LIBS="$ac_cv_search_dlopen"], [dlopen_LIBS=])
   AC_SUBST([dlopen_LIBS])
-],[
+], [
   AC_MSG_ERROR([dlopen not found])
 ])
 LIBS="$save_LIBS"
@@ -763,7 +763,7 @@ AC_SEARCH_LIBS([pow], [m], [
   AS_IF([test "$ac_cv_search_pow" != "none required"],
     [math_LIBS="$ac_cv_search_pow"], [math_LIBS=])
   AC_SUBST([math_LIBS])
-],[
+], [
   AC_MSG_ERROR([math not found])
 ])
 LIBS="$save_LIBS"
@@ -796,7 +796,8 @@ AM_CONDITIONAL([USE_GNUTLS_MEMSET], [test "$explicit_bzero" = "no" -a "$explicit
 
 # Check for mandatory library functions.
 AC_CHECK_FUNC([vasprintf], [], [
-  AC_MSG_ERROR([vasprintf support in the libc is required])])
+  AC_MSG_ERROR([vasprintf support in the libc is required])
+])
 
 # Check for cpu_set_t/cpuset_t compatibility
 AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <pthread.h>]], [[cpu_set_t set; CPU_ZERO(&set);]])],
@@ -890,7 +891,7 @@ result_msg_base="
 
 result_msg_esc=$(echo -n "    Configure:$filtered_config_params\n$result_msg_base" | sed '$!s/$/\\n/' | tr -d '\n')
 
-AC_DEFINE_UNQUOTED([CONFIGURE_SUMMARY],["$result_msg_esc"],[Configure summary])
+AC_DEFINE_UNQUOTED([CONFIGURE_SUMMARY], ["$result_msg_esc"], [Configure summary])
 
 AC_CONFIG_FILES([Makefile
                  Doxyfile
@@ -911,13 +912,14 @@ AC_CONFIG_FILES([Makefile
                  src/Makefile
                  src/redis/Makefile
                  src/libknot/xdp/Makefile
-                 src/knot/modules/static_modules.h
-                 ])
+                 src/knot/modules/static_modules.h]
+)
 
 AC_CONFIG_FILES([doc/modules.rst],
                 [cp doc/modules.rst "${srcdir}"/doc/modules.rst 2>/dev/null
                  abs_srcdir=$(cd "${srcdir}" && pwd)
-                 ln -s -f "${abs_srcdir}"/src/knot/modules "${srcdir}"/doc 2>/dev/null])
+                 ln -s -f "${abs_srcdir}"/src/knot/modules "${srcdir}"/doc 2>/dev/null]
+)
 
 AC_OUTPUT
 AC_MSG_RESULT([
