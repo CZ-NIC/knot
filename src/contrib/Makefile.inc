@@ -161,6 +161,8 @@ libembngtcp2_la_SOURCES = \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_crypto.h \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_err.c \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_err.h \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_fmt.c \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_fmt.h \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_frame_chain.c \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_frame_chain.h \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_gaptr.c \
