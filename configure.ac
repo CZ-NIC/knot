@@ -441,14 +441,14 @@ AC_ARG_ENABLE([cap-ng],
 AC_ARG_WITH([socket-polling],
   AS_HELP_STRING([--with-socket-polling=auto|poll|epoll|kqueue|libkqueue],
                  [use specific socket polling method [default=auto]]),
-  [], [socket_polling=auto]
+  [], [with_socket_polling=auto]
 )
 
 # Alternative memory allocator (1/2)
 AC_ARG_WITH([memory-allocator],
   AS_HELP_STRING([--with-memory-allocator=auto|LIBRARY],
                  [use specific memory allocator for the server (e.g. jemalloc) [default=auto]]),
-  [], [memory_allocator=auto]
+  [], [with_memory_allocator=auto]
 )
 
 AS_IF([test "$enable_daemon" = "yes"], [
@@ -512,34 +512,34 @@ AS_IF([test "$enable_cap_ng" = "yes"],
 )
 
 # Socket polling method (2/2)
-AS_CASE([$socket_polling],
+AS_CASE([$with_socket_polling],
   [auto], [AC_CHECK_FUNCS([kqueue],
              [AC_DEFINE([HAVE_KQUEUE], [1], [kqueue available])
-              socket_polling=kqueue],
+              with_socket_polling=kqueue],
              [AC_CHECK_FUNCS([epoll_create],
                 [AC_DEFINE([HAVE_EPOLL], [1], [epoll available])
-                 socket_polling=epoll],
-                [socket_polling=poll])])],
-  [poll], [socket_polling=poll],
+                 with_socket_polling=epoll],
+                [with_socket_polling=poll])])],
+  [poll], [with_socket_polling=poll],
   [epoll], [AC_CHECK_FUNCS([epoll_create],
               [AC_DEFINE([HAVE_EPOLL], [1], [epoll available])
-               socket_polling=epoll],
+               with_socket_polling=epoll],
               [AC_MSG_ERROR([epoll not available])])],
   [kqueue], [AC_CHECK_FUNCS([kqueue],
                [AC_DEFINE([HAVE_KQUEUE], [1], [kqueue available])
-                socket_polling=kqueue],
+                with_socket_polling=kqueue],
                [AC_MSG_ERROR([kqueue not available])])],
   [libkqueue], [PKG_CHECK_MODULES([libkqueue], [libkqueue],
                   [AC_DEFINE([HAVE_KQUEUE], [1], [libkqueue available])
-                   socket_polling=libkqueue],
+                   with_socket_polling=libkqueue],
                   [AC_MSG_ERROR([libkqueue not available])])],
   [*], [AC_MSG_ERROR([invalid value of --socket-polling])]
 )
 
 # Alternative memory allocator (2/2)
-AS_CASE([$memory_allocator],
+AS_CASE([$with_memory_allocator],
   [auto], [malloc_LIBS=""],
-  [*], [malloc_LIBS="-l$memory_allocator"]
+  [*], [malloc_LIBS="-l$with_memory_allocator"]
 )
 AC_SUBST([malloc_LIBS])
 
@@ -892,9 +892,9 @@ result_msg_base="
     XDP support:            ${enable_xdp}
     DoQ support:            ${enable_quic}
     Redis support:          ${enable_redis}
-    Socket polling:         ${socket_polling}
+    Socket polling:         ${with_socket_polling}
     Atomic support:         ${atomic_type}
-    Memory allocator:       ${memory_allocator}
+    Memory allocator:       ${with_memory_allocator}
     Fast zone parser:       ${enable_fastparser}
     Utilities with IDN:     ${with_libidn}
     Utilities with DoH:     ${with_libnghttp2}
