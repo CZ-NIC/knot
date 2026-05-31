@@ -58,6 +58,8 @@ src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_dcidtr.c
 src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_dcidtr.h
 src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_err.c
 src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_err.h
+src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_fmt.c
+src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_fmt.h
 src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_frame_chain.c
 src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_frame_chain.h
 src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_gaptr.c
@@ -671,10 +673,6 @@ tests-fuzz/fuzz_dname_from_str.c
 tests-fuzz/fuzz_dname_to_str.c
 tests-fuzz/fuzz_packet.c
 tests-fuzz/fuzz_zscanner.c
-tests-fuzz/knotd_wrap/afl-loop.h
-tests-fuzz/knotd_wrap/server.c
-tests-fuzz/knotd_wrap/tcp-handler.c
-tests-fuzz/knotd_wrap/udp-handler.c
 tests-fuzz/main.c
 tests/contrib/test_atomic.c
 tests/contrib/test_base32hex.c
