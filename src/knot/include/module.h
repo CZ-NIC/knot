@@ -531,6 +531,7 @@ typedef enum {
 	KNOTD_STAGE_ADDITIONAL,       /*!< Additional section processing. */
 	KNOTD_STAGE_END,              /*!< After query processing. */
 	KNOTD_STAGE_PROTO_END,        /*!< End of transport protocol processing. */
+	KNOTD_STAGE_ERROR,            /*!< Error state processing. */
 } knotd_stage_t;
 
 /*!

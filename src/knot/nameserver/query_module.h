@@ -14,7 +14,7 @@
 #include "contrib/atomic.h"
 #include "contrib/ucw/lists.h"
 
-#define KNOTD_STAGES (KNOTD_STAGE_PROTO_END + 1)
+#define KNOTD_STAGES (KNOTD_STAGE_ERROR + 1)
 
 typedef enum {
 	QUERY_HOOK_TYPE_PROTO,

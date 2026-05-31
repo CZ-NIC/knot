@@ -530,6 +530,20 @@ static knot_layer_state_t process_query_err(knot_layer_t *ctx, knot_pkt_t *pkt)
 	(void)knot_pkt_init_response(pkt, query);
 	knot_wire_clear_cd(pkt->wire);
 
+	bool default_rcode = !qdata->err_truncated;
+	struct query_plan *plan = conf()->query_plan;
+	if (plan != NULL) {
+		uint16_t rcode_before = qdata->rcode;
+		struct query_step *step;
+		WALK_LIST(step, plan->stage[KNOTD_STAGE_ERROR]) {
+			assert(step->type == QUERY_HOOK_TYPE_GENERAL);
+			(void)step->general_hook(KNOTD_STATE_FAIL, pkt, qdata, step->ctx);
+		}
+		if (rcode_before != qdata->rcode) {
+			default_rcode = false;
+		}
+	}
+
 	/* Set TC bit if required. */
 	if (qdata->err_truncated) {
 		knot_wire_set_aa(pkt->wire);
@@ -548,7 +562,7 @@ static knot_layer_state_t process_query_err(knot_layer_t *ctx, knot_pkt_t *pkt)
 	}
 
 	/* Set final RCODE to packet. */
-	if (qdata->rcode == KNOT_RCODE_NOERROR && !qdata->err_truncated) {
+	if (default_rcode && qdata->rcode == KNOT_RCODE_NOERROR) {
 		/* Default RCODE is SERVFAIL if not otherwise specified. */
 		qdata->rcode = KNOT_RCODE_SERVFAIL;
 	}

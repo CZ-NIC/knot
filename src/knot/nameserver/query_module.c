@@ -87,7 +87,8 @@ int knotd_mod_proto_hook(knotd_mod_t *mod, knotd_stage_t stage, knotd_mod_proto_
 _public_
 int knotd_mod_hook(knotd_mod_t *mod, knotd_stage_t stage, knotd_mod_hook_f hook)
 {
-	if (stage != KNOTD_STAGE_BEGIN && stage != KNOTD_STAGE_END) {
+	if (stage != KNOTD_STAGE_BEGIN && stage != KNOTD_STAGE_END &&
+	    stage != KNOTD_STAGE_ERROR) {
 		return KNOT_EINVAL;
 	}
 
