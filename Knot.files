@@ -298,6 +298,7 @@ src/knot/modules/dnstap/dnstap.c
 src/knot/modules/geoip/geodb.c
 src/knot/modules/geoip/geodb.h
 src/knot/modules/geoip/geoip.c
+src/knot/modules/nodata/nodata.c
 src/knot/modules/noudp/noudp.c
 src/knot/modules/onlinesign/nsec_next.c
 src/knot/modules/onlinesign/nsec_next.h
