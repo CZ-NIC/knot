@@ -11,8 +11,10 @@ ARGS		= --build-arg FASTPARSER=enable --build-arg CHECK=disable
 GITHASH		= $(shell git rev-parse --short HEAD)
 GITBRANCH	= $(shell git rev-parse --abbrev-ref HEAD)
 RELEASE		= $(shell git describe --abbrev=0 --exact-match)
+DATE		= $(shell date +%Y%m%d)
 BRANCHTAG	= $(shell [ -n "${GITBRANCH}" ] && echo "-t ${BASETAG}:${GITBRANCH}" || echo "")
 RELTAG		= $(shell [ -n "${RELEASE}" ] && echo "-t ${BASETAG}:${RELEASE}" || echo "")
+DATETAG		= $(shell [ -n "${RELEASE}" ] && echo "-t ${BASETAG}:${RELEASE}-${DATE}" || echo "")
 EXTRATAG	= $(shell [ -n "${TAG}" ] && echo "-t ${BASETAG}:${TAG}" || echo "")
 LABEL		= $(shell [ -n "${GITHASH}" ] && echo "--label knot.git.hash=${GITHASH}" || echo "")
 
@@ -23,7 +25,7 @@ QEMUDETECT	= /proc/sys/fs/binfmt_misc/qemu-m68k
 docker-multiarch: qemu buildx docker-multiarch-builder
 	docker login
 	docker buildx build --no-cache --builder docker-multiarch --pull --push ${LABEL} \
-	                    --platform ${PLATFORMS} ${ARGS} ${BRANCHTAG} ${RELTAG} ${EXTRATAG} ..
+	                    --platform ${PLATFORMS} ${ARGS} ${BRANCHTAG} ${RELTAG} ${DATETAG} ${EXTRATAG} ..
 
 qemu: ${QEMUDETECT}
 ${QEMUDETECT}:
