@@ -1289,6 +1289,9 @@
 	action _write8_16 {
 		*(rdata_tail++) = 16;
 	}
+	action _write8_18 {
+		*(rdata_tail++) = 18;
+	}
 	action _write8_252 {
 		*(rdata_tail++) = 252;
 	}
@@ -1955,6 +1958,7 @@
 		| "ECDSAP384SHA384"i    %_write8_14
 		| "ED25519"i            %_write8_15
 		| "ED448"i              %_write8_16
+		| "MLDSA44"i            %_write8_18
 		| "INDIRECT"i           %_write8_252
 		| "PRIVATEDNS"i         %_write8_253
 		| "PRIVATEOID"i         %_write8_254

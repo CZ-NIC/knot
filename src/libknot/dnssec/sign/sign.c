@@ -186,6 +186,10 @@ static const algorithm_functions_t *get_functions(const dnssec_key_t *key)
 	case DNSSEC_KEY_ALGORITHM_ED25519:
 	case DNSSEC_KEY_ALGORITHM_ED448:
 		return &eddsa_functions;
+#ifdef HAVE_MLDSA44
+	case DNSSEC_KEY_ALGORITHM_MLDSA44:
+		return &eddsa_functions;
+#endif
 	default:
 		return NULL;
 	}
@@ -209,6 +213,10 @@ static gnutls_sign_algorithm_t algo_dnssec2gnutls(dnssec_key_algorithm_t algorit
 		return GNUTLS_SIGN_EDDSA_ED25519;
 	case DNSSEC_KEY_ALGORITHM_ED448:
 		return GNUTLS_SIGN_EDDSA_ED448;
+#ifdef HAVE_MLDSA44
+	case DNSSEC_KEY_ALGORITHM_MLDSA44:
+		return GNUTLS_SIGN_MLDSA44;
+#endif
 	default:
 		return GNUTLS_SIGN_UNKNOWN;
 	}
