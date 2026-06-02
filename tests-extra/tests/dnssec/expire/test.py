@@ -4,6 +4,7 @@
 
 from dnstest.test import Test
 from dnstest.utils import *
+import random
 
 t = Test()
 
@@ -15,7 +16,7 @@ t.link(zones, master, slave, ixfr=True, ddns=True)
 
 for z in zones:
     master.dnssec(z).enable = True
-    master.dnssec(z).rrsig_lifetime = 10
+    master.dnssec(z).rrsig_lifetime = 20
     master.dnssec(z).rrsig_refresh = 1
     master.dnssec(z).rrsig_pre_refresh = 1
 
@@ -34,6 +35,25 @@ for z in zones:
          set_err("ZONE NOT EXPIRED")
 slave.ctl("zone-thaw")
 master.ctl("zone-thaw")
-slave.zones_wait(zones, serials)
+serials = slave.zones_wait(zones, serials)
+
+slave.stop() # let slave dump current timerDB
+slave.start()
+slave.zones_wait(zones, serials) # wait for next re-sign and sync
+master.stop()
+if random.choice([False, True]):
+    slave.ctl("zone-backup +backupdir " + slave.dir + "/backup", wait=True)
+    # bug was: after backup, there is no timerDB dump
+else:
+    slave.ctl("zone-flush", wait=True)
+    slave.ctl("reload")
+    t.sleep(4)
+    # bug was: after reload, zone->started is false and timers not dumped
+slave.stop()
+slave.start() # starts with obsolete expire timer
+
+resp = slave.dig(z.name, "SOA", dnssec=True)
+resp.check(rcode="NOERROR")
+resp.check_count(1, "SOA")
 
 t.end()

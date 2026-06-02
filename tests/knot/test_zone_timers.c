@@ -82,7 +82,7 @@ int main(int argc, char *argv[])
 	is_int(KNOT_ENOENT, ret, "zone_timer_read() nonexistent");
 
 	// Write timers
-	ret = zone_timers_write(db, zone, &timers);
+	ret = zone_timers_write(db, zone, &timers, false);
 	is_int(KNOT_EOK, ret, "zone_timers_write()");
 
 	// Read timers

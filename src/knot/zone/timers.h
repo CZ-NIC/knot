@@ -58,14 +58,15 @@ int zone_timers_read(knot_lmdb_db_t *db, const knot_dname_t *zone,
 /*!
  * \brief Write timers for one zone.
  *
- * \param db      Timer database.
- * \param zone    Zone name.
- * \param timers  Loaded timers
+ * \param db                   Timer database.
+ * \param zone                 Zone name.
+ * \param timers               Loaded timers
+ * \param not_server_timerdb   The write happens elsewhere than the server's persistent timer database (e.g. a backup).
  *
  * \return KNOT_E*
  */
 int zone_timers_write(knot_lmdb_db_t *db, const knot_dname_t *zone,
-                      zone_timers_t *timers);
+                      zone_timers_t *timers, bool not_server_timerdb);
 
 /*!
  * \brief Write timers for all zones.
