@@ -26,7 +26,7 @@
 /** Align an integer \p s to the nearest higher multiple of \p a (which should be a power of two) **/
 #define ALIGN_TO(s, a) (((s)+a-1)&~(a-1))
 #define MP_CHUNK_TAIL ALIGN_TO(sizeof(struct mempool_chunk), CPU_STRUCT_ALIGN)
-#define MP_SIZE_MAX (~0U - MP_CHUNK_TAIL - CPU_PAGE_SIZE)
+#define MP_SIZE_MAX (SIZE_MAX - MP_CHUNK_TAIL - CPU_PAGE_SIZE)
 #define DBG(s, ...)
 
 /** \note Imported MMAP backend from bigalloc.c */
@@ -61,11 +61,11 @@ page_free(void *start, uint64_t len)
 
 struct mempool_chunk {
 	struct mempool_chunk *next;
-	unsigned size;
+	size_t size;
 };
 
-static unsigned
-mp_align_size(unsigned size)
+static size_t
+mp_align_size(size_t size)
 {
 #ifdef CONFIG_UCW_POOL_IS_MMAP
 	return ALIGN_TO(size + MP_CHUNK_TAIL, CPU_PAGE_SIZE) - MP_CHUNK_TAIL;
@@ -75,7 +75,7 @@ mp_align_size(unsigned size)
 }
 
 void
-mp_init(struct mempool *pool, unsigned chunk_size)
+mp_init(struct mempool *pool, size_t chunk_size)
 {
 	chunk_size = mp_align_size(MAX(sizeof(struct mempool), chunk_size));
 	*pool = (struct mempool) {
@@ -86,7 +86,7 @@ mp_init(struct mempool *pool, unsigned chunk_size)
 }
 
 static void *
-mp_new_big_chunk(unsigned size)
+mp_new_big_chunk(size_t size)
 {
 	uint8_t *data = malloc(size + MP_CHUNK_TAIL);
 	if (!data) {
@@ -107,7 +107,7 @@ mp_free_big_chunk(struct mempool_chunk *chunk)
 }
 
 static void *
-mp_new_chunk(unsigned size)
+mp_new_chunk(size_t size)
 {
 #ifdef CONFIG_UCW_POOL_IS_MMAP
 	uint8_t *data = page_alloc(size + MP_CHUNK_TAIL);
@@ -136,13 +136,13 @@ mp_free_chunk(struct mempool_chunk *chunk)
 }
 
 struct mempool *
-mp_new(unsigned chunk_size)
+mp_new(size_t chunk_size)
 {
 	chunk_size = mp_align_size(MAX(sizeof(struct mempool), chunk_size));
 	struct mempool_chunk *chunk = mp_new_chunk(chunk_size);
 	struct mempool *pool = (void *)chunk - chunk_size;
 	ASAN_UNPOISON_MEMORY_REGION(pool, sizeof(*pool));
-	DBG("Creating mempool %p with %u bytes long chunks", pool, chunk_size);
+	DBG("Creating mempool %p with %zu bytes long chunks", pool, chunk_size);
 	chunk->next = NULL;
 	ASAN_POISON_MEMORY_REGION(chunk, sizeof(struct mempool_chunk));
 	*pool = (struct mempool) {
@@ -249,7 +249,7 @@ mp_total_size(struct mempool *pool)
 }
 
 static void *
-mp_alloc_internal(struct mempool *pool, unsigned size)
+mp_alloc_internal(struct mempool *pool, size_t size)
 {
 	struct mempool_chunk *chunk;
 	if (size <= pool->threshold) {
@@ -268,7 +268,7 @@ mp_alloc_internal(struct mempool *pool, unsigned size)
 		return (uint8_t *)chunk - pool->chunk_size;
 	} else if (size <= MP_SIZE_MAX) {
 		pool->idx = 1;
-		unsigned aligned = ALIGN_TO(size, CPU_STRUCT_ALIGN);
+		size_t aligned = ALIGN_TO(size, CPU_STRUCT_ALIGN);
 		chunk = mp_new_big_chunk(aligned);
 		if (!chunk) {
 			return NULL;
@@ -279,20 +279,20 @@ mp_alloc_internal(struct mempool *pool, unsigned size)
 		pool->state.free[1] = aligned - size;
 		return pool->last_big = (uint8_t *)chunk - aligned;
 	} else {
-		fprintf(stderr, "Cannot allocate %u bytes from a mempool", size);
+		fprintf(stderr, "Cannot allocate %zu bytes from a mempool", size);
 		assert(0);
 		return NULL;
 	}
 }
 
 void *
-mp_alloc(struct mempool *pool, unsigned size)
+mp_alloc(struct mempool *pool, size_t size)
 {
-	unsigned avail = pool->state.free[0] & ~(CPU_STRUCT_ALIGN - 1);
+	size_t avail = pool->state.free[0] & ~(size_t)(CPU_STRUCT_ALIGN - 1);
 	void *ptr = NULL;
 	if (size <= avail) {
 		pool->state.free[0] = avail - size;
-		ptr = (uint8_t*)pool->state.last[0] - avail;
+		ptr = (uint8_t *)pool->state.last[0] - avail;
 	} else {
 		ptr = mp_alloc_internal(pool, size);
 	}
@@ -301,11 +301,11 @@ mp_alloc(struct mempool *pool, unsigned size)
 }
 
 void *
-mp_alloc_noalign(struct mempool *pool, unsigned size)
+mp_alloc_noalign(struct mempool *pool, size_t size)
 {
 	void *ptr = NULL;
 	if (size <= pool->state.free[0]) {
-		ptr = (uint8_t*)pool->state.last[0] - pool->state.free[0];
+		ptr = (uint8_t *)pool->state.last[0] - pool->state.free[0];
 		pool->state.free[0] -= size;
 	} else {
 		ptr = mp_alloc_internal(pool, size);
@@ -315,7 +315,7 @@ mp_alloc_noalign(struct mempool *pool, unsigned size)
 }
 
 void *
-mp_alloc_zero(struct mempool *pool, unsigned size)
+mp_alloc_zero(struct mempool *pool, size_t size)
 {
 	void *ptr = mp_alloc(pool, size);
 	bzero(ptr, size);

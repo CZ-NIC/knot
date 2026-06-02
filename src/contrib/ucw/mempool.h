@@ -27,7 +27,7 @@
  * You should use this one as an opaque handle only, the insides are internal.
  **/
 struct mempool_state {
-	unsigned free[2];
+	size_t free[2];
 	void *last[2];
 };
 
@@ -38,13 +38,14 @@ struct mempool_state {
 struct mempool {
 	struct mempool_state state;
 	void *unused, *last_big;
-	unsigned chunk_size, threshold, idx;
+	size_t chunk_size, threshold;
+	unsigned idx;
 };
 
-struct mempool_stats {			/** Mempool statistics. See mp_stats(). **/
-	uint64_t total_size;		/** Real allocated size in bytes. */
-	unsigned chain_count[3];	/** Number of allocated chunks in small/big/unused chains. */
-	unsigned chain_size[3];		/** Size of allocated chunks in small/big/unused chains. */
+struct mempool_stats {          /** Mempool statistics. See mp_stats(). **/
+	uint64_t total_size;            /** Real allocated size in bytes. */
+	unsigned chain_count[3];        /** Number of allocated chunks in small/big/unused chains. */
+	uint64_t chain_size[3];         /** Size of allocated chunks in small/big/unused chains. */
 };
 
 /***
@@ -55,13 +56,13 @@ struct mempool_stats {			/** Mempool statistics. See mp_stats(). **/
 
 /**
  * Initialize a given mempool structure.
- * \p chunk_size must be in the interval `[1, UINT_MAX / 2]`.
+ * \p chunk_size must be in the interval `[1, SIZE_MAX / 2]`.
  * It will allocate memory by this large chunks and take
  * memory to satisfy requests from them.
  *
  * Memory pools can be treated as <<trans:respools,resources>>, see <<trans:res_mempool()>>.
  **/
-void mp_init(struct mempool *pool, unsigned chunk_size);
+void mp_init(struct mempool *pool, size_t chunk_size);
 
 /**
  * Allocate and initialize a new memory pool.
@@ -71,7 +72,7 @@ void mp_init(struct mempool *pool, unsigned chunk_size);
  *
  * Memory pools can be treated as <<trans:respools,resources>>, see <<trans:res_mempool()>>.
  **/
-struct mempool *mp_new(unsigned chunk_size);
+struct mempool *mp_new(size_t chunk_size);
 
 /**
  * Cleanup mempool initialized by mp_init or mp_new.
@@ -111,14 +112,14 @@ uint64_t mp_total_size(struct mempool *pool);	/** How many bytes were allocated 
  * `CPU_STRUCT_ALIGN` bytes and this condition remains true also
  * after future reallocations.
  **/
-void *mp_alloc(struct mempool *pool, unsigned size);
+void *mp_alloc(struct mempool *pool, size_t size);
 
 /**
  * The same as \ref mp_alloc(), but the result may be unaligned.
  **/
-void *mp_alloc_noalign(struct mempool *pool, unsigned size);
+void *mp_alloc_noalign(struct mempool *pool, size_t size);
 
 /**
  * The same as \ref mp_alloc(), but fills the newly allocated memory with zeroes.
  **/
-void *mp_alloc_zero(struct mempool *pool, unsigned size);
+void *mp_alloc_zero(struct mempool *pool, size_t size);
