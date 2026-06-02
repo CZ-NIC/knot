@@ -1695,6 +1695,8 @@ static size_t dnskey_len(const uint8_t *rdata,
 	case DNSSEC_KEY_ALGORITHM_ED448:
 		// RFC 8080.
 		return 456;
+	case DNSSEC_KEY_ALGORITHM_ML_DSA_44:
+		return 1312;
 	default:
 		return 0;
 	}
