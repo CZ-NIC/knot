@@ -313,11 +313,3 @@ mp_alloc_noalign(struct mempool *pool, size_t size)
 	ASAN_UNPOISON_MEMORY_REGION(ptr, size);
 	return ptr;
 }
-
-void *
-mp_alloc_zero(struct mempool *pool, size_t size)
-{
-	void *ptr = mp_alloc(pool, size);
-	bzero(ptr, size);
-	return ptr;
-}
