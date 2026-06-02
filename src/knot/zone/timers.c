@@ -119,9 +119,6 @@ static int deserialize_timers(zone_timers_t *timers_ptr,
 static void txn_write_timers(knot_lmdb_txn_t *txn, const knot_dname_t *zone,
                              zone_timers_t *timers, bool not_server_timerdb)
 {
-	if (!not_server_timerdb && !(timers->flags & TIMERS_MODIFIED)) { // TODO move this conditional to txn_zone_write, as it is also in zone_timers_write. Here temporarily to avoid git conflicts.
-		return;
-	}
 	const char *format = (timers->last_master.sin6_family == AF_INET ||
 	                      timers->last_master.sin6_family == AF_INET6) ?
 	                     "TTTTTTTTTTBD" :
@@ -208,8 +205,8 @@ int zone_timers_write(knot_lmdb_db_t *db, const knot_dname_t *zone,
 
 static void txn_zone_write(zone_t *z, knot_lmdb_txn_t *txn)
 {
-	if (z->started) {
-		zone_timers_t *t = z->timers_static;
+	zone_timers_t *t = z->timers_static;
+	if (z->started && (t->flags & TIMERS_MODIFIED)) {
 		txn_write_timers(txn, z->name, t, false);
 	}
 }
