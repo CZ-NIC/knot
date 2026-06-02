@@ -817,9 +817,10 @@ static void find_rr_in_view(uint16_t qtype, geo_view_t *view,
 	knot_rrset_t *cname = NULL;
 	knot_rrset_t *cnamesig = NULL;
 	for (int i = 0; i < view->count; i++) {
-		if (view->rrsets[i].type == qtype) {
+		if (view->rrsets[i].type == qtype || qtype == KNOT_RRTYPE_ANY) {
 			*rr = &view->rrsets[i];
 			*rrsig = (view->rrsigs) ? &view->rrsigs[i] : NULL;
+			break;
 		} else if (view->rrsets[i].type == KNOT_RRTYPE_CNAME) {
 			cname = &view->rrsets[i];
 			cnamesig = (view->rrsigs) ? &view->rrsigs[i] : NULL;
