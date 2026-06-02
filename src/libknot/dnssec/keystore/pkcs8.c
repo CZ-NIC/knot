@@ -179,7 +179,12 @@ static int pem_generate(gnutls_pk_algorithm_t algorithm, unsigned bits,
 		return KNOT_ENOMEM;
 	}
 
-	r = gnutls_x509_privkey_generate(key, algorithm, bits, 0);
+	if (algorithm == GNUTLS_PK_RSA) {
+		r = gnutls_x509_privkey_generate(key, algorithm, bits, 0);
+	} else {
+		r = gnutls_privkey_generate(key, algorithm, 0);
+	}
+	printf("xpg alg %d bits %d r %d (%s)\n", algorithm, bits, r, gnutls_strerror(r));
 	if (r != GNUTLS_E_SUCCESS) {
 		return KNOT_KEY_EGENERATE;
 	}

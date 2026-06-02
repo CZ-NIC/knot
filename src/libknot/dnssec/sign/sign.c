@@ -185,6 +185,7 @@ static const algorithm_functions_t *get_functions(const dnssec_key_t *key)
 		return &ecdsa_functions;
 	case DNSSEC_KEY_ALGORITHM_ED25519:
 	case DNSSEC_KEY_ALGORITHM_ED448:
+        case DNSSEC_KEY_ALGORITHM_ML_DSA_44:
 		return &eddsa_functions;
 	default:
 		return NULL;

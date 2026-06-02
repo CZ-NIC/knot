@@ -1947,6 +1947,7 @@
 		| "ECDSAP384SHA384"i    %_write8_14
 		| "ED25519"i            %_write8_15
 		| "ED448"i              %_write8_16
+		| "ML-DSA-44"i          %_write8_117
 		| "INDIRECT"i           %_write8_252
 		| "PRIVATEDNS"i         %_write8_253
 		| "PRIVATEOID"i         %_write8_254
