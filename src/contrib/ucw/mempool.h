@@ -44,6 +44,7 @@ struct mempool {
 
 struct mempool_stats {          /** Mempool statistics. See mp_stats(). **/
 	uint64_t total_size;            /** Real allocated size in bytes. */
+	uint64_t used_size;             /** Estimated size allocated from mempool to application. */
 	unsigned chain_count[3];        /** Number of allocated chunks in small/big/unused chains. */
 	uint64_t chain_size[3];         /** Size of allocated chunks in small/big/unused chains. */
 };

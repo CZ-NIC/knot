@@ -217,13 +217,18 @@ mp_flush(struct mempool *pool)
 }
 
 static void
-mp_stats_chain(struct mempool_chunk *chunk, struct mempool_stats *stats, unsigned idx)
+mp_stats_chain(struct mempool *pool, struct mempool_chunk *chunk, struct mempool_stats *stats, unsigned idx)
 {
 	struct mempool_chunk *next;
 	while (chunk) {
 		ASAN_UNPOISON_MEMORY_REGION(chunk, sizeof(struct mempool_chunk));
 		stats->chain_size[idx] += chunk->size + sizeof(*chunk);
 		stats->chain_count[idx]++;
+		if (idx < 2) {
+			stats->used_size += chunk->size;
+			if ((uint8_t *)pool == (uint8_t *)chunk - chunk->size)
+				stats->used_size -= sizeof(*pool);
+		}
 		next = chunk->next;
 		ASAN_POISON_MEMORY_REGION(chunk, sizeof(struct mempool_chunk));
 		chunk = next;
@@ -235,9 +240,11 @@ void
 mp_stats(struct mempool *pool, struct mempool_stats *stats)
 {
 	bzero(stats, sizeof(*stats));
-	mp_stats_chain(pool->state.last[0], stats, 0);
-	mp_stats_chain(pool->state.last[1], stats, 1);
-	mp_stats_chain(pool->unused, stats, 2);
+	mp_stats_chain(pool, pool->state.last[0], stats, 0);
+	mp_stats_chain(pool, pool->state.last[1], stats, 1);
+	mp_stats_chain(pool, pool->unused, stats, 2);
+	stats->used_size -= pool->state.free[0] + pool->state.free[1];
+	assert(stats->used_size <= stats->total_size);
 }
 
 uint64_t
