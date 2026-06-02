@@ -51,6 +51,14 @@ static const struct limits *get_limits(dnssec_key_algorithm_t algorithm)
 		.def = 456,
 	};
 
+#ifdef HAVE_MLDSA44
+	static const struct limits MLDSA44 = {
+		.min = 1312,
+		.max = 1312,
+		.def = 1312,
+	};
+#endif
+
 	switch (algorithm) {
 	case DNSSEC_KEY_ALGORITHM_RSA_SHA1:
 	case DNSSEC_KEY_ALGORITHM_RSA_SHA1_NSEC3:
@@ -65,6 +73,10 @@ static const struct limits *get_limits(dnssec_key_algorithm_t algorithm)
 		return &ED25519;
 	case DNSSEC_KEY_ALGORITHM_ED448:
 		return &ED448;
+#ifdef HAVE_MLDSA44
+	case DNSSEC_KEY_ALGORITHM_MLDSA44:
+		return &MLDSA44;
+#endif
 	default:
 		return NULL;
 	}
@@ -87,6 +99,10 @@ gnutls_pk_algorithm_t algorithm_to_gnutls(dnssec_key_algorithm_t dnssec)
 		return GNUTLS_PK_EDDSA_ED25519;
 	case DNSSEC_KEY_ALGORITHM_ED448:
 		return GNUTLS_PK_EDDSA_ED448;
+#ifdef HAVE_MLDSA44
+	case DNSSEC_KEY_ALGORITHM_MLDSA44:
+		return GNUTLS_PK_MLDSA44;
+#endif
 	default:
 		return GNUTLS_PK_UNKNOWN;
 	}

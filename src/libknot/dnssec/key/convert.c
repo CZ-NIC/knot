@@ -170,6 +170,40 @@ static int eddsa_pubkey_to_rdata(gnutls_pubkey_t key, dnssec_binary_t *rdata)
 	return KNOT_EOK;
 }
 
+#ifdef HAVE_MLDSA44
+/*!
+ * Convert ML-DSA public key to DNSSEC format.
+ */
+static int mldsa_pubkey_to_rdata(gnutls_pubkey_t key, dnssec_binary_t *rdata)
+{
+	assert(key);
+	assert(rdata);
+
+	_cleanup_datum_ gnutls_datum_t pub = { 0 };
+
+	int result = gnutls_pubkey_export_mldsa_raw(key, &pub);
+	if (result != GNUTLS_E_SUCCESS) {
+		return KNOT_KEY_EEXPORT;
+	}
+
+	size_t pub_size = pub.size;
+	if (pub_size == 0) {
+		return KNOT_INVALID_PUBLIC_KEY;
+	}
+
+	result = dnssec_binary_alloc(rdata, pub_size);
+	if (result != KNOT_EOK) {
+		return result;
+	}
+
+	wire_ctx_t wire = binary_init(rdata);
+	wire_write_bignum_datum(&wire, pub_size, &pub);
+	assert(wire_ctx_offset(&wire) == rdata->size);
+
+	return KNOT_EOK;
+}
+#endif
+
 /* -- crypto to DNSSEC ------------------------------------------------------*/
 
 /*!
@@ -295,6 +329,50 @@ static int eddsa_rdata_to_pubkey(const dnssec_binary_t *rdata, gnutls_pubkey_t k
 	return KNOT_EOK;
 }
 
+#ifdef HAVE_MLDSA44
+/*!
+ * Get MLDSA parameter based on DNSKEY RDATA size.
+ */
+static gnutls_pk_algorithm_t mldsa_parameter_from_rdata_size(size_t rdata_size)
+{
+	switch (rdata_size) {
+	case 1312: return GNUTLS_PK_MLDSA44;
+	default: return GNUTLS_PK_UNKNOWN;
+	}
+}
+
+/*!
+ * Convert ML-DSA key in DNSSEC format to crypto key.
+ */
+static int mldsa_rdata_to_pubkey(const dnssec_binary_t *rdata, gnutls_pubkey_t key)
+{
+	assert(rdata);
+	assert(key);
+
+	gnutls_pk_algorithm_t parameter = mldsa_parameter_from_rdata_size(rdata->size);
+	if (parameter == GNUTLS_PK_UNKNOWN) {
+		return KNOT_INVALID_PUBLIC_KEY;
+	}
+
+	wire_ctx_t ctx = binary_init(rdata);
+
+	size_t pub_size = wire_ctx_available(&ctx);
+	if (pub_size == 0) {
+		return KNOT_INVALID_PUBLIC_KEY;
+	}
+
+	gnutls_datum_t pub = wire_take_datum(&ctx, pub_size);
+	assert(wire_ctx_offset(&ctx) == rdata->size);
+
+	int result = gnutls_pubkey_import_mldsa_raw(key, parameter, &pub);
+	if (result != GNUTLS_E_SUCCESS) {
+		return KNOT_KEY_EIMPORT;
+	}
+
+	return KNOT_EOK;
+}
+#endif
+
 /* -- internal API --------------------------------------------------------- */
 
 /*!
@@ -315,6 +393,9 @@ int convert_pubkey_to_dnskey(gnutls_pubkey_t key, dnssec_binary_t *rdata)
 	case GNUTLS_PK_ECDSA: return ecdsa_pubkey_to_rdata(key, rdata);
 	case GNUTLS_PK_EDDSA_ED25519: return eddsa_pubkey_to_rdata(key, rdata);
 	case GNUTLS_PK_EDDSA_ED448: return eddsa_pubkey_to_rdata(key, rdata);
+#ifdef HAVE_MLDSA44
+	case GNUTLS_PK_MLDSA44: return mldsa_pubkey_to_rdata(key, rdata);
+#endif
 	default: return KNOT_INVALID_KEY_ALGORITHM;
 	}
 }
@@ -335,6 +416,9 @@ int convert_dnskey_to_pubkey(uint8_t algorithm, const dnssec_binary_t *rdata,
 	case GNUTLS_PK_ECDSA: return ecdsa_rdata_to_pubkey(rdata, key);
 	case GNUTLS_PK_EDDSA_ED25519: return eddsa_rdata_to_pubkey(rdata, key);
 	case GNUTLS_PK_EDDSA_ED448: return eddsa_rdata_to_pubkey(rdata, key);
+#ifdef HAVE_MLDSA44
+	case GNUTLS_PK_MLDSA44: return mldsa_rdata_to_pubkey(rdata, key);
+#endif
 	default: return KNOT_INVALID_KEY_ALGORITHM;
 	}
 }

@@ -234,6 +234,7 @@ static bool genkeyargs(int argc, char *argv[], bool just_timing, key_params_t *k
 		[DNSSEC_KEY_ALGORITHM_ECDSA_P384_SHA384] = "ecdsap384sha384",
 		[DNSSEC_KEY_ALGORITHM_ED25519] = "ed25519",
 		[DNSSEC_KEY_ALGORITHM_ED448] = "ed448",
+		[DNSSEC_KEY_ALGORITHM_MLDSA44] = "mldsa44",
 	};
 
 	// parse args

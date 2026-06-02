@@ -200,6 +200,12 @@ PKG_CHECK_MODULES([gnutls], [gnutls >= 3.6.12], [
     [AC_DEFINE([HAVE_GNUTLS_QUIC], [1], [gnutls_early_cipher_get available])
      gnutls_quic=yes], [gnutls_quic=no])
 
+    AC_CHECK_FUNC([gnutls_pubkey_import_mldsa_raw],
+        [AC_DEFINE([HAVE_MLDSA44], [1], [GnuTLS MLDSA44 support available]),
+         enable_mldsa44=yes],
+        [enable_mldsa44=no],
+        [#include <gnutls/gnutls.h>])
+
   CFLAGS=$save_CFLAGS
   LIBS=$save_LIBS
 ], [
@@ -947,6 +953,7 @@ result_msg_base="
     D-Bus support:          ${enable_dbus}
     POSIX capabilities:     ${enable_cap_ng}
     PKCS #11 support:       ${enable_pkcs11}
+    MLDSA44 support:        ${enable_mldsa44}
 
     Code coverage:          ${enable_code_coverage}
     Valgrind Memcheck:      ${with_memcheck}
