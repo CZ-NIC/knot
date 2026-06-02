@@ -118,8 +118,3 @@ void *mp_alloc(struct mempool *pool, size_t size);
  * The same as \ref mp_alloc(), but the result may be unaligned.
  **/
 void *mp_alloc_noalign(struct mempool *pool, size_t size);
-
-/**
- * The same as \ref mp_alloc(), but fills the newly allocated memory with zeroes.
- **/
-void *mp_alloc_zero(struct mempool *pool, size_t size);
