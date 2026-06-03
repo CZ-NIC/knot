@@ -355,7 +355,7 @@ static int zone_status(zone_t *zone, ctl_args_t *args)
 		}
 
 		data[KNOT_CTL_IDX_TYPE] = "XFR-freeze";
-		if (zone_get_flag(zone, ZONE_XFR_FROZEN, false)) {
+		if (zone->timers->flags & LAST_XFROUT_FROZEN) {
 			data[KNOT_CTL_IDX_DATA] = "yes";
 		} else {
 			data[KNOT_CTL_IDX_DATA] = STATUS_EMPTY;
@@ -891,7 +891,7 @@ static int zone_thaw(zone_t *zone, _unused_ ctl_args_t *args)
 
 static int zone_xfr_freeze(zone_t *zone, _unused_ ctl_args_t *args)
 {
-	zone_set_flag(zone, ZONE_XFR_FROZEN);
+	zone->timers->flags |= LAST_XFROUT_FROZEN;
 
 	log_zone_info(zone->name, "outgoing XFR frozen");
 
@@ -900,7 +900,7 @@ static int zone_xfr_freeze(zone_t *zone, _unused_ ctl_args_t *args)
 
 static int zone_xfr_thaw(zone_t *zone, _unused_ ctl_args_t *args)
 {
-	zone_unset_flag(zone, ZONE_XFR_FROZEN);
+	zone->timers->flags &= ~LAST_XFROUT_FROZEN;
 
 	log_zone_info(zone->name, "outgoing XFR unfrozen");
 

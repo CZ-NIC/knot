@@ -36,7 +36,6 @@ typedef enum {
 	ZONE_FORCE_ZSK_ROLL = 1 << 4, /*!< Force ZSK rollover. */
 	ZONE_IS_CATALOG     = 1 << 5, /*!< This is a catalog. */
 	ZONE_IS_CAT_MEMBER  = 1 << 6, /*!< This zone exists according to a catalog. */
-	ZONE_XFR_FROZEN     = 1 << 7, /*!< Outgoing AXFR/IXFR temporarily disabled. */
 	ZONE_USER_FLUSH     = 1 << 8, /*!< User-triggered flush. */
 	ZONE_LAST_SIGN_OK   = 1 << 9, /*!< Last full-sign event finished OK. */
 	ZONE_PREF_MASTER_2X = 1 << 10, /*!< Preferred master has been overwritten at least once. */

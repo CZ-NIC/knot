@@ -526,6 +526,10 @@ load_end:
 	zone_skip_free(&skip);
 	zone->started = true;
 
+	if (zone->timers->flags & LAST_XFROUT_FROZEN) {
+		log_zone_notice(zone->name, "outgoing XFR is still frozen");
+	}
+
 	return KNOT_EOK;
 
 cleanup:

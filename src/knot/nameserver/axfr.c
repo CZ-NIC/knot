@@ -139,7 +139,7 @@ static int axfr_query_init(knotd_qdata_t *qdata)
 		}
 	}
 
-	if (zone_get_flag(qdata->extra->zone, ZONE_XFR_FROZEN, false)) {
+	if (qdata->extra->zone->timers_static->flags & LAST_XFROUT_FROZEN) {
 		qdata->rcode = KNOT_RCODE_REFUSED;
 		qdata->rcode_ede = KNOT_EDNS_EDE_NOT_READY;
 		return KNOT_ETRYAGAIN;
