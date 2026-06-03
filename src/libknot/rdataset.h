@@ -30,6 +30,9 @@ typedef struct {
 	knot_rdata_t *rdata; /*!< \brief Serialized rdata, canonically sorted. */
 } knot_rdataset_t;
 
+/*!< \brief Required static rdataset buffer size for specified rdata length. */
+#define KNOT_RDATASET_STATIC_BUFSIZE(rdlen) (KNOT_PTR_ALIGN_MAX + sizeof(knot_rdataset_t) + knot_rdata_size(rdlen))
+
 /*!
  * \brief Initializes RRS structure.
  *
@@ -60,6 +63,19 @@ static inline knot_rdata_t *knot_rdataset_next(knot_rdata_t *rr)
 	assert(rr);
 	return (knot_rdata_t *)((uint8_t *)rr + knot_rdata_size(rr->len));
 }
+
+/*!
+ * \brief Create a static 1-record rdataset structure in a given buffer.
+ *
+ * \param buf         Auxiliary buffer.
+ * \param bufsize     Auxiliary buffer size.
+ * \param rdata       Single RR rdata to be added.
+ * \param rdlen       Rdata length.
+ *
+ * \return Pointer to resulting rdataset inside the buffer or NULL.
+ */
+knot_rdataset_t *knot_rdataset_static(uint8_t *buf, size_t bufsize,
+                                      const uint8_t *rdata, uint16_t rdlen);
 
 /*!
  * \brief Removes single RR from RRS structure.

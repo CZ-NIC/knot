@@ -9,6 +9,7 @@
 
 #include "libknot/attribute.h"
 #include "libknot/rdataset.h"
+#include "contrib/macros.h"
 #include "contrib/mempattern.h"
 
 static knot_rdata_t *rr_seek(const knot_rdataset_t *rrs, uint16_t pos)
@@ -73,6 +74,27 @@ static int add_rr_at(knot_rdataset_t *rrs, const knot_rdata_t *rr, knot_rdata_t 
 	rrs->size += rr_size;
 
 	return KNOT_EOK;
+}
+
+_public_
+knot_rdataset_t *knot_rdataset_static(uint8_t *buf, size_t bufsize,
+                                      const uint8_t *rdata, uint16_t rdlen)
+{
+	if (buf == NULL || rdata == NULL ||
+	    bufsize < KNOT_RDATASET_STATIC_BUFSIZE(rdlen)) {
+		return NULL;
+	}
+
+	knot_rdataset_t *res = (knot_rdataset_t *)PTR_ALIGN(buf);
+	knot_rdata_t *rd = (knot_rdata_t *)(res + 1);
+
+	res->count = 1;
+	res->size = knot_rdata_size(rdlen);
+	res->rdata = rd;
+
+	knot_rdata_init(rd, rdlen, rdata);
+
+	return res;
 }
 
 _public_

@@ -12,6 +12,7 @@
 #include "libknot/rrset.h"
 #include "libknot/rrtype/naptr.h"
 #include "libknot/rrtype/rrsig.h"
+#include "contrib/macros.h"
 #include "contrib/mempattern.h"
 
 _public_
@@ -32,6 +33,39 @@ knot_rrset_t *knot_rrset_new(const knot_dname_t *owner, uint16_t type,
 	knot_rrset_init(ret, owner_cpy, type, rclass, ttl);
 
 	return ret;
+}
+
+_public_
+knot_rrset_t *knot_rrset_static(uint8_t *buf, size_t bufsize, knot_dname_t *owner,
+                                uint16_t type, uint32_t ttl, const uint8_t *rdata,
+                                uint16_t rdlen, bool copy_owner)
+{
+	size_t owsize = copy_owner ? knot_dname_size(owner) : 0;
+
+	if (buf == NULL || rdata == NULL || (copy_owner && owner == NULL) ||
+	    bufsize < owsize + KNOT_RRSET_STATIC_BUFSIZE(rdlen)) {
+		return NULL;
+	}
+
+	if (copy_owner) {
+		memcpy(buf, owner, owsize);
+		owner = (knot_dname_t *)buf;
+		buf += owsize;
+		bufsize -= owsize;
+	}
+
+	knot_rrset_t *res = (knot_rrset_t *)PTR_ALIGN(buf);
+	knot_rdata_t *rd = (knot_rdata_t *)(res + 1);
+
+	knot_rrset_init(res, owner, type, KNOT_CLASS_IN, ttl);
+
+	res->rrs.count = 1;
+	res->rrs.size = knot_rdata_size(rdlen);
+	res->rrs.rdata = rd;
+
+	knot_rdata_init(rd, rdlen, rdata);
+
+	return res;
 }
 
 _public_

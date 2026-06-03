@@ -212,5 +212,16 @@ int main(int argc, char *argv[])
 	knot_rdataset_clear(&rdataset_lo, NULL);
 	knot_rdataset_clear(&rdataset_gt, NULL);
 
+	uint8_t buf[32], rdb = 111;
+	for (size_t i = 0; i < sizeof(buf); i++) {
+		uint8_t *start = buf + sizeof(buf) - i;
+		knot_rdataset_t *rd = knot_rdataset_static(start, i, &rdb, sizeof(rdb));
+		if (i < KNOT_PTR_ALIGN_MAX + sizeof(*rd) + 4) {
+			ok(rd == NULL, "static: buffer too small %zu", i);
+		} else {
+			ok(rd->rdata->data[0] == rdb, "static: correct rdata %zu", i);
+		}
+	}
+
 	return EXIT_SUCCESS;
 }
