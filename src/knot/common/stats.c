@@ -458,9 +458,16 @@ static void dump_stats(server_t *server)
 	free(file_name);
 }
 
-static void *dumper(void *data)
+static void dumper_cleanup(_unused_ void *data)
+{
+	rcu_unregister_thread();
+}
+
+static void *dumper(_unused_ void *data)
 {
 	rcu_register_thread();
+	pthread_cleanup_push(dumper_cleanup, NULL);
+
 	while (true) {
 		assert(stats.timer > 0);
 		sleep(stats.timer);
@@ -471,7 +478,8 @@ static void *dumper(void *data)
 		rcu_read_unlock();
 		pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
 	}
-	rcu_unregister_thread();
+
+	pthread_cleanup_pop(1);
 	return NULL;
 }
 
