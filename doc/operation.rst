@@ -684,6 +684,28 @@ expired zone on a primary or a manually expired catalog zone becomes valid again
 after a server configuration is reloaded or the :doc:`knotd<man_knotd>` process
 is restarted, provided that the zone data hasn't been removed.
 
+.. _Zone removal:
+
+Zone removal
+============
+
+The recommend way to remove a zone from the server consists of the following
+two steps:
+
+1. remove the zone from the server configuration, for example::
+
+   $ knotc conf-begin
+   $ knotc conf-unset 'zone[example.com]'
+   $ knotc conf-comit
+
+2. purge the orphaned zone, for example::
+
+   $ knotc -f zone-purge example.com +orphan        # Purges everything but keys.
+   $ knotc -f zone-purge example.com +orphan +keys  # Purges the keys.
+
+As an alternative procedure, the zone may be frozen, then purged and deconfigured.
+No zone thaw in that case.
+
 .. _DNSSEC Key states:
 
 DNSSEC key states
