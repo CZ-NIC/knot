@@ -30,6 +30,22 @@ if serial != serial_init:
     set_err("SOA serial mismatch")
     detail_log("SOA serial mismatch %d != %d" % (serial, serial_init))
 
+master.stop()
+master.start()
+master.zone_wait(zone)
+master.ctl("zone-notify")
+
+resp = master.dig(zone[0].name, "AXFR", tries=1)
+resp.check_xfr(rcode="REFUSED")
+
+t.sleep(1)
+
+resp = slave.dig(zone[0].name, "SOA")
+serial = resp.soa_serial()
+if serial != serial_init:
+    set_err("SOA serial mismatch 2")
+    detail_log("SOA serial mismatch2 %d != %d" % (serial, serial_init))
+
 master.ctl("zone-xfr-thaw", wait=True)
 master.ctl("zone-notify")
 slave.zone_wait(zone, serial_init)

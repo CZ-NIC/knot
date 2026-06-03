@@ -232,7 +232,8 @@ Actions
   Trigger a zone freeze. All running events will be finished and all new and pending
   (planned) zone-changing events (load, refresh, update, flush, and DNSSEC signing)
   will be held up until the zone is thawed. Up to 8 (this limit is hardcoded) DDNS
-  updates per zone will be queued, subsequent updates will be refused. (#)
+  updates per zone will be queued, subsequent updates will be refused. Zone
+  freeze state does not persist across server restarts! (#)
 
 .. _knotc_zone-thaw:
 
@@ -242,7 +243,8 @@ Actions
 .. _knotc_zone-xfr-freeze:
 
 **zone-xfr-freeze** [*zone*...]
-  Temporarily disable outgoing AXFR/IXFR for the zone(s). (#)
+  Temporarily disable outgoing AXFR/IXFR for the zone(s). Zone transfer freeze
+  state persists across server restarts. (#)
 
 .. _knotc_zone-xfr-thaw:
 

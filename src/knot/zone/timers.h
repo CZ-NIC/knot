@@ -17,6 +17,7 @@
 #define LAST_SIGNED_SERIAL_VALID   (1 << 2)
 #define LAST_NOTIFIED_SERIAL_VALID (1 << 3)
 #define LAST_REFRESH_OK            (1 << 4)
+#define LAST_XFROUT_FROZEN         (1 << 5)
 
 /*!
  * \brief Persistent zone timers.
