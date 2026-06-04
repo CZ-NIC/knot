@@ -3284,10 +3284,18 @@ dnssec-validation
 
 If enabled, the zone contents are validated for being correctly signed
 (including NSEC/NSEC3 chain) with DNSSEC signatures every time the zone
-is loaded or changed (including AXFR/IXFR).
+is loaded or changed (including AXFR/IXFR), or whenever a previously seen
+RRSIG's expiration has passed.
 
 When the validation fails, the zone being loaded or update being applied
 is cancelled with an error, and either none or previous zone state is published.
+
+When a RRSIG expires on a secondary server, the whole zone is expired
+(permanent SERVFAIL until resolved).
+
+The DNSSEC validation is performed incrementally (taking little time for small
+updates to large zone) whenever possible, but occasionally full zone validation
+takes place.
 
 List of DNSSEC checks:
 
@@ -3311,7 +3319,8 @@ logged).
 
 .. TIP::
    If :ref:`server_dbus-event` is set to ``dnssec-invalid``, a corresponding
-   signal is emitted when the validation fails.
+   signal is emitted when the validation fails, both in the case of an invalid
+   zone update and in the case of an expired RRSIG that has not been refreshed.
 
 *Default:* not set
 
