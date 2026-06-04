@@ -60,6 +60,9 @@ page_free(void *start, uint64_t len)
 #endif
 
 struct mempool_chunk {
+#ifdef CONFIG_DEBUG
+	struct mempool *pool;         // Can be useful when analysing coredump for memory leaks
+#endif
 	struct mempool_chunk *next;
 	size_t size;
 };
@@ -144,6 +147,9 @@ mp_new(size_t chunk_size)
 	ASAN_UNPOISON_MEMORY_REGION(pool, sizeof(*pool));
 	DBG("Creating mempool %p with %zu bytes long chunks", pool, chunk_size);
 	chunk->next = NULL;
+#ifdef CONFIG_DEBUG
+	chunk->pool = pool;
+#endif
 	ASAN_POISON_MEMORY_REGION(chunk, sizeof(struct mempool_chunk));
 	*pool = (struct mempool) {
 		.state = { .free = { chunk_size - sizeof(*pool) }, .last = { chunk } },
@@ -268,6 +274,9 @@ mp_alloc_internal(struct mempool *pool, size_t size)
 			pool->unused = chunk->next;
 		} else {
 			chunk = mp_new_chunk(pool->chunk_size);
+#ifdef CONFIG_DEBUG
+			chunk->pool = pool;
+#endif
 		}
 		chunk->next = pool->state.last[0];
 		ASAN_POISON_MEMORY_REGION(chunk, sizeof(struct mempool_chunk));
@@ -282,6 +291,10 @@ mp_alloc_internal(struct mempool *pool, size_t size)
 			return NULL;
 		}
 		chunk->next = pool->state.last[1];
+#ifdef CONFIG_DEBUG
+		chunk->pool = pool;
+#endif
+
 		ASAN_POISON_MEMORY_REGION(chunk, sizeof(struct mempool_chunk));
 		pool->state.last[1] = chunk;
 		pool->state.free[1] = aligned - size;
