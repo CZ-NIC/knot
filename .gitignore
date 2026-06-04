@@ -14,6 +14,7 @@
 /scripts/showkey/showkey
 /tmp
 /Knot.creator.user*
+/.qtcreator/Knot.creator.user*
 /Knot.cflags
 /Knot.cxxflags
 /Doxyfile
