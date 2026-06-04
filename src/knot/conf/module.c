@@ -498,3 +498,8 @@ void conf_reset_modules(
 
 	(void)rcu_xchg_pointer(query_plan, new_plan);
 }
+
+redisContext *redis_conn(knotd_mod_t *mod)
+{
+	return rdb_connect(mod->config, false, " configuration reader");
+}

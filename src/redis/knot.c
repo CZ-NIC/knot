@@ -16,6 +16,7 @@
 #include "redis/libs.h"
 #include "redis/arg.h"
 #include "redis/type_diff.h"
+#include "redis/type_geoip.h"
 #include "redis/type_rrset.h"
 #include "redis/internal.h"
 
@@ -62,6 +63,20 @@ static RedisModuleCommandArg zone_load_txt_info_args[] = {
 	{"instance", REDISMODULE_ARG_TYPE_INTEGER,    -1, NULL,        NULL, NULL, REDISMODULE_CMD_ARG_NONE},
 	{"owner",    REDISMODULE_ARG_TYPE_STRING,     -1, NULL,        NULL, NULL, REDISMODULE_CMD_ARG_OPTIONAL},
 	{"rtype",    REDISMODULE_ARG_TYPE_STRING,     -1, NULL,        NULL, NULL, REDISMODULE_CMD_ARG_OPTIONAL},
+	{ 0 }
+};
+
+static RedisModuleCommandArg geoip_load_txt_info_args[] = {
+	{"module", REDISMODULE_ARG_TYPE_STRING, -1, NULL, NULL, NULL, REDISMODULE_CMD_ARG_NONE},
+	{ 0 }
+};
+
+static RedisModuleCommandArg geoip_store_txt_info_args[] = {
+	{"module", REDISMODULE_ARG_TYPE_STRING, -1, NULL, NULL, NULL, REDISMODULE_CMD_ARG_NONE},
+	{"owner",  REDISMODULE_ARG_TYPE_STRING, -1, NULL, NULL, NULL, REDISMODULE_CMD_ARG_NONE},
+	{"geo",    REDISMODULE_ARG_TYPE_STRING, -1, NULL, NULL, NULL, REDISMODULE_CMD_ARG_NONE},
+	{"rtype",  REDISMODULE_ARG_TYPE_STRING, -1, NULL, NULL, NULL, REDISMODULE_CMD_ARG_NONE},
+	{"data",   REDISMODULE_ARG_TYPE_STRING, -1, NULL, NULL, NULL, REDISMODULE_CMD_ARG_NONE},
 	{ 0 }
 };
 
@@ -209,6 +224,24 @@ static const RedisModuleCommandInfo upd_load_txt_info = {
 	.since = "7.0.0",
 	.arity = -4,
 	.args = upd_load_txt_info_args,
+};
+
+static const RedisModuleCommandInfo geoip_load_txt_info = {
+	.version = REDISMODULE_COMMAND_INFO_VERSION,
+	.summary = "Load geoip configuration",
+	.complexity = "O(u), where u is the number of records in the retrieved updates",
+	.since = "7.0.0",
+	.arity = 2,
+	.args = geoip_load_txt_info_args,
+};
+
+static const RedisModuleCommandInfo geoip_store_txt_info = {
+	.version = REDISMODULE_COMMAND_INFO_VERSION,
+	.summary = "Load geoip configuration",
+	.complexity = "O(u), where u is the number of records in the retrieved updates",
+	.since = "7.0.0",
+	.arity = 6,
+	.args = geoip_store_txt_info_args,
 };
 
 static int zone_begin_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
@@ -844,6 +877,48 @@ static int upd_load_bin(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 	return REDISMODULE_OK;
 }
 
+static int geoip_load_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
+{
+	if (argc < 2) {
+		return RedisModule_WrongArity(ctx);
+	}
+
+	arg_string_t module_name;
+	ARG_MODULENAME(argv[1], module_name, "module name");
+
+	geoip_load(ctx, &module_name, DUMP_TXT);
+
+	return REDISMODULE_OK;
+}
+
+static int geoip_store_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
+{
+	if (argc < 6) {
+		return RedisModule_WrongArity(ctx);
+	}
+
+	arg_string_t module_name;
+	ARG_MODULENAME(argv[1], module_name, "module name");
+
+	arg_dname_t owner;
+	ARG_DNAME_TXT(argv[2], owner, NULL, "record owner");
+
+	geoip_typeval_t tv;
+	ARG_GEO_TYPEVAL_TXT(argv[3], tv, "geoip typeval")
+
+	uint16_t rtype;
+	ARG_RTYPE_TXT(argv[4], rtype);
+
+	uint8_t *rdata;
+	size_t rdata_len;
+	ARG_DATA(argv[5], rdata_len, rdata, "rdata");
+
+	geoip_add(ctx, &module_name, &owner, &tv, rtype, rdata, rdata_len);
+
+	return REDISMODULE_OK;
+}
+
+
 #define LOAD_ERROR(ctx, msg) { \
 	RedisModule_Log(ctx, REDISMODULE_LOGLEVEL_WARNING, RDB_E(msg)); \
 	RedisModule_ReplyWithError(ctx, RDB_E(msg)); \
@@ -893,6 +968,11 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 		LOAD_ERROR(ctx, "failed to load type " RRSET_NAME);
 	}
 
+	rdb_geoip_t = RedisModule_CreateDataType(ctx, GEOIP_NAME, GEOIP_ENCODING_VERSION, &geoip_tm);
+	if (rdb_geoip_t == NULL) {
+		LOAD_ERROR(ctx, "failed to load type " GEOIP_NAME);
+	}
+
 	rdb_diff_t = RedisModule_CreateDataType(ctx, DIFF_NAME, DIFF_ENCODING_VERSION, &diff_tm);
 	if (rdb_diff_t == NULL) {
 		LOAD_ERROR(ctx, "failed to load type " DIFF_NAME);
@@ -914,6 +994,8 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 	    register_command_txt("KNOT.UPD.ABORT",     upd_abort_txt,     "write")      ||
 	    register_command_txt("KNOT.UPD.DIFF",      upd_diff_txt,      "readonly")   ||
 	    register_command_txt("KNOT.UPD.LOAD",      upd_load_txt,      "readonly")   ||
+		register_command_txt("KNOT.GEOIP.LOAD",    geoip_load_txt,    "readonly")   ||
+		register_command_txt("KNOT.GEOIP.STORE",   geoip_store_txt,   "write fast") ||
 	    register_command_bin(RDB_CMD_ZONE_EXISTS,  zone_exists_bin,   "readonly")   ||
 	    register_command_bin(RDB_CMD_ZONE_BEGIN,   zone_begin_bin,    "write")      ||
 	    register_command_bin(RDB_CMD_ZONE_STORE,   zone_store_bin,    "write")      ||
@@ -930,6 +1012,7 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 	    register_command_bin(RDB_CMD_UPD_DIFF,     upd_diff_bin,      "readonly")   ||
 	    register_command_bin(RDB_CMD_UPD_LOAD,     upd_load_bin,      "readonly")   ||
 	    register_command_bin("KNOT_BIN.AOF.RRSET", rrset_aof_rewrite, "write")      || // Add "internal" with newer Redis.
+	    register_command_bin("KNOT_BIN.AOF.GEOIP", geoip_aof_rewrite, "write")      || // Add "internal" with newer Redis.
 	    register_command_bin("KNOT_BIN.AOF.DIFF",  diff_aof_rewrite,  "write"))        // Add "internal" with newer Redis.
 	{
 		LOAD_ERROR(ctx, "failed to load commands");

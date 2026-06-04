@@ -13,6 +13,7 @@ knot_la_SOURCES = \
         knot.h \
         libs.h \
         type_diff.h \
+        type_geoip.h \
         type_rrset.h
 
 knot_la_CPPFLAGS = $(AM_CPPFLAGS) $(CFLAG_VISIBILITY) $(gnutls_CFLAGS)

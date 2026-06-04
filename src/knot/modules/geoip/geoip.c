@@ -7,6 +7,7 @@
 #include <string.h>
 #include <arpa/inet.h>
 
+#include "knot/common/hiredis.h"
 #include "knot/conf/schema.h"
 #include "knot/include/module.h"
 #include "knot/modules/geoip/geodb.h"
@@ -21,6 +22,7 @@
 #include "libzscanner/scanner.h"
 
 #define MOD_CONFIG_FILE	"\x0B""config-file"
+#define MOD_CONFIG_RDB	"\x0B""rdb-backend"
 #define MOD_TTL		"\x03""ttl"
 #define MOD_MODE	"\x04""mode"
 #define MOD_DNSSEC	"\x06""dnssec"
@@ -49,6 +51,7 @@ static const char* mode_key[] = {
 
 const yp_item_t geoip_conf[] = {
 	{ MOD_CONFIG_FILE, YP_TSTR,  YP_VNONE },
+	{ MOD_CONFIG_RDB,  YP_TBOOL, YP_VBOOL = { false } },
 	{ MOD_TTL,         YP_TINT,  YP_VINT = { 0, UINT32_MAX, 60, YP_STIME } },
 	{ MOD_MODE,        YP_TOPT,  YP_VOPT = { modes, MODE_SUBNET} },
 	{ MOD_DNSSEC,      YP_TBOOL, YP_VNONE },
@@ -69,12 +72,18 @@ static int load_module(check_ctx_t *ctx);
 
 int geoip_conf_check(knotd_conf_check_args_t *args)
 {
-	knotd_conf_t conf = knotd_conf_check_item(args, MOD_CONFIG_FILE);
-	if (conf.count == 0) {
-		args->err_str = "no configuration file specified";
+	knotd_conf_t conf_f = knotd_conf_check_item(args, MOD_CONFIG_FILE);
+	knotd_conf_t conf_db = knotd_conf_check_item(args, MOD_CONFIG_RDB);
+	if (conf_f.count < 1 && conf_db.single.boolean == false) {
+		args->err_str = "no configuration file or database specified";
+		return KNOT_EINVAL;
+	} else if (conf_f.count >= 1 && conf_db.single.boolean == true) {
+		args->err_str = "configuration file rewrites specified configuration database";
 		return KNOT_EINVAL;
 	}
-	conf = knotd_conf_check_item(args, MOD_MODE);
+	knotd_conf_free(&conf_f);
+	knotd_conf_free(&conf_db);
+	knotd_conf_t conf = knotd_conf_check_item(args, MOD_MODE);
 	if (conf.count == 1 && conf.single.option == MODE_GEODB) {
 		if (!geodb_available()) {
 			args->err_str = "geodb mode not available";
@@ -683,6 +692,65 @@ cleanup:
 	return ret;
 }
 
+#include "knot/conf/module.h"
+#include <string.h>
+
+static int geo_conf_rdb(check_ctx_t *check, conf_mod_id_t *id, geoip_ctx_t *ctx)
+{
+	redisContext *db = redis_conn(check->mod);
+	// TODO GEOIP.LOAD should have parameter for MODE (load only GEO/NET/WEIGHT types, not every type/mode)
+	redisReply *reply = redisCommand(db, "KNOT.GEOIP.LOAD %b", id->data, id->len - 1);
+	if (reply == NULL) {
+		return KNOT_ECONN;
+	} else if (reply->type != REDIS_REPLY_ARRAY) {
+		freeReplyObject(reply);
+		return KNOT_EINVAL;
+	} else if (reply->elements == 0) {
+		freeReplyObject(reply);
+		return KNOT_ENOENT;
+	}
+
+	for (size_t i = 0; i < reply->elements; ++i) {
+		redisReply *data = reply->element[i];
+		geo_view_t *view = calloc(1, sizeof(geo_view_t));
+
+		int mode = data->element[0]->integer; // TODO unify
+		redisReply *geo_data = data->element[1];
+		knot_dname_t *owner = (knot_dname_t *)data->element[2]->str;
+
+		switch (mode) {
+		case 1:
+			if (ctx->mode != MODE_GEODB) {
+				continue;
+			}
+			view->geodata_len[0] = geo_data->len;
+			view->geodata[0] = strdup(geo_data->str);
+			// memcpy(view->geodata[0], geo_data->str, geo_data->len);
+			break;
+		case 2:
+			if (ctx->mode != MODE_SUBNET) {
+				continue;
+			}
+			// view->subnet = (struct sockaddr_storage *)remote;
+			// view->subnet_prefix = (remote->ss_family == AF_INET) ? 32 : 128;
+			break;
+		case 3:
+			if (ctx->mode != MODE_WEIGHTED) {
+				continue;
+			}
+			break;
+		default:
+			return KNOT_ENOTSUP;
+		}
+
+		view->avail++;
+		view->count++;
+ 		add_view_to_trie(owner, view, ctx);
+	}
+
+	return KNOT_EOK;
+}
+
 static void clear_geo_trie(trie_t *trie)
 {
 	trie_it_t *it = trie_it_begin(trie);
@@ -944,6 +1012,9 @@ static knotd_in_state_t geoip_process(knotd_in_state_t state, knot_pkt_t *pkt,
 		return KNOTD_IN_STATE_NODATA;
 	}
 }
+#include "knot/conf/conf.h"
+#include "knot/include/module.h"
+#include "knot/nameserver/query_module.h"
 
 static int load_module(check_ctx_t *check)
 {
@@ -1015,13 +1086,20 @@ static int load_module(check_ctx_t *check)
 	}
 
 	// Parse geo configuration file.
-	int ret = geo_conf_yparse(check, ctx);
+	int ret = KNOT_EOK;
+	conf = geo_conf(check, MOD_CONFIG_RDB);
+	if (conf.single.boolean == false) {
+		ret = geo_conf_yparse(check, ctx);
+	}
 	if (ret != KNOT_EOK) {
 		free_geoip_ctx(ctx);
 		return ret;
 	}
 
 	if (mod != NULL) {
+		if (conf.single.boolean) {
+			ret = geo_conf_rdb(check, mod->id, ctx);
+		}
 		// Prepare geo views for faster search.
 		geo_sort_and_link(ctx);
 

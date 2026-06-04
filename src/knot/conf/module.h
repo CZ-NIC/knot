@@ -116,3 +116,7 @@ void conf_reset_modules(
 	list_t *query_modules,
 	struct query_plan **query_plan
 );
+
+#include "knot/common/hiredis.h"
+
+redisContext *redis_conn(knotd_mod_t *mod);

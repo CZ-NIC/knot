@@ -30,6 +30,11 @@ typedef struct {
 	knot_dname_storage_t buff;
 } arg_dname_t;
 
+typedef struct {
+	uint8_t len;
+	const char *str;
+} arg_string_t;
+
 #define ARG_OPT_TXT(out, name, dflt, value) { \
 	out = dflt; \
 	if (argc > 1) { \
@@ -164,6 +169,37 @@ typedef struct {
 	/* We assume the dname is properly lowercased! */ \
 	out.data = ptr; \
 	out.len = ret; \
+}
+
+#define ARG_MODULENAME(arg, out, name) { \
+	size_t len; \
+	const char *ptr = RedisModule_StringPtrLen(arg, &len); \
+	/* TODO test alphanum */ \
+	if (len == 0 || len > 255) { \
+		return RedisModule_ReplyWithError(ctx, RDB_E("invalid " name)); \
+	} \
+	out.str = ptr; \
+	out.len = len; \
+}
+
+#define ARG_GEO_TYPEVAL_TXT(arg, out, name) { \
+	size_t len; \
+	const char *ptr = RedisModule_StringPtrLen(arg, &len); \
+	if (len > 4 && strncmp(ptr, "geo:", 4) == 0) { \
+		ptr += 4; len -= 4; out.type = GEO; \
+	} else if (len > 4 && strncmp(ptr, "net:", 4) == 0) { \
+		ptr += 4; len -= 4; out.type = NET; \
+	} else if (len > 4 && strncmp(ptr, "weight:", 7) == 0) { \
+		ptr += 7; len -= 7; out.type = WEIGHT; \
+	} else { \
+		return RedisModule_ReplyWithError(ctx, RDB_E("malformed " name)); \
+	} \
+	/* TODO validate ptr */ \
+	if (len < 0 || len >= 256) { \
+		return RedisModule_ReplyWithError(ctx, RDB_E("invalid " name)); \
+	} \
+	out.val = (const uint8_t *)ptr; \
+	out.val_size = len; \
 }
 
 #define ARG_FLAG(arg, out, flag) { \
