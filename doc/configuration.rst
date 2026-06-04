@@ -568,8 +568,9 @@ The signing process consists of the following steps:
    manually will be removed. To add an extra DNSKEY record into the set, the
    key must be imported into the KASP database (possibly deactivated).
 #. Fixing the NSEC or NSEC3 chain.
-#. Removing expired signatures, invalid signatures, signatures expiring
-   in a short time, and signatures issued by an unknown key.
+#. Removing surplus signatures. This includes expired and soon-to-expire signatures,
+   invalid or orphan signatures, and signatures belonging to inactive (e.g. retired)
+   keys.
 #. Creating missing signatures. Unless the Single-Type Signing Scheme
    is used, DNSKEY records in a zone apex are signed by KSK keys and
    all other records are signed by ZSK keys.
