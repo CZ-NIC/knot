@@ -216,7 +216,7 @@ static inline conf_val_t conf_mod_get(
  * \param[in] conf        Configuration.
  * \param[in] txn         Configuration DB transaction.
  * \param[in] key1_name   Item name.
- * \param[in] dname Zone  name.
+ * \param[in] dname       Zone name.
  *
  * \return Item value.
  */
