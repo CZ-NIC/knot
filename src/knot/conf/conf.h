@@ -556,6 +556,7 @@ const uint8_t* conf_data(
  *
  * \param[in] val            Item value.
  * \param[in] sock_base_dir  Path prefix for a relative UNIX socket location.
+ * \param[out] dev           Device name (optional).
  * \param[in] alternative    Use alternative default port if port not specified.
  *
  * \return Socket address.
@@ -563,13 +564,15 @@ const uint8_t* conf_data(
 struct sockaddr_storage conf_addr_alt(
 	conf_val_t *val,
 	const char *sock_base_dir,
+	const char **dev,
 	bool alternative
 );
 inline static struct sockaddr_storage conf_addr(
 	conf_val_t *val,
-	const char *sock_base_dir)
+	const char *sock_base_dir,
+	const char **dev)
 {
-	return conf_addr_alt(val, sock_base_dir, false);
+	return conf_addr_alt(val, sock_base_dir, dev, false);
 }
 
 /*!

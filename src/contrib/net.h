@@ -42,11 +42,12 @@ int net_unbound_socket(int type, const struct sockaddr_storage *addr);
  * \param addr       Socket address.
  * \param flags      Socket binding options.
  * \param unix_mode  Socket file mode (UNIX socket only). 0 means don't set mode.
+ * \param dev        Optional device name in the case of a wildcard address.
  *
  * \return socket or error code
  */
 int net_bound_socket(int type, const struct sockaddr_storage *addr,
-                     net_bind_flag_t flags, mode_t unix_mode);
+                     net_bind_flag_t flags, mode_t unix_mode, const char *dev);
 
 /*!
  * \brief Create socket connected (asynchronously) to destination address.

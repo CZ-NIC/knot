@@ -207,7 +207,7 @@ int knot_ctl_bind(knot_ctl_t *ctx, const char *path, unsigned backlog)
 
 	// Bind the socket.
 	mode_t mode = S_IWUSR | S_IWGRP;
-	ctx->listen_sock = net_bound_socket(SOCK_STREAM, &addr, 0, mode);
+	ctx->listen_sock = net_bound_socket(SOCK_STREAM, &addr, 0, mode, NULL);
 	if (ctx->listen_sock < 0) {
 		return ctx->listen_sock;
 	}

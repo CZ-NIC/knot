@@ -52,8 +52,10 @@ enum {
 enum {
 	ADDR_TYPE_UNIX           = 0,
 	ADDR_TYPE_IPV4           = 4,
+	ADDR_TYPE_IPV4_DEVICE    = 5,
 	ADDR_TYPE_IPV6           = 6,
 	ADDR_TYPE_IPV6_LINKLOCAL = 7,
+	ADDR_TYPE_IPV6_DEVICE    = 8,
 };
 
 static bool is_addr_unix(uint8_t type)
@@ -66,6 +68,11 @@ static bool is_addr_ipv4(uint8_t type)
 	return type == ADDR_TYPE_IPV4;
 }
 
+static bool is_addr_ipv4_device(uint8_t type)
+{
+	return type == ADDR_TYPE_IPV4_DEVICE;
+}
+
 static bool is_addr_ipv6(uint8_t type)
 {
 	return type == ADDR_TYPE_IPV6;
@@ -76,9 +83,15 @@ static inline bool is_addr_ipv6_linklocal(uint8_t type)
 	return type == ADDR_TYPE_IPV6_LINKLOCAL;
 }
 
+static inline bool is_addr_ipv6_device(uint8_t type)
+{
+	return type == ADDR_TYPE_IPV6_DEVICE;
+}
+
 static bool is_ip_addr(uint8_t type)
 {
-	return is_addr_ipv4(type) || is_addr_ipv6(type) || is_addr_ipv6_linklocal(type);
+	return is_addr_ipv4(type) || is_addr_ipv6(type) || is_addr_ipv6_linklocal(type) ||
+	       is_addr_ipv4_device(type) || is_addr_ipv6_device(type);
 }
 
 static wire_ctx_t copy_in(
@@ -402,10 +415,15 @@ static uint8_t sock_type_guess(
 		if (*if_name == NULL) {
 			return ADDR_TYPE_IPV6;
 		} else {
-			return ADDR_TYPE_IPV6_LINKLOCAL;
+			return ADDR_TYPE_IPV6_LINKLOCAL; // Can be corrected to ADDR_TYPE_IPV6_DEVICE.
 		}
 	} else if (colons == 0 && dots == 3 && digits >= 3 && slashes == 0) {
-		return ADDR_TYPE_IPV4;
+		*if_name = (const uint8_t *)strchr((const char *)str, '%');
+		if (*if_name == NULL) {
+			return ADDR_TYPE_IPV4;
+		} else {
+			return ADDR_TYPE_IPV4_DEVICE;
+		}
 	} else {
 		return ADDR_TYPE_UNIX;
 	}
@@ -441,23 +459,39 @@ int yp_addr_noport_to_bin(
 		}
 	}
 
-	// Write address type.
-	wire_ctx_write_u8(out, type);
-
-	// Write address as such.
-	if (is_addr_ipv4(type) && inet_pton(AF_INET, buf, &addr4) == 1) {
+	// Write address type and address as such.
+	if ((is_addr_ipv4(type) || is_addr_ipv4_device(type)) &&
+	    inet_pton(AF_INET, buf, &addr4) == 1) {
+		if (if_name != NULL) {
+			assert(is_addr_ipv4_device(type));
+			if (addr4.s_addr != INADDR_ANY) {
+				return KNOT_EINVAL;
+			}
+		}
+		wire_ctx_write_u8(out, type);
 		wire_ctx_write(out, (uint8_t *)&(addr4.s_addr),
 		               sizeof(addr4.s_addr));
+		if (if_name != NULL) {
+			wire_ctx_skip(in, sizeof(uint8_t));
+			yp_str_to_bin(in, out, stop);
+		}
 	} else if ((is_addr_ipv6(type) || is_addr_ipv6_linklocal(type)) &&
 	           inet_pton(AF_INET6, buf, &addr6) == 1) {
+		if (if_name != NULL) {
+			assert(is_addr_ipv6_linklocal(type));
+			if (IN6_IS_ADDR_UNSPECIFIED(&addr6)) {
+				type = ADDR_TYPE_IPV6_DEVICE; // Type correction.
+			}
+		}
+		wire_ctx_write_u8(out, type);
 		wire_ctx_write(out, (uint8_t *)&(addr6.s6_addr),
 		               sizeof(addr6.s6_addr));
 		if (if_name != NULL) {
-			assert(is_addr_ipv6_linklocal(type));
 			wire_ctx_skip(in, sizeof(uint8_t));
 			yp_str_to_bin(in, out, stop);
 		}
 	} else if (is_addr_unix(type) && allow_unix) {
+		wire_ctx_write_u8(out, type);
 		int ret = yp_str_to_bin(in, out, stop);
 		if (ret != KNOT_EOK) {
 			return ret;
@@ -489,6 +523,7 @@ int yp_addr_noport_to_txt(
 		}
 		break;
 	case ADDR_TYPE_IPV4:
+	case ADDR_TYPE_IPV4_DEVICE:
 		wire_ctx_read(in, &(addr4.s_addr), sizeof(addr4.s_addr));
 		if (knot_inet_ntop(AF_INET, &addr4, (char *)out->position,
 		    wire_ctx_available(out)) == NULL) {
@@ -497,6 +532,7 @@ int yp_addr_noport_to_txt(
 		wire_ctx_skip(out, strlen((char *)out->position));
 		break;
 	case ADDR_TYPE_IPV6:
+	case ADDR_TYPE_IPV6_DEVICE:
 	case ADDR_TYPE_IPV6_LINKLOCAL:
 		wire_ctx_read(in, &(addr6.s6_addr), sizeof(addr6.s6_addr));
 		if (knot_inet_ntop(AF_INET6, &addr6, (char *)out->position,
@@ -504,8 +540,16 @@ int yp_addr_noport_to_txt(
 			return KNOT_EINVAL;
 		}
 		wire_ctx_skip(out, strlen((char *)out->position));
+		break;
+	default:
+		return KNOT_EINVAL;
+	}
 
-		if (is_addr_ipv6_linklocal(type) && *in->position != '\0') {
+	switch (type) {
+	case ADDR_TYPE_IPV4_DEVICE:
+	case ADDR_TYPE_IPV6_DEVICE:
+	case ADDR_TYPE_IPV6_LINKLOCAL:
+		if (*in->position != '\0') {
 			wire_ctx_write_u8(out, '%');
 			ret = yp_str_to_txt(in, out);
 			if (ret != KNOT_EOK) {
@@ -513,8 +557,6 @@ int yp_addr_noport_to_txt(
 			}
 		}
 		break;
-	default:
-		return KNOT_EINVAL;
 	}
 
 	YP_CHECK_RET;
@@ -1171,7 +1213,8 @@ int yp_item_to_txt(
 
 _public_
 struct sockaddr_storage yp_addr_noport(
-	const uint8_t *data)
+	const uint8_t *data,
+	const char **dev)
 {
 	struct sockaddr_storage ss = { AF_UNSPEC };
 
@@ -1187,40 +1230,54 @@ struct sockaddr_storage yp_addr_noport(
 		sockaddr_set(&ss, AF_UNIX, (char *)data, 0);
 		break;
 	case ADDR_TYPE_IPV4:
+	case ADDR_TYPE_IPV4_DEVICE:
 		addr_len = sizeof(((struct in_addr *)NULL)->s_addr);
 		sockaddr_set_raw(&ss, AF_INET, data, addr_len);
 		break;
 	case ADDR_TYPE_IPV6:
+	case ADDR_TYPE_IPV6_DEVICE:
 	case ADDR_TYPE_IPV6_LINKLOCAL:
 		addr_len = sizeof(((struct in6_addr *)NULL)->s6_addr);
 		sockaddr_set_raw(&ss, AF_INET6, data, addr_len);
-		if (is_addr_ipv6_linklocal(type)) {
-			struct sockaddr_in6 *sa = (struct sockaddr_in6 *)&ss;
-			sa->sin6_scope_id = if_nametoindex((const char *)data + addr_len);
-			// Ignore if such an interface doesn't exist.
-		}
 		break;
 	}
 
+	// Set device if present.
+	switch (type) {
+	case ADDR_TYPE_IPV4_DEVICE:
+	case ADDR_TYPE_IPV6_DEVICE:
+		if (dev != NULL) {
+			*dev = (const char *)data + addr_len;
+		}
+		break;
+	case ADDR_TYPE_IPV6_LINKLOCAL: ;
+		struct sockaddr_in6 *sa = (struct sockaddr_in6 *)&ss;
+		sa->sin6_scope_id = if_nametoindex((const char *)data + addr_len);
+		// Ignore if such an interface doesn't exist.
+		break;
+	}
 	return ss;
 }
 
 _public_
 struct sockaddr_storage yp_addr(
 	const uint8_t *data,
-	bool *no_port)
+	bool *no_port,
+	const char **dev)
 {
 	uint8_t type = *data;
-	struct sockaddr_storage ss = yp_addr_noport(data);
+	struct sockaddr_storage ss = yp_addr_noport(data, dev);
 
 	size_t addr_len;
 
 	// Get binary address length.
 	switch (type) {
 	case ADDR_TYPE_IPV4:
+	case ADDR_TYPE_IPV4_DEVICE:
 		addr_len = sizeof(((struct in_addr *)NULL)->s_addr);
 		break;
 	case ADDR_TYPE_IPV6:
+	case ADDR_TYPE_IPV6_DEVICE:
 	case ADDR_TYPE_IPV6_LINKLOCAL:
 		addr_len = sizeof(((struct in6_addr *)NULL)->s6_addr);
 		break;
@@ -1231,7 +1288,8 @@ struct sockaddr_storage yp_addr(
 
 	if (addr_len > 0) {
 		const uint8_t *port_pos = data + sizeof(uint8_t) + addr_len;
-		if (is_addr_ipv6_linklocal(type)) {
+		if (is_addr_ipv4_device(type) || is_addr_ipv6_linklocal(type) ||
+		    is_addr_ipv6_device(type)) {
 			port_pos += strlen((char *)port_pos) + 1;
 		}
 		int64_t port = knot_wire_read_u64(port_pos);

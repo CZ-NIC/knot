@@ -239,7 +239,7 @@ static void test_connected(int type)
 
 	// setup server
 
-	int server = net_bound_socket(type, &local_addr, 0, 0);
+	int server = net_bound_socket(type, &local_addr, 0, 0, NULL);
 	ok(server >= 0, "%s: server, create bound socket", name);
 
 	if (socktype_is_stream(type)) {
@@ -280,7 +280,7 @@ static void test_unconnected(void)
 
 	// server
 
-	int server = net_bound_socket(SOCK_DGRAM, &local, 0, 0);
+	int server = net_bound_socket(SOCK_DGRAM, &local, 0, 0, NULL);
 	ok(server >= 0, "UDP, create server socket");
 
 	server_ctx_t server_ctx = { 0 };
@@ -348,7 +348,7 @@ static void test_refused(void)
 	// listening, not accepting
 
 	addr = addr_local();
-	server = net_bound_socket(SOCK_STREAM, &addr, 0, 0);
+	server = net_bound_socket(SOCK_STREAM, &addr, 0, 0, NULL);
 	ok(server >= 0, "server, create server");
 	addr = addr_from_socket(server);
 
@@ -489,7 +489,7 @@ static void test_dns_tcp(void)
 		};
 
 		struct sockaddr_storage addr = addr_local();
-		int server = net_bound_socket(SOCK_STREAM, &addr, 0, 0);
+		int server = net_bound_socket(SOCK_STREAM, &addr, 0, 0, NULL);
 		ok(server >= 0, "%s, server, create socket", t->name);
 
 		int r = listen(server, LISTEN_BACKLOG);
@@ -530,7 +530,7 @@ static void test_nonblocking_mode(int type)
 	ok(!socket_is_blocking(client), "%s: unbound, nonblocking mode", name);
 	close(client);
 
-	int server = net_bound_socket(type, &addr, 0, 0);
+	int server = net_bound_socket(type, &addr, 0, 0, NULL);
 	ok(server >= 0, "%s: bound, create", name);
 	ok(!socket_is_blocking(server), "%s: bound, nonblocking mode", name);
 
@@ -556,7 +556,7 @@ static void test_nonblocking_accept(void)
 
 	struct sockaddr_storage addr_server = addr_local();
 
-	int server = net_bound_socket(SOCK_STREAM, &addr_server, 0, 0);
+	int server = net_bound_socket(SOCK_STREAM, &addr_server, 0, 0, NULL);
 	ok(server >= 0, "server, create socket");
 
 	r = listen(server, LISTEN_BACKLOG);
@@ -644,7 +644,7 @@ static void test_bind_multiple(void)
 
 	// bind first socket
 
-	int sock_one = net_bound_socket(SOCK_DGRAM, &addr, NET_BIND_MULTIPLE, 0);
+	int sock_one = net_bound_socket(SOCK_DGRAM, &addr, NET_BIND_MULTIPLE, 0, NULL);
 	if (sock_one == KNOT_ENOTSUP) {
 		skip("not supported on this system");
 		return;
@@ -654,7 +654,7 @@ static void test_bind_multiple(void)
 	// bind second socket to the same address
 
 	const struct sockaddr_storage addr_one = addr_from_socket(sock_one);
-	int sock_two = net_bound_socket(SOCK_DGRAM, &addr_one, NET_BIND_MULTIPLE, 0);
+	int sock_two = net_bound_socket(SOCK_DGRAM, &addr_one, NET_BIND_MULTIPLE, 0, NULL);
 	ok(sock_two >= 0, "bind second socket");
 
 	// compare sockets
