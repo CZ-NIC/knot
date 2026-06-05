@@ -450,6 +450,9 @@ Maximum cumulative size of memory used for buffers of unACKed
 sent messages. This limit is per one UDP worker.
 
 .. NOTE::
+   Temporarily, more memory can be occupied by the buffers until some connections
+   are cleared to free some memory and enforce the limit.
+
    Set low if little memory is available (together with :ref:`server_quic-max-clients`
    since QUIC connections are memory-heavy). Set to high value if outgoing zone
    transfers of big zone over QUIC are expected.
