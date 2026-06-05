@@ -891,7 +891,7 @@ static int zone_thaw(zone_t *zone, _unused_ ctl_args_t *args)
 
 static int zone_xfr_freeze(zone_t *zone, _unused_ ctl_args_t *args)
 {
-	zone->timers->flags |= LAST_XFROUT_FROZEN;
+	zone->timers->flags |= LAST_XFROUT_FROZEN | TIMERS_MODIFIED;
 
 	log_zone_info(zone->name, "outgoing XFR frozen");
 
@@ -901,6 +901,7 @@ static int zone_xfr_freeze(zone_t *zone, _unused_ ctl_args_t *args)
 static int zone_xfr_thaw(zone_t *zone, _unused_ ctl_args_t *args)
 {
 	zone->timers->flags &= ~LAST_XFROUT_FROZEN;
+        zone->timers->flags |= TIMERS_MODIFIED;
 
 	log_zone_info(zone->name, "outgoing XFR unfrozen");
 
