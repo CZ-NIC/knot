@@ -1208,6 +1208,7 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 		validation_conf_t val_conf = {
 			.conf = conf,
 			.incremental = update->flags & UPDATE_INCREMENTAL,
+		        .fast = false,
 			.log_plan = true,
 		};
 		ret = knot_dnssec_validate_zone(update, &val_conf);

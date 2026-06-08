@@ -499,7 +499,9 @@ int knot_dnssec_validate_zone(zone_update_t *update, validation_conf_t *val_conf
 		ctx.now = val_conf->now;
 	}
 
-	ret = knot_zone_check_nsec_chain(update, &ctx, val_conf->incremental);
+	if (!val_conf->fast) { // useful when re-checking unchanged state for expired RRSIGs. Also, RRSIGs' crypto is skipped thanks to NODE_FLAGS_RRSIGS_VALID, only expiration time is checked AND existence of RRSIGs per KSKs+ZSKs (as DNSKEYs might have changed incrementally).
+		ret = knot_zone_check_nsec_chain(update, &ctx, val_conf->incremental);
+	}
 	if (ret == KNOT_EOK) {
 		assert(ctx.validation_mode);
 		if (val_conf->incremental) {
