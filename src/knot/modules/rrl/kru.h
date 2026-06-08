@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include <stdatomic.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -116,4 +117,10 @@ static inline bool kru_using_avx2(void)
 	bool result = (KRU.initialize == KRU_AVX2.initialize);
 	assert(result || KRU.initialize == KRU_GENERIC.initialize);
 	return result;
+}
+
+/// Return whether sufficient atomics are available.
+static inline bool kru_enough_atomics(void)
+{
+	return (ATOMIC_CHAR16_T_LOCK_FREE == 2 && ATOMIC_CHAR32_T_LOCK_FREE == 2);
 }
