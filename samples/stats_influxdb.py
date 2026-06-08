@@ -8,7 +8,7 @@
 import libknot.control
 import io
 import json
-import os
+import subprocess
 import time
 
 # Configuration.
@@ -67,8 +67,9 @@ def send():
                   file=output)
 
     # Publish the metrics.
-    os.system("curl -i -XPOST 'http://%s:%s/write?db=%s&precision=s' --data-binary '%s'"
-              % (host, port, db, output.getvalue()))
+    subprocess.run(["curl", "-i", "-XPOST",
+                    "http://%s:%s/write?db=%s&precision=s" % (host, port, db),
+                    "--data-binary", output.getvalue()])
 
 
 print("%s: Graphite sender - Server Start - %s:%s" %
