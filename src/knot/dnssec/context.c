@@ -174,6 +174,15 @@ static void policy_load(knot_kasp_policy_t *policy, conf_t *conf, conf_val_t *id
 	}
 }
 
+static void policy_unload(knot_kasp_policy_t *policy)
+{
+	free(policy->string);
+	knot_dynarray_foreach(parent, knot_kasp_parent_t, i, policy->parents) {
+		free(i->addr);
+	}
+	free(policy);
+}
+
 int kdnssec_ctx_init(conf_t *conf, kdnssec_ctx_t *ctx, const knot_dname_t *zone_name,
 		     knot_lmdb_db_t *kaspdb, const conf_mod_id_t *from_module)
 {
@@ -285,11 +294,7 @@ void kdnssec_ctx_deinit(kdnssec_ctx_t *ctx)
 
 	if (ctx->policy != NULL) {
 		knot_spin_destroy(&ctx->stats->lock);
-		free(ctx->policy->string);
-		knot_dynarray_foreach(parent, knot_kasp_parent_t, i, ctx->policy->parents) {
-			free(i->addr);
-		}
-		free(ctx->policy);
+		policy_unload(ctx->policy);
 	}
 	key_records_clear(&ctx->offline_records);
 	zone_deinit_keystore(&ctx->keystores);
