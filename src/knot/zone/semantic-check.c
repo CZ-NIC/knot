@@ -517,6 +517,7 @@ static int verify_dnssec(zone_contents_t *zone, sem_handler_t *handler, time_t t
 		.threads = threads,
 		.now = time,
 		.incremental = false,
+	        .fast = false,
 	};
 	int ret = knot_dnssec_validate_zone(&fake_up, &val_conf);
 	if (fake_up.validation_hint.node != NULL) { // validation found an issue

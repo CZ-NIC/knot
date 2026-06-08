@@ -110,6 +110,7 @@ static int zonesign(sign_params_t *params)
 			.conf = conf(),
 			.now = params->timestamp,
 			.incremental = false,
+		        .fast = false,
 			.log_plan = false,
 		};
 		ret = knot_dnssec_validate_zone(&up, &val_conf);
