@@ -193,6 +193,9 @@ CAP_NET_RAW, CAP_NET_ADMIN, CAP_SYS_ADMIN, CAP_IPC_LOCK, and CAP_SYS_RESOURCE
 
 The utility allocates source UDP/TCP ports from the range 2000-65535.
 
+For proper operation of QUIC mode on a multi-queue Mellanox/NVIDIA network
+card, it may be necessary to set ``ethtool -X <dev> xfrm none``.
+
 Due to the multi-threaded program structure there are slight discrepancies in
 the timespan during which metrics are collected for any given thread. The
 statistics printouts ignore this and are thus ever-so-slightly inaccurate. The
