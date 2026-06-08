@@ -58,6 +58,16 @@ int kdnssec_ctx_init(conf_t *conf, kdnssec_ctx_t *ctx, const knot_dname_t *zone_
                      knot_lmdb_db_t *kaspdb, const conf_mod_id_t *from_module);
 
 /*!
+ * \brief Initialize DNSSEC signing context for orphans.
+ *
+ * \param conf         Configuration.
+ * \param ctx          Signing context to be initialized.
+ *
+ * \note Only policy and keystore list are initialized!
+ */
+int kdnssec_orphan_ctx_init(conf_t *conf, kdnssec_ctx_t *ctx);
+
+/*!
  * \brief Initialize DNSSEC validating context.
  *
  * \param conf    Configuration.
@@ -79,3 +89,8 @@ int kdnssec_ctx_commit(kdnssec_ctx_t *ctx);
  * \brief Cleanup DNSSEC signing context.
  */
 void kdnssec_ctx_deinit(kdnssec_ctx_t *ctx);
+
+/*!
+ * \brief Cleanup DNSSEC signing context for orphans.
+ */
+void kdnssec_orphan_ctx_deinit(kdnssec_ctx_t *ctx);

@@ -146,8 +146,10 @@ static void policy_load(knot_kasp_policy_t *policy, conf_t *conf, conf_val_t *id
 	val = conf_id_get(conf, C_POLICY, C_SIGNING_THREADS, id);
 	policy->signing_threads = conf_int(&val);
 
-	val = conf_zone_get(conf, C_DS_PUSH, zone_name);
-	if (val.code != KNOT_EOK) {
+	if (zone_name != NULL) {
+		val = conf_zone_get(conf, C_DS_PUSH, zone_name);
+	}
+	if (zone_name == NULL || val.code != KNOT_EOK) {
 		val = conf_id_get(conf, C_POLICY, C_DS_PUSH, id);
 	}
 	policy->ds_push = conf_val_count(&val) > 0;
@@ -267,6 +269,32 @@ init_error:
 	return ret;
 }
 
+int kdnssec_orphan_ctx_init(conf_t *conf, kdnssec_ctx_t *ctx)
+{
+	if (ctx == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	memset(ctx, 0, sizeof(*ctx));
+
+	ctx->policy = calloc(1, sizeof(*ctx->policy) + sizeof(*ctx->stats));
+	if (ctx->policy == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	uint8_t empty = 0;
+	conf_val_t void_id = conf_rawid_get(conf, C_ZONE, C_DNSSEC_POLICY, &empty, 0);
+	conf_id_fix_default(&void_id);
+	policy_load(ctx->policy, conf, &void_id, NULL);
+
+	int ret = init_all_keystores(conf, &ctx->keystores);
+	if (ret != KNOT_EOK) {
+		policy_unload(ctx->policy);
+	}
+
+	return ret;
+}
+
 int kdnssec_ctx_commit(kdnssec_ctx_t *ctx)
 {
 	if (ctx == NULL || ctx->kasp_zone_path == NULL) {
@@ -302,6 +330,12 @@ void kdnssec_ctx_deinit(kdnssec_ctx_t *ctx)
 	free(ctx->kasp_zone_path);
 
 	memset(ctx, 0, sizeof(*ctx));
+}
+
+void kdnssec_orphan_ctx_deinit(kdnssec_ctx_t *ctx)
+{
+	policy_unload(ctx->policy);
+	deinit_all_keystores(&ctx->keystores);
 }
 
 // expects policy struct to be zeroed
