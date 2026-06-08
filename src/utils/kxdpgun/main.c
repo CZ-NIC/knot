@@ -488,6 +488,7 @@ void *xdp_gun_thread(void *_ctx)
 								newconn = NULL; // un-re-usable conn
 							} else {
 								ctx->local_ip.sin6_port = knot_quic_conn_local_port(newconn);
+								newconn->flags &= ~KNOT_QUIC_CONN_BLOCKED;
 								ret = KNOT_EOK;
 							}
 						}
@@ -686,6 +687,8 @@ void *xdp_gun_thread(void *_ctx)
 								if (conn->streams_count > 1) {
 									knot_quic_conn_stream_free(conn, conn->streams_first * 4);
 								}
+								// This flag prevents the connection from being swept out.
+								conn->flags |= KNOT_QUIC_CONN_BLOCKED;
 								ptrlist_add(&reuse_conns, conn, NULL);
 							}
 						}
