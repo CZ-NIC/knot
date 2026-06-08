@@ -12,13 +12,14 @@
 #undef LOCAL_DEBUG
 
 #include <string.h>
-#include <strings.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <assert.h>
 #include "contrib/asan.h"
 #include "contrib/macros.h"
 #include "contrib/ucw/mempool.h"
+
+#pragma GCC diagnostic ignored "-Wpointer-arith"
 
 /** \todo This shouldn't be precalculated, but computed on load. */
 #define CPU_PAGE_SIZE 4096
@@ -228,7 +229,7 @@ mp_stats_chain(struct mempool *pool, struct mempool_chunk *chunk, struct mempool
 	struct mempool_chunk *next;
 	while (chunk) {
 		ASAN_UNPOISON_MEMORY_REGION(chunk, sizeof(struct mempool_chunk));
-		stats->chain_size[idx] += chunk->size + sizeof(*chunk);
+		stats->chain_size[idx] += chunk->size + MP_CHUNK_TAIL;
 		stats->chain_count[idx]++;
 		if (idx < 2) {
 			stats->used_size += chunk->size;
@@ -273,6 +274,9 @@ mp_alloc_internal(struct mempool *pool, size_t size)
 			pool->unused = chunk->next;
 		} else {
 			chunk = mp_new_chunk(pool->chunk_size);
+			if (!chunk) {
+				return NULL;
+			}
 #ifdef CONFIG_DEBUG
 			chunk->pool = pool;
 #endif
@@ -282,7 +286,7 @@ mp_alloc_internal(struct mempool *pool, size_t size)
 		pool->state.last[0] = chunk;
 		pool->state.free[0] = pool->chunk_size - size;
 		return (uint8_t *)chunk - pool->chunk_size;
-	} else if (size <= MP_SIZE_MAX) {
+	} else if (likely(size <= MP_SIZE_MAX)) {
 		pool->idx = 1;
 		size_t aligned = ALIGN_TO(size, CPU_STRUCT_ALIGN);
 		chunk = mp_new_big_chunk(aligned);
@@ -316,7 +320,7 @@ mp_alloc(struct mempool *pool, size_t size)
 	} else {
 		ptr = mp_alloc_internal(pool, size);
 	}
-	ASAN_UNPOISON_MEMORY_REGION(ptr, size);
+	if (ptr) ASAN_UNPOISON_MEMORY_REGION(ptr, size);
 	return ptr;
 }
 
