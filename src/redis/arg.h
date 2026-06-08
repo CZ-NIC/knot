@@ -189,7 +189,7 @@ typedef struct {
 		ptr += 4; len -= 4; out.type = GEO; \
 	} else if (len > 4 && strncmp(ptr, "net:", 4) == 0) { \
 		ptr += 4; len -= 4; out.type = NET; \
-	} else if (len > 4 && strncmp(ptr, "weight:", 7) == 0) { \
+	} else if (len > 7 && strncmp(ptr, "weight:", 7) == 0) { \
 		ptr += 7; len -= 7; out.type = WEIGHT; \
 	} else { \
 		return RedisModule_ReplyWithError(ctx, RDB_E("malformed " name)); \

@@ -84,6 +84,18 @@ typedef struct {
 	bool replied;
 } scanner_ctx_t;
 
+typedef struct {
+	RedisModuleCtx *ctx;
+	uint32_t dflt_ttl;
+	const arg_string_t *name;
+    geoip_typeval_t *type;
+	enum {
+		GADD,
+		GREM,
+	} mode;
+	bool replied;
+} scanner_geoip_ctx_t;
+
 typedef int (*upd_callback)(diff_v *diff, const void *data, uint32_t ttl);
 
 typedef RedisModuleKey *rrset_k;
@@ -1043,6 +1055,81 @@ static void scanner_data(zs_scanner_t *s)
 	case REM:
 		ret = upd_remove_txt_format(s_ctx->ctx, &origin, s_ctx->txn, &owner,
 		                            s->r_ttl, s->r_type, rdata);
+		break;
+	default:
+		RedisModule_Assert(0);
+	}
+	if (ret != KNOT_EOK) {
+		s_ctx->replied = true;
+		s->error.fatal = true;
+		s->state = ZS_STATE_STOP;
+	}
+}
+
+static int geoip_rrset_add(RedisModuleCtx *ctx, const arg_string_t *name,
+                           arg_dname_t *owner, geoip_typeval_t *type,
+                           uint32_t ttl, uint16_t rtype, knot_rdata_t *data)
+{	
+	index_k geoip_index = get_geoip_index(ctx, name, REDISMODULE_READ | REDISMODULE_WRITE);
+	if (geoip_index == NULL) {
+		RedisModule_ReplyWithEmptyArray(ctx);
+		return KNOT_ENOMEM;
+	}
+	
+	RedisModuleString *geoip_keyname = geoip_keyname_construct(ctx, name, owner, type, rtype);
+	geoip_k geoip_key = RedisModule_OpenKey(ctx, geoip_keyname, REDISMODULE_READ | REDISMODULE_WRITE);
+	geoip_v *geoip = NULL;
+	if (RedisModule_KeyType(geoip_key) == REDISMODULE_KEYTYPE_EMPTY) {
+		geoip = RedisModule_Alloc(sizeof(geoip_v));
+		knot_rdataset_init(geoip);
+		RedisModule_ModuleTypeSetValue(geoip_key, rdb_geoip_t, geoip);
+	} else if (RedisModule_ModuleTypeGetType(geoip_key) == rdb_geoip_t) {
+		geoip = RedisModule_ModuleTypeGetValue(geoip_key);
+	} else {
+		RedisModule_CloseKey(geoip_key);
+		RedisModule_CloseKey(geoip_index);
+		RedisModule_ReplyWithError(ctx, RDB_EMALF);
+		return KNOT_EMALF;
+	}
+
+	knot_rdataset_add(geoip, data, &mm);
+
+	RedisModule_CloseKey(geoip_key);
+
+	RedisModule_ZsetAdd(geoip_index, 0.0, geoip_keyname, NULL);
+	RedisModule_CloseKey(geoip_index);
+
+	return KNOT_EOK;
+}
+
+static void scanner_geoip_data(zs_scanner_t *s)
+{
+	scanner_geoip_ctx_t *s_ctx = s->process.data;
+
+	arg_dname_t owner = {
+		.data = s->r_owner,
+		.len = s->r_owner_length
+	};
+
+	uint8_t buf[knot_rdata_size(s->r_data_length)];
+	knot_rdata_t *rdata = (knot_rdata_t *)buf;
+	knot_rdata_init(rdata, s->r_data_length, s->r_data);
+	if (s->r_data_generic && knot_rdata_to_canonical(rdata, s->r_type) != KNOT_EOK) {
+		RedisModule_ReplyWithError(s_ctx->ctx, RDB_EMALF);
+		s_ctx->replied = true;
+		s->error.fatal = true;
+		s->state = ZS_STATE_STOP;
+		return;
+	}
+
+	int ret = KNOT_EOK;
+	switch (s_ctx->mode) {
+	case GADD:
+		ret = geoip_rrset_add(s_ctx->ctx, s_ctx->name, &owner, s_ctx->type, s->r_ttl, s->r_type, rdata);
+		break;
+	case GREM:
+		// ret = upd_remove_txt_format(s_ctx->ctx, &origin, s_ctx->txn, &owner,
+		//                             s->r_ttl, s->r_type, rdata);
 		break;
 	default:
 		RedisModule_Assert(0);
@@ -2574,8 +2661,10 @@ static void geoip_load(RedisModuleCtx *ctx, const arg_string_t *name,
 		RedisModule_ReplyWithStringBuffer(ctx, (const char *)owner, owner_len);
 		RedisModule_ReplyWithLongLong(ctx, rtype);
 		RedisModule_ReplyWithArray(ctx, rrset->count);
-		for (int i = 0; i < rrset->size; ++i) {
-			RedisModule_ReplyWithStringBuffer(ctx, (const char *)rrset->rdata[i].data, rrset->rdata[i].len);
+		knot_rdata_t *it = rrset->rdata;
+		for (int i = 0; i < rrset->count; ++i) {
+			RedisModule_ReplyWithStringBuffer(ctx, (const char *)it->data, it->len);
+			it = knot_rdataset_next(it);
 		}
 
 		RedisModule_FreeString(ctx, el);
@@ -2584,43 +2673,41 @@ static void geoip_load(RedisModuleCtx *ctx, const arg_string_t *name,
 	RedisModule_ReplySetArrayLength(ctx, len);
 }
 
-static void geoip_add(RedisModuleCtx *ctx, const arg_string_t *name,
-                      const arg_dname_t *owner, geoip_typeval_t *type,
-                      uint16_t rtype, uint8_t *rdata, size_t rdata_len)
+static void run_scanner2(scanner_geoip_ctx_t *s_ctx, const char *data, size_t data_len)
 {
-	index_k geoip_index = get_geoip_index(ctx, name, REDISMODULE_READ | REDISMODULE_WRITE);
-	if (geoip_index == NULL) {
-		RedisModule_ReplyWithEmptyArray(ctx);
+	zs_scanner_t s;
+	if (zs_init(&s, NULL, KNOT_CLASS_IN, s_ctx->dflt_ttl) != 0 ||
+	    zs_set_input_string(&s, data, data_len) != 0 ||
+	    zs_set_processing(&s, scanner_geoip_data, scanner_error, s_ctx) != 0 ||
+	    (s.to_lower = true, zs_parse_all(&s) != 0) || s.error.fatal
+	) {
+		if (!s_ctx->replied) {
+			RedisModule_ReplyWithError(s_ctx->ctx, RDB_EPARSE);
+			s_ctx->replied = true;
+		}
+		zs_deinit(&s);
 		return;
 	}
+	zs_deinit(&s);
 
-	RedisModuleString *geoip_keyname = geoip_keyname_construct(ctx, name, owner, type, rtype);
-	geoip_k geoip_key = RedisModule_OpenKey(ctx, geoip_keyname, REDISMODULE_READ | REDISMODULE_WRITE);
-	geoip_v *geoip = NULL;
-	if (RedisModule_KeyType(geoip_key) == REDISMODULE_KEYTYPE_EMPTY) {
-		geoip = RedisModule_Alloc(sizeof(geoip_v));
-		knot_rdataset_init(geoip);
-		RedisModule_ModuleTypeSetValue(geoip_key, rdb_geoip_t, geoip);
-	} else if (RedisModule_ModuleTypeGetType(geoip_key) == rdb_geoip_t) {
-		geoip = RedisModule_ModuleTypeGetValue(geoip_key);
-	} else {
-		RedisModule_CloseKey(geoip_key);
-		RedisModule_CloseKey(geoip_index);
-		RedisModule_ReplyWithError(ctx, RDB_EMALF);
-		return;
+	RedisModule_ReplicateVerbatim(s_ctx->ctx);
+	if (!s_ctx->replied) {
+		RedisModule_ReplyWithSimpleString(s_ctx->ctx, RDB_RETURN_OK);
 	}
+}
 
-	uint8_t storage[sizeof(uint16_t) + rdata_len];
-	knot_rdata_t *rd = (knot_rdata_t *)storage;
-	rd->len = rdata_len;
-	memcpy(rd->data, rdata, rdata_len);
+static void geoip_add(RedisModuleCtx *ctx, const arg_string_t *name,
+                      geoip_typeval_t *type, uint8_t *data, size_t data_len)
+{
+	scanner_geoip_ctx_t s_ctx = {
+		.ctx = ctx,
+		.dflt_ttl = rdb_default_ttl,
+		.name = name,
+		.type = type,
+		.mode = GADD,
+	};
 
-	knot_rdataset_add(geoip, rd, &mm);
+	run_scanner2(&s_ctx, (const char *)data, data_len);
 
-	RedisModule_CloseKey(geoip_key);
-
-	RedisModule_ZsetAdd(geoip_index, 0.0, geoip_keyname, NULL);
-	RedisModule_CloseKey(geoip_index);
-
-	RedisModule_ReplyWithSimpleString(ctx, RDB_RETURN_OK);
+	// RedisModule_ReplyWithSimpleString(ctx, RDB_RETURN_OK);
 }

@@ -73,9 +73,7 @@ static RedisModuleCommandArg geoip_load_txt_info_args[] = {
 
 static RedisModuleCommandArg geoip_store_txt_info_args[] = {
 	{"module", REDISMODULE_ARG_TYPE_STRING, -1, NULL, NULL, NULL, REDISMODULE_CMD_ARG_NONE},
-	{"owner",  REDISMODULE_ARG_TYPE_STRING, -1, NULL, NULL, NULL, REDISMODULE_CMD_ARG_NONE},
 	{"geo",    REDISMODULE_ARG_TYPE_STRING, -1, NULL, NULL, NULL, REDISMODULE_CMD_ARG_NONE},
-	{"rtype",  REDISMODULE_ARG_TYPE_STRING, -1, NULL, NULL, NULL, REDISMODULE_CMD_ARG_NONE},
 	{"data",   REDISMODULE_ARG_TYPE_STRING, -1, NULL, NULL, NULL, REDISMODULE_CMD_ARG_NONE},
 	{ 0 }
 };
@@ -240,7 +238,7 @@ static const RedisModuleCommandInfo geoip_store_txt_info = {
 	.summary = "Load geoip configuration",
 	.complexity = "O(u), where u is the number of records in the retrieved updates",
 	.since = "7.0.0",
-	.arity = 6,
+	.arity = 4,
 	.args = geoip_store_txt_info_args,
 };
 
@@ -893,27 +891,21 @@ static int geoip_load_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int arg
 
 static int geoip_store_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 {
-	if (argc < 6) {
+	if (argc < 4) {
 		return RedisModule_WrongArity(ctx);
 	}
 
 	arg_string_t module_name;
 	ARG_MODULENAME(argv[1], module_name, "module name");
 
-	arg_dname_t owner;
-	ARG_DNAME_TXT(argv[2], owner, NULL, "record owner");
-
 	geoip_typeval_t tv;
-	ARG_GEO_TYPEVAL_TXT(argv[3], tv, "geoip typeval")
+	ARG_GEO_TYPEVAL_TXT(argv[2], tv, "geoip typeval")
 
-	uint16_t rtype;
-	ARG_RTYPE_TXT(argv[4], rtype);
+	uint8_t *data;
+	size_t data_len;
+	ARG_DATA(argv[3], data_len, data, "data");
 
-	uint8_t *rdata;
-	size_t rdata_len;
-	ARG_DATA(argv[5], rdata_len, rdata, "rdata");
-
-	geoip_add(ctx, &module_name, &owner, &tv, rtype, rdata, rdata_len);
+	geoip_add(ctx, &module_name, &tv, data, data_len);
 
 	return REDISMODULE_OK;
 }

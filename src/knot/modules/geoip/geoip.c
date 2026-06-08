@@ -713,10 +713,13 @@ static int geo_conf_rdb(check_ctx_t *check, conf_mod_id_t *id, geoip_ctx_t *ctx)
 	for (size_t i = 0; i < reply->elements; ++i) {
 		redisReply *data = reply->element[i];
 		geo_view_t *view = calloc(1, sizeof(geo_view_t));
+		init_geo_view(view);
+		knot_rdataset_init(&view->rrsets->rrs);
 
-		int mode = data->element[0]->integer; // TODO unify
+		int mode = data->element[0]->integer; // TODO unify integer values
 		redisReply *geo_data = data->element[1];
 		knot_dname_t *owner = (knot_dname_t *)data->element[2]->str;
+		long long rtype = data->element[3]->integer;
 
 		switch (mode) {
 		case 1:
@@ -731,8 +734,50 @@ static int geo_conf_rdb(check_ctx_t *check, conf_mod_id_t *id, geoip_ctx_t *ctx)
 			if (ctx->mode != MODE_SUBNET) {
 				continue;
 			}
-			// view->subnet = (struct sockaddr_storage *)remote;
-			// view->subnet_prefix = (remote->ss_family == AF_INET) ? 32 : 128;
+			// TODO refactoring (copied code)
+			// Locate the optional slash in the subnet string.
+			char *slash = strchr(geo_data->str, '/');
+			if (slash == NULL) {
+				slash = geo_data->str + geo_data->len;
+			}
+			*slash = '\0';
+
+			// Parse address.
+			view->subnet = calloc(1, sizeof(struct sockaddr_storage));
+			// TODO free
+			if (view->subnet == NULL) {
+				return KNOT_ENOMEM;
+			}
+			// Try to parse as IPv4.
+			int ret = sockaddr_set(view->subnet, AF_INET, geo_data->str, 0);
+			view->subnet_prefix = 32;
+			if (ret != KNOT_EOK) {
+				// Try to parse as IPv6.
+				ret = sockaddr_set(view->subnet, AF_INET6, geo_data->str, 0);
+				view->subnet_prefix = 128;
+			}
+			if (ret != KNOT_EOK) {
+				geo_log(check, LOG_ERR, "invalid address format '%s'",
+				        geo_data->str);
+				return KNOT_EINVAL;
+			}
+
+			// Parse subnet prefix.
+			if (slash < geo_data->str + geo_data->len - 1) {
+				ret = str_to_u8(slash + 1, &view->subnet_prefix);
+				if (ret != KNOT_EOK) {
+					geo_log(check, LOG_ERR, "invalid prefix '%s'", slash + 1);
+					return ret;
+				}
+				if (view->subnet->ss_family == AF_INET && view->subnet_prefix > 32) {
+					view->subnet_prefix = 32;
+					geo_log(check, LOG_WARNING, "IPv4 prefix too large, set to 32");
+				}
+				if (view->subnet->ss_family == AF_INET6 && view->subnet_prefix > 128) {
+					view->subnet_prefix = 128;
+					geo_log(check, LOG_WARNING, "IPv6 prefix too large, set to 128");
+				}
+			}
 			break;
 		case 3:
 			if (ctx->mode != MODE_WEIGHTED) {
@@ -743,8 +788,18 @@ static int geo_conf_rdb(check_ctx_t *check, conf_mod_id_t *id, geoip_ctx_t *ctx)
 			return KNOT_ENOTSUP;
 		}
 
-		view->avail++;
-		view->count++;
+		view->rrsets->type = rtype;
+		view->rrsets->rclass = KNOT_CLASS_IN;
+		view->rrsets->ttl = ctx->ttl;
+		view->rrsets->owner = knot_dname_copy(owner, NULL);
+		redisReply *rdata = data->element[4];
+		for (size_t j = 0; j < rdata->elements; ++j) {
+			redisReply *it = rdata->element[j];
+			knot_rrset_add_rdata(view->rrsets, (const uint8_t *)it->str, it->len, NULL);
+			
+			//rdata->element[j]->str
+		}
+		view->count = 1; // TODO
  		add_view_to_trie(owner, view, ctx);
 	}
 
