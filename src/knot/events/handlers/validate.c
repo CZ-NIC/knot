@@ -25,6 +25,7 @@ int event_validate(conf_t *conf, zone_t *zone)
 		.conf = conf,
 		.now = knot_time(),
 		.incremental = false,
+	        .fast = true, // they have been checked upon update, now only checking RRSIGs' expiration
 		.log_plan = true,
 	};
 

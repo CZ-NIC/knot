@@ -175,7 +175,7 @@ static void limit_timer(conf_t *conf, const knot_dname_t *zone, uint32_t *timer,
  */
 static void consume_edns_expire(struct refresh_data *data, knot_pkt_t *pkt, bool strictly_follow)
 {
-	if (data->zone->is_catalog_flag) {
+	if (data->zone->is_catalog_flag || 1) {
 		data->expire_timer = EXPIRE_TIMER_INVALID;
 		return;
 	}
