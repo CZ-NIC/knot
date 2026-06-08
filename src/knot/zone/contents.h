@@ -8,6 +8,7 @@
 #include <pthread.h>
 
 #include "contrib/atomic.h"
+#include "contrib/time.h"
 #include "libknot/dnssec/nsec.h"
 #include "libknot/rrtype/nsec3param.h"
 #include "knot/zone/node.h"
@@ -283,6 +284,21 @@ void zone_contents_set_soa_serial(zone_contents_t *zone, uint32_t new_serial);
  * \brief Load parameters from NSEC3PARAM record into contents->nsec3param structure.
  */
 int zone_contents_load_nsec3param(zone_contents_t *contents);
+
+/*!
+ * \brief Search the zone for expired RRSIGs.
+ *
+ * \param zone      Zone to be iterated and checked.
+ * \param now       Current timestamp to compare against.
+ * \param next      Out: next closest RRSIG expiration.
+ * \param count     Out: number of RRSIGs discovered and checked.
+ *
+ * \retval KNOT_INVALID_SIGNATURE    Expired RRSIG found.
+ * \retval KNOT_EOK                  No expired RRSIG in the zone.
+ * \return KNOT_E*                   Other error.
+ */
+int zone_contents_expired_rrsigs(const zone_contents_t *zone, knot_time_t now,
+                                 knot_time_t *next, size_t *count);
 
 /*!
  * \brief Return true if zone is empty.

@@ -600,6 +600,39 @@ int zone_contents_load_nsec3param(zone_contents_t *contents)
 	return KNOT_EOK;
 }
 
+int zone_contents_expired_rrsigs(const zone_contents_t *zone, knot_time_t now,
+                                 knot_time_t *next, size_t *count)
+{
+	if (zone == NULL) {
+		return KNOT_EEMPTYZONE;
+	}
+
+	zone_tree_it_t it = { 0 };
+	int ret = zone_tree_it_double_begin(zone->nodes, zone->nsec3_nodes, &it);
+	while (!zone_tree_it_finished(&it) && ret == KNOT_EOK) {
+		zone_node_t *n = zone_tree_it_val(&it);
+		knot_rdataset_t *rrsigs = node_rdataset(n, KNOT_RRTYPE_RRSIG);
+		if (rrsigs == NULL) {
+			zone_tree_it_next(&it);
+			continue;
+		}
+		knot_rdata_t *rr = rrsigs->rdata;
+		for (int i = 0; i < rrsigs->count && ret == KNOT_EOK; i++) {
+			uint32_t expire32 = knot_rrsig_sig_expiration(rr);
+			knot_time_t expire64 = knot_time_from_u32(expire32, now);
+			(*count)++;
+			*next = knot_time_min(*next, expire64);
+			if (now >= expire64) {
+				ret = KNOT_INVALID_SIGNATURE;
+			}
+			rr = knot_rdataset_next(rr);
+		}
+		zone_tree_it_next(&it);
+	}
+	zone_tree_it_free(&it);
+	return ret;
+}
+
 bool zone_contents_is_empty(const zone_contents_t *zone)
 {
 	if (zone == NULL) {

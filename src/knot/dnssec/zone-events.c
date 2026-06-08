@@ -504,7 +504,9 @@ int knot_dnssec_validate_zone(zone_update_t *update, validation_conf_t *val_conf
 	}
 	if (ret == KNOT_EOK) {
 		assert(ctx.validation_mode);
-		if (val_conf->incremental) {
+		if (val_conf->fast) {
+			ret = zone_contents_expired_rrsigs(update->new_cont, ctx.now, &ctx.stats->expire, &ctx.stats->rrsig_count);
+		} else if (val_conf->incremental) {
 			ret = knot_zone_sign_update(update, NULL, &ctx);
 		} else {
 			ret = knot_zone_sign(update, NULL, &ctx);
