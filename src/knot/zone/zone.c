@@ -532,7 +532,7 @@ void zone_notifailed_clear(zone_t *zone)
 void zone_schedule_notify(conf_t *conf, zone_t *zone, time_t delay)
 {
 	conf_val_t val = conf_zone_get(conf, C_NOTIFY_DELAY, zone->name);
-	int64_t conf_delay = conf_int(&val);
+	int64_t conf_delay = conf_int_jitter(&val);
 	zone_notifailed_clear(zone);
 	zone_events_schedule_at(zone, ZONE_EVENT_NOTIFY, time(NULL) + conf_delay + delay);
 }
@@ -542,7 +542,7 @@ void zone_schedule_update(conf_t *conf, zone_t *zone, zone_event_type_t type)
 	int64_t conf_delay = 0;
 	if (zone->contents != NULL) {
 		conf_val_t val = conf_zone_get(conf, C_UPDATE_DELAY, zone->name);
-		conf_delay = conf_int(&val);
+		conf_delay = conf_int_jitter(&val);
 	}
 	zone_events_schedule_at(zone, type, time(NULL) + conf_delay);
 }
