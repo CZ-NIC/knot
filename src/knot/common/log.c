@@ -20,6 +20,7 @@
 
 #include "knot/common/log.h"
 #include "libknot/libknot.h"
+#include "contrib/time.h"
 #include "contrib/ucw/lists.h"
 
 /*! Single log message buffer length (one line). */
@@ -245,12 +246,13 @@ static void emit_log_msg(int level, log_source_t src, const char *zone,
 	// Prefix date and time.
 	char tstr[LOG_BUFLEN] = { 0 };
 	if (!(s_log->flags & LOG_FLAG_NOTIMESTAMP)) {
-		struct tm lt;
+		int tstrlen;
 		struct timeval tv;
 		gettimeofday(&tv, NULL);
-		time_t sec = tv.tv_sec;
-		if (localtime_r(&sec, &lt) != NULL) {
-			strftime(tstr, sizeof(tstr), KNOT_LOG_TIME_FORMAT " ", &lt);
+		if (knot_time_print(TIME_PRINT_ISO8601Z, tv.tv_sec, tstr, sizeof(tstr)) < 0) {
+                        tstr[0] = '\0';
+		} else if ((tstrlen = strlen(tstr)) < sizeof(tstr) - 1) {
+			memcpy(tstr + tstrlen, " ", 2);
 		}
 	}
 

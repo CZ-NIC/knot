@@ -5,6 +5,7 @@
 
 #include <tap/basic.h>
 
+#include <stdlib.h>
 #include <string.h>
 
 #include "contrib/time.h"
@@ -159,8 +160,12 @@ static void test_time_print(void)
 	test_time_print_expect(ret, buff, bufl, "-10000", "relsec");
 
 	ret = knot_time_print(TIME_PRINT_ISO8601, t, buff, bufl);
-	buff[11] = '0', buff[12] = '0'; // zeroing 'hours' field to avoid locality issues
-	test_time_print_expect(ret, buff, bufl, "1970-01-01T00:13:20Z", "iso");
+	test_time_print_expect(ret, buff, bufl, "1970-01-01T12:13:20Z", "iso"); // knot_time_print(TIME_PRINT_ISO8601) explicitly sets TZ=UTC
+
+	putenv("TZ=Europe/Prague");
+	tzset();
+	ret = knot_time_print(TIME_PRINT_ISO8601Z, t, buff, bufl);
+	test_time_print_expect(ret, buff, bufl, "1970-01-01T13:13:20+0100", "isoZ");
 
 	t2 = knot_time_add(knot_time(), -10000);
 	ret = knot_time_print(TIME_PRINT_HUMAN_MIXED, t2, buff, bufl);
