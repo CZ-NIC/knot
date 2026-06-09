@@ -30,7 +30,8 @@ typedef unsigned long long knot_millis_t;
  */
 typedef enum {
 	TIME_PRINT_UNIX,	// numeric UNIX time
-	TIME_PRINT_ISO8601,	// 2016-12-31T23:59:00
+	TIME_PRINT_ISO8601,	// 2016-12-31T21:59:00Z
+	TIME_PRINT_ISO8601Z,	// 2016-12-31T23:59:00+02:00
 	TIME_PRINT_RELSEC,	// relative +6523
 	TIME_PRINT_HUMAN_MIXED,	// relative with mixed-case units
 	TIME_PRINT_HUMAN_LOWER,	// relative with lower-case units
