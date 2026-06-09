@@ -41,9 +41,7 @@ bool conf_db_exists(
 	}
 
 	struct stat st;
-	char data_mdb[strlen(db_dir) + 10];
-	(void)snprintf(data_mdb, sizeof(data_mdb), "%s/data.mdb", db_dir);
-	return (stat(data_mdb, &st) == 0 && st.st_size > 0);
+	return stat(db_dir, &st) == 0 && S_ISDIR(st.st_mode);
 }
 
 conf_val_t conf_get_txn(
