@@ -482,6 +482,17 @@ inline static int64_t conf_int(
 }
 
 /*!
+ * Gets the time value, possibly adjusted by random jitter.
+ *
+ * \param[in] val  Item value.
+ *
+ * \return Integer.
+ */
+int64_t conf_int_jitter(
+	conf_val_t *val
+);
+
+/*!
  * Gets the boolean value of the item.
  *
  * \param[in] val  Item value.

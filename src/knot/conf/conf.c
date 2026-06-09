@@ -618,6 +618,27 @@ int64_t conf_int_alt(
 	}
 }
 
+int64_t conf_int_jitter(
+	conf_val_t *val)
+{
+	assert(val != NULL && val->item != NULL);
+	assert(val->item->type == YP_TDATA ||
+	       (val->item->type == YP_TREF &&
+	        val->item->var.r.ref->var.g.id->type == YP_TDATA));
+
+	if (val->code == KNOT_EOK) {
+		conf_val(val);
+		int64_t value = (int64_t)knot_wire_read_u64(val->data);
+		if (val->len == 2 * sizeof(int64_t)) {
+			uint32_t jitter = knot_wire_read_u64(val->data + sizeof(int64_t));
+			value += dnssec_random_uint32_t() % (jitter + 1);
+		}
+		return value;
+	} else {
+		return 0;
+	}
+}
+
 bool conf_bool(
 	conf_val_t *val)
 {

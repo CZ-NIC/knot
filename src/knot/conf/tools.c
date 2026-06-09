@@ -222,6 +222,64 @@ int rdname_to_txt(
 	YP_CHECK_RET;
 }
 
+int int_jitter_to_bin(
+	YP_TXT_BIN_PARAMS)
+{
+	YP_CHECK_PARAMS_BIN;
+
+	// Check for "time%jitter" format.
+	const uint8_t *pos = (uint8_t *)strchr((char *)in->position, '%');
+	if (pos == in->position) {
+		// Missing time value.
+		return KNOT_EINVAL;
+	} else if (pos >= stop - 1) {
+		// Missing jitter value.
+		return KNOT_EINVAL;
+	}
+
+	int ret = yp_int_to_bin(in, out, pos, 0, UINT32_MAX, YP_STIME);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	// Jitter part.
+	if (pos != NULL) {
+		// Skip the separator.
+		wire_ctx_skip(in, sizeof(uint8_t));
+
+		ret = yp_int_to_bin(in, out, stop, 0, UINT32_MAX, YP_STIME);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+	}
+
+	YP_CHECK_RET;
+}
+
+int int_jitter_to_txt(
+	YP_BIN_TXT_PARAMS)
+{
+	YP_CHECK_PARAMS_TXT;
+
+	int ret = yp_int_to_txt(in, out, YP_STIME);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	// Jitter part.
+	if (wire_ctx_available(in) > 0) {
+		// Write the separator.
+		wire_ctx_write_u8(out, '%');
+
+		ret = yp_int_to_txt(in, out, YP_STIME);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
+	}
+
+	YP_CHECK_RET;
+}
+
 int check_ref(
 	knotd_conf_check_args_t *args)
 {

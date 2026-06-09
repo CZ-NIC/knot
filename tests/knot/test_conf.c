@@ -311,6 +311,58 @@ static void test_conf_remote(void)
 	test_conf_free();
 }
 
+static void test_conf_int_jitter(void)
+{
+	const char *conf_string =
+		"zone:\n"
+		"  - domain: a\n"
+		"    notify-delay: 1\n"
+		"    update-delay: 999%1\n"
+		"  - domain: b\n"
+		"    notify-delay: 1m\n"
+		"    update-delay: 2h%2s\n";
+
+	int ret = test_conf(conf_string, NULL);
+	is_int(KNOT_EOK, ret, "Prepare configuration");
+
+	conf_val_t val;
+	int64_t num, cnt1, cnt2, cnt3;
+	const int total = 30;
+
+	val = conf_zone_get(conf(), C_NOTIFY_DELAY, (uint8_t *)"\x01""a");
+	num = conf_int_jitter(&val);
+	ok(1 == num, "get 1");
+
+	cnt1 = 0, cnt2 = 0;
+	val = conf_zone_get(conf(), C_UPDATE_DELAY, (uint8_t *)"\x01""a");
+	for (int i = 0; i < total; i++) {
+		switch (conf_int_jitter(&val)) {
+		case 999: cnt1++; break;
+		case 1000: cnt2++; break;
+		default: break;
+		}
+	}
+	ok(cnt1 + cnt2 == total && cnt1 > 0 && cnt2 > 0, "get 999%%1");
+
+	val = conf_zone_get(conf(), C_NOTIFY_DELAY, (uint8_t *)"\x01""b");
+	num = conf_int_jitter(&val);
+	ok(60 == num, "get 1m");
+
+	cnt1 = 0, cnt2 = 0, cnt3 = 0;
+	val = conf_zone_get(conf(), C_UPDATE_DELAY, (uint8_t *)"\x01""b");
+	for (int i = 0; i < total; i++) {
+		switch (conf_int_jitter(&val)) {
+		case 7200: cnt1++; break;
+		case 7201: cnt2++; break;
+		case 7202: cnt3++; break;
+		default: break;
+		}
+	}
+	ok(cnt1 + cnt2 + cnt3 == total && cnt1 > 0 && cnt2 > 0 && cnt3 > 0, "get 2h%%2s");
+
+	test_conf_free();
+}
+
 int main(int argc, char *argv[])
 {
 	plan_lazy();
@@ -326,6 +378,9 @@ int main(int argc, char *argv[])
 
 	diag("conf_remote");
 	test_conf_remote();
+
+	diag("conf_int_jitter");
+	test_conf_int_jitter();
 
 	return 0;
 }
