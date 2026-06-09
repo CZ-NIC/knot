@@ -1866,6 +1866,7 @@ class Knot(Server):
         s.begin("log")
         s.id_item("target", "stdout")
         s.item_str("any", "debug")
+        s.item("milliseconds", "on")
         s.id_item("target", self.quic_log)
         s.item_str("quic", "debug")
         s.end()

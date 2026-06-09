@@ -20,7 +20,9 @@
 
 #include "knot/common/log.h"
 #include "libknot/libknot.h"
+#include "contrib/macros.h"
 #include "contrib/ucw/lists.h"
+#include "contrib/wire_ctx.h"
 
 /*! Single log message buffer length (one line). */
 #define LOG_BUFLEN	512
@@ -221,6 +223,27 @@ void log_levels_add(log_target_t target, log_source_t src, int levels)
 	}
 }
 
+static void print_timestamp(char *outbuf, size_t buflen, struct tm *loctime, long millis, bool print_millis)
+{
+	if (print_millis) {
+		wire_ctx_t w = wire_ctx_init((uint8_t *)outbuf, buflen);
+		int ret = strftime((char *)w.position, wire_ctx_available(&w), KNOT_LOG_TIME_FORMAT1, loctime);
+		wire_ctx_skip_check(&w, ret);
+		ret = snprintf((char *)w.position, wire_ctx_available(&w), ".%03ld", millis);
+		wire_ctx_skip_check(&w, ret);
+		ret = strftime((char *)w.position, wire_ctx_available(&w), KNOT_LOG_TIME_FORMAT2 " ", loctime);
+		wire_ctx_skip_check(&w, ret);
+		if (w.error != KNOT_EOK) {
+			outbuf[0] = '\0';
+		}
+	} else {
+		int ret = strftime(outbuf, buflen, KNOT_LOG_TIME_FORMAT " ", loctime);
+		if (unlikely(ret < 1)) { // upon strftime error, buffer content is undefined, so just skip timestamp
+			outbuf[0] = '\0';
+		}
+	}
+}
+
 static void emit_log_msg(int level, log_source_t src, const char *zone,
                          size_t zone_len, const char *msg, const char *param)
 {
@@ -250,7 +273,7 @@ static void emit_log_msg(int level, log_source_t src, const char *zone,
 		gettimeofday(&tv, NULL);
 		time_t sec = tv.tv_sec;
 		if (localtime_r(&sec, &lt) != NULL) {
-			strftime(tstr, sizeof(tstr), KNOT_LOG_TIME_FORMAT " ", &lt);
+			print_timestamp(tstr, sizeof(tstr), &lt, tv.tv_usec / 1000L, (s_log->flags & LOG_FLAG_MILLIS));
 		}
 	}
 
@@ -504,6 +527,11 @@ void log_reconfigure(conf_t *conf)
 		levels_val = conf_id_get(conf, C_LOG, C_ANY, &id);
 		levels = conf_opt(&levels_val);
 		sink_levels_add(log, target, LOG_SOURCE_ANY, levels);
+
+		levels_val = conf_id_get(conf, C_LOG, C_MILLIS, &id);
+		if (conf_bool(&levels_val)) {
+			log->flags |= LOG_FLAG_MILLIS;
+		}
 	}
 
 	sink_publish(log);

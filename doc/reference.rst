@@ -1088,6 +1088,7 @@ will be logged to both standard error output and syslog. The ``info`` and
      zone: critical | error | warning | notice | info | debug
      quic: critical | error | warning | notice | info | debug
      any: critical | error | warning | notice | info | debug
+     millis: BOOL
 
 .. _log_target:
 
@@ -1153,6 +1154,17 @@ any
 ---
 
 Minimum severity level for all message types, except ``quic``, to be logged.
+
+*Default:* not set
+
+.. _log_millis:
+
+millis
+------
+
+Log line timestamps are printed in millisecond precision, impacting performance.
+
+Note: this option triggers it for all targets!
 
 *Default:* not set
 

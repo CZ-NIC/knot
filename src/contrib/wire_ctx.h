@@ -140,6 +140,18 @@ static inline void wire_ctx_skip(wire_ctx_t *ctx, ssize_t offset)
 }
 
 /*!
+ * \brief Skip what has been snprintf'ed (or similar), set error if non-positive.
+ */
+static inline void wire_ctx_skip_check(wire_ctx_t *ctx, ssize_t printf_ret)
+{
+	if (printf_ret > 0) {
+		wire_ctx_skip(ctx, printf_ret);
+	} else {
+		ctx->error = KNOT_ERANGE;
+	}
+}
+
+/*!
  * \brief Check the context if reading is possible.
  */
 static inline int wire_ctx_can_read(wire_ctx_t *ctx, size_t size)

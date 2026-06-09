@@ -25,6 +25,10 @@
 /*! \brief Format for timestamps in log files. */
 #define KNOT_LOG_TIME_FORMAT "%Y-%m-%dT%H:%M:%S%z"
 
+/*! \brief Two-part log time format in order to dump milliseconds in between. */
+#define KNOT_LOG_TIME_FORMAT1 "%Y-%m-%dT%H:%M:%S"
+#define KNOT_LOG_TIME_FORMAT2 "%z"
+
 /*! \brief Logging targets. */
 typedef enum {
 	LOG_TARGET_SYSLOG = 0, /*!< System log. */
@@ -45,7 +49,8 @@ typedef enum {
 /*! \brief Logging format flags. */
 typedef enum {
 	LOG_FLAG_NOTIMESTAMP = 1 << 0, /*!< Don't print timestamp prefix. */
-	LOG_FLAG_NOINFO      = 1 << 1  /*!< Don't print info level prefix. */
+	LOG_FLAG_NOINFO      = 1 << 1, /*!< Don't print info level prefix. */
+	LOG_FLAG_MILLIS      = 1 << 2, /*!< Timestamp prefix uses millisecond precision. */
 } log_flag_t;
 
 /*!
