@@ -17,6 +17,7 @@ slave = t.server("knot")
 zones = t.zone("example.")
 
 t.link(zones, master, slave, ixfr=True, ddns=True)
+master.no_xfr_edns = True # we want to check expiration on slave based on validation event, not EDNS EXPIRE timer set by signer
 
 for z in zones:
     master.dnssec(z).enable = True
