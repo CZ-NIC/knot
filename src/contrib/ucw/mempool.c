@@ -262,6 +262,23 @@ mp_total_size(struct mempool *pool)
 	return stats.total_size;
 }
 
+void
+mp_shrink(struct mempool *pool, uint64_t min_total_size)
+{
+	size_t total_size = mp_total_size(pool);
+	while (pool->unused) {
+		struct mempool_chunk *chunk = pool->unused;
+		ASAN_UNPOISON_MEMORY_REGION(chunk, sizeof(struct mempool_chunk));
+		total_size -= chunk->size + MP_CHUNK_TAIL;
+		if (total_size < min_total_size) {
+			ASAN_POISON_MEMORY_REGION(chunk, sizeof(struct mempool_chunk));
+			break;
+		}
+		pool->unused = chunk->next;
+		mp_free_chunk(chunk);
+	}
+}
+
 static void *
 mp_alloc_internal(struct mempool *pool, size_t size)
 {

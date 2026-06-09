@@ -93,9 +93,23 @@ void mp_flush(struct mempool *pool);
 /**
  * Compute some statistics for debug purposes.
  * See the definition of the <<struct_mempool_stats,mempool_stats structure>>.
+ * This function scans the chunk list, so it can be slow.
  **/
 void mp_stats(struct mempool *pool, struct mempool_stats *stats);
-uint64_t mp_total_size(struct mempool *pool);	/** How many bytes were allocated by the pool. **/
+
+/**
+ * Return how many bytes were allocated by the pool, including unused parts
+ * of chunks. This function scans the chunk list, so it can be slow
+ * (upstream contains constant-time version).
+ **/
+uint64_t mp_total_size(struct mempool *pool);
+
+/**
+ * Release unused chunks of memory reserved for further allocation
+ * requests, but stop if \ref mp_total_size() would drop below \p min_total_size.
+ * It calls \ref mp_total_size(), so all chunks are scanned (in upstream version only released ones).
+ **/
+void mp_shrink(struct mempool *pool, uint64_t min_total_size);
 
 /***
  * [[alloc]]
@@ -119,3 +133,15 @@ void *mp_alloc(struct mempool *pool, size_t size);
  * The same as \ref mp_alloc(), but the result may be unaligned.
  **/
 void *mp_alloc_noalign(struct mempool *pool, size_t size);
+
+/*
+ * Some parts of mempools were removed in Knot DNS,
+ * see upstream if you need:
+     * variants of methods returning zeroed memory,
+     * restoring previous state of allocations,
+     * concatenating and duplicating memory/strings on mempools,
+     * generic allocator interface spanning both malloc and mempools,
+     * growing buffers,
+     * printf-like functions using growing buffers as output,
+     * constant-time version of mp_total_size and mp_shrink scanning only deallocated chunks.
+*/
