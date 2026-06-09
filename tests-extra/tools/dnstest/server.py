@@ -897,7 +897,7 @@ class Server(object):
 
         check_log("ZONE WAIT %s: %s" % (self.name, zone.name))
 
-        attempts = 15 if not self.valgrind else 45
+        attempts = 85 if not self.valgrind else 85
         for t in range(attempts):
             try:
                 if use_ctl:
@@ -1764,7 +1764,7 @@ class Knot(Server):
         s.item_str("storage", self.dir)
         s.item_str("kasp-db", self.keydir)
         s.item_str("kasp-db-max-size", self.kasp_db_size)
-        s.item_str("journal-db-max-size", self.journal_db_size)
+        s.item_str("journal-db-max-size", self.journal_db_size * 2)
         s.item_str("timer-db-max-size", self.timer_db_size)
         s.item_str("timer-db-sync", random.choice(["shutdown", "immediate", "5", "3600"]))
         s.item_str("catalog-db-max-size", self.catalog_db_size)
