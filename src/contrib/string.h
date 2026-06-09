@@ -38,6 +38,18 @@ int strmemcmp(const char *str, const uint8_t *mem, size_t mem_size);
 char *sprintf_alloc(const char *fmt, ...);
 
 /*!
+ * \brief Format string and check for truncation.
+ *
+ * \param buf    Output buffer to be written to.
+ * \param len    Size of the output buffer.
+ * \param fmt    Message format.
+ *
+ * \retval >= 0 && < len    Real number of characters written.
+ * \return < 0              Error or overflow.
+ */
+int snprintf_check(char *buf, size_t len, const char *fmt, ...);
+
+/*!
  * \brief Create new string from a concatenation of s1 and s2.
  *
  * \param s1 First string.

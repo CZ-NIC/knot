@@ -142,7 +142,8 @@ static void test_time_print_expect(int ret, const char *res, int res_len,
 				   const char *expected, const char *msg)
 {
 	ok(ret == 0, "time_print %s ok", msg);
-	ok(strncmp(res, expected, res_len) == 0, "time_print %s result", msg);
+	ok(strncmp(res, expected, res_len) == 0, "time_print %s result '%.*s' == '%s'",
+	   msg, res_len, res, expected);
 }
 
 static void test_time_print(void)
@@ -154,32 +155,50 @@ static void test_time_print(void)
 
 	ret = knot_time_print(TIME_PRINT_UNIX, t, buff, bufl);
 	test_time_print_expect(ret, buff, bufl, "44000", "unix");
+	ret = knot_time_print_ex(TIME_PRINT_UNIX, t, 123, "suf", buff, bufl);
+	test_time_print_expect(ret, buff, bufl, "44000.123suf", "unix_ex");
 
 	t2 = knot_time_add(knot_time(), -10000);
 	ret = knot_time_print(TIME_PRINT_RELSEC, t2, buff, bufl);
 	test_time_print_expect(ret, buff, bufl, "-10000", "relsec");
+	ret = knot_time_print_ex(TIME_PRINT_RELSEC, t2, 456, "ruf", buff, bufl);
+	test_time_print_expect(ret, buff, bufl, "-9999.544ruf", "relsec_ex");
 
 	ret = knot_time_print(TIME_PRINT_ISO8601, t, buff, bufl);
 	test_time_print_expect(ret, buff, bufl, "1970-01-01T12:13:20Z", "iso"); // knot_time_print(TIME_PRINT_ISO8601) explicitly sets TZ=UTC
+	ret = knot_time_print_ex(TIME_PRINT_ISO8601, t, 789, " ", buff, bufl);
+	test_time_print_expect(ret, buff, bufl, "1970-01-01T12:13:20.789Z ", "iso_ex");
 
 	putenv("TZ=Europe/Prague");
 	tzset();
 	ret = knot_time_print(TIME_PRINT_ISO8601Z, t, buff, bufl);
 	test_time_print_expect(ret, buff, bufl, "1970-01-01T13:13:20+0100", "isoZ");
+	ret = knot_time_print_ex(TIME_PRINT_ISO8601Z, t, 12, "\n", buff, bufl);
+	test_time_print_expect(ret, buff, bufl, "1970-01-01T13:13:20.012+0100\n", "isoZ_ex");
 
 	t2 = knot_time_add(knot_time(), -10000);
 	ret = knot_time_print(TIME_PRINT_HUMAN_MIXED, t2, buff, bufl);
 	test_time_print_expect(ret, buff, bufl, "-2h46m40s", "negative human mixed");
+	ret = knot_time_print_ex(TIME_PRINT_HUMAN_MIXED, t2, 111, "", buff, bufl);
+	test_time_print_expect(ret, buff, bufl, "-2h46m39.889s", "negative human mixed ex");
+
 	big = knot_time_add(knot_time(), 2 * 365 * 24 * 3600 + 1);
 	ret = knot_time_print(TIME_PRINT_HUMAN_MIXED, big, buff, bufl);
 	test_time_print_expect(ret, buff, bufl, "+2Y1s", "big human mixed");
+	ret = knot_time_print_ex(TIME_PRINT_HUMAN_MIXED, big, 0, "BIG", buff, bufl);
+	test_time_print_expect(ret, buff, bufl, "+2Y1.000sBIG", "big human mixed ex");
 
 	t2 = knot_time_add(knot_time(), -10000);
 	ret = knot_time_print(TIME_PRINT_HUMAN_LOWER, t2, buff, bufl);
 	test_time_print_expect(ret, buff, bufl, "-2h46mi40s", "negative human lower");
+	ret = knot_time_print_ex(TIME_PRINT_HUMAN_LOWER, t2, 0, " neg", buff, bufl);
+	test_time_print_expect(ret, buff, bufl, "-2h46mi40.000s neg", "negative human lower ex");
+
 	big = knot_time_add(knot_time(), 2 * 365 * 24 * 3600 + 1);
 	ret = knot_time_print(TIME_PRINT_HUMAN_LOWER, big, buff, bufl);
 	test_time_print_expect(ret, buff, bufl, "+2y1s", "big human lower");
+	ret = knot_time_print_ex(TIME_PRINT_HUMAN_LOWER, big, 999, "BIG", buff, bufl);
+	test_time_print_expect(ret, buff, bufl, "+2y1.999sBIG", "big human lower ex");
 }
 
 int main(int argc, char *argv[])
