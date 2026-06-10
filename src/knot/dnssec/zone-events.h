@@ -45,6 +45,7 @@ typedef struct {
 	knot_time_t now;   // If not zero: adjust "now" to this timestamp.
 	bool incremental;
 	bool fast;
+	bool no_skip_crypto;
 	bool log_plan;
 } validation_conf_t;
 

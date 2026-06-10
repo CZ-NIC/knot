@@ -500,6 +500,9 @@ int knot_dnssec_validate_zone(zone_update_t *update, validation_conf_t *val_conf
 	if (val_conf->now != 0) {
 		ctx.now = val_conf->now;
 	}
+	if (val_conf->no_skip_crypto) {
+		ctx.keytag_conflict = true; // enforce all RRSIGs check by pretending keytag conflict
+	}
 
 	/* Fast check is useful when rechecking unchanged state for expired RRSIGs.
 	 * Also, RRSIGs' crypto is skipped thanks to NODE_FLAGS_RRSIGS_VALID,
