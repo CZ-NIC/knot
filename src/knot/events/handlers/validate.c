@@ -31,6 +31,7 @@ int event_validate(conf_t *conf, zone_t *zone)
 
 	if (zone_get_flag(zone, ZONE_FORCE_VALIDATE, true)) {
 		val_conf.fast = false;
+		val_conf.no_skip_crypto = true;
 		log_zone_info(zone->name, "DNSSEC, full zone revalidation");
 	} else {
 		log_zone_info(zone->name, "DNSSEC, RRSIG expiration revalidation");
