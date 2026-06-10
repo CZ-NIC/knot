@@ -25,10 +25,17 @@ int event_validate(conf_t *conf, zone_t *zone)
 		.conf = conf,
 		.now = knot_time(),
 		.incremental = false,
+		.fast = true, // they have been checked upon update, now only checking RRSIGs' expiration
 		.log_plan = true,
 	};
 
-	log_zone_info(zone->name, "DNSSEC, re-validating zone fully");
+	if (zone_get_flag(zone, ZONE_FORCE_VALIDATE, true)) {
+		val_conf.fast = false;
+		val_conf.no_skip_crypto = true;
+		log_zone_info(zone->name, "DNSSEC, full zone revalidation");
+	} else {
+		log_zone_info(zone->name, "DNSSEC, RRSIG expiration revalidation");
+	}
 
 	return knot_dnssec_validate_zone(&fake_upd, &val_conf);
 }

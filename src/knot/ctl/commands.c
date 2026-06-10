@@ -808,6 +808,7 @@ static int zone_sign(zone_t *zone, _unused_ ctl_args_t *args)
 
 static int zone_validate(zone_t *zone, _unused_ ctl_args_t *args)
 {
+	zone_set_flag(zone, ZONE_FORCE_VALIDATE);
 	return schedule_trigger(zone, args, ZONE_EVENT_VALIDATE, true);
 }
 
