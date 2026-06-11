@@ -68,6 +68,7 @@ static RedisModuleCommandArg zone_load_txt_info_args[] = {
 
 static RedisModuleCommandArg geoip_load_txt_info_args[] = {
 	{"module", REDISMODULE_ARG_TYPE_STRING, -1, NULL, NULL, NULL, REDISMODULE_CMD_ARG_NONE},
+	{"geo",    REDISMODULE_ARG_TYPE_STRING, -1, NULL, NULL, NULL, REDISMODULE_CMD_ARG_NONE},
 	{ 0 }
 };
 
@@ -229,7 +230,7 @@ static const RedisModuleCommandInfo geoip_load_txt_info = {
 	.summary = "Load geoip configuration",
 	.complexity = "O(u), where u is the number of records in the retrieved updates",
 	.since = "7.0.0",
-	.arity = 2,
+	.arity = 3,
 	.args = geoip_load_txt_info_args,
 };
 
@@ -883,8 +884,11 @@ static int geoip_load_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int arg
 
 	arg_string_t module_name;
 	ARG_MODULENAME(argv[1], module_name, "module name");
-
-	geoip_load(ctx, &module_name, DUMP_TXT);
+	
+	geoip_typeval_t tv;
+	ARG_GEO_TYPE_TXT(argv[2], tv, "geoip typeval")
+	
+	geoip_load(ctx, &module_name, &tv, DUMP_TXT);
 
 	return REDISMODULE_OK;
 }

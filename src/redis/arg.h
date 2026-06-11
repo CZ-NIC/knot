@@ -5,6 +5,8 @@
 
 #pragma once
 
+#include "contrib/strtonum.h"
+
 #define INSTANCE_MIN		1
 #define INSTANCE_MAX		8
 #define TXN_MIN			0
@@ -182,24 +184,42 @@ typedef struct {
 	out.len = len; \
 }
 
-#define ARG_GEO_TYPEVAL_TXT(arg, out, name) { \
+#define ARG_GEO_TYPE_TXT(arg, out, name) { \
 	size_t len; \
 	const char *ptr = RedisModule_StringPtrLen(arg, &len); \
-	if (len > 4 && strncmp(ptr, "geo:", 4) == 0) { \
-		ptr += 4; len -= 4; out.type = GEO; \
-	} else if (len > 4 && strncmp(ptr, "net:", 4) == 0) { \
-		ptr += 4; len -= 4; out.type = NET; \
-	} else if (len > 7 && strncmp(ptr, "weight:", 7) == 0) { \
-		ptr += 7; len -= 7; out.type = WEIGHT; \
+	if (len == 3 && strncmp(ptr, "geo", 3) == 0) { \
+		out.type = GEO; \
+	} else if (len == 3 && strncmp(ptr, "net", 3) == 0) { \
+		out.type = NET; \
+	} else if (len == 6 && strncmp(ptr, "weight", 6) == 0) { \
+		out.type = WEIGHT; \
 	} else { \
 		return RedisModule_ReplyWithError(ctx, RDB_E("malformed " name)); \
 	} \
-	/* TODO validate ptr */ \
+}
+
+#define ARG_GEO_TYPEVAL_TXT(arg, out, name) { \
+	size_t len; int ret = KNOT_EOK; \
+	const char *ptr = RedisModule_StringPtrLen(arg, &len); \
+	if (len > 4 && strncmp(ptr, "geo:", 4) == 0) { \
+		ptr += 4; len -= 4; out.type = GEO; \
+		ret = geo_bin(&out.val, &out.val_size, ptr, len); \
+	} else if (len > 4 && strncmp(ptr, "net:", 4) == 0) { \
+		ptr += 4; len -= 4; out.type = NET; \
+		ret = subnet_bin(&out.val, &out.val_size, ptr, len); \
+	} else if (len > 7 && strncmp(ptr, "weight:", 7) == 0) { \
+		ptr += 7; len -= 7; out.type = WEIGHT; \
+		weight_bin(&out.val, &out.val_size, ptr, len); \
+	} else { \
+		return RedisModule_ReplyWithError(ctx, RDB_E("malformed " name)); \
+	} \
+	if (ret != KNOT_EOK) { \
+		return RedisModule_ReplyWithError(ctx, RDB_E("malformed")); \
+	} \
+	/* TODO delete */ \
 	if (len < 0 || len >= 256) { \
 		return RedisModule_ReplyWithError(ctx, RDB_E("invalid " name)); \
 	} \
-	out.val = (const uint8_t *)ptr; \
-	out.val_size = len; \
 }
 
 #define ARG_FLAG(arg, out, flag) { \
@@ -271,6 +291,112 @@ static knot_dname_t *dname_from_str(const char *ptr, size_t len, uint8_t *out, a
 	}
 
 	return out;
+}
+
+static int geo_bin(void **output, uint8_t *output_len, const char *input, size_t input_len)
+{
+	// TODO - for longer you need more "length" bytes
+	if (input_len > 0xFF) {
+		return KNOT_EMALF;
+	}
+	char *buf = RedisModule_Strdup(input);
+	if (buf == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	*output = buf;
+	*output_len = input_len;
+
+	return KNOT_EOK;
+}
+
+static int subnet_bin(void **output, uint8_t *output_len, const char *input, size_t input_len)
+{
+	// RedisModule_Assert(output != NULL && *output == NULL && \
+	//                    output_len != NULL && input != NULL && input_len > 0);
+
+	struct sockaddr_storage ss;
+	uint8_t prefix = 0;
+	char *tmp_input = RedisModule_Strdup(input);
+	if (tmp_input == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	char *slash = strchr(tmp_input, '/');
+	if (slash == NULL) {
+		slash = tmp_input + input_len;
+	}
+	*slash = '\0';
+
+	// Try to parse as IPv4.
+	int ret = sockaddr_set(&ss, AF_INET, tmp_input, 0);
+	prefix = 32;
+	if (ret != KNOT_EOK) {
+		// Try to parse as IPv6.
+		ret = sockaddr_set(&ss, AF_INET6, tmp_input, 0);
+		prefix = 128;
+	}
+	if (ret != KNOT_EOK) {
+		RedisModule_Free(tmp_input);
+		return KNOT_EMALF;
+	}
+
+	// Parse subnet prefix.
+	if (slash < tmp_input + input_len - 1) {
+		ret = str_to_u8(slash + 1, &prefix);
+		if (ret != KNOT_EOK) {
+			RedisModule_Free(tmp_input);
+			return ret;
+		}
+		if (ss.ss_family == AF_INET && prefix > 32) {
+			prefix = 32;
+		} else if (ss.ss_family == AF_INET6 && prefix > 128) {
+			prefix = 128;
+		}
+	}
+	RedisModule_Free(tmp_input);
+
+	// Parse address.
+	uint8_t size = ((prefix - 1) / 8) + 1;
+	size_t olen = sizeof(uint8_t) + sizeof(uint8_t) + size;
+	uint8_t *buf = (uint8_t *)RedisModule_Calloc(1, olen);
+	if (buf == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	buf[0] = prefix;
+	buf[1] = ss.ss_family;
+	if (ss.ss_family == AF_INET) {
+		memcpy(buf + 2, &((struct sockaddr_in *)&ss)->sin_addr, size);
+	} else if (ss.ss_family == AF_INET6) {
+		memcpy(buf + 2, &((struct sockaddr_in6 *)&ss)->sin6_addr, size);
+	} else {
+		RedisModule_Free(buf);
+		return KNOT_EMALF;
+	}
+	buf[olen - 1] &= 0xFF << ((8 - (prefix % 8)) % 8);
+
+	*output = buf;
+	*output_len = olen;
+
+	return KNOT_EOK;
+}
+
+static int weight_bin(void **output, uint8_t *output_len, const char *input, size_t input_len)
+{
+	uint16_t *buf = RedisModule_Calloc(1, sizeof(uint16_t));
+	if (buf == NULL) {
+		return KNOT_ENOMEM;
+	}
+	if (str_to_u16(input, buf) != KNOT_EOK) {
+		RedisModule_Free(buf);
+		return KNOT_EMALF;
+	}
+
+	*output = buf;
+	*output_len = sizeof(uint16_t);
+
+	return KNOT_EOK;
 }
 
 #define ALIGN_RDATASET(rdataset) { \

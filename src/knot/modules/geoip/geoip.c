@@ -698,8 +698,22 @@ cleanup:
 static int geo_conf_rdb(check_ctx_t *check, conf_mod_id_t *id, geoip_ctx_t *ctx)
 {
 	redisContext *db = redis_conn(check->mod);
-	// TODO GEOIP.LOAD should have parameter for MODE (load only GEO/NET/WEIGHT types, not every type/mode)
-	redisReply *reply = redisCommand(db, "KNOT.GEOIP.LOAD %b", id->data, id->len - 1);
+
+	const char *mode_str;
+	switch (ctx->mode) {
+	case MODE_GEODB:
+		mode_str = "geo";
+		break;
+	case MODE_SUBNET:
+		mode_str = "net";
+		break;
+	case MODE_WEIGHTED:
+		mode_str = "weight";
+		break;
+	default:
+		return KNOT_EINVAL;
+	}
+	redisReply *reply = redisCommand(db, "KNOT.GEOIP.LOAD %b %s", id->data, id->len - 1, mode_str);
 	if (reply == NULL) {
 		return KNOT_ECONN;
 	} else if (reply->type != REDIS_REPLY_ARRAY) {
@@ -716,24 +730,30 @@ static int geo_conf_rdb(check_ctx_t *check, conf_mod_id_t *id, geoip_ctx_t *ctx)
 		init_geo_view(view);
 		knot_rdataset_init(&view->rrsets->rrs);
 
-		int mode = data->element[0]->integer; // TODO unify integer values
-		redisReply *geo_data = data->element[1];
-		knot_dname_t *owner = (knot_dname_t *)data->element[2]->str;
-		long long rtype = data->element[3]->integer;
+		redisReply *geo_data = data->element[0];
+		knot_dname_t *owner = (knot_dname_t *)data->element[1]->str;
+		long long rtype = data->element[2]->integer;
 
-		switch (mode) {
-		case 1:
-			if (ctx->mode != MODE_GEODB) {
-				continue;
+		switch (ctx->mode) {
+		case MODE_GEODB:;
+			size_t remains = geo_data->len;
+			int idx = 0;
+			char *str = geo_data->str;
+			while (remains && idx < GEODB_MAX_DEPTH) {
+				char *delimiter = strchr(str, ';');
+				if (delimiter != NULL) {
+					delimiter[0] = '\0';
+					view->geodata_len[idx] = delimiter - str;
+				} else {
+					view->geodata_len[idx] = remains;
+				}
+				view->geodata[idx] = strdup(str);
+				remains -= view->geodata_len[idx] + (int)(delimiter != NULL);
+				str = delimiter + 1;
+				++idx;
 			}
-			view->geodata_len[0] = geo_data->len;
-			view->geodata[0] = strdup(geo_data->str);
-			// memcpy(view->geodata[0], geo_data->str, geo_data->len);
 			break;
-		case 2:
-			if (ctx->mode != MODE_SUBNET) {
-				continue;
-			}
+		case MODE_SUBNET:;
 			// TODO refactoring (copied code)
 			// Locate the optional slash in the subnet string.
 			char *slash = strchr(geo_data->str, '/');
@@ -744,7 +764,6 @@ static int geo_conf_rdb(check_ctx_t *check, conf_mod_id_t *id, geoip_ctx_t *ctx)
 
 			// Parse address.
 			view->subnet = calloc(1, sizeof(struct sockaddr_storage));
-			// TODO free
 			if (view->subnet == NULL) {
 				return KNOT_ENOMEM;
 			}
@@ -759,6 +778,7 @@ static int geo_conf_rdb(check_ctx_t *check, conf_mod_id_t *id, geoip_ctx_t *ctx)
 			if (ret != KNOT_EOK) {
 				geo_log(check, LOG_ERR, "invalid address format '%s'",
 				        geo_data->str);
+				free(view->subnet);
 				return KNOT_EINVAL;
 			}
 
@@ -767,6 +787,7 @@ static int geo_conf_rdb(check_ctx_t *check, conf_mod_id_t *id, geoip_ctx_t *ctx)
 				ret = str_to_u8(slash + 1, &view->subnet_prefix);
 				if (ret != KNOT_EOK) {
 					geo_log(check, LOG_ERR, "invalid prefix '%s'", slash + 1);
+					free(view->subnet);
 					return ret;
 				}
 				if (view->subnet->ss_family == AF_INET && view->subnet_prefix > 32) {
@@ -779,10 +800,12 @@ static int geo_conf_rdb(check_ctx_t *check, conf_mod_id_t *id, geoip_ctx_t *ctx)
 				}
 			}
 			break;
-		case 3:
-			if (ctx->mode != MODE_WEIGHTED) {
-				continue;
+		case MODE_WEIGHTED:
+			if (geo_data->integer > UINT16_MAX) {
+				geo_log(check, LOG_ERR, "Malformed data");
+				return KNOT_EMALF;
 			}
+			view->weight = geo_data->integer;
 			break;
 		default:
 			return KNOT_ENOTSUP;
@@ -792,7 +815,7 @@ static int geo_conf_rdb(check_ctx_t *check, conf_mod_id_t *id, geoip_ctx_t *ctx)
 		view->rrsets->rclass = KNOT_CLASS_IN;
 		view->rrsets->ttl = ctx->ttl;
 		view->rrsets->owner = knot_dname_copy(owner, NULL);
-		redisReply *rdata = data->element[4];
+		redisReply *rdata = data->element[3];
 		for (size_t j = 0; j < rdata->elements; ++j) {
 			redisReply *it = rdata->element[j];
 			knot_rrset_add_rdata(view->rrsets, (const uint8_t *)it->str, it->len, NULL);
@@ -802,6 +825,7 @@ static int geo_conf_rdb(check_ctx_t *check, conf_mod_id_t *id, geoip_ctx_t *ctx)
 		view->count = 1; // TODO
  		add_view_to_trie(owner, view, ctx);
 	}
+	freeReplyObject(reply);
 
 	return KNOT_EOK;
 }
