@@ -843,6 +843,10 @@ operator must confirm it manually (using ``knotc zone-ksk-submitted``)
 
    ``$ keymgr example.com ds 3375``
 
+.. NOTE::
+  The DS check tolerates unknown DS records at the parent, but it requires the
+  previously known DS record to be removed; otherwise, the DS check remains negative.
+
 ::
 
   2024-02-14T15:20:12+0100 info: [example.com.] DS check, outgoing, remote 127.0.0.1@5300 TCP, KSK submission check: negative
