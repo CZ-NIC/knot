@@ -200,6 +200,8 @@ class Response(object):
         # Get the first message.
         try:
             for msg in iter_copy:
+                isset(msg.flags & dns.flags.AA, "AA flag")
+
                 question = msg.question[0]
                 compare(question.rdclass, self.rclass, "QCLASS")
                 compare(question.rdtype, self.rtype, "QTYPE")

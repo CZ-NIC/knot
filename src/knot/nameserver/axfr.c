@@ -222,8 +222,10 @@ knot_layer_state_t axfr_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 	ret = xfr_process_list(pkt, &axfr_process_node_tree, qdata);
 	switch (ret) {
 	case KNOT_ESPACE: /* Couldn't write more, send packet and continue. */
+		knot_wire_set_aa(pkt->wire);
 		return KNOT_STATE_PRODUCE; /* Check for more. */
 	case KNOT_EOK:    /* Last response. */
+		knot_wire_set_aa(pkt->wire);
 		return KNOT_STATE_DONE;
 	default:          /* Generic error. */
 		AXFROUT_LOG(LOG_ERR, qdata, "failed (%s)", knot_strerror(ret));
