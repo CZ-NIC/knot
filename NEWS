@@ -1,3 +1,45 @@
+Knot DNS 3.5.5 (2026-06-12)
+===========================
+
+Features:
+---------
+ - knotd: support for binding wildcard addresses to a specific network interface
+ - mod-alias: ALIAS record synthesis from locally served targets (Thanks to Bron Gondwana) !1867
+
+Improvements:
+-------------
+ - knotd: zone XFR freeze state is persistent across restarts by storing it in timers
+ - knotd: optimized rescheduled DNSSEC validation
+ - knotd: hardened manually triggered DNSSEC validation
+ - utils: configuration detection fails if the database is empty or inaccessible
+ - utils: LMDB reader lock table is purged even for read-only access
+ - utils: errors when writing to stdout are reported
+ - libs: upgraded embedded libngtcp2 to 1.23.0
+ - doc: various improvements
+
+Bugfixes:
+---------
+ - knotd: missing mutex lock in server startup check
+ - knotd: server crashes if the QUIC client limit is lower than the number of UDP workers
+ - knotd: misleading error log for DS check #969
+ - knotd: empty catalog database is created when purging orphans
+ - knotd: false error report when there is no journal during purging orphans
+ - knotd: the '--' specification doesn't work with 'zone-serial-set' and 'zone-key-rollover'
+ - knotd: zone backup prevents timer dumping, resulting in inconsistent timers
+ - knotd: zone reload causes timer dumping to be skipped
+ - knotd: segfault on SIGTERM if periodic statistics dumping is enabled #972
+ - knotd: redundant RRSIGs are removed during DNSSEC validation
+ - knotd: missing AA flag in AXFR and IXFR responses
+ - libknot: unnecessary increase in library size
+ - libdnssec: memory leak when PEM key generation fails
+ - libknot: undefined behavior in QUIC data stream processing
+ - libknot: assertion failure in QUIC connection handling under high load
+ - mod-geoip: inconsistent behavior for specific records and ANY queries #971
+ - redis: incorrect filter parameter parsing in KNOT.UPD.LOAD commands
+ - redis: database crashes if it's built with jemalloc
+ - kdig: undefined behavior if both +https and +quic are specified
+ - kxdpgun: crash when reusing a swept-out QUIC connection
+
 Knot DNS 3.5.4 (2026-04-02)
 ===========================
 
