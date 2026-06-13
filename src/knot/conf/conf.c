@@ -41,7 +41,23 @@ bool conf_db_exists(
 	}
 
 	struct stat st;
-	return stat(db_dir, &st) == 0 && S_ISDIR(st.st_mode);
+	if (stat(db_dir, &st) == 0) { // Directory path exists.
+		if (S_ISDIR(st.st_mode)) { // A directory.
+			char data_mdb[strlen(db_dir) + 10];
+			(void)snprintf(data_mdb, sizeof(data_mdb), "%s/data.mdb", db_dir);
+			if (stat(data_mdb, &st) == 0) { // Confdb data file exists.
+				return true;
+			} else { // Empty directory means no confdb.
+				return (errno != ENOENT);
+			}
+		} else { // A non-directory (e.g. file).
+			return true; // Causes confdb open error.
+		}
+	} else if (errno == EACCES) { // Permission denied.
+		return true; // Causes confdb open error.
+	} else { // Nonexistent path or other errors.
+		return false;
+	}
 }
 
 conf_val_t conf_get_txn(
