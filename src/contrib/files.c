@@ -124,7 +124,7 @@ int make_dir(const char *path, mode_t mode, bool ignore_existing)
 	}
 
 	if (!S_ISDIR(st.st_mode)) {
-		return KNOT_EEXIST;
+		return KNOT_ENOTDIR;
 	}
 
 	return KNOT_EOK;
