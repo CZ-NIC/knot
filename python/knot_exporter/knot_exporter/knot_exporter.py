@@ -66,9 +66,13 @@ class KnotCollector(object):
         return seconds
 
     def collect(self):
-        ctl = libknot.control.KnotCtl()
-        ctl.connect(self._sock)
-        ctl.set_timeout(self._ttl)
+        try:
+            ctl = libknot.control.KnotCtl()
+            ctl.connect(self._sock)
+            ctl.set_timeout(self._ttl)
+        except libknot.control.KnotCtlErrorConnect:
+            return
+
         metric_families = dict()
 
         def metric_families_append(family, labels, labels_val, data, unit=None):
