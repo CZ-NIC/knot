@@ -38,6 +38,19 @@ typedef enum zone_event_type {
 	ZONE_EVENT_COUNT,
 } zone_event_type_t;
 
+// NOTE some flags may overlap if used exclusively by different events
+typedef enum __attribute__((packed)) {
+	// common
+	ZONE_EVFLAG_USER	= (1 << 0),
+	ZONE_EVFLAG_FORCE	= (1 << 1),
+	// refresh
+	ZONE_EVFLAG_AXFR	= (1 << 2),
+	// dnssec
+	ZONE_EVFLAG_RESIGN	= (1 << 2),
+	ZONE_EVFLAG_ZSKROLL	= (1 << 3),
+	ZONE_EVFLAG_KSKROLL	= (1 << 4),
+} zone_evflag_t;
+
 typedef struct zone_events {
 	pthread_mutex_t mx;		//!< Mutex protecting the struct.
 	pthread_mutex_t reschedule_lock;//!< Prevent concurrent reschedule() making mess.
@@ -53,11 +66,11 @@ typedef struct zone_events {
 	event_t *event;			//!< Scheduler event.
 	worker_pool_t *pool;		//!< Server worker pool.
 
-	worker_task_t task;		//!< Event execution context.
-	time_t time[ZONE_EVENT_COUNT];	//!< Event execution times.
-	bool forced[ZONE_EVENT_COUNT];  //!< Flag that the event was invoked by user ctl.
-	pthread_cond_t *blocking[ZONE_EVENT_COUNT];       //!< For blocking events: dispatching cond.
-	int result[ZONE_EVENT_COUNT];   //!< Event return values (in blocking operations).
+	worker_task_t task;				//!< Event execution context.
+	time_t time[ZONE_EVENT_COUNT];			//!< Event execution times.
+	zone_evflag_t flags[ZONE_EVENT_COUNT];		//!< Flags.
+	pthread_cond_t *blocking[ZONE_EVENT_COUNT];	//!< For blocking events: dispatching cond.
+	int result[ZONE_EVENT_COUNT];			//!< Event return values (in blocking operations).
 } zone_events_t;
 
 /*!
@@ -130,9 +143,11 @@ void _zone_events_schedule_at(struct zone *zone, ...);
 	zone_events_schedule_at(zone, type, time(NULL))
 
 /*!
- * \brief Schedule zone event to now, with forced flag.
+ * \brief Schedule one zone event with flags.
  */
-void zone_events_schedule_user(struct zone *zone, zone_event_type_t type);
+void zone_events_schedule_flags(struct zone *zone, zone_event_type_t type, time_t at, zone_evflag_t flags);
+#define zone_events_schedule_now_flags(zone, type, flags) \
+	zone_events_schedule_flags(zone, type, time(NULL), flags)
 
 /*!
  * \brief Schedule new zone event as soon as possible and wait for it's
@@ -140,11 +155,11 @@ void zone_events_schedule_user(struct zone *zone, zone_event_type_t type);
  *
  * \param zone  Zone to schedule new event for.
  * \param type  Zone event type.
- * \param user  Forced flag indication.
+ * \param flags Event flags.
  *
  * \return KNOT_E*
  */
-int zone_events_schedule_blocking(struct zone *zone, zone_event_type_t type, bool user);
+int zone_events_schedule_blocking(struct zone *zone, zone_event_type_t type, zone_evflag_t flags);
 
 /*!
  * \brief Freeze all zone events and prevent new events from running.

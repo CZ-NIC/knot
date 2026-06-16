@@ -112,7 +112,7 @@ static bool eval_backup_filters(ctl_args_t *args, knot_backup_params_t *filters,
 }
 
 static int schedule_trigger(zone_t *zone, ctl_args_t *args, zone_event_type_t event,
-                            bool user)
+                            zone_evflag_t flags)
 {
 	int ret = KNOT_EOK;
 
@@ -121,11 +121,9 @@ static int schedule_trigger(zone_t *zone, ctl_args_t *args, zone_event_type_t ev
 		    zone->control_update != NULL) {
 			return KNOT_TXN_EEXISTS;
 		}
-		ret = zone_events_schedule_blocking(zone, event, user);
-	} else if (user) {
-		zone_events_schedule_user(zone, event);
+		ret = zone_events_schedule_blocking(zone, event, flags);
 	} else {
-		zone_events_schedule_now(zone, event);
+		zone_events_schedule_now_flags(zone, event, flags);
 	}
 
 	return ret;
@@ -480,7 +478,7 @@ static int zone_reload(zone_t *zone, _unused_ ctl_args_t *args)
 		return zone_reload_modules(conf(), args->server, zone->name);
 	}
 
-	return schedule_trigger(zone, args, ZONE_EVENT_LOAD, true);
+	return schedule_trigger(zone, args, ZONE_EVENT_LOAD, ZONE_EVFLAG_USER);
 }
 
 static int zone_refresh(zone_t *zone, _unused_ ctl_args_t *args)
@@ -491,7 +489,7 @@ static int zone_refresh(zone_t *zone, _unused_ ctl_args_t *args)
 	}
 
 	zone->zonefile.bootstrap_cnt = 0; // restart delays
-	return schedule_trigger(zone, args, ZONE_EVENT_REFRESH, true);
+	return schedule_trigger(zone, args, ZONE_EVENT_REFRESH, ZONE_EVFLAG_USER);
 }
 
 static int zone_retransfer(zone_t *zone, _unused_ ctl_args_t *args)
@@ -501,9 +499,8 @@ static int zone_retransfer(zone_t *zone, _unused_ ctl_args_t *args)
 		return KNOT_ENOTSUP;
 	}
 
-	zone_set_flag(zone, ZONE_FORCE_AXFR);
 	zone->zonefile.bootstrap_cnt = 0; // restart delays
-	return schedule_trigger(zone, args, ZONE_EVENT_REFRESH, true);
+	return schedule_trigger(zone, args, ZONE_EVENT_REFRESH, ZONE_EVFLAG_USER | ZONE_EVFLAG_AXFR);
 }
 
 static void common_failure(_unused_ ctl_args_t *args, int err, const char *msg)
@@ -522,17 +519,17 @@ static void common_failure(_unused_ ctl_args_t *args, int err, const char *msg)
 static int zone_notify(zone_t *zone, _unused_ ctl_args_t *args)
 {
 	zone_notifailed_clear(zone);
-	return schedule_trigger(zone, args, ZONE_EVENT_NOTIFY, true);
+	return schedule_trigger(zone, args, ZONE_EVENT_NOTIFY, ZONE_EVFLAG_USER);
 }
 
 static int zone_flush(zone_t *zone, ctl_args_t *args)
 {
-	zone_set_flag(zone, ZONE_USER_FLUSH);
+	zone_evflag_t fl = ZONE_EVFLAG_USER;
 	if (ctl_has_flag(args->data[KNOT_CTL_IDX_FLAGS], CTL_FLAG_FORCE)) {
-		zone_set_flag(zone, ZONE_FORCE_FLUSH);
+		fl |= ZONE_EVFLAG_FORCE;
 	}
 
-	return schedule_trigger(zone, args, ZONE_EVENT_FLUSH, true);
+	return schedule_trigger(zone, args, ZONE_EVENT_FLUSH, fl);
 }
 
 static int zone_flush_outdir(zone_t *zone, ctl_args_t *args)
@@ -745,7 +742,7 @@ static int zone_backup_cmd(zone_t *zone, ctl_args_t *args)
 	ctx->readers++;
 	pthread_mutex_unlock(&ctx->readers_mutex);
 
-	return schedule_trigger(zone, args, ZONE_EVENT_BACKUP, true);
+	return schedule_trigger(zone, args, ZONE_EVENT_BACKUP, ZONE_EVFLAG_USER);
 }
 
 static int zones_apply_backup(ctl_args_t *args, bool restore_mode)
@@ -802,14 +799,12 @@ static int zone_sign(zone_t *zone, _unused_ ctl_args_t *args)
 		return KNOT_ENOTSUP;
 	}
 
-	zone_set_flag(zone, ZONE_FORCE_RESIGN);
-	return schedule_trigger(zone, args, ZONE_EVENT_DNSSEC, true);
+	return schedule_trigger(zone, args, ZONE_EVENT_DNSSEC, ZONE_EVFLAG_USER | ZONE_EVFLAG_RESIGN);
 }
 
 static int zone_validate(zone_t *zone, _unused_ ctl_args_t *args)
 {
-	zone_set_flag(zone, ZONE_FORCE_VALIDATE);
-	return schedule_trigger(zone, args, ZONE_EVENT_VALIDATE, true);
+	return schedule_trigger(zone, args, ZONE_EVENT_VALIDATE, ZONE_EVFLAG_USER);
 }
 
 static int zone_keys_load(zone_t *zone, _unused_ ctl_args_t *args)
@@ -825,7 +820,7 @@ static int zone_keys_load(zone_t *zone, _unused_ ctl_args_t *args)
 		return KNOT_EOK;
 	}
 
-	return schedule_trigger(zone, args, ZONE_EVENT_DNSSEC, true);
+	return schedule_trigger(zone, args, ZONE_EVENT_DNSSEC, ZONE_EVFLAG_USER);
 }
 
 static int zone_key_roll(zone_t *zone, ctl_args_t *args)
@@ -837,15 +832,16 @@ static int zone_key_roll(zone_t *zone, ctl_args_t *args)
 	}
 
 	const char *key_type = args->data[KNOT_CTL_IDX_TYPE];
+	zone_evflag_t fl = ZONE_EVFLAG_USER;
 	if (strncasecmp(key_type, CMD_ROLLOVER_KSK, 3) == 0) {
-		zone_set_flag(zone, ZONE_FORCE_KSK_ROLL);
+		fl |= ZONE_EVFLAG_KSKROLL;
 	} else if (strncasecmp(key_type, CMD_ROLLOVER_ZSK, 3) == 0) {
-		zone_set_flag(zone, ZONE_FORCE_ZSK_ROLL);
+		fl |= ZONE_EVFLAG_ZSKROLL;
 	} else {
 		return KNOT_EINVAL;
 	}
 
-	return schedule_trigger(zone, args, ZONE_EVENT_DNSSEC, true);
+	return schedule_trigger(zone, args, ZONE_EVENT_DNSSEC, fl);
 }
 
 static int zone_ksk_sbm_confirm(zone_t *zone, _unused_ ctl_args_t *args)
@@ -882,12 +878,12 @@ static int zone_ksk_sbm_confirm(zone_t *zone, _unused_ ctl_args_t *args)
 
 static int zone_freeze(zone_t *zone, _unused_ ctl_args_t *args)
 {
-	return schedule_trigger(zone, args, ZONE_EVENT_UFREEZE, false);
+	return schedule_trigger(zone, args, ZONE_EVENT_UFREEZE, 0);
 }
 
 static int zone_thaw(zone_t *zone, _unused_ ctl_args_t *args)
 {
-	return schedule_trigger(zone, args, ZONE_EVENT_UTHAW, false);
+	return schedule_trigger(zone, args, ZONE_EVENT_UTHAW, 0);
 }
 
 static int zone_xfr_freeze(zone_t *zone, _unused_ ctl_args_t *args)
@@ -1882,7 +1878,7 @@ static int zone_purge(zone_t *zone, ctl_args_t *args)
 		PURGE_ZONE_NOSYNC; // Purge even zonefiles with disabled syncing.
 
 	zone_set_flag(zone, (zone_flag_t)params);
-	return schedule_trigger(zone, args, ZONE_EVENT_PURGE, true);
+	return schedule_trigger(zone, args, ZONE_EVENT_PURGE, ZONE_EVFLAG_USER);
 }
 
 int ctl_dump_ctr(stats_dump_params_t *params, stats_dump_ctx_t *ctx)

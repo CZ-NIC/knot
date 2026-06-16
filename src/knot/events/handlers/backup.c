@@ -11,7 +11,7 @@
 #include "knot/events/handlers.h"
 #include "knot/zone/backup.h"
 
-int event_backup(conf_t *conf, zone_t *zone)
+int event_backup(conf_t *conf, zone_t *zone, zone_evflag_t flags)
 {
 	assert(zone);
 

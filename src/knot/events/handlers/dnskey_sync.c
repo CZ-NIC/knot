@@ -355,7 +355,7 @@ static int send_dnskey_sync(conf_t *conf, zone_t *zone, bool *uptodate,
 	return ret;
 }
 
-int event_dnskey_sync(conf_t *conf, zone_t *zone)
+int event_dnskey_sync(conf_t *conf, zone_t *zone, zone_evflag_t flags)
 {
 	assert(zone);
 

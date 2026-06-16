@@ -29,15 +29,8 @@ struct zone_backup_ctx;
  * When updating check create_zone_reload() if the flag mask is ok.
  */
 typedef enum {
-	ZONE_FORCE_AXFR     = 1 << 0, /*!< Force AXFR as next transfer. */
-	ZONE_FORCE_RESIGN   = 1 << 1, /*!< Force zone re-sign. */
-	ZONE_FORCE_FLUSH    = 1 << 2, /*!< Force zone flush. */
-	ZONE_FORCE_KSK_ROLL = 1 << 3, /*!< Force KSK/CSK rollover. */
-	ZONE_FORCE_ZSK_ROLL = 1 << 4, /*!< Force ZSK rollover. */
 	ZONE_IS_CATALOG     = 1 << 5, /*!< This is a catalog. */
 	ZONE_IS_CAT_MEMBER  = 1 << 6, /*!< This zone exists according to a catalog. */
-	ZONE_FORCE_VALIDATE = 1 << 7, /*!< Force full DNSSEC validation. */
-	ZONE_USER_FLUSH     = 1 << 8, /*!< User-triggered flush. */
 	ZONE_LAST_SIGN_OK   = 1 << 9, /*!< Last full-sign event finished OK. */
 	ZONE_PREF_MASTER_2X = 1 << 10, /*!< Preferred master has been overwritten at least once. */
 	ZONE_RDB_RELOAD     = 1 << 11, /*!< Full zone reload from database. */
@@ -235,7 +228,7 @@ int zone_changes_clear(conf_t *conf, zone_t *zone);
 int zone_in_journal_store(conf_t *conf, zone_t *zone, zone_contents_t *new_contents);
 
 /*! \brief Synchronize zone file with journal. */
-int zone_flush_journal(conf_t *conf, zone_t *zone, bool verbose);
+int zone_flush_journal(conf_t *conf, zone_t *zone, bool verbose, zone_evflag_t flags);
 
 bool zone_journal_has_zij(zone_t *zone);
 

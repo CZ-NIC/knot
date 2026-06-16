@@ -1462,7 +1462,7 @@ static int try_refresh(conf_t *conf, zone_t *zone, const conf_remote_t *master,
 	return ret;
 }
 
-int event_refresh(conf_t *conf, zone_t *zone)
+int event_refresh(conf_t *conf, zone_t *zone, zone_evflag_t flags)
 {
 	assert(zone);
 
@@ -1472,8 +1472,7 @@ int event_refresh(conf_t *conf, zone_t *zone)
 
 	try_refresh_ctx_t trctx = { 0 };
 
-	// TODO: Flag on zone is ugly. Event specific parameters would be nice.
-	if (zone_get_flag(zone, ZONE_FORCE_AXFR, true)) {
+	if (flags & ZONE_EVFLAG_AXFR) {
 		trctx.force_axfr = true;
 		zone->zonefile.retransfer = true;
 	}

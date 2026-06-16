@@ -480,7 +480,7 @@ static size_t update_dequeue(zone_t *zone, list_t *updates)
 	return update_count;
 }
 
-int event_update(conf_t *conf, zone_t *zone)
+int event_update(conf_t *conf, zone_t *zone, zone_evflag_t flags)
 {
 	assert(zone);
 

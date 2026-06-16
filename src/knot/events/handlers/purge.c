@@ -5,7 +5,7 @@
 
 #include "knot/zone/zone.h"
 
-int event_purge(conf_t *conf, zone_t *zone)
+int event_purge(conf_t *conf, zone_t *zone, zone_evflag_t flags)
 {
 	purge_flag_t what = (purge_flag_t)zone_get_flag(zone, (zone_flag_t)PURGE_ZONE_FLAGS, true);
 

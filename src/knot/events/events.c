@@ -18,7 +18,7 @@
 
 #define ZONE_EVENT_IMMEDIATE 1 /* Fast-track to worker queue. */
 
-typedef int (*zone_event_cb)(conf_t *conf, zone_t *zone);
+typedef int (*zone_event_cb)(conf_t *conf, zone_t *zone, zone_evflag_t flags);
 
 typedef struct event_info {
 	zone_event_type_t type;
@@ -132,7 +132,7 @@ static zone_event_type_t get_next_event(zone_events_t *events)
 		time_t current = events->time[i];
 
 		if ((next == 0 || current < next) && (current != 0) &&
-		    (events->forced[i] || !events->ufrozen || !ufreeze_applies(i)) &&
+		    (!events->ufrozen || (events->flags[i] & ZONE_EVFLAG_USER) || !ufreeze_applies(i)) &&
 		    (events->answering || !only_started(i))) {
 			next = current;
 			next_type = i;
@@ -191,7 +191,7 @@ static void reschedule(zone_events_t *events, bool mx_handover)
  * \brief Zone event wrapper, expected to be called from a worker thread.
  *
  * 1. Takes the next planned event.
- * 2. Resets the event's scheduled time (and forced flag).
+ * 2. Resets the event's scheduled time (and flags).
  * 3. Perform the event's callback.
  * 4. Schedule next event planned event.
  */
@@ -213,7 +213,8 @@ static void event_wrap(worker_task_t *task)
 	pthread_cond_t *blocking = events->blocking[type];
 	events->type = type;
 	event_set_time(events, type, 0);
-	events->forced[type] = false;
+	zone_evflag_t flags = events->flags[type];
+	events->flags[type] = 0;
 	pthread_mutex_unlock(&events->mx);
 
 	const event_info_t *info = get_event_info(type);
@@ -229,7 +230,7 @@ static void event_wrap(worker_task_t *task)
 
 	if (ret == KNOT_EOK) {
 		/* Execute the event callback. */
-		ret = info->callback(conf, zone);
+		ret = info->callback(conf, zone, flags);
 		zone_timers_commit(conf, zone);
 		conf_free(conf);
 	}
@@ -353,7 +354,7 @@ void _zone_events_schedule_at(zone_t *zone, ...)
 		}
 
 		time_t current = event_get_time(events, type);
-		if (current == 0 || (planned == 0 && !events->forced[type]) ||
+		if (current == 0 || (planned == 0 && !(events->flags[type] & ZONE_EVFLAG_USER)) ||
 		    (planned > 0 && planned < current)) {
 			event_set_time(events, type, planned);
 		}
@@ -371,7 +372,7 @@ void _zone_events_schedule_at(zone_t *zone, ...)
 	va_end(args);
 }
 
-void zone_events_schedule_user(zone_t *zone, zone_event_type_t type)
+void zone_events_schedule_flags(zone_t *zone, zone_event_type_t type, time_t at, zone_evflag_t flags)
 {
 	if (!zone || !valid_event(type)) {
 		return;
@@ -379,16 +380,16 @@ void zone_events_schedule_user(zone_t *zone, zone_event_type_t type)
 
 	zone_events_t *events = &zone->events;
 	pthread_mutex_lock(&events->mx);
-	events->forced[type] = true;
+	events->flags[type] |= flags;
 	pthread_mutex_unlock(&events->mx);
 
-	zone_events_schedule_now(zone, type);
+	zone_events_schedule_at(zone, type, at);
 
 	// reschedule because get_next_event result changed outside of _zone_events_schedule_at
 	reschedule(events, false);
 }
 
-int zone_events_schedule_blocking(zone_t *zone, zone_event_type_t type, bool user)
+int zone_events_schedule_blocking(zone_t *zone, zone_event_type_t type, zone_evflag_t flags)
 {
 	if (!zone || !valid_event(type)) {
 		return KNOT_EINVAL;
@@ -405,11 +406,7 @@ int zone_events_schedule_blocking(zone_t *zone, zone_event_type_t type, bool use
 	events->blocking[type] = &local_cond;
 	pthread_mutex_unlock(&events->mx);
 
-	if (user) {
-		zone_events_schedule_user(zone, type);
-	} else {
-		zone_events_schedule_now(zone, type);
-	}
+	zone_events_schedule_now_flags(zone, type, flags);
 
 	pthread_mutex_lock(&events->mx);
 	while (events->blocking[type] == &local_cond) {

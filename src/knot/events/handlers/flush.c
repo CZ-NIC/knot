@@ -9,7 +9,7 @@
 #include "knot/conf/conf.h"
 #include "knot/zone/zone.h"
 
-int event_flush(conf_t *conf, zone_t *zone)
+int event_flush(conf_t *conf, zone_t *zone, zone_evflag_t flags)
 {
 	assert(zone);
 
@@ -17,5 +17,5 @@ int event_flush(conf_t *conf, zone_t *zone)
 		return KNOT_EEMPTYZONE;
 	}
 
-	return zone_flush_journal(conf, zone, true);
+	return zone_flush_journal(conf, zone, true, flags);
 }

@@ -8,7 +8,7 @@
 #include "knot/events/events.h"
 #include "knot/zone/zone.h"
 
-int event_ufreeze(conf_t *conf, zone_t *zone)
+int event_ufreeze(conf_t *conf, zone_t *zone, zone_evflag_t flags)
 {
 	assert(zone);
 
@@ -21,7 +21,7 @@ int event_ufreeze(conf_t *conf, zone_t *zone)
 	return KNOT_EOK;
 }
 
-int event_uthaw(conf_t *conf, zone_t *zone)
+int event_uthaw(conf_t *conf, zone_t *zone, zone_evflag_t flags)
 {
 	assert(zone);
 

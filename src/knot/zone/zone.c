@@ -51,7 +51,8 @@ static void free_ddns_queue(zone_t *zone)
  * ...in this case we actually don't have to do anything because the zonefile is current,
  * but we must mark the journal as flushed
  */
-static int flush_journal(conf_t *conf, zone_t *zone, bool allow_empty_zone, bool verbose)
+static int flush_journal(conf_t *conf, zone_t *zone, bool allow_empty_zone, bool verbose,
+                         zone_evflag_t flags)
 {
 	/*! @note Function expects nobody will change zone contents meanwhile. */
 
@@ -60,8 +61,8 @@ static int flush_journal(conf_t *conf, zone_t *zone, bool allow_empty_zone, bool
 	int ret = KNOT_EOK;
 	zone_journal_t j = zone_journal(zone);
 
-	bool force = zone_get_flag(zone, ZONE_FORCE_FLUSH, true);
-	bool user_flush = zone_get_flag(zone, ZONE_USER_FLUSH, true);
+	bool force = (flags & ZONE_EVFLAG_FORCE);
+	bool user_flush = (flags & ZONE_EVFLAG_USER);
 
 	conf_val_t val = conf_zone_get(conf, C_ZONEFILE_SYNC, zone->name);
 	int64_t sync_timeout = conf_int(&val);
@@ -441,7 +442,7 @@ static int journal_insert_flush(conf_t *conf, zone_t *zone,
 		log_zone_notice(zone->name, "journal, flushing the zone to allow old changesets cleanup to free space");
 
 		/* Transaction rolled back, journal released, we may flush. */
-		ret = flush_journal(conf, zone, true, false);
+		ret = flush_journal(conf, zone, true, false, 0);
 		if (ret == KNOT_EOK) {
 			ret = journal_insert(j, change, extra, diff);
 		}
@@ -498,13 +499,13 @@ int zone_in_journal_store(conf_t *conf, zone_t *zone, zone_contents_t *new_conte
 	return ret;
 }
 
-int zone_flush_journal(conf_t *conf, zone_t *zone, bool verbose)
+int zone_flush_journal(conf_t *conf, zone_t *zone, bool verbose, zone_evflag_t flags)
 {
 	if (conf == NULL || zone == NULL) {
 		return KNOT_EINVAL;
 	}
 
-	return flush_journal(conf, zone, false, verbose);
+	return flush_journal(conf, zone, false, verbose, flags);
 }
 
 bool zone_journal_has_zij(zone_t *zone)
