@@ -402,13 +402,8 @@ int knot_time_print(knot_time_print_t format, knot_time_t time, char *dst, size_
 		if (time > LONG_MAX) {
 			return -1;
 		}
-
-		// Set timezone to UTC before using timezone dependent functions
-		putenv("TZ=UTC");
-		tzset();
-
 		tt = (time_t)time;
-		ret = (localtime_r(&tt, &lt) == NULL ? -1 :
+		ret = (gmtime_r(&tt, &lt) == NULL ? -1 :
 		       strftime(dst, dst_len, "%Y-%m-%dT%H:%M:%SZ", &lt));
 		return (ret > 0 ? 0 : -1);
 	case TIME_PRINT_ISO8601Z:
@@ -451,13 +446,8 @@ int knot_time_print_ex(knot_time_print_t format, knot_time_t time,
 		if (time > LONG_MAX) {
 			return -1;
 		}
-
-		// Set timezone to UTC before using timezone dependent functions
-		putenv("TZ=UTC");
-		tzset();
-
 		tt = (time_t)time;
-		ret = localtime_r(&tt, &lt) == NULL ? -1 : 0;
+		ret = gmtime_r(&tt, &lt) == NULL ? -1 : 0;
 		if (ret >= 0) {
 			ret = strftime(dst, dst_len, "%Y-%m-%dT%H:%M:%S", &lt);
 		}

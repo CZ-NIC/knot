@@ -165,7 +165,7 @@ static void test_time_print(void)
 	test_time_print_expect(ret, buff, bufl, "-9999.544ruf", "relsec_ex");
 
 	ret = knot_time_print(TIME_PRINT_ISO8601, t, buff, bufl);
-	test_time_print_expect(ret, buff, bufl, "1970-01-01T12:13:20Z", "iso"); // knot_time_print(TIME_PRINT_ISO8601) explicitly sets TZ=UTC
+	test_time_print_expect(ret, buff, bufl, "1970-01-01T12:13:20Z", "iso");
 	ret = knot_time_print_ex(TIME_PRINT_ISO8601, t, 789, " ", buff, bufl);
 	test_time_print_expect(ret, buff, bufl, "1970-01-01T12:13:20.789Z ", "iso_ex");
 
