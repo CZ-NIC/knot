@@ -129,13 +129,10 @@ static knot_time_t time_ctx_finalize(time_ctx_t *ctx)
 	} else if (ctx->offset) {
 		return (knot_time_t)ctx->offset;
 	} else if (ctx->calendar.tm_year != 0) {
-		ctx->calendar.tm_isdst = -1;
+		ctx->calendar.tm_isdst = 0; // UTC has no DST
 		ctx->calendar.tm_year -= 1900;
 		ctx->calendar.tm_mon -= 1;
-		// Set UTC timezone before using mktime
-		putenv("TZ=UTC");
-		tzset();
-		return (knot_time_t)mktime(&ctx->calendar);
+		return (knot_time_t)timegm(&ctx->calendar);
 	} else {
 		return (knot_time_t)0;
 	}
@@ -445,7 +442,6 @@ int knot_time_print_ex(knot_time_print_t format, knot_time_t time,
 		if (time > LONG_MAX) {
 			return -1;
 		}
-
 		tt = (time_t)time;
 		ret = gmtime_r(&tt, &lt) == NULL ? -1 : 0;
 		if (ret >= 0) {
