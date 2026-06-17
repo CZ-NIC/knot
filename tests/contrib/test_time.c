@@ -172,9 +172,9 @@ static void test_time_print(void)
 	putenv("TZ=Europe/Prague");
 	tzset();
 	ret = knot_time_print(TIME_PRINT_ISO8601Z, t, buff, bufl);
-	test_time_print_expect(ret, buff, bufl, "1970-01-01T13:13:20+0100", "isoZ");
+	test_time_print_expect(ret, buff, bufl, "1970-01-01T13:13:20+01:00", "isoZ");
 	ret = knot_time_print_ex(TIME_PRINT_ISO8601Z, t, 12, "\n", buff, bufl);
-	test_time_print_expect(ret, buff, bufl, "1970-01-01T13:13:20.012+0100\n", "isoZ_ex");
+	test_time_print_expect(ret, buff, bufl, "1970-01-01T13:13:20.012+01:00\n", "isoZ_ex");
 
 	t2 = knot_time_add(knot_time(), -10000);
 	ret = knot_time_print(TIME_PRINT_HUMAN_MIXED, t2, buff, bufl);

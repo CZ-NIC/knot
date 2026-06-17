@@ -409,7 +409,10 @@ int knot_time_print(knot_time_print_t format, knot_time_t time, char *dst, size_
 		}
 		tt = (time_t)time;
 		ret = (localtime_r(&tt, &lt) == NULL ? -1 :
-		       strftime(dst, dst_len, "%Y-%m-%dT%H:%M:%S%z", &lt));
+		       snprintf_check(dst, dst_len, "%04d-%02d-%02dT%02d:%02d:%02d%+03ld:%02d",
+		                      lt.tm_year + 1900, lt.tm_mon + 1, lt.tm_mday,
+		                      lt.tm_hour, lt.tm_min, lt.tm_sec,
+		                      lt.tm_gmtoff / 3600, abs((int)(lt.tm_gmtoff / 60)) % 60));
 		return (ret > 0 ? 0 : -1);
 	case TIME_PRINT_RELSEC:
 		ret = snprintf(dst, dst_len, "%+"KNOT_TIMEDIFF_PRINTF,
@@ -460,7 +463,7 @@ int knot_time_print_ex(knot_time_print_t format, knot_time_t time,
 		ret = localtime_r(&tt, &lt) == NULL ? -1 : 0;
 		if (ret >= 0) {
 			int gmtoff_min = abs((int)(lt.tm_gmtoff / 60)) % 60;
-			ret = snprintf_check(dst, dst_len, "%04d-%02d-%02dT%02d:%02d:%02d.%03ld%+03ld%02d%s",
+			ret = snprintf_check(dst, dst_len, "%04d-%02d-%02dT%02d:%02d:%02d.%03ld%+03ld:%02d%s",
 			                     lt.tm_year + 1900, lt.tm_mon + 1, lt.tm_mday,
 			                     lt.tm_hour, lt.tm_min, lt.tm_sec, millis,
 			                     lt.tm_gmtoff / 3600, gmtoff_min, suffix);
