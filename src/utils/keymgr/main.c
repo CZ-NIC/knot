@@ -118,6 +118,18 @@ static void print_help(void)
 	       CONF_DEFAULT_DBDIR);
 }
 
+static knot_time_print_t get_time_format(int argc, char *argv[])
+{
+	knot_time_print_t rv = TIME_PRINT_UNIX;
+	if (argc > 2 && same_command(argv[2], "human", false)) {
+		rv = TIME_PRINT_HUMAN_MIXED;
+	} else if (argc > 2 && same_command(argv[2], "iso", false)) {
+		rv = TIME_PRINT_ISO8601;
+	}
+
+	return rv;
+}
+
 static int key_command(int argc, char *argv[], int opt_ind, knot_lmdb_db_t *kaspdb,
                        keymgr_list_params_t *list_params)
 {
@@ -203,12 +215,7 @@ static int key_command(int argc, char *argv[], int opt_ind, knot_lmdb_db_t *kasp
 			}
 		}
 	} else if (same_command(argv[1], "list", false)) {
-		list_params->format = TIME_PRINT_UNIX;
-		if (argc > 2 && same_command(argv[2], "human", false)) {
-			list_params->format = TIME_PRINT_HUMAN_MIXED;
-		} else if (argc > 2 && same_command(argv[2], "iso", false)) {
-			list_params->format = TIME_PRINT_ISO8601;
-		}
+		list_params->format = get_time_format(argc, argv);
 		ret = keymgr_list_keys(&kctx, list_params);
 		print_ok_on_succes = false;
 	} else if (same_command(argv[1], "ds", false) || same_command(argv[1], "dnskey", false)) {
