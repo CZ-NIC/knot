@@ -394,7 +394,7 @@ int knot_time_print(knot_time_print_t format, knot_time_t time, char *dst, size_
 		ret = (localtime_r(&tt, &lt) == NULL ? -1 :
 		       strftime(dst, dst_len, "%Y-%m-%dT%H:%M:%SZ", &lt));
 		return (ret > 0 ? 0 : -1);
-        case TIME_PRINT_ISO8601Z:
+	case TIME_PRINT_ISO8601Z:
 		if (time > LONG_MAX) {
 			return -1;
 		}
