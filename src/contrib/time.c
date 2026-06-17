@@ -13,6 +13,7 @@
 
 #include "contrib/time.h"
 #include "contrib/ctype.h"
+#include "contrib/string.h"
 
 struct timespec time_now(void)
 {
@@ -129,13 +130,10 @@ static knot_time_t time_ctx_finalize(time_ctx_t *ctx)
 	} else if (ctx->offset) {
 		return (knot_time_t)ctx->offset;
 	} else if (ctx->calendar.tm_year != 0) {
-		ctx->calendar.tm_isdst = -1;
+		ctx->calendar.tm_isdst = 0; // UTC has no DST
 		ctx->calendar.tm_year -= 1900;
 		ctx->calendar.tm_mon -= 1;
-		// Set UTC timezone before using mktime
-		putenv("TZ=UTC");
-		tzset();
-		return (knot_time_t)mktime(&ctx->calendar);
+		return (knot_time_t)timegm(&ctx->calendar);
 	} else {
 		return (knot_time_t)0;
 	}
@@ -331,11 +329,11 @@ static size_t unit_sizes[] = { 3600*24*365, 3600*24*30, 3600*24, 3600, 60, 1 };
 static const size_t unit_count = 6;
 
 static int print_unit(char *dst, size_t dst_len, char *unit_names[unit_count],
-                      size_t max_units, knot_time_t time)
+                      size_t max_units, knot_time_t time, long millis, const char *suffix)
 {
 	int ret;
-	if (time == 0) {
-		ret = snprintf(dst, dst_len, "0");
+	if (time == 0 && millis <= 0) {
+		ret = snprintf(dst, dst_len, "0%s", suffix);
 		return (ret < 0 || ret >= dst_len ? -1 : 0);
 	}
 	knot_timediff_t diff = knot_time_diff(time, knot_time());
@@ -345,16 +343,31 @@ static int print_unit(char *dst, size_t dst_len, char *unit_names[unit_count],
 	*dst++ = (diff < 0 ? '-' : '+');
 	if (diff < 0) {
 		diff = -diff;
+		if (millis > 0) {
+			diff--;
+			millis = 1000 - millis;
+			assert(millis > 0);
+		}
 	} else if (diff == 0) {
-		ret = snprintf(dst, dst_len, "0%s", unit_names[unit_count - 1]);
+		if (millis < 0) {
+			ret = snprintf(dst, dst_len, "0%s%s", unit_names[unit_count - 1], suffix);
+		} else {
+			ret = snprintf(dst, dst_len, "0.%03ld%s%s", millis, unit_names[unit_count - 1], suffix);
+		}
 		return (ret < 0 || ret >= dst_len ? -1 : 0);
 	}
 	size_t curr_unit = 0, used_units = 0;
 	while (curr_unit < unit_count && used_units < max_units) {
 		if (diff >= unit_sizes[curr_unit]) {
-			ret = snprintf(dst, dst_len, "%"KNOT_TIMEDIFF_PRINTF"%s",
-			               diff / unit_sizes[curr_unit],
-			               unit_names[curr_unit]);
+			if (millis >= 0 && unit_sizes[curr_unit] == 1) {
+				ret = snprintf(dst, dst_len, "%"KNOT_TIMEDIFF_PRINTF".%03ld%s",
+				               diff / unit_sizes[curr_unit],
+				               millis, unit_names[curr_unit]);
+			} else {
+				ret = snprintf(dst, dst_len, "%"KNOT_TIMEDIFF_PRINTF"%s",
+				               diff / unit_sizes[curr_unit],
+				               unit_names[curr_unit]);
+			}
 			if (ret < 0 || ret >= dst_len) {
 				return -1;
 			}
@@ -365,7 +378,8 @@ static int print_unit(char *dst, size_t dst_len, char *unit_names[unit_count],
 		}
 		curr_unit++;
 	}
-	return 0;
+	ret = snprintf_check(dst, dst_len, "%s", suffix);
+	return (ret >= 0 ? 0 : -1);
 }
 
 int knot_time_print(knot_time_print_t format, knot_time_t time, char *dst, size_t dst_len)
@@ -375,6 +389,8 @@ int knot_time_print(knot_time_print_t format, knot_time_t time, char *dst, size_
 	}
 
 	int ret;
+	struct tm lt;
+	time_t tt;
 	switch (format) {
 	case TIME_PRINT_UNIX:
 		ret = snprintf(dst, dst_len, "%"KNOT_TIME_PRINTF, time);
@@ -383,24 +399,90 @@ int knot_time_print(knot_time_print_t format, knot_time_t time, char *dst, size_
 		if (time > LONG_MAX) {
 			return -1;
 		}
-
-		// Set timezone to UTC before using timezone dependent functions
-		putenv("TZ=UTC");
-		tzset();
-
-		struct tm lt;
-		time_t tt = (time_t)time;
-		ret = (localtime_r(&tt, &lt) == NULL ? -1 :
+		tt = (time_t)time;
+		ret = (gmtime_r(&tt, &lt) == NULL ? -1 :
 		       strftime(dst, dst_len, "%Y-%m-%dT%H:%M:%SZ", &lt));
+		return (ret > 0 ? 0 : -1);
+	case TIME_PRINT_ISO8601Z:
+		if (time > LONG_MAX) {
+			return -1;
+		}
+		tt = (time_t)time;
+		ret = (localtime_r(&tt, &lt) == NULL ? -1 :
+		       snprintf_check(dst, dst_len, "%04d-%02d-%02dT%02d:%02d:%02d%+03ld:%02d",
+		                      lt.tm_year + 1900, lt.tm_mon + 1, lt.tm_mday,
+		                      lt.tm_hour, lt.tm_min, lt.tm_sec,
+		                      lt.tm_gmtoff / 3600, abs((int)(lt.tm_gmtoff / 60)) % 60));
 		return (ret > 0 ? 0 : -1);
 	case TIME_PRINT_RELSEC:
 		ret = snprintf(dst, dst_len, "%+"KNOT_TIMEDIFF_PRINTF,
 		               knot_time_diff(time, knot_time()));
 		return ((ret >= 0 && ret < dst_len) ? 0 : -1);
 	case TIME_PRINT_HUMAN_MIXED:
-		return print_unit(dst, dst_len, unit_names_mixed, unit_count, time);
+		return print_unit(dst, dst_len, unit_names_mixed, unit_count, time, -1, "");
 	case TIME_PRINT_HUMAN_LOWER:
-		return print_unit(dst, dst_len, unit_names_lower, unit_count, time);
+		return print_unit(dst, dst_len, unit_names_lower, unit_count, time, -1, "");
+	default:
+		return -1;
+	}
+}
+
+int knot_time_print_ex(knot_time_print_t format, knot_time_t time,
+                       long millis, const char *suffix,
+                       char *dst, size_t dst_len)
+{
+	if (dst == NULL || millis > 999) {
+		return -1;
+	}
+
+	int ret;
+	struct tm lt;
+	time_t tt;
+	switch (format) {
+	case TIME_PRINT_UNIX:
+		ret = snprintf_check(dst, dst_len, "%"KNOT_TIME_PRINTF".%03ld%s", time, millis, suffix);
+		return (ret > 0 ? 0 : -1);
+	case TIME_PRINT_ISO8601:
+		if (time > LONG_MAX) {
+			return -1;
+		}
+		tt = (time_t)time;
+		ret = gmtime_r(&tt, &lt) == NULL ? -1 : 0;
+		if (ret >= 0) {
+			ret = strftime(dst, dst_len, "%Y-%m-%dT%H:%M:%S", &lt);
+		}
+		if (ret > 0) {
+			ret = snprintf_check(dst + ret, dst_len - ret, ".%03ldZ%s", millis, suffix);
+		}
+		return (ret > 0 ? 0 : -1);
+	case TIME_PRINT_ISO8601Z:
+		if (time > LONG_MAX) {
+			return -1;
+		}
+		tt = (time_t)time;
+		ret = localtime_r(&tt, &lt) == NULL ? -1 : 0;
+		if (ret >= 0) {
+			int gmtoff_min = abs((int)(lt.tm_gmtoff / 60)) % 60;
+			ret = snprintf_check(dst, dst_len, "%04d-%02d-%02dT%02d:%02d:%02d.%03ld%+03ld:%02d%s",
+			                     lt.tm_year + 1900, lt.tm_mon + 1, lt.tm_mday,
+			                     lt.tm_hour, lt.tm_min, lt.tm_sec, millis,
+			                     lt.tm_gmtoff / 3600, gmtoff_min, suffix);
+		}
+		return (ret > 0 ? 0 : -1);
+	case TIME_PRINT_RELSEC:
+		;
+		knot_timediff_t d = knot_time_diff(time, knot_time());
+		if (d < 0 && millis > 0) {
+			d++;
+			millis = 1000 - millis;
+		}
+		ret = snprintf_check(dst, dst_len, "%+"KNOT_TIMEDIFF_PRINTF".%03ld%s",
+		                     d, millis, suffix);
+		return (ret > 0 ? 0 : -1);
+	case TIME_PRINT_HUMAN_MIXED:
+		return print_unit(dst, dst_len, unit_names_mixed, unit_count, time, millis, suffix);
+	case TIME_PRINT_HUMAN_LOWER:
+		return print_unit(dst, dst_len, unit_names_lower, unit_count, time, millis, suffix);
 	default:
 		return -1;
 	}

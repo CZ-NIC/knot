@@ -30,7 +30,8 @@ typedef unsigned long long knot_millis_t;
  */
 typedef enum {
 	TIME_PRINT_UNIX,	// numeric UNIX time
-	TIME_PRINT_ISO8601,	// 2016-12-31T23:59:00
+	TIME_PRINT_ISO8601,	// 2016-12-31T21:59:00Z
+	TIME_PRINT_ISO8601Z,	// 2016-12-31T23:59:00+02:00
 	TIME_PRINT_RELSEC,	// relative +6523
 	TIME_PRINT_HUMAN_MIXED,	// relative with mixed-case units
 	TIME_PRINT_HUMAN_LOWER,	// relative with lower-case units
@@ -205,6 +206,23 @@ int knot_time_parse(const char *format, const char *timespec, knot_time_t *time)
  * \return  0 OK, timestamp printed successfully.
  */
 int knot_time_print(knot_time_print_t format, knot_time_t time, char *dst, size_t dst_len);
+
+/*!
+ * \brief Print timestamp in specified format with milliseconds and optional suffix.
+ *
+ * \param format    The timestamp text format specification.
+ * \param time      The timestamp to be printed - seconds.
+ * \param millis    The timestamp to be printed - additional milliseconds.
+ * \param suffix    Any string suffix (or "").
+ * \param dst       The destination buffer pointer.
+ * \param dst_len   The destination buffer length.
+ *
+ * \retval -1 An error occurred, the buffer may be filled with nonsense.
+ * \return  0 OK, timestamp printed successfully.
+ */
+int knot_time_print_ex(knot_time_print_t format, knot_time_t time,
+                       long millis, const char *suffix,
+                       char *dst, size_t dst_len);
 
 /*!
  * \brief Print the timestamp in a predefined human format.

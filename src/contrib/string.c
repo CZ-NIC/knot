@@ -59,6 +59,15 @@ char *sprintf_alloc(const char *fmt, ...)
 	return strp;
 }
 
+int snprintf_check(char *buf, size_t len, const char *fmt, ...)
+{
+	va_list ap;
+	va_start(ap, fmt);
+	int ret = vsnprintf(buf, len, fmt, ap);
+	va_end(ap);
+	return ret >= len ? -1 : ret;
+}
+
 char *strcdup(const char *s1, const char *s2)
 {
 	if (!s1 || !s2) {
