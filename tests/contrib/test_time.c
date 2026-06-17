@@ -142,7 +142,8 @@ static void test_time_print_expect(int ret, const char *res, int res_len,
 				   const char *expected, const char *msg)
 {
 	ok(ret == 0, "time_print %s ok", msg);
-	ok(strncmp(res, expected, res_len) == 0, "time_print %s result '%.*s' == '%s'", msg, res_len, res, expected);
+	ok(strncmp(res, expected, res_len) == 0, "time_print %s result '%.*s' == '%s'",
+	   msg, res_len, res, expected);
 }
 
 static void test_time_print(void)

@@ -458,7 +458,7 @@ int knot_time_print_ex(knot_time_print_t format, knot_time_t time,
 		tt = (time_t)time;
 		ret = localtime_r(&tt, &lt) == NULL ? -1 : 0;
 		if (ret >= 0) {
-                       ret = strftime(dst, dst_len, "%Y-%m-%dT%H:%M:%S", &lt);
+			ret = strftime(dst, dst_len, "%Y-%m-%dT%H:%M:%S", &lt);
 		}
 		if (ret > 0) {
 			ret = snprintf(dst + ret, dst_len - ret, ".%03ldZ%s", millis, suffix);
@@ -472,7 +472,7 @@ int knot_time_print_ex(knot_time_print_t format, knot_time_t time,
 		ret = localtime_r(&tt, &lt) == NULL ? -1 : 0;
 		if (ret >= 0) {
 			int gmtoff_min = abs((int)(lt.tm_gmtoff / 60)) % 60;
-                        ret = snprintf(dst, dst_len, "%04d-%02d-%02dT%02d:%02d:%02d.%03ld%+03ld%02d%s",
+			ret = snprintf(dst, dst_len, "%04d-%02d-%02dT%02d:%02d:%02d.%03ld%+03ld%02d%s",
 			               lt.tm_year + 1900, lt.tm_mon + 1, lt.tm_mday,
 			               lt.tm_hour, lt.tm_min, lt.tm_sec, millis,
 			               lt.tm_gmtoff / 3600, gmtoff_min, suffix);

@@ -248,8 +248,9 @@ static void emit_log_msg(int level, log_source_t src, const char *zone,
 	if (!(s_log->flags & LOG_FLAG_NOTIMESTAMP)) {
 		struct timeval tv;
 		gettimeofday(&tv, NULL);
-		if (knot_time_print_ex(TIME_PRINT_ISO8601Z, tv.tv_sec, tv.tv_usec / 1000L, " ", tstr, sizeof(tstr)) < 0) {
-                        tstr[0] = '\0';
+		if (knot_time_print_ex(TIME_PRINT_ISO8601Z, tv.tv_sec, tv.tv_usec / 1000L,
+		                       " ", tstr, sizeof(tstr)) < 0) {
+			tstr[0] = '\0';
 		}
 	}
 

@@ -212,7 +212,7 @@ int knot_time_print(knot_time_print_t format, knot_time_t time, char *dst, size_
  *
  * \param format    The timestamp text format specification.
  * \param time      The timestamp to be printed - seconds.
- * \param millis    The timestamp to be printed - addiitonal milliseconds.
+ * \param millis    The timestamp to be printed - additional milliseconds.
  * \param suffix    Any string suffix (or "").
  * \param dst       The destination buffer pointer.
  * \param dst_len   The destination buffer length.
