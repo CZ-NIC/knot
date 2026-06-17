@@ -282,6 +282,33 @@ static bool genkeyargs(int argc, char *argv[], bool just_timing, key_params_t *k
 	return true;
 }
 
+static bool genkeyargs_digest(char *argv, dnssec_key_digest_t *digest)
+{
+	// generate algorithms field
+	const char *digest_names[256] = {
+		[DNSSEC_KEY_DIGEST_SHA1] = "sha1",
+		[DNSSEC_KEY_DIGEST_SHA256] = "sha256",
+		[DNSSEC_KEY_DIGEST_SHA384] = "sha384",
+	};
+
+	int dgst = 256; // invalid value
+	(void)str_to_int(argv, &dgst, 0, 255);
+	for (int dgst_index = 0; dgst_index < 256 && dgst > 255; dgst_index++) {
+		if (digest_names[dgst_index] != NULL &&
+			same_command(argv, digest_names[dgst_index], false)) {
+			dgst = dgst_index;
+			break;
+		}
+	}
+	if (dgst > 255) {
+		ERR2("unknown digest: %s", argv);
+		return false;
+	}
+	*digest = dgst;
+
+	return true;
+}
+
 static bool genkeyargs_ksk(int argc, char *argv[])
 {
 	for (int i = 0; i < argc; i++) {
@@ -961,6 +988,10 @@ int keymgr_get_key(kdnssec_ctx_t *ctx, const char *key_spec, knot_kasp_key_t **k
 		is_id = true;
 	}
 
+	if (!is_keytag && !is_id && can_be_digest) {
+		return KNOT_EAGAIN;
+	}
+
 	uint16_t keytag = 0;
 	bool can_be_keytag = (str_to_u16(key_spec, &keytag) == KNOT_EOK);
 	long spec_len = strlen(key_spec);
@@ -1454,7 +1485,7 @@ static int create_and_print_ds(const knot_dname_t *zone_name,
 	return print_ds(zone_name, &rdata);
 }
 
-int keymgr_generate_ds(const knot_dname_t *dname, const knot_kasp_key_t *key)
+int keymgr_generate_ds(const knot_dname_t *dname, const knot_kasp_key_t *key, int argc, char *argv[])
 {
 	static const dnssec_key_digest_t digests[] = {
 		DNSSEC_KEY_DIGEST_SHA256,
@@ -1463,8 +1494,18 @@ int keymgr_generate_ds(const knot_dname_t *dname, const knot_kasp_key_t *key)
 	};
 
 	int ret = KNOT_EOK;
-	for (int i = 0; digests[i] != 0 && ret == KNOT_EOK; i++) {
-		ret = create_and_print_ds(dname, key->key, digests[i]);
+	if(argc == 0 || argv == NULL) {
+		for (int i = 0; digests[i] != 0 && ret == KNOT_EOK; i++) {
+			ret = create_and_print_ds(dname, key->key, digests[i]);
+		}
+	} else {
+		for (int i = 0; i < argc; i++) {
+			dnssec_key_digest_t digest;
+			if (!genkeyargs_digest(argv[i], &digest)) {
+				return KNOT_EINVAL;
+			}
+			ret = create_and_print_ds(dname, key->key, digest);
+		}
 	}
 
 	return ret;
