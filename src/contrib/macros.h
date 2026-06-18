@@ -19,6 +19,10 @@
 	({ __typeof__ (a) _x = (a); __typeof__ (b) _y = (b); _x > _y ? _x : _y; })
 #endif
 
+#ifndef ARRAY_SIZE
+#define ARRAY_SIZE(array)       (sizeof(array) / sizeof((array)[0]))
+#endif
+
 #ifndef likely
 /*! \brief Optimize for x to be true value. */
 #define likely(x) __builtin_expect((x), 1)

@@ -253,40 +253,8 @@ static int key_command(int argc, char *argv[], int opt_ind, knot_lmdb_db_t *kasp
 		list_params->format = get_time_format(argc, argv);
 		ret = keymgr_list_keys(&kctx, list_params);
 		print_ok_on_succes = false;
-	} else if (same_command(argv[1], "ds", false)) {
-		if (argc >= 3) {
-			knot_kasp_key_t *key2rr;
-			ret = keymgr_get_key(&kctx, true, argv[2], &key2rr);
-			if (ret == KNOT_EOK) {
-				ret = keymgr_generate_ds(zone_name, key2rr, argc - 3, argv + 3);
-			}
-		}
-		if ((argc < 3 && ret == KNOT_EOK) || ret == KNOT_EAGAIN) {
-			for (int i = 0; i < kctx.zone->num_keys; i++) {
-				if (kctx.zone->keys[i].is_ksk) {
-					if (argc < 3 && ret == KNOT_EOK) {
-						ret = keymgr_generate_ds(zone_name, &kctx.zone->keys[i], 0, NULL);
-					} else {
-						ret = keymgr_generate_ds(zone_name, &kctx.zone->keys[i], argc - 2, argv + 2);
-					}
-				}
-			}
-		}
-		print_ok_on_succes = false;
-	} else if (same_command(argv[1], "dnskey", false)) {
-		if (argc < 3) {
-			for (int i = 0; i < kctx.zone->num_keys && ret == KNOT_EOK; i++) {
-				if (kctx.zone->keys[i].is_ksk) {
-					ret = keymgr_generate_dnskey(zone_name, &kctx.zone->keys[i]);
-				}
-			}
-		} else {
-			knot_kasp_key_t *key2rr;
-			ret = keymgr_get_key(&kctx, argv[2], &key2rr);
-			if (ret == KNOT_EOK) {
-				ret = keymgr_generate_dnskey(zone_name, key2rr);
-			}
-		}
+	} else if (same_command(argv[1], "ds", false) || same_command(argv[1], "dnskey", false)) {
+		ret = keymgr_dss_dnskeys(&kctx, argc - 1, argv + 1);
 		print_ok_on_succes = false;
 	} else if (same_command(argv[1], "share", false)) {
 		CHECK_MISSING_ARG("Key to be shared is not specified");
