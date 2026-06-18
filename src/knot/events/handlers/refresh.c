@@ -203,7 +203,8 @@ static void finalize_timers_base(struct refresh_data *data, bool also_expire)
 	uint32_t soa_refresh = knot_soa_refresh(soa->rdata);
 	limit_timer(conf, zone->name, &soa_refresh, "refresh",
 	            C_REFRESH_MIN_INTERVAL, C_REFRESH_MAX_INTERVAL);
-	zone->timers->next_refresh = now + soa_refresh;
+	conf_val_t refresh_jitter = conf_zone_get(conf, C_REFRESH_JITTER, zone->name);
+	zone->timers->next_refresh = now + soa_refresh - conf_jitter(&refresh_jitter, zone->name);
 	zone->timers->flags |= LAST_REFRESH_OK | TIMERS_MODIFIED;
 
 	if (zone->is_catalog_flag) {
@@ -1537,7 +1538,7 @@ int event_refresh(conf_t *conf, zone_t *zone)
 		zone_schedule_notify(conf, zone, 1);
 	}
 	if (trctx.more_xfr && ret == KNOT_EOK) {
-		zone_schedule_update(conf, zone, ZONE_EVENT_REFRESH);
+		zone_schedule_update(conf, zone, ZONE_EVENT_REFRESH, 0);
 	}
 
 	return ret;

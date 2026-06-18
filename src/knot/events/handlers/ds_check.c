@@ -45,7 +45,7 @@ int event_ds_check(conf_t *conf, zone_t *zone)
 	case KNOT_NO_READY_KEY:
 		break;
 	case KNOT_EOK:
-		zone_schedule_update(conf, zone, ZONE_EVENT_DNSSEC);
+		zone_schedule_update(conf, zone, ZONE_EVENT_DNSSEC, 0);
 		break;
 	default:
 		reschedule_next(zone, ctx.policy->ksk_sbm_check_interval);

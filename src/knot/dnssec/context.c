@@ -172,6 +172,11 @@ static void policy_load(knot_kasp_policy_t *policy, conf_t *conf, conf_val_t *id
 	if (ret != KNOT_EOK || zero != 0) {
 		assert(0); // cannot happen - ensured by conf check
 	}
+
+	val = conf_id_get(conf, C_POLICY, C_DNSSEC_JITTER, id);
+	int64_t jitter = conf_jitter(&val, zone_name);
+	policy->rrsig_refresh_before += jitter;
+	policy->zsk_lifetime -= jitter;
 }
 
 int kdnssec_ctx_init(conf_t *conf, kdnssec_ctx_t *ctx, const knot_dname_t *zone_name,

@@ -2117,6 +2117,7 @@ DNSSEC policy configuration.
      dnskey-ttl: TIME
      zone-max-ttl: TIME
      keytag-modulo: INT/INT
+     dnssec-jitter: TIME
      ksk-lifetime: TIME
      zsk-lifetime: TIME
      deleg-adt: BOOL
@@ -2293,6 +2294,22 @@ or :ref:`DNSSEC multi-signer` (and possibly other) setups.
    before this option and keys imported from elsewhere might not fulfill the policy.
 
 *Default:* ``0/1``
+
+.. _policy_dnssec-jitter:
+
+dnssec-jitter
+-------------
+
+A pseudo-random jitter to be added to :ref:`policy_rrsig-refresh` and subtracted from
+:ref:`policy_zsk-lifetime`.
+
+The jitter is from the interval from 0 to the configured value, and deterministic
+depending on the zone name.
+
+The goal is that with a lot of configured zone, they don't interfere within regular
+DNSSEC maintenance events.
+
+*Default:* 0
 
 .. _policy_ksk-lifetime:
 
@@ -2806,6 +2823,7 @@ Definition of zones served by the server.
      serial-modulo: INT/INT | +INT | -INT | INT/INT+INT | INT/INT-INT
      reverse-generate: DNAME ...
      include-from: DNAME ...
+     refresh-jitter: TIME
      refresh-min-interval: TIME
      refresh-max-interval: TIME
      retry-min-interval: TIME
@@ -3499,6 +3517,22 @@ In case of secondary zone (i.e. :ref:`zone_master` is specified) this option imp
 :ref:`zone_zonefile-load`: *difference-no-serial* and :ref:`zone_journal-content`: *all*.
 
 *Default:* none
+
+.. _zone_refresh-jitter:
+
+refresh-jitter
+---------------
+
+A pseudo-random jitter delaying the reaction on incoming NOTIFY, production of
+otgoing NOTIFY and shortening the SOA refresh timer.
+
+The jitter is from the interval from 0 to the configured value, and deterministic
+depending on the zone name.
+
+The goal is that with a lot of configured zone, they don't interfere within regular
+or triggered zone refresh and NOTIFY events.
+
+*Default:* 0
 
 .. _zone_refresh-min-interval:
 

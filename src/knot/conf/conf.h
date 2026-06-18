@@ -482,6 +482,21 @@ inline static int64_t conf_int(
 }
 
 /*!
+ * Gets a numeric value of the jitter.
+ *
+ * It is from interval from 0 to configured jitter value...
+ * ...pseudo-random, deterministic based on zone name.
+ *
+ * \param[in] jitter_val    Jitter value item.
+ * \param[in] zone          Zone name.
+ *
+ * \return Integer.
+ */
+int64_t conf_jitter(
+	conf_val_t *jitter_val,
+	const knot_dname_t *zone);
+
+/*!
  * Gets the boolean value of the item.
  *
  * \param[in] val  Item value.
