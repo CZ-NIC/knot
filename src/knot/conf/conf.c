@@ -24,6 +24,7 @@
 #include "contrib/strtonum.h"
 #include "contrib/string.h"
 #include "contrib/wire_ctx.h"
+#include "contrib/openbsd/siphash.h"
 #include "contrib/openbsd/strlcat.h"
 #include "contrib/openbsd/strlcpy.h"
 
@@ -630,6 +631,25 @@ int64_t conf_int_alt(
 	} else {
 		return alternative ? val->item->var.i.dflt_alt : val->item->var.i.dflt;
 	}
+}
+
+int64_t conf_jitter(
+	conf_val_t *jitter_val,
+	const knot_dname_t *zone)
+{
+	int64_t intval = conf_int(jitter_val);
+	if (intval < 1) {
+		return intval;
+	}
+
+	SIPHASH_KEY zero_key = { 0, 0 };
+	SIPHASH_CTX ctx;
+	SipHash24_Init(&ctx, &zero_key);
+	SipHash24_Update(&ctx, zone, knot_dname_size(zone));
+	uint64_t random64 = SipHash24_End(&ctx);
+	uint64_t granularity = (1 << 16);
+
+	return (1 + intval) * (random64 & (granularity - 1)) / granularity;
 }
 
 bool conf_bool(

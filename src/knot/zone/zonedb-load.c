@@ -519,7 +519,7 @@ static void catalog_generate_add(conf_t *conf, zone_t *zone, knot_zonedb_t *db_n
 		goto cleanup;
 	}
 
-	zone_schedule_update(conf, catz, ZONE_EVENT_LOAD);
+	zone_schedule_update(conf, catz, ZONE_EVENT_LOAD, 0);
 	return;
 cleanup:
 	// Purge the reference to generated catalog to reflect the reality for the following checks.
