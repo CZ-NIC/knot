@@ -88,7 +88,7 @@ static int update_enqueue(zone_t *zone, knotd_qdata_t *qdata)
 	pthread_mutex_unlock(&zone->ddns_lock);
 
 	/* Schedule UPDATE event. */
-	zone_schedule_update(conf(), zone, ZONE_EVENT_UPDATE);
+	zone_schedule_update(conf(), zone, ZONE_EVENT_UPDATE, 0);
 
 	return KNOT_EOK;
 }
