@@ -125,12 +125,12 @@ Commands
   key tag or a prefix of the key ID, with an optional *[id=|keytag=]* prefix; *arguments* 
   are like for **generate**, but just the related ones.
 
-**ds** [*key_spec*]
-  Generate DS record (all digest algorithms together) for specified key. *Key_spec*
-  is like for **set**, if unspecified, all KSKs are used.
+**ds** [*key_spec*...] [[**digest=**]\ *digest_alg*...]
+  Generate DS record for specified keys. *Key_spec* is like for **set**, if unspecified, all KSKs are used.
+  *Digest_alg* is either a digest algorithm name or an algorithm code. Use specified or all supported digest algorithms.
 
-**dnskey** [*key_spec*]
-  Generate DNSKEY record for specified key. *Key_spec*
+**dnskey** [*key_spec*...]
+  Generate DNSKEY record for specified keys. *Key_spec*
   is like for **ds**, if unspecified, all KSKs are used.
 
 **delete** *key_spec*

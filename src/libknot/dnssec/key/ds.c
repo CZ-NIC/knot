@@ -47,6 +47,20 @@ bool dnssec_algorithm_digest_support(dnssec_key_digest_t algorithm)
 	return gnutls_sign_is_secure(rsa);
 }
 
+_public_
+dnssec_key_digest_t dnssec_algorithm_digest_from_string(const char *digest_name)
+{
+	if (strcasecmp(digest_name, "sha1") == 0) {
+		return DNSSEC_KEY_DIGEST_SHA1;
+	} else if (strcasecmp(digest_name, "sha256") == 0) {
+		return DNSSEC_KEY_DIGEST_SHA256;
+	} else if (strcasecmp(digest_name, "sha384") == 0) {
+		return DNSSEC_KEY_DIGEST_SHA384;
+	} else {
+		return DNSSEC_KEY_DIGEST_INVALID;
+	}
+}
+
 static void wire_write_digest(wire_ctx_t *wire,
 			      gnutls_hash_hd_t digest, int digest_size)
 {

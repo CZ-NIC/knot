@@ -284,6 +284,15 @@ int dnssec_algorithm_key_size_default(dnssec_key_algorithm_t algorithm);
 bool dnssec_algorithm_digest_support(dnssec_key_digest_t algorithm);
 
 /*!
+ * \brief Lookup digest algorithm based on its textual name.
+ *
+ * \param digest_name    Case insensitive hash algorithm name.
+ *
+ * \return Digest algorithm or DNSSEC_KEY_DIGEST_INVALID.
+ */
+dnssec_key_digest_t dnssec_algorithm_digest_from_string(const char *digest_name);
+
+/*!
  * Create DS (Delegation Signer) RDATA from DNSSEC key.
  *
  * \param[in]  key     DNSSEC key.

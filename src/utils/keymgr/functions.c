@@ -284,33 +284,6 @@ static bool genkeyargs(int argc, char *argv[], bool just_timing, key_params_t *k
 	return true;
 }
 
-static bool genkeyargs_digest(char *argv, dnssec_key_digest_t *digest)
-{
-	// generate algorithms field
-	const char *digest_names[256] = {
-		[DNSSEC_KEY_DIGEST_SHA1] = "sha1",
-		[DNSSEC_KEY_DIGEST_SHA256] = "sha256",
-		[DNSSEC_KEY_DIGEST_SHA384] = "sha384",
-	};
-
-	int dgst = 256; // invalid value
-	(void)str_to_int(argv, &dgst, 0, 255);
-	for (int dgst_index = 0; dgst_index < 256 && dgst > 255; dgst_index++) {
-		if (digest_names[dgst_index] != NULL &&
-			same_command(argv, digest_names[dgst_index], false)) {
-			dgst = dgst_index;
-			break;
-		}
-	}
-	if (dgst > 255) {
-		ERR2("unknown digest: %s", argv);
-		return false;
-	}
-	*digest = dgst;
-
-	return true;
-}
-
 static bool genkeyargs_ksk(int argc, char *argv[])
 {
 	for (int i = 0; i < argc; i++) {
@@ -990,10 +963,6 @@ int keymgr_get_key(kdnssec_ctx_t *ctx, const char *key_spec, knot_kasp_key_t **k
 		is_id = true;
 	}
 
-	if (!is_keytag && !is_id && can_be_digest) {
-		return KNOT_EAGAIN;
-	}
-
 	uint16_t keytag = 0;
 	bool can_be_keytag = (str_to_u16(key_spec, &keytag) == KNOT_EOK);
 	long spec_len = strlen(key_spec);
@@ -1494,33 +1463,7 @@ static int create_and_print_ds(const knot_dname_t *zone_name,
 	return print_ds(zone_name, &rdata);
 }
 
-int keymgr_generate_ds(const knot_dname_t *dname, const knot_kasp_key_t *key, int argc, char *argv[])
-{
-	static const dnssec_key_digest_t digests[] = {
-		DNSSEC_KEY_DIGEST_SHA256,
-		DNSSEC_KEY_DIGEST_SHA384,
-		0
-	};
-
-	int ret = KNOT_EOK;
-	if(argc == 0 || argv == NULL) {
-		for (int i = 0; digests[i] != 0 && ret == KNOT_EOK; i++) {
-			ret = create_and_print_ds(dname, key->key, digests[i]);
-		}
-	} else {
-		for (int i = 0; i < argc; i++) {
-			dnssec_key_digest_t digest;
-			if (!genkeyargs_digest(argv[i], &digest)) {
-				return KNOT_EINVAL;
-			}
-			ret = create_and_print_ds(dname, key->key, digest);
-		}
-	}
-
-	return ret;
-}
-
-int keymgr_generate_dnskey(const knot_dname_t *dname, const knot_kasp_key_t *key)
+static int keymgr_generate_dnskey(const knot_dname_t *dname, const knot_kasp_key_t *key)
 {
 	const dnssec_key_t *dnskey = key->key;
 
@@ -1551,6 +1494,68 @@ int keymgr_generate_dnskey(const knot_dname_t *dname, const knot_kasp_key_t *key
 	free(base64_output);
 	free(name);
 	return KNOT_EOK;
+}
+
+int keymgr_dss_dnskeys(kdnssec_ctx_t *ctx, int argc, char *argv[])
+{
+	bool have_ds_alg[256] = { 0 };
+	bool ds = same_command(argv[0], "ds", false), alg_spec = false, key_spec = (!ds && argc > 1);
+	int ret = KNOT_EOK;
+
+	argc--;
+	argv++;
+
+	// in case of DS, first get the set of desired hash algs
+	for (int i = 0; ds && i < argc; i++) {
+		uint8_t alg;
+		if (same_command(argv[i], "digest=", true)) {
+			alg = dnssec_algorithm_digest_from_string(argv[i] + 7);
+			if (alg == DNSSEC_KEY_DIGEST_INVALID) {
+				(void)str_to_u8(argv[i] + 7, &alg);
+				if (alg == DNSSEC_KEY_DIGEST_INVALID) {
+					return KNOT_EALGORITHM;
+				}
+			}
+			have_ds_alg[alg] = true;
+			alg_spec = true;
+			argv[i] = NULL;
+		} else if ((alg = dnssec_algorithm_digest_from_string(argv[i])) != DNSSEC_KEY_DIGEST_INVALID) {
+			have_ds_alg[alg] = true;
+			alg_spec = true;
+			argv[i] = NULL;
+		} else {
+			key_spec = true;
+		}
+	}
+
+	// now iterate through keys and print
+	for (int i = 0; i < (key_spec ? argc : ctx->zone->num_keys) && ret == KNOT_EOK; i++) {
+		knot_kasp_key_t *key2rr;
+		if (key_spec) {
+			if (argv[i] == NULL) {
+				continue;
+			}
+			ret = keymgr_get_key(ctx, argv[i], &key2rr);
+		} else {
+			key2rr = &ctx->zone->keys[i];
+			if (!key2rr->is_ksk) {
+				continue;
+			}
+		}
+
+		// now having one key, print either DNSKEY or desired DSs
+		if (!ds && ret == KNOT_EOK) {
+			ret = keymgr_generate_dnskey(ctx->zone->dname, key2rr);
+		} else {
+			for (int j = DNSSEC_KEY_DIGEST_INVALID + 1; j < ARRAY_SIZE(have_ds_alg) && ret == KNOT_EOK; j++) {
+				if (have_ds_alg[j] || (!alg_spec && dnssec_algorithm_digest_support(j))) {
+					ret = create_and_print_ds(ctx->zone->dname, key2rr->key, j);
+				}
+			}
+		}
+	}
+
+	return ret;
 }
 
 int keymgr_list_zones(knot_lmdb_db_t *kaspdb, bool json)
