@@ -494,6 +494,7 @@ int zone_contents_cow(zone_contents_t *from, zone_contents_t **to)
 	from->adds_tree = NULL;
 	contents->size = from->size;
 	contents->max_ttl = from->max_ttl;
+	pthread_rwlock_init(&contents->xfrout_lock, NULL);
 
 	*to = contents;
 	return KNOT_EOK;

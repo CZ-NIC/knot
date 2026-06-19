@@ -364,6 +364,7 @@ void apply_rollback(apply_ctx_t *ctx)
 
 	dnssec_nsec3_params_free(&ctx->contents->nsec3_params);
 
+	pthread_rwlock_destroy(&ctx->contents->xfrout_lock);
 	free(ctx->contents);
 
 	if (ctx->cow_mutex != NULL) {
@@ -389,5 +390,6 @@ void update_free_zone(zone_contents_t *contents)
 
 	dnssec_nsec3_params_free(&contents->nsec3_params);
 
+	pthread_rwlock_destroy(&contents->xfrout_lock);
 	free(contents);
 }
