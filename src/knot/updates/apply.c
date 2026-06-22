@@ -359,14 +359,13 @@ void apply_rollback(apply_ctx_t *ctx)
 		ctx->contents->nsec3_nodes = NULL;
 	}
 
-	free(ctx->contents->nodes);
-	free(ctx->contents->nsec3_nodes);
+	// ensure that only shallow trees are freed in zone_contents_free()
+	ctx->contents->nodes->trie = NULL;
+	if (ctx->contents->nsec3_nodes != NULL) {
+		ctx->contents->nsec3_nodes->trie = NULL;
+	}
 
-	dnssec_nsec3_params_free(&ctx->contents->nsec3_params);
-
-	ATOMIC_DEINIT(contents->dnssec_expire);
-	pthread_rwlock_destroy(&ctx->contents->xfrout_lock);
-	free(ctx->contents);
+	zone_contents_free(ctx->contents);
 
 	if (ctx->cow_mutex != NULL) {
 		knot_sem_post(ctx->cow_mutex);
@@ -386,12 +385,11 @@ void update_free_zone(zone_contents_t *contents)
 		contents->nsec3_nodes->cow = NULL;
 	}
 
-	free(contents->nodes);
-	free(contents->nsec3_nodes);
+	// ensure that only shallow trees are freed in zone_contents_free()
+	contents->nodes->trie = NULL;
+	if (contents->nsec3_nodes != NULL) {
+		contents->nsec3_nodes->trie = NULL;
+	}
 
-	dnssec_nsec3_params_free(&contents->nsec3_params);
-
-	ATOMIC_DEINIT(contents->dnssec_expire);
-	pthread_rwlock_destroy(&contents->xfrout_lock);
-	free(contents);
+	zone_contents_free(contents);
 }
