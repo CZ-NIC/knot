@@ -20,6 +20,7 @@ test: env
 	$(VENV)/bin/RLTest --randomize-ports --clear-logs --parallelism 4 \
 	$(if $(OSS_REDIS_PATH),--oss-redis-path $(OSS_REDIS_PATH)) \
 	$(if $(NO_VALGRIND),,--use-valgrind)
+	rm -f /tmp/rltest_portfile.lock
 
 clean-local:
 	rm -rf $(VENV) __pycache__ logs
