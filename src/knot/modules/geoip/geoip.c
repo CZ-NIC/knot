@@ -699,21 +699,9 @@ static int geo_conf_rdb(check_ctx_t *check, conf_mod_id_t *id, geoip_ctx_t *ctx)
 {
 	redisContext *db = redis_conn(check->mod);
 
-	const char *mode_str;
-	switch (ctx->mode) {
-	case MODE_GEODB:
-		mode_str = "geo";
-		break;
-	case MODE_SUBNET:
-		mode_str = "net";
-		break;
-	case MODE_WEIGHTED:
-		mode_str = "weight";
-		break;
-	default:
-		return KNOT_EINVAL;
-	}
-	redisReply *reply = redisCommand(db, "KNOT.GEOIP.LOAD %b %s", id->data, id->len - 1, mode_str);
+	// const uint8_t mode = ctx->mode;
+	redisReply *reply = redisCommand(db, "KNOT_BIN.GEOIP.LOAD %b %d",
+	                                 id->data, id->len - 1, ctx->mode);
 	if (reply == NULL) {
 		return KNOT_ECONN;
 	} else if (reply->type != REDIS_REPLY_ARRAY) {
@@ -754,50 +742,22 @@ static int geo_conf_rdb(check_ctx_t *check, conf_mod_id_t *id, geoip_ctx_t *ctx)
 			}
 			break;
 		case MODE_SUBNET:;
-			// TODO refactoring (copied code)
-			// Locate the optional slash in the subnet string.
-			char *slash = strchr(geo_data->str, '/');
-			if (slash == NULL) {
-				slash = geo_data->str + geo_data->len;
-			}
-			*slash = '\0';
-
-			// Parse address.
 			view->subnet = calloc(1, sizeof(struct sockaddr_storage));
 			if (view->subnet == NULL) {
 				return KNOT_ENOMEM;
 			}
-			// Try to parse as IPv4.
-			int ret = sockaddr_set(view->subnet, AF_INET, geo_data->str, 0);
-			view->subnet_prefix = 32;
-			if (ret != KNOT_EOK) {
-				// Try to parse as IPv6.
-				ret = sockaddr_set(view->subnet, AF_INET6, geo_data->str, 0);
-				view->subnet_prefix = 128;
-			}
-			if (ret != KNOT_EOK) {
-				geo_log(check, LOG_ERR, "invalid address format '%s'",
-				        geo_data->str);
-				free(view->subnet);
-				return KNOT_EINVAL;
-			}
 
-			// Parse subnet prefix.
-			if (slash < geo_data->str + geo_data->len - 1) {
-				ret = str_to_u8(slash + 1, &view->subnet_prefix);
-				if (ret != KNOT_EOK) {
-					geo_log(check, LOG_ERR, "invalid prefix '%s'", slash + 1);
-					free(view->subnet);
-					return ret;
-				}
-				if (view->subnet->ss_family == AF_INET && view->subnet_prefix > 32) {
-					view->subnet_prefix = 32;
-					geo_log(check, LOG_WARNING, "IPv4 prefix too large, set to 32");
-				}
-				if (view->subnet->ss_family == AF_INET6 && view->subnet_prefix > 128) {
-					view->subnet_prefix = 128;
-					geo_log(check, LOG_WARNING, "IPv6 prefix too large, set to 128");
-				}
+			view->subnet_prefix = geo_data->str[0];
+			if (geo_data->str[1] == AF_INET) {
+				struct sockaddr_in *ss = (struct sockaddr_in *)view->subnet;
+				ss->sin_family = AF_INET;
+				memcpy(&ss->sin_addr, geo_data->str + 2, geo_data->len - 2);
+			} else if (geo_data->str[1] == AF_INET6) {
+				struct sockaddr_in6 *ss = (struct sockaddr_in6 *)view->subnet;
+				ss->sin6_family = AF_INET6;
+				memcpy(&ss->sin6_addr, geo_data->str + 2, geo_data->len - 2);
+			} else {
+				/* TODO error */
 			}
 			break;
 		case MODE_WEIGHTED:

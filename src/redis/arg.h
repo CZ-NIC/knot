@@ -188,11 +188,11 @@ typedef struct {
 	size_t len; \
 	const char *ptr = RedisModule_StringPtrLen(arg, &len); \
 	if (len == 3 && strncmp(ptr, "geo", 3) == 0) { \
-		out.type = GEO; \
+		out.type = MODE_GEODB; \
 	} else if (len == 3 && strncmp(ptr, "net", 3) == 0) { \
-		out.type = NET; \
+		out.type = MODE_SUBNET; \
 	} else if (len == 6 && strncmp(ptr, "weight", 6) == 0) { \
-		out.type = WEIGHT; \
+		out.type = MODE_WEIGHTED; \
 	} else { \
 		return RedisModule_ReplyWithError(ctx, RDB_E("malformed " name)); \
 	} \
@@ -201,14 +201,14 @@ typedef struct {
 #define ARG_GEO_TYPEVAL_TXT(arg, out, name) { \
 	size_t len; int ret = KNOT_EOK; \
 	const char *ptr = RedisModule_StringPtrLen(arg, &len); \
-	if (len > 4 && strncmp(ptr, "geo:", 4) == 0) { \
-		ptr += 4; len -= 4; out.type = GEO; \
-		ret = geo_bin(&out.val, &out.val_size, ptr, len); \
-	} else if (len > 4 && strncmp(ptr, "net:", 4) == 0) { \
-		ptr += 4; len -= 4; out.type = NET; \
+	if (len > 4 && strncmp(ptr, "net:", 4) == 0) { \
+		ptr += 4; len -= 4; out.type = MODE_SUBNET; \
 		ret = subnet_bin(&out.val, &out.val_size, ptr, len); \
-	} else if (len > 7 && strncmp(ptr, "weight:", 7) == 0) { \
-		ptr += 7; len -= 7; out.type = WEIGHT; \
+	} else if (len > 4 && strncmp(ptr, "geo:", 4) == 0) { \
+		ptr += 4; len -= 4; out.type = MODE_GEODB; \
+		ret = geo_bin(&out.val, &out.val_size, ptr, len); \
+	}else if (len > 7 && strncmp(ptr, "weight:", 7) == 0) { \
+		ptr += 7; len -= 7; out.type = MODE_WEIGHTED; \
 		weight_bin(&out.val, &out.val_size, ptr, len); \
 	} else { \
 		return RedisModule_ReplyWithError(ctx, RDB_E("malformed " name)); \
@@ -216,6 +216,7 @@ typedef struct {
 	if (ret != KNOT_EOK) { \
 		return RedisModule_ReplyWithError(ctx, RDB_E("malformed")); \
 	} \
+	/* TODO deal with longer GEODB strings */ \
 	/* TODO delete */ \
 	if (len < 0 || len >= 256) { \
 		return RedisModule_ReplyWithError(ctx, RDB_E("invalid " name)); \

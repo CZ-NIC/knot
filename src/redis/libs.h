@@ -40,6 +40,12 @@
 #undef malloc
 #undef free
 
+// TODO #include "knot/modules/geoip/geoip.c"
+enum operation_mode {
+	MODE_SUBNET,
+	MODE_GEODB,
+	MODE_WEIGHTED
+};
 // Add a dummy symbol for unused but called function in rrset-dump.c.
 int dnssec_keytag(const dnssec_binary_t *rdata, uint16_t *keytag)
 {

@@ -53,13 +53,6 @@ typedef struct {
 	uint8_t lock[TXN_MAX_COUNT];
 } zone_meta_storage_t;
 
-typedef enum {
-	EMPTY = 0,
-	GEO,
-	NET,
-	WEIGHT
-} geoip_meta_type_t;
-
 typedef struct {
 	uint8_t type;
 	uint8_t val_size;
@@ -142,7 +135,7 @@ static RedisModuleString *meta_keyname_construct(const uint8_t prefix, RedisModu
 }
 
 static index_k get_geoip_index(RedisModuleCtx *ctx, const arg_string_t *module,
-                               geoip_meta_type_t type, int rights)
+                               uint8_t type, int rights)
 {
 	char buf[RDB_PREFIX_LEN + 1 + 1 + 255];
 
@@ -2622,8 +2615,8 @@ static void upd_load(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t *
 	RedisModule_ReplySetArrayLength(ctx, counter);
 }
 
-static void geoip_load(RedisModuleCtx *ctx, const arg_string_t *name,
-                       const geoip_typeval_t *type, dump_mode_t mode)
+static void mod_geoip_load(RedisModuleCtx *ctx, const arg_string_t *name,
+                           const geoip_typeval_t *type, dump_mode_t mode)
 {
 	index_k geoip_index = get_geoip_index(ctx, name, type->type, REDISMODULE_READ | REDISMODULE_WRITE);
 	if (geoip_index == NULL) {
@@ -2657,29 +2650,36 @@ static void geoip_load(RedisModuleCtx *ctx, const arg_string_t *name,
 
 		RedisModule_ReplyWithArray(ctx, 4);
 		switch (geo_type) {
-		case GEO:
+		case MODE_SUBNET:;
+			if (mode == DUMP_TXT) {
+				struct sockaddr_storage ss;
+				char ip_str[INET6_ADDRSTRLEN + 4]; //4 == "/<0-128>"
+				if (geo_val[1] == AF_INET) {
+					struct sockaddr_in *sa = (struct sockaddr_in *)&ss;
+					sa->sin_family = AF_INET;
+					memcpy(&sa->sin_addr, geo_val + 2, geo_len - 2);
+					inet_ntop(ss.ss_family, &(sa->sin_addr), ip_str, sizeof(ip_str));
+				} else if (geo_val[1] == AF_INET6) {
+					struct sockaddr_in6 *sa = (struct sockaddr_in6 *)&ss;
+					sa->sin6_family = AF_INET6;
+					memcpy(&sa->sin6_addr, geo_val + 2, geo_len - 2);
+					inet_ntop(ss.ss_family, &(sa->sin6_addr), ip_str, sizeof(ip_str));
+				} else {
+					// TODO malformed
+				}
+				sprintf(ip_str + strlen(ip_str), "/%d", geo_val[0]);
+				RedisModule_ReplyWithStringBuffer(ctx, ip_str, strlen(ip_str));
+			} else if (mode == DUMP_BIN) {
+				RedisModule_ReplyWithStringBuffer(ctx, (const char *)geo_val,
+				                                  geo_len);
+			} else {
+				// TODO unsupported
+			}
+			break;
+		case MODE_GEODB:
 			RedisModule_ReplyWithStringBuffer(ctx, (const char *)geo_val, geo_len);
 			break;
-		case NET:;
-			struct sockaddr_storage ss;
-			char ip_str[INET6_ADDRSTRLEN + 4]; //4 == "/$prefix"
-			if (geo_val[1] == AF_INET) {
-				struct sockaddr_in *sa = (struct sockaddr_in *)&ss;
-				sa->sin_family = AF_INET;
-				memcpy(&sa->sin_addr, geo_val + 2, geo_len - 2);
-				inet_ntop(ss.ss_family, &(sa->sin_addr), ip_str, sizeof(ip_str));
-			} else if (geo_val[1] == AF_INET6) {
-				struct sockaddr_in6 *sa = (struct sockaddr_in6 *)&ss;
-				sa->sin6_family = AF_INET6;
-				memcpy(&sa->sin6_addr, geo_val + 2, geo_len - 2);
-				inet_ntop(ss.ss_family, &(sa->sin6_addr), ip_str, sizeof(ip_str));
-			} else {
-				// TODO malformed
-			}
-			sprintf(ip_str + strlen(ip_str), "/%d", geo_val[0]);
-			RedisModule_ReplyWithStringBuffer(ctx, ip_str, strlen(ip_str));
-			break;
-		case WEIGHT:;
+		case MODE_WEIGHTED:;
 			uint16_t weight;
 			if (geo_len != 2) {
 				// TODO malformed
@@ -2691,7 +2691,16 @@ static void geoip_load(RedisModuleCtx *ctx, const arg_string_t *name,
 			const char err[] = "Unsupported";
 			RedisModule_ReplyWithStringBuffer(ctx, err, sizeof(err));
 		}
-		RedisModule_ReplyWithStringBuffer(ctx, (const char *)owner, owner_len);
+
+		if (mode == DUMP_TXT) {
+			char buf[KNOT_DNAME_TXT_MAXLEN];
+			RedisModule_Assert(knot_dname_to_str(buf, owner, sizeof(buf)) != NULL);
+			RedisModule_ReplyWithCString(ctx, buf);
+		} else if (mode == DUMP_BIN) {
+			RedisModule_ReplyWithStringBuffer(ctx, (const char *)owner, owner_len);
+		} else {
+			/* TODO Error */
+		}
 		RedisModule_ReplyWithLongLong(ctx, rtype);
 		RedisModule_ReplyWithArray(ctx, rrset->count);
 		knot_rdata_t *it = rrset->rdata;

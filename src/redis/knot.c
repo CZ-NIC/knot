@@ -886,9 +886,26 @@ static int geoip_load_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int arg
 	ARG_MODULENAME(argv[1], module_name, "module name");
 	
 	geoip_typeval_t tv;
-	ARG_GEO_TYPE_TXT(argv[2], tv, "geoip typeval")
+	ARG_GEO_TYPE_TXT(argv[2], tv, "geoip typeval");
 	
-	geoip_load(ctx, &module_name, &tv, DUMP_TXT);
+	mod_geoip_load(ctx, &module_name, &tv, DUMP_TXT);
+
+	return REDISMODULE_OK;
+}
+
+static int geoip_load_bin(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
+{
+	if (argc < 2) {
+		return RedisModule_WrongArity(ctx);
+	}
+
+	arg_string_t module_name;
+	ARG_MODULENAME(argv[1], module_name, "module name");
+	
+	geoip_typeval_t tv;
+	ARG_NUM(argv[2], tv.type, "geoip typeval")
+	
+	mod_geoip_load(ctx, &module_name, &tv, DUMP_BIN);
 
 	return REDISMODULE_OK;
 }
@@ -1007,6 +1024,7 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 	    register_command_bin(RDB_CMD_UPD_ABORT,    upd_abort_bin,     "write")      ||
 	    register_command_bin(RDB_CMD_UPD_DIFF,     upd_diff_bin,      "readonly")   ||
 	    register_command_bin(RDB_CMD_UPD_LOAD,     upd_load_bin,      "readonly")   ||
+	    register_command_bin(RDB_CMD_GEOIP_LOAD,   geoip_load_bin,    "readonly")   ||
 	    register_command_bin("KNOT_BIN.AOF.RRSET", rrset_aof_rewrite, "write")      || // Add "internal" with newer Redis.
 	    register_command_bin("KNOT_BIN.AOF.GEOIP", geoip_aof_rewrite, "write")      || // Add "internal" with newer Redis.
 	    register_command_bin("KNOT_BIN.AOF.DIFF",  diff_aof_rewrite,  "write"))        // Add "internal" with newer Redis.
