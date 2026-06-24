@@ -77,7 +77,15 @@ typedef struct {
 	uint32_t dflt_ttl;
 	scanner_mode_t mode;
 	bool replied;
+	void (*process_data)(zs_scanner_t *s);
+	void (*process_error)(zs_scanner_t *s);
+	void *process_userdata;
 } scanner_ctx_t;
+
+typedef struct {
+	const arg_string_t *name;
+    geoip_typeval_t *type;
+} geoip_userdata_t;
 
 typedef struct {
 	RedisModuleCtx *ctx;
@@ -1097,7 +1105,8 @@ static int geoip_rrset_add(RedisModuleCtx *ctx, const arg_string_t *name,
 
 static void scanner_geoip_data(zs_scanner_t *s)
 {
-	scanner_geoip_ctx_t *s_ctx = s->process.data;
+	scanner_ctx_t *s_ctx = s->process.data;
+	geoip_userdata_t *ctx = (geoip_userdata_t *)s_ctx->process_userdata;
 
 	arg_dname_t owner = {
 		.data = s->r_owner,
@@ -1118,7 +1127,7 @@ static void scanner_geoip_data(zs_scanner_t *s)
 	int ret = KNOT_EOK;
 	switch (s_ctx->mode) {
 	case ADD:
-		ret = geoip_rrset_add(s_ctx->ctx, s_ctx->name, s_ctx->type, &owner, s->r_ttl, s->r_type, rdata);
+		ret = geoip_rrset_add(s_ctx->ctx, ctx->name, ctx->type, &owner, s->r_ttl, s->r_type, rdata);
 		break;
 	case REM:
 		// ret = upd_remove_txt_format(s_ctx->ctx, &origin, s_ctx->txn, &owner,
@@ -1231,7 +1240,7 @@ static void run_scanner(scanner_ctx_t *s_ctx, const arg_dname_t *origin,
 	zs_scanner_t s;
 	if (zs_init(&s, origin->txt, KNOT_CLASS_IN, s_ctx->dflt_ttl) != 0 ||
 	    zs_set_input_string(&s, data, data_len) != 0 ||
-	    zs_set_processing(&s, scanner_data, scanner_error, s_ctx) != 0 ||
+	    zs_set_processing(&s, s_ctx->process_data, s_ctx->process_error, s_ctx) != 0 ||
 	    (s.to_lower = true, zs_parse_all(&s) != 0) || s.error.fatal) {
 		if (!s_ctx->replied) {
 			RedisModule_ReplyWithError(s_ctx->ctx, RDB_EPARSE);
@@ -1258,7 +1267,9 @@ static void zone_store_txt_format(RedisModuleCtx *ctx, const arg_dname_t *origin
 		.ctx = ctx,
 		.txn = txn,
 		.dflt_ttl = rdb_default_ttl,
-		.mode = STORE
+		.mode = STORE,
+		.process_data = scanner_data,
+		.process_error = scanner_error
 	};
 
 	run_scanner(&s_ctx, origin, zone_data, zone_data_len);
@@ -2715,39 +2726,22 @@ static void mod_geoip_load(RedisModuleCtx *ctx, const arg_string_t *name,
 	RedisModule_ReplySetArrayLength(ctx, len);
 }
 
-static void run_scanner2(scanner_geoip_ctx_t *s_ctx, const char *data, size_t data_len)
-{
-	zs_scanner_t s;
-	if (zs_init(&s, NULL, KNOT_CLASS_IN, s_ctx->dflt_ttl) != 0 ||
-	    zs_set_input_string(&s, data, data_len) != 0 ||
-	    zs_set_processing(&s, scanner_geoip_data, scanner_error, s_ctx) != 0 ||
-	    (s.to_lower = true, zs_parse_all(&s) != 0) || s.error.fatal
-	) {
-		if (!s_ctx->replied) {
-			RedisModule_ReplyWithError(s_ctx->ctx, RDB_EPARSE);
-			s_ctx->replied = true;
-		}
-		zs_deinit(&s);
-		return;
-	}
-	zs_deinit(&s);
-
-	RedisModule_ReplicateVerbatim(s_ctx->ctx);
-	if (!s_ctx->replied) {
-		RedisModule_ReplyWithSimpleString(s_ctx->ctx, RDB_RETURN_OK);
-	}
-}
-
 static void geoip_add(RedisModuleCtx *ctx, const arg_string_t *name,
                       geoip_typeval_t *type, uint8_t *data, size_t data_len)
 {
-	scanner_geoip_ctx_t s_ctx = {
-		.ctx = ctx,
-		.dflt_ttl = rdb_default_ttl,
+	geoip_userdata_t user = {
 		.name = name,
 		.type = type,
-		.mode = ADD,
 	};
+	scanner_ctx_t s_ctx = {
+		.ctx = ctx,
+		.dflt_ttl = rdb_default_ttl,
+		.mode = ADD,
+		.process_data = scanner_geoip_data,
+		.process_error = scanner_error, //TODO
+		.process_userdata = &user
+	};
+	const arg_dname_t origin = { 0 };
 
-	run_scanner2(&s_ctx, (const char *)data, data_len);
+	run_scanner(&s_ctx, &origin, (const char *)data, data_len);
 }
