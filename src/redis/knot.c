@@ -72,7 +72,7 @@ static RedisModuleCommandArg geoip_load_txt_info_args[] = {
 	{ 0 }
 };
 
-static RedisModuleCommandArg geoip_store_txt_info_args[] = {
+static RedisModuleCommandArg geoip_add_rem_txt_info_args[] = {
 	{"module", REDISMODULE_ARG_TYPE_STRING, -1, NULL, NULL, NULL, REDISMODULE_CMD_ARG_NONE},
 	{"geo",    REDISMODULE_ARG_TYPE_STRING, -1, NULL, NULL, NULL, REDISMODULE_CMD_ARG_NONE},
 	{"data",   REDISMODULE_ARG_TYPE_STRING, -1, NULL, NULL, NULL, REDISMODULE_CMD_ARG_NONE},
@@ -228,7 +228,7 @@ static const RedisModuleCommandInfo upd_load_txt_info = {
 static const RedisModuleCommandInfo geoip_load_txt_info = {
 	.version = REDISMODULE_COMMAND_INFO_VERSION,
 	.summary = "Load geoip configuration",
-	.complexity = "O(u), where u is the number of records in the retrieved updates",
+	.complexity = "O(u), where u is the number of records in the retrieved updates", // TODO
 	.since = "7.0.0",
 	.arity = 3,
 	.args = geoip_load_txt_info_args,
@@ -236,11 +236,20 @@ static const RedisModuleCommandInfo geoip_load_txt_info = {
 
 static const RedisModuleCommandInfo geoip_store_txt_info = {
 	.version = REDISMODULE_COMMAND_INFO_VERSION,
-	.summary = "Load geoip configuration",
-	.complexity = "O(u), where u is the number of records in the retrieved updates",
+	.summary = "Store geoip configuration rrset",
+	.complexity = "O(u), where u is the number of records in the retrieved updates", // TODO
 	.since = "7.0.0",
 	.arity = 4,
-	.args = geoip_store_txt_info_args,
+	.args = geoip_add_rem_txt_info_args,
+};
+
+static const RedisModuleCommandInfo geoip_remove_txt_info = {
+	.version = REDISMODULE_COMMAND_INFO_VERSION,
+	.summary = "Remove geoip configuration rrset",
+	.complexity = "O(u), where u is the number of records in the retrieved updates", // TODO
+	.since = "7.0.0",
+	.arity = 4,
+	.args = geoip_add_rem_txt_info_args,
 };
 
 static int zone_begin_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
@@ -926,11 +935,31 @@ static int geoip_store_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int ar
 	size_t data_len;
 	ARG_DATA(argv[3], data_len, data, "data");
 
-	geoip_add(ctx, &module_name, &tv, data, data_len);
+	geoip_mod(ctx, &module_name, &tv, data, data_len, ADD);
 
 	return REDISMODULE_OK;
 }
 
+static int geoip_remove_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
+{
+	if (argc < 4) {
+		return RedisModule_WrongArity(ctx);
+	}
+
+	arg_string_t module_name;
+	ARG_MODULENAME(argv[1], module_name, "module name");
+
+	geoip_typeval_t tv;
+	ARG_GEO_TYPEVAL_TXT(argv[2], tv, "geoip typeval")
+
+	uint8_t *data;
+	size_t data_len;
+	ARG_DATA(argv[3], data_len, data, "data");
+
+	geoip_mod(ctx, &module_name, &tv, data, data_len, REM);
+
+	return REDISMODULE_OK;
+}
 
 #define LOAD_ERROR(ctx, msg) { \
 	RedisModule_Log(ctx, REDISMODULE_LOGLEVEL_WARNING, RDB_E(msg)); \
@@ -1007,8 +1036,9 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 	    register_command_txt("KNOT.UPD.ABORT",     upd_abort_txt,     "write")      ||
 	    register_command_txt("KNOT.UPD.DIFF",      upd_diff_txt,      "readonly")   ||
 	    register_command_txt("KNOT.UPD.LOAD",      upd_load_txt,      "readonly")   ||
-		register_command_txt("KNOT.GEOIP.LOAD",    geoip_load_txt,    "readonly")   ||
-		register_command_txt("KNOT.GEOIP.STORE",   geoip_store_txt,   "write fast") ||
+	    register_command_txt("KNOT.GEOIP.LOAD",    geoip_load_txt,    "readonly")   ||
+	    register_command_txt("KNOT.GEOIP.STORE",   geoip_store_txt,   "write fast") ||
+	    register_command_txt("KNOT.GEOIP.REMOVE",  geoip_remove_txt,  "write fast") ||
 	    register_command_bin(RDB_CMD_ZONE_EXISTS,  zone_exists_bin,   "readonly")   ||
 	    register_command_bin(RDB_CMD_ZONE_BEGIN,   zone_begin_bin,    "write")      ||
 	    register_command_bin(RDB_CMD_ZONE_STORE,   zone_store_bin,    "write")      ||
