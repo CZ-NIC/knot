@@ -2360,7 +2360,7 @@ trash-delay
 Discard deleted keys belonging to the policy from the "trash bin" automatically
 after this time following their deletion. Set this parameter to ``0`` to completely
 avoid using the "trash bin" for deleted DNSSEC keys and remove them immediately
-once they are deleted. The "trash bin" may be managed using ``keymgr``.
+once they are deleted. The "trash bin" may be managed using :doc:`keymgr<man_keymgr>`.
 
 *Default:* 2 * :ref:`policy_rrsig-lifetime`
 
