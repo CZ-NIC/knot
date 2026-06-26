@@ -22,7 +22,7 @@ static void discard_zone(zone_t *zone, bool abort_txn)
 		// Flush if bootstrapped or if the journal doesn't exist.
 		if (!zone->zonefile.exists ||
 		    !zone_journal_same_serial(zone, zone_contents_serial(zone->contents))) {
-			zone_flush_journal(conf(), zone, false);
+			zone_flush_journal(conf(), zone, false, 0);
 		}
 	}
 

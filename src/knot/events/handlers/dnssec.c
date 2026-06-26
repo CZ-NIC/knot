@@ -55,7 +55,7 @@ void event_dnssec_reschedule(conf_t *conf, zone_t *zone,
 	}
 }
 
-int event_dnssec(conf_t *conf, zone_t *zone)
+int event_dnssec(conf_t *conf, zone_t *zone, zone_evflag_t flags)
 {
 	assert(zone);
 
@@ -68,7 +68,7 @@ int event_dnssec(conf_t *conf, zone_t *zone)
 	int sign_flags = 0;
 	bool zone_changed = false;
 
-	if (zone_get_flag(zone, ZONE_FORCE_RESIGN, true)) {
+	if (flags & ZONE_EVFLAG_RESIGN) {
 		log_zone_info(zone->name, "DNSSEC, dropping previous "
 		              "signatures, re-signing zone");
 		sign_flags = ZONE_SIGN_DROP_SIGNATURES;
@@ -77,10 +77,10 @@ int event_dnssec(conf_t *conf, zone_t *zone)
 		sign_flags = 0;
 	}
 
-	if (zone_get_flag(zone, ZONE_FORCE_KSK_ROLL, true)) {
+	if (flags & ZONE_EVFLAG_KSKROLL) {
 		r_flags |= KEY_ROLL_FORCE_KSK_ROLL;
 	}
-	if (zone_get_flag(zone, ZONE_FORCE_ZSK_ROLL, true)) {
+	if (flags & ZONE_EVFLAG_ZSKROLL) {
 		r_flags |= KEY_ROLL_FORCE_ZSK_ROLL;
 	}
 

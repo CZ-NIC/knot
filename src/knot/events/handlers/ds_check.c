@@ -17,7 +17,7 @@ static void reschedule_next(zone_t *zone, uint32_t interval)
 	}
 }
 
-int event_ds_check(conf_t *conf, zone_t *zone)
+int event_ds_check(conf_t *conf, zone_t *zone, zone_evflag_t flags)
 {
 	assert(zone);
 

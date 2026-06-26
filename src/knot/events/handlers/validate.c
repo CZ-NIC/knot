@@ -8,7 +8,7 @@
 #include "knot/dnssec/zone-events.h"
 #include "knot/zone/zone.h"
 
-int event_validate(conf_t *conf, zone_t *zone)
+int event_validate(conf_t *conf, zone_t *zone, zone_evflag_t flags)
 {
 	assert(zone);
 
@@ -29,7 +29,7 @@ int event_validate(conf_t *conf, zone_t *zone)
 		.log_plan = true,
 	};
 
-	if (zone_get_flag(zone, ZONE_FORCE_VALIDATE, true)) {
+	if (flags & ZONE_EVFLAG_USER) {
 		val_conf.fast = false;
 		val_conf.no_skip_crypto = true;
 		log_zone_info(zone->name, "DNSSEC, full zone revalidation");

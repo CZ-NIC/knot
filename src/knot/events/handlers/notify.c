@@ -130,7 +130,7 @@ static int send_notify(conf_t *conf, zone_t *zone, const knot_rrset_t *soa,
 	return ret;
 }
 
-int event_notify(conf_t *conf, zone_t *zone)
+int event_notify(conf_t *conf, zone_t *zone, zone_evflag_t flags)
 {
 	assert(zone);
 

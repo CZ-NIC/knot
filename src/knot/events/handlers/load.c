@@ -50,7 +50,7 @@ static int upd_add_rem(const knot_rrset_t *rr, bool add, void *ctx)
 	return add ? zone_update_add(ctx, rr) : zone_update_remove(ctx, rr);
 }
 
-int event_load(conf_t *conf, zone_t *zone)
+int event_load(conf_t *conf, zone_t *zone, zone_evflag_t flags)
 {
 	assert(zone);
 

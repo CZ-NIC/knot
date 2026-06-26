@@ -5,7 +5,7 @@
 
 #include "knot/zone/zone.h"
 
-int event_expire(conf_t *conf, zone_t *zone)
+int event_expire(conf_t *conf, zone_t *zone, zone_evflag_t flags)
 {
 	zone_perform_expire(conf, zone);
 
