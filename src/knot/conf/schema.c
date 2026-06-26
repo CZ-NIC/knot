@@ -340,7 +340,7 @@ static const yp_item_t desc_database[] = {
 };
 
 static const yp_item_t desc_keystore[] = {
-	{ C_ID,        YP_TSTR,  YP_VNONE },
+	{ C_ID,        YP_TSTR,  YP_VNONE, YP_FNONE, { check_id_dash } },
 	{ C_BACKEND,   YP_TOPT,  YP_VOPT = { keystore_backends, KEYSTORE_BACKEND_PEM },
 	                         CONF_IO_FRLD_ZONES },
 	{ C_CONFIG,    YP_TSTR,  YP_VSTR = { "keys" }, CONF_IO_FRLD_ZONES },

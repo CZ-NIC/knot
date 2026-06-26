@@ -222,6 +222,17 @@ int rdname_to_txt(
 	YP_CHECK_RET;
 }
 
+int check_id_dash(
+	knotd_conf_check_args_t *args)
+{
+	if (args->id_len > 1 && args->id[0] == '-') {
+		args->err_str = "leading dash not allowed";
+		return KNOT_EINVAL;
+	}
+
+	return KNOT_EOK;
+}
+
 int check_ref(
 	knotd_conf_check_args_t *args)
 {

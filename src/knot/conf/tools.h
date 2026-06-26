@@ -51,6 +51,10 @@ int rdname_to_txt(
 	YP_BIN_TXT_PARAMS
 );
 
+int check_id_dash(
+	knotd_conf_check_args_t *args
+);
+
 int check_ref(
 	knotd_conf_check_args_t *args
 );
