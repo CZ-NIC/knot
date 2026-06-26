@@ -1063,6 +1063,7 @@ int server_init(server_t *server, int bg_workers)
 	}
 	ATOMIC_INIT(server->catalog_upd_signal, false);
 
+	knot_spin_init(&server->trash_gc.lock);
 	pthread_rwlock_init(&server->ctl_lock, NULL);
 
 	zone_backups_init(&server->backup_ctxs);
@@ -1134,6 +1135,7 @@ void server_deinit(server_t *server)
 	evsched_deinit(&server->sched);
 
 	/* Deinit locks. */
+	knot_spin_destroy(&server->trash_gc.lock);
 	pthread_rwlock_destroy(&server->ctl_lock);
 
 	/* Free catalog zone context. */

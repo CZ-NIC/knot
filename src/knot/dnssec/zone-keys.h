@@ -112,11 +112,12 @@ int kdnssec_share_key(kdnssec_ctx_t *ctx, const knot_dname_t *from_zone, const c
  * \param key_id        ID of the key to be removed
  * \param dname         zone name for error logging or NULL
  * \param thorough      if true, try to remove all occurences of the key in all listed keystores
+ * \param no_log        if true, log_errors as debug rather than error or warning
  *
  * \return KNOT_E*
  */
 int kdnssec_delete_from_keystores(knot_kasp_keystore_t *keystores, char *key_id,
-                                  const knot_dname_t *dname, bool thorough);
+                                  const knot_dname_t *dname, bool thorough, bool no_log);
 
 /*!
  * \brief Remove key from zone.
@@ -141,11 +142,13 @@ int kdnssec_delete_key(kdnssec_ctx_t *ctx, knot_kasp_key_t *key_ptr, bool trash)
  * \param key           Libdnssec key structure to be filled with private material.
  * \param name          Optional: name of the keystore in the configuration.
  * \param backend       Optional: backend of the keystore where found.
+ * \param ksk_only      Optional: ksk_only flag of the keystore where found.
  *
  * \return DNSSEC_E*
  */
 int kdnssec_load_private(knot_kasp_keystore_t *keystores, const char *id,
-                         dnssec_key_t *key, const char **name, unsigned *backend);
+                         dnssec_key_t *key, const char **name, unsigned *backend,
+                         bool *ksk_only);
 
 /*!
  * \brief Find configured keystore for newly generated key.

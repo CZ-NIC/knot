@@ -28,6 +28,8 @@ int keymgr_import_pem(kdnssec_ctx_t *ctx, const char *import_file, int argc, cha
 
 int keymgr_import_pkcs11(kdnssec_ctx_t *ctx, char *key_id, int argc, char *argv[]);
 
+int keymgr_import_trash(kdnssec_ctx_t *ctx, char *key_id, int argc, char *argv[]);
+
 int keymgr_nsec3_salt_print(kdnssec_ctx_t *ctx);
 
 int keymgr_nsec3_salt_set(kdnssec_ctx_t *ctx, const char *new_salt);
@@ -45,6 +47,8 @@ int keymgr_foreign_key_id(char *argv[], knot_lmdb_db_t *kaspdb, knot_dname_t **k
 int keymgr_set_timing(knot_kasp_key_t *key, int argc, char *argv[]);
 
 int keymgr_list_keys(kdnssec_ctx_t *ctx, keymgr_list_params_t *params);
+
+int keymgr_list_trash(kdnssec_ctx_t *ctx, const knot_dname_t *zone_name, keymgr_list_params_t *params);
 
 int keymgr_generate_ds(const knot_dname_t *dname, const knot_kasp_key_t *key);
 

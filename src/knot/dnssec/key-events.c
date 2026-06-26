@@ -963,3 +963,42 @@ unsigned dnskey_sync_jitter(conf_t *conf, zone_t *zone)
 	}
 	return dnssec_random_uint16_t() % 5;
 }
+
+void key_trash_gc(server_t *server)
+{
+	assert (server);
+
+	bool run = false;
+	knot_time_t now = knot_time();
+	knot_spin_t *lock = &server->trash_gc.lock;
+
+	knot_spin_lock(lock);
+	if (!server->trash_gc.running &&
+	    server->trash_gc.next <= now) {
+		server->trash_gc.running = true;
+		run = true;
+	}
+	knot_spin_unlock(lock);
+
+	if (!run) {
+		return;
+	}
+
+	int ret = kasp_db_trash_gc(&server->kaspdb);
+	if (ret != KNOT_EOK) {
+		log_warning("DNSSEC, background key trash garbage collector failed (%s)",
+		            knot_strerror(ret));
+	} else {
+		log_debug("DNSSEC, background key trash garbage collector finished");
+	}
+
+	knot_time_t next = knot_time_add(server->trash_gc.next, TRASH_GC_INTERVAL);
+	if (now > next) {
+		next = knot_time_add(now, TRASH_GC_INTERVAL);
+	}
+
+	knot_spin_lock(lock);
+	server->trash_gc.running = false;
+	server->trash_gc.next = next;
+	knot_spin_unlock(lock);
+}

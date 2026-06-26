@@ -14,23 +14,26 @@
 #include "knot/dnssec/kasp/policy.h"
 #include "knot/journal/knot_lmdb.h"
 
-typedef struct kasp_db kasp_db_t;
-
 typedef enum { // the enum values MUST match those from keyclass_t !!
         KASPDB_SERIAL_MASTER = 0x5,
         KASPDB_SERIAL_LASTSIGNED = 0x6,
 } kaspdb_serial_t;
 
 /*!
- * \brief For given zone, list all keys (their IDs) belonging to it.
+ * \brief For given zone, list all keys (their IDs) belonging to it,
+ *        or optionally list trashed keys instead.
  *
  * \param db            KASP db
  * \param zone_name     name of the zone in question
+ *                      if NULL for trashed keys, list trashed keys belonging to any zone
+ * \param key_id        if not NULL, find a trash key of this key ID
  * \param dst           output if KNOT_EOK: ptrlist of keys' params
+ * \param trash         if false, list all valid keys, if true, list all trashed keys
  *
  * \return KNOT_E* (KNOT_ENOENT if no keys)
  */
-int kasp_db_list_keys(knot_lmdb_db_t *db, const knot_dname_t *zone_name, list_t *dst);
+int kasp_db_list_keys(knot_lmdb_db_t *db, const knot_dname_t *zone_name,
+                      const char *key_id, list_t *dst, bool trash);
 
 /*!
  * \brief Obtain the algorithm of a key.
@@ -83,6 +86,33 @@ int kasp_db_delete_keys(knot_lmdb_db_t *db, const knot_dname_t *zone_name,
  * \return KNOT_E*
  */
 int kasp_db_delete_all(knot_lmdb_db_t *db, const knot_dname_t *zone_name);
+
+/*!
+ * \brief Remove a trash key/keys from the "trash bin" (discard them permanently).
+ *
+ * \param db            KASP db
+ * \param zone_name     zone to remove from
+ * \param key_id        ID of the key to be removed, or NULL for any
+ * \param for_delete    optional filtering callback, or NULL for no filtering
+ * \param cb_data       data passed to callback function, or NULL
+ *
+ * \note  If key_id is set, remove only that key,
+ * \note  if zone_name is set, remove all keys belonging to that zone,
+ * \note  if neither key_id nor zone_name is set, remove all trash keys.
+ *
+ * \return KNOT_E*
+ */
+int kasp_db_delete_trash(knot_lmdb_db_t *db, const knot_dname_t *zone_name, char *key_id,
+                         bool (for_delete)(const MDB_val *, void *), void *cb_data);
+
+/*!
+ * \brief Remove all expired trash keys from KASP DB (trash/garbage collector).
+ *
+ * \param db            KASP database.
+ *
+ * \return KNOT_E*
+ */
+int kasp_db_trash_gc(knot_lmdb_db_t *db);
 
 /*!
  * \brief Selectively delete zones from the database.

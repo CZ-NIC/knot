@@ -684,6 +684,28 @@ expired zone on a primary or a manually expired catalog zone becomes valid again
 after a server configuration is reloaded or the :doc:`knotd<man_knotd>` process
 is restarted, provided that the zone data hasn't been removed.
 
+.. _Zone removal:
+
+Zone removal
+============
+
+The recommend way to remove a zone from the server consists of the following
+two steps:
+
+1. remove the zone from the server configuration, for example::
+
+   $ knotc conf-begin
+   $ knotc conf-unset 'zone[example.com]'
+   $ knotc conf-comit
+
+2. purge the orphaned zone, for example::
+
+   $ knotc -f zone-purge example.com +orphan        # Purges everything but keys.
+   $ knotc -f zone-purge example.com +orphan +keys  # Purges the keys.
+
+As an alternative procedure, the zone may be frozen, then purged and deconfigured.
+No zone thaw in that case.
+
 .. _DNSSEC Key states:
 
 DNSSEC key states
@@ -720,7 +742,7 @@ Standard states:
   the updated DS records in parent zone to be acked by resolvers (KSK case) or synchronizing
   with KSK during algorithm rollover (ZSK case).
 - ``retired`` — The key is no longer used for signing. If ZSK, the key is still published in the zone.
-- ``removed`` — The key is not used in any way (in most cases such keys are deleted immediately).
+- ``removed`` — The key is not used in any way (such keys are usually moved to the :ref:`"trash bin"<DNSSEC key delete and recovery>`).
 
 Special states for algorithm rollover:
 
@@ -1397,6 +1419,85 @@ To achieve this, both keystores must be configured in the
 new KSKs are generated in the HSM, while ZSKs are generated in the second
 keystore.
 
+.. _DNSSEC key delete and recovery:
+
+DNSSEC key delete and recovery
+==============================
+
+Starting with Knot DNS 3.6.0, when a key is being removed or deleted, it's in fact
+moved to a virtual *"trash bin"* first to be stored there for a predefined time.
+After this time has elapsed, the key is automatically discarded from the keystore.
+This solution allows key recovery if a deleted key is needed in case of an accident,
+a mistake in configuration, or for troubleshooting.
+
+The *"trash bin"* for deleted DNSSEC keys is virtual indeed, deleted keys themselves
+are physically stored in the same keystores as before their deletion. Deleted keys
+in the *"trash bin"* can be handled with :doc:`keymgr<man_keymgr>` utility, using the
+commands ``trash-list`` and ``trash-discard``. Recovery (in fact, a re-import) of
+a deleted key is done with the :doc:`keymgr<man_keymgr>` ``import-trash`` command.
+In re-import, a few of original key parameters are reused, but most of parameters
+must be specified manually as in other key imports — this is because most of
+the parameters lose their validity when the key is deleted.
+It's also possible to re-import deleted key to a different zone than which the key
+belonged to prior its deletion. The keystore that contains the key will remain
+the same and the zone to which the key is being re-imported must be configured
+to use this keystore.
+
+The retention period for keys in the *"trash bin"* is configurable per DNSSEC
+policy using :ref:`policy_trash-delay` (prior to the key deletion, of course).
+
+The *"trash bin"* can be disabled completely for any DNSSEC policy by setting
+:ref:`policy_trash-delay` to ``0``. In such a case, all keys are discarded immediately
+upon their deletion and never moved to the virtual *"trash bin"*.
+
+If needed, the *"trash bin"* can be emptied at will with ``keymgr trash-discard``.
+
+.. NOTE::
+   Contents of the *"trash bin*" is not part of :ref:`online backup<Online backup>`
+   and restore.
+
+.. _Cleanup of removed legacy DNSSEC keys:
+
+Cleanup of removed legacy DNSSEC keys
+=====================================
+
+In Knot DNS releases prior to 3.6.0, removed DNSSEC keys weren't moved to the "trash
+bin", and with the exception of automatic rollover, they weren't deleted from the
+keystore either — as a safety measure. These legacy keys may be deleted using external
+tools, like in the following example sequence of shell commands.
+
+.. CAUTION::
+   If the keystore is shared with another application, care must be taken not to
+   delete keys used by that application or other data in the keystore. The example
+   scripts below delete every keys not used by the current Knot DNS configuration!
+   As always, make a backup first!
+
+Example for a PEM keystore::
+
+   $ KEYSTORE=/var/lib/knot/keys/keys
+   $ knotc -b zone-freeze
+   $ keymgr -l | while read zone; do keymgr "${zone}" list; done | \
+              sed 's/ .*$/.pem\$/' | sort | uniq > ~/active_keys.pattern
+   $ keymgr -- trash-list | sed 's/ .*$/.pem\$/' >> ~/active_keys.pattern # Not needed in older releases.
+   $ find $KEYSTORE -maxdepth 1 -type f | grep -v -f ~/active_keys.pattern | xargs rm
+   $ knotc -b zone-thaw
+
+Example for a PKCS #11 keystore (using the ``p11tool`` utility from
+`GnuTLS <https://www.gnutls.org/>`_ suite)::
+
+   $ MYPIN=1234
+   $ MYTOKEN="pkcs11:token=knot;pin-value=$MYPIN /usr/lib64/pkcs11/libsofthsm2.so"
+   $ knotc -b zone-freeze
+   $ keymgr -l | while read zone; do keymgr "${zone}" list; done | \
+              sed 's/ .*$//' | sort | uniq > ~/active_keys
+   $ keymgr -- trash-list | sed 's/ .*$//' >> ~/active_keys # Not needed in older releases.
+   $ sed 's/../%&/g;s/[a-z]/\U&/g;s/^/id=/;s/$/\;/' < ~/active_keys > ~/active_keys.pattern
+   $ p11tool --login --list-all-privkeys --only-urls $MYTOKEN | \
+              grep -Fv -f ~/active_keys.pattern | \
+              xargs -n 1 p11tool --login --set-pin $MYPIN --batch --delete | \
+              grep -v -e '^$' -e '^[0-9]* objects deleted$'
+   $ knotc -b zone-thaw
+
 .. _Controlling a running daemon:
 
 Daemon controls
@@ -1482,6 +1583,8 @@ consistency, it's usually necessary to shut down the server, or at least freeze 
 the zones, before copying the data like zone files, KASP database, etc, to
 a backup location. To avoid this necessity, Knot DNS provides a feature to
 back up some or all of the zones seamlessly.
+
+.. _Online backup:
 
 Online backup
 -------------

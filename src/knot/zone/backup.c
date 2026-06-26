@@ -226,7 +226,7 @@ static int backup_key(key_params_t *parm, const knot_dname_t *zname, bool restor
 	dnssec_key_set_algorithm(key, parm->algorithm);
 
 	unsigned backend;
-	ret = kdnssec_load_private(from, parm->id, key, NULL, &backend);
+	ret = kdnssec_load_private(from, parm->id, key, NULL, &backend, NULL);
 	if (ret == KNOT_EOK) {
 		// If restore, consider only the first configured keystore.
 		assert(to->count > 0);
@@ -399,7 +399,7 @@ static int backup_keystore(conf_t *conf, zone_t *zone, zone_backup_ctx_t *ctx)
 
 	list_t key_params;
 	init_list(&key_params);
-	ret = kasp_db_list_keys(zone_kaspdb(zone), zone->name, &key_params);
+	ret = kasp_db_list_keys(zone_kaspdb(zone), zone->name, NULL, &key_params, false);
 	ret = (ret == KNOT_ENOENT ? KNOT_EOK : ret);
 	if (ret != KNOT_EOK) {
 		LOG_FAIL("keystore list");

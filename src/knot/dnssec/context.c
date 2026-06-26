@@ -70,13 +70,14 @@ static void policy_load(knot_kasp_policy_t *policy, conf_t *conf, conf_val_t *id
 	policy->delete_delay = conf_int(&val);
 
 	val = conf_id_get(conf, C_POLICY, C_TRASH_DELAY, id);
-	policy->trash_delay = conf_int(&val);
+	int64_t trash = conf_int(&val); // It will be corrected and set following C_RRSIG_LIFETIME.
 
 	val = conf_id_get(conf, C_POLICY, C_PROPAG_DELAY, id);
 	policy->propagation_delay = conf_int(&val);
 
 	val = conf_id_get(conf, C_POLICY, C_RRSIG_LIFETIME, id);
 	policy->rrsig_lifetime = conf_int(&val);
+	policy->trash_delay = (trash != YP_NIL) ? trash : 2 * policy->rrsig_lifetime;
 
 	val = conf_id_get(conf, C_POLICY, C_RRSIG_REFRESH, id);
 	num = conf_int(&val);
@@ -146,8 +147,10 @@ static void policy_load(knot_kasp_policy_t *policy, conf_t *conf, conf_val_t *id
 	val = conf_id_get(conf, C_POLICY, C_SIGNING_THREADS, id);
 	policy->signing_threads = conf_int(&val);
 
-	val = conf_zone_get(conf, C_DS_PUSH, zone_name);
-	if (val.code != KNOT_EOK) {
+	if (zone_name != NULL) {
+		val = conf_zone_get(conf, C_DS_PUSH, zone_name);
+	}
+	if (zone_name == NULL || val.code != KNOT_EOK) {
 		val = conf_id_get(conf, C_POLICY, C_DS_PUSH, id);
 	}
 	policy->ds_push = conf_val_count(&val) > 0;
@@ -172,6 +175,15 @@ static void policy_load(knot_kasp_policy_t *policy, conf_t *conf, conf_val_t *id
 	if (ret != KNOT_EOK || zero != 0) {
 		assert(0); // cannot happen - ensured by conf check
 	}
+}
+
+static void policy_unload(knot_kasp_policy_t *policy)
+{
+	free(policy->string);
+	knot_dynarray_foreach(parent, knot_kasp_parent_t, i, policy->parents) {
+		free(i->addr);
+	}
+	free(policy);
 }
 
 int kdnssec_ctx_init(conf_t *conf, kdnssec_ctx_t *ctx, const knot_dname_t *zone_name,
@@ -258,6 +270,32 @@ init_error:
 	return ret;
 }
 
+int kdnssec_orphan_ctx_init(conf_t *conf, kdnssec_ctx_t *ctx)
+{
+	if (ctx == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	memset(ctx, 0, sizeof(*ctx));
+
+	ctx->policy = calloc(1, sizeof(*ctx->policy) + sizeof(*ctx->stats));
+	if (ctx->policy == NULL) {
+		return KNOT_ENOMEM;
+	}
+
+	uint8_t empty = 0;
+	conf_val_t void_id = conf_rawid_get(conf, C_ZONE, C_DNSSEC_POLICY, &empty, 0);
+	conf_id_fix_default(&void_id);
+	policy_load(ctx->policy, conf, &void_id, NULL);
+
+	int ret = init_all_keystores(conf, &ctx->keystores);
+	if (ret != KNOT_EOK) {
+		policy_unload(ctx->policy);
+	}
+
+	return ret;
+}
+
 int kdnssec_ctx_commit(kdnssec_ctx_t *ctx)
 {
 	if (ctx == NULL || ctx->kasp_zone_path == NULL) {
@@ -285,11 +323,7 @@ void kdnssec_ctx_deinit(kdnssec_ctx_t *ctx)
 
 	if (ctx->policy != NULL) {
 		knot_spin_destroy(&ctx->stats->lock);
-		free(ctx->policy->string);
-		knot_dynarray_foreach(parent, knot_kasp_parent_t, i, ctx->policy->parents) {
-			free(i->addr);
-		}
-		free(ctx->policy);
+		policy_unload(ctx->policy);
 	}
 	key_records_clear(&ctx->offline_records);
 	zone_deinit_keystore(&ctx->keystores);
@@ -297,6 +331,12 @@ void kdnssec_ctx_deinit(kdnssec_ctx_t *ctx)
 	free(ctx->kasp_zone_path);
 
 	memset(ctx, 0, sizeof(*ctx));
+}
+
+void kdnssec_orphan_ctx_deinit(kdnssec_ctx_t *ctx)
+{
+	policy_unload(ctx->policy);
+	deinit_all_keystores(&ctx->keystores);
 }
 
 // expects policy struct to be zeroed

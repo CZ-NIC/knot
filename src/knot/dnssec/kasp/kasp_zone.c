@@ -59,15 +59,20 @@ static int dnskey_guess_flags(dnssec_key_t *key, uint16_t keytag)
 }
 
 static int params2dnskey(const knot_dname_t *dname, key_params_t *params,
-			 dnssec_key_t **key_ptr)
+                         dnssec_key_t **key_ptr)
 {
 	assert(dname);
 	assert(params);
 	assert(key_ptr);
 
-	int ret = key_params_check(params);
-	if (ret != KNOT_EOK) {
-		return ret;
+	const bool trash = (params->dname != NULL);
+	int ret;
+	if (!trash) {
+		// Trash keys don't contain pubkey data.
+		ret = key_params_check(params);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
 	}
 
 	dnssec_key_t *key = NULL;
@@ -84,16 +89,18 @@ static int params2dnskey(const knot_dname_t *dname, key_params_t *params,
 
 	dnssec_key_set_algorithm(key, params->algorithm);
 
-	ret = dnssec_key_set_pubkey(key, &params->public_key);
-	if (ret != KNOT_EOK) {
-		dnssec_key_free(key);
-		return ret;
-	}
+	if (!trash) {
+		ret = dnssec_key_set_pubkey(key, &params->public_key);
+		if (ret != KNOT_EOK) {
+			dnssec_key_free(key);
+			return ret;
+		}
 
-	ret = dnskey_guess_flags(key, params->keytag);
-	if (ret != KNOT_EOK) {
-		dnssec_key_free(key);
-		return ret;
+		ret = dnskey_guess_flags(key, params->keytag);
+		if (ret != KNOT_EOK) {
+			dnssec_key_free(key);
+			return ret;
+		}
 	}
 
 	*key_ptr = key;
@@ -101,8 +108,8 @@ static int params2dnskey(const knot_dname_t *dname, key_params_t *params,
 	return KNOT_EOK;
 }
 
-static int params2kaspkey(const knot_dname_t *dname, key_params_t *params,
-			  knot_kasp_key_t *key)
+int params2kaspkey(const knot_dname_t *dname, key_params_t *params,
+                   knot_kasp_key_t *key)
 {
 	assert(dname != NULL);
 	assert(params != NULL);
@@ -178,7 +185,7 @@ int kasp_zone_load(knot_kasp_zone_t *zone,
 
 	list_t key_params;
 	init_list(&key_params);
-	int ret = kasp_db_list_keys(kdb, zone_name, &key_params);
+	int ret = kasp_db_list_keys(kdb, zone_name, NULL, &key_params, false);
 	if (ret == KNOT_ENOENT) {
 		zone->keys = NULL;
 		zone->num_keys = 0;
@@ -310,8 +317,9 @@ void free_key_params(key_params_t *parm)
 {
 	if (parm != NULL) {
 		free(parm->id);
+		knot_dname_free(parm->dname, NULL);
 		dnssec_binary_free(&parm->public_key);
-		memset(parm, 0 , sizeof(*parm));
+		memset(parm, 0, sizeof(*parm));
 	}
 }
 
@@ -332,6 +340,8 @@ void zone_deinit_keystore(knot_kasp_keystore_t **keystores)
 {
 	_zone_deinit_keystore(keystores, true);
 }
+
+static const char *dflt_kstore_name = "-";
 
 int zone_init_keystore(conf_t *conf, conf_val_t *policy_id, conf_val_t *keystore_id,
                        knot_kasp_keystore_t **keystores)
@@ -376,6 +386,7 @@ int zone_init_keystore(conf_t *conf, conf_val_t *policy_id, conf_val_t *keystore
 		knot_kasp_keystore_t *ks = *keystores + i;
 
 		ks->name = conf_str(keystore_id);
+		ks->name = (ks->name == NULL) ? dflt_kstore_name : ks->name;
 		conf_val_t val = conf_id_get(conf, C_KEYSTORE, C_BACKEND, keystore_id);
 		ks->backend = conf_opt(&val);
 		val = conf_id_get(conf, C_KEYSTORE, C_KSK_ONLY, keystore_id);

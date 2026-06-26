@@ -240,8 +240,21 @@ int kdnssec_share_key(kdnssec_ctx_t *ctx, const knot_dname_t *from_zone, const c
 	return ret;
 }
 
+void static delete_from_ksts_error_log(const knot_dname_t *zone, const char *kst_name,
+                                       char *key_id, int err, bool no_log)
+{
+	int level = no_log ? LOG_DEBUG : LOG_WARNING;
+	const char *msg = "keystore %s, attempt to remove key %s failed (%s)";
+	const char *errstr = knot_strerror(err);
+	if (zone == NULL) {
+		log_fmt(level, LOG_SOURCE_SERVER, msg, kst_name, key_id, errstr);
+	} else {
+		log_fmt_zone(level, LOG_SOURCE_ZONE, zone, NULL, msg, kst_name, key_id, errstr);
+	}
+}
+
 int kdnssec_delete_from_keystores(knot_kasp_keystore_t *keystores, char *key_id,
-                                  const knot_dname_t *dname, bool thorough)
+                                  const knot_dname_t *dname, bool thorough, bool no_log)
 {
 	int ret = KNOT_ENOENT;
 	bool found = false;
@@ -251,14 +264,7 @@ int kdnssec_delete_from_keystores(knot_kasp_keystore_t *keystores, char *key_id,
 		if (ret == KNOT_EOK) {
 			found = true;
 		} else if (ret != KNOT_ENOENT) {
-			const char *msg = "keystore %s, attempt to remove key %s failed (%s)";
-			const char *err = knot_strerror(ret);
-			if (dname == NULL) {
-				log_warning(msg, keystores[i].name, key_id, err);
-			} else {
-				log_zone_warning(dname, msg, keystores[i].name, key_id, err);
-			}
-
+			delete_from_ksts_error_log(dname, keystores[i].name, key_id, ret, no_log);
 			return ret;
 		}
 	}
@@ -289,8 +295,8 @@ int kdnssec_delete_key(kdnssec_ctx_t *ctx, knot_kasp_key_t *key_ptr, bool trash)
 	}
 
 	if (!key_still_used_in_keystore && !key_ptr->is_pub_only) {
-		ret = kdnssec_delete_from_keystores(ctx->keystores, key_ptr->id,
-		                                    ctx->zone->dname, false);
+		ret = kdnssec_delete_from_keystores(ctx->keystores, key_ptr->id, ctx->zone->dname,
+		                                    false, false);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
@@ -506,8 +512,8 @@ static int walk_algorithms(kdnssec_ctx_t *ctx, zone_keyset_t *keyset)
 	return KNOT_EOK;
 }
 
-int kdnssec_load_private(knot_kasp_keystore_t *keystores, const char *id,
-                         dnssec_key_t *key, const char **name, unsigned *backend)
+int kdnssec_load_private(knot_kasp_keystore_t *keystores, const char *id, dnssec_key_t *key,
+                         const char **name, unsigned *backend, bool *ksk_only)
 {
 	int ret = KNOT_ENOENT;
 	for (size_t i = 0; i < keystores[0].count && (ret == KNOT_ENOENT); i++) {
@@ -518,6 +524,9 @@ int kdnssec_load_private(knot_kasp_keystore_t *keystores, const char *id,
 			}
 			if (backend != NULL) {
 				*backend = keystores[i].backend;
+			}
+			if (ksk_only != NULL) {
+				*ksk_only = keystores[i].ksk_only;
 			}
 		}
 	}
@@ -547,7 +556,8 @@ static int load_private_keys(kdnssec_ctx_t *ctx, zone_keyset_t *keyset)
 		if (!key->is_active && !key->is_ksk_active_plus && !key->is_zsk_active_plus) {
 			continue;
 		}
-		int ret = kdnssec_load_private(ctx->keystores, key->id, key->key, NULL, NULL);
+		int ret = kdnssec_load_private(ctx->keystores, key->id, key->key,
+		                               NULL, NULL, NULL);
 		switch (ret) {
 		case KNOT_EOK:
 		case KNOT_EEXIST:

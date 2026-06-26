@@ -140,6 +140,21 @@ Commands
   Import a key (specified by full key ID) from another zone as shared. After this, the key is
   owned by both zones equally.
 
+**trash-list** [*timestamp_format*]
+  Prints the list of key IDs and parameters of deleted keys kept in the "trash bin" belonging to the zone.
+  For a list of all deleted keys without respect to zones, use **--** or **-** as *zone_name*.
+
+**trash-discard** *key_ID*
+  Remove the specified key from the "trash bin", discarding it. Removal of a single key doesn't depend
+  on *zone_name*. If **--** or **-** is specified as *key_ID*, remove all trash keys belonging to
+  *zone_name*. If **--** or **-** is specified both as *zone_name* and *key_ID*, empty the entire "trash bin".
+
+**import-trash** *key_ID* [*arguments*...]
+  Re-import (recover) deleted DNSSEC key from the "trash bin". Some of the original key's parameters
+  (algorithm, size, and zsk, ksk, for-later flags) are re-used and can be overridden, the rest must be
+  set manually anew in the same way as in the generate command. Deleted key may be re-imported to a
+  different zone than what was the original zone. Original keystore and new keystore must match.
+
 Keystore commands
 .................
 
