@@ -94,24 +94,32 @@ def set_err(msg):
     if not Context().err_msg:
         Context().err_msg = msg
 
-def isset(value, name):
+def isset(value, name, fatal=False):
     '''Check if value is True'''
 
     if not value:
-        set_err("IS SET \'%s\'" % name)
-        check_log("ERROR: IS SET \'%s\'" % name)
+        msg = "IS SET \'%s\'" % name
+        check_log("ERROR: %s" % msg)
         detail_log(SEP)
+        if fatal:
+            raise Failed(msg)
+        else:
+            set_err(msg)
         return True
     return False
 
-def compare(value, expected, name):
+def compare(value, expected, name, fatal=False):
     '''Compare two values'''
 
     if value != expected:
-        set_err("COMPARE \'%s\'" % name)
-        check_log("ERROR: COMPARE \'%s\'" % name)
+        msg = "COMPARE \'%s\'" % name
+        check_log("ERROR: %s" % msg)
         detail_log("  (%s) != expected (%s)" % (value, expected))
         detail_log(SEP)
+        if fatal:
+            raise Failed(msg)
+        else:
+            set_err(msg)
         return True
     return False
 
