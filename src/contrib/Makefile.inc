@@ -146,6 +146,8 @@ libembngtcp2_la_SOURCES = \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_bbr.h \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_buf.c \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_buf.h \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_callbacks.c \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_callbacks.h \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_cc.c \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_cc.h \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_cid.c \
@@ -159,6 +161,8 @@ libembngtcp2_la_SOURCES = \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_conv.h \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_crypto.c \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_crypto.h \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_dcidtr.c \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_dcidtr.h \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_err.c \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_err.h \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_fmt.c \
@@ -227,12 +231,8 @@ libembngtcp2_la_SOURCES = \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_vec.c \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_vec.h \
 	contrib/libngtcp2/ngtcp2/lib/ngtcp2_version.c \
-	contrib/libngtcp2/ngtcp2/lib/ngtcp2_window_filter.c \
-	contrib/libngtcp2/ngtcp2/lib/ngtcp2_window_filter.h \
-	contrib/libngtcp2/ngtcp2/lib/ngtcp2_dcidtr.c \
-	contrib/libngtcp2/ngtcp2/lib/ngtcp2_dcidtr.h \
-	contrib/libngtcp2/ngtcp2/lib/ngtcp2_callbacks.c \
-	contrib/libngtcp2/ngtcp2/lib/ngtcp2_callbacks.h \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_wf.c \
+	contrib/libngtcp2/ngtcp2/lib/ngtcp2_wf.h \
 	contrib/libngtcp2/ngtcp2/ngtcp2.h \
 	contrib/libngtcp2/ngtcp2/ngtcp2_crypto.h \
 	contrib/libngtcp2/ngtcp2/ngtcp2_crypto_gnutls.h \
