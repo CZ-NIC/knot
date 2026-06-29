@@ -8,6 +8,7 @@
 #include <urcu.h>
 
 #include "contrib/threads.h"
+#include "knot/common/log.h"
 #include "knot/ctl/threads.h"
 #include "knot/server/signals.h"
 
@@ -210,6 +211,11 @@ static int ctl_socket_thr(struct dthread *dt)
 
 		int ret = knot_ctl_accept(thr_ctl);
 		if (ret != KNOT_EOK) {
+			if (ret != KNOT_ETIMEOUT) {
+				log_ctl_warning("failed to accept connection (%s)",
+				                knot_strerror(ret));
+				sleep(2);
+			}
 			continue;
 		}
 
