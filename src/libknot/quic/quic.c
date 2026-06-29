@@ -727,6 +727,30 @@ int knot_quic_handle(knot_quic_table_t *table, knot_quic_reply_t *reply,
 		knot_quic_table_rem(conn, table);
 		ret = KNOT_EOK;
 		goto finish;
+	} else if (ret == NGTCP2_ERR_CRYPTO) { // TLS handshake failed -- send CONNECTION_CLOSE
+		ngtcp2_ccerr ccerr;
+		uint8_t tls_alert = ngtcp2_conn_get_tls_alert(conn->conn);
+		if (tls_alert != 0) {
+			ngtcp2_ccerr_set_tls_alert(&ccerr, tls_alert, NULL, 0);
+		} else {
+			ngtcp2_ccerr_set_liberr(&ccerr, ret, NULL, 0);
+		}
+		if (reply->alloc_reply(reply) == KNOT_EOK) {
+			ngtcp2_ssize nwrite = ngtcp2_conn_write_connection_close(
+				conn->conn, NULL, &pi,
+				reply->out_payload->iov_base,
+				reply->out_payload->iov_len, &ccerr, now);
+			if (nwrite > 0) {
+				reply->out_payload->iov_len = nwrite;
+				reply->ecn = pi.ecn;
+				(void)reply->send_reply(reply);
+			} else {
+				reply->free_reply(reply);
+			}
+		}
+		knot_quic_table_rem(conn, table);
+		ret = KNOT_EBADCERT;
+		goto finish;
 	} else if (ngtcp2_err_is_fatal(ret)) { // connection doomed
 		if (ret == NGTCP2_ERR_CALLBACK_FAILURE) {
 			ret = KNOT_EBADCERT;
