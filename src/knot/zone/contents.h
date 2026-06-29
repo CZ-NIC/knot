@@ -9,6 +9,7 @@
 
 #include "contrib/atomic.h"
 #include "contrib/hr_tree.h"
+#include "contrib/hr256tree.h"
 #include "contrib/hs_tree.h"
 #include "libknot/dnssec/nsec.h"
 #include "libknot/rrtype/nsec3param.h"
@@ -33,6 +34,7 @@ typedef struct zone_contents {
 
 	trie_t *adds_tree; // "additionals tree" for reverse lookup of nodes affected by additionals
 	hr_tree_t *hr_tree;
+	hr256tree_t *hr256tree;
 	hs_tree_t *hs_tree;
 
 	// Responding normal queries is protected by rcu_read_lock, but for long
@@ -309,3 +311,5 @@ bool zone_contents_is_empty(const zone_contents_t *zone);
 hr_tree_t *zone_contents_zonemd_tree(zone_contents_t *zone, enum zone_contents_hr_trees which);
 
 hs_tree_t *zone_contents_zonemd_tree2(zone_contents_t *zone, enum zone_contents_hr_trees which);
+
+hr256tree_t *zone_contents_zonemd_tree3(zone_contents_t *zone, enum zone_contents_hr_trees which);

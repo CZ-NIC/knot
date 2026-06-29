@@ -58,6 +58,7 @@ check_PROGRAMS = \
 	contrib/test_net_shortwrite		\
 	contrib/test_qp-trie			\
 	contrib/test_qp-cow			\
+	contrib/test_hr256tree			\
 	contrib/test_hr_tree			\
 	contrib/test_hs_tree			\
 	contrib/test_siphash			\

@@ -24,6 +24,8 @@ src/contrib/files.c
 src/contrib/files.h
 src/contrib/getline.c
 src/contrib/getline.h
+src/contrib/hr256tree.c
+src/contrib/hr256tree.h
 src/contrib/hr_tree.c
 src/contrib/hr_tree.h
 src/contrib/hs_tree.c
@@ -683,6 +685,7 @@ tests/contrib/test_base32hex.c
 tests/contrib/test_base64.c
 tests/contrib/test_base64url.c
 tests/contrib/test_heap.c
+tests/contrib/test_hr256tree.c
 tests/contrib/test_hr_tree.c
 tests/contrib/test_hs_tree.c
 tests/contrib/test_inet_ntop.c

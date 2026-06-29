@@ -12,6 +12,7 @@
 #include "knot/dnssec/rrset-sign.h"
 #include "knot/updates/zone-update.h"
 #include "contrib/hr_tree.h"
+#include "contrib/hr256tree.h"
 #include "contrib/hs_tree.h"
 #include "contrib/wire_ctx.h"
 #include "libknot/dnssec/digest.h"
@@ -25,6 +26,7 @@ typedef struct {
 	struct dnssec_digest_ctx *digest_ctx;
 	const zone_node_t *apex;
 	hr_tree_t *hr_tree;
+	hr256tree_t *hr256tree;
 	hs_tree_t *hs_tree;
 	int algorithm;
 	int scheme;
@@ -132,7 +134,7 @@ static int digest_rrset(const knot_rrset_t *_rrset, void *vctx)
 
 	// digest serialized RRSet
 	dnssec_binary_t bufbin = { ret, ctx->buf };
-	assert(ctx->scheme == ZONEMD_SCHEME_SIMPLE || ctx->scheme == ZONEMD_SCHEME_RADIX || ctx->scheme == ZONEMD_SCHEME_TREE3);
+	assert(ctx->scheme == ZONEMD_SCHEME_SIMPLE || ctx->scheme == ZONEMD_SCHEME_RADIX || ctx->scheme == ZONEMD_SCHEME_TREE3 || ctx->scheme == ZONEMD_SCHEME_RA256);
 	if (ctx->scheme == ZONEMD_SCHEME_SIMPLE) {
                 return dnssec_digest(ctx->digest_ctx, &bufbin);
 	}
@@ -154,6 +156,19 @@ static int digest_rrset(const knot_rrset_t *_rrset, void *vctx)
                         } else {
                                 ret = hr_tree_add(ctx->hr_tree, rrset_hash.data);
                         }
+		}
+	} else if (ctx->scheme == ZONEMD_SCHEME_RA256) {
+		if (ctx->hr256tree->hash_len == 0) {
+			assert(hr256tree_empty(ctx->hr256tree));
+			ctx->hr256tree->hash_len = rrset_hash.size;
+		}
+		assert(rrset_hash.size == ctx->hr256tree->hash_len);
+		if (ret == KNOT_EOK) {
+			if (ctx->removals) {
+				ret = hr256tree_rem(ctx->hr256tree, rrset_hash.data);
+			} else {
+				ret = hr256tree_add(ctx->hr256tree, rrset_hash.data);
+			}
 		}
 	} else {
 		if (ctx->hs_tree->hash_len == 0) {
@@ -188,7 +203,7 @@ int zone_contents_digest(struct zone_update *update, zone_contents_t *contents,
                          int algorithm, int scheme, bool ignore_dnssec, bool validation,
                          uint8_t **out_digest, size_t *out_size)
 {
-	if (out_digest == NULL || out_size == NULL || (contents != NULL && update != NULL) || (scheme != ZONEMD_SCHEME_SIMPLE && scheme != ZONEMD_SCHEME_RADIX && scheme != ZONEMD_SCHEME_TREE3)) {
+	if (out_digest == NULL || out_size == NULL || (contents != NULL && update != NULL) || (scheme != ZONEMD_SCHEME_SIMPLE && scheme != ZONEMD_SCHEME_RADIX && scheme != ZONEMD_SCHEME_TREE3 && scheme != ZONEMD_SCHEME_RA256)) {
 		return KNOT_EINVAL;
 	}
 
@@ -204,6 +219,7 @@ int zone_contents_digest(struct zone_update *update, zone_contents_t *contents,
 		.buf = malloc(DIGEST_BUF_MIN),
 		.apex = contents->apex,
 	        .hr_tree = zone_contents_zonemd_tree(contents, validation ? CONTENTS_ZONEMD_TREE_VALIDATE : CONTENTS_ZONEMD_TREE_GENERATE),
+	        .hr256tree = zone_contents_zonemd_tree3(contents, validation ? CONTENTS_ZONEMD_TREE_VALIDATE : CONTENTS_ZONEMD_TREE_GENERATE),
 	        .hs_tree = zone_contents_zonemd_tree2(contents, validation ? CONTENTS_ZONEMD_TREE_VALIDATE : CONTENTS_ZONEMD_TREE_GENERATE),
 	        .algorithm = algorithm,
 	        .scheme = scheme,
@@ -220,10 +236,16 @@ int zone_contents_digest(struct zone_update *update, zone_contents_t *contents,
 		incremental = true;
 	} else if (scheme == ZONEMD_SCHEME_TREE3 && update != NULL && !(update->flags & UPDATE_FULL) && !hs_tree_empty(ctx.hs_tree) && ctx.hs_tree->algorithm == algorithm) {
 		incremental = true;
+	} else if (scheme == ZONEMD_SCHEME_RA256 && update != NULL && !(update->flags & UPDATE_FULL) && !hr256tree_empty(ctx.hr256tree) && ctx.hr256tree->algorithm == algorithm) {
+		incremental = true;
 	} else if (scheme == ZONEMD_SCHEME_RADIX) {
 		hr_tree_clear(ctx.hr_tree);
 		ctx.hr_tree->hash_len = 0;
 		ctx.hr_tree->algorithm = algorithm;
+	} else if (scheme == ZONEMD_SCHEME_RA256) {
+		hs_tree_clear(ctx.hs_tree);
+		ctx.hr256tree->hash_len = 0;
+		ctx.hr256tree->algorithm = algorithm;
 	} else if (scheme == ZONEMD_SCHEME_TREE3) {
 		hs_tree_clear(ctx.hs_tree);
 		ctx.hs_tree->hash_len = 0;
@@ -274,6 +296,10 @@ int zone_contents_digest(struct zone_update *update, zone_contents_t *contents,
 		assert(ctx.digest_ctx == NULL);
 		ret = hs_tree_hash(ctx.hs_tree, rehash_Nhashes, (void *)(intptr_t)algorithm, out_digest);
 		*out_size = ctx.hs_tree->hash_len;
+	} else if (scheme == ZONEMD_SCHEME_RA256 && ret == KNOT_EOK) {
+		assert(ctx.digest_ctx == NULL);
+		ret = hr256tree_hash(ctx.hr256tree, rehash_Nhashes, (void *)(intptr_t)algorithm, out_digest);
+		*out_size = ctx.hr256tree->hash_len;
 	} else if (ret == KNOT_EOK) {
 		dnssec_binary_t res = { 0 };
 		ret = dnssec_digest_finish(ctx.digest_ctx, &res);
@@ -281,6 +307,7 @@ int zone_contents_digest(struct zone_update *update, zone_contents_t *contents,
 		*out_size = res.size;
 	} else {
 		hr_tree_clear(ctx.hr_tree);
+		hr256tree_clear(ctx.hr256tree);
 		hs_tree_clear(ctx.hs_tree);
 	}
 	free(ctx.buf);
@@ -371,7 +398,7 @@ int zone_contents_digest_verify(struct zone_update *update, zone_contents_t *con
 
 	knot_rdata_t *rr = zonemd->rdata, *supported = NULL;
 	for (int i = 0; i < zonemd->count; i++) {
-		if ((knot_zonemd_scheme(rr) == ZONEMD_SCHEME_SIMPLE || knot_zonemd_scheme(rr) == ZONEMD_SCHEME_RADIX || knot_zonemd_scheme(rr) == ZONEMD_SCHEME_TREE3) &&
+		if ((knot_zonemd_scheme(rr) == ZONEMD_SCHEME_SIMPLE || knot_zonemd_scheme(rr) == ZONEMD_SCHEME_RADIX || knot_zonemd_scheme(rr) == ZONEMD_SCHEME_TREE3 || knot_zonemd_scheme(rr) == ZONEMD_SCHEME_RA256) &&
 		    knot_zonemd_digest_size(rr) > 0 &&
 		    knot_zonemd_soa_serial(rr) == soa_serial) {
 			supported = rr;
@@ -424,6 +451,8 @@ int zone_update_add_digest(conf_t *conf, struct zone_update *update, int algorit
 			snprintf(meminfo, sizeof(meminfo), ", memory %zu B", zone_contents_zonemd_tree(update->new_cont, CONTENTS_ZONEMD_TREE_GENERATE)->alloc_size);
 		} else if (conf_opt(&scheme) == ZONEMD_SCHEME_TREE3) {
 			snprintf(meminfo, sizeof(meminfo), ", memory %zu B", zone_contents_zonemd_tree2(update->new_cont, CONTENTS_ZONEMD_TREE_GENERATE)->alloc_size);
+		} else if (conf_opt(&scheme) == ZONEMD_SCHEME_RA256) {
+			snprintf(meminfo, sizeof(meminfo), ", memory %zu B", zone_contents_zonemd_tree3(update->new_cont, CONTENTS_ZONEMD_TREE_GENERATE)->alloc_size);
 		}
 
 		log_zone_debug(update->zone->name, "ZONEMD computed in %.02f seconds%s (%s)", time_diff_ms(&beg, &end) / 1000.0, meminfo, knot_strerror(ret));

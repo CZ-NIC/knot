@@ -40,6 +40,8 @@ libcontrib_la_SOURCES = \
 	contrib/files.h				\
 	contrib/getline.c			\
 	contrib/getline.h			\
+	contrib/hr256tree.c			\
+	contrib/hr256tree.h			\
 	contrib/hr_tree.c			\
 	contrib/hr_tree.h			\
 	contrib/hs_tree.c			\
