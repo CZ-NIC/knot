@@ -1454,7 +1454,7 @@ static int create_and_print_ds(const knot_dname_t *zone_name,
 	return print_ds(zone_name, &rdata);
 }
 
-int keymgr_generate_dnskey(const knot_dname_t *dname, const knot_kasp_key_t *key)
+static int keymgr_generate_dnskey(const knot_dname_t *dname, const knot_kasp_key_t *key)
 {
 	const dnssec_key_t *dnskey = key->key;
 
@@ -1498,7 +1498,7 @@ int keymgr_dss_dnskeys(kdnssec_ctx_t *ctx, int argc, char *argv[])
 		{ false, DNSSEC_KEY_DIGEST_SHA384, "sha384" },
 	};
 
-	bool ds = (strncasecmp(argv[0], "ds", 2) == 0), alg_spec = false, key_spec = (!ds && argc > 1);
+	bool ds = (strcasecmp(argv[0], "ds") == 0), alg_spec = false, key_spec = (!ds && argc > 1);
 	int ret = KNOT_EOK;
 
 	argc--;
