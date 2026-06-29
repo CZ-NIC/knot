@@ -449,6 +449,11 @@ int tcp_master(dthread_t *thread)
 	}
 
 finish:
+	if (ret != KNOT_EOK) {
+		log_error("TCP, failed to initialize worker %u (%s)",
+		          dt_get_id(thread), strerror(errno));
+	}
+
 	knot_tls_ctx_free(tcp.tls_ctx);
 	free(tcp.iov[0].iov_base);
 	free(tcp.iov[1].iov_base);
