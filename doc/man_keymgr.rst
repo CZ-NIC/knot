@@ -127,7 +127,7 @@ Commands
 
 **ds** [*key_spec*...] [*hash_alg*...]
   Generate DS record for specified keys. *Key_spec* is like for **set**, if unspecified, all KSKs are used.
-  Use specified or all supported hash algorithms.
+  *Hash_alg* is either an algorithm name or an algorithm code. Use specified or all supported hash algorithms.
 
 **dnskey** [*key_spec*...]
   Generate DNSKEY record for specified keys. *Key_spec*

@@ -1506,8 +1506,11 @@ int keymgr_dss_dnskeys(kdnssec_ctx_t *ctx, int argc, char *argv[])
 
 	// in case of DS, first get the set of desired hash algs
 	for (int i = 0; ds && i < argc; i++) {
+		uint8_t alg = DNSSEC_KEY_DIGEST_INVALID;
+		(void)str_to_u8(argv[i], &alg);
 		for (int j = 0; j < ARRAY_SIZE(ds_algs); j++) {
-			if (strcasecmp(argv[i], ds_algs[j].name) == 0) {
+			if (strcasecmp(argv[i], ds_algs[j].name) == 0 ||
+			    (alg != DNSSEC_KEY_DIGEST_INVALID && alg == ds_algs[j].alg)) {
 				ds_algs[j].found = true;
 				alg_spec = true;
 				argv[i] = NULL;
