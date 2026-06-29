@@ -630,6 +630,12 @@ int udp_master(dthread_t *thread)
 	}
 
 finish:
+	if (ret != KNOT_EOK) {
+		log_error("%s, failed to initialize worker %u (%s)",
+		          (is_xdp_thread(handler->server, thread_id) ? "XDP" : "UDP"),
+		          dt_get_id(thread), strerror(errno));
+	}
+
 	api->udp_deinit(api_ctx);
 #ifdef ENABLE_QUIC
 	quic_unmake_table(udp.quic_table);
