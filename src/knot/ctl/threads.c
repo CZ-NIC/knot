@@ -211,7 +211,7 @@ static int ctl_socket_thr(struct dthread *dt)
 
 		int ret = knot_ctl_accept(thr_ctl);
 		if (ret != KNOT_EOK) {
-			if (ret != KNOT_ETIMEOUT) {
+			if (ret != KNOT_ETIMEOUT && ret != KNOT_EINTR) {
 				log_ctl_warning("failed to accept connection (%s)",
 				                knot_strerror(ret));
 				sleep(2);
