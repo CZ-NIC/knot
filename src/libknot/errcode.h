@@ -48,6 +48,7 @@ enum knot_error {
 	KNOT_ENOTDIR       = -ENOTDIR,
 	KNOT_EPERM         = -EPERM,
 	KNOT_EROFS         = -EROFS,
+	KNOT_EINTR         = -EINTR,
 
 	KNOT_ERRNO_ERROR   = -500,
 
@@ -235,6 +236,7 @@ inline static int knot_map_errno_code_def(int code, int dflt_error)
 		ERR_ITEM(EEXIST),
 		ERR_ITEM(ERANGE),
 		ERR_ITEM(EADDRNOTAVAIL),
+		ERR_ITEM(EINTR),
 
 		/* Terminator - the value isn't used. */
 		{ 0, KNOT_ERRNO_ERROR }
