@@ -173,7 +173,9 @@ finish:
 	gnutls_free(san_der.data);
 	gnutls_x509_crt_deinit(cert);
 	gnutls_x509_privkey_deinit(privkey);
-	gnutls_subject_alt_names_deinit(san);
+	if (san != NULL) {
+		gnutls_subject_alt_names_deinit(san);
+	}
 
 	return ret;
 }
