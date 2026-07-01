@@ -45,13 +45,6 @@ static void reverse_owner6(knot_dname_storage_t out, uint8_t *in6_addr_raw)
 	memcpy(pos, reverse6postfix, reverse6pf_len);
 }
 
-static void set_rdata(knot_rrset_t *rrset, uint8_t *data, uint16_t len)
-{
-	knot_rdata_init(rrset->rrs.rdata, len, data);
-	rrset->rrs.size = knot_rdata_size(len);
-	rrset->rrs.count = 1;
-}
-
 typedef struct {
 	const knot_dname_t *rev_zone;
 	zone_contents_t *rev_conts;
@@ -65,12 +58,10 @@ static int reverse_from_node(zone_node_t *node, void *data)
 	rev_ctx_t *ctx = data;
 
 	knot_rrset_t forw = node_rrset(node, ctx->ipv6 ? KNOT_RRTYPE_AAAA : KNOT_RRTYPE_A);
+	size_t node_owner_len = knot_dname_size(node->owner);
 
-	knot_rrset_t rev;
-	knot_dname_storage_t rev_owner; // Will be filled later.
-	uint8_t rev_data[knot_rdata_size(KNOT_DNAME_MAXLEN)]; // Will be filled later.
-	knot_rrset_init(&rev, rev_owner, KNOT_RRTYPE_PTR, forw.rclass, forw.ttl);
-	rev.rrs.rdata = (knot_rdata_t *)rev_data;
+	uint8_t buf[KNOT_RRSET_STATIC_BUFSIZE(KNOT_DNAME_MAXLEN)];
+	knot_dname_storage_t rev_owner;
 
 	int ret = KNOT_EOK;
 
@@ -87,17 +78,19 @@ static int reverse_from_node(zone_node_t *node, void *data)
 			continue;
 		}
 
-		set_rdata(&rev, node->owner, knot_dname_size(node->owner));
+		knot_rrset_t *revrr = knot_rrset_static(buf, sizeof(buf), rev_owner, KNOT_RRTYPE_PTR, forw.ttl,
+		                                        node->owner, node_owner_len, false);
+		assert(revrr != NULL);
 
 		if (ctx->rev_upd != NULL) {
 			if (ctx->upd_rem) {
-				ret = zone_update_remove(ctx->rev_upd, &rev);
+				ret = zone_update_remove(ctx->rev_upd, revrr);
 			} else {
-				ret = zone_update_add(ctx->rev_upd, &rev);
+				ret = zone_update_add(ctx->rev_upd, revrr);
 			}
 		} else {
 			zone_node_t *unused = NULL;
-			ret = zone_contents_add_rr(ctx->rev_conts, &rev, &unused);
+			ret = zone_contents_add_rr(ctx->rev_conts, revrr, &unused);
 		}
 
 		rd = knot_rdataset_next(rd);

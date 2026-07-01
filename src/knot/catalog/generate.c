@@ -52,12 +52,6 @@ knot_dname_t *catalog_member_owner(const knot_dname_t *member, const knot_dname_
 	return out;
 }
 
-static void set_rdata(knot_rrset_t *rrset, uint8_t *data, uint16_t len)
-{
-	knot_rdata_init(rrset->rrs.rdata, len, data);
-	rrset->rrs.size = knot_rdata_size(len);
-}
-
 #define def_txt_owner(ptr_owner) \
 	knot_dname_storage_t txt_owner = "\x05""group"; \
 	size_t _ptr_ow_len = knot_dname_size(ptr_owner); \
@@ -79,22 +73,19 @@ static int add_group_txt(const knot_dname_t *ptr_owner, const char *group,
 
 	def_txt_owner(ptr_owner);
 
-	uint8_t data[256] = { group_len };
+	uint8_t data[256] = { group_len }, buf[KNOT_RRSET_STATIC_BUFSIZE(group_len + 1)];
 	memcpy(data + 1, group, group_len);
 
-	knot_rrset_t txt;
-	knot_rrset_init(&txt, txt_owner, KNOT_RRTYPE_TXT, KNOT_CLASS_IN, 0);
-	uint8_t txt_rd[256] = { 0 };
-	txt.rrs.rdata = (knot_rdata_t *)txt_rd;
-	txt.rrs.count = 1;
-	set_rdata(&txt, data, 1 + group_len );
+	knot_rrset_t *txtrr = knot_rrset_static(buf, sizeof(buf), txt_owner, KNOT_RRTYPE_TXT,
+	                                        0, data, group_len + 1, false);
+	assert(txtrr != NULL);
 
 	int ret;
 	if (conts != NULL) {
 		zone_node_t *unused = NULL;
-		ret = zone_contents_add_rr(conts, &txt, &unused);
+		ret = zone_contents_add_rr(conts, txtrr, &unused);
 	} else {
-		ret = zone_update_add(up, &txt);
+		ret = zone_update_add(up, txtrr);
 	}
 
 	return ret;
@@ -125,16 +116,9 @@ int catalog_update_to_zone(struct zone_contents **conts, catalog_update_t *u,
 	uint8_t version[9] = "\x07""version";
 	uint8_t cat_version[2] = "\x01" CATALOG_ZONE_VERSION;
 
-	// prepare common rrset with one rdata item
-	uint8_t rdata[256] = { 0 };
-	knot_rrset_t rrset;
-	knot_rrset_init(&rrset, (knot_dname_t *)catzone, KNOT_RRTYPE_SOA, KNOT_CLASS_IN, 0);
-	rrset.rrs.rdata = (knot_rdata_t *)rdata;
-	rrset.rrs.count = 1;
-
 	// set catalog zone's SOA
-	uint8_t data[250];
-	assert(sizeof(knot_rdata_t) + sizeof(data) <= sizeof(rdata));
+	uint8_t data[2 * sizeof(invalid) + 5 * sizeof(uint32_t)];
+	uint8_t rrbuf[KNOT_RRSET_STATIC_BUFSIZE(MAX(sizeof(data), KNOT_DNAME_MAXLEN))];
 	wire_ctx_t wire = wire_ctx_init(data, sizeof(data));
 	wire_ctx_write(&wire, invalid, sizeof(invalid));
 	wire_ctx_write(&wire, invalid, sizeof(invalid));
@@ -143,17 +127,17 @@ int catalog_update_to_zone(struct zone_contents **conts, catalog_update_t *u,
 	wire_ctx_write_u32(&wire, CATALOG_SOA_RETRY);
 	wire_ctx_write_u32(&wire, CATALOG_SOA_EXPIRE);
 	wire_ctx_write_u32(&wire, 0);
-	set_rdata(&rrset, data, wire_ctx_offset(&wire));
-	int ret = zone_contents_add_rr(c, &rrset, &unused);
+	assert(wire.error == KNOT_EOK);
+	int ret = zone_contents_add_rr(c, knot_rrset_static(rrbuf, sizeof(rrbuf), (knot_dname_t *)catzone,
+	                                  KNOT_RRTYPE_SOA, 0, data, wire_ctx_offset(&wire), false), &unused);
 	if (ret != KNOT_EOK) {
 		goto fail;
 	}
 
 	// set catalog zone's NS
 	unused = NULL;
-	rrset.type = KNOT_RRTYPE_NS;
-	set_rdata(&rrset, invalid, sizeof(invalid));
-	ret = zone_contents_add_rr(c, &rrset, &unused);
+	ret = zone_contents_add_rr(c, knot_rrset_static(rrbuf, sizeof(rrbuf), (knot_dname_t *)catzone,
+	                              KNOT_RRTYPE_NS, 0, invalid, sizeof(invalid), false), &unused);
 	if (ret != KNOT_EOK) {
 		goto fail;
 	}
@@ -165,26 +149,22 @@ int catalog_update_to_zone(struct zone_contents **conts, catalog_update_t *u,
 		ret = KNOT_ERROR;
 		goto fail;
 	}
-	rrset.owner = owner;
-	rrset.type = KNOT_RRTYPE_TXT;
-	set_rdata(&rrset, cat_version, sizeof(cat_version));
-	ret = zone_contents_add_rr(c, &rrset, &unused);
+	ret = zone_contents_add_rr(c, knot_rrset_static(rrbuf, sizeof(rrbuf), owner,
+	                              KNOT_RRTYPE_TXT, 0, cat_version, sizeof(cat_version), false), &unused);
 	if (ret != KNOT_EOK) {
 		goto fail;
 	}
 
 	// insert member zone PTR records
-	rrset.type = KNOT_RRTYPE_PTR;
 	catalog_it_t *it = catalog_it_begin(u);
 	while (!catalog_it_finished(it)) {
 		catalog_upd_val_t *val = catalog_it_val(it);
 		if (val->add_owner == NULL) {
 			continue;
 		}
-		rrset.owner = val->add_owner;
-		set_rdata(&rrset, val->member, knot_dname_size(val->member));
 		unused = NULL;
-		if ((ret = zone_contents_add_rr(c, &rrset, &unused)) != KNOT_EOK ||
+		if ((ret = zone_contents_add_rr(c, knot_rrset_static(rrbuf, sizeof(rrbuf), val->add_owner,
+		                                   KNOT_RRTYPE_PTR, 0, val->member, knot_dname_size(val->member), false), &unused)) != KNOT_EOK ||
 		    (ret = add_group_txt(val->add_owner, val->new_group, c, NULL)) != KNOT_EOK) {
 			catalog_it_free(it);
 			goto fail;
@@ -202,11 +182,7 @@ fail:
 
 int catalog_update_to_update(catalog_update_t *u, struct zone_update *zu)
 {
-	knot_rrset_t ptr;
-	knot_rrset_init(&ptr, NULL, KNOT_RRTYPE_PTR, KNOT_CLASS_IN, 0);
-	uint8_t tmp[KNOT_DNAME_MAXLEN + sizeof(knot_rdata_t)];
-	ptr.rrs.rdata = (knot_rdata_t *)tmp;
-	ptr.rrs.count = 1;
+	uint8_t rrbuf[KNOT_RRSET_STATIC_BUFSIZE(KNOT_DNAME_MAXLEN)];
 
 	int ret = KNOT_EOK;
 	catalog_it_t *it = catalog_it_begin(u);
@@ -226,17 +202,20 @@ int catalog_update_to_update(catalog_update_t *u, struct zone_update *zu)
 			continue;
 		}
 
-		set_rdata(&ptr, val->member, knot_dname_size(val->member));
+		knot_rrset_t *ptrrr = knot_rrset_static(rrbuf, sizeof(rrbuf), NULL, KNOT_RRTYPE_PTR, 0,
+		                                        val->member, knot_dname_size(val->member), false);
+		assert(ptrrr != NULL);
+
 		if (val->type == CAT_UPD_REM && knot_dname_is_equal(zu->zone->name, val->rem_catz)) {
-			ptr.owner = val->rem_owner;
-			ret = zone_update_remove(zu, &ptr);
+			ptrrr->owner = val->rem_owner;
+			ret = zone_update_remove(zu, ptrrr);
 			if (ret == KNOT_EOK) {
 				ret = rem_group_txt(val->rem_owner, zu);
 			}
 		}
 		if (val->type == CAT_UPD_ADD && knot_dname_is_equal(zu->zone->name, val->add_catz)) {
-			ptr.owner = val->add_owner;
-			ret = zone_update_add(zu, &ptr);
+			ptrrr->owner = val->add_owner;
+			ret = zone_update_add(zu, ptrrr);
 			if (ret == KNOT_EOK) {
 				ret = add_group_txt(val->add_owner, val->new_group, NULL, zu);
 			}
