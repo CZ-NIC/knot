@@ -82,6 +82,7 @@ const knot_lookup_t knot_edns_ede_names[] = {
 	{ KNOT_EDNS_EDE_NONCONF_POLICY,   "Unable to conform to policy" },
 	{ KNOT_EDNS_EDE_SYNTHESIZED,      "Synthesized" },
 	{ KNOT_EDNS_EDE_INV_QTYPE,        "Invalid Query Type" },
+	{ KNOT_EDNS_EDE_NTA,              "Negative Trust Anchor" },
 	{ 0, NULL }
 };
 
