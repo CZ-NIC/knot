@@ -286,9 +286,9 @@ void knot_qreq_close(struct knot_quic_reply *r, bool send_close)
 	if (send_close && conn->conn != NULL) {
 		r->handle_ret = KNOT_QUIC_HANDLE_RET_CLOSE;
 		(void)knot_quic_send(table, conn, r, QUIC_MAX_SEND_PER_RECV, 0);
+	} else {
+		knot_quic_table_rem(conn, table);
 	}
-
-	knot_quic_table_rem(conn, table);
 	knot_quic_cleanup(&conn, 1);
 	if (table != NULL) {
 		knot_creds_free(table->creds);

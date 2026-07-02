@@ -926,6 +926,7 @@ static int send_special(knot_quic_table_t *quic_table, knot_quic_reply_t *rpl,
 			relay->conn, NULL, &pi, rpl->out_payload->iov_base,
 			rpl->out_payload->iov_len, &ccerr, now
 		);
+		knot_quic_table_rem(relay, quic_table);
 		break;
 	case -QUIC_SEND_EXCESSIVE_LOAD:
 		ccerr.type = NGTCP2_CCERR_TYPE_APPLICATION;
