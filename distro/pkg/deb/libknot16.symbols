@@ -248,6 +248,7 @@ libknot.so.16 libknot16 #MINVER#
  knot_rdataset_member@Base 3.5.0
  knot_rdataset_merge@Base 3.5.0
  knot_rdataset_remove_at@Base 3.5.0
+ knot_rdataset_static@Base 3.6.0
  knot_rdataset_subset@Base 3.5.0
  knot_rdataset_subtract@Base 3.5.0
  knot_rrclass_from_string@Base 3.5.0
@@ -262,6 +263,7 @@ libknot.so.16 libknot16 #MINVER#
  knot_rrset_rr_from_wire@Base 3.5.0
  knot_rrset_rr_to_canonical@Base 3.5.0
  knot_rrset_size@Base 3.5.0
+ knot_rrset_static@Base 3.6.0
  knot_rrset_to_wire_extra@Base 3.5.0
  knot_rrset_txt_dump@Base 3.5.0
  knot_rrset_txt_dump_data@Base 3.5.0

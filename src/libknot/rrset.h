@@ -37,6 +37,13 @@ typedef struct {
 	void *additional;     /*!< Additional records. */
 } knot_rrset_t;
 
+/*!< \brief Required static rrset buffer size for specified rdata length (reused owner pointer). */
+#define KNOT_RRSET_STATIC_BUFSIZE(rdlen)              (KNOT_PTR_ALIGN_MAX + sizeof(knot_rrset_t) + knot_rdata_size(rdlen))
+/*!< \brief Required static rrset buffer size for specified rdata length (copied owner). */
+#define KNOT_RRSET_STATIC_OWNER_BUFSIZE(owner, rdlen) (knot_dname_size(owner) + KNOT_RRSET_STATIC_BUFSIZE(rdlen))
+/*!< \brief Required static rrset buffer size for specified rdata length (maximum possible owner). */
+#define KNOT_RRSET_STATIC_OWMAX_BUFSIZE(rdlen)        (KNOT_DNAME_MAXLEN + KNOT_RRSET_STATIC_BUFSIZE(rdlen))
+
 /*!
  * \brief Creates a new RRSet with the given properties.
  *
@@ -84,6 +91,26 @@ inline static void knot_rrset_init_empty(knot_rrset_t *rrset)
 {
 	knot_rrset_init(rrset, NULL, 0, KNOT_CLASS_IN, 0);
 }
+
+/*!
+ * \brief Create a static 1-record RRset structure in a given buffer.
+ *
+ * \note Class is set to KNOT_CLASS_IN.
+ *
+ * \param buf         Auxiliary buffer.
+ * \param bufsize     Auxiliary buffer size.
+ * \param owner       RRset owner name to be used as pointer.
+ * \param type        RRset type.
+ * \param ttl         RRset TTL.
+ * \param rdata       Single RR rdata to be added.
+ * \param rdlen       Rdata length.
+ * \param copy_owner  Copy owner indication.
+ *
+ * \return Pointer to resulting RRset inside the buffer or NULL.
+ */
+knot_rrset_t *knot_rrset_static(uint8_t *buf, size_t bufsize, knot_dname_t *owner,
+                                uint16_t type, uint32_t ttl, const uint8_t *rdata,
+                                uint16_t rdlen, bool copy_owner);
 
 /*!
  * \brief Creates new RRSet from \a src RRSet.

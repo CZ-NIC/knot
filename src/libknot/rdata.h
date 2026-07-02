@@ -22,6 +22,9 @@
 /*!< \brief Maximum rdata length. */
 #define KNOT_RDATA_MAXLEN 65535
 
+/*!< \brief Maximum required pointer alignment (assuming sizeof(void *) is a power of two). */
+#define KNOT_PTR_ALIGN_MAX (sizeof(void *) - 1)
+
 /*!
  * \brief Structure holding single rdata payload.
  */

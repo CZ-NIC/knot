@@ -28,3 +28,8 @@
 /*! \brief Optimize for x to be false value. */
 #define unlikely(x) __builtin_expect((x), 0)
 #endif
+
+/*! \brief Helpers for aligning uint8_t pointers to 8-byte boundaries. */
+#define PTR_ALIGN_MAX (sizeof(void *) - 1) // NOTE assuming sizeof(void *) is a power of two
+#define PTR_ALIGN_SIZE(ptr) ((sizeof(void *) - ((uintptr_t)(ptr) & PTR_ALIGN_MAX)) & PTR_ALIGN_MAX)
+#define PTR_ALIGN(ptr) ((ptr) + PTR_ALIGN_SIZE(ptr))

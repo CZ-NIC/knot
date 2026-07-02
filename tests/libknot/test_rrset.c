@@ -60,6 +60,23 @@ static void test_rrset_size(void)
 	knot_rrset_clear(&rrset, NULL);
 }
 
+static void test_rrset_static(void)
+{
+	uint8_t buf[64], rdb = 11, ow[5] = { 3, 'c', 'o', 'm', 0 };
+	for (size_t i = 1; i < sizeof(buf) - 1; i++) {
+		uint8_t *start = buf + sizeof(buf) - i;
+		knot_rrset_t *rr = knot_rrset_static(start, i, ow, KNOT_RRTYPE_NULL,
+		                                     i, &rdb, sizeof(rdb), true);
+		if (i < sizeof(ow) + KNOT_PTR_ALIGN_MAX + sizeof(*rr) + 4) {
+			ok(rr == NULL, "static: buffer too small %zu", i);
+		} else {
+			ok(rr->owner[3] == ow[3],         "static: correct owner %zu", i);
+			ok(rr->ttl == i,                  "static: correct ttl %zu", i);
+			ok(rr->rrs.rdata->data[0] == rdb, "static: correct rdata %zu", i);
+		}
+	}
+}
+
 int main(int argc, char *argv[])
 {
 	plan_lazy();
@@ -145,6 +162,9 @@ int main(int argc, char *argv[])
 
 	// Test rrset size computation functions.
 	test_rrset_size();
+
+	// Test static initialization helper.
+	test_rrset_static();
 
 	return 0;
 }
