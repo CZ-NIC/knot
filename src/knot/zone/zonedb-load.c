@@ -202,7 +202,7 @@ static zone_t *create_zone_new(conf_t *conf, const knot_dname_t *name,
 
 	if (zone_expired(zone)) {
 		// expired => force bootstrap, no load attempt
-		log_zone_info(zone->name, "zone will be bootstrapped");
+		log_zone_info(zone->name, "zone had expired, will be bootstrapped");
 		assert(zone_is_slave(conf, zone));
 		replan_load_bootstrap(conf, zone);
 		zone->started = true;
