@@ -125,15 +125,12 @@ void knot_quic_table_sweep(knot_quic_table_t *table, struct knot_quic_reply *swe
 		} else if (table->usage > table->max_conns) {
 			knot_sweep_stats_incr(stats, KNOT_SWEEP_CTR_LIMIT_CONN);
 			send_excessive_load(c, sweep_reply, table);
-			knot_quic_table_rem(c, table);
 		} else if (ATOMIC_GET(table->obufs_size) > table->obufs_max) {
 			knot_sweep_stats_incr(stats, KNOT_SWEEP_CTR_LIMIT_OBUF);
 			send_excessive_load(c, sweep_reply, table);
-			knot_quic_table_rem(c, table);
 		} else if (table->ibufs_size > table->ibufs_max) {
 			knot_sweep_stats_incr(stats, KNOT_SWEEP_CTR_LIMIT_IBUF);
 			send_excessive_load(c, sweep_reply, table);
-			knot_quic_table_rem(c, table);
 		} else if (quic_conn_timeout(c, &now)) {
 			int ret = knot_quic_handle_expiry(c);
 			if (ret != NGTCP2_NO_ERROR) { // usually NGTCP2_ERR_IDLE_CLOSE or NGTCP2_ERR_HANDSHAKE_TIMEOUT
