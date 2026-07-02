@@ -234,8 +234,8 @@ int knot_xdp_init(knot_xdp_socket_t **socket, const char *if_name, int if_queue,
 
 	(*socket)->frame_limit = FRAME_SIZE;
 	ret = knot_eth_mtu(if_name);
-	if (ret > 0) {
-		(*socket)->frame_limit = MIN((unsigned)ret, (*socket)->frame_limit);
+	if (ret > 0) { // Note: VLAN header isn't considered for simplicity.
+		(*socket)->frame_limit = MIN(sizeof(struct ethhdr) + ret, (*socket)->frame_limit);
 	}
 
 	if (flags & KNOT_XDP_FILTER_ROUTE) {
