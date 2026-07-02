@@ -705,7 +705,6 @@ void *xdp_gun_thread(void *_ctx)
 							assert(!(ctx->ignore2 & XDP_TCP_IGNORE_DATA_ACK));
 							quic_reply.handle_ret = KNOT_QUIC_HANDLE_RET_CLOSE;
 							ret = knot_quic_send(quic_table, conn, &quic_reply, 1, 0);
-							knot_quic_table_rem(conn, quic_table);
 							knot_quic_cleanup(&conn, 1);
 							if (ret != KNOT_EOK) {
 								periodic_stats.errors++;
