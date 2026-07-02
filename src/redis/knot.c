@@ -252,6 +252,15 @@ static const RedisModuleCommandInfo geoip_remove_txt_info = {
 	.args = geoip_add_rem_txt_info_args,
 };
 
+static const RedisModuleCommandInfo geoip_sig_reload_txt_info = {
+	.version = REDISMODULE_COMMAND_INFO_VERSION,
+	.summary = "Remove geoip configuration rrset",
+	.complexity = "O(u), where u is the number of records in the retrieved updates", // TODO
+	.since = "7.0.0",
+	.arity = 3,
+	.args = geoip_load_txt_info_args,
+};
+
 static int zone_begin_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 {
 	arg_dname_t origin;
@@ -895,7 +904,7 @@ static int geoip_load_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int arg
 	ARG_MODULENAME(argv[1], module_name, "module name");
 	
 	geoip_typeval_t tv;
-	ARG_GEO_TYPE_TXT(argv[2], tv, "geoip typeval");
+	ARG_GEO_TYPE_TXT(argv[2], tv, "geoip type");
 	
 	mod_geoip_load(ctx, &module_name, &tv, DUMP_TXT);
 
@@ -961,6 +970,23 @@ static int geoip_remove_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int a
 	return REDISMODULE_OK;
 }
 
+static int geoip_sig_reload_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
+{
+	if (argc < 2) {
+		return RedisModule_WrongArity(ctx);
+	}
+
+	arg_string_t module_name;
+	ARG_MODULENAME(argv[1], module_name, "module name");
+
+	geoip_typeval_t tv;
+	ARG_GEO_TYPE_TXT(argv[2], tv, "geoip type")
+
+	geoip_sig(ctx, &module_name, &tv, RELOAD);
+
+	return REDISMODULE_OK;
+}
+
 #define LOAD_ERROR(ctx, msg) { \
 	RedisModule_Log(ctx, REDISMODULE_LOGLEVEL_WARNING, RDB_E(msg)); \
 	RedisModule_ReplyWithError(ctx, RDB_E(msg)); \
@@ -1021,43 +1047,44 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 	}
 
 	RedisModuleCommand *cmd = NULL;
-	if (register_command_txt("KNOT.ZONE.BEGIN",    zone_begin_txt,    "write fast") ||
-	    register_command_txt("KNOT.ZONE.STORE",    zone_store_txt,    "write fast") ||
-	    register_command_txt("KNOT.ZONE.COMMIT",   zone_commit_txt,   "write")      ||
-	    register_command_txt("KNOT.ZONE.ABORT",    zone_abort_txt,    "write")      ||
-	    register_command_txt("KNOT.ZONE.LOAD",     zone_load_txt,     "readonly")   ||
-	    register_command_txt("KNOT.ZONE.PURGE",    zone_purge_txt,    "write")      ||
-	    register_command_txt("KNOT.ZONE.LIST",     zone_list_txt,     "readonly")   ||
-	    register_command_txt("KNOT.ZONE.INFO",     zone_info_txt,     "readonly")   ||
-	    register_command_txt("KNOT.UPD.BEGIN",     upd_begin_txt,     "write fast") ||
-	    register_command_txt("KNOT.UPD.ADD",       upd_add_txt,       "write fast") ||
-	    register_command_txt("KNOT.UPD.REMOVE",    upd_remove_txt,    "write fast") ||
-	    register_command_txt("KNOT.UPD.COMMIT",    upd_commit_txt,    "write")      ||
-	    register_command_txt("KNOT.UPD.ABORT",     upd_abort_txt,     "write")      ||
-	    register_command_txt("KNOT.UPD.DIFF",      upd_diff_txt,      "readonly")   ||
-	    register_command_txt("KNOT.UPD.LOAD",      upd_load_txt,      "readonly")   ||
-	    register_command_txt("KNOT.GEOIP.LOAD",    geoip_load_txt,    "readonly")   ||
-	    register_command_txt("KNOT.GEOIP.STORE",   geoip_store_txt,   "write fast") ||
-	    register_command_txt("KNOT.GEOIP.REMOVE",  geoip_remove_txt,  "write fast") ||
-	    register_command_bin(RDB_CMD_ZONE_EXISTS,  zone_exists_bin,   "readonly")   ||
-	    register_command_bin(RDB_CMD_ZONE_BEGIN,   zone_begin_bin,    "write")      ||
-	    register_command_bin(RDB_CMD_ZONE_STORE,   zone_store_bin,    "write")      ||
-	    register_command_bin(RDB_CMD_ZONE_COMMIT,  zone_commit_bin,   "write")      ||
-	    register_command_bin(RDB_CMD_ZONE_ABORT,   zone_abort_bin,    "write")      ||
-	    register_command_bin(RDB_CMD_ZONE_LOAD,    zone_load_bin,     "readonly")   ||
-	    register_command_bin(RDB_CMD_ZONE_PURGE,   zone_purge_bin,    "write")      ||
-	    register_command_bin(RDB_CMD_ZONE_LIST,    zone_list_bin,     "readonly")   ||
-	    register_command_bin(RDB_CMD_UPD_BEGIN,    upd_begin_bin,     "write")      ||
-	    register_command_bin(RDB_CMD_UPD_ADD,      upd_add_bin,       "write")      ||
-	    register_command_bin(RDB_CMD_UPD_REMOVE,   upd_remove_bin,    "write")      ||
-	    register_command_bin(RDB_CMD_UPD_COMMIT,   upd_commit_bin,    "write")      ||
-	    register_command_bin(RDB_CMD_UPD_ABORT,    upd_abort_bin,     "write")      ||
-	    register_command_bin(RDB_CMD_UPD_DIFF,     upd_diff_bin,      "readonly")   ||
-	    register_command_bin(RDB_CMD_UPD_LOAD,     upd_load_bin,      "readonly")   ||
-	    register_command_bin(RDB_CMD_GEOIP_LOAD,   geoip_load_bin,    "readonly")   ||
-	    register_command_bin("KNOT_BIN.AOF.RRSET", rrset_aof_rewrite, "write")      || // Add "internal" with newer Redis.
-	    register_command_bin("KNOT_BIN.AOF.GEOIP", geoip_aof_rewrite, "write")      || // Add "internal" with newer Redis.
-	    register_command_bin("KNOT_BIN.AOF.DIFF",  diff_aof_rewrite,  "write"))        // Add "internal" with newer Redis.
+	if (register_command_txt("KNOT.ZONE.BEGIN",       zone_begin_txt,       "write fast") ||
+	    register_command_txt("KNOT.ZONE.STORE",       zone_store_txt,       "write fast") ||
+	    register_command_txt("KNOT.ZONE.COMMIT",      zone_commit_txt,      "write")      ||
+	    register_command_txt("KNOT.ZONE.ABORT",       zone_abort_txt,       "write")      ||
+	    register_command_txt("KNOT.ZONE.LOAD",        zone_load_txt,        "readonly")   ||
+	    register_command_txt("KNOT.ZONE.PURGE",       zone_purge_txt,       "write")      ||
+	    register_command_txt("KNOT.ZONE.LIST",        zone_list_txt,        "readonly")   ||
+	    register_command_txt("KNOT.ZONE.INFO",        zone_info_txt,        "readonly")   ||
+	    register_command_txt("KNOT.UPD.BEGIN",        upd_begin_txt,        "write fast") ||
+	    register_command_txt("KNOT.UPD.ADD",          upd_add_txt,          "write fast") ||
+	    register_command_txt("KNOT.UPD.REMOVE",       upd_remove_txt,       "write fast") ||
+	    register_command_txt("KNOT.UPD.COMMIT",       upd_commit_txt,       "write")      ||
+	    register_command_txt("KNOT.UPD.ABORT",        upd_abort_txt,        "write")      ||
+	    register_command_txt("KNOT.UPD.DIFF",         upd_diff_txt,         "readonly")   ||
+	    register_command_txt("KNOT.UPD.LOAD",         upd_load_txt,         "readonly")   ||
+	    register_command_txt("KNOT.GEOIP.LOAD",       geoip_load_txt,       "readonly")   ||
+	    register_command_txt("KNOT.GEOIP.STORE",      geoip_store_txt,      "write fast") ||
+	    register_command_txt("KNOT.GEOIP.REMOVE",     geoip_remove_txt,     "write fast") ||
+	    register_command_txt("KNOT.GEOIP.SIG_RELOAD", geoip_sig_reload_txt, "write fast") ||
+	    register_command_bin(RDB_CMD_ZONE_EXISTS,     zone_exists_bin,      "readonly")   ||
+	    register_command_bin(RDB_CMD_ZONE_BEGIN,      zone_begin_bin,       "write")      ||
+	    register_command_bin(RDB_CMD_ZONE_STORE,      zone_store_bin,       "write")      ||
+	    register_command_bin(RDB_CMD_ZONE_COMMIT,     zone_commit_bin,      "write")      ||
+	    register_command_bin(RDB_CMD_ZONE_ABORT,      zone_abort_bin,       "write")      ||
+	    register_command_bin(RDB_CMD_ZONE_LOAD,       zone_load_bin,        "readonly")   ||
+	    register_command_bin(RDB_CMD_ZONE_PURGE,      zone_purge_bin,       "write")      ||
+	    register_command_bin(RDB_CMD_ZONE_LIST,       zone_list_bin,        "readonly")   ||
+	    register_command_bin(RDB_CMD_UPD_BEGIN,       upd_begin_bin,        "write")      ||
+	    register_command_bin(RDB_CMD_UPD_ADD,         upd_add_bin,          "write")      ||
+	    register_command_bin(RDB_CMD_UPD_REMOVE,      upd_remove_bin,       "write")      ||
+	    register_command_bin(RDB_CMD_UPD_COMMIT,      upd_commit_bin,       "write")      ||
+	    register_command_bin(RDB_CMD_UPD_ABORT,       upd_abort_bin,        "write")      ||
+	    register_command_bin(RDB_CMD_UPD_DIFF,        upd_diff_bin,         "readonly")   ||
+	    register_command_bin(RDB_CMD_UPD_LOAD,        upd_load_bin,         "readonly")   ||
+	    register_command_bin(RDB_CMD_GEOIP_LOAD,      geoip_load_bin,       "readonly")   ||
+	    register_command_bin("KNOT_BIN.AOF.RRSET",    rrset_aof_rewrite,    "write")      || // Add "internal" with newer Redis.
+	    register_command_bin("KNOT_BIN.AOF.GEOIP",    geoip_aof_rewrite,    "write")      || // Add "internal" with newer Redis.
+	    register_command_bin("KNOT_BIN.AOF.DIFF",     diff_aof_rewrite,     "write"))        // Add "internal" with newer Redis.
 	{
 		LOAD_ERROR(ctx, "failed to load commands");
 	}

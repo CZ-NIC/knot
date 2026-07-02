@@ -29,6 +29,59 @@
 #define raise(e)          return e
 #define return_ok         throw(KNOT_EOK, NULL)
 
+#define commit_event_gen(ctx, ev, stream_id, ...) \
+	do { \
+		RedisModuleString *keyname = RedisModule_CreateString(ctx, RDB_EVENT_KEY, strlen(RDB_EVENT_KEY)); \
+		RedisModuleKey *stream_key = RedisModule_OpenKey(ctx, keyname, REDISMODULE_READ | REDISMODULE_WRITE); \
+		RedisModule_FreeString(ctx, keyname); \
+		\
+		int zone_stream_type = RedisModule_KeyType(stream_key); \
+		if (zone_stream_type != REDISMODULE_KEYTYPE_EMPTY && zone_stream_type != REDISMODULE_KEYTYPE_STREAM) { \
+			RedisModule_Log(ctx, REDISMODULE_LOGLEVEL_WARNING, RDB_EEVENT); \
+			RedisModule_CloseKey(stream_key); \
+			break; \
+		} \
+		\
+		RedisModuleString *events[] = { \
+			RedisModule_CreateString(ctx, RDB_EVENT_ARG_EVENT, strlen(RDB_EVENT_ARG_EVENT)), \
+			RedisModule_CreateStringFromLongLong(ctx, (ev)), \
+			##__VA_ARGS__, \
+			NULL \
+		}; \
+		\
+		int flags = 0; \
+		if ((stream_id)->ms == 0) { \
+			flags = REDISMODULE_STREAM_ADD_AUTOID; \
+		} \
+		int ret = RedisModule_StreamAdd(stream_key, flags, (stream_id), events, sizeof(events) / sizeof(*events) / 2); \
+		\
+		for (RedisModuleString **event = events; *event != NULL; event++) { \
+			RedisModule_FreeString(ctx, *event); \
+		} \
+		\
+		if (ret != REDISMODULE_OK) { \
+			RedisModule_Log(ctx, REDISMODULE_LOGLEVEL_WARNING, RDB_EEVENT); \
+			RedisModule_CloseKey(stream_key); \
+			break; \
+		} \
+		\
+		if (rdb_event_age == 0) { \
+			RedisModule_CloseKey(stream_key); \
+			return; \
+		} \
+		\
+		RedisModuleStreamID trim_id = { \
+			.ms = (stream_id)->ms - 1000LLU * rdb_event_age \
+		}; \
+		\
+		/* NOTE Trimming with REDISMODULE_STREAM_TRIM_APPROX improves preformance */ \
+		long long removed_cnt = RedisModule_StreamTrimByID(stream_key, REDISMODULE_STREAM_TRIM_APPROX, &trim_id); \
+		if (removed_cnt) { \
+			RedisModule_Log(ctx, REDISMODULE_LOGLEVEL_NOTICE, "stream cleanup %lld old events", removed_cnt); \
+		} \
+		RedisModule_CloseKey(stream_key); \
+	} while(0)
+
 typedef enum {
 	EVENT       = 1, // Keep synchronized with RDB_EVENT_KEY!
 	ZONES       = 2,
@@ -42,6 +95,10 @@ typedef enum {
 	GEOIP_MOD   = 10,
 	GEOIP_RRSET = 11,
 } rdb_type_t;
+
+typedef enum {
+	RELOAD = 0
+} rdb_geoip_sig_t;
 
 typedef struct {
 	const char *what;
@@ -262,60 +319,14 @@ static bool zone_txn_is_open(RedisModuleCtx *ctx, const arg_dname_t *origin, con
 static void commit_event(RedisModuleCtx *ctx, rdb_event_t type, const arg_dname_t *origin,
                          uint8_t instance, uint32_t serial, RedisModuleStreamID *stream_id)
 {
-	RedisModuleString *keyname = RedisModule_CreateString(ctx, RDB_EVENT_KEY, strlen(RDB_EVENT_KEY));
-	RedisModuleKey *stream_key = RedisModule_OpenKey(ctx, keyname, REDISMODULE_READ | REDISMODULE_WRITE);
-	RedisModule_FreeString(ctx, keyname);
-
-	int zone_stream_type = RedisModule_KeyType(stream_key);
-	if (zone_stream_type != REDISMODULE_KEYTYPE_EMPTY && zone_stream_type != REDISMODULE_KEYTYPE_STREAM) {
-		RedisModule_Log(ctx, REDISMODULE_LOGLEVEL_WARNING, RDB_EEVENT);
-		RedisModule_CloseKey(stream_key);
-		return;
-	}
-
-	RedisModuleString *events[] = {
-		RedisModule_CreateString(ctx, RDB_EVENT_ARG_EVENT, strlen(RDB_EVENT_ARG_EVENT)),
-		RedisModule_CreateStringFromLongLong(ctx, type),
+	commit_event_gen(ctx, type, stream_id,
 		RedisModule_CreateString(ctx, RDB_EVENT_ARG_ORIGIN, strlen(RDB_EVENT_ARG_ORIGIN)),
 		RedisModule_CreateString(ctx, (const char *)origin->data, origin->len),
 		RedisModule_CreateString(ctx, RDB_EVENT_ARG_INSTANCE, strlen(RDB_EVENT_ARG_INSTANCE)),
 		RedisModule_CreateStringFromLongLong(ctx, instance),
 		RedisModule_CreateString(ctx, RDB_EVENT_ARG_SERIAL, strlen(RDB_EVENT_ARG_SERIAL)),
-		RedisModule_CreateStringFromLongLong(ctx, serial),
-		NULL,
-	};
-
-	int flags = 0;
-	if (stream_id->ms == 0) {
-		flags = REDISMODULE_STREAM_ADD_AUTOID;
-	}
-	int ret = RedisModule_StreamAdd(stream_key, flags, stream_id, events, 4);
-
-	for (RedisModuleString **event = events; *event != NULL; event++) {
-		RedisModule_FreeString(ctx, *event);
-	}
-
-	if (ret != REDISMODULE_OK) {
-		RedisModule_Log(ctx, REDISMODULE_LOGLEVEL_WARNING, RDB_EEVENT);
-		RedisModule_CloseKey(stream_key);
-		return;
-	}
-
-	if (rdb_event_age == 0) {
-		RedisModule_CloseKey(stream_key);
-		return;
-	}
-
-	RedisModuleStreamID trim_id = {
-		.ms = stream_id->ms - 1000LLU * rdb_event_age
-	};
-
-	// NOTE Trimming with REDISMODULE_STREAM_TRIM_APPROX improves preformance
-	long long removed_cnt = RedisModule_StreamTrimByID(stream_key, REDISMODULE_STREAM_TRIM_APPROX, &trim_id);
-	if (removed_cnt) {
-		RedisModule_Log(ctx, REDISMODULE_LOGLEVEL_NOTICE, "stream cleanup %lld old events", removed_cnt);
-	}
-	RedisModule_CloseKey(stream_key);
+		RedisModule_CreateStringFromLongLong(ctx, serial)
+	);
 }
 
 static RedisModuleKey *get_zones_index(RedisModuleCtx *ctx, int rights)
@@ -2779,4 +2790,27 @@ static void geoip_mod(RedisModuleCtx *ctx, const arg_string_t *name,
 	const arg_dname_t origin = { 0 };
 
 	run_scanner(&s_ctx, &origin, (const char *)data, data_len);
+}
+
+static void geoip_sig(RedisModuleCtx *ctx, const arg_string_t *name,
+                      geoip_typeval_t *type, rdb_geoip_sig_t sig)
+{
+	index_k geoip_index = get_geoip_index(ctx, name, type->type, REDISMODULE_READ);
+	if (RedisModule_KeyType(geoip_index) != REDISMODULE_KEYTYPE_ZSET) {
+		RedisModule_CloseKey(geoip_index);
+		RedisModule_ReplyWithError(ctx, RDB_EINST);
+		return;
+	}
+
+	RedisModuleStreamID stream_id = { 0 };
+	commit_event_gen(ctx, RDB_EVENT_MOD_GEOIP, &stream_id,
+		RedisModule_CreateString(ctx, RDB_EVENT_ARG_ID, strlen(RDB_EVENT_ARG_ID)),
+		RedisModule_CreateString(ctx, (const char *)name->str, name->len),
+		RedisModule_CreateString(ctx, RDB_EVENT_ARG_TYPE, strlen(RDB_EVENT_ARG_TYPE)),
+		RedisModule_CreateStringFromLongLong(ctx, type->type),
+		RedisModule_CreateString(ctx, RDB_EVENT_ARG_SIGNAL, strlen(RDB_EVENT_ARG_SIGNAL)),
+		RedisModule_CreateStringFromLongLong(ctx, sig) // TODO SIGNAL_RELOAD
+	);
+	
+	RedisModule_ReplyWithSimpleString(ctx, RDB_RETURN_OK);
 }

@@ -34,11 +34,16 @@
 
 #define RDB_RETURN_OK		"OK"
 
-#define RDB_EVENT_KEY		(RDB_PREFIX "\x01")
-#define RDB_EVENT_ARG_EVENT	"e"
-#define RDB_EVENT_ARG_ORIGIN	"o"
-#define RDB_EVENT_ARG_INSTANCE	"i"
-#define RDB_EVENT_ARG_SERIAL	"s"
+#define RDB_EVENT_KEY          (RDB_PREFIX "\x01")
+#define RDB_EVENT_ARG_EVENT    "e"
+
+#define RDB_EVENT_ARG_ORIGIN   "o"
+#define RDB_EVENT_ARG_INSTANCE "i"
+#define RDB_EVENT_ARG_SERIAL   "s"
+
+#define RDB_EVENT_ARG_ID       "i"
+#define RDB_EVENT_ARG_TYPE     "t"
+#define RDB_EVENT_ARG_SIGNAL   "s"
 
 typedef struct {
 	uint8_t instance;
@@ -46,6 +51,7 @@ typedef struct {
 } rdb_txn_t;
 
 typedef enum {
-	RDB_EVENT_ZONE  = 1,
-	RDB_EVENT_UPD   = 2,
+	RDB_EVENT_ZONE      = 1,
+	RDB_EVENT_UPD       = 2,
+	RDB_EVENT_MOD_GEOIP = 3,
 } rdb_event_t;
