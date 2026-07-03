@@ -104,7 +104,8 @@ static void send_excessive_load(knot_quic_conn_t *conn, struct knot_quic_reply *
                                 knot_quic_table_t *table)
 {
 	if (reply != NULL) {
-		reply->handle_ret = KNOT_QUIC_ERR_EXCESSIVE_LOAD;
+		reply->flags |= KNOT_QUIC_ERR_EXCESSIVE_LOAD;
+		reply->handle_ret = KNOT_QUIC_HANDLE_RET_CLOSE;
 		(void)knot_quic_send(table, conn, reply, 0, 0);
 	}
 }
