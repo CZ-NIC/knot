@@ -305,9 +305,36 @@ static int clear(knot_db_txn_t *txn)
 {
 	struct lmdb_env *env = txn->db;
 
-	int ret = mdb_drop(txn->txn, env->dbi, 0);
-	if (ret != MDB_SUCCESS) {
-		return lmdb_error_to_knot(ret);
+	int lmdb_major, lmdb_minor, lmdb_patch;
+	(void)mdb_version(&lmdb_major, &lmdb_minor, &lmdb_patch);
+
+	if (lmdb_major == 1 && lmdb_minor == 0 && lmdb_patch == 0) {
+		MDB_cursor *cursor = NULL;
+		int ret = mdb_cursor_open(txn->txn, env->dbi, &cursor);
+		if (ret != MDB_SUCCESS) {
+			return lmdb_error_to_knot(ret);
+		}
+
+		MDB_val mdb_key, mdb_val;
+		ret = mdb_cursor_get(cursor, &mdb_key, &mdb_val, MDB_FIRST);
+		while (ret == MDB_SUCCESS) {
+			ret = mdb_cursor_del(cursor, 0);
+			if (ret != MDB_SUCCESS) {
+				break;
+			}
+			ret = mdb_cursor_get(cursor, &mdb_key, &mdb_val, MDB_NEXT);
+		}
+
+		mdb_cursor_close(cursor);
+
+		if (ret != MDB_NOTFOUND && ret != MDB_SUCCESS) {
+			return lmdb_error_to_knot(ret);
+		}
+	} else {
+		int ret = mdb_drop(txn->txn, env->dbi, 0);
+		if (ret != MDB_SUCCESS) {
+			return lmdb_error_to_knot(ret);
+		}
 	}
 
 	return KNOT_EOK;
