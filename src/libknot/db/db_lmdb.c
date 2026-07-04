@@ -305,10 +305,34 @@ static int clear(knot_db_txn_t *txn)
 {
 	struct lmdb_env *env = txn->db;
 
+#if MDB_VERSION_MAJOR == 1 && MDB_VERSION_MINOR == 0 && MDB_VERSION_PATCH == 0
+	MDB_cursor *cursor = NULL;
+	int ret = mdb_cursor_open(txn->txn, env->dbi, &cursor);
+	if (ret != MDB_SUCCESS) {
+		return lmdb_error_to_knot(ret);
+	}
+
+	MDB_val mdb_key, mdb_val;
+	ret = mdb_cursor_get(cursor, &mdb_key, &mdb_val, MDB_FIRST);
+	while (ret == MDB_SUCCESS) {
+		ret = mdb_cursor_del(cursor, 0);
+		if (ret != MDB_SUCCESS) {
+			break;
+		}
+		ret = mdb_cursor_get(cursor, &mdb_key, &mdb_val, MDB_NEXT);
+	}
+
+	mdb_cursor_close(cursor);
+
+	if (ret != MDB_NOTFOUND && ret != MDB_SUCCESS) {
+		return lmdb_error_to_knot(ret);
+	}
+#else
 	int ret = mdb_drop(txn->txn, env->dbi, 0);
 	if (ret != MDB_SUCCESS) {
 		return lmdb_error_to_knot(ret);
 	}
+#endif
 
 	return KNOT_EOK;
 }
