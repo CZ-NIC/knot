@@ -124,7 +124,7 @@ static void tcp_log_error(const struct sockaddr_storage *ss, const char *operati
 	}
 }
 
-static unsigned tcp_set_ifaces(const iface_t *ifaces, size_t n_ifaces,
+static unsigned tcp_set_ifaces(const iface_t *ifaces, size_t n_ifaces, int n_udp,
                                fdset_t *fds, int thread_id, bool *tls)
 {
 	if (n_ifaces == 0) {
@@ -140,10 +140,10 @@ static unsigned tcp_set_ifaces(const iface_t *ifaces, size_t n_ifaces,
 #ifdef ENABLE_REUSEPORT
 		if (conf()->cache.srv_tcp_reuseport && i->addr.ss_family != AF_UNIX) {
 			/* Note: thread_ids start with UDP threads, TCP threads follow. */
-			assert((i->fd_udp_count <= thread_id) &&
-			       (thread_id < i->fd_tcp_count + i->fd_udp_count));
+			assert((n_udp <= thread_id) &&
+			       (thread_id < i->fd_tcp_count + n_udp));
 
-			tcp_id = thread_id - i->fd_udp_count;
+			tcp_id = thread_id - n_udp;
 		}
 #endif
 		int ret = fdset_add(fds, i->fd_tcp[tcp_id], FDSET_POLLIN, (void *)i);
@@ -409,6 +409,7 @@ int tcp_master(dthread_t *thread)
 	bool tls = false;
 	tcp.client_threshold = tcp_set_ifaces(handler->server->ifaces,
 	                                      handler->server->n_ifaces,
+	                                      handler->server->handlers[IO_UDP].size,
 	                                      &tcp.set, thread_id, &tls);
 	if (tcp.client_threshold == 0) {
 		goto finish; /* Terminate on zero interfaces. */
