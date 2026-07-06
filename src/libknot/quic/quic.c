@@ -38,7 +38,6 @@
 #define QUIC_SEND_RETRY                  NGTCP2_ERR_RETRY
 #define QUIC_SEND_STATELESS_RESET        (-NGTCP2_STATELESS_RESET_TOKENLEN)
 #define QUIC_SEND_CONN_CLOSE             (-KNOT_QUIC_HANDLE_RET_CLOSE)
-#define QUIC_SEND_EXCESSIVE_LOAD         (-KNOT_QUIC_ERR_EXCESSIVE_LOAD)
 
 #define TLS_CALLBACK_ERR     (-1)
 
@@ -727,6 +726,10 @@ int knot_quic_handle(knot_quic_table_t *table, knot_quic_reply_t *reply,
 		knot_quic_table_rem(conn, table);
 		ret = KNOT_EOK;
 		goto finish;
+	} else if (ret == NGTCP2_ERR_CRYPTO) { // TLS handshake failed
+		ret = -QUIC_SEND_CONN_CLOSE;
+		reply->tls_alert = ngtcp2_conn_get_tls_alert(conn->conn); // TODO change to ngtcp2_conn_get_tls_alert2() once ngtcp2 is updated on common OSs
+		goto finish;
 	} else if (ngtcp2_err_is_fatal(ret)) { // connection doomed
 		if (ret == NGTCP2_ERR_CALLBACK_FAILURE) {
 			ret = KNOT_EBADCERT;
@@ -855,7 +858,7 @@ static int send_special(knot_quic_table_t *quic_table, knot_quic_reply_t *rpl,
 	                     .user_data = NULL };
 	bool find_path = (rpl->ip_rem == NULL);
 	assert(find_path == (bool)(rpl->ip_loc == NULL));
-	assert(!find_path || rpl->handle_ret == -QUIC_SEND_EXCESSIVE_LOAD);
+	assert(!find_path || rpl->handle_ret == -QUIC_SEND_CONN_CLOSE);
 
 	switch (rpl->handle_ret) {
 	case -QUIC_SEND_VERSION_NEGOTIATION:
@@ -898,18 +901,18 @@ static int send_special(knot_quic_table_t *quic_table, knot_quic_reply_t *rpl,
 		);
 		break;
 	case -QUIC_SEND_CONN_CLOSE:
-		ret = ngtcp2_conn_write_connection_close(
-			relay->conn, NULL, &pi, rpl->out_payload->iov_base,
-			rpl->out_payload->iov_len, &ccerr, now
-		);
-		break;
-	case -QUIC_SEND_EXCESSIVE_LOAD:
-		ccerr.type = NGTCP2_CCERR_TYPE_APPLICATION;
-		ccerr.error_code = KNOT_QUIC_ERR_EXCESSIVE_LOAD;
+		if (rpl->tls_alert != 0) {
+			ngtcp2_ccerr_set_tls_alert(&ccerr, rpl->tls_alert, NULL, 0);
+		} else if (rpl->flags & KNOT_QUIC_ERR_EXCESSIVE_LOAD) {
+			ngtcp2_ccerr_set_application_error(&ccerr, KNOT_QUIC_ERR_EXCESSIVE_LOAD, NULL, 0);
+		} else {
+			ngtcp2_ccerr_set_liberr(&ccerr, ret, NULL, 0);
+		}
 		ret = ngtcp2_conn_write_connection_close(
 			relay->conn, find_path ? &path : NULL, &pi, rpl->out_payload->iov_base,
 			rpl->out_payload->iov_len, &ccerr, now
 		);
+		knot_quic_table_rem(relay, quic_table);
 		break;
 	default:
 		ret = KNOT_EINVAL;
