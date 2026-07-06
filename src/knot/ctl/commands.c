@@ -1426,8 +1426,7 @@ static int get_ttl(zone_t *zone, ctl_args_t *args, uint32_t *ttl)
 	return KNOT_EOK;
 }
 
-static int create_rrset(knot_rrset_t **rrset, zone_t *zone, ctl_args_t *args,
-                        bool need_ttl)
+static int create_rrset(knot_rrset_t **rrset, zone_t *zone, ctl_args_t *args, bool set)
 {
 	knot_dname_txt_storage_t origin_buff;
 	char *origin = knot_dname_to_str(origin_buff, zone->name, sizeof(origin_buff));
@@ -1438,7 +1437,7 @@ static int create_rrset(knot_rrset_t **rrset, zone_t *zone, ctl_args_t *args,
 	const char *owner = args->data[KNOT_CTL_IDX_OWNER];
 	const char *type  = args->data[KNOT_CTL_IDX_TYPE];
 	const char *data  = args->data[KNOT_CTL_IDX_DATA];
-	const char *ttl   = need_ttl ? args->data[KNOT_CTL_IDX_TTL] : NULL;
+	const char *ttl   = set ? args->data[KNOT_CTL_IDX_TTL] : NULL;
 
 	bool force = ctl_has_flag(args->data[KNOT_CTL_IDX_FLAGS], CTL_FLAG_FORCE);
 
@@ -1448,8 +1447,9 @@ static int create_rrset(knot_rrset_t **rrset, zone_t *zone, ctl_args_t *args,
 
 	// Choose default TTL if none was specified.
 	uint32_t default_ttl = 0;
-	if (ttl == NULL && need_ttl) {
-		if (get_ttl(zone, args, &default_ttl) != KNOT_EOK) {
+	if (ttl == NULL) {
+		int ret = get_ttl(zone, args, &default_ttl);
+		if (ret != KNOT_EOK && set) {
 			conf_val_t val = conf_zone_get(conf(), C_DEFAULT_TTL, zone->name);
 			default_ttl = conf_int(&val);
 		}
