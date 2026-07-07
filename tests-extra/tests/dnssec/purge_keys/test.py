@@ -459,8 +459,12 @@ server.ctl("zone-restore +backupdir %s %s %s %s %s" % (bckdir, zones[2].name, zo
                                                                zones[4].name, zones[5].name), wait=True)
 # As a result of restore, three recently generated keys from zones[2] and zones[3] have been
 # moved to trash, new key from zones[4] has been deleted.
-server.ctl("zone-restore +zonefile +nokaspdb +backupdir %s %s %s" %
-            (bckdir, zones[6].name, zones[7].name), wait=True)
+# SoftHSM2 doesn't like parallel key generation, therefore do restore in two steps.
+server.ctl("zone-restore +zonefile +nokaspdb +backupdir %s %s" %
+            (bckdir, zones[6].name), wait=True)
+server.zone_wait(zones[6].name)
+server.ctl("zone-restore +zonefile +nokaspdb +backupdir %s %s" %
+            (bckdir, zones[7].name), wait=True)
 server.zones_wait(zones)
 k6old = k6
 k7old = k7
