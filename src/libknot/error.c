@@ -103,6 +103,7 @@ static const struct error errors[] = {
 	{ KNOT_ERDB,         "zone database error" },
 	{ KNOT_ENOTYPE,      "no such RR type" },
 	{ KNOT_ENOCLASS,     "no such CLASS" },
+	{ KNOT_ELMDBCOMPAT,  "incompatible LMDB version" },
 
 	{ KNOT_GENERAL_ERROR, "unknown general error" },
 
