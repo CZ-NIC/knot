@@ -43,6 +43,26 @@ const backup_filter_list_t backup_filters[] = {
 	{ NULL },
 };
 
+static int backup_migrate_dbs(zone_backup_ctx_t *ctx)
+{
+	int ret = KNOT_EOK;
+	for (const backup_filter_list_t *item = backup_filters;
+	     item->name != NULL; item++) {
+		if (ctx->in_backup & item->param && item->db_index >= 0 &&
+		    knot_lmdb_exists(&(ctx->bck_db)[item->db_index]) == KNOT_EOK) {
+			ret = knot_lmdb_open(&(ctx->bck_db)[item->db_index]);
+			if (ret != KNOT_EOK) {
+				log_error("restore, migration of backup data for filter '+%s' failed (%s)",
+				          item->name, knot_strerror(ret));
+				break;
+			knot_lmdb_close(&(ctx->bck_db)[item->db_index]);
+			}
+		}
+	}
+
+	return ret;
+}
+
 static void _backup_swap(zone_backup_ctx_t *ctx, void **local, void **remote)
 {
 	if (ctx->restore_mode) {
@@ -67,7 +87,7 @@ int zone_backup_init(bool restore_mode, knot_backup_params_t filters, bool force
 
 	size_t backup_dir_len = strlen(backup_dir) + 1;
 
-	zone_backup_ctx_t *ctx = malloc(sizeof(*ctx) + backup_dir_len);
+	zone_backup_ctx_t *ctx = calloc(1, sizeof(*ctx) + backup_dir_len);
 	if (ctx == NULL) {
 		return KNOT_ENOMEM;
 	}
@@ -75,6 +95,8 @@ int zone_backup_init(bool restore_mode, knot_backup_params_t filters, bool force
 	ctx->backup_params = filters;
 	ctx->in_backup = 0; // Just to be sure.
 	ctx->arch_match = true;
+	ctx->lmdb_compat = true; // Just to be sure.
+	ctx->lmdb_migrate = false; // Just to be sure.
 	ctx->forced = forced;
 	ctx->backup_format = BACKUP_VERSION;
 	ctx->backup_global = false;
@@ -87,6 +109,7 @@ int zone_backup_init(bool restore_mode, knot_backup_params_t filters, bool force
 
 	// Backup directory, lock file, label file.
 	// In restore, set the backup format and available data.
+	// In restore, if migration is needed, also lock the backup.
 	int ret = backupdir_init(ctx);
 	if (ret != KNOT_EOK) {
 		free(ctx);
@@ -95,9 +118,17 @@ int zone_backup_init(bool restore_mode, knot_backup_params_t filters, bool force
 
 	// For restore, check that there are all required data components in the backup.
 	if (restore_mode) {
-		if (!ctx->arch_match && filters & BACKUP_PARAM_DB) {
-			free(ctx);
-			return KNOT_ECPUCOMPAT;
+		if (filters & BACKUP_PARAM_DB) {
+			if (!ctx->arch_match) {
+				backupdir_unlock(ctx);
+				free(ctx);
+				return KNOT_ECPUCOMPAT;
+			}
+			if (!ctx->lmdb_compat) {
+				backupdir_unlock(ctx);
+				free(ctx);
+				return KNOT_ELMDBCOMPAT;
+			}
 		}
 
 		// '+kaspdb' in backup provides data also for '+keysonly' restore.
@@ -109,6 +140,7 @@ int zone_backup_init(bool restore_mode, knot_backup_params_t filters, bool force
 			// ctx needed for logging, will be freed later.
 			*out_ctx = ctx;
 			ctx->backup_params = filters;
+			backupdir_unlock(ctx);
 			return KNOT_EBACKUPDATA;
 		}
 	}
@@ -128,8 +160,24 @@ int zone_backup_init(bool restore_mode, knot_backup_params_t filters, bool force
 	(void)snprintf(db_dir, sizeof(db_dir), "%s/catalog", backup_dir);
 	knot_lmdb_init(&ctx->bck_catalog, db_dir, catalog_db_size, 0, NULL);
 
+	assert(ret == KNOT_EOK);
+	// In restore, migrate the backup to LMDB 1 if necessary and release the lock.
+	if (restore_mode && ctx->lmdb_migrate) {
+		if (ctx->backup_params & BACKUP_PARAM_DB) {
+			log_notice("restore, migrating backup in %s to system LMDB version",
+			           ctx->backup_dir);
+			ret = backup_migrate_dbs(ctx);
+			if (ret == KNOT_EOK) {
+				ret = backupdir_migrate_label(ctx);
+			}
+		}
+		if (ret == KNOT_EOK) {
+			backupdir_unlock(ctx);
+		}
+	}
+
 	*out_ctx = ctx;
-	return KNOT_EOK;
+	return ret;
 }
 
 int zone_backup_deinit(zone_backup_ctx_t *ctx)

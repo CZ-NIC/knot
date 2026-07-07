@@ -30,3 +30,5 @@ int backupdir_init(zone_backup_ctx_t *ctx);
 int backupdir_deinit(zone_backup_ctx_t *ctx);
 
 void backupdir_unlock(zone_backup_ctx_t *ctx);
+
+int backupdir_migrate_label(zone_backup_ctx_t *ctx);
