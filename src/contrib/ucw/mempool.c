@@ -35,12 +35,9 @@
 #ifdef CONFIG_UCW_POOL_IS_MMAP
 #include <sys/mman.h>
 static void *
-page_alloc(uint64_t len)
+page_alloc(size_t len)
 {
 	if (!len) {
-		return NULL;
-	}
-	if (len > SIZE_MAX) {
 		return NULL;
 	}
 	assert(!(len & (CPU_PAGE_SIZE-1)));
@@ -52,7 +49,7 @@ page_alloc(uint64_t len)
 }
 
 static void
-page_free(void *start, uint64_t len)
+page_free(void *start, size_t len)
 {
 	assert(!(len & (CPU_PAGE_SIZE-1)));
 	assert(!((uintptr_t) start & (CPU_PAGE_SIZE-1)));
@@ -257,7 +254,7 @@ mp_stats(struct mempool *pool, struct mempool_stats *stats)
 	assert(stats->used_size <= stats->total_size);
 }
 
-uint64_t
+size_t
 mp_total_size(struct mempool *pool)
 {
 	struct mempool_stats stats;
@@ -266,7 +263,7 @@ mp_total_size(struct mempool *pool)
 }
 
 void
-mp_shrink(struct mempool *pool, uint64_t min_total_size)
+mp_shrink(struct mempool *pool, size_t min_total_size)
 {
 	size_t total_size = mp_total_size(pool);
 	while (pool->unused) {
