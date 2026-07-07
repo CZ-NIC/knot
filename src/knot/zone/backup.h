@@ -65,6 +65,7 @@ typedef struct zone_backup_ctx {
 	knot_backup_params_t backup_params; // bit-mapped list of backup components
 	knot_backup_params_t in_backup;     // bit-mapped list of components available in backup
 	bool arch_match;                    // match of the system and the backup architectures
+	bool lmdb_compat;                   // system and backup LMDB versions are compatible
 	bool backup_global;                 // perform global backup for all zones
 	ssize_t readers;                    // when decremented to 0, all zones done, free this context
 	pthread_mutex_t readers_mutex;      // mutex covering readers counter

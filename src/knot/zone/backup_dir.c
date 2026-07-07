@@ -31,6 +31,7 @@
 
 #define LABEL_FILE_HEAD         "label: Knot DNS Backup\n"
 #define LABEL_FILE_FORMAT       "backup_format: %d\n"
+#define LABEL_FILE_LMDB         "lmdb_version: "
 #define LABEL_FILE_ARCH         "architecture: "
 #define LABEL_FILE_PARAMS       "parameters: "
 #define LABEL_FILE_BACKUPDIR    "backupdir "
@@ -138,7 +139,7 @@ static int make_label_file(zone_backup_ctx_t *ctx)
 	              "started_time: %s\n"
 	              "finished_time: %s\n"
 	              "knot_version: %s\n"
-	              "lmdb_version: %d.%d.%d\n"
+	              LABEL_FILE_LMDB "%d.%d.%d\n"
 	              LABEL_FILE_ARCH "%s\n"
 	              LABEL_FILE_PARAMS "%s+" LABEL_FILE_BACKUPDIR "%s\n"
 	              "zone_count: %d\n",
@@ -206,6 +207,9 @@ static int get_backup_format(zone_backup_ctx_t *ctx)
 		goto done;
 	}
 
+	int b_lmdb_major = 0; // Default for backups made by releases prior to v3.4.0.
+	int b_lmdb_minor, b_lmdb_patch;
+
 	unsigned int remain = 3; // Bit-mapped "punch card" for lines to get data from.
 	while (remain > 0 && knot_getline(&line, &line_size, file) != -1) {
 		int value;
@@ -223,6 +227,15 @@ static int get_backup_format(zone_backup_ctx_t *ctx)
 				continue;
 			}
 		}
+
+		// Evaluation of LMDB version will be done after parsing the labelfile.
+		value = sscanf(line, LABEL_FILE_LMDB "%d.%d.%d\n",
+		               &b_lmdb_major, &b_lmdb_minor, &b_lmdb_patch);
+		if (value != 0 && value != 3) {
+			ctx->lmdb_compat = false; // Future, incompatible LMDB version?
+			continue;
+		}
+
 		if (sscanf(line, LABEL_FILE_ARCH "%7s\n", str) != 0 &&
 		    strcmp(str, label_file_arch) != 0) {
 			ctx->arch_match = false;
@@ -232,6 +245,12 @@ static int get_backup_format(zone_backup_ctx_t *ctx)
 			ctx->in_backup = parse_params(line + sizeof(LABEL_FILE_PARAMS) - 1);
 			remain &= ~2;
 		}
+	}
+
+	int lmdb_major, lmdb_minor, lmdb_patch;
+	(void)mdb_version(&lmdb_major, &lmdb_minor, &lmdb_patch);
+	if (b_lmdb_major != lmdb_major) {
+		ctx->lmdb_compat = false;
 	}
 
 	ret = (remain == 0) ? KNOT_EOK : KNOT_EMALF;

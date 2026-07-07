@@ -75,6 +75,7 @@ int zone_backup_init(bool restore_mode, knot_backup_params_t filters, bool force
 	ctx->backup_params = filters;
 	ctx->in_backup = 0; // Just to be sure.
 	ctx->arch_match = true;
+	ctx->lmdb_compat = true;
 	ctx->forced = forced;
 	ctx->backup_format = BACKUP_VERSION;
 	ctx->backup_global = false;
@@ -95,9 +96,15 @@ int zone_backup_init(bool restore_mode, knot_backup_params_t filters, bool force
 
 	// For restore, check that there are all required data components in the backup.
 	if (restore_mode) {
-		if (!ctx->arch_match && filters & BACKUP_PARAM_DB) {
-			free(ctx);
-			return KNOT_ECPUCOMPAT;
+		if (filters & BACKUP_PARAM_DB) {
+			if (!ctx->arch_match) {
+				free(ctx);
+				return KNOT_ECPUCOMPAT;
+			}
+			if (!ctx->lmdb_compat) {
+				free(ctx);
+				return KNOT_ELMDBCOMPAT;
+			}
 		}
 
 		// '+kaspdb' in backup provides data also for '+keysonly' restore.
