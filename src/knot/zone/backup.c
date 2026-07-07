@@ -75,6 +75,8 @@ int zone_backup_init(bool restore_mode, knot_backup_params_t filters, bool force
 	ctx->backup_params = filters;
 	ctx->in_backup = 0; // Just to be sure.
 	ctx->arch_match = true;
+	ctx->lmdb_compat = true; // Just to be sure.
+	ctx->lmdb_migrate = false; // Just to be sure.
 	ctx->forced = forced;
 	ctx->backup_format = BACKUP_VERSION;
 	ctx->backup_global = false;
@@ -95,9 +97,15 @@ int zone_backup_init(bool restore_mode, knot_backup_params_t filters, bool force
 
 	// For restore, check that there are all required data components in the backup.
 	if (restore_mode) {
-		if (!ctx->arch_match && filters & BACKUP_PARAM_DB) {
-			free(ctx);
-			return KNOT_ECPUCOMPAT;
+		if (filters & BACKUP_PARAM_DB) {
+			if (!ctx->arch_match) {
+				free(ctx);
+				return KNOT_ECPUCOMPAT;
+			}
+			if (!ctx->lmdb_compat) {
+				free(ctx);
+				return KNOT_ELMDBCOMPAT;
+			}
 		}
 
 		// '+kaspdb' in backup provides data also for '+keysonly' restore.
@@ -623,6 +631,30 @@ done:
 
 	if (ret != KNOT_EOK) {
 		ctx->failed = true;
+	}
+
+	return ret;
+}
+
+int backup_migrate_dbs(zone_backup_ctx_t *ctx)
+{
+	if (!ctx->arch_match && ctx->in_backup & BACKUP_PARAM_DB) {
+		return KNOT_ECPUCOMPAT;
+	}
+
+	int ret = KNOT_EOK;
+	for (const backup_filter_list_t *item = backup_filters;
+	     item->name != NULL; item++) {
+		if (ctx->in_backup & item->param && item->db_index >= 0 &&
+		    knot_lmdb_exists(&ctx->db[item->db_index]) == KNOT_EOK) {
+			ret = knot_lmdb_open(&ctx->db[item->db_index]);
+			if (ret != KNOT_EOK) {
+				log_error("restore, migration of backup data for filter '+%s' failed (%s)",
+				          item->name, knot_strerror(ret));
+				break;
+			knot_lmdb_close(&ctx->db[item->db_index]);
+			}
+		}
 	}
 
 	return ret;

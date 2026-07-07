@@ -31,6 +31,7 @@
 
 #define LABEL_FILE_HEAD         "label: Knot DNS Backup\n"
 #define LABEL_FILE_FORMAT       "backup_format: %d\n"
+#define LABEL_FILE_LMDB         "lmdb_version: "
 #define LABEL_FILE_ARCH         "architecture: "
 #define LABEL_FILE_PARAMS       "parameters: "
 #define LABEL_FILE_BACKUPDIR    "backupdir "
@@ -49,6 +50,7 @@ static const char *label_file_name = LABEL_FILE;
 static const char *lock_file_name =  LOCK_FILE;
 static const char *label_file_head = LABEL_FILE_HEAD;
 static const char *label_file_arch = KNOT_ARCH;
+static const char *label_file_lmdb = LABEL_FILE_LMDB;
 
 static void get_full_path(zone_backup_ctx_t *ctx, const char *filename,
                           char *full_path, size_t full_path_size)
@@ -138,14 +140,15 @@ static int make_label_file(zone_backup_ctx_t *ctx)
 	              "started_time: %s\n"
 	              "finished_time: %s\n"
 	              "knot_version: %s\n"
-	              "lmdb_version: %d.%d.%d\n"
+	              "%s%d.%d.%d\n"
 	              LABEL_FILE_ARCH "%s\n"
 	              LABEL_FILE_PARAMS "%s+" LABEL_FILE_BACKUPDIR "%s\n"
 	              "zone_count: %d\n",
 	              label_file_head,
 	              ctx->backup_format, ident, started_time, finished_time,
 	              PACKAGE_VERSION,
-	              lmdb_major, lmdb_minor, lmdb_patch, label_file_arch,
+	              label_file_lmdb, lmdb_major, lmdb_minor, lmdb_patch,
+	              label_file_arch,
 	              params_str, ctx->backup_dir,
 	              ctx->zone_count);
 
@@ -155,6 +158,14 @@ static int make_label_file(zone_backup_ctx_t *ctx)
 		ret = knot_map_errno();
 	}
 	return ret;
+}
+
+static void lmdb_compatibility(zone_backup_ctx_t *ctx, int backup_lmdb_major)
+{
+	int sys_lmdb_major, sys_lmdb_minor, sys_lmdb_patch;
+	(void)mdb_version(&sys_lmdb_major, &sys_lmdb_minor, &sys_lmdb_patch);
+	ctx->lmdb_migrate = (sys_lmdb_major == 1 && backup_lmdb_major == 0);
+	ctx->lmdb_compat = (backup_lmdb_major == sys_lmdb_major || ctx->lmdb_migrate);
 }
 
 static int get_backup_format(zone_backup_ctx_t *ctx)
@@ -174,6 +185,7 @@ static int get_backup_format(zone_backup_ctx_t *ctx)
 				ctx->in_backup = BACKUP_PARAM_ZONEFILE | BACKUP_PARAM_JOURNAL |
 				                 BACKUP_PARAM_TIMERS | BACKUP_PARAM_KASPDB |
 				                 BACKUP_PARAM_CATALOG;
+				lmdb_compatibility(ctx, 0);
 				ret = KNOT_EOK;
 			} else {
 				ret = KNOT_EMALF;
@@ -206,6 +218,9 @@ static int get_backup_format(zone_backup_ctx_t *ctx)
 		goto done;
 	}
 
+	int lmdb_major = 0; // Default for old backups without a label file (before v3.4.0.).
+	int lmdb_minor, lmdb_patch;
+
 	unsigned int remain = 3; // Bit-mapped "punch card" for lines to get data from.
 	while (remain > 0 && knot_getline(&line, &line_size, file) != -1) {
 		int value;
@@ -223,6 +238,15 @@ static int get_backup_format(zone_backup_ctx_t *ctx)
 				continue;
 			}
 		}
+
+		// Evaluation of LMDB version will be done after parsing full labelfile.
+		value = sscanf(line, LABEL_FILE_LMDB "%d.%d.%d\n",
+		               &lmdb_major, &lmdb_minor, &lmdb_patch);
+		if (value != 0 && value != 3) {
+			lmdb_major = -1; // Future, incompatible LMDB version?
+			continue;
+		}
+
 		if (sscanf(line, LABEL_FILE_ARCH "%7s\n", str) != 0 &&
 		    strcmp(str, label_file_arch) != 0) {
 			ctx->arch_match = false;
@@ -234,6 +258,7 @@ static int get_backup_format(zone_backup_ctx_t *ctx)
 		}
 	}
 
+	lmdb_compatibility(ctx, lmdb_major);
 	ret = (remain == 0) ? KNOT_EOK : KNOT_EMALF;
 	ret = ferror(file) ? knot_map_errno() : ret;
 
@@ -243,9 +268,81 @@ done:
 	return ret;
 }
 
-int backupdir_init(zone_backup_ctx_t *ctx)
+static int migrate_label_file(zone_backup_ctx_t *ctx)
 {
 	int ret;
+	PREPARE_PATH(label_path, label_file_name);
+
+	struct stat sb;
+	if (stat(label_path, &sb) != 0) {
+		ret = knot_map_errno();
+		if (ret == KNOT_ENOENT) {
+			return KNOT_EOK;
+		} else if (ret != KNOT_EOK) {
+			return ret;
+		}
+	}
+
+	// getline() from an empty file results in EAGAIN, therefore avoid doing so.
+	if (!S_ISREG(sb.st_mode) || sb.st_size == 0) {
+		return KNOT_EMALF;
+	}
+
+	FILE *src = fopen(label_path, "r");
+	if (src == NULL) {
+		return knot_map_errno();
+	}
+
+	char *tmp_path = NULL;
+	FILE *tmp = NULL;
+	ret = open_tmp_file(label_path, &tmp_path, &tmp, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
+
+	char *line = NULL;
+	size_t line_size = 0;
+	while (ret == KNOT_EOK && knot_getline(&line, &line_size, src) != -1) {
+		if (!strncmp(line, label_file_lmdb, sizeof(LABEL_FILE_LMDB))) {
+			int lmdb_major, lmdb_minor, lmdb_patch;
+			(void)mdb_version(&lmdb_major, &lmdb_minor, &lmdb_patch);
+
+			char migration_time[64];
+			struct tm tm;
+			time_t now = time(NULL);
+			localtime_r(&now, &tm);
+			strftime(migration_time, sizeof(migration_time), LABEL_FILE_TIME_FORMAT, &tm);
+
+			ret = fprintf(tmp,
+			              "original_%s"
+			              "%s%d.%d.%d\n"
+			              "backup_migrated_time: %s\n",
+			              line, label_file_lmdb, lmdb_major, lmdb_minor, lmdb_patch,
+			              migration_time);
+		} else {
+			ret = fprintf(tmp, "%s", line);
+		}
+		ret = (ret < 0) ? knot_map_errno() : KNOT_EOK;
+	}
+	ret = (ret == KNOT_EOK && ferror(src)) ? knot_map_errno() : ret;
+
+	if (ret == KNOT_EOK && rename(tmp_path, label_path) != 0) {
+		ret = knot_map_errno();
+	}
+
+	free(line);
+	free(tmp_path);
+
+	if (tmp != NULL && fclose(tmp) == -1 && ret == KNOT_EOK) {
+		ret = knot_map_errno();
+	}
+	if (src != NULL) {
+		(void)fclose(src);
+	}
+
+	return ret;
+}
+
+int backupdir_init(zone_backup_ctx_t *ctx)
+{
+	int ret = KNOT_EOK;
 	struct stat sb;
 
 	// Make sure the source/target backup directory exists.
@@ -295,14 +392,17 @@ int backupdir_init(zone_backup_ctx_t *ctx)
 		}
 	}
 
-	// Make (or check for existence of) a lock file.
+	// In restore, check for existence of a lock file.
 	get_full_path(ctx, lock_file_name, full_path, full_path_size);
 	if (ctx->restore_mode) {
 		// Just check.
 		if (stat(full_path, &sb) == 0) {
 			return KNOT_EBUSY;
 		}
-	} else {
+	}
+
+	// In backup or restore with migration, lock the backup.
+	if (!ctx->restore_mode || ctx->lmdb_migrate) {
 		// Create it (which also checks for its existence).
 		int lock_file = open(full_path, O_CREAT | O_EXCL,
 		                     S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
@@ -313,7 +413,20 @@ int backupdir_init(zone_backup_ctx_t *ctx)
 		close(lock_file);
 	}
 
-	return KNOT_EOK;
+	// In restore, migrate the backup to LMDB 1 if necessary and release the lock.
+	if (ctx->lmdb_migrate) {
+		log_notice("restore, migrating backup in %s to system LMDB version",
+		           ctx->backup_dir);
+		ret = backup_migrate_dbs(ctx);
+		if (ret == KNOT_EOK) {
+			ret = migrate_label_file(ctx);
+		}
+		if (ret == KNOT_EOK) {
+			unlink(full_path);
+		}
+	}
+
+	return ret;
 }
 
 int backupdir_deinit(zone_backup_ctx_t *ctx)
