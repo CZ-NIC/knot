@@ -124,8 +124,8 @@ src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_unreachable.h
 src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_vec.c
 src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_vec.h
 src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_version.c
-src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_window_filter.c
-src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_window_filter.h
+src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_wf.c
+src/contrib/libngtcp2/ngtcp2/lib/ngtcp2_wf.h
 src/contrib/libngtcp2/ngtcp2/ngtcp2.h
 src/contrib/libngtcp2/ngtcp2/ngtcp2_crypto.h
 src/contrib/libngtcp2/ngtcp2/ngtcp2_crypto_gnutls.h
