@@ -129,15 +129,10 @@ void mp_shrink(struct mempool *pool, size_t min_total_size);
  **/
 void *mp_alloc(struct mempool *pool, size_t size);
 
-/**
- * The same as \ref mp_alloc(), but the result may be unaligned.
- **/
-void *mp_alloc_noalign(struct mempool *pool, size_t size);
-
 /*
  * Some parts of mempools were removed in Knot DNS,
  * see upstream if you need:
-     * variants of methods returning zeroed memory,
+     * variants of methods returning zeroed memory and/or unaligned memory,
      * restoring previous state of allocations,
      * concatenating and duplicating memory/strings on mempools,
      * generic allocator interface spanning both malloc and mempools,
