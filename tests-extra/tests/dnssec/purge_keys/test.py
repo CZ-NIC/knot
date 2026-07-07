@@ -111,6 +111,14 @@ def check_trash_with_keystore(present, absent, keystore=None):
 def check_trash(present, absent):
     check_trash_with_keystore(present, absent, keystore=kstore_hsm)
 
+def enable_zone_dnssec(server, zone, custom):
+    server.dnssec(zone).enable = True
+    server.gen_confile()
+    # Instead of slower server.reload(), update the current config over ctl.
+    server.ctl("conf-begin", custom_parm=custom)
+    server.ctl("conf-set zone[%s].dnssec-signing on" % zone.name, custom_parm=custom)
+    server.ctl("conf-commit", custom_parm=custom)
+
 t = Test()
 
 server = t.server("knot")
@@ -160,7 +168,8 @@ server.dnssec(zones[6]).propagation_delay = 1
 server.dnssec(zones[6]).keystore = [ kstore_hsm ]
 server.dnssec(zones[6]).trash_delay = 86400
 
-server.dnssec(zones[7]).enable = True
+server.dnssec(zones[7]).enable = False # It will be turned it on later. SoftHSM doesn't
+                                       # like concurrent key generation.
 server.dnssec(zones[7]).propagation_delay = 1
 server.dnssec(zones[7]).keystore = [ kstore_hsm ]
 server.dnssec(zones[7]).trash_delay = 0
@@ -200,6 +209,13 @@ s2keys = keys2_zone0 + keys2_zone1 + keys2_zone2
 
 # Start the actual test. (server2 must stay stopped, SoftHSM doesn't like concurrent use.)
 server.start()
+serial = server.zones_wait(zones)
+
+# Turn DNSSEC on for the second HSM-using zone, and let it generate its keys.
+# (It's a workaround, SoftHSM can't generate keys concurrently.)
+# Instead of slower server.reload(), update the current config over ctl.
+confsock = server.ctl_sock_rnd()
+enable_zone_dnssec(server, zones[7], confsock)
 
 serial = server.zones_wait(zones)
 k0 = zone_keys(server, zones[0])
@@ -398,7 +414,6 @@ check_keys(kstore_def2, 0, None, None, 6 + 4, keys2_zone0 + keys2_zone1, None, 2
 check_keys_in_keystore(kstore_pem2, 4, k2 + k4, None)
 
 # Deconfigure zones[2], zones[3], and zones[4] -- create orphans.
-confsock = server.ctl_sock_rnd()
 server.ctl("conf-begin", custom_parm=confsock)
 server.ctl("conf-unset zone[%s]" % zones[2].name, custom_parm=confsock)
 server.ctl("conf-unset zone[%s]" % zones[3].name, custom_parm=confsock)
@@ -451,7 +466,15 @@ check_keys(kstore_def, 4, k0 + k1, None, 5 + 4, set(k2 + k3 + k4 + k5) - set(zsk
 
 # Restore config, zones, and data (except keys in HSM).
 server.ctl("-f zone-purge +keys %s %s" % (zones[6].name, zones[7].name), wait=True)
+
+# Reload server with two zones using SoftHSM keys safely.
+server.dnssec(zones[7]).enable = False
+server.gen_confile()
 server.reload()
+server.zones_wait(zones)
+# Keys for zones[6] are ready in SoftHSM now.
+enable_zone_dnssec(server, zones[7], confsock)
+
 server.zones_wait([zones[0], zones[1], zones[2], zones[3], zones[4], zones[5]])
 # Six additional keys are generated, three for zones[2] together with zones[3],
 # one for each of zones[4], zones[6], and zones[7].
@@ -459,8 +482,12 @@ server.ctl("zone-restore +backupdir %s %s %s %s %s" % (bckdir, zones[2].name, zo
                                                                zones[4].name, zones[5].name), wait=True)
 # As a result of restore, three recently generated keys from zones[2] and zones[3] have been
 # moved to trash, new key from zones[4] has been deleted.
-server.ctl("zone-restore +zonefile +nokaspdb +backupdir %s %s %s" %
-            (bckdir, zones[6].name, zones[7].name), wait=True)
+# SoftHSM2 doesn't like parallel key generation, therefore do restore in two steps.
+server.ctl("zone-restore +zonefile +nokaspdb +backupdir %s %s" %
+           (bckdir, zones[6].name), wait=True)
+server.zone_wait(zones[6])
+server.ctl("zone-restore +zonefile +nokaspdb +backupdir %s %s" %
+           (bckdir, zones[7].name), wait=True)
 server.zones_wait(zones)
 k6old = k6
 k7old = k7
