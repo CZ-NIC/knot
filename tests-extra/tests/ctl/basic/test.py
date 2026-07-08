@@ -279,6 +279,35 @@ ctl.send_block(cmd="zone-read", zone=ZONE_NAME)
 resp = ctl.receive_block()
 isset("letter." + ZONE_NAME not in resp[ZONE_NAME], "lower-cased and removed node lETter")
 
+# Remove with correct TTL
+ctl.send_block(cmd="zone-begin")
+resp = ctl.receive_block()
+
+ctl.send_block(cmd="zone-set", zone=ZONE_NAME, owner="remove_ttl", ttl="3600", rtype="TXT", data="text")
+resp = ctl.receive_block()
+
+ctl.send_block(cmd="zone-commit")
+resp = ctl.receive_block()
+
+ctl.send_block(cmd="zone-begin")
+resp = ctl.receive_block()
+
+ctl.send_block(cmd="zone-unset", zone=ZONE_NAME, owner="remove_ttl", rtype="TXT", data="text")
+resp = ctl.receive_block()
+
+ctl.send_block(cmd="zone-set", zone=ZONE_NAME, owner="remove_ttl", ttl="0", rtype="TXT", data="text")
+resp = ctl.receive_block()
+
+ctl.send_block(cmd="zone-commit")
+resp = ctl.receive_block()
+
+ctl.send_block(cmd="zone-read", zone=ZONE_NAME, owner="remove_ttl", rtype="TXT")
+resp = ctl.receive_block()
+record = resp[ZONE_NAME]["remove_ttl." + ZONE_NAME]
+isset(record["TXT"], "updated TXT record")
+isset(record["TXT"]["data"][0] == "\"text\"", "new TXT value")
+isset(record["TXT"]["ttl"][0] == "0", "0 TTL of new TXT value")
+
 # Purge the zone data.
 ctl.send_block(cmd="zone-purge", flags="B")
 resp = ctl.receive_block()
