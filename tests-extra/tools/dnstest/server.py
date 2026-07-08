@@ -1049,7 +1049,13 @@ class Bind(Server):
         self.ctl("sync%s" % zone_name, wait=wait)
 
     def bind_version(self):
-        return tuple(map(int, run([self.daemon_bin, '-v'], stdout=PIPE, stderr=PIPE, text=True).stdout.replace('BIND ', '').split('-')[0].split('.')))
+        version = (
+            run([self.daemon_bin, '-v'], stdout=PIPE, stderr=PIPE, text=True)
+            .stdout.removeprefix('BIND ')
+            .split()[0]          # "9.20.24"
+            .split('-')[0]       # handles "-RedHat" suffixes
+        )
+        return tuple(map(int, version.split('.')))
 
     def check_option(self, option):
         proc = Popen([params.bind_checkconf_bin, "/dev/fd/0"],
