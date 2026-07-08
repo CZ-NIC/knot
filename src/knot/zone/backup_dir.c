@@ -158,6 +158,13 @@ static int make_label_file(zone_backup_ctx_t *ctx)
 	return ret;
 }
 
+static bool lmdb_compatible(int lmdb_major)
+{
+	int sys_lmdb_major, sys_lmdb_minor, sys_lmdb_patch;
+	(void)mdb_version(&sys_lmdb_major, &sys_lmdb_minor, &sys_lmdb_patch);
+	return (lmdb_major == sys_lmdb_major);
+}
+
 static int get_backup_format(zone_backup_ctx_t *ctx)
 {
 	PREPARE_PATH(label_path, label_file_name);
@@ -175,6 +182,7 @@ static int get_backup_format(zone_backup_ctx_t *ctx)
 				ctx->in_backup = BACKUP_PARAM_ZONEFILE | BACKUP_PARAM_JOURNAL |
 				                 BACKUP_PARAM_TIMERS | BACKUP_PARAM_KASPDB |
 				                 BACKUP_PARAM_CATALOG;
+				ctx->lmdb_compat = lmdb_compatible(0);
 				ret = KNOT_EOK;
 			} else {
 				ret = KNOT_EMALF;
@@ -207,8 +215,8 @@ static int get_backup_format(zone_backup_ctx_t *ctx)
 		goto done;
 	}
 
-	int b_lmdb_major = 0; // Default for backups made by releases prior to v3.4.0.
-	int b_lmdb_minor, b_lmdb_patch;
+	int lmdb_major = 0; // Default for backups made by releases prior to v3.4.0.
+	int lmdb_minor, lmdb_patch;
 
 	unsigned int remain = 3; // Bit-mapped "punch card" for lines to get data from.
 	while (remain > 0 && knot_getline(&line, &line_size, file) != -1) {
@@ -230,7 +238,7 @@ static int get_backup_format(zone_backup_ctx_t *ctx)
 
 		// Evaluation of LMDB version will be done after parsing the labelfile.
 		value = sscanf(line, LABEL_FILE_LMDB "%d.%d.%d\n",
-		               &b_lmdb_major, &b_lmdb_minor, &b_lmdb_patch);
+		               &lmdb_major, &lmdb_minor, &lmdb_patch);
 		if (value != 0 && value != 3) {
 			ctx->lmdb_compat = false; // Future, incompatible LMDB version?
 			continue;
@@ -247,12 +255,7 @@ static int get_backup_format(zone_backup_ctx_t *ctx)
 		}
 	}
 
-	int lmdb_major, lmdb_minor, lmdb_patch;
-	(void)mdb_version(&lmdb_major, &lmdb_minor, &lmdb_patch);
-	if (b_lmdb_major != lmdb_major) {
-		ctx->lmdb_compat = false;
-	}
-
+	ctx->lmdb_compat = lmdb_compatible(lmdb_major);
 	ret = (remain == 0) ? KNOT_EOK : KNOT_EMALF;
 
 done:
