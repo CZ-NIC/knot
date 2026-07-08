@@ -5,6 +5,8 @@
 
 #pragma once
 
+#include <stddef.h>
+
 /*
  * see sanitizer/asan_interface.h in compiler-rt (LLVM)
  */

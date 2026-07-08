@@ -160,6 +160,23 @@ link_mode=$(test "$enable_shared" = "yes" && echo "shared" || echo "static")
 # Dependencies needed for libraries
 ###################################
 
+# Valgrind Memcheck
+AC_ARG_WITH([memcheck],
+  AS_HELP_STRING([--with-memcheck=auto|yes|no|DIR],
+                 [Build with Valgrind Memcheck. If valgrind/memcheck.h is not in the path,
+                  specify its include directory using this parameter [default=no]]),
+  [], [with_memcheck=no]
+)
+
+AS_CASE([$with_memcheck],
+  [no], [],
+  [auto], [AC_CHECK_HEADER([valgrind/memcheck.h], [with_memcheck=yes], [with_memcheck=no])],
+  [yes|*], [AS_IF([test "$with_memcheck" != "yes"], [AC_SUBST(CPPFLAGS, "$CPPFLAGS -I$with_memcheck")])
+            AC_CHECK_HEADER([valgrind/memcheck.h], [], [AC_MSG_ERROR([valgrind/memcheck.h not available])])
+            AC_DEFINE([ENABLE_MEMCHECK], [1], [Valgrind Memcheck enabled.])
+            with_memcheck=yes]
+)
+
 # Fast (big) zone parser
 AC_ARG_ENABLE([fastparser],
   AS_HELP_STRING([--disable-fastparser],
@@ -916,6 +933,7 @@ result_msg_base="
     PKCS #11 support:       ${enable_pkcs11}
 
     Code coverage:          ${enable_code_coverage}
+    Valgrind Memcheck:      ${with_memcheck}
     Sanitizer:              ${with_sanitizer}
     LibFuzzer:              ${with_fuzzer}
     OSS-Fuzz:               ${with_oss_fuzz}"

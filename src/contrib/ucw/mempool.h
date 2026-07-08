@@ -1,12 +1,12 @@
 /*
- *	UCW Library -- Memory Pools
+ *  UCW Library -- Memory Pools (One-Time Allocation)
  *
- *	(c) 1997--2005 Martin Mares <mj@ucw.cz>
- *	(c) 2007 Pavel Charvat <pchar@ucw.cz>
- *	(c) 2015, 2017 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
+ *  (c) 1997--2015 Martin Mares <mj@ucw.cz>
+ *  (c) 2007 Pavel Charvat <pchar@ucw.cz>
+ *  (c) 2015, 2017, 2026 CZ.NIC, z.s.p.o. <knot-dns@labs.nic.cz>
  *
- *	This software may be freely distributed and used according to the terms
- *	of the GNU Lesser General Public License.
+ *  SPDX-License-Identifier: LGPL-2.1-or-later
+ *  Source: https://www.ucw.cz/libucw/
  */
 
 #pragma once
@@ -27,7 +27,7 @@
  * You should use this one as an opaque handle only, the insides are internal.
  **/
 struct mempool_state {
-	unsigned free[2];
+	size_t free[2];
 	void *last[2];
 };
 
@@ -38,13 +38,15 @@ struct mempool_state {
 struct mempool {
 	struct mempool_state state;
 	void *unused, *last_big;
-	unsigned chunk_size, threshold, idx;
+	size_t chunk_size, threshold;
+	unsigned idx;
 };
 
-struct mempool_stats {			/** Mempool statistics. See mp_stats(). **/
-	uint64_t total_size;		/** Real allocated size in bytes. */
-	unsigned chain_count[3];	/** Number of allocated chunks in small/big/unused chains. */
-	unsigned chain_size[3];		/** Size of allocated chunks in small/big/unused chains. */
+struct mempool_stats {          /** Mempool statistics. See mp_stats(). **/
+	size_t total_size;          /** Real allocated size in bytes. */
+	size_t used_size;           /** Estimated size allocated from mempool to application. */
+	unsigned chain_count[3];    /** Number of allocated chunks in small/big/unused chains. */
+	size_t chain_size[3];       /** Size of allocated chunks in small/big/unused chains. */
 };
 
 /***
@@ -55,13 +57,13 @@ struct mempool_stats {			/** Mempool statistics. See mp_stats(). **/
 
 /**
  * Initialize a given mempool structure.
- * \p chunk_size must be in the interval `[1, UINT_MAX / 2]`.
+ * \p chunk_size must be in the interval `[1, SIZE_MAX / 2]`.
  * It will allocate memory by this large chunks and take
  * memory to satisfy requests from them.
  *
  * Memory pools can be treated as <<trans:respools,resources>>, see <<trans:res_mempool()>>.
  **/
-void mp_init(struct mempool *pool, unsigned chunk_size);
+void mp_init(struct mempool *pool, size_t chunk_size);
 
 /**
  * Allocate and initialize a new memory pool.
@@ -71,7 +73,7 @@ void mp_init(struct mempool *pool, unsigned chunk_size);
  *
  * Memory pools can be treated as <<trans:respools,resources>>, see <<trans:res_mempool()>>.
  **/
-struct mempool *mp_new(unsigned chunk_size);
+struct mempool *mp_new(size_t chunk_size);
 
 /**
  * Cleanup mempool initialized by mp_init or mp_new.
@@ -91,9 +93,23 @@ void mp_flush(struct mempool *pool);
 /**
  * Compute some statistics for debug purposes.
  * See the definition of the <<struct_mempool_stats,mempool_stats structure>>.
+ * This function scans the chunk list, so it can be slow.
  **/
 void mp_stats(struct mempool *pool, struct mempool_stats *stats);
-uint64_t mp_total_size(struct mempool *pool);	/** How many bytes were allocated by the pool. **/
+
+/**
+ * Return how many bytes were allocated by the pool, including unused parts
+ * of chunks. This function scans the chunk list, so it can be slow
+ * (upstream contains constant-time version).
+ **/
+size_t mp_total_size(struct mempool *pool);
+
+/**
+ * Release unused chunks of memory reserved for further allocation
+ * requests, but stop if \ref mp_total_size() would drop below \p min_total_size.
+ * It calls \ref mp_total_size(), so all chunks are scanned (in upstream version only released ones).
+ **/
+void mp_shrink(struct mempool *pool, size_t min_total_size);
 
 /***
  * [[alloc]]
@@ -111,14 +127,16 @@ uint64_t mp_total_size(struct mempool *pool);	/** How many bytes were allocated 
  * `CPU_STRUCT_ALIGN` bytes and this condition remains true also
  * after future reallocations.
  **/
-void *mp_alloc(struct mempool *pool, unsigned size);
+void *mp_alloc(struct mempool *pool, size_t size);
 
-/**
- * The same as \ref mp_alloc(), but the result may be unaligned.
- **/
-void *mp_alloc_noalign(struct mempool *pool, unsigned size);
-
-/**
- * The same as \ref mp_alloc(), but fills the newly allocated memory with zeroes.
- **/
-void *mp_alloc_zero(struct mempool *pool, unsigned size);
+/*
+ * Some parts of mempools were removed in Knot DNS,
+ * see upstream if you need:
+     * variants of methods returning zeroed memory and/or unaligned memory,
+     * restoring previous state of allocations,
+     * concatenating and duplicating memory/strings on mempools,
+     * generic allocator interface spanning both malloc and mempools,
+     * growing buffers,
+     * printf-like functions using growing buffers as output,
+     * constant-time version of mp_total_size and mp_shrink scanning only deallocated chunks.
+*/
