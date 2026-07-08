@@ -592,6 +592,7 @@ int knot_quic_client(knot_quic_table_t *table, struct sockaddr_in6 *dest,
 		return ret;
 	}
 
+	quic_conn_mark_used(conn, table);
 	*out_conn = conn;
 	return KNOT_EOK;
 }
