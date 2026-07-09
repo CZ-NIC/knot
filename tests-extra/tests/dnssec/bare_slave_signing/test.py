@@ -15,6 +15,7 @@ t.link(zone, master, slave)
 
 slave.conf_zone(zone).zonefile_sync = "-1"
 slave.dnssec(zone).enable = True
+slave.conf_zone(zone).dnssec_metadata_db = "timer"
 
 t.start()
 
@@ -30,6 +31,9 @@ try:
     shutil.rmtree(os.path.join(slave.dir, "journal"))
 except:
     pass
+
+slave.conf_zone(zone).dnssec_metadata_db = "kasp"
+slave.gen_confile()
 slave.start()
 
 slave.zone_wait(zone)

@@ -307,7 +307,7 @@ static void axfr_slave_sign_serial(zone_contents_t *new_contents, zone_t *zone,
 		// Retransfer or AXFR-fallback - increment current serial.
 		uint32_t cont_serial = zone_contents_serial(zone->contents);
 		new_serial = serial_next(cont_serial, conf, zone->name, policy, 1);
-	} else if (zone_get_lastsigned_serial(zone, &lastsigned_serial) == KNOT_EOK) {
+	} else if (zone_get_lastsigned_serial(conf, zone, &lastsigned_serial) == KNOT_EOK) {
 		// Bootstrap - increment stored serial.
 		new_serial = serial_next(lastsigned_serial, conf, zone->name, policy, 1);
 	} else if (policy != SERIAL_POLICY_INCREMENT) {
@@ -571,7 +571,7 @@ static int ixfr_slave_sign_serial(list_t *changesets, zone_t *zone,
 {
 	uint32_t local_serial = zone_contents_serial(zone->contents), lastsigned;
 
-	if (zone_get_lastsigned_serial(zone, &lastsigned) != KNOT_EOK || lastsigned != local_serial) {
+	if (zone_get_lastsigned_serial(conf, zone, &lastsigned) != KNOT_EOK || lastsigned != local_serial) {
 		// this is kind of assert
 		return KNOT_ERROR;
 	}

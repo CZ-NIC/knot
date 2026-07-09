@@ -119,6 +119,12 @@ static const knot_lookup_t acl_protocol[] = {
 	{ 0, NULL }
 };
 
+static const knot_lookup_t dnssec_meta_db[] = {
+	{ DNSSEC_META_DB_KASP,  "kasp" },
+	{ DNSSEC_META_DB_TIMER, "timer" },
+	{ 0, NULL }
+};
+
 static const knot_lookup_t serial_policies[] = {
 	{ SERIAL_POLICY_INCREMENT,  "increment" },
 	{ SERIAL_POLICY_UNIXTIME,   "unixtime" },
@@ -521,6 +527,7 @@ static const yp_item_t desc_external[] = {
 	{ C_DNSSEC_SIGNING,      YP_TBOOL, YP_VNONE, FLAGS }, \
 	{ C_DNSSEC_VALIDATION,   YP_TBOOL, YP_VNONE, FLAGS }, \
 	{ C_DNSSEC_POLICY,       YP_TREF,  YP_VREF = { C_POLICY }, FLAGS, { check_ref_dflt } }, \
+	{ C_DNSSEC_META_DB,      YP_TOPT,  YP_VOPT = { dnssec_meta_db, DNSSEC_META_DB_KASP } }, \
 	{ C_DS_PUSH,             YP_TREF,  YP_VREF = { C_RMT, C_RMTS }, YP_FMULTI | CONF_IO_FREF_EMPTY | FLAGS, \
 	                                   { check_ref } }, \
 	{ C_REVERSE_GEN,         YP_TDNAME,YP_VNONE, CONF_IO_FREV | YP_FMULTI | FLAGS }, \

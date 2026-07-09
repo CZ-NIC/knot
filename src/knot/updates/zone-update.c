@@ -1249,7 +1249,11 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 	}
 
 	if (dnssec) {
-		zone_set_lastsigned_serial(conf, update->zone, zone_contents_serial(update->new_cont));
+		ret = zone_set_lastsigned_serial(conf, update->zone, zone_contents_serial(update->new_cont));
+		if (ret != KNOT_EOK) {
+			discard_adds_tree(update);
+			return ret;
+		}
 
 		if ((update->flags & UPDATE_SIGNED_FULL)) {
 			zone_set_flag(update->zone, ZONE_LAST_SIGN_OK);

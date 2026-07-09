@@ -1859,6 +1859,8 @@ class Knot(Server):
 
             s.item_str("dnssec-signing", "on" if self.dnssec(z).enable else "off")
             s.item_str("dnssec-policy", self.dnssec(z).shared_policy_with or z.name)
+            if "dnssec_metadata_db" not in self.conf["zone"][z.name]:
+                s.item("dnssec-metadata-db", random.choice(["kasp", "timer"]))
 
             if len(z.modules) > 0:
                 modules = ""

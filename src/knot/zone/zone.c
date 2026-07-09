@@ -1025,27 +1025,35 @@ int zone_get_master_serial(zone_t *zone, uint32_t *serial)
 	return kasp_db_load_serial(zone_kaspdb(zone), zone->name, KASPDB_SERIAL_MASTER, serial);
 }
 
-void zone_set_lastsigned_serial(conf_t *conf, zone_t *zone, uint32_t serial)
+int zone_set_lastsigned_serial(conf_t *conf, zone_t *zone, uint32_t serial)
 {
+	conf_val_t val = conf_zone_get(conf, C_DNSSEC_META_DB, zone->name);
+	if (conf_opt(&val) == DNSSEC_META_DB_KASP) {
+		zone->timers->flags &= ~LAST_SIGNED_SERIAL_VALID;
+		return kasp_db_store_serial(zone_kaspdb(zone), zone->name, KASPDB_SERIAL_LASTSIGNED, serial);
+	}
+
 	bool extra_txn = (zone->control_update != NULL && zone->timers == zone->timers_static && zone_timers_begin(zone) == KNOT_EOK); // zone_update_commit() is not within a zone event in case of control_update
 	zone->timers->last_signed_serial = serial;
 	zone->timers->flags |= LAST_SIGNED_SERIAL_FOUND | LAST_SIGNED_SERIAL_VALID | TIMERS_MODIFIED;
 	if (extra_txn) {
 		zone_timers_commit(conf, zone);
 	}
+	return KNOT_EOK;
 }
 
-int zone_get_lastsigned_serial(zone_t *zone, uint32_t *serial)
+int zone_get_lastsigned_serial(conf_t *conf, zone_t *zone, uint32_t *serial)
 {
-	if (!(zone->timers->flags & LAST_SIGNED_SERIAL_FOUND)) {
-		// backwards compatibility: it used to be stored in KASP DB, moved to timers for performance
-		return kasp_db_load_serial(zone_kaspdb(zone), zone->name, KASPDB_SERIAL_LASTSIGNED, serial);
+	int ret = KNOT_ENOENT;
+	conf_val_t val = conf_zone_get(conf, C_DNSSEC_META_DB, zone->name);
+	if (conf_opt(&val) == DNSSEC_META_DB_KASP) {
+		ret = kasp_db_load_serial(zone_kaspdb(zone), zone->name, KASPDB_SERIAL_LASTSIGNED, serial);
 	}
-	if (!(zone->timers->flags & LAST_SIGNED_SERIAL_VALID)) {
-		return KNOT_ENOENT;
+	if (ret == KNOT_ENOENT && (zone->timers->flags & LAST_SIGNED_SERIAL_VALID)) {
+		*serial = zone->timers->last_signed_serial;
+		ret = KNOT_EOK;
 	}
-	*serial = zone->timers->last_signed_serial;
-	return KNOT_EOK;
+	return ret;
 }
 
 int slave_zone_serial(zone_t *zone, conf_t *conf, uint32_t *serial)
