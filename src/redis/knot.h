@@ -41,9 +41,9 @@
 #define RDB_EVENT_ARG_INSTANCE "i"
 #define RDB_EVENT_ARG_SERIAL   "s"
 
-#define RDB_EVENT_ARG_ID       "i"
+#define RDB_EVENT_ARG_ID       "I"
 #define RDB_EVENT_ARG_TYPE     "t"
-#define RDB_EVENT_ARG_SIGNAL   "s"
+#define RDB_EVENT_ARG_SIGNAL   "S"
 
 typedef struct {
 	uint8_t instance;

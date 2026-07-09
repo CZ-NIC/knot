@@ -846,6 +846,10 @@ static void rdb_process_event(redisReply *reply, knot_zonedb_t *zone_db,
 	uint32_t serial = 0;
 	const knot_dname_t *origin = NULL;
 
+	const char *id = NULL;
+	uint8_t mode_type = 0; // enum operation_mode mode_type = MODE_SUBNET;
+	uint8_t signal = 0; // rdb_geoip_sig_t signal = RELOAD;
+
 	for (int idx = 0; idx < data->elements; ++idx) {
 		redisReply *key = data->element[idx++];
 		redisReply *val = data->element[idx];
@@ -866,23 +870,36 @@ static void rdb_process_event(redisReply *reply, knot_zonedb_t *zone_db,
 			if (str_to_u32(val->str, &serial) != KNOT_EOK) {
 				goto failed;
 			}
+		} else if (strcmp(key->str, RDB_EVENT_ARG_ID) == 0) {
+			id = val->str;
+		} else if (strcmp(key->str, RDB_EVENT_ARG_TYPE) == 0) {
+			if (str_to_u8(val->str, &mode_type) != KNOT_EOK) {
+				goto failed;
+			}
+		} else if (strcmp(key->str, RDB_EVENT_ARG_SIGNAL) == 0) {
+			if (str_to_u8(val->str, &signal) != KNOT_EOK) {
+				goto failed;
+			}
 		}
 	}
 
-	if (type == 0 || origin == NULL || instance == 0) {
-		goto failed;
-	}
+	zone_t *zone = NULL;
+	if (type != RDB_EVENT_MOD_GEOIP) {
+		// TODO test different event types
+		if (type == 0 || origin == NULL || instance == 0) {
+			goto failed;
+		}
 
-	uint8_t db_instance = 0;
-	bool db_enabled = conf_zone_rdb_enabled(conf(), origin, true, &db_instance);
-	if (!db_enabled || db_instance != instance) {
-		return;
+		uint8_t db_instance = 0;
+		bool db_enabled = conf_zone_rdb_enabled(conf(), origin, true, &db_instance);
+		if (!db_enabled || db_instance != instance) {
+			return;
+		}
+		zone_t *zone = knot_zonedb_find(zone_db, origin);
+		if (zone == NULL) {
+			return;
+		}
 	}
-	zone_t *zone = knot_zonedb_find(zone_db, origin);
-	if (zone == NULL) {
-		return;
-	}
-
 	switch (type) {
 	case RDB_EVENT_ZONE:
 		zone_set_flag(zone, ZONE_RDB_RELOAD);
@@ -891,6 +908,10 @@ static void rdb_process_event(redisReply *reply, knot_zonedb_t *zone_db,
 		log_zone_debug(zone->name, "rdb, event %s %s, serial %u",
 		               since, (type == RDB_EVENT_ZONE ? "zone" : "update"), serial);
 		zone_schedule_update(conf(), zone, ZONE_EVENT_LOAD);
+		break;
+	case RDB_EVENT_MOD_GEOIP:
+		log_debug("rdb, event geoip %s id %s, mode %u, dig %u",
+		               since, id, mode_type, signal);
 		break;
 	default:
 		break;
