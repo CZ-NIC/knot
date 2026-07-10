@@ -829,9 +829,101 @@ static int configure_sockets(conf_t *conf, server_t *s)
 
 #define RDB_TIMESTAMP_SIZE 42 // 2x uint64_t as string (2x20) + dash separator + zero byte.
 
+static int rdb_process_common_ev(redisReply *data, uint8_t type,
+                                 knot_zonedb_t *zone_db, char *since)
+{
+	const knot_dname_t *origin = NULL;
+	uint32_t serial = 0;
+	uint8_t instance = 0;
+	
+	for (int idx = 0; idx < data->elements; ++idx) {
+		redisReply *key = data->element[idx++];
+		redisReply *val = data->element[idx];
+		if (key->type != REDIS_REPLY_STRING) {
+			return KNOT_EMALF;
+		}
+
+		if (strcmp(key->str, RDB_EVENT_ARG_EVENT) == 0) {
+			continue;
+		} else if (strcmp(key->str, RDB_EVENT_ARG_ORIGIN) == 0) {
+			origin = (const knot_dname_t *)val->str;
+		} else if (strcmp(key->str, RDB_EVENT_ARG_INSTANCE) == 0) {
+			if (str_to_u8(val->str, &instance) != KNOT_EOK) {
+				return KNOT_EMALF;
+			}
+		} else if (strcmp(key->str, RDB_EVENT_ARG_SERIAL) == 0) {
+			if (str_to_u32(val->str, &serial) != KNOT_EOK) {
+				return KNOT_EMALF;
+			}
+		} else {
+			return KNOT_ENOTSUP;
+		}
+	}
+
+	if (origin == NULL || instance == 0) {
+		return KNOT_EMALF;
+	}
+	uint8_t db_instance = 0;
+	bool db_enabled = conf_zone_rdb_enabled(conf(), origin, true, &db_instance);
+	if (!db_enabled || db_instance != instance) {
+		return KNOT_EEXIST;
+	}
+	zone_t *zone = knot_zonedb_find(zone_db, origin);
+	if (zone == NULL) {
+		return KNOT_EEXIST;
+	}
+
+	switch (type) {
+	case RDB_EVENT_ZONE:
+		zone_set_flag(zone, ZONE_RDB_RELOAD);
+		// FALLTHROUGH
+	case RDB_EVENT_UPD:
+		log_zone_debug(zone->name, "rdb, event %s %s, serial %u",
+		               since, (type == RDB_EVENT_ZONE ? "zone" : "update"), serial);
+		zone_schedule_update(conf(), zone, ZONE_EVENT_LOAD);
+		break;
+	}
+	return KNOT_EOK;
+}
+
+static int rdb_process_geoip_ev(redisReply *data, char *since)
+{
+	const char *id = NULL;
+	uint8_t mode_type = 0; // enum operation_mode mode_type = MODE_SUBNET;
+	uint8_t signal = 0; // rdb_geoip_sig_t signal = RELOAD;
+	
+	for (int idx = 0; idx < data->elements; ++idx) {
+		redisReply *key = data->element[idx++];
+		redisReply *val = data->element[idx];
+		if (key->type != REDIS_REPLY_STRING) {
+			return KNOT_EMALF;
+		}
+
+		if (strcmp(key->str, RDB_EVENT_ARG_EVENT) == 0) {
+			continue;
+		} else if (strcmp(key->str, RDB_EVENT_ARG_ID) == 0) {
+			id = val->str;
+		} else if (strcmp(key->str, RDB_EVENT_ARG_TYPE) == 0) {
+			if (str_to_u8(val->str, &mode_type) != KNOT_EOK) {
+				return KNOT_EMALF;
+			}
+		} else if (strcmp(key->str, RDB_EVENT_ARG_SIGNAL) == 0) {
+			if (str_to_u8(val->str, &signal) != KNOT_EOK) {
+				return KNOT_EMALF;
+			}
+		} else {
+			return KNOT_ENOTSUP;
+		}
+	}
+	log_debug("rdb, event geoip %s id %s, mode %u, dig %u",
+	          since, id, mode_type, signal);
+	return KNOT_EOK;
+}
+
 static void rdb_process_event(redisReply *reply, knot_zonedb_t *zone_db,
                               char since[static RDB_TIMESTAMP_SIZE])
 {
+	int ret = KNOT_EOK;
 	redisReply *timestamp = reply->element[0];
 	redisReply *data = reply->element[1];
 	if (data->type != REDIS_REPLY_ARRAY ||
@@ -842,14 +934,6 @@ static void rdb_process_event(redisReply *reply, knot_zonedb_t *zone_db,
 	strlcpy(since, timestamp->str, RDB_TIMESTAMP_SIZE);
 
 	uint8_t type = 0;
-	uint8_t instance = 0;
-	uint32_t serial = 0;
-	const knot_dname_t *origin = NULL;
-
-	const char *id = NULL;
-	uint8_t mode_type = 0; // enum operation_mode mode_type = MODE_SUBNET;
-	uint8_t signal = 0; // rdb_geoip_sig_t signal = RELOAD;
-
 	for (int idx = 0; idx < data->elements; ++idx) {
 		redisReply *key = data->element[idx++];
 		redisReply *val = data->element[idx];
@@ -860,63 +944,23 @@ static void rdb_process_event(redisReply *reply, knot_zonedb_t *zone_db,
 			if (str_to_u8(val->str, &type) != KNOT_EOK) {
 				goto failed;
 			}
-		} else if (strcmp(key->str, RDB_EVENT_ARG_ORIGIN) == 0) {
-			origin = (const knot_dname_t *)val->str;
-		} else if (strcmp(key->str, RDB_EVENT_ARG_INSTANCE) == 0) {
-			if (str_to_u8(val->str, &instance) != KNOT_EOK) {
-				goto failed;
-			}
-		} else if (strcmp(key->str, RDB_EVENT_ARG_SERIAL) == 0) {
-			if (str_to_u32(val->str, &serial) != KNOT_EOK) {
-				goto failed;
-			}
-		} else if (strcmp(key->str, RDB_EVENT_ARG_ID) == 0) {
-			id = val->str;
-		} else if (strcmp(key->str, RDB_EVENT_ARG_TYPE) == 0) {
-			if (str_to_u8(val->str, &mode_type) != KNOT_EOK) {
-				goto failed;
-			}
-		} else if (strcmp(key->str, RDB_EVENT_ARG_SIGNAL) == 0) {
-			if (str_to_u8(val->str, &signal) != KNOT_EOK) {
-				goto failed;
+			switch(type) {
+			case RDB_EVENT_ZONE:
+			case RDB_EVENT_UPD:
+				ret = rdb_process_common_ev(data, type, zone_db, since);
+				goto loop_exit;
+			case RDB_EVENT_MOD_GEOIP:
+				ret = rdb_process_geoip_ev(data, since);
+				goto loop_exit;
+			default:
+				log_error("rdb, unknown event type");
 			}
 		}
 	}
-
-	zone_t *zone = NULL;
-	if (type != RDB_EVENT_MOD_GEOIP) {
-		// TODO test different event types
-		if (type == 0 || origin == NULL || instance == 0) {
-			goto failed;
-		}
-
-		uint8_t db_instance = 0;
-		bool db_enabled = conf_zone_rdb_enabled(conf(), origin, true, &db_instance);
-		if (!db_enabled || db_instance != instance) {
-			return;
-		}
-		zone_t *zone = knot_zonedb_find(zone_db, origin);
-		if (zone == NULL) {
-			return;
-		}
+loop_exit:
+	if (ret != KNOT_EOK) {
+		// TODO
 	}
-	switch (type) {
-	case RDB_EVENT_ZONE:
-		zone_set_flag(zone, ZONE_RDB_RELOAD);
-		// FALLTHROUGH
-	case RDB_EVENT_UPD:
-		log_zone_debug(zone->name, "rdb, event %s %s, serial %u",
-		               since, (type == RDB_EVENT_ZONE ? "zone" : "update"), serial);
-		zone_schedule_update(conf(), zone, ZONE_EVENT_LOAD);
-		break;
-	case RDB_EVENT_MOD_GEOIP:
-		log_debug("rdb, event geoip %s id %s, mode %u, dig %u",
-		               since, id, mode_type, signal);
-		break;
-	default:
-		break;
-	}
-
 	return;
 failed:
 	log_error("rdb, invalid event parameters");
