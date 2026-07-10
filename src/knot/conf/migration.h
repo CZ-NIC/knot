@@ -17,3 +17,8 @@
 int conf_migrate(
 	conf_t *conf
 );
+
+int migrate_lmdb(
+	const char *db_dir,
+	bool named_db
+);

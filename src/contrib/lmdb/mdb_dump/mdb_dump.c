@@ -12,29 +12,19 @@
  * <http://www.OpenLDAP.org/license.html>.
  */
 #include <stdio.h>
-#include <errno.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
 #include <unistd.h>
-#include <signal.h>
-#include "lmdb.h"
-
-#ifdef _WIN32
-#define Z	"I"
-#else
-#define Z	"z"
-#endif
-
-#define PRINT	1
-static int mode;
+#include "contrib/lmdb/mdb_dump/mdb_dump.h"
+#include "contrib/lmdb/lmdb.h"
 
 typedef struct flagbit {
 	int bit;
 	char *name;
 } flagbit;
 
-flagbit dbflags[] = {
+static flagbit dbflags[] = {
 	{ MDB_REVERSEKEY, "reversekey" },
 	{ MDB_DUPSORT, "dupsort" },
 	{ MDB_INTEGERKEY, "integerkey" },
@@ -44,57 +34,29 @@ flagbit dbflags[] = {
 	{ 0, NULL }
 };
 
-static volatile sig_atomic_t gotsig;
-
-static void dumpsig( int sig )
-{
-	gotsig=1;
-}
-
 static const char hexc[] = "0123456789abcdef";
 
-static void hex(unsigned char c)
+static void hex(unsigned char c, FILE *out)
 {
-	putchar(hexc[c >> 4]);
-	putchar(hexc[c & 0xf]);
+	putc(hexc[c >> 4], out);
+	putc(hexc[c & 0xf], out);
 }
 
-static void text(MDB_val *v)
+static void byte(MDB_val *v, FILE *out)
 {
 	unsigned char *c, *end;
 
-	putchar(' ');
+	putc(' ', out);
 	c = v->mv_data;
 	end = c + v->mv_size;
 	while (c < end) {
-		if (isprint(*c)) {
-			if (*c == '\\')
-				putchar('\\');
-			putchar(*c);
-		} else {
-			putchar('\\');
-			hex(*c);
-		}
-		c++;
+		hex(*c++, out);
 	}
-	putchar('\n');
-}
-
-static void byte(MDB_val *v)
-{
-	unsigned char *c, *end;
-
-	putchar(' ');
-	c = v->mv_data;
-	end = c + v->mv_size;
-	while (c < end) {
-		hex(*c++);
-	}
-	putchar('\n');
+	putc('\n', out);
 }
 
 /* Dump in BDB-compatible format */
-static int dumpit(MDB_txn *txn, MDB_dbi dbi, char *name)
+static int dumpit(MDB_txn *txn, MDB_dbi dbi, char *name, FILE *out)
 {
 	MDB_cursor *mc;
 	MDB_stat ms;
@@ -112,132 +74,55 @@ static int dumpit(MDB_txn *txn, MDB_dbi dbi, char *name)
 	rc = mdb_env_info(mdb_txn_env(txn), &info);
 	if (rc) return rc;
 
-	printf("VERSION=3\n");
-	printf("format=%s\n", mode & PRINT ? "print" : "bytevalue");
+	fprintf(out, "VERSION=3\n");
+	fprintf(out, "format=%s\n", "bytevalue");
 	if (name)
-		printf("database=%s\n", name);
-	printf("type=btree\n");
-	printf("mapsize=%" Z "u\n", info.me_mapsize);
+		fprintf(out, "database=%s\n", name);
+	fprintf(out, "type=btree\n");
+	fprintf(out, "mapsize=%zu\n", info.me_mapsize);
 	if (info.me_mapaddr)
-		printf("mapaddr=%p\n", info.me_mapaddr);
-	printf("maxreaders=%u\n", info.me_maxreaders);
+		fprintf(out, "mapaddr=%p\n", info.me_mapaddr);
+	fprintf(out, "maxreaders=%u\n", info.me_maxreaders);
 
 	if (flags & MDB_DUPSORT)
-		printf("duplicates=1\n");
+		fprintf(out, "duplicates=1\n");
 
 	for (i=0; dbflags[i].bit; i++)
 		if (flags & dbflags[i].bit)
-			printf("%s=1\n", dbflags[i].name);
+			fprintf(out, "%s=1\n", dbflags[i].name);
 
-	printf("db_pagesize=%d\n", ms.ms_psize);
-	printf("HEADER=END\n");
+	fprintf(out, "db_pagesize=%d\n", ms.ms_psize);
+	fprintf(out, "HEADER=END\n");
 
 	rc = mdb_cursor_open(txn, dbi, &mc);
 	if (rc) return rc;
 
 	while ((rc = mdb_cursor_get(mc, &key, &data, MDB_NEXT) == MDB_SUCCESS)) {
-		if (gotsig) {
-			rc = EINTR;
-			break;
-		}
-		if (mode & PRINT) {
-			text(&key);
-			text(&data);
-		} else {
-			byte(&key);
-			byte(&data);
-		}
+		byte(&key, out);
+		byte(&data, out);
 	}
-	printf("DATA=END\n");
+	fprintf(out, "DATA=END\n");
 	if (rc == MDB_NOTFOUND)
 		rc = MDB_SUCCESS;
 
 	return rc;
 }
 
-static void usage(char *prog)
+int mdb_dump(const char *db_path, FILE *out, bool alldbs)
 {
-	fprintf(stderr, "usage: %s [-V] [-f output] [-l] [-n] [-p] [-a|-s subdb] dbpath\n", prog);
-	exit(EXIT_FAILURE);
-}
-
-int main(int argc, char *argv[])
-{
-	int i, rc;
+	int rc;
 	MDB_env *env;
 	MDB_txn *txn;
 	MDB_dbi dbi;
-	char *prog = argv[0];
-	char *envname;
+	const char *envname;
 	char *subname = NULL;
-	int alldbs = 0, envflags = 0, list = 0;
+	int envflags = 0, list = 0;
 
-	if (argc < 2) {
-		usage(prog);
-	}
+	envname = db_path;
 
-	/* -a: dump main DB and all subDBs
-	 * -s: dump only the named subDB
-	 * -n: use NOSUBDIR flag on env_open
-	 * -p: use printable characters
-	 * -f: write to file instead of stdout
-	 * -V: print version and exit
-	 * (default) dump only the main DB
-	 */
-	while ((i = getopt(argc, argv, "af:lnps:V")) != EOF) {
-		switch(i) {
-		case 'V':
-			printf("%s\n", MDB_VERSION_STRING);
-			exit(0);
-			break;
-		case 'l':
-			list = 1;
-			/*FALLTHROUGH*/
-		case 'a':
-			if (subname)
-				usage(prog);
-			alldbs++;
-			break;
-		case 'f':
-			if (freopen(optarg, "w", stdout) == NULL) {
-				fprintf(stderr, "%s: %s: reopen: %s\n",
-					prog, optarg, strerror(errno));
-				exit(EXIT_FAILURE);
-			}
-			break;
-		case 'n':
-			envflags |= MDB_NOSUBDIR;
-			break;
-		case 'p':
-			mode |= PRINT;
-			break;
-		case 's':
-			if (alldbs)
-				usage(prog);
-			subname = optarg;
-			break;
-		default:
-			usage(prog);
-		}
-	}
-
-	if (optind != argc - 1)
-		usage(prog);
-
-#ifdef SIGPIPE
-	signal(SIGPIPE, dumpsig);
-#endif
-#ifdef SIGHUP
-	signal(SIGHUP, dumpsig);
-#endif
-	signal(SIGINT, dumpsig);
-	signal(SIGTERM, dumpsig);
-
-	envname = argv[optind];
 	rc = mdb_env_create(&env);
 	if (rc) {
-		fprintf(stderr, "mdb_env_create failed, error %d %s\n", rc, mdb_strerror(rc));
-		return EXIT_FAILURE;
+		return rc;
 	}
 
 	if (alldbs || subname) {
@@ -246,19 +131,16 @@ int main(int argc, char *argv[])
 
 	rc = mdb_env_open(env, envname, envflags | MDB_RDONLY, 0664);
 	if (rc) {
-		fprintf(stderr, "mdb_env_open failed, error %d %s\n", rc, mdb_strerror(rc));
 		goto env_close;
 	}
 
 	rc = mdb_txn_begin(env, NULL, MDB_RDONLY, &txn);
 	if (rc) {
-		fprintf(stderr, "mdb_txn_begin failed, error %d %s\n", rc, mdb_strerror(rc));
 		goto env_close;
 	}
 
 	rc = mdb_open(txn, subname, 0, &dbi);
 	if (rc) {
-		fprintf(stderr, "mdb_open failed, error %d %s\n", rc, mdb_strerror(rc));
 		goto txn_abort;
 	}
 
@@ -269,7 +151,6 @@ int main(int argc, char *argv[])
 
 		rc = mdb_cursor_open(txn, dbi, &cursor);
 		if (rc) {
-			fprintf(stderr, "mdb_cursor_open failed, error %d %s\n", rc, mdb_strerror(rc));
 			goto txn_abort;
 		}
 		while ((rc = mdb_cursor_get(cursor, &key, NULL, MDB_NEXT_NODUP)) == 0) {
@@ -284,10 +165,9 @@ int main(int argc, char *argv[])
 			rc = mdb_open(txn, str, 0, &db2);
 			if (rc == MDB_SUCCESS) {
 				if (list) {
-					printf("%s\n", str);
 					list++;
 				} else {
-					rc = dumpit(txn, db2, str);
+					rc = dumpit(txn, db2, str, out);
 					if (rc)
 						break;
 				}
@@ -298,16 +178,13 @@ int main(int argc, char *argv[])
 		}
 		mdb_cursor_close(cursor);
 		if (!count) {
-			fprintf(stderr, "%s: %s does not contain multiple databases\n", prog, envname);
 			rc = MDB_NOTFOUND;
 		} else if (rc == MDB_NOTFOUND) {
 			rc = MDB_SUCCESS;
 		}
 	} else {
-		rc = dumpit(txn, dbi, subname);
+		rc = dumpit(txn, dbi, subname, out);
 	}
-	if (rc && rc != MDB_NOTFOUND)
-		fprintf(stderr, "%s: %s: %s\n", prog, envname, mdb_strerror(rc));
 
 	mdb_close(env, dbi);
 txn_abort:
@@ -315,5 +192,5 @@ txn_abort:
 env_close:
 	mdb_env_close(env);
 
-	return rc ? EXIT_FAILURE : EXIT_SUCCESS;
+	return rc;
 }

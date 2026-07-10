@@ -120,10 +120,12 @@ libknot.so.16 libknot16 #MINVER#
  knot_ctl_unbind@Base 3.5.0
  knot_db_lmdb_api@Base 3.5.0
  knot_db_lmdb_del_exact@Base 3.5.0
+ knot_db_lmdb_dump@Base 3.5.6
  knot_db_lmdb_get_mapsize@Base 3.5.0
  knot_db_lmdb_get_path@Base 3.5.0
  knot_db_lmdb_get_usage@Base 3.5.0
  knot_db_lmdb_iter_del@Base 3.5.0
+ knot_db_lmdb_load@Base 3.5.6
  knot_db_lmdb_txn_begin@Base 3.5.0
  knot_db_trie_api@Base 3.5.0
  knot_deleg_info_names@Base 3.6.0

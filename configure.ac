@@ -280,11 +280,15 @@ AS_IF([test "$enable_recvmmsg" = yes], [
 
 # LMDB library
 AC_ARG_WITH([lmdb],
-  [AS_HELP_STRING([--with-lmdb=DIR],
-                  [explicit location where to find LMDB])]
+  AS_HELP_STRING([--with-lmdb=auto|embedded|DIR],
+                 [explicit location where to find LMDB [default=auto]]),
+  [], [with_lmdb=auto]
 )
 
-PKG_CHECK_MODULES([lmdb], [lmdb >= 0.9.15], [], [
+AS_IF([test "$with_lmdb" = "auto"], [
+  PKG_CHECK_MODULES([lmdb], [lmdb >= 0.9.15], [], [with_lmdb=])
+])
+AS_IF([test "$with_lmdb" != "embedded" && test "$with_lmdb" != "auto"], [
   save_CPPFLAGS=$CPPFLAGS
   save_LIBS=$LIBS
 
@@ -321,6 +325,7 @@ PKG_CHECK_MODULES([lmdb], [lmdb >= 0.9.15], [], [
     AC_MSG_ERROR([lmdb library not found])
   ])
 ])
+AM_CONDITIONAL([EMBEDDED_LMDB], test "$with_lmdb" = "embedded")
 
 # XDP support
 AC_ARG_ENABLE([xdp],

@@ -59,4 +59,7 @@ size_t knot_db_lmdb_get_mapsize(knot_db_t *db);
 size_t knot_db_lmdb_get_usage(knot_db_t *db);
 const char *knot_db_lmdb_get_path(knot_db_t *db);
 
+int knot_db_lmdb_dump(const char *db_path, const char *dump_path, bool alldbs);
+int knot_db_lmdb_load(const char *db_path, const char *dump_path);
+
 /*! @} */

@@ -3,9 +3,13 @@
  *  For more information, see <https://www.knot-dns.cz/>
  */
 
+#include <sys/stat.h>
+
 #include "knot/common/log.h"
 #include "knot/conf/migration.h"
 #include "knot/conf/confdb.h"
+#include "contrib/files.h"
+#include "contrib/string.h"
 
 /*
 static void try_unset(conf_t *conf, knot_db_txn_t *txn, yp_name_t *key0, yp_name_t *key1)
@@ -67,4 +71,64 @@ int conf_migrate(
 
 	return conf_refresh_txn(conf);
 	*/
+}
+
+int migrate_lmdb(
+	const char *db_dir,
+	bool named_db)
+{
+	if (db_dir == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	log_fmt(LOG_NOTICE, LOG_SOURCE_SERVER,
+	        "database, incomaptible '%s', trying migration", db_dir);
+
+#define MIGR_LOG(ret, msg, ...) { \
+	bool ok = ret == KNOT_EOK; \
+	log_fmt(ok ? LOG_NOTICE : LOG_ERR, LOG_SOURCE_SERVER, \
+	        "database, " msg ", %s", ##__VA_ARGS__, ok ? "successful" : "failed"); \
+}
+
+	int ret = KNOT_EOK;
+	time_t now = time(NULL);
+	char *dump_file = sprintf_alloc("%s.%lld.export", db_dir, now);
+	char *back_dir = sprintf_alloc("%s.%lld.back", db_dir, now);
+	char *tmp_dir = sprintf_alloc("%s.%lld.tmp", db_dir, now);
+	if (dump_file == NULL || back_dir == NULL || tmp_dir == NULL) {
+		ret = KNOT_ENOMEM;
+	}
+	if (ret == KNOT_EOK) {
+		ret = knot_db_lmdb_dump(db_dir, dump_file, named_db);
+		MIGR_LOG(ret, "exporting to '%s', LMDB version 0.9", dump_file);
+	}
+	if (ret == KNOT_EOK) {
+		ret = make_dir(tmp_dir, S_IRWXU | S_IRWXG, true);
+		MIGR_LOG(ret, "creating temporary directory '%s'", tmp_dir);
+	}
+	if (ret == KNOT_EOK) {
+		ret = knot_db_lmdb_load(tmp_dir, dump_file);
+		MIGR_LOG(ret, "importing to '%s'", tmp_dir);
+	}
+	if (ret == KNOT_EOK) {
+		if (rename(db_dir, back_dir) != 0) {
+			ret = knot_map_errno();
+		}
+		MIGR_LOG(ret, "renamimg previous database to '%s'", back_dir);
+	}
+	if (ret == KNOT_EOK) {
+		if (rename(tmp_dir, db_dir) != 0) {
+			ret = knot_map_errno();
+		}
+		MIGR_LOG(ret, "renaming new database to '%s'", db_dir);
+	}
+	if (ret != KNOT_EOK) {
+		remove_path(tmp_dir, false);
+		remove_path(dump_file, false);
+	}
+	MIGR_LOG(ret, "migration '%s'", db_dir);
+	free(dump_file);
+	free(back_dir);
+	free(tmp_dir);
+	return ret;
 }

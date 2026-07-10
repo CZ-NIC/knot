@@ -21,7 +21,7 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <sys/types.h>
-#include "midl.h"
+#include "contrib/lmdb/midl.h"
 
 /** @defgroup internal	LMDB Internals
  *	@{

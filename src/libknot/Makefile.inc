@@ -6,7 +6,7 @@ libknot_la_CPPFLAGS = $(embedded_libngtcp2_CFLAGS) \
                       $(gnutls_CFLAGS) ${fuzzer_CFLAGS}
 libknot_la_LDFLAGS  = $(AM_LDFLAGS) $(libknot_VERSION_INFO) $(LDFLAG_EXCLUDE_LIBS) \
                       ${fuzzer_LDFLAGS}
-libknot_la_LIBADD   = $(libcontrib_LIBS) $(lmdb_LIBS) $(gnutls_LIBS) $(math_LIBS)
+libknot_la_LIBADD   = $(libcontrib_LIBS) $(lmdb_LIBS) libemblmdb.la $(gnutls_LIBS) $(math_LIBS)
 
 if EMBEDDED_LIBNGTCP2
 libknot_la_LIBADD  += $(libembngtcp2_LIBS)
@@ -94,6 +94,8 @@ libknot_la_SOURCES = \
 	libknot/dname.c				\
 	libknot/error.c				\
 	libknot/db/db_lmdb.c			\
+	contrib/lmdb/mdb_load/mdb_load.c	\
+	contrib/lmdb/mdb_load/mdb_load.h	\
 	libknot/db/db_trie.c			\
 	libknot/dnssec/binary.c			\
 	libknot/dnssec/crypto.c			\

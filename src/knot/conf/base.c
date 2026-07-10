@@ -8,6 +8,7 @@
 
 #include "knot/conf/base.h"
 #include "knot/conf/confdb.h"
+#include "knot/conf/migration.h"
 #include "knot/conf/module.h"
 #include "knot/conf/tools.h"
 #include "knot/common/log.h"
@@ -355,6 +356,12 @@ int conf_new(
 		}
 
 		ret = out->api->init(&out->db, NULL, &lmdb_opts);
+		if (ret == MDB_INVALID) {
+			ret = migrate_lmdb(db_dir, false);
+			if (ret == KNOT_EOK) {
+				ret = out->api->init(&out->db, NULL, &lmdb_opts);
+			}
+		}
 	}
 	if (ret != KNOT_EOK) {
 		goto new_error;
