@@ -23,4 +23,8 @@ resp = knot.dig("cname." + parent[0].name, "A")
 resp.check_count(1, "CNAME")
 resp.check(rcode="NOERROR", nordata="192.0.2.100")
 
+knot.random_ddns(child, allow_empty=False)
+if not knot.log_search("zone and parent NS RRsets mismatch"):
+    set_err("No parent/child NS mismatch warning")
+
 t.end()
