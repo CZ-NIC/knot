@@ -11,6 +11,7 @@
 #include "knot/common/dbus.h"
 #include "knot/common/log.h"
 #include "knot/dnssec/zone-events.h"
+#include "knot/nameserver/process_query.h"
 #include "knot/server/server.h"
 #include "knot/updates/zone-update.h"
 #include "knot/zone/adds_tree.h"
@@ -1246,6 +1247,14 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 		log_zone_error(update->zone->name, "journal update failed (%s)", knot_strerror(ret));
 		discard_adds_tree(update);
 		return ret;
+	}
+
+	zone_t *parent_z = answer_zone_find2(update->new_cont->apex->owner, KNOT_RRTYPE_DS, true, update->zone->server->zone_db);
+	if (parent_z != update->zone && parent_z != NULL && parent_z->contents != NULL) {
+		const zone_node_t *parent_n = zone_contents_find_node(parent_z->contents, update->new_cont->apex->owner);
+		if (!knot_rdataset_eq(node_rdataset(parent_n, KNOT_RRTYPE_NS), node_rdataset(update->new_cont->apex, KNOT_RRTYPE_NS))) {
+			log_zone_warning(update->new_cont->apex->owner, "parent and child NS RRsets don't match");
+		}
 	}
 
 	if (dnssec) {
