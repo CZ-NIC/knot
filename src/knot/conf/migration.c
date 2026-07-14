@@ -9,6 +9,7 @@
 #include "knot/conf/migration.h"
 #include "knot/conf/confdb.h"
 #include "contrib/files.h"
+#include "contrib/macros.h"
 #include "contrib/string.h"
 
 /*
@@ -73,6 +74,23 @@ int conf_migrate(
 	*/
 }
 
+static int move_files(const char *from_dir, const char *to_dir, const char *fname, const char *fname2)
+{
+	unsigned buf_len = MAX(strlen(from_dir), strlen(to_dir)) + MAX(strlen(fname), strlen(fname2)) + 2;
+	char from[buf_len], to[buf_len];
+	snprintf(from, buf_len, "%s/%s", from_dir, fname);
+	snprintf(to, buf_len, "%s/%s", to_dir, fname);
+	if (rename(from, to) != 0) {
+		return knot_map_errno();
+	}
+	snprintf(from, buf_len, "%s/%s", from_dir, fname2);
+	snprintf(to, buf_len, "%s/%s", to_dir, fname2);
+	if (rename(from, to) != 0) {
+		return knot_map_errno();
+	}
+	return KNOT_EOK;
+}
+
 int migrate_lmdb(
 	const char *db_dir,
 	bool named_db)
@@ -107,20 +125,20 @@ int migrate_lmdb(
 		MIGR_LOG(ret, "creating temporary directory '%s'", tmp_dir);
 	}
 	if (ret == KNOT_EOK) {
+		ret = make_dir(back_dir, S_IRWXU | S_IRWXG, true);
+		MIGR_LOG(ret, "creating backup directory '%s'", back_dir);
+	}
+	if (ret == KNOT_EOK) {
 		ret = knot_db_lmdb_load(tmp_dir, dump_file);
 		MIGR_LOG(ret, "importing to '%s'", tmp_dir);
 	}
 	if (ret == KNOT_EOK) {
-		if (rename(db_dir, back_dir) != 0) {
-			ret = knot_map_errno();
-		}
-		MIGR_LOG(ret, "renamimg previous database to '%s'", back_dir);
+		ret = move_files(db_dir, back_dir, "data.mdb", "lock.mdb");
+		MIGR_LOG(ret, "moving previous database to '%s'", back_dir);
 	}
 	if (ret == KNOT_EOK) {
-		if (rename(tmp_dir, db_dir) != 0) {
-			ret = knot_map_errno();
-		}
-		MIGR_LOG(ret, "renaming new database to '%s'", db_dir);
+		ret = move_files(tmp_dir, db_dir, "data.mdb", "lock.mdb");
+		MIGR_LOG(ret, "moving new database to '%s'", db_dir);
 	}
 	if (ret != KNOT_EOK) {
 		remove_path(tmp_dir, false);
