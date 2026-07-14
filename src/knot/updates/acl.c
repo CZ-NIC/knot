@@ -36,6 +36,10 @@ static bool cert_check(struct gnutls_session_int *tls_session, conf_val_t *hostn
 		return true;
 	}
 
+	if (tls_session == NULL) {
+		return false;
+	}
+
 	size_t count = conf_val_count(hostname_val);
 	const char *hostnames[count + 1];
 
