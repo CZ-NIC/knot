@@ -284,43 +284,6 @@ AC_ARG_WITH([lmdb],
                   [explicit location where to find LMDB])]
 )
 
-PKG_CHECK_MODULES([lmdb], [lmdb >= 0.9.15], [], [
-  save_CPPFLAGS=$CPPFLAGS
-  save_LIBS=$LIBS
-
-  have_lmdb=no
-
-  for try_lmdb in "$with_lmdb" "" "/usr/local" "/usr/pkg"; do
-    AS_IF([test -d "$try_lmdb"], [
-      lmdb_CFLAGS="-I$try_lmdb/include"
-      lmdb_LIBS="-L$try_lmdb/lib"
-    ], [
-      lmdb_CFLAGS=""
-      lmdb_LIBS=""
-    ])
-
-    CPPFLAGS="$save_CPPFLAGS $lmdb_CFLAGS"
-    LIBS="$save_LIBS $lmdb_LIBS"
-
-    AC_SEARCH_LIBS([mdb_txn_id], [lmdb], [
-      have_lmdb=yes
-      lmdb_LIBS="$lmdb_LIBS -llmdb"
-      AC_SUBST([lmdb_CFLAGS])
-      AC_SUBST([lmdb_LIBS])
-      break
-    ])
-
-    # do not cache result of AC_SEARCH_LIBS test
-    unset ac_cv_search_mdb_txn_id
-  done
-
-  CPPFLAGS="$save_CPPFLAGS"
-  LIBS="$save_LIBS"
-
-  AS_IF([test "$have_lmdb" = "no" && test "$enable_redis" != "module"], [
-    AC_MSG_ERROR([lmdb library not found])
-  ])
-])
 lmdb_CFLAGS="-I\$(top_srcdir)/src/contrib/lmdb"
 lmdb_LIBS=""
 AC_SUBST([lmdb_CFLAGS])
