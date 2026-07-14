@@ -95,6 +95,19 @@ size_t knot_lmdb_copy_size(knot_lmdb_db_t *to_copy);
 /*!
  * \brief Open the previously initialised DB.
  *
+ * \param db       The DB to be opened.
+ * \param migrate  If true and the database looks corrupted, try to migrate the database from
+ *                 LMDB v0.9 to the currently linked version.
+ *
+ * \note If db->mapsize is zero, it will be set to twice the current size, and DB opened read-only!
+ *
+ * \return KNOT_E*
+ */
+int knot_lmdb_open_migr(knot_lmdb_db_t *db, bool migrate);
+
+/*!
+ * \brief Open the previously initialised DB.
+ *
  * \param db   The DB to be opened.
  *
  * \note If db->mapsize is zero, it will be set to twice the current size, and DB opened read-only!

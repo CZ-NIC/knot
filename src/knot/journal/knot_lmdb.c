@@ -196,11 +196,11 @@ static int lmdb_open(knot_lmdb_db_t *db)
 	return ret;
 }
 
-int knot_lmdb_open(knot_lmdb_db_t *db)
+int knot_lmdb_open_migr(knot_lmdb_db_t *db, bool migrate)
 {
 	pthread_mutex_lock(&db->opening_mutex);
 	int ret = lmdb_open(db);
-	if (ret == KNOT_EMALF) {
+	if (migrate && ret == KNOT_EMALF) {
 		ret = migrate_lmdb(db->path, db->dbname != NULL);
 		if (ret == KNOT_EOK) {
 			ret = lmdb_open(db);
@@ -208,6 +208,11 @@ int knot_lmdb_open(knot_lmdb_db_t *db)
 	}
 	pthread_mutex_unlock(&db->opening_mutex);
 	return ret;
+}
+
+int knot_lmdb_open(knot_lmdb_db_t *db)
+{
+	return knot_lmdb_open_migr(db, true);
 }
 
 static void lmdb_close(knot_lmdb_db_t *db)
