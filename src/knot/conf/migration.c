@@ -100,12 +100,11 @@ int migrate_lmdb(
 	}
 
 	log_fmt(LOG_NOTICE, LOG_SOURCE_SERVER,
-	        "database, incomaptible '%s', trying migration", db_dir);
+	        "database, incompatible '%s', migrating to LMDB 1.0", db_dir);
 
-#define MIGR_LOG(ret, msg, ...) { \
-	bool ok = ret == KNOT_EOK; \
-	log_fmt(ok ? LOG_NOTICE : LOG_ERR, LOG_SOURCE_SERVER, \
-	        "database, " msg ", %s", ##__VA_ARGS__, ok ? "successful" : "failed"); \
+#define MIGR_LOG(ret, msg, ...) if (ret != KNOT_EOK) { \
+	log_fmt(LOG_ERR, LOG_SOURCE_SERVER, \
+	        "database, " msg ", failed (%s)", ##__VA_ARGS__, knot_strerror(ret)); \
 }
 
 	int ret = KNOT_EOK;
@@ -143,8 +142,10 @@ int migrate_lmdb(
 	if (ret != KNOT_EOK) {
 		remove_path(tmp_dir, false);
 		remove_path(dump_file, false);
+		log_fmt(LOG_WARNING, LOG_SOURCE_SERVER, "database, migrating '%s' failed", db_dir);
+	} else {
+		log_fmt(LOG_NOTICE, LOG_SOURCE_SERVER, "database, migrating '%s' successful", db_dir);
 	}
-	MIGR_LOG(ret, "migration '%s'", db_dir);
 	free(dump_file);
 	free(back_dir);
 	free(tmp_dir);
