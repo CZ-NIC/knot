@@ -342,6 +342,13 @@ static knotd_in_state_t follow_cname(knot_pkt_t *pkt, uint16_t rrtype, knotd_qda
 		return KNOTD_IN_STATE_HIT;
 	}
 
+	/* Check if the name leads to same zone. */
+	server_t *server = qdata->params->server;
+	if (answer_zone_find2(knot_cname_name(cname_rr.rrs.rdata), knot_pkt_qtype(pkt), knot_pkt_has_deleg_aware(pkt), server->zone_db) != qdata->extra->zone) {
+		qdata->extra->node = NULL; /* Act as if the name leads to nowhere. */
+		return KNOTD_IN_STATE_HIT;
+	}
+
 	/* If node is a wildcard, follow only if we didn't visit the same node
 	 * earlier, as that would mean a CNAME loop. */
 	if (knot_dname_is_wildcard(cname_node->owner)) {

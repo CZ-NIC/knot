@@ -174,12 +174,9 @@ static knot_layer_state_t query_chaos(knot_pkt_t *pkt, knot_layer_t *ctx)
 	return KNOT_STATE_DONE;
 }
 
-/*! \brief Find zone for given question. */
-static zone_t *answer_zone_find(const knot_pkt_t *query, knot_zonedb_t *zonedb)
+static zone_t *answer_zone_find_base(const knot_dname_t *qname, uint16_t qtype, uint16_t qclass,
+                                     knotd_query_type_t t, bool deleg_aware, knot_zonedb_t *zonedb)
 {
-	uint16_t qtype = knot_pkt_qtype(query);
-	uint16_t qclass = knot_pkt_qclass(query);
-	const knot_dname_t *qname = knot_pkt_qname(query);
 	zone_t *zone = NULL;
 
 	// search for zone only for IN and ANY classes
@@ -192,7 +189,7 @@ static zone_t *answer_zone_find(const knot_pkt_t *query, knot_zonedb_t *zonedb)
 	 * records are only present in a parent zone.
 	 */
 	bool ds_query = (qtype == KNOT_RRTYPE_DS);
-	bool deleg_query = (qtype == KNOT_RRTYPE_DELEG) && knot_pkt_has_deleg_aware(query);
+	bool deleg_query = (qtype == KNOT_RRTYPE_DELEG) && deleg_aware;
 	if ((ds_query || deleg_query) && qname[0] != '\0') {
 		const knot_dname_t *parent = knot_dname_next_label(qname);
 		zone = knot_zonedb_find_suffix(zonedb, parent);
@@ -205,7 +202,7 @@ static zone_t *answer_zone_find(const knot_pkt_t *query, knot_zonedb_t *zonedb)
 	}
 
 	if (zone == NULL) {
-		if (query_type(query) == KNOTD_QUERY_TYPE_NORMAL) {
+		if (t == KNOTD_QUERY_TYPE_NORMAL) {
 			zone = knot_zonedb_find_suffix(zonedb, qname);
 		} else {
 			// Direct match required.
@@ -214,6 +211,18 @@ static zone_t *answer_zone_find(const knot_pkt_t *query, knot_zonedb_t *zonedb)
 	}
 
 	return zone;
+}
+
+static zone_t *answer_zone_find(const knot_pkt_t *query, knot_zonedb_t *zonedb)
+{
+	return answer_zone_find_base(knot_pkt_qname(query), knot_pkt_qtype(query),
+	                             knot_pkt_qclass(query), query_type(query),
+	                             knot_pkt_has_deleg_aware(query), zonedb);
+}
+
+zone_t *answer_zone_find2(const knot_dname_t *qname, uint16_t qtype, bool deleg_aware, knot_zonedb_t *zonedb)
+{
+	return answer_zone_find_base(qname, qtype, KNOT_CLASS_IN, KNOTD_QUERY_TYPE_NORMAL, deleg_aware, zonedb);
 }
 
 static int answer_edns_reserve(knot_pkt_t *resp, knotd_qdata_t *qdata)
