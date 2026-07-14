@@ -22,8 +22,6 @@
 
 #if MDB_VERSION_MAJOR > 0
 
-static char *subname = NULL;
-
 static mdb_size_t lineno;
 static int version;
 
@@ -32,9 +30,6 @@ static int flags;
 static int Eof;
 
 static MDB_envinfo info;
-
-static MDB_val kbuf, dbuf;
-static MDB_val k0buf;
 
 static unsigned int pagesize;
 
@@ -58,7 +53,7 @@ static flagbit dbflags[] = {
 	{ 0, NULL, 0 }
 };
 
-static int readhdr(FILE *in)
+static int readhdr(FILE *in, MDB_val dbuf, char **subname)
 {
 	char *ptr;
 
@@ -81,8 +76,8 @@ static int readhdr(FILE *in)
 		} else if (!strncmp(dbuf.mv_data, "database=", STRLENOF("database="))) {
 			ptr = memchr(dbuf.mv_data, '\n', dbuf.mv_size);
 			if (ptr) *ptr = '\0';
-			if (subname) free(subname);
-			subname = strdup((char *)dbuf.mv_data+STRLENOF("database="));
+			if (*subname) free(*subname);
+			*subname = strdup((char *)dbuf.mv_data+STRLENOF("database="));
 		} else if (!strncmp(dbuf.mv_data, "type=", STRLENOF("type="))) {
 			if (strncmp((char *)dbuf.mv_data+STRLENOF("type="), "btree", STRLENOF("btree")))  {
 				return MDB_CORRUPTED;
@@ -260,8 +255,11 @@ int mdb_load(const char *db_path, FILE *in)
 	MDB_cursor *mc;
 	MDB_dbi dbi;
 	const char *envname;
+	char *subname = NULL;
 	int envflags = MDB_NOSYNC, putflags = 0;
 	int dohdr = 0, append = 0;
+	MDB_val kbuf = { 0 }, dbuf;
+	MDB_val k0buf;
 	MDB_val prevk;
 	void *mlm = NULL;
 
@@ -275,12 +273,15 @@ int mdb_load(const char *db_path, FILE *in)
 	dbuf.mv_size = 4096;
 	dbuf.mv_data = malloc(dbuf.mv_size);
 
-	rc = readhdr(in);
-	if (rc)
+	rc = readhdr(in, dbuf, &subname);
+	if (rc) {
+		free(dbuf.mv_data);
 		return rc;
+	}
 
 	rc = mdb_env_create(&env);
 	if (rc) {
+		free(dbuf.mv_data);
 		return rc;
 	}
 
@@ -317,7 +318,7 @@ int mdb_load(const char *db_path, FILE *in)
 		if (!dohdr) {
 			dohdr = 1;
 		} else {
-			rc = readhdr(in);
+			rc = readhdr(in, dbuf, &subname);
 			if (rc)
 				goto env_close;
 		}
@@ -418,6 +419,10 @@ env_close:
 	mdb_env_close(env);
 	if (mlm)
 		mdb_modunload(mlm);
+
+	free(dbuf.mv_data);
+	free(kbuf.mv_data);
+	if (subname) free(subname);
 
 	return rc;
 }

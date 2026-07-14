@@ -101,6 +101,9 @@ static int dumpit(MDB_txn *txn, MDB_dbi dbi, char *name, FILE *out)
 		byte(&key, out);
 		byte(&data, out);
 	}
+
+	mdb_cursor_close(mc);
+
 	fprintf(out, "DATA=END\n");
 	if (rc == MDB_NOTFOUND)
 		rc = MDB_SUCCESS;
