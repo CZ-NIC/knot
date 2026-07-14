@@ -233,8 +233,13 @@ static bool check_proto_rmt(conf_t *conf, knotd_query_proto_t proto, conf_val_t 
 	return proto == KNOTD_QUERY_PROTO_TCP || proto == KNOTD_QUERY_PROTO_UDP;
 }
 
-static bool check_proto(knotd_query_proto_t proto, conf_val_t proto_val)
+static bool check_proto(conf_t *conf, knotd_query_proto_t proto, conf_val_t *acl_id)
 {
+	conf_val_t proto_val = conf_id_get(conf, C_ACL, C_PROTOCOL, acl_id);
+	if (proto_val.code == KNOT_ENOENT) { // No protocol restriction.
+		return true;
+	}
+
 	unsigned mask = 0;
 	switch (proto) {
 	case KNOTD_QUERY_PROTO_UDP:
@@ -393,13 +398,8 @@ bool acl_allowed(conf_t *conf, conf_val_t *acl, acl_action_t action,
 			hostname_val = conf_id_get(conf, C_ACL, C_CERT_HOSTNAME, acl);
 			if (!check_addr_key(conf, &addr_val, &key_val, remote, addr, tsig, &pin_val,
 			                    session_pin, session_pin_size, deny, forward)
+			    || !check_proto(conf, proto, acl)
 			    || !cert_check(tls_session, &hostname_val)) {
-				goto next_acl;
-			}
-
-			/* Check protocol match */
-			conf_val_t proto_val = conf_id_get(conf, C_ACL, C_PROTOCOL, acl);
-			if (proto_val.code == KNOT_EOK && !check_proto(proto, proto_val)) {
 				goto next_acl;
 			}
 		}
