@@ -48,6 +48,19 @@ struct rrsig_info {
 };
 
 /*!
+ * \brief Find the zone from which given query shall be answered.
+ *
+ * \param qname           Queried name.
+ * \param qtype           Queried type, especially if it is DS or DELEG.
+ * \param deleg_aware     DELEG-aware mode active.
+ * \param zonedb          Zone database to search in.
+ *
+ * \return Zone to answer from or NULL.
+ */
+zone_t *process_query_zone_find(const knot_dname_t *qname, uint16_t qtype, bool deleg_aware,
+                                knot_zonedb_t *zonedb);
+
+/*!
  * \brief Check current query against ACL.
  *
  * \param conf       Configuration.
