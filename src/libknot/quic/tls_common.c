@@ -558,6 +558,10 @@ int knot_tls_cert_check_hostnames(struct gnutls_session_int *session,
 		return KNOT_EOK;
 	}
 
+	if (session == NULL) {
+		return KNOT_EBADCERT;
+	}
+
 	if (gnutls_certificate_type_get(session) != GNUTLS_CRT_X509) {
 		return KNOT_EBADCERT;
 	}

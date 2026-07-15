@@ -15,7 +15,7 @@ detail_log("ACL remote %s" % (str(RMT)))
 RMT_ID = "rmt_test"
 ACL_ID = "acl_test"
 
-def set_remote(addrs=list(), protos=list(), cert_key=None):
+def set_remote(addrs=list(), protos=list(), cert_key=None, cert_hostname=None):
 
     try:
         ctl.send_block(cmd="conf-unset", section="remote", identifier=RMT_ID)
@@ -38,6 +38,9 @@ def set_remote(addrs=list(), protos=list(), cert_key=None):
             resp = ctl.receive_block()
     if cert_key:
         ctl.send_block(cmd="conf-set", section="remote", identifier=RMT_ID, item="cert-key", data=cert_key)
+        resp = ctl.receive_block()
+    if cert_hostname:
+        ctl.send_block(cmd="conf-set", section="remote", identifier=RMT_ID, item="cert-hostname", data=cert_hostname)
         resp = ctl.receive_block()
 
 def set_autoacl(server, zone, item, addrs=list(), protos=list(), cert_key=None):
@@ -69,7 +72,7 @@ def set_autoacl(server, zone, item, addrs=list(), protos=list(), cert_key=None):
     ctl.send(libknot.control.KnotCtlType.END)
     ctl.close()
 
-def set_acl(server, actions, deny=False, addrs=list(), protos=list(), cert_key=None):
+def set_acl(server, actions, deny=False, addrs=list(), protos=list(), cert_key=None, cert_hostname=None):
 
     ctl.connect(os.path.join(server.dir, "knot.sock"))
     ctl.send_block(cmd="conf-begin")
@@ -94,7 +97,7 @@ def set_acl(server, actions, deny=False, addrs=list(), protos=list(), cert_key=N
     if RMT:
         if not addrs:
             addrs = [server.addr]
-        set_remote(addrs, protos, cert_key)
+        set_remote(addrs, protos, cert_key, cert_hostname)
         ctl.send_block(cmd="conf-set", section="acl", identifier=ACL_ID, item="remote", data=RMT_ID)
         resp = ctl.receive_block()
     else:
@@ -106,6 +109,9 @@ def set_acl(server, actions, deny=False, addrs=list(), protos=list(), cert_key=N
             resp = ctl.receive_block()
         if cert_key:
             ctl.send_block(cmd="conf-set", section="acl", identifier=ACL_ID, item="cert-key", data=cert_key)
+            resp = ctl.receive_block()
+        if cert_hostname:
+            ctl.send_block(cmd="conf-set", section="acl", identifier=ACL_ID, item="cert-hostname", data=cert_hostname)
             resp = ctl.receive_block()
 
     ctl.send_block(cmd="conf-commit")
@@ -190,6 +196,25 @@ def test_normal(server, zone):
     resp = server.dig(ZONE, "NOTIFY")
     resp.check(rcode="NOTAUTH")
 
+def test_hostname(server, zone):
+
+    ZONE = zone.name
+
+    # Drop temporary configuration changes
+    server.reload()
+
+    # Purge the ACL rule.
+    set_acl(server, [])
+
+    # Test hostname evaluation if no session is available (UDP, TCP)
+    set_acl(server, ["notify"], cert_hostname="unknown")
+    resp = server.dig(ZONE, "axfr")
+    resp.check_xfr(rcode="NOTAUTH")
+    resp = server.dig(ZONE, "notify", udp=True)
+    resp.check(rcode="NOTAUTH")
+    resp = server.dig(ZONE, "notify", udp=False)
+    resp.check(rcode="NOTAUTH")
+
 t = Test(quic=True, tls=True, tsig=False)
 
 master = t.server("knot")
@@ -204,5 +229,7 @@ t.start()
 master.zones_wait(zones)
 
 test_normal(master, zones[0])
+
+test_hostname(master, zones[0])
 
 t.end()
