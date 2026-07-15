@@ -59,4 +59,10 @@ size_t knot_db_lmdb_get_mapsize(knot_db_t *db);
 size_t knot_db_lmdb_get_usage(knot_db_t *db);
 const char *knot_db_lmdb_get_path(knot_db_t *db);
 
+/* LMDB dump using embedded 0.9 version. */
+int knot_db_lmdb_dump(const char *db_path, const char *dump_path, bool alldbs);
+
+/* LMDB load using the main LMDB, which can be 1.x or the embedded one if enabled. */
+int knot_db_lmdb_load(const char *db_path, const char *dump_path);
+
 /*! @} */

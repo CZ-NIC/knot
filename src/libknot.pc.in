@@ -9,5 +9,5 @@ Description: Knot DNS library
 URL: https://www.knot-dns.cz
 Version: @PACKAGE_VERSION@
 Libs: -L${libdir} -lknot
-Libs.private: -lm @lmdb_LIBS@
+Libs.private: -lm @external_lmdb_LIBS@
 Cflags: -I${includedir}

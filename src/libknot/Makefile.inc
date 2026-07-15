@@ -94,6 +94,8 @@ libknot_la_SOURCES = \
 	libknot/dname.c				\
 	libknot/error.c				\
 	libknot/db/db_lmdb.c			\
+	contrib/lmdb/mdb_load/mdb_load.c	\
+	contrib/lmdb/mdb_load/mdb_load.h	\
 	libknot/db/db_trie.c			\
 	libknot/dnssec/binary.c			\
 	libknot/dnssec/crypto.c			\
