@@ -21,16 +21,14 @@
 #include "contrib/lmdb/mdb_load/mdb_load.h"
 #include "lmdb.h"
 
-static size_t lineno;
-static int version;
-
-static int flags;
-
-static int Eof;
-
-static MDB_envinfo info;
-
-static unsigned int pagesize;
+typedef struct {
+	size_t lineno;
+	int version;
+	int flags;
+	int Eof;
+	MDB_envinfo info;
+	unsigned int pagesize;
+} mdb_load_ctx_t;
 
 #define STRLENOF(s)	(sizeof(s)-1)
 
@@ -52,16 +50,16 @@ static flagbit dbflags[] = {
 	{ 0, NULL, 0 }
 };
 
-static int readhdr(FILE *in, MDB_val dbuf, char **subname)
+static int readhdr(FILE *in, MDB_val dbuf, char **subname, mdb_load_ctx_t *ctx)
 {
 	char *ptr;
 
-	flags = 0;
+	ctx->flags = 0;
 	while (fgets(dbuf.mv_data, dbuf.mv_size, in) != NULL) {
-		lineno++;
+		ctx->lineno++;
 		if (!strncmp(dbuf.mv_data, "VERSION=", STRLENOF("VERSION="))) {
-			version=atoi((char *)dbuf.mv_data+STRLENOF("VERSION="));
-			if (version > 3) {
+			ctx->version=atoi((char *)dbuf.mv_data+STRLENOF("VERSION="));
+			if (ctx->version > 3) {
 				return MDB_CORRUPTED;
 			}
 		} else if (!strncmp(dbuf.mv_data, "HEADER=END", STRLENOF("HEADER=END"))) {
@@ -85,7 +83,7 @@ static int readhdr(FILE *in, MDB_val dbuf, char **subname)
 			int i;
 			ptr = memchr(dbuf.mv_data, '\n', dbuf.mv_size);
 			if (ptr) *ptr = '\0';
-			i = sscanf((char *)dbuf.mv_data+STRLENOF("mapaddr="), "%p", &info.me_mapaddr);
+			i = sscanf((char *)dbuf.mv_data+STRLENOF("mapaddr="), "%p", &ctx->info.me_mapaddr);
 			if (i != 1) {
 				return MDB_CORRUPTED;
 			}
@@ -93,7 +91,7 @@ static int readhdr(FILE *in, MDB_val dbuf, char **subname)
 			int i;
 			ptr = memchr(dbuf.mv_data, '\n', dbuf.mv_size);
 			if (ptr) *ptr = '\0';
-			i = sscanf((char *)dbuf.mv_data+STRLENOF("mapsize="), "%zu", &info.me_mapsize);
+			i = sscanf((char *)dbuf.mv_data+STRLENOF("mapsize="), "%zu", &ctx->info.me_mapsize);
 			if (i != 1) {
 				return MDB_CORRUPTED;
 			}
@@ -101,7 +99,7 @@ static int readhdr(FILE *in, MDB_val dbuf, char **subname)
 			int i;
 			ptr = memchr(dbuf.mv_data, '\n', dbuf.mv_size);
 			if (ptr) *ptr = '\0';
-			i = sscanf((char *)dbuf.mv_data+STRLENOF("maxreaders="), "%u", &info.me_maxreaders);
+			i = sscanf((char *)dbuf.mv_data+STRLENOF("maxreaders="), "%u", &ctx->info.me_maxreaders);
 			if (i != 1) {
 				return MDB_CORRUPTED;
 			}
@@ -109,7 +107,7 @@ static int readhdr(FILE *in, MDB_val dbuf, char **subname)
 			int i;
 			ptr = memchr(dbuf.mv_data, '\n', dbuf.mv_size);
 			if (ptr) *ptr = '\0';
-			i = sscanf((char *)dbuf.mv_data+STRLENOF("db_pagesize="), "%u", &pagesize);
+			i = sscanf((char *)dbuf.mv_data+STRLENOF("db_pagesize="), "%u", &ctx->pagesize);
 			if (i != 1) {
 				return MDB_CORRUPTED;
 			}
@@ -118,7 +116,7 @@ static int readhdr(FILE *in, MDB_val dbuf, char **subname)
 			for (i=0; dbflags[i].bit; i++) {
 				if (!strncmp(dbuf.mv_data, dbflags[i].name, dbflags[i].len) &&
 					((char *)dbuf.mv_data)[dbflags[i].len] == '=') {
-					flags |= dbflags[i].bit;
+					ctx->flags |= dbflags[i].bit;
 					break;
 				}
 			}
@@ -150,7 +148,7 @@ static int unhex(unsigned char *c2)
 	return c;
 }
 
-static int readline(MDB_val *out, MDB_val *buf, FILE *in)
+static int readline(MDB_val *out, MDB_val *buf, FILE *in, mdb_load_ctx_t *ctx)
 {
 	unsigned char *c1, *c2, *end;
 	size_t len, l2;
@@ -158,14 +156,14 @@ static int readline(MDB_val *out, MDB_val *buf, FILE *in)
 
 	c = fgetc(in);
 	if (c == EOF) {
-		Eof = 1;
+		ctx->Eof = 1;
 		return EOF;
 	}
 	if (c != ' ') {
-		lineno++;
+		ctx->lineno++;
 		if (fgets(buf->mv_data, buf->mv_size, in) == NULL) {
 badend:
-			Eof = 1;
+			ctx->Eof = 1;
 			return EOF;
 		}
 		if (c == 'D' && !strncmp(buf->mv_data, "ATA=END", STRLENOF("ATA=END")))
@@ -174,10 +172,10 @@ badend:
 	}
 
 	if (fgets(buf->mv_data, buf->mv_size, in) == NULL) {
-		Eof = 1;
+		ctx->Eof = 1;
 		return EOF;
 	}
-	lineno++;
+	ctx->lineno++;
 
 	c1 = buf->mv_data;
 	len = strlen((char *)c1);
@@ -193,13 +191,13 @@ badend:
 	while (c1[len-1] != '\n') {
 		buf->mv_data = realloc(buf->mv_data, buf->mv_size*2);
 		if (!buf->mv_data) {
-			Eof = 1;
+			ctx->Eof = 1;
 			return EOF;
 		}
 		c1 = buf->mv_data;
 		c1 += l2;
 		if (fgets((char *)c1, buf->mv_size+1, in) == NULL) {
-			Eof = 1;
+			ctx->Eof = 1;
 			return EOF;
 		}
 		buf->mv_size *= 2;
@@ -213,12 +211,12 @@ badend:
 
 	/* odd length not allowed */
 	if (len & 1) {
-		Eof = 1;
+		ctx->Eof = 1;
 		return EOF;
 	}
 	while (c2 < end) {
 		if (!isxdigit(*c2) || !isxdigit(c2[1])) {
-			Eof = 1;
+			ctx->Eof = 1;
 			return EOF;
 		}
 		*c1++ = unhex(c2);
@@ -251,17 +249,13 @@ int mdb_load(const char *db_path, FILE *in)
 	MDB_val k0buf;
 	MDB_val prevk;
 
-	lineno = 0;
-	version = 0;
-	Eof = 0;
-	info = (MDB_envinfo){ 0 };
-	pagesize = 0;
+	mdb_load_ctx_t ctx = { 0 };
 	envname = db_path;
 
 	dbuf.mv_size = 4096;
 	dbuf.mv_data = malloc(dbuf.mv_size);
 
-	rc = readhdr(in, dbuf, &subname);
+	rc = readhdr(in, dbuf, &subname, &ctx);
 	if (rc) {
 		goto cleanup;
 	}
@@ -273,18 +267,18 @@ int mdb_load(const char *db_path, FILE *in)
 
 	mdb_env_set_maxdbs(env, 2);
 
-	if (info.me_maxreaders)
-		mdb_env_set_maxreaders(env, info.me_maxreaders);
+	if (ctx.info.me_maxreaders)
+		mdb_env_set_maxreaders(env, ctx.info.me_maxreaders);
 
-	if (info.me_mapsize)
-		mdb_env_set_mapsize(env, info.me_mapsize);
+	if (ctx.info.me_mapsize)
+		mdb_env_set_mapsize(env, ctx.info.me_mapsize);
 
 #if MDB_VERSION_MAJOR > 0
-	if (pagesize)
-		mdb_env_set_pagesize(env, pagesize);
+	if (ctx.pagesize)
+		mdb_env_set_pagesize(env, ctx.pagesize);
 #endif
 
-	if (info.me_mapaddr)
+	if (ctx.info.me_mapaddr)
 		envflags |= MDB_FIXEDMAP;
 
 	rc = mdb_env_open(env, envname, envflags, 0664);
@@ -298,7 +292,7 @@ int mdb_load(const char *db_path, FILE *in)
 	k0buf.mv_data = (char *)kbuf.mv_data + kbuf.mv_size;
 	prevk.mv_data = k0buf.mv_data;
 
-	while(!Eof) {
+	while(!ctx.Eof) {
 		MDB_val key, data;
 		int batch = 0;
 		int appflag;
@@ -306,7 +300,7 @@ int mdb_load(const char *db_path, FILE *in)
 		if (!dohdr) {
 			dohdr = 1;
 		} else {
-			rc = readhdr(in, dbuf, &subname);
+			rc = readhdr(in, dbuf, &subname, &ctx);
 			if (rc)
 				goto env_close;
 		}
@@ -316,14 +310,14 @@ int mdb_load(const char *db_path, FILE *in)
 			goto env_close;
 		}
 
-		rc = mdb_dbi_open(txn, subname, flags|MDB_CREATE, &dbi);
+		rc = mdb_dbi_open(txn, subname, ctx.flags|MDB_CREATE, &dbi);
 		if (rc) {
 			goto txn_abort;
 		}
 		prevk.mv_size = 0;
 		if (append) {
 			mdb_set_compare(txn, dbi, greater);
-			if (flags & MDB_DUPSORT)
+			if (ctx.flags & MDB_DUPSORT)
 				mdb_set_dupsort(txn, dbi, greater);
 		}
 
@@ -333,11 +327,11 @@ int mdb_load(const char *db_path, FILE *in)
 		}
 
 		while(1) {
-			rc = readline(&key, &kbuf, in);
+			rc = readline(&key, &kbuf, in, &ctx);
 			if (rc)  /* rc == EOF */
 				break;
 
-			rc = readline(&data, &dbuf, in);
+			rc = readline(&data, &dbuf, in, &ctx);
 			if (rc) {
 				goto txn_abort;
 			}
@@ -347,7 +341,7 @@ int mdb_load(const char *db_path, FILE *in)
 
 			if (append) {
 				appflag = MDB_APPEND;
-				if (flags & MDB_DUPSORT) {
+				if (ctx.flags & MDB_DUPSORT) {
 					if (prevk.mv_size == key.mv_size && !memcmp(prevk.mv_data, key.mv_data, key.mv_size))
 						appflag = MDB_CURRENT|MDB_APPENDDUP;
 					else {
