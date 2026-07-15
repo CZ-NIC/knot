@@ -299,6 +299,14 @@ processed::
      - domain: example.com.
        acl: fwd_foreign_key
 
+.. CAUTION::
+   The server does not reject incoming DDNS requests sent over **0-RTT QUIC or TLS**.
+   To prevent replay attacks, clients must not use 0-RTT when sending DDNS requests.
+
+.. NOTE::
+   After receiving a DDNS request over QUIC, the connection is blocked until
+   the server sends a response.
+
 .. _Restricting dynamic updates:
 
 Restricting dynamic updates
