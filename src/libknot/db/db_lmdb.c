@@ -15,6 +15,8 @@
 #include "libknot/db/db_lmdb.h"
 #include "contrib/files.h"
 #include "contrib/mempattern.h"
+#include "contrib/lmdb/mdb_dump/mdb_dump.h"
+#include "contrib/lmdb/mdb_load/mdb_load.h"
 
 #include <lmdb.h>
 
@@ -587,4 +589,47 @@ const knot_db_api_t *knot_db_lmdb_api(void)
 	};
 
 	return &api;
+}
+
+_public_
+int knot_db_lmdb_dump(const char *db_path, const char *dump_path, bool alldbs)
+{
+	FILE *out = fopen(dump_path, "w");
+	if (out == NULL) {
+		return knot_map_errno();
+	}
+
+	int rc = mdb_dump(db_path, out, alldbs);
+	if (rc != MDB_SUCCESS) {
+		fclose(out);
+		(void)remove(dump_path);
+		return lmdb_error_to_knot(rc);
+	}
+
+	if (fclose(out) != 0) {
+		int ret = knot_map_errno();
+		(void)remove(dump_path);
+		return ret;
+	}
+
+	return KNOT_EOK;
+}
+
+_public_
+int knot_db_lmdb_load(const char *db_path, const char *dump_path)
+{
+	FILE *in = fopen(dump_path, "r");
+	if (in == NULL) {
+		return knot_map_errno();
+	}
+
+	int rc = mdb_load(db_path, in);
+	if (rc != MDB_SUCCESS) {
+		fclose(in);
+		return lmdb_error_to_knot(rc);
+	}
+
+	(void)fclose(in);
+
+	return KNOT_EOK;
 }

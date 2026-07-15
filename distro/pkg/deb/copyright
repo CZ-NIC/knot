@@ -33,6 +33,7 @@ Files: src/contrib/lmdb/lmdb.h src/contrib/lmdb/mdb*.c src/contrib/lmdb/midl.*
 Copyright: 2000-2021 The OpenLDAP Foundation
            2009, 2010 Martin Hedenfalk <martin@bzero.se>
            2011-2021 Howard Chu, Symas Corp.
+           2026 CZ.NIC, z.s.p.o. and contributors <knot-dns@labs.nic.cz>
 License: OLDAP-2.8
 
 Files: src/contrib/musl/*

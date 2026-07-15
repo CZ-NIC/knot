@@ -243,10 +243,19 @@ libembngtcp2_la_SOURCES = \
 endif EMBEDDED_LIBNGTCP2
 
 libemblmdb_la_CPPFLAGS = -include contrib/lmdb/mute_warnings.h
+if !EMBEDDED_LMDB
+# This include renames the mdb_* symbols to emb_mdb_* ones in libemblmdb.la
+libemblmdb_la_CPPFLAGS += -include contrib/lmdb/emb_prefix.h
+endif !EMBEDDED_LMDB
+libemblmdb_LIBS        = libemblmdb.la
+
 libemblmdb_la_SOURCES = \
 	contrib/lmdb/lmdb.h			\
 	contrib/lmdb/mdb.c			\
+	contrib/lmdb/mdb_dump/mdb_dump.c	\
+	contrib/lmdb/mdb_dump/mdb_dump.h	\
 	contrib/lmdb/midl.c			\
 	contrib/lmdb/midl.h			\
 	contrib/lmdb/mute_warnings.h
 
+EXTRA_DIST += contrib/lmdb/emb_prefix.h
