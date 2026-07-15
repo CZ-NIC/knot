@@ -294,6 +294,7 @@ static int remote_forward(conf_t *conf, knot_request_t *request, conf_remote_t *
 
 	/* Create a request. */
 	knot_request_flag_t flags = conf->cache.srv_tcp_fastopen ? KNOT_REQUEST_TFO : 0;
+	flags |= KNOT_REQUEST_1RTT;
 	if (request->query->tsig_rr != NULL && request->sign.tsig_key.secret.size == 0) {
 		// Put the TSIG back on the wire as it was removed when parsing in pkt copy.
 		knot_tsig_append(query->wire, &query->size, query->max_size, query->tsig_rr);
