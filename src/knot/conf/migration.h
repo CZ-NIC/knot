@@ -17,3 +17,16 @@
 int conf_migrate(
 	conf_t *conf
 );
+
+/*!
+ * Migrates from LMDB version 0.9 to the present one.
+ *
+ * \param[in] db_dir    Path to the migrated LMDB directory.
+ * \param[in] named_db  Indication of a named database.
+ *
+ * \return Error code, KNOT_EOK if success.
+ */
+int migrate_lmdb(
+	const char *db_dir,
+	bool named_db
+);

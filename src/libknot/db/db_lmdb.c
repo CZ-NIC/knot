@@ -58,6 +58,10 @@ static int lmdb_error_to_knot(int error)
 		return KNOT_ELIMIT;
 	}
 
+	if (error == MDB_INVALID) {
+		return KNOT_EMALF;
+	}
+
 	if (error == MDB_MAP_FULL || error == ENOSPC) {
 		return KNOT_ESPACE;
 	}

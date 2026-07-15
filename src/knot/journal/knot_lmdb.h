@@ -16,6 +16,7 @@ typedef struct knot_lmdb_db {
 	MDB_dbi dbi;
 	MDB_env *env;
 	pthread_mutex_t opening_mutex;
+	bool migration_allowed;
 
 	// those are static options. Set them after knot_lmdb_init().
 	unsigned maxdbs;

@@ -6,6 +6,9 @@
 #include "knot/common/log.h"
 #include "knot/conf/migration.h"
 #include "knot/conf/confdb.h"
+#include "contrib/files.h"
+#include "contrib/string.h"
+#include "contrib/time.h"
 
 /*
 static void try_unset(conf_t *conf, knot_db_txn_t *txn, yp_name_t *key0, yp_name_t *key1)
@@ -67,4 +70,68 @@ int conf_migrate(
 
 	return conf_refresh_txn(conf);
 	*/
+}
+
+int migrate_lmdb(
+	const char *db_dir,
+	bool named_db)
+{
+	if (db_dir == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	log_notice("database, incompatible '%s', migrating to LMDB version 1.x", db_dir);
+
+#define MIGR_LOG(ret, msg, ...) if (ret != KNOT_EOK) { \
+	log_error("database, " msg ", failed (%s)", ##__VA_ARGS__, knot_strerror(ret)); \
+}
+
+	struct timespec now_ts = { 0 };
+	clock_gettime(CLOCK_REALTIME, &now_ts);
+	knot_millis_t now_ms = knot_millis_from_timespec(&now_ts);
+
+	int ret = KNOT_EOK;
+	char *dump_file = sprintf_alloc("%s.%llu.export", db_dir, now_ms);
+	char *back_dir = sprintf_alloc("%s.%llu.back", db_dir, now_ms);
+	char *tmp_dir = sprintf_alloc("%s.%llu.tmp", db_dir, now_ms);
+	if (dump_file == NULL || back_dir == NULL || tmp_dir == NULL) {
+		ret = KNOT_ENOMEM;
+	}
+	if (ret == KNOT_EOK) {
+		ret = knot_db_lmdb_dump(db_dir, dump_file, named_db);
+		MIGR_LOG(ret, "exporting to '%s', LMDB version 0.9", dump_file);
+	}
+	if (ret == KNOT_EOK) {
+		ret = make_dir(tmp_dir, LMDB_DIR_MODE, true);
+		MIGR_LOG(ret, "creating temporary directory '%s'", tmp_dir);
+	}
+	if (ret == KNOT_EOK) {
+		ret = knot_db_lmdb_load(tmp_dir, dump_file);
+		MIGR_LOG(ret, "importing to '%s'", tmp_dir);
+	}
+	if (ret == KNOT_EOK) {
+		if (rename(db_dir, back_dir) != 0) {
+			ret = knot_map_errno();
+		}
+		MIGR_LOG(ret, "renamimg previous database to '%s'", back_dir);
+	}
+	if (ret == KNOT_EOK) {
+		if (rename(tmp_dir, db_dir) != 0) {
+			ret = knot_map_errno();
+		}
+		MIGR_LOG(ret, "renaming new database to '%s'", db_dir);
+	}
+	if (ret != KNOT_EOK) {
+		remove_path(tmp_dir, false);
+		remove_path(dump_file, false);
+		log_error("database, migration of '%s' failed", db_dir);
+	} else {
+		log_notice("database, migration of '%s' successful", db_dir);
+		log_notice("database, export stored in '%s', backup stored in '%s'",
+		           dump_file, back_dir);
+	}
+	free(dump_file);
+	free(back_dir);
+	free(tmp_dir);
+	return ret;
 }
