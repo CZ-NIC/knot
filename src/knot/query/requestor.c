@@ -83,6 +83,9 @@ static int request_ensure_connected(knot_request_t *request, bool *reused_fd, in
 			                  &local_len);
 		}
 #ifdef ENABLE_QUIC
+		if (request->flags & KNOT_REQUEST_1RTT) {
+			reused_fd = NULL;
+		}
 		int ret = knot_qreq_connect(&request->quic_ctx, request->fd,
 		                            &request->remote, &request->source,
 		                            request->creds, request->hostnames,
