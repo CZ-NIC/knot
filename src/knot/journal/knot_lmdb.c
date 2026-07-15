@@ -12,6 +12,7 @@
 #include "knot/journal/knot_lmdb.h"
 
 #include "knot/conf/conf.h"
+#include "knot/conf/migration.h"
 #include "contrib/files.h"
 #include "contrib/time.h"
 #include "contrib/wire_ctx.h"
@@ -30,6 +31,9 @@ static void err_to_knot(int *err)
 		break;
 	case MDB_TXN_FULL:
 		*err = KNOT_ELIMIT;
+		break;
+	case MDB_INVALID:
+		*err = KNOT_EMALF;
 		break;
 	case MDB_MAP_FULL:
 	case ENOSPC:
@@ -68,6 +72,7 @@ void knot_lmdb_init(knot_lmdb_db_t *db, const char *path, size_t mapsize, unsign
 	pthread_mutex_init(&db->opening_mutex, NULL);
 	db->maxdbs = 2;
 	db->maxreaders = conf_lmdb_readers(conf());
+	db->migration_allowed = true;
 }
 
 static int lmdb_stat(const char *lmdb_path, struct stat *st)
@@ -196,6 +201,13 @@ int knot_lmdb_open(knot_lmdb_db_t *db)
 {
 	pthread_mutex_lock(&db->opening_mutex);
 	int ret = lmdb_open(db);
+	if (ret == KNOT_EMALF && db->migration_allowed) {
+		db->migration_allowed = false;
+		ret = migrate_lmdb(db->path, db->dbname != NULL);
+		if (ret == KNOT_EOK) {
+			ret = lmdb_open(db);
+		}
+	}
 	pthread_mutex_unlock(&db->opening_mutex);
 	return ret;
 }
