@@ -633,7 +633,7 @@ int udp_master(dthread_t *thread)
 finish:
 	if (ret != KNOT_EOK) {
 		log_error("%s, failed to initialize worker %u (%s)",
-		          (xdp_thread ? "XDP" : "UDP"), dt_thread_id, strerror(errno));
+		          (xdp_thread ? "XDP" : "UDP"), dt_thread_id, knot_strerror(ret));
 	}
 
 	api->udp_deinit(api_ctx);
