@@ -451,22 +451,21 @@ static udp_api_t xdp_mmsg_api = {
 };
 #endif /* ENABLE_XDP */
 
-static bool is_xdp_thread(const server_t *server, int thread_id)
+static bool is_xdp_thread(const server_t *server, unsigned thread_id)
 {
 	return server->handlers[IO_XDP].size > 0 &&
 	       server->handlers[IO_XDP].handler.thread_id[0] <= thread_id;
 }
 
-static int iface_udp_fd(const iface_t *iface, int thread_id, bool xdp_thread,
-                        void **xdp_socket)
+static int iface_udp_fd(const iface_t *iface, unsigned dt_thread_id, void **xdp_socket)
 {
-	if (xdp_thread) {
+	if (xdp_socket != NULL) {
 #ifdef ENABLE_XDP
-		if (thread_id <  iface->xdp_first_thread_id ||
-		    thread_id >= iface->xdp_first_thread_id + iface->fd_xdp_count) {
+		if (dt_thread_id <  iface->xdp_first_thread_id ||
+		    dt_thread_id >= iface->xdp_first_thread_id + iface->fd_xdp_count) {
 			return -1; // Different XDP interface.
 		}
-		size_t xdp_wrk_id = thread_id - iface->xdp_first_thread_id;
+		unsigned xdp_wrk_id = dt_thread_id - iface->xdp_first_thread_id;
 		assert(xdp_wrk_id < iface->fd_xdp_count);
 		*xdp_socket = iface->xdp_sockets[xdp_wrk_id];
 		return iface->fd_xdp[xdp_wrk_id];
@@ -480,8 +479,8 @@ static int iface_udp_fd(const iface_t *iface, int thread_id, bool xdp_thread,
 		}
 #ifdef ENABLE_REUSEPORT
 		if (iface->addr.ss_family != AF_UNIX) {
-			assert(thread_id < iface->fd_udp_count);
-			return iface->fd_udp[thread_id];
+			assert(dt_thread_id < iface->fd_udp_count);
+			return iface->fd_udp[dt_thread_id];
 		}
 #endif
 		return iface->fd_udp[0];
@@ -489,24 +488,23 @@ static int iface_udp_fd(const iface_t *iface, int thread_id, bool xdp_thread,
 }
 
 static unsigned udp_set_ifaces(const server_t *server, size_t n_ifaces, fdset_t *fds,
-                               int thread_id, void **xdp_socket, bool *quic)
+                               unsigned dt_thread_id, void **xdp_socket, bool *quic)
 {
 	if (n_ifaces == 0) {
 		return 0;
 	}
 
-	bool xdp_thread = is_xdp_thread(server, thread_id);
 	const iface_t *ifaces = server->ifaces;
 
 	for (const iface_t *i = ifaces; i != ifaces + n_ifaces; i++) {
 #ifndef ENABLE_REUSEPORT
 		/* If loadbalanced SO_REUSEPORT isn't available, ensure that
 		 * just one (first) UDP worker handles the QUIC sockets. */
-		if (i->tls && thread_id > 0) {
+		if (i->tls && dt_thread_id > 0) {
 			continue;
 		}
 #endif
-		int fd = iface_udp_fd(i, thread_id, xdp_thread, xdp_socket);
+		int fd = iface_udp_fd(i, dt_thread_id, xdp_socket);
 		if (fd < 0) {
 			continue;
 		}
@@ -519,7 +517,7 @@ static unsigned udp_set_ifaces(const server_t *server, size_t n_ifaces, fdset_t 
 		}
 	}
 
-	assert(!xdp_thread || fdset_get_length(fds) == 1);
+	assert(xdp_socket == NULL || fdset_get_length(fds) == 1);
 	return fdset_get_length(fds);
 }
 
@@ -530,7 +528,9 @@ int udp_master(dthread_t *thread)
 	}
 
 	iohandler_t *handler = (iohandler_t *)thread->data;
-	int thread_id = handler->thread_id[dt_get_id(thread)];
+	unsigned dt_thread_id = dt_get_id(thread);
+	unsigned thread_id = handler->thread_id[dt_thread_id];
+	bool xdp_thread = is_xdp_thread(handler->server, thread_id);
 
 	/* Set thread affinity to CPU core (same for UDP and XDP). */
 	unsigned cpu = dt_online_cpus();
@@ -542,7 +542,7 @@ int udp_master(dthread_t *thread)
 	/* Choose processing API. */
 	udp_api_t *api = NULL;
 	void *api_ctx = NULL;
-	if (is_xdp_thread(handler->server, thread_id)) {
+	if (xdp_thread) {
 #ifdef ENABLE_XDP
 		api = &xdp_mmsg_api;
 #else
@@ -578,7 +578,8 @@ int udp_master(dthread_t *thread)
 		goto finish;
 	}
 	unsigned nfds = udp_set_ifaces(handler->server, handler->server->n_ifaces,
-	                               &fds, thread_id, &xdp_socket, &quic);
+	                               &fds, dt_thread_id, (xdp_thread ? &xdp_socket : NULL),
+	                               &quic);
 	if (nfds == 0) {
 		goto finish; /* Terminate on zero interfaces. */
 	}
@@ -632,8 +633,7 @@ int udp_master(dthread_t *thread)
 finish:
 	if (ret != KNOT_EOK) {
 		log_error("%s, failed to initialize worker %u (%s)",
-		          (is_xdp_thread(handler->server, thread_id) ? "XDP" : "UDP"),
-		          dt_get_id(thread), strerror(errno));
+		          (xdp_thread ? "XDP" : "UDP"), dt_thread_id, strerror(errno));
 	}
 
 	api->udp_deinit(api_ctx);

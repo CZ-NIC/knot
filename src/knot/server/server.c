@@ -776,8 +776,7 @@ static int configure_sockets(conf_t *conf, server_t *s)
 		.busy_poll_timeout = conf->cache.xdp_busypoll_timeout,
 		.force_copy = !conf->cache.xdp_zero_copy,
 	};
-	unsigned thread_id = s->handlers[IO_UDP].handler.unit->size +
-	                     s->handlers[IO_TCP].handler.unit->size;
+	unsigned dt_thread_id = 0;
 	while (lisxdp_val.code == KNOT_EOK) {
 		struct sockaddr_storage addr = conf_addr(&lisxdp_val, NULL, NULL);
 		char addr_str[SOCKADDR_STRLEN] = { 0 };
@@ -786,7 +785,7 @@ static int configure_sockets(conf_t *conf, server_t *s)
 
 		iface_t *new_if = server_init_xdp_iface(&addr, conf->cache.xdp_route_check,
 		                                        conf->cache.xdp_udp, conf->cache.xdp_tcp,
-		                                        conf->cache.xdp_quic, &thread_id,
+		                                        conf->cache.xdp_quic, &dt_thread_id,
 		                                        &xdp_config);
 		if (new_if == NULL) {
 			server_deinit_iface_list(newlist, nifs);
