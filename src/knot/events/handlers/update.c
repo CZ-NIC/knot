@@ -28,6 +28,11 @@
 	       LOG_DIRECTION_IN, (qdata)->params->remote, \
 	       (qdata)->params->proto, false, (qdata)->sign.tsig_key.name, fmt)
 
+#define FORWARD_LOG(priority, zone, remote, request, fmt...) \
+	ns_log(priority, (zone)->name, LOG_OPERATION_UPDATE, \
+	       LOG_DIRECTION_OUT, &(remote)->addr, flags2proto((request)->layer.flags), \
+	       ((request)->layer.flags) & KNOT_REQUESTOR_REUSED, (remote)->key.name, fmt)
+
 static void init_qdata_from_request(knotd_qdata_t *qdata,
                                     zone_t *zone,
                                     knot_request_t *req,
@@ -288,7 +293,7 @@ static int remote_forward(conf_t *conf, knot_request_t *request, conf_remote_t *
 	}
 
 	/* Create a request. */
-	knot_request_flag_t flags = 0;
+	knot_request_flag_t flags = KNOT_REQUEST_1RTT;
 	if (request->query->tsig_rr != NULL && request->sign.tsig_key.secret.size == 0) {
 		// Put the TSIG back on the wire as it was removed when parsing in pkt copy.
 		knot_tsig_append(query->wire, &query->size, query->max_size, query->tsig_rr);
@@ -305,6 +310,12 @@ static int remote_forward(conf_t *conf, knot_request_t *request, conf_remote_t *
 	/* Execute the request. */
 	int timeout = conf->cache.srv_tcp_remote_io_timeout;
 	ret = knot_requestor_exec(&re, req, timeout);
+	if (ret != KNOT_EOK) {
+		FORWARD_LOG(LOG_ERR, zone, remote, &re, "failed to forward updates (%s)",
+		            knot_strerror(ret));
+	} else {
+		FORWARD_LOG(LOG_INFO, zone, remote, &re, "successfully forwarded");
+	}
 
 	knot_request_free(req, NULL);
 	knot_requestor_clear(&re);
@@ -353,10 +364,6 @@ static void forward_request(conf_t *conf, zone_t *zone, knot_request_t *request)
 	/* Set RCODE if forwarding failed. */
 	if (ret != KNOT_EOK) {
 		knot_wire_set_rcode(request->resp->wire, KNOT_RCODE_SERVFAIL);
-		log_zone_error(zone->name, "DDNS, failed to forward updates to the master (%s)",
-		               knot_strerror(ret));
-	} else {
-		log_zone_info(zone->name, "DDNS, updates forwarded to the master");
 	}
 }
 

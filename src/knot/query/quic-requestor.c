@@ -204,13 +204,16 @@ int knot_qreq_connect(struct knot_quic_reply **out,
 
 	(void)net_cmsg_ecn_enable(fd, remote->ss_family);
 
-	intptr_t sessticket = conn_pool_get(global_sessticket_pool, r->ip_loc, r->ip_rem);
+	intptr_t sessticket = CONN_POOL_FD_INVALID;
+	if (reused_fd != NULL) {
+		sessticket = conn_pool_get(global_sessticket_pool, r->ip_loc, r->ip_rem);
+	}
 	if (sessticket != CONN_POOL_FD_INVALID) {
 		ret = knot_quic_session_load(conn, (void *)sessticket);
 		if (ret != KNOT_EOK) {
 			global_sessticket_pool->close_cb(sessticket);
 			sessticket = CONN_POOL_FD_INVALID;
-		} else if (reused_fd != NULL) {
+		} else {
 			*reused_fd = true;
 		}
 	}
