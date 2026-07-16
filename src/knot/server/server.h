@@ -62,7 +62,7 @@ typedef struct {
 	unsigned fd_tcp_count;
 	int *fd_xdp;
 	unsigned fd_xdp_count;
-	unsigned xdp_first_thread_id;
+	unsigned xdp_first_thread_id; // Index in XDP dthread pool, not globally unique one.
 	bool anyaddr;
 	bool tls;
 	const char *dev;
