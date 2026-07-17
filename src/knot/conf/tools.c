@@ -971,13 +971,13 @@ int check_remote(
 	conf_val_t pin = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_RMT,
 	                                    C_CERT_KEY, args->id, args->id_len);
 	if (conf_val_count(&pin) > RMT_MAX_PINS) {
-		args->err_str = "too many cert-keys";
+		args->err_str = "too many cert-key values";
 		return KNOT_EINVAL;
 	}
-	conf_val_t cert_host = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_RMT,
-	                                          C_CERT_HOSTNAME, args->id, args->id_len);
-	if (conf_val_count(&cert_host) > RMT_MAX_PINS) {
-		args->err_str = "too many cert-hosts";
+	conf_val_t hostname = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_RMT,
+	                                         C_CERT_HOSTNAME, args->id, args->id_len);
+	if (conf_val_count(&hostname) > RMT_MAX_PINS) {
+		args->err_str = "too many cert-hostname values";
 		return KNOT_EINVAL;
 	}
 
