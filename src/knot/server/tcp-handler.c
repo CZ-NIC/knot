@@ -125,7 +125,7 @@ static void tcp_log_error(const struct sockaddr_storage *ss, const char *operati
 }
 
 static unsigned tcp_set_ifaces(const iface_t *ifaces, size_t n_ifaces,
-                               fdset_t *fds, int thread_id, bool *tls)
+                               fdset_t *fds, unsigned dt_thread_id, bool *tls)
 {
 	if (n_ifaces == 0) {
 		return 0;
@@ -136,14 +136,11 @@ static unsigned tcp_set_ifaces(const iface_t *ifaces, size_t n_ifaces,
 			continue;
 		}
 
-		int tcp_id = 0;
+		unsigned tcp_id = 0;
 #ifdef ENABLE_REUSEPORT
 		if (conf()->cache.srv_tcp_reuseport && i->addr.ss_family != AF_UNIX) {
-			/* Note: thread_ids start with UDP threads, TCP threads follow. */
-			assert((i->fd_udp_count <= thread_id) &&
-			       (thread_id < i->fd_tcp_count + i->fd_udp_count));
-
-			tcp_id = thread_id - i->fd_udp_count;
+			assert(dt_thread_id < i->fd_tcp_count);
+			tcp_id = dt_thread_id;
 		}
 #endif
 		int ret = fdset_add(fds, i->fd_tcp[tcp_id], FDSET_POLLIN, (void *)i);
@@ -363,14 +360,15 @@ int tcp_master(dthread_t *thread)
 	}
 
 	iohandler_t *handler = (iohandler_t *)thread->data;
-	int thread_id = handler->thread_id[dt_get_id(thread)];
+	unsigned dt_thread_id = dt_get_id(thread);
+	unsigned thread_id = handler->thread_id[dt_thread_id];
 
 #ifdef ENABLE_REUSEPORT
 	/* Set thread affinity to CPU core (overlaps with UDP/XDP). */
 	if (conf()->cache.srv_tcp_reuseport) {
 		unsigned cpu = dt_online_cpus();
 		if (cpu > 1) {
-			unsigned cpu_mask = (dt_get_id(thread) % cpu);
+			unsigned cpu_mask = (dt_thread_id % cpu);
 			dt_setaffinity(thread, &cpu_mask, 1);
 		}
 	}
@@ -409,7 +407,7 @@ int tcp_master(dthread_t *thread)
 	bool tls = false;
 	tcp.client_threshold = tcp_set_ifaces(handler->server->ifaces,
 	                                      handler->server->n_ifaces,
-	                                      &tcp.set, thread_id, &tls);
+	                                      &tcp.set, dt_thread_id, &tls);
 	if (tcp.client_threshold == 0) {
 		goto finish; /* Terminate on zero interfaces. */
 	}
@@ -451,7 +449,7 @@ int tcp_master(dthread_t *thread)
 finish:
 	if (ret != KNOT_EOK) {
 		log_error("TCP, failed to initialize worker %u (%s)",
-		          dt_get_id(thread), strerror(errno));
+		          dt_get_id(thread), knot_strerror(ret));
 	}
 
 	knot_tls_ctx_free(tcp.tls_ctx);
