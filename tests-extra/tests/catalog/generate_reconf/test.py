@@ -39,7 +39,7 @@ def mark_zone(server, zone):
     return ts
 
 def check_mark(server, zone, timestamp, present=True):
-    t.sleep(1)
+    t.sleep(2)
     zone_name = zone[0].name
     resp = server.dig(f"_mark_{timestamp}_.{zone_name}", "TXT")
     resp.check_rr(rtype="TXT") if present else resp.check_no_rr(rtype="TXT")
