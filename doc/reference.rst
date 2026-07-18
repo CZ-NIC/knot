@@ -2801,6 +2801,7 @@ Definition of zones served by the server.
      dnssec-signing: BOOL
      dnssec-validation: BOOL
      dnssec-policy: policy_id
+     dnssec-metadata-db: kasp | timer
      ds-push: remote_id | remotes_id ...
      zonemd-verify: BOOL
      zonemd-generate: none | zonemd-sha384 | zonemd-sha512 | remove
@@ -3360,6 +3361,22 @@ A :ref:`reference<policy_id>` to DNSSEC signing policy.
    A configured policy called "default" won't be used unless explicitly referenced.
 
 *Default:* an imaginary policy with all default values
+
+.. _zone_dnssec-metadata-db:
+
+dnssec-metadata-db
+------------------
+
+Determines where to store some frequently updated DNSSEC-related metadata.
+
+Possible values:
+
+- ``kasp`` – Store the metadata in the KASP database.
+- ``timer`` – Store the metadata in the timer database. This can improve signing
+  performance for deployments with many zones, but care must be taken not to
+  purge or otherwise mishandle the timer database.
+
+*Default:* ``kasp``
 
 .. _zone_ds-push:
 

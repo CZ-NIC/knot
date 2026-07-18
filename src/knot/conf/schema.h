@@ -50,6 +50,7 @@
 #define C_DELEG_AWARE		"\x0B""deleg-aware"
 #define C_DELETE_DELAY		"\x0C""delete-delay"
 #define C_DENY			"\x04""deny"
+#define C_DNSSEC_META_DB	"\x12""dnssec-metadata-db"
 #define C_DNSKEY_MGMT		"\x11""dnskey-management"
 #define C_DNSKEY_SYNC		"\x0B""dnskey-sync"
 #define C_DNSKEY_TTL		"\x0A""dnskey-ttl"
@@ -238,6 +239,11 @@ enum {
 enum {
 	DNSKEY_MGMT_FULL        = 0,
 	DNSKEY_MGMT_INCREMENTAL = 1,
+};
+
+enum {
+	DNSSEC_META_DB_KASP  = 0,
+	DNSSEC_META_DB_TIMER = 1,
 };
 
 enum {
