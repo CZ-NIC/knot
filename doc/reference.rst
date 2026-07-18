@@ -1861,13 +1861,12 @@ remote
 ------
 
 An ordered list of references :ref:`remote<remote_id>` and
-:ref:`remotes<remotes_id>`. The query must
-match one of the remotes. Specifically, one of the remote's addresses and remote's
-TSIG key if configured must match.
+:ref:`remotes<remotes_id>`. The query must match the remote parameters.
 
 .. NOTE::
-   This option cannot be specified along with the :ref:`acl_address`,
-   :ref:`acl_key`, or :ref:`acl_protocol` option at one ACL item.
+   This option cannot be combined with the :ref:`acl_address`,
+   :ref:`acl_key`, :ref:`acl_protocol`, :ref:`acl_cert-key`, or
+   :ref:`acl_cert-hostname` option in the same ACL rule.
 
 *Default:* not set
 

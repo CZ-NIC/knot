@@ -918,14 +918,17 @@ int check_acl(
 	                                    C_KEY, args->id, args->id_len);
 	conf_val_t proto = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_ACL,
 	                                      C_PROTOCOL, args->id, args->id_len);
+	conf_val_t certkey = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_ACL,
+	                                        C_CERT_KEY, args->id, args->id_len);
 	conf_val_t hostname = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_ACL,
 	                                         C_CERT_HOSTNAME, args->id, args->id_len);
 	conf_val_t remote = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_ACL,
 	                                       C_RMT, args->id, args->id_len);
 	if (remote.code != KNOT_ENOENT &&
-	    (addr.code != KNOT_ENOENT || key.code != KNOT_ENOENT ||
-	     proto.code != KNOT_ENOENT || hostname.code != KNOT_ENOENT)) {
-		args->err_str = "specified ACL/remote together with address, key, protocol, or hostname";
+	    (addr.code != KNOT_ENOENT || key.code != KNOT_ENOENT || proto.code != KNOT_ENOENT ||
+	     certkey.code != KNOT_ENOENT || hostname.code != KNOT_ENOENT)) {
+		args->err_str = "specified ACL/remote together with address, key, protocol, "
+		                "cert-key, or cert-hostname";
 		return KNOT_EINVAL;
 	}
 
@@ -979,13 +982,13 @@ int check_remote(
 	conf_val_t pin = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_RMT,
 	                                    C_CERT_KEY, args->id, args->id_len);
 	if (conf_val_count(&pin) > RMT_MAX_PINS) {
-		args->err_str = "too many cert-keys";
+		args->err_str = "too many cert-key values";
 		return KNOT_EINVAL;
 	}
-	conf_val_t cert_host = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_RMT,
-	                                          C_CERT_HOSTNAME, args->id, args->id_len);
-	if (conf_val_count(&cert_host) > RMT_MAX_PINS) {
-		args->err_str = "too many cert-hosts";
+	conf_val_t hostname = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_RMT,
+	                                         C_CERT_HOSTNAME, args->id, args->id_len);
+	if (conf_val_count(&hostname) > RMT_MAX_PINS) {
+		args->err_str = "too many cert-hostname values";
 		return KNOT_EINVAL;
 	}
 
