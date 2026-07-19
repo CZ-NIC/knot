@@ -35,7 +35,7 @@ Build-Depends:
  protobuf-compiler,
  python3-all,
  softhsm2 <!nocheck>,
-Standards-Version: 4.7.3
+Standards-Version: 4.7.4
 Homepage: https://www.knot-dns.cz/
 Vcs-Browser: https://gitlab.nic.cz/knot/knot-dns
 Vcs-Git: https://gitlab.nic.cz/knot/knot-dns.git
