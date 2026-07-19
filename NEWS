@@ -1,3 +1,30 @@
+Knot DNS 3.5.6 (2026-07-20)
+===========================
+
+Improvements:
+-------------
+ - knotd: new log message when accepting a control client fails
+ - knotd: new log message when UDP or TCP worker initialization fails
+ - knotd: improved log message when loading an expired zone
+ - knotd: more verbose log messages for DDNS forwarding
+ - knotd: disabled 0-RTT when forwarding DDNS updates over QUIC
+ - utils: configuration detection considers an empty database directory as unused
+ - libknot: added support for EDE code 33 (Negative Trust Anchor) (Thanks to Babak Farrokhi)
+ - libs: upgraded embedded libngtcp2 to 1.24.0
+ - doc: various improvements
+
+Bugfixes:
+---------
+ - knotd: server crashes when evaluating an ACL rule with 'cert-hostname' set
+ - knotd: failed to start with 'listen-tls' and 'tcp-reuseport' enabled
+ - knotd: missing proper mutex (de)initialization for controlling access to some zone properties
+ - knotd: server crashes when it fails to load a QUIC/TLS key
+ - knotd: zone control unset does not respect the TTL value of the removed record
+ - knotd: incomplete configuration check for conflicting ACL settings
+ - libknot: XDP frame limit does not correctly consider the MTU limit
+ - libknot: QUIC connection not closed on handshake failure (Thanks to Vendemiat) !1886
+ - knot-exporter: uncaught exception when connecting to knotd that is not running #974
+
 Knot DNS 3.5.5 (2026-06-12)
 ===========================
 
