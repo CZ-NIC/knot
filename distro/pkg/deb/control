@@ -63,6 +63,7 @@ Description: Authoritative DNS server
 
 Package: libknot16
 Architecture: any
+Multi-Arch: same
 Depends:
  ${misc:Depends},
  ${shlibs:Depends},
@@ -77,6 +78,7 @@ Description: DNS shared library from Knot DNS
 
 Package: libzscanner5
 Architecture: any
+Multi-Arch: same
 Depends:
  ${misc:Depends},
  ${shlibs:Depends},
@@ -91,6 +93,7 @@ Description: DNS zone-parsing shared library from Knot DNS
 
 Package: libknot-dev
 Architecture: any
+Multi-Arch: same
 Depends:
  libgnutls28-dev,
  libknot16 (= ${binary:Version}),
