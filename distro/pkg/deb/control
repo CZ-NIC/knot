@@ -256,6 +256,7 @@ Description: Documentation for Knot DNS
 Package: knot-exporter
 Architecture: all
 Depends:
+ procps,
  ${misc:Depends},
  ${python3:Depends},
 Section: python
