@@ -706,6 +706,8 @@ two steps:
 As an alternative procedure, the zone may be frozen, then purged and deconfigured.
 No zone thaw in that case.
 
+Catalog member zones are automatically purged immediately upon their removal from the catalog.
+
 .. _DNSSEC Key states:
 
 DNSSEC key states
