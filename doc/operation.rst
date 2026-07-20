@@ -696,7 +696,7 @@ two steps:
 
    $ knotc conf-begin
    $ knotc conf-unset 'zone[example.com]'
-   $ knotc conf-comit
+   $ knotc conf-commit
 
 2. purge the orphaned zone, for example::
 
