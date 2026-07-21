@@ -1122,6 +1122,10 @@ static void print_key_brief(const knot_kasp_key_t *key, key_info_t *info,
 		printf("ALGORITHM_%u", alg);
 	}
 
+	if (dnssec_key_get_flags(key->key) & KNOT_DNSKEY_FLAG_ADT) {
+		printf(" %sADT%s", COL_BLUE(c), COL_RST(c));
+	}
+
 	if (key->is_pub_only) {
 		printf(" %s%spublic-only%s", COL_BOLD(c), COL_MGNT(c), COL_RST(c));
 	}
@@ -1179,10 +1183,12 @@ static void print_key_full(const knot_kasp_key_t *key, key_info_t *info,
 	uint16_t keytag = trash ? info->keytag : dnssec_key_get_keytag(key->key);
 
 	printf("%s ksk=%s zsk=%s tag=%05d algorithm=%-2d size=%-4u"
-	       " public-only=%s for-later=%s missing=%s trash=%s",
+	       " adt=%s public-only=%s for-later=%s missing=%s trash=%s",
 	       key->id, (key->is_ksk ? "yes" : "no "), (key->is_zsk ? "yes" : "no "),
 	       keytag, (int)dnssec_key_get_algorithm(key->key),
-	       dnssec_key_get_size(key->key), (key->is_pub_only ? "yes" : "no "),
+	       dnssec_key_get_size(key->key),
+	       ((dnssec_key_get_flags(key->key) & KNOT_DNSKEY_FLAG_ADT) ? "yes" : "no "),
+	       (key->is_pub_only ? "yes" : "no "),
 	       (key->is_for_later ? "yes" : "no "), (info->missing ? "yes" : "no "),
 	       (trash ? "yes" : "no "));
 
@@ -1222,6 +1228,7 @@ static void print_key_json(const knot_kasp_key_t *key, key_info_t *info,
 	jsonw_int(w,   "tag", keytag);
 	jsonw_ulong(w, "algorithm", dnssec_key_get_algorithm(key->key));
 	jsonw_int(w,   "size", dnssec_key_get_size(key->key));
+	jsonw_bool(w,  "adt", (dnssec_key_get_flags(key->key) & KNOT_DNSKEY_FLAG_ADT) != 0);
 	jsonw_bool(w,  "public-only", key->is_pub_only);
 	jsonw_bool(w,  "for-later", key->is_for_later);
 	jsonw_bool(w,  "missing", info->missing);
