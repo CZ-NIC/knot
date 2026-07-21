@@ -229,6 +229,9 @@ accepts values **yes** or **no**. If the value is omitted, it's interpreted as *
 **sep**
   *(bool)* Overrides the standard setting of the Secure Entry Point flag.
 
+**adt**
+  *(bool)* ADT bit signaling DELEG support.
+
 **for-later**
   *(bool)* The key will be determined for later use. It means once a new key ought
   to be generated, this one will be used instead if the key type and algorithm match.

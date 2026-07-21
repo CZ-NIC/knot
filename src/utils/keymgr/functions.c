@@ -269,6 +269,8 @@ static bool genkeyargs(int argc, char *argv[], bool just_timing, key_params_t *k
 			bitmap_set(flags, DNSKEY_GENERATE_SEP_ON, res);
 		} else if (same_command_bool(argv[i], "for-later", &res)) {
 			bitmap_set(flags, DNSKEY_GENERATE_FOR_LATER, res);
+		}else if (same_command_bool(argv[i], "adt", &res)) {
+			bitmap_set(flags, DNSKEY_GENERATE_ADT_ON, res);
 		} else if (!init_timestamps(argv[i], timing)) {
 			ERR2("invalid parameter: %s", argv[i]);
 			return false;
@@ -1038,7 +1040,9 @@ int keymgr_set_timing(knot_kasp_key_t *key, int argc, char *argv[])
 	knot_kasp_key_timing_t temp = key->timing;
 	kdnssec_generate_flags_t flags = ((key->is_ksk ? DNSKEY_GENERATE_KSK : 0) |
 	                                  (key->is_zsk ? DNSKEY_GENERATE_ZSK : 0) |
-	                                  (key->is_for_later ? DNSKEY_GENERATE_FOR_LATER : 0));
+	                                  (key->is_for_later ? DNSKEY_GENERATE_FOR_LATER : 0) |
+	                                  ((dnssec_key_get_flags(key->key) & KNOT_DNSKEY_FLAG_ADT) ? DNSKEY_GENERATE_ADT_ON : 0));
+	kdnssec_generate_flags_t flags_prev = flags;
 
 	if (genkeyargs(argc, argv, true, NULL, &flags, NULL, NULL, &temp, NULL)) {
 		int ret = check_timers(&temp);
@@ -1047,14 +1051,12 @@ int keymgr_set_timing(knot_kasp_key_t *key, int argc, char *argv[])
 		}
 		key->timing = temp;
 		key->is_for_later = (flags & DNSKEY_GENERATE_FOR_LATER);
-		if (key->is_ksk != (bool)(flags & DNSKEY_GENERATE_KSK) ||
-		    key->is_zsk != (bool)(flags & DNSKEY_GENERATE_ZSK) ||
-		    flags & DNSKEY_GENERATE_SEP_SPEC) {
+		if (flags_prev != flags) {
 			normalize_generate_flags(&flags);
 			key->is_ksk = (flags & DNSKEY_GENERATE_KSK);
 			key->is_zsk = (flags & DNSKEY_GENERATE_ZSK);
 			return dnssec_key_set_flags(key->key, dnskey_flags(flags & DNSKEY_GENERATE_SEP_ON,
-			                                                   dnssec_key_get_flags(key->key) & KNOT_DNSKEY_FLAG_ADT));
+			                                                   flags & DNSKEY_GENERATE_ADT_ON));
 		}
 		return KNOT_EOK;
 	}
