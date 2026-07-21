@@ -9,9 +9,11 @@ t = Test()
 
 master = t.server("bind")
 slave = t.server("knot")
+sub = t.server("knot")
 
 zone = t.zone("example.com.", storage=".")
 t.link(zone, master, slave)
+t.link(zone, slave, sub)
 
 slave.conf_zone(zone).zonefile_sync = 0
 
@@ -45,13 +47,31 @@ master.update_zonefile(zone, version="master")
 master.reload()
 
 slave.ctl("zone-retransfer example.com.", wait=True)
-t.sleep(2) # allow zone file update
+sub.ctl("zone-retransfer example.com.", wait=True)
+t.sleep(1) # allow zone file update
 
-resp = slave.dig("diff.example.com", "A")
+resp = sub.dig("diff.example.com", "A")
 resp.check(rcode="NOERROR")
 
 mtime2 = os.stat(zfpath).st_mtime
 if mtime2 == mtime1:
     set_err("Not flushed after retransfer")
+
+# Retransfer with fixfr, incrementing serial on slave
+slave.ctl("zone-retransfer +fixfr example.com.", wait=True)
+serial_master = master.zone_wait(zone)
+serial_lowest = serial_master
+serial_slave = sub.zone_wait(zone, serial_master)
+
+# Inrement on master, slave still one ahead
+master.update_zonefile(zone, version="slave")
+master.reload()
+slave.ctl("zone-retransfer +fixfr example.com.", wait=True)
+serial_master = master.zone_wait(zone, serial_master)
+serial_slave = sub.zone_wait(zone, serial_master)
+resp = slave.dig("new.example.com", "A")
+resp.check(rcode="NOERROR")
+
+t.xfr_diff(slave, sub, zone, { zone[0].name: serial_lowest }) # IXFR diff
 
 t.end()

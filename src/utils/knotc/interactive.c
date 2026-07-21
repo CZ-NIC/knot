@@ -284,6 +284,7 @@ static void filter_lookup(EditLine *el, const char *str, const cmd_desc_t *cmd,
 	    lookup_insert(&lookup, CMD_ZONE_RESTORE, (void *)zone_backup_filters) != KNOT_EOK ||
 	    lookup_insert(&lookup, CMD_ZONE_PURGE, (void *)zone_purge_filters) != KNOT_EOK ||
 	    lookup_insert(&lookup, CMD_ZONE_BEGIN, (void *)zone_begin_filters) != KNOT_EOK ||
+	    lookup_insert(&lookup, CMD_ZONE_RETRANSFER, (void *)zone_retransfer_filters) != KNOT_EOK ||
 	    lookup_insert(&lookup, CMD_ZONE_FLUSH, (void *)zone_flush_filters) != KNOT_EOK ||
 	    lookup_insert(&lookup, CMD_CONF_IMPORT, (void *)conf_import_filters) != KNOT_EOK ||
 	    lookup_insert(&lookup, CMD_CONF_EXPORT, (void *)conf_export_filters) != KNOT_EOK) {

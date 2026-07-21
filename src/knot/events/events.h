@@ -41,14 +41,15 @@ typedef enum zone_event_type {
 // NOTE some flags may overlap if used exclusively by different events
 typedef enum __attribute__((packed)) {
 	// common
-	ZONE_EVFLAG_USER	= (1 << 0),
-	ZONE_EVFLAG_FORCE	= (1 << 1),
+	ZONE_EVFLAG_USER             = (1 << 0),
+	ZONE_EVFLAG_FORCE            = (1 << 1),
 	// refresh
-	ZONE_EVFLAG_AXFR	= (1 << 2),
+	ZONE_EVFLAG_AXFR             = (1 << 2),
+	ZONE_EVFLAG_FIXFR            = (1 << 3),
 	// dnssec
-	ZONE_EVFLAG_RESIGN	= (1 << 2),
-	ZONE_EVFLAG_ZSKROLL	= (1 << 3),
-	ZONE_EVFLAG_KSKROLL	= (1 << 4),
+	ZONE_EVFLAG_RESIGN           = (1 << 2),
+	ZONE_EVFLAG_ZSKROLL          = (1 << 3),
+	ZONE_EVFLAG_KSKROLL          = (1 << 4),
 } zone_evflag_t;
 
 typedef struct zone_events {
