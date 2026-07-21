@@ -941,7 +941,9 @@ AS_CASE([$enable_async_query],
   [yes], [
     AC_DEFINE([ENABLE_ASYNC_QUERY_HANDLING], [1], [Enable support for handling queries asynchronously])
     AS_IF([test "x$atomic_type" = "xnone"],
-      [AC_MSG_ERROR([Async query support needs stdatomic support])])],
+      [AC_MSG_ERROR([Async query support needs stdatomic support])])
+    enable_quic=no
+    enable_xdp=no],
   [no], [],
   [*], [AC_MSG_ERROR([Invalid value of --enable-async-query.])]
 )
