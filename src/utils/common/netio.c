@@ -211,16 +211,23 @@ int net_init(const srv_info_t      *local,
              const int             wait,
              const struct sockaddr *proxy_src,
              const struct sockaddr *proxy_dst,
-             net_t                 *net)
+             net_t                 *net,
+			 gnutls_datum_t        *resumption)
 {
 	if (remote == NULL || net == NULL) {
 		DBG_NULL;
 		return KNOT_EINVAL;
 	}
 
+	gnutls_datum_t resumption_bck = { 0 };
+	if (resumption != NULL) {
+		resumption_bck = *resumption;
+	}
+
 	// Clean network structure.
 	memset(net, 0, sizeof(*net));
 	net->sockfd = -1;
+	net->tls.resumption = resumption_bck;
 
 	if (iptype == AF_UNIX) {
 		struct addrinfo *info = calloc(1, sizeof(struct addrinfo));

@@ -435,10 +435,12 @@ int tls_ctx_init(tls_ctx_t *ctx, const tls_params_t *params,
 		return KNOT_EINVAL;
 	}
 
+	gnutls_datum_t resumption = ctx->resumption;
 	memset(ctx, 0, sizeof(*ctx));
 	ctx->params = params;
 	ctx->wait = wait;
 	ctx->sockfd = -1;
+	ctx->resumption = resumption;
 
 	int ret = gnutls_certificate_allocate_credentials(&ctx->credentials);
 	if (ret != GNUTLS_E_SUCCESS) {
@@ -505,6 +507,12 @@ int tls_ctx_init(tls_ctx_t *ctx, const tls_params_t *params,
 	ret = gnutls_init(&ctx->session, GNUTLS_CLIENT | flags);
 	if (ret != GNUTLS_E_SUCCESS) {
 		return KNOT_ENOMEM;
+	}
+
+	if (ctx->resumption.size != 0) {
+		ret = gnutls_session_set_data(ctx->session, ctx->resumption.data, ctx->resumption.size);
+		gnutls_free(ctx->resumption.data);
+		ctx->resumption = (gnutls_datum_t){ 0 };
 	}
 
 	ret = gnutls_credentials_set(ctx->session, GNUTLS_CRD_CERTIFICATE,
@@ -693,7 +701,9 @@ void tls_ctx_close(tls_ctx_t *ctx)
 	if (ctx == NULL || ctx->session == NULL || ctx->sockfd < 0) {
 		return;
 	}
-
+	if (gnutls_session_get_data2(ctx->session, &ctx->resumption) != GNUTLS_E_SUCCESS) {
+		WARN("TLS, unable to get resumption data");;
+	}
 	gnutls_bye(ctx->session, GNUTLS_SHUT_RDWR);
 }
 

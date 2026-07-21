@@ -73,6 +73,8 @@ struct query {
 	protocol_t	protocol;
 	/*!< Keep TCP connection open. */
 	bool		keepopen;
+	/*!< TLS/QUIC resumption. */
+	bool		resumption;
 	/*!< Port/service to connect to. */
 	char		*port;
 	/*!< UDP buffer size (16unsigned + -1 uninitialized). */

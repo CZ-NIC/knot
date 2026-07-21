@@ -685,6 +685,25 @@ static int opt_nokeepopen(const char *arg, void *query)
 	return KNOT_EOK;
 }
 
+static int opt_resumption(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->resumption = true;
+
+	return KNOT_EOK;
+}
+
+static int opt_noresumption(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->resumption = false;
+
+	return KNOT_EOK;
+}
+
+
 static int opt_tls(const char *arg, void *query)
 {
 	query_t *q = query;

@@ -925,7 +925,7 @@ static int process_query(const query_t *query, net_t *net)
 			               query->wait,
 			               (struct sockaddr *)&query->proxy.src,
 			               (struct sockaddr *)&query->proxy.dst,
-			               net);
+			               net, &net->tls.resumption);
 			if (ret != KNOT_EOK) {
 				if (ret == KNOT_NET_EADDR) {
 					// Requested address family not available.
@@ -1280,7 +1280,7 @@ static int process_xfr(const query_t *query, net_t *net)
 	ret = net_init(query->local, remote, iptype, socktype, query->wait,
 	               (struct sockaddr *)&query->proxy.src,
 	               (struct sockaddr *)&query->proxy.dst,
-	               net);
+	               net, &net->tls.resumption);
 	if (ret != KNOT_EOK) {
 		sign_context_deinit(&sign_ctx);
 		knot_pkt_free(out_packet);

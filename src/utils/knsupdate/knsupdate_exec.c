@@ -436,7 +436,7 @@ static int pkt_sendrecv(knsupdate_params_t *params)
 	               params->wait,
 	               NULL,
 	               NULL,
-	               &net);
+	               &net, &net.tls.resumption);
 	if (ret != KNOT_EOK) {
 		return -1;
 	}
