@@ -534,8 +534,6 @@ void zone_schedule_notify(conf_t *conf, zone_t *zone, time_t delay)
 {
 	conf_val_t val = conf_zone_get(conf, C_NOTIFY_DELAY, zone->name);
 	int64_t conf_delay = conf_int(&val);
-	val = conf_zone_get(conf, C_REFRESH_JITTER, zone->name);
-	conf_delay += conf_jitter(&val, zone->name);
 	zone_notifailed_clear(zone);
 	zone_events_schedule_at(zone, ZONE_EVENT_NOTIFY, time(NULL) + conf_delay + delay);
 }

@@ -3544,14 +3544,13 @@ In case of secondary zone (i.e. :ref:`zone_master` is specified) this option imp
 refresh-jitter
 ---------------
 
-A pseudo-random jitter delaying the reaction on incoming NOTIFY, production of
-otgoing NOTIFY and shortening the SOA refresh timer.
+A pseudo-random jitter that shortens the SOA refresh timer.
 
 The jitter value is selected from the interval between 0 and the configured value
 and is deterministic based on the zone name.
 
-The goal is that with a lot of configured zone, they don't interfere within regular
-or triggered zone refresh and NOTIFY events.
+The goal is to prevent zone refreshes for a large number of configured zones
+from interfering with NOTIFY-initiated zone refreshes.
 
 *Default:* 0
 
