@@ -52,18 +52,4 @@ wait_for_any(slave, zones, "SOA", has_serial, 2)
 t.sleep(4)
 check_jitter(slave, zones, 1, "SOA timer")
 
-slave.ctl("zone-refresh") # reset the refresh timers to equal again
-
-master.disable_notify = False
-master.gen_confile()
-master.reload()
-slave.gen_confile()
-slave.reload()
-
-for z in zones:
-    master.random_ddns(z, allow_empty=False)
-wait_for_any(slave, zones, "SOA", has_serial, 3)
-t.sleep(6)
-check_jitter(slave, zones, 2, "NOTIFY reaction")
-
 t.stop()
