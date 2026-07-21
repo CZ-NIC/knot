@@ -694,6 +694,11 @@ const filter_desc_t zone_begin_filters[] = {
 	{ NULL },
 };
 
+const filter_desc_t zone_retransfer_filters[] = {
+	{ "+fixfr", CTL_FILTER_RETRANSFER_FIXFR },
+	{ NULL },
+};
+
 const filter_desc_t zone_flush_filters[] = {
 	{ "+outdir", CTL_FILTER_FLUSH_OUTDIR, true },
 	{ NULL },
@@ -755,6 +760,9 @@ static const filter_desc_t *get_filter(ctl_cmd_t cmd, const char *filter_name)
 	switch (cmd) {
 	case CTL_ZONE_BEGIN:
 		fd = zone_begin_filters;
+		break;
+	case CTL_ZONE_RETRANSFER:
+		fd = zone_retransfer_filters;
 		break;
 	case CTL_ZONE_FLUSH:
 		fd = zone_flush_filters;

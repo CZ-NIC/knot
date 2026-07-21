@@ -492,15 +492,20 @@ static int zone_refresh(zone_t *zone, _unused_ ctl_args_t *args)
 	return schedule_trigger(zone, args, ZONE_EVENT_REFRESH, ZONE_EVFLAG_USER);
 }
 
-static int zone_retransfer(zone_t *zone, _unused_ ctl_args_t *args)
+static int zone_retransfer(zone_t *zone, ctl_args_t *args)
 {
 	if (!zone_is_slave(conf(), zone)) {
 		args->suppress = true;
 		return KNOT_ENOTSUP;
 	}
 
+	zone_evflag_t fl = ZONE_EVFLAG_USER | ZONE_EVFLAG_AXFR;
+	if (MATCH_AND_FILTER(args, CTL_FILTER_RETRANSFER_FIXFR)) {
+		fl |= ZONE_EVFLAG_FIXFR;
+	}
+
 	zone->zonefile.bootstrap_cnt = 0; // restart delays
-	return schedule_trigger(zone, args, ZONE_EVENT_REFRESH, ZONE_EVFLAG_USER | ZONE_EVFLAG_AXFR);
+	return schedule_trigger(zone, args, ZONE_EVENT_REFRESH, fl);
 }
 
 static void common_failure(_unused_ ctl_args_t *args, int err, const char *msg)

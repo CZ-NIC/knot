@@ -107,7 +107,7 @@ struct refresh_data {
 	bool fallback_axfr;               //!< Flag allowing fallback to AXFR,
 	bool ixfr_by_one;                 //!< Allow only single changeset within IXFR.
 	bool ixfr_from_axfr;              //!< Diff computation of incremental update from AXFR allowed.
-	bool reverse_or_include;          //!< Auto reverse generation or subzone inclusion configured.
+	bool reverse_or_include;          //!< Auto reverse/include or +fixfr.
 	bool ignore_zonemd;               //!< Ignore apex ZONEMD in incomming IXFR as it is overwritten anyway.
 	uint32_t expire_timer;            //!< Result: expire timer from answer EDNS.
 
@@ -1484,7 +1484,7 @@ int event_refresh(conf_t *conf, zone_t *zone, zone_evflag_t flags)
 	val = conf_zone_get(conf, C_IXFR_FROM_AXFR, zone->name);
 	trctx.ixfr_from_axfr = conf_bool(&val);
 
-	if (zone_includes_configured(conf, zone)) {
+	if (zone_includes_configured(conf, zone) || (flags & ZONE_EVFLAG_FIXFR)) {
 		trctx.force_axfr = true;
 		zone->zonefile.retransfer = true;
 		trctx.ixfr_from_axfr = true;

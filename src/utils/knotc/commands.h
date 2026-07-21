@@ -122,6 +122,7 @@ typedef struct {
 extern const filter_desc_t conf_import_filters[];
 extern const filter_desc_t conf_export_filters[];
 extern const filter_desc_t zone_begin_filters[];
+extern const filter_desc_t zone_retransfer_filters[];
 extern const filter_desc_t zone_flush_filters[];
 extern const filter_desc_t zone_backup_filters[];
 extern const filter_desc_t zone_status_filters[];
