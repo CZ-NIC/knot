@@ -153,6 +153,7 @@ int net_init(const srv_info_t      *local,
              const int             iptype,
              const int             socktype,
              const int             wait,
+             const bool            resumption,
              const struct sockaddr *proxy_src,
              const struct sockaddr *proxy_dst,
              net_t                 *net);

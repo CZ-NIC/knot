@@ -18,6 +18,8 @@
 typedef struct {
 	/*! Use TLS indicator. */
 	bool enable;
+	/*! Resume TLS connection. */
+	bool resumption;
 	/*! Import system certificates indicator. */
 	bool system_ca;
 	/*! Certificate files to import. */
@@ -48,6 +50,8 @@ typedef struct {
 	gnutls_session_t session;
 	/*! GnuTLS credentials handle. */
 	gnutls_certificate_credentials_t credentials;
+	/*! GnuTLS resumption data. */
+	gnutls_datum_t resumption;
 } tls_ctx_t;
 
 extern const gnutls_datum_t dot_alpn;

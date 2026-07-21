@@ -685,6 +685,25 @@ static int opt_nokeepopen(const char *arg, void *query)
 	return KNOT_EOK;
 }
 
+static int opt_resumption(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->tls.resumption = true;
+
+	return KNOT_EOK;
+}
+
+static int opt_noresumption(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->tls.resumption = true;
+
+	return KNOT_EOK;
+}
+
+
 static int opt_tls(const char *arg, void *query)
 {
 	query_t *q = query;
@@ -1664,6 +1683,9 @@ static const param_t kdig_opts2[] = {
 
 	{ "keepopen",       ARG_NONE,     opt_keepopen },
 	{ "nokeepopen",     ARG_NONE,     opt_nokeepopen },
+
+	{ "resumption",     ARG_NONE,     opt_resumption },
+	{ "noresumption",   ARG_NONE,     opt_noresumption },
 
 	{ "tls",            ARG_NONE,     opt_tls },
 	{ "notls",          ARG_NONE,     opt_notls },
