@@ -98,6 +98,36 @@ inline static int64_t yp_int(
 }
 
 /*!
+ * Converts binary value to integer value, which can in percents.
+ *
+ * \param[in] data Binary value to transform.
+ * \param[out] percent Percent value indication.
+ *
+ * \return Integer value.
+ */
+inline static int64_t yp_int_pct(
+	const uint8_t *data,
+	bool *percent)
+{
+	bool pct = false;
+	int64_t value = knot_wire_read_u64(data);
+	if (value >= 0) {
+		if (value & YP_PERCENT) {
+			pct = true;
+			value &= ~YP_PERCENT;
+		}
+	} else {
+		if (!(value & YP_PERCENT)) {
+			pct = true;
+			value |= YP_PERCENT;
+		}
+		*percent = false;
+	}
+	*percent = pct;
+	return value;
+}
+
+/*!
  * Converts binary value to address value.
  *
  * \param[in] data Binary value to transform.
