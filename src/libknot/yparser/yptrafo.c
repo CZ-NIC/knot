@@ -192,12 +192,15 @@ int yp_bool_to_txt(
 static int remove_unit(
 	int64_t *number,
 	char unit,
-	yp_style_t style)
+	yp_style_t style,
+	uint64_t *flags)
 {
 	int64_t multiplier = 1;
 
-	// Get the multiplier for the unit.
-	if (style & YP_SSIZE) {
+	if ((style & YP_SPERCENT) && unit == '%') {
+		*flags |= YP_PERCENT;
+		return KNOT_EOK;
+	} else if (style & YP_SSIZE) {
 		switch (unit) {
 		case UNIT_BYTE:
 			multiplier = MULTI_BYTE;
@@ -254,6 +257,17 @@ static int remove_unit(
 	return KNOT_EOK;
 }
 
+static void set_int_flags(int64_t *number, uint64_t flags)
+{
+	if (flags & YP_PERCENT) {
+		if (*number >= 0) {
+			*number |= YP_PERCENT;
+		} else {
+			*number &= ~YP_PERCENT;
+		}
+	}
+}
+
 _public_
 int yp_int_to_bin(
 	YP_TXT_BIN_PARAMS,
@@ -274,6 +288,7 @@ int yp_int_to_bin(
 	char *end;
 	errno = 0;
 	int64_t number = strtoll(buf, &end, 10);
+	uint64_t flags = 0;
 
 	// Check for number overflow.
 	if (errno == ERANGE && (number == LLONG_MAX || number == LLONG_MIN)) {
@@ -291,7 +306,7 @@ int yp_int_to_bin(
 		}
 
 		// Try to apply a unit on the number.
-		int ret = remove_unit(&number, *end, style);
+		int ret = remove_unit(&number, *end, style, &flags);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
@@ -301,6 +316,9 @@ int yp_int_to_bin(
 	if (number < min || number > max) {
 		return KNOT_ERANGE;
 	}
+
+	// Encode possible flags into the number.
+	set_int_flags(&number, flags);
 
 	// Write the result.
 	wire_ctx_write_u64(out, number);
@@ -322,8 +340,16 @@ static void add_unit(
 	}
 	uint64_t abs_number = (*number >= 0 ? *number : -*number);
 
-	// Get the multiplier for the unit.
-	if (style & YP_SSIZE) {
+	if ((style & YP_SPERCENT) &&
+	    ((*number >= 0 && (*number & YP_PERCENT)) ||
+	     (*number < 0 && !(*number & YP_PERCENT)))) {
+		if (*number >= 0) {
+			*number &= ~YP_PERCENT;
+		} else {
+			*number |= YP_PERCENT;
+		}
+		new_unit = '%';
+	} else if (style & YP_SSIZE) {
 		basic_unit = UNIT_BYTE;
 
 		if (abs_number < MULTI_KILO) {
@@ -1150,7 +1176,7 @@ int yp_item_to_txt(
 
 	switch (item->type) {
 	case YP_TINT:
-		ret = yp_int_to_txt(&in, &out, item->var.i.unit & style);
+		ret = yp_int_to_txt(&in, &out, item->var.i.unit & (YP_SPERCENT | style));
 		break;
 	case YP_TBOOL:
 		ret = yp_bool_to_txt(&in, &out);

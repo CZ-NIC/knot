@@ -25,7 +25,14 @@ static void int_test(const char *txt, int64_t num, yp_style_t s,
 	diag("integer \"%s\":", txt);
 	ret = yp_item_to_bin(&i, txt, strlen(txt), b, &b_len);
 	is_int(KNOT_EOK, ret, "txt to bin");
-	ok(yp_int(b) == num, "compare");
+	if (s & YP_SPERCENT) {
+		bool pct;
+		ok(yp_int_pct(b, &pct) == num, "compare percent");
+		char *pos = strchr(txt, '%');
+		ok((pos != NULL) == pct, "compare percent indicator");
+	} else {
+		ok(yp_int(b) == num, "compare");
+	}
 	ret = yp_item_to_txt(&i, b, b_len, t, &t_len, s | YP_SNOQUOTE);
 	is_int(KNOT_EOK, ret, "bin to txt");
 	ok(strlen(t) == t_len, "txt ret length");
@@ -352,6 +359,11 @@ int main(int argc, char *argv[])
 	int_bad_test("-281474976710657", KNOT_ERANGE, YP_SNONE, min, max);
 	int_bad_test("1x", KNOT_EINVAL, YP_SNONE, min, max);
 	int_bad_test("1sx", KNOT_EINVAL, YP_STIME, min, max);
+
+	int_test("-1", -1LL, YP_SPERCENT, min, max);
+	int_test("11%", 11LL, YP_SPERCENT, min, max);
+	int_test("-11%", -11LL, YP_SPERCENT, min, max);
+	int_test("101M", 101LL * 1024 * 1024, YP_SPERCENT | YP_SSIZE, INT64_MIN, max);
 
 	/* Boolean tests. */
 	bool_test("on", true);

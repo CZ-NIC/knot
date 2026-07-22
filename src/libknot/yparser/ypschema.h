@@ -30,6 +30,8 @@ struct wire_ctx;
 #define YP_MAX_DATA_LEN		32768
 /*! Integer item nil definition. */
 #define YP_NIL			INT64_MIN
+/*! Percentual integer value. */
+#define YP_PERCENT		(UINT64_C(1) << 62)
 /*! Integer item maximum value. */
 #define YP_INT_MAX		((INT64_C(1) << 48) - INT64_C(1))
 /*! Integer item minimum value. */
@@ -106,9 +108,10 @@ typedef enum {
 typedef enum {
 	YP_SNONE    = 0,      /*!< Unspecified. */
 	YP_SSIZE    = 1 << 0, /*!< Size unit (B, K, M, G) (in, out). */
-	YP_STIME    = 1 << 1, /*!< Time unit (s, m, h, d) (in, out). */
+	YP_STIME    = 1 << 1, /*!< Time unit (s, m, h, d, w, M, y) (in, out). */
 	YP_SUNIT    = YP_SSIZE | YP_STIME, /*!< Unit (in, out). */
-	YP_SNOQUOTE = 1 << 2  /*!< Unquoted value (out). */
+	YP_SPERCENT = 1 << 2, /*!< Percentual value via the % character. */
+	YP_SNOQUOTE = 1 << 3, /*!< Unquoted value (out). */
 } yp_style_t;
 
 typedef struct yp_item yp_item_t;
