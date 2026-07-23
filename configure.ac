@@ -274,7 +274,7 @@ AS_CASE([$enable_recvmmsg],
   [*], [AC_MSG_ERROR([invalid value of --enable-recvmmsg])]
 )
 
-AS_IF([test "$enable_recvmmsg" = yes], [
+AS_IF([test "$enable_recvmmsg" = "yes"], [
   AC_DEFINE([ENABLE_RECVMMSG], [1], [Use recvmmsg().])]
 )
 
@@ -387,7 +387,7 @@ AS_CASE([$enable_reuseport],
   [*], [AC_MSG_ERROR([invalid value of --enable-reuseport])]
 )
 
-AS_IF([test "$enable_reuseport" = yes], [
+AS_IF([test "$enable_reuseport" = "yes"], [
   AC_DEFINE([ENABLE_REUSEPORT], [1], [Use SO_REUSEPORT(_LB).])
 ])
 
@@ -416,7 +416,7 @@ AS_CASE([$enable_redis],
 AM_CONDITIONAL([ENABLE_REDIS], [test "$enable_redis" != "no"])
 AM_CONDITIONAL([ENABLE_REDIS_MODULE], [test "$enable_redis" != "no" && test "$enable_redis" != "client" && test "$enable_shared" = "yes"])
 
-AS_IF([test "$enable_redis" = yes -o "$enable_redis" = client], [
+AS_IF([test "$enable_redis" = "yes" -o "$enable_redis" = "client"], [
   AC_DEFINE([ENABLE_REDIS], [1], [Enable Redis support.])
   AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <hiredis/hiredis.h>
                                     #if (HIREDIS_MAJOR < 1) || (HIREDIS_MAJOR == 1 && HIREDIS_MINOR < 1)
@@ -424,7 +424,7 @@ AS_IF([test "$enable_redis" = yes -o "$enable_redis" = client], [
                                     #endif]])],
                  [AC_DEFINE([ENABLE_REDIS_TLS], [1], [Enable Redis TLS support.])],
                  [enable_redis="yes (no TLS)"])
-  AS_IF([test "$enable_redis" = yes && test "$enable_shared" = yes], [
+  AS_IF([test "$enable_redis" = "yes" && test "$enable_shared" = "yes"], [
     enable_redis="${enable_redis} module"
   ])
 ])
@@ -673,8 +673,8 @@ AS_CASE([$enable_maxminddb],
         AC_SUBST([libmaxminddb_LIBS])
         enable_maxminddb=yes]
 )
-AS_IF([test "$enable_maxminddb" = yes], [AC_DEFINE([HAVE_MAXMINDDB], [1], [Define to 1 to enable MaxMind DB.])])
-AM_CONDITIONAL([HAVE_MAXMINDDB], [test "$enable_maxminddb" = yes])
+AS_IF([test "$enable_maxminddb" = "yes"], [AC_DEFINE([HAVE_MAXMINDDB], [1], [Define to 1 to enable MaxMind DB.])])
+AM_CONDITIONAL([HAVE_MAXMINDDB], [test "$enable_maxminddb" = "yes"])
 
 ###################################
 # Dependencies needed for utilities
