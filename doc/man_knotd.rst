@@ -54,7 +54,7 @@ Signals
 
 The `knotd` process handles the following signals:
 
-- SIGINT – Stop the process.
+- SIGTERM or SIGINT – Gracefully stop the process.
 - SIGHUP – Reload the server configuration and reopen configured log files.
 - SIGUSR1 – Reload all configured zones (not recommended with catalog zones).
 
