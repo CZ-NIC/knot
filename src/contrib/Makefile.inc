@@ -247,6 +247,8 @@ if !EMBEDDED_LMDB
 # This include renames the mdb_* symbols to emb_mdb_* ones in libemblmdb.la
 libemblmdb_la_CPPFLAGS += -include contrib/lmdb/emb_prefix.h
 endif !EMBEDDED_LMDB
+libemblmdb_LIBS        = libemblmdb.la
+
 libemblmdb_la_SOURCES = \
 	contrib/lmdb/lmdb.h			\
 	contrib/lmdb/mdb.c			\

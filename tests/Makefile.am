@@ -19,8 +19,9 @@ endif HAVE_DAEMON
 
 LDADD += \
 	$(top_builddir)/src/libknot.la		\
-	$(top_builddir)/src/libcontrib.la       \
-	$(top_builddir)/src/libzscanner.la      \
+	$(top_builddir)/src/libcontrib.la	\
+	$(top_builddir)/src/libemblmdb.la	\
+	$(top_builddir)/src/libzscanner.la	\
 	$(gnutls_LIBS)				\
 	$(lmdb_LIBS)
 

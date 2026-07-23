@@ -323,15 +323,11 @@ AS_IF([test "$with_lmdb" != "embedded" && test "$with_lmdb" != "auto"], [
     AC_MSG_ERROR([lmdb library not found])
   ])
 ])
-external_lmdb_LIBS=$lmdb_LIBS
-AC_SUBST([external_lmdb_LIBS])
-
 AM_CONDITIONAL([EMBEDDED_LMDB], test "$with_lmdb" = "embedded")
 AS_IF([test "$with_lmdb" = "embedded"], [
   AC_DEFINE([EMBEDDED_LMDB], [1], [Use embedded LMDB.])]
   lmdb_CFLAGS="-I\$(top_srcdir)/src/contrib/lmdb"
 )
-lmdb_LIBS="$lmdb_LIBS \$(top_builddir)/src/libemblmdb.la"
 AC_SUBST([lmdb_CFLAGS])
 AC_SUBST([lmdb_LIBS])
 
