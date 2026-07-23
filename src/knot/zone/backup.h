@@ -53,30 +53,37 @@ typedef enum {
 
 typedef struct {
 	const char *name;
+	int db_index;
 	knot_backup_params_t param;
 	char *filter;
 	char *neg_filter;
 } backup_filter_list_t;
 
 typedef struct zone_backup_ctx {
-	node_t n;                           // ability to be put into list_t
-	bool restore_mode;                  // if true, this is not a backup, but restore
-	bool forced;                        // if true, the force flag has been set
-	knot_backup_params_t backup_params; // bit-mapped list of backup components
-	knot_backup_params_t in_backup;     // bit-mapped list of components available in backup
-	bool arch_match;                    // match of the system and the backup architectures
-	bool backup_global;                 // perform global backup for all zones
-	ssize_t readers;                    // when decremented to 0, all zones done, free this context
-	pthread_mutex_t readers_mutex;      // mutex covering readers counter
-	char *backup_dir;                   // path of directory to backup to / restore from
-	knot_lmdb_db_t bck_kasp_db;         // backup KASP db
-	knot_lmdb_db_t bck_timer_db;        // backup timer DB
-	knot_lmdb_db_t bck_journal;         // backup journal DB
-	knot_lmdb_db_t bck_catalog;         // backup catalog DB
-	bool failed;                        // true if an error occurred in processing of any zone
-	knot_backup_format_t backup_format; // the backup format version used
-	time_t init_time;                   // time when the current backup operation has started
-	int zone_count;                     // count of backed up zones
+	node_t n;                            // ability to be put into list_t
+	bool restore_mode;                   // if true, this is not a backup, but restore
+	bool forced;                         // if true, the force flag has been set
+	knot_backup_params_t backup_params;  // bit-mapped list of backup components
+	knot_backup_params_t in_backup;      // bit-mapped list of components available in backup
+	bool arch_match;                     // match of the system and the backup architectures
+	bool backup_global;                  // perform global backup for all zones
+	ssize_t readers;                     // when decremented to 0, all zones done, free this context
+	pthread_mutex_t readers_mutex;       // mutex covering readers counter
+	char *backup_dir;                    // path of directory to backup to / restore from
+	union {
+	    struct {
+	        knot_lmdb_db_t bck_journal;  // backup journal DB
+	        knot_lmdb_db_t bck_timer_db; // backup timer DB
+	        knot_lmdb_db_t bck_kasp_db;  // backup KASP db
+	        knot_lmdb_db_t bck_catalog;  // backup catalog DB
+	    };
+	    knot_lmdb_db_t bck_db[4];        // DB's may optionally be accessed as array elements
+	};
+	bool migrated;                       // DB's have been migrated to the current LMDB version
+	bool failed;                         // true if an error occurred in processing of any zone
+	knot_backup_format_t backup_format;  // the backup format version used
+	time_t init_time;                    // time when the current backup operation has started
+	int zone_count;                      // count of backed up zones
 } zone_backup_ctx_t;
 
 typedef struct {
