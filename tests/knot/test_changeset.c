@@ -3,7 +3,6 @@
  *  For more information, see <https://www.knot-dns.cz/>
  */
 
-#include <config.h>
 #include <assert.h>
 #include <tap/basic.h>
 
