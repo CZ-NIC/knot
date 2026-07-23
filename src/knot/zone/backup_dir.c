@@ -235,6 +235,7 @@ static int get_backup_format(zone_backup_ctx_t *ctx)
 	}
 
 	ret = (remain == 0) ? KNOT_EOK : KNOT_EMALF;
+	ret = ferror(file) ? knot_map_errno() : ret;
 
 done:
 	free(line);
