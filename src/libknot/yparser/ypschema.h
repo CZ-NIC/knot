@@ -30,6 +30,10 @@ struct wire_ctx;
 #define YP_MAX_DATA_LEN		32768
 /*! Integer item nil definition. */
 #define YP_NIL			INT64_MIN
+/*! Integer item maximum value. */
+#define YP_INT_MAX		((INT64_C(1) << 48) - INT64_C(1))
+/*! Integer item minimum value. */
+#define YP_INT_MIN		(-(INT64_C(1) << 48))
 /*! Maximal number of miscellaneous callbacks/pointers. */
 #define YP_MAX_MISC_COUNT	4
 /*! Maximal node stack depth. */
