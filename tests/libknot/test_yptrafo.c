@@ -344,6 +344,10 @@ int main(int argc, char *argv[])
 	int_test("2y",  2LL * 365 * 24 * 3600, YP_STIME, min, max);
 	int_test("1025B", 1025LL, YP_SSIZE, min, max);
 	int_test("61s", 61LL, YP_STIME, min, max);
+	int_test("-11B", -11LL * 1, YP_SSIZE, min, max);
+	int_test("-11K", -11LL * 1024, YP_SSIZE, min, max);
+	int_test("-11s", -11LL * 1, YP_STIME, min, max);
+	int_test("-11h", -11LL * 3600, YP_STIME, min, max);
 	int_bad_test("20000000001", KNOT_ERANGE, YP_SNONE, min, max);
 	int_bad_test("-20000000001", KNOT_ERANGE, YP_SNONE, min, max);
 	int_bad_test("1x", KNOT_EINVAL, YP_SNONE, min, max);
