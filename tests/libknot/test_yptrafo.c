@@ -325,12 +325,12 @@ int main(int argc, char *argv[])
 	plan_lazy();
 
 	/* Integer tests. */
-	int64_t min = -20000000000, max = 20000000000;
+	int64_t min = YP_INT_MIN, max = YP_INT_MAX;
 	int_test("5", 5, YP_SNONE, min, max);
 	int_test("0", 0, YP_SNONE, min, max);
 	int_test("-5", -5, YP_SNONE, min, max);
-	int_test("20000000000", max, YP_SNONE, min, max);
-	int_test("-20000000000", min, YP_SNONE, min, max);
+	int_test("281474976710655", max, YP_SNONE, min, max);
+	int_test("-281474976710656", min, YP_SNONE, min, max);
 	int_test("11B", 11LL * 1, YP_SSIZE, min, max);
 	int_test("11K", 11LL * 1024, YP_SSIZE, min, max);
 	int_test("11M", 11LL * 1024 * 1024, YP_SSIZE, min, max);
@@ -348,8 +348,8 @@ int main(int argc, char *argv[])
 	int_test("-11K", -11LL * 1024, YP_SSIZE, min, max);
 	int_test("-11s", -11LL * 1, YP_STIME, min, max);
 	int_test("-11h", -11LL * 3600, YP_STIME, min, max);
-	int_bad_test("20000000001", KNOT_ERANGE, YP_SNONE, min, max);
-	int_bad_test("-20000000001", KNOT_ERANGE, YP_SNONE, min, max);
+	int_bad_test("281474976710656", KNOT_ERANGE, YP_SNONE, min, max);
+	int_bad_test("-281474976710657", KNOT_ERANGE, YP_SNONE, min, max);
 	int_bad_test("1x", KNOT_EINVAL, YP_SNONE, min, max);
 	int_bad_test("1sx", KNOT_EINVAL, YP_STIME, min, max);
 
