@@ -317,17 +317,22 @@ static void add_unit(
 	char basic_unit = '\0';
 	char new_unit = '\0';
 
+	if (*number == YP_NIL) { // Reserved value.
+		return;
+	}
+	uint64_t abs_number = (*number >= 0 ? *number : -*number);
+
 	// Get the multiplier for the unit.
 	if (style & YP_SSIZE) {
 		basic_unit = UNIT_BYTE;
 
-		if (*number < MULTI_KILO) {
+		if (abs_number < MULTI_KILO) {
 			multiplier = MULTI_BYTE;
 			new_unit = UNIT_BYTE;
-		} else if (*number < MULTI_MEGA) {
+		} else if (abs_number < MULTI_MEGA) {
 			multiplier = MULTI_KILO;
 			new_unit = UNIT_KILO;
-		} else if (*number < MULTI_GIGA) {
+		} else if (abs_number < MULTI_GIGA) {
 			multiplier = MULTI_MEGA;
 			new_unit = UNIT_MEGA;
 		} else {
@@ -337,22 +342,22 @@ static void add_unit(
 	} else if (style & YP_STIME) {
 		basic_unit = UNIT_SEC;
 
-		if (*number < MULTI_MIN) {
+		if (abs_number < MULTI_MIN) {
 			multiplier = MULTI_SEC;
 			new_unit = UNIT_SEC;
-		} else if (*number < MULTI_HOUR) {
+		} else if (abs_number < MULTI_HOUR) {
 			multiplier = MULTI_MIN;
 			new_unit = UNIT_MIN;
-		} else if (*number < MULTI_DAY) {
+		} else if (abs_number < MULTI_DAY) {
 			multiplier = MULTI_HOUR;
 			new_unit = UNIT_HOUR;
-		} else if (*number < MULTI_WEEK) {
+		} else if (abs_number < MULTI_WEEK) {
 			multiplier = MULTI_DAY;
 			new_unit = UNIT_DAY;
-		} else if (*number < MULTI_MONTH) {
+		} else if (abs_number < MULTI_MONTH) {
 			multiplier = MULTI_WEEK;
 			new_unit = UNIT_WEEK;
-		} else if (*number < MULTI_YEAR) {
+		} else if (abs_number < MULTI_YEAR) {
 			multiplier = MULTI_MONTH;
 			new_unit = UNIT_MONTH;
 		} else {
