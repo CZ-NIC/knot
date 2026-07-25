@@ -15,6 +15,8 @@
 #include "libknot/db/db_lmdb.h"
 #include "contrib/files.h"
 #include "contrib/mempattern.h"
+#include "contrib/lmdb/mdb_dump/mdb_dump.h"
+#include "contrib/lmdb/mdb_load/mdb_load.h"
 
 #include <lmdb.h>
 
@@ -54,6 +56,10 @@ static int lmdb_error_to_knot(int error)
 
 	if (error == MDB_TXN_FULL) {
 		return KNOT_ELIMIT;
+	}
+
+	if (error == MDB_INVALID) {
+		return KNOT_EMALF;
 	}
 
 	if (error == MDB_MAP_FULL || error == ENOSPC) {
@@ -305,9 +311,36 @@ static int clear(knot_db_txn_t *txn)
 {
 	struct lmdb_env *env = txn->db;
 
-	int ret = mdb_drop(txn->txn, env->dbi, 0);
-	if (ret != MDB_SUCCESS) {
-		return lmdb_error_to_knot(ret);
+	int lmdb_major, lmdb_minor, lmdb_patch;
+	(void)mdb_version(&lmdb_major, &lmdb_minor, &lmdb_patch);
+
+	if (lmdb_major == 1 && lmdb_minor == 0 && lmdb_patch == 0) {
+		MDB_cursor *cursor = NULL;
+		int ret = mdb_cursor_open(txn->txn, env->dbi, &cursor);
+		if (ret != MDB_SUCCESS) {
+			return lmdb_error_to_knot(ret);
+		}
+
+		MDB_val mdb_key, mdb_val;
+		ret = mdb_cursor_get(cursor, &mdb_key, &mdb_val, MDB_FIRST);
+		while (ret == MDB_SUCCESS) {
+			ret = mdb_cursor_del(cursor, 0);
+			if (ret != MDB_SUCCESS) {
+				break;
+			}
+			ret = mdb_cursor_get(cursor, &mdb_key, &mdb_val, MDB_NEXT);
+		}
+
+		mdb_cursor_close(cursor);
+
+		if (ret != MDB_NOTFOUND && ret != MDB_SUCCESS) {
+			return lmdb_error_to_knot(ret);
+		}
+	} else {
+		int ret = mdb_drop(txn->txn, env->dbi, 0);
+		if (ret != MDB_SUCCESS) {
+			return lmdb_error_to_knot(ret);
+		}
 	}
 
 	return KNOT_EOK;
@@ -560,4 +593,47 @@ const knot_db_api_t *knot_db_lmdb_api(void)
 	};
 
 	return &api;
+}
+
+_public_
+int knot_db_lmdb_dump(const char *db_path, const char *dump_path, bool alldbs)
+{
+	FILE *out = fopen(dump_path, "w");
+	if (out == NULL) {
+		return knot_map_errno();
+	}
+
+	int rc = mdb_dump(db_path, out, alldbs);
+	if (rc != MDB_SUCCESS) {
+		fclose(out);
+		(void)remove(dump_path);
+		return lmdb_error_to_knot(rc);
+	}
+
+	if (fclose(out) != 0) {
+		int ret = knot_map_errno();
+		(void)remove(dump_path);
+		return ret;
+	}
+
+	return KNOT_EOK;
+}
+
+_public_
+int knot_db_lmdb_load(const char *db_path, const char *dump_path)
+{
+	FILE *in = fopen(dump_path, "r");
+	if (in == NULL) {
+		return knot_map_errno();
+	}
+
+	int rc = mdb_load(db_path, in);
+	if (rc != MDB_SUCCESS) {
+		fclose(in);
+		return lmdb_error_to_knot(rc);
+	}
+
+	(void)fclose(in);
+
+	return KNOT_EOK;
 }

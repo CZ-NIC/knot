@@ -130,6 +130,16 @@ src/contrib/libngtcp2/ngtcp2/ngtcp2.h
 src/contrib/libngtcp2/ngtcp2/ngtcp2_crypto.h
 src/contrib/libngtcp2/ngtcp2/ngtcp2_crypto_gnutls.h
 src/contrib/libngtcp2/ngtcp2/version.h
+src/contrib/lmdb/emb_prefix.h
+src/contrib/lmdb/lmdb.h
+src/contrib/lmdb/mdb.c
+src/contrib/lmdb/mdb_dump/mdb_dump.c
+src/contrib/lmdb/mdb_dump/mdb_dump.h
+src/contrib/lmdb/mdb_load/mdb_load.c
+src/contrib/lmdb/mdb_load/mdb_load.h
+src/contrib/lmdb/midl.c
+src/contrib/lmdb/midl.h
+src/contrib/lmdb/mute_warnings.h
 src/contrib/macros.h
 src/contrib/memcheck.h
 src/contrib/mempattern.c

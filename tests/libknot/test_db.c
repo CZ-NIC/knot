@@ -11,10 +11,12 @@
 #include <tap/basic.h>
 #include <tap/files.h>
 
-#include "contrib/string.h"
+#include "knot/conf/migration.h"
 #include "libknot/libknot.h"
+#include "contrib/files.h"
 #include "contrib/mempattern.h"
 #include "contrib/openbsd/strlcpy.h"
+#include "contrib/string.h"
 #include "contrib/ucw/mempool.h"
 
 /* UCW array sorting defines. */
@@ -240,6 +242,60 @@ static void knot_db_test_set(unsigned nkeys, char **keys, void *opts,
 	api->deinit(db);
 }
 
+#if !EMBEDDED_LMDB
+#include "contrib/lmdb/emb_prefix.h" // Renames included mdb_* symbols to emb_mdb_* ones.
+#endif
+#include "contrib/lmdb/lmdb.h"
+
+static void knot_db_lmdb_migration(const char *test_dir)
+{
+	char *db_dir = sprintf_alloc("%s/db_old", test_dir);
+	int ret = make_dir(db_dir, LMDB_DIR_MODE, true);
+	ok(ret == KNOT_EOK, "make database directory");
+
+	int lmdb_major, lmdb_minor, lmdb_patch;
+	(void)mdb_version(&lmdb_major, &lmdb_minor, &lmdb_patch);
+	ok(lmdb_major == 0 && lmdb_minor == 9 && lmdb_patch == 35, "embedded LMDB version");
+
+	// Always uses embedded LMDB, either via emb_mdb_* or via mdb_* if embedded enabled globally.
+	MDB_env *env;
+	MDB_txn *txn;
+	MDB_dbi dbi;
+	int rc = mdb_env_create(&env);
+	if (rc == MDB_SUCCESS) {
+		rc = mdb_env_open(env, db_dir, 0, LMDB_FILE_MODE);
+		if (rc == MDB_SUCCESS) {
+			rc = mdb_txn_begin(env, NULL, 0, &txn);
+			if (rc == MDB_SUCCESS) {
+				rc = mdb_open(txn, NULL, 0, &dbi);
+				mdb_close(env, dbi);
+			}
+			mdb_txn_abort(txn);
+		}
+		mdb_env_close(env);
+	}
+	ok(rc == MDB_SUCCESS, "create old LMDB database");
+
+	struct knot_db_lmdb_opts lmdb_opts = KNOT_DB_LMDB_OPTS_INITIALIZER;
+	lmdb_opts.path = db_dir;
+	const knot_db_api_t *api = knot_db_lmdb_api();
+
+	// Indirectly used mdb_* functions, either external or embedded if enabled globally.
+	knot_db_t *db = NULL;
+	ret = api->init(&db, NULL, &lmdb_opts);
+	if (ret == KNOT_EMALF) {
+		ret = migrate_lmdb(db_dir, false);
+		ok(ret == KNOT_EOK, "migration success");
+		if (ret == KNOT_EOK) {
+			ret = api->init(&db, NULL, &lmdb_opts);
+		}
+	}
+	ok(ret == KNOT_EOK, "open database success");
+	api->deinit(db);
+
+	free(db_dir);
+}
+
 int main(int argc, char *argv[])
 {
 	plan_lazy();
@@ -266,6 +322,9 @@ int main(int argc, char *argv[])
 	struct knot_db_trie_opts trie_opts = KNOT_DB_TRIE_OPTS_INITIALIZER;
 	knot_db_test_set(nkeys, keys, &lmdb_opts, knot_db_lmdb_api(), &pool);
 	knot_db_test_set(nkeys, keys, &trie_opts, knot_db_trie_api(), &pool);
+
+	/* Test LMDB migration. */
+	knot_db_lmdb_migration(dbid);
 
 	/* Cleanup. */
 	mp_delete(pool.ctx);

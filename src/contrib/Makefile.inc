@@ -1,4 +1,4 @@
-noinst_LTLIBRARIES += libcontrib.la
+noinst_LTLIBRARIES += libcontrib.la libemblmdb.la
 
 libcontrib_la_CPPFLAGS = $(AM_CPPFLAGS) $(CFLAG_VISIBILITY)
 libcontrib_la_LDFLAGS  = $(AM_LDFLAGS) $(LDFLAG_EXCLUDE_LIBS)
@@ -10,13 +10,15 @@ libcontrib_LIBS        += $(gnutls_LIBS)
 endif USE_GNUTLS_MEMSET
 
 EXTRA_DIST += \
-	contrib/licenses/ISC			\
 	contrib/licenses/BSD-3-Clause		\
 	contrib/licenses/GPL-2.0-or-later	\
+	contrib/licenses/ISC			\
 	contrib/licenses/LGPL-2.0-or-later	\
 	contrib/licenses/MIT			\
-	contrib/musl/LICENSE			\
+	contrib/licenses/OLDAP-2.8		\
 	contrib/libngtcp2/LICENSE		\
+	contrib/lmdb/LICENSE			\
+	contrib/musl/LICENSE			\
 	contrib/openbsd/LICENSE			\
 	contrib/ucw/LICENSE			\
 	contrib/url-parser/LICENSE		\
@@ -239,3 +241,21 @@ libembngtcp2_la_SOURCES = \
 	contrib/libngtcp2/ngtcp2/ngtcp2_crypto_gnutls.h \
 	contrib/libngtcp2/ngtcp2/version.h
 endif EMBEDDED_LIBNGTCP2
+
+libemblmdb_la_CPPFLAGS = -include contrib/lmdb/mute_warnings.h
+if !EMBEDDED_LMDB
+# This include renames the mdb_* symbols to emb_mdb_* ones in libemblmdb.la
+libemblmdb_la_CPPFLAGS += -include contrib/lmdb/emb_prefix.h
+endif !EMBEDDED_LMDB
+libemblmdb_LIBS        = libemblmdb.la
+
+libemblmdb_la_SOURCES = \
+	contrib/lmdb/lmdb.h			\
+	contrib/lmdb/mdb.c			\
+	contrib/lmdb/mdb_dump/mdb_dump.c	\
+	contrib/lmdb/mdb_dump/mdb_dump.h	\
+	contrib/lmdb/midl.c			\
+	contrib/lmdb/midl.h			\
+	contrib/lmdb/mute_warnings.h
+
+EXTRA_DIST += contrib/lmdb/emb_prefix.h
