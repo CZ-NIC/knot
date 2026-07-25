@@ -19,6 +19,8 @@
 #include <unistd.h>
 #include "contrib/lmdb/mdb_dump/mdb_dump.h"
 #include "contrib/lmdb/lmdb.h"
+/* NOTE: -include contrib/lmdb/emb_prefix.h is specified in Makefile.inc, therefore
+ * all the calls to mdb_* are in fact emb_mdb_* using the embedded legacy LMDB */
 
 typedef struct flagbit {
 	int bit;

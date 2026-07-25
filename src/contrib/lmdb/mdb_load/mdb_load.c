@@ -20,6 +20,9 @@
 #include <unistd.h>
 #include "contrib/lmdb/mdb_load/mdb_load.h"
 #include "lmdb.h"
+/* NOTE: -include contrib/lmdb/emb_prefix.h is NOT specified for mdb_* calls below.
+ * In fact, this source resides in libknot/makefile.inc instead of contrib/Makefile.inc
+ * for this very reason. As a result, default LMDB is used, possibly 1.x version. */
 
 typedef struct {
 	size_t lineno;
