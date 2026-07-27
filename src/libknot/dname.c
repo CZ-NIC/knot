@@ -63,7 +63,7 @@ static int dname_align(const uint8_t **d1, uint8_t d1_labels,
 
 _public_
 int knot_dname_wire_check(const uint8_t *name, const uint8_t *endp,
-                          const uint8_t *pkt)
+                          knot_decompr_t *decompr)
 {
 	if (name == NULL || name == endp) {
 		return KNOT_EINVAL;
@@ -83,18 +83,25 @@ int knot_dname_wire_check(const uint8_t *name, const uint8_t *endp,
 			/* Check that the pointer points backwards
 			 * otherwise it could result in infinite loop
 			 */
-			if (pkt == NULL) {
+			if (decompr == NULL || decompr->pkt == NULL) {
 				return KNOT_EINVAL;
 			}
 			uint16_t ptr = knot_wire_get_pointer(name);
-			if (ptr >= (name - pkt)) {
+			if (ptr >= (name - decompr->pkt)) {
 				return KNOT_EMALF;
 			}
 
-			name = pkt + ptr; /* Hop to compressed label */
+			name = decompr->pkt + ptr; /* Hop to compressed label */
 			if (!is_compressed) { /* Measure compressed size only */
 				wire_len += sizeof(uint16_t);
 				is_compressed = true;
+			}
+
+			if (decompr != NULL) {
+				if (decompr->poi_budget <= 0) {
+					return KNOT_EMALF;
+				}
+				decompr->poi_budget--;
 			}
 		} else {
 			/* Check label length. */
