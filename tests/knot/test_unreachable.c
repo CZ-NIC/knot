@@ -41,6 +41,23 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	// Device keying: same address/via with a different (or no) device must
+	// be tracked independently, not collapsed into one another.
+	struct sockaddr_storage dev_addr = { 0 };
+	sockaddr_set(&dev_addr, AF_INET6, "::99", 53);
+	struct sockaddr_storage dev_via = { 0 };
+	sockaddr_set(&dev_via, AF_INET6, "::1", 0);
+
+	ok(!knot_unreachable_is(global_unreachables, &dev_addr, &dev_via, "eth0"),
+	   "unreachables: dev pre[eth0]");
+	knot_unreachable_add(global_unreachables, &dev_addr, &dev_via, "eth0");
+	ok(knot_unreachable_is(global_unreachables, &dev_addr, &dev_via, "eth0"),
+	   "unreachables: dev post[eth0]");
+	ok(!knot_unreachable_is(global_unreachables, &dev_addr, &dev_via, "eth1"),
+	   "unreachables: dev[eth1] unaffected by dev[eth0] entry");
+	ok(!knot_unreachable_is(global_unreachables, &dev_addr, &dev_via, NULL),
+	   "unreachables: no-device unaffected by dev[eth0] entry");
+
 	knot_unreachables_deinit(&global_unreachables);
 	ok(global_unreachables == NULL, "unreachables: deinit");
 
