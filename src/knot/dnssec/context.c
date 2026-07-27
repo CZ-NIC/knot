@@ -174,9 +174,8 @@ static void policy_load(knot_kasp_policy_t *policy, conf_t *conf, conf_val_t *id
 	}
 
 	val = conf_id_get(conf, C_POLICY, C_DNSSEC_JITTER, id);
-	int64_t jitter = conf_jitter(&val, zone_name);
-	policy->rrsig_refresh_before += jitter;
-	policy->zsk_lifetime -= jitter;
+	policy->rrsig_refresh_before += conf_jitter(&val, policy->rrsig_refresh_before, zone_name);
+	policy->zsk_lifetime -= conf_jitter(&val, policy->zsk_lifetime, zone_name);
 }
 
 int kdnssec_ctx_init(conf_t *conf, kdnssec_ctx_t *ctx, const knot_dname_t *zone_name,
@@ -350,7 +349,7 @@ int kdnssec_validation_ctx(conf_t *conf, kdnssec_ctx_t *ctx, const zone_contents
 		conf_val_t val = conf_id_get(conf, C_POLICY, C_SIGNING_THREADS, &policy_id);
 		ctx->policy->signing_threads = conf_int(&val);
 		val = conf_id_get(conf, C_POLICY, C_RRSIG_REFRESH, &policy_id);
-		ctx->policy->rrsig_refresh_before = conf_int_alt(&val, true);
+		ctx->policy->rrsig_refresh_before = conf_int_alt(&val, true, NULL);
 	} else if (threads > 0) {
 		ctx->policy->signing_threads = threads;
 	} else {

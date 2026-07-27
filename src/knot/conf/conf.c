@@ -616,7 +616,8 @@ void conf_mix_iter_next(
 
 int64_t conf_int_alt(
 	conf_val_t *val,
-	bool alternative)
+	bool alternative,
+	bool *percent)
 {
 	assert(val != NULL && val->item != NULL);
 	assert(val->item->type == YP_TINT ||
@@ -627,7 +628,7 @@ int64_t conf_int_alt(
 
 	if (val->code == KNOT_EOK) {
 		conf_val(val);
-		return yp_int(val->data);
+		return (percent == NULL) ? yp_int(val->data) : yp_int_pct(val->data, percent);
 	} else {
 		return alternative ? val->item->var.i.dflt_alt : val->item->var.i.dflt;
 	}
@@ -635,11 +636,15 @@ int64_t conf_int_alt(
 
 int64_t conf_jitter(
 	conf_val_t *jitter_val,
+	int64_t basic_value,
 	const knot_dname_t *zone)
 {
-	int64_t intval = conf_int(jitter_val);
+	bool percent;
+	int64_t intval = conf_int_alt(jitter_val, false, &percent);
 	if (intval < 1) {
 		return intval;
+	} else if (percent) {
+		intval = intval * basic_value / 100;
 	}
 
 	SIPHASH_KEY zero_key = { 0, 0 };
@@ -649,7 +654,8 @@ int64_t conf_jitter(
 	uint64_t random64 = SipHash24_End(&ctx);
 	uint64_t granularity = (1 << 16);
 
-	return (1 + intval) * (random64 & (granularity - 1)) / granularity;
+	int64_t out = (1 + intval) * (random64 & (granularity - 1)) / granularity;
+	return (out <= basic_value) ? out : basic_value;
 }
 
 bool conf_bool(

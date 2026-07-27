@@ -204,7 +204,8 @@ static void finalize_timers_base(struct refresh_data *data, bool also_expire)
 	limit_timer(conf, zone->name, &soa_refresh, "refresh",
 	            C_REFRESH_MIN_INTERVAL, C_REFRESH_MAX_INTERVAL);
 	conf_val_t refresh_jitter = conf_zone_get(conf, C_REFRESH_JITTER, zone->name);
-	zone->timers->next_refresh = now + soa_refresh - conf_jitter(&refresh_jitter, zone->name);
+	zone->timers->next_refresh = now + soa_refresh;
+	zone->timers->next_refresh -= conf_jitter(&refresh_jitter, soa_refresh, zone->name);
 	zone->timers->flags |= LAST_REFRESH_OK | TIMERS_MODIFIED;
 
 	if (zone->is_catalog_flag) {

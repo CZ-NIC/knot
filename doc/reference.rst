@@ -2117,7 +2117,7 @@ DNSSEC policy configuration.
      dnskey-ttl: TIME
      zone-max-ttl: TIME
      keytag-modulo: INT/INT
-     dnssec-jitter: TIME
+     dnssec-jitter: TIME | INT%
      ksk-lifetime: TIME
      zsk-lifetime: TIME
      deleg-adt: BOOL
@@ -2823,7 +2823,7 @@ Definition of zones served by the server.
      serial-modulo: INT/INT | +INT | -INT | INT/INT+INT | INT/INT-INT
      reverse-generate: DNAME ...
      include-from: DNAME ...
-     refresh-jitter: TIME
+     refresh-jitter: TIME | INT%
      refresh-min-interval: TIME
      refresh-max-interval: TIME
      retry-min-interval: TIME
