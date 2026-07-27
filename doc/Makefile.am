@@ -146,12 +146,7 @@ man: $(man_MANS)
 $(man_MANS)&: $(MANPAGES_RST)
 	$(AM_V_SPHINX)$(SPHINXBUILD) -b man -d $(SPHINXBUILDDIR)/doctrees/man $(man_SPHINXOPTS) $(SPHINXBUILDDIR)/man
 	@mkdir -p man
-	@for f in $(SPHINXBUILDDIR)/man/*; do \
-	  sed -e 's,[@]config_dir@,$(config_dir),' \
-	      -e 's,[@]storage_dir@,$(storage_dir),' \
-	      -e 's,[@]run_dir@,$(run_dir),' \
-	      -e 's,[@]conf_mapsize@,$(conf_mapsize),' "$$f" > "man/$$(basename $$f)"; \
-	done
+	@cp $(SPHINXBUILDDIR)/man/* man/
 
 else
 html-local singlehtml pdf-local epub man install-html-local install-singlehtml install-pdf-local install-epub:
@@ -164,6 +159,18 @@ $(man_MANS)&:
 endif # HAVE_SPHINX
 
 endif # HAVE_DOCS
+
+install-data-hook:
+	@for f in $(man_MANS); do \
+	  dst="$(DESTDIR)$(mandir)/man$${f##*.}/$$(basename "$$f")"; \
+	  tmp="$$dst.tmp"; \
+	  sed \
+	    -e 's,[@]config_dir@,$(config_dir),' \
+	    -e 's,[@]storage_dir@,$(storage_dir),' \
+	    -e 's,[@]run_dir@,$(run_dir),' \
+	    -e 's,[@]conf_mapsize@,$(conf_mapsize),' \
+	    "$$dst" > "$$tmp" && mv "$$tmp" "$$dst"; \
+	done
 
 EXTRA_DIST += \
 	$(man_MANS)
