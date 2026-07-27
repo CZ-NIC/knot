@@ -652,7 +652,7 @@ static int check_rr_constraints(knot_pkt_t *pkt, knot_rrset_t *rr, size_t rr_siz
 	return KNOT_EOK;
 }
 
-static int parse_rr(knot_pkt_t *pkt, unsigned flags)
+static int parse_rr(knot_pkt_t *pkt, unsigned flags, knot_decompr_t *decompr)
 {
 	assert(pkt);
 
@@ -675,7 +675,7 @@ static int parse_rr(knot_pkt_t *pkt, unsigned flags)
 	size_t rr_size = pkt->parsed;
 	knot_rrset_t *rr = &pkt->rr[pkt->rrset_count];
 	ret = knot_rrset_rr_from_wire(pkt->wire, &pkt->parsed, pkt->size,
-	                              rr, &pkt->mm, flags);
+	                              rr, &pkt->mm, decompr, flags);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -691,7 +691,7 @@ static int parse_rr(knot_pkt_t *pkt, unsigned flags)
 	return check_rr_constraints(pkt, rr, rr_size, flags);
 }
 
-static int parse_section(knot_pkt_t *pkt, unsigned flags)
+static int parse_section(knot_pkt_t *pkt, unsigned flags, knot_decompr_t *decompr)
 {
 	assert(pkt);
 
@@ -700,7 +700,7 @@ static int parse_section(knot_pkt_t *pkt, unsigned flags)
 
 	/* Parse all RRs belonging to the section. */
 	for (rr_parsed = 0; rr_parsed < rr_count; ++rr_parsed) {
-		int ret = parse_rr(pkt, flags);
+		int ret = parse_rr(pkt, flags, decompr);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
@@ -714,6 +714,11 @@ static int parse_payload(knot_pkt_t *pkt, unsigned flags)
 	assert(pkt);
 	assert(pkt->wire);
 	assert(pkt->size > 0);
+
+	knot_decompr_t decompr = {
+		.pkt = pkt->wire,
+		.poi_budget = pkt->size,
+	};
 
 	/* Reserve memory in advance to avoid resizing. */
 	size_t rr_count = knot_wire_get_ancount(pkt->wire) +
@@ -734,7 +739,7 @@ static int parse_payload(knot_pkt_t *pkt, unsigned flags)
 		if (ret != KNOT_EOK) {
 			return ret;
 		}
-		ret = parse_section(pkt, flags);
+		ret = parse_section(pkt, flags, &decompr);
 		if (ret != KNOT_EOK) {
 			return ret;
 		}

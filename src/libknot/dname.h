@@ -30,22 +30,28 @@ typedef uint8_t knot_dname_storage_t[KNOT_DNAME_MAXLEN];
 /*! \brief Local textual domain name storage. */
 typedef char knot_dname_txt_storage_t[KNOT_DNAME_TXT_MAXLEN + 1];
 
+/*! \brief Domain name decompression context. */
+typedef struct {
+	const uint8_t *pkt;  /*!< Beginnig of the wire data. */
+	uint32_t poi_budget; /*!< Limit of compression pointers followed during parsing. */
+} knot_decompr_t;
+
 /*!
  * \brief Check dname on the wire for constraints.
  *
  * If the name passes such checks, it is safe to be used in rest of the functions.
  *
- * \param name  Name on the wire.
- * \param endp  Name boundary.
- * \param pkt   Wire (can be NULL if not compressed).
+ * \param name     Name on the wire.
+ * \param endp     Name boundary.
+ * \param decompr  Decompression context (can be NULL if not compressed).
  *
  * \retval (compressed) size of the domain name.
  * \retval KNOT_EINVAL
  * \retval KNOT_EMALF
  */
-_pure_ _mustcheck_
+ _mustcheck_
 int knot_dname_wire_check(const uint8_t *name, const uint8_t *endp,
-                          const uint8_t *pkt);
+                          knot_decompr_t *decompr);
 
 /*!
  * \brief Duplicates the given domain name to a local storage.
