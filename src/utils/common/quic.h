@@ -74,6 +74,8 @@ typedef struct {
 	ngtcp2_conn *conn;
 	ngtcp2_pkt_info pi;
 	quic_state_t state;
+	uint8_t resumption[256];
+	ngtcp2_ssize resumption_len;
 } quic_ctx_t;
 
 extern const gnutls_datum_t doq_alpn;

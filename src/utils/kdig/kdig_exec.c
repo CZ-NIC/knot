@@ -630,6 +630,10 @@ static int process_query_packet(const knot_pkt_t      *query,
 
 	// Connect to the server if not already connected.
 	if (net->sockfd < 0) {
+		// if (net->tls.params->enable && gnutls_record_get_max_early_data_size(net->tls.session) > query->size) { // TODO when 0-RTT wanted
+		// 	ret = gnutls_record_send_early_data(net->tls.session, query->wire, query->size);
+		// 	// TODO test
+		// }
 		ret = net_connect(net);
 		if (ret != KNOT_EOK) {
 			return -1;
@@ -637,11 +641,13 @@ static int process_query_packet(const knot_pkt_t      *query,
 	}
 
 	// Send query packet.
-	ret = net_send(net, query->wire, query->size);
-	if (ret != KNOT_EOK) {
-		net_close(net);
-		return -1;
-	}
+	// if (gnutls_session_is_resumed(net->tls.session) == 0) {
+		ret = net_send(net, query->wire, query->size);
+		if (ret != KNOT_EOK) {
+			net_close(net);
+			return -1;
+		}
+	// }
 
 	// Get stop query time and start reply time.
 	t_query = time_now();

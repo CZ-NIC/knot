@@ -648,9 +648,16 @@ int tls_ctx_receive(tls_ctx_t *ctx, uint8_t *buf, const size_t buf_len)
 
 	// Receive message header.
 	while (total < sizeof(msg_len)) {
-		ssize_t ret = gnutls_record_recv(ctx->session,
-		                                 (uint8_t *)&msg_len + total,
-		                                 sizeof(msg_len) - total);
+		ssize_t ret = 0;
+		if (gnutls_session_is_resumed(ctx->session)) {
+			ret = gnutls_record_recv_early_data(ctx->session,
+			                                    (uint8_t *)&msg_len + total,
+			                                    sizeof(msg_len) - total);
+		} else {
+			ret = gnutls_record_recv(ctx->session,
+			                         (uint8_t *)&msg_len + total,
+			                         sizeof(msg_len) - total);
+		}
 		if (ret > 0) {
 			total += ret;
 		} else if (ret == 0) {
@@ -676,8 +683,14 @@ int tls_ctx_receive(tls_ctx_t *ctx, uint8_t *buf, const size_t buf_len)
 
 	// Receive data over TLS
 	while (total < msg_len) {
-		ssize_t ret = gnutls_record_recv(ctx->session, buf + total,
-		                                 msg_len - total);
+		ssize_t ret = 0;
+		if (gnutls_session_is_resumed(ctx->session)) {
+			ret = gnutls_record_recv_early_data(ctx->session, buf + total,
+			                                    msg_len - total);
+		} else {
+			ret = gnutls_record_recv(ctx->session, buf + total,
+			                         msg_len - total);
+		}
 		if (ret > 0) {
 			total += ret;
 		} else if (ret == 0) {

@@ -430,6 +430,11 @@ int quic_ctx_init(quic_ctx_t *ctx, tls_ctx_t *tls_ctx, const quic_params_t *para
 		return KNOT_EINVAL;
 	}
 
+	// if (ctx->resumption_len) {
+	// 	ngtcp2_conn_decode_and_set_0rtt_transport_params(ctx->conn, ctx->resumption, ctx->resumption_len);
+	// 	ctx->resumption_len = 0;
+	// }
+
 	ctx->conn_ref = (ngtcp2_crypto_conn_ref) {
 		.get_conn = get_conn,
 		.user_data = ctx
@@ -525,6 +530,15 @@ int quic_ctx_connect(quic_ctx_t *ctx, int sockfd, struct addrinfo *dst_addr)
 	                           &settings, &params, NULL, ctx) != 0) {
 		return KNOT_NET_ECONNECT;
 	}
+
+	bool skip_connect = false;
+	if (ctx->resumption_len) {
+		ret = ngtcp2_conn_decode_and_set_0rtt_transport_params(ctx->conn,
+		        ctx->resumption, ctx->resumption_len);
+		ctx->resumption_len = 0;
+		skip_connect = true;
+	}
+
 	gnutls_handshake_set_hook_function(ctx->tls->session,
 	                                   GNUTLS_HANDSHAKE_ANY,
 	                                   GNUTLS_HOOK_POST, hook_func);
@@ -541,6 +555,10 @@ int quic_ctx_connect(quic_ctx_t *ctx, int sockfd, struct addrinfo *dst_addr)
 		.revents = 0,
 	};
 	ctx->tls->sockfd = sockfd;
+
+	if (skip_connect) {
+		return KNOT_EOK;
+	}
 
 	while (ctx->state != CONNECTED) {
 		ret = quic_send(ctx, sockfd, dst_addr->ai_family);
@@ -599,9 +617,9 @@ int quic_send_dns_query(quic_ctx_t *ctx, int sockfd, struct addrinfo *srv,
 		return KNOT_EINVAL;
 	}
 
-	if (ctx->state < CONNECTED) {
-		return KNOT_ECONN;
-	}
+	// if (ctx->state < CONNECTED) {
+	// 	return KNOT_ECONN;
+	// }
 
 	uint16_t query_length = htons(buf_len);
 	ngtcp2_vec datav[] = {
@@ -746,6 +764,8 @@ void quic_ctx_close(quic_ctx_t *ctx)
 	if (ctx == NULL || ctx->state == CLOSED) {
 		return;
 	}
+
+	ctx->resumption_len = ngtcp2_conn_encode_0rtt_transport_params2(ctx->conn, ctx->resumption, sizeof(ctx->resumption));
 
 	uint8_t enc_buf[MAX_PACKET_SIZE];
 	struct iovec msg_iov = {
