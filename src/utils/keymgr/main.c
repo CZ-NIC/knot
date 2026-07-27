@@ -121,6 +121,7 @@ static void print_help(void)
 	       "  ksk        The key is KSK.\n"
 	       "  zsk        The key is ZSK.\n"
 	       "  sep        Overrides the standard setting of SEP.\n"
+	       "  adt        ADT bit signaling DELEG support.\n"
 	       "  for-later  The key is for later use.\n"
 	       "  created/publish/ready/active/retire/remove/pre_active/post_active/retire_active/revoke"
 	       "             The timestamp of the key lifetime event (e.g. published=+1d active=1499770874)\n",
