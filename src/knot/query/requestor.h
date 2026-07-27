@@ -58,6 +58,7 @@ typedef struct knot_request {
 	};
 	knot_request_flag_t flags;
 	struct sockaddr_storage remote, source;
+	const char *source_dev;
 	knot_pkt_t *query;
 	knot_pkt_t *resp;
 	const query_edns_data_t *edns;
@@ -85,22 +86,24 @@ static inline knotd_query_proto_t flags2proto(unsigned layer_flags)
 /*!
  * \brief Make request out of endpoints and query.
  *
- * \param mm        Memory context.
- * \param remote    Remote endpoint address.
- * \param source    Source address (or NULL).
- * \param query     Query message.
- * \param creds     Local (server) credentials.
- * \param edns      EDNS parameters.
- * \param tsig_key  TSIG key for authentication.
- * \param hostnames Permittable remote certificate hostnames.
- * \param pins      Permittable remote certificate PINs.
- * \param flags     Request flags.
+ * \param mm         Memory context.
+ * \param remote     Remote endpoint address.
+ * \param source     Source address (or NULL).
+ * \param source_dev Device to bind the source socket to (or NULL).
+ * \param query      Query message.
+ * \param creds      Local (server) credentials.
+ * \param edns       EDNS parameters.
+ * \param tsig_key   TSIG key for authentication.
+ * \param hostnames  Permittable remote certificate hostnames.
+ * \param pins       Permittable remote certificate PINs.
+ * \param flags      Request flags.
  *
  * \return Prepared request or NULL in case of error.
  */
 knot_request_t *knot_request_make_generic(knot_mm_t *mm,
                                           const struct sockaddr_storage *remote,
                                           const struct sockaddr_storage *source,
+                                          const char *source_dev,
                                           knot_pkt_t *query,
                                           const struct knot_creds *creds,
                                           const query_edns_data_t *edns,

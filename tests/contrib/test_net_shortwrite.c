@@ -87,7 +87,7 @@ int main(int argc, char *argv[])
 
 	// create TCP client
 
-	int client = net_connected_socket(SOCK_STREAM, &addr, NULL, false);
+	int client = net_connected_socket(SOCK_STREAM, &addr, NULL, false, NULL);
 	ok(client >= 0, "client: connect to server");
 
 	int optval = 8192;

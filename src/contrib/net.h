@@ -58,11 +58,13 @@ int net_bound_socket(int type, const struct sockaddr_storage *addr,
  * \param dst_addr  Destination address.
  * \param src_addr  Source address (can be NULL).
  * \param tfo       Enable TCP Fast Open.
+ * \param src_dev   Optional device name to bind to (used only if src_addr is set).
  *
  * \return socket or error code
  */
 int net_connected_socket(int type, const struct sockaddr_storage *dst_addr,
-                         const struct sockaddr_storage *src_addr, bool tfo);
+                         const struct sockaddr_storage *src_addr, bool tfo,
+                         const char *src_dev);
 
 /*!
  * \brief Enables TCP Fast Open on a bound socket.

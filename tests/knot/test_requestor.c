@@ -81,7 +81,7 @@ static knot_request_t *make_query(knot_requestor_t *requestor,
 
 	knot_request_flag_t flags = TFO ? KNOT_REQUEST_TFO: KNOT_REQUEST_NONE;
 
-	return knot_request_make_generic(requestor->mm, dst, src, pkt, NULL,
+	return knot_request_make_generic(requestor->mm, dst, src, NULL, pkt, NULL,
 	                                 NULL, NULL, NULL, NULL, flags);
 }
 
@@ -164,7 +164,7 @@ int main(int argc, char *argv[])
 	test_connected(&requestor, &server, &client);
 
 	/* Terminate responder. */
-	int conn = net_connected_socket(SOCK_STREAM, &server, NULL, false);
+	int conn = net_connected_socket(SOCK_STREAM, &server, NULL, false, NULL);
 	assert(conn > 0);
 	conn = net_dns_tcp_send(conn, (uint8_t *)"", 1, TIMEOUT, NULL);
 	assert(conn > 0);

@@ -37,6 +37,8 @@ typedef struct {
 	struct sockaddr_storage addr;
 	/*! Local outgoing socket address. */
 	struct sockaddr_storage via;
+	/*! Device to bind the outgoing socket to (optional). */
+	const char *via_dev;
 	/*! QUIC context. */
 	bool quic;
 	/*! TLS context. */

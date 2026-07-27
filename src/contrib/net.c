@@ -268,7 +268,8 @@ static int tfo_connect(int sock, const struct sockaddr_storage *addr)
 }
 
 int net_connected_socket(int type, const struct sockaddr_storage *dst_addr,
-                         const struct sockaddr_storage *src_addr, bool tfo)
+                         const struct sockaddr_storage *src_addr, bool tfo,
+                         const char *src_dev)
 {
 	if (dst_addr == NULL) {
 		return KNOT_EINVAL;
@@ -282,7 +283,7 @@ int net_connected_socket(int type, const struct sockaddr_storage *dst_addr,
 	/* Bind to specific source address - if set. */
 	int sock = -1;
 	if (src_addr && src_addr->ss_family != AF_UNSPEC) {
-		sock = net_bound_socket(type, src_addr, 0, 0, NULL);
+		sock = net_bound_socket(type, src_addr, 0, 0, src_dev);
 	} else {
 		sock = net_unbound_socket(type, dst_addr);
 	}
