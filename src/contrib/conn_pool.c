@@ -12,6 +12,7 @@
 
 #include "contrib/conn_pool.h"
 
+#include "contrib/openbsd/strlcpy.h"
 #include "contrib/sockaddr.h"
 #include "contrib/threads.h"
 
@@ -166,7 +167,8 @@ static conn_pool_fd_t pool_pop(conn_pool_t *pool, size_t i)
 
 conn_pool_fd_t conn_pool_get(conn_pool_t *pool,
                              const struct sockaddr_storage *src,
-                             const struct sockaddr_storage *dst)
+                             const struct sockaddr_storage *dst,
+                             const char *dev)
 {
 	if (pool == NULL) {
 		return CONN_POOL_FD_INVALID;
@@ -178,7 +180,8 @@ conn_pool_fd_t conn_pool_get(conn_pool_t *pool,
 	for (size_t i = 0; i < pool->capacity; i++) {
 		if (pool->conns[i].last_active != 0 &&
 		    sockaddr_cmp(&pool->conns[i].dst, dst, false) == 0 &&
-		    sockaddr_cmp(&pool->conns[i].src, src, true) == 0) {
+		    sockaddr_cmp(&pool->conns[i].src, src, true) == 0 &&
+		    strcmp(pool->conns[i].dev, (dev != NULL) ? dev : "") == 0) {
 			fd = pool_pop(pool, i);
 			break;
 		}
@@ -197,6 +200,7 @@ conn_pool_fd_t conn_pool_get(conn_pool_t *pool,
 static void pool_push(conn_pool_t *pool, size_t i,
                       const struct sockaddr_storage *src,
                       const struct sockaddr_storage *dst,
+                      const char *dev,
                       conn_pool_fd_t fd)
 {
 	conn_pool_memb_t *conn = &pool->conns[i];
@@ -206,12 +210,14 @@ static void pool_push(conn_pool_t *pool, size_t i,
 	conn->fd = fd;
 	memcpy(&conn->src, src, sizeof(conn->src));
 	memcpy(&conn->dst, dst, sizeof(conn->dst));
+	strlcpy(conn->dev, (dev != NULL) ? dev : "", sizeof(conn->dev));
 	pool->usage++;
 }
 
 conn_pool_fd_t conn_pool_put(conn_pool_t *pool,
                              const struct sockaddr_storage *src,
                              const struct sockaddr_storage *dst,
+                             const char *dev,
                              conn_pool_fd_t fd)
 {
 	if (pool == NULL || pool->capacity == 0) {
@@ -226,7 +232,7 @@ conn_pool_fd_t conn_pool_put(conn_pool_t *pool,
 	for (size_t i = 0; i < pool->capacity; i++) {
 		knot_time_t la = pool->conns[i].last_active;
 		if (la == 0) {
-			pool_push(pool, i, src, dst, fd);
+			pool_push(pool, i, src, dst, dev, fd);
 			pthread_mutex_unlock(&pool->mutex);
 			return CONN_POOL_FD_INVALID;
 		} else if (knot_time_cmp(la, oldest_time) < 0) {
@@ -237,7 +243,7 @@ conn_pool_fd_t conn_pool_put(conn_pool_t *pool,
 
 	assert(oldest_i < pool->capacity);
 	conn_pool_fd_t oldest_fd = pool_pop(pool, oldest_i);
-	pool_push(pool, oldest_i, src, dst, fd);
+	pool_push(pool, oldest_i, src, dst, dev, fd);
 	pthread_mutex_unlock(&pool->mutex);
 	return oldest_fd;
 }

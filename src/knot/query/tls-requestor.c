@@ -40,7 +40,7 @@ int knot_tls_req_ctx_init(knot_tls_req_ctx_t *ctx,
 		return KNOT_ERROR;
 	}
 
-	intptr_t sessticket = conn_pool_get(global_sessticket_pool, local, remote);
+	intptr_t sessticket = conn_pool_get(global_sessticket_pool, local, remote, NULL);
 	if (sessticket != CONN_POOL_FD_INVALID) {
 		int ret = knot_tls_session_load(ctx->conn, (void *)sessticket);
 		if (ret != KNOT_EOK) {
@@ -61,7 +61,7 @@ void knot_tls_req_ctx_maint(knot_tls_req_ctx_t *ctx, struct knot_request *r)
 		void *sessticket = knot_tls_session_save(ctx->conn);
 		if (sessticket != NULL) {
 			intptr_t tofree = conn_pool_put(global_sessticket_pool, &r->source,
-			                                &r->remote, (intptr_t)sessticket);
+			                                &r->remote, NULL, (intptr_t)sessticket);
 			global_sessticket_pool->close_cb(tofree);
 		}
 	}

@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include <net/if.h>
 #include <pthread.h>
 #include <stdbool.h>
 #include <sys/socket.h>
@@ -20,6 +21,7 @@ typedef bool (*conn_pool_invalid_cb_t)(conn_pool_fd_t fd);
 typedef struct {
 	struct sockaddr_storage src;
 	struct sockaddr_storage dst;
+	char dev[IFNAMSIZ];
 	conn_pool_fd_t fd;
 	knot_time_t last_active;
 } conn_pool_memb_t;
@@ -84,13 +86,15 @@ knot_timediff_t conn_pool_timeout(conn_pool_t *pool,
  * \param pool   Pool to search in.
  * \param src    Connection source address.
  * \param dst    Connection destination address.
+ * \param dev    Connection source device binding, if any (can be NULL).
  *
  * \retval -1    If error (no such connection).
  * \return >= 0  File descriptor of the connection.
  */
 conn_pool_fd_t conn_pool_get(conn_pool_t *pool,
                              const struct sockaddr_storage *src,
-                             const struct sockaddr_storage *dst);
+                             const struct sockaddr_storage *dst,
+                             const char *dev);
 
 /*!
  * \brief Put an open connection to the pool, possibly displacing the oldest one there.
@@ -98,6 +102,7 @@ conn_pool_fd_t conn_pool_get(conn_pool_t *pool,
  * \param pool   Pool to insert into.
  * \param src    Connestion source address.
  * \param dst    Connection destination adress.
+ * \param dev    Connection source device binding, if any (can be NULL).
  * \param fd     Connection file descriptor.
  *
  * \retval -1    If connection stored to free slot.
@@ -107,6 +112,7 @@ conn_pool_fd_t conn_pool_get(conn_pool_t *pool,
 conn_pool_fd_t conn_pool_put(conn_pool_t *pool,
                              const struct sockaddr_storage *src,
                              const struct sockaddr_storage *dst,
+                             const char *dev,
                              conn_pool_fd_t fd);
 
 /*!
