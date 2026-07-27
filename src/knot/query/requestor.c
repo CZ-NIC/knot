@@ -61,7 +61,7 @@ static int request_ensure_connected(knot_request_t *request, bool *reused_fd, in
 		}
 
 		if (knot_unreachable_is(global_unreachables, &request->remote,
-		                        &request->source)) {
+		                        &request->source, request->source_dev)) {
 			return KNOT_EUNREACH;
 		}
 	}
@@ -74,7 +74,7 @@ static int request_ensure_connected(knot_request_t *request, bool *reused_fd, in
 	if (request->fd < 0) {
 		if (request->fd == KNOT_ETIMEOUT) {
 			knot_unreachable_add(global_unreachables, &request->remote,
-			                     &request->source);
+			                     &request->source, request->source_dev);
 		}
 		return request->fd;
 	}
@@ -152,7 +152,7 @@ static int request_send(knot_request_t *request, int timeout_ms, bool *reused_fd
 		                       tfo_addr);
 		if (ret == KNOT_ETIMEOUT) { // Includes establishing conn which times out.
 			knot_unreachable_add(global_unreachables, &request->remote,
-			                     &request->source);
+			                     &request->source, request->source_dev);
 		}
 	} else {
 		ret = net_dgram_send(request->fd, wire, wire_len, NULL);
