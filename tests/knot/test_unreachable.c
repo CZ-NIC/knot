@@ -29,14 +29,14 @@ int main(int argc, char *argv[])
 		struct sockaddr_storage *via = &ur_test_via[i % 2];
 		struct sockaddr_storage *not_via = &ur_test_via[1 - i % 2];
 
-		ok(!knot_unreachable_is(global_unreachables, s, via), "unreachables: pre[%d]", i);
-		knot_unreachable_add(global_unreachables, s, via);
-		ok(knot_unreachable_is(global_unreachables, s, via), "unreachables: post[%d]", i);
-		ok(!knot_unreachable_is(global_unreachables, s, not_via), "unreachables: via[%d]", i);
+		ok(!knot_unreachable_is(global_unreachables, s, via, NULL), "unreachables: pre[%d]", i);
+		knot_unreachable_add(global_unreachables, s, via, NULL);
+		ok(knot_unreachable_is(global_unreachables, s, via, NULL), "unreachables: post[%d]", i);
+		ok(!knot_unreachable_is(global_unreachables, s, not_via, NULL), "unreachables: via[%d]", i);
 
 		usleep(1000);
 		if (i >= 10) {
-			ok(!knot_unreachable_is(global_unreachables, &ur_test_addrs[i - 10], via),
+			ok(!knot_unreachable_is(global_unreachables, &ur_test_addrs[i - 10], via, NULL),
 			   "unreachables: expired[%d]", i - 10);
 		}
 	}
