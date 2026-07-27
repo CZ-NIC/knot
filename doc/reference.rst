@@ -1558,7 +1558,7 @@ transfer, target for a notification, etc.).
  remote:
    - id: STR
      address: ADDR[@INT] | STR ...
-     via: ADDR[@INT] ...
+     via: ADDR[%STR][@INT] ...
      quic: BOOL
      tls: BOOL
      key: key_id
@@ -1605,7 +1605,10 @@ the last, but at most N-th, specified :ref:`via address<remote_via>`
 of the same family is used.
 This option can help if the server listens on more addresses.
 Optional source port (default is random) can be appended
-to the address using ``@`` separator.
+to the address using ``@`` separator. On Linux, a wildcard address
+(``0.0.0.0`` or ``::``) can be followed by ``%`` and an interface name
+to bind the outbound socket to that specific interface, same as for
+:ref:`listen<server_listen>`.
 
 *Default:* not set
 

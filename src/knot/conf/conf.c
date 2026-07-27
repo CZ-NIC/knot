@@ -1446,7 +1446,8 @@ conf_remote_t conf_remote_txn(
 	while (val.code == KNOT_EOK) {
 		struct sockaddr_storage via = conf_addr(&val, rundir, NULL);
 		if (via.ss_family == out.addr.ss_family) {
-			out.via = conf_addr(&val, rundir, NULL); // Use this candidate.
+			out.via_dev = NULL;
+			out.via = conf_addr(&val, rundir, &out.via_dev); // Use this candidate.
 			if (addr_skipped[out.addr.ss_family] <= via_pos++) {
 				break;
 			}

@@ -67,7 +67,8 @@ static int request_ensure_connected(knot_request_t *request, bool *reused_fd, in
 
 	request->fd = net_connected_socket(sock_type,
 	                                   &request->remote,
-	                                   &request->source);
+	                                   &request->source,
+	                                   request->source_dev);
 	if (request->fd < 0) {
 		if (request->fd == KNOT_ETIMEOUT) {
 			knot_unreachable_add(global_unreachables, &request->remote,
@@ -204,6 +205,7 @@ static int request_recv(knot_request_t *request, int timeout_ms)
 knot_request_t *knot_request_make_generic(knot_mm_t *mm,
                                           const struct sockaddr_storage *remote,
                                           const struct sockaddr_storage *source,
+                                          const char *source_dev,
                                           knot_pkt_t *query,
                                           const struct knot_creds *creds,
                                           const query_edns_data_t *edns,
@@ -236,6 +238,7 @@ knot_request_t *knot_request_make_generic(knot_mm_t *mm,
 	} else {
 		request->source.ss_family = AF_UNSPEC;
 	}
+	request->source_dev = source_dev;
 
 	if (tsig_key && (tsig_key->algorithm == DNSSEC_TSIG_UNKNOWN ||
 	                 (flags & KNOT_REQUEST_FWD))) {
@@ -271,8 +274,8 @@ knot_request_t *knot_request_make(knot_mm_t *mm,
 		flags |= KNOT_REQUEST_TLS;
 	}
 
-	return knot_request_make_generic(mm, &remote->addr, &remote->via, query,
-	                                 creds, edns,  &remote->key, remote->hostnames,
+	return knot_request_make_generic(mm, &remote->addr, &remote->via, remote->via_dev,
+	                                 query, creds, edns,  &remote->key, remote->hostnames,
 	                                 remote->pins, flags);
 }
 
