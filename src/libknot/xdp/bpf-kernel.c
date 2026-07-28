@@ -207,6 +207,11 @@ int xdp_redirect_dns_func(struct xdp_md *ctx)
 			return XDP_DROP;
 		}
 
+		/* Check that the TCP data offset doesn't extend beyond the end of the packet. */
+		if ((void *)tcp + tcp->doff * 4 <= data_end) {
+			return XDP_DROP;
+		}
+
 		port_dest = bpf_ntohs(tcp->dest);
 
 		if ((opts.flags & KNOT_XDP_FILTER_TCP) &&
