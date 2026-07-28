@@ -259,9 +259,9 @@ int backupdir_init(zone_backup_ctx_t *ctx)
 	} else {
 		if (ctx->forced) {
 			if (stat(ctx->backup_dir, &sb) == 0) {
-				int ret2 = remove_path(ctx->backup_dir, S_ISDIR(sb.st_mode));
-				if (ret2 != KNOT_EOK) {
-					return ret2;
+				ret = remove_path(ctx->backup_dir, S_ISDIR(sb.st_mode));
+				if (ret != KNOT_EOK) {
+					return ret;
 				}
 			} else if (errno != ENOENT) {
 				return knot_map_errno();
@@ -328,7 +328,7 @@ int backupdir_deinit(zone_backup_ctx_t *ctx)
 			PREPARE_PATH(lock_path, lock_file_name);
 			unlink(lock_path);
 		} else {
-			log_error("failed to create a backup label in %s", (ctx)->backup_dir);
+			log_error("failed to create a backup label in %s", ctx->backup_dir);
 		}
 	}
 
