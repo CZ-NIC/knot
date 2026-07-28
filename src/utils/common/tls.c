@@ -44,6 +44,7 @@ int tls_params_copy(tls_params_t *dst, const tls_params_t *src)
 	tls_params_init(dst);
 
 	dst->enable = src->enable;
+	dst->resumption = src->resumption;
 	dst->system_ca = src->system_ca;
 	if (src->hostname != NULL) {
 		dst->hostname = strdup(src->hostname);
@@ -510,7 +511,12 @@ int tls_ctx_init(tls_ctx_t *ctx, const tls_params_t *params,
 	}
 
 	if (ctx->resumption.size != 0) {
-		ret = gnutls_session_set_data(ctx->session, ctx->resumption.data, ctx->resumption.size);
+		assert(ctx->params->resumption == true);
+		ret = gnutls_session_set_data(ctx->session, ctx->resumption.data,
+		                              ctx->resumption.size);
+		if (ret != GNUTLS_E_SUCCESS) {
+			WARN("TLS, failed to perform connection resumption");
+		}
 		gnutls_free(ctx->resumption.data);
 		ctx->resumption = (gnutls_datum_t){ 0 };
 	}
@@ -648,16 +654,9 @@ int tls_ctx_receive(tls_ctx_t *ctx, uint8_t *buf, const size_t buf_len)
 
 	// Receive message header.
 	while (total < sizeof(msg_len)) {
-		ssize_t ret = 0;
-		if (gnutls_session_is_resumed(ctx->session)) {
-			ret = gnutls_record_recv_early_data(ctx->session,
-			                                    (uint8_t *)&msg_len + total,
-			                                    sizeof(msg_len) - total);
-		} else {
-			ret = gnutls_record_recv(ctx->session,
-			                         (uint8_t *)&msg_len + total,
-			                         sizeof(msg_len) - total);
-		}
+		ssize_t ret = gnutls_record_recv(ctx->session,
+		                                 (uint8_t *)&msg_len + total,
+		                                 sizeof(msg_len) - total);
 		if (ret > 0) {
 			total += ret;
 		} else if (ret == 0) {
@@ -683,14 +682,8 @@ int tls_ctx_receive(tls_ctx_t *ctx, uint8_t *buf, const size_t buf_len)
 
 	// Receive data over TLS
 	while (total < msg_len) {
-		ssize_t ret = 0;
-		if (gnutls_session_is_resumed(ctx->session)) {
-			ret = gnutls_record_recv_early_data(ctx->session, buf + total,
-			                                    msg_len - total);
-		} else {
-			ret = gnutls_record_recv(ctx->session, buf + total,
-			                         msg_len - total);
-		}
+		ssize_t ret = gnutls_record_recv(ctx->session, buf + total,
+		                                 msg_len - total);
 		if (ret > 0) {
 			total += ret;
 		} else if (ret == 0) {
@@ -714,7 +707,9 @@ void tls_ctx_close(tls_ctx_t *ctx)
 	if (ctx == NULL || ctx->session == NULL || ctx->sockfd < 0) {
 		return;
 	}
-	if (gnutls_session_get_data2(ctx->session, &ctx->resumption) != GNUTLS_E_SUCCESS) {
+	if (ctx->params->resumption &&
+	    gnutls_session_get_data2(ctx->session, &ctx->resumption) != GNUTLS_E_SUCCESS)
+	{
 		WARN("TLS, unable to get resumption data");;
 	}
 	gnutls_bye(ctx->session, GNUTLS_SHUT_RDWR);

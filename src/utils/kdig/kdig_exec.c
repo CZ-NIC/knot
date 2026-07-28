@@ -630,10 +630,6 @@ static int process_query_packet(const knot_pkt_t      *query,
 
 	// Connect to the server if not already connected.
 	if (net->sockfd < 0) {
-		// if (net->tls.params->enable && gnutls_record_get_max_early_data_size(net->tls.session) > query->size) { // TODO when 0-RTT wanted
-		// 	ret = gnutls_record_send_early_data(net->tls.session, query->wire, query->size);
-		// 	// TODO test
-		// }
 		ret = net_connect(net);
 		if (ret != KNOT_EOK) {
 			return -1;
@@ -641,13 +637,11 @@ static int process_query_packet(const knot_pkt_t      *query,
 	}
 
 	// Send query packet.
-	// if (gnutls_session_is_resumed(net->tls.session) == 0) {
-		ret = net_send(net, query->wire, query->size);
-		if (ret != KNOT_EOK) {
-			net_close(net);
-			return -1;
-		}
-	// }
+	ret = net_send(net, query->wire, query->size);
+	if (ret != KNOT_EOK) {
+		net_close(net);
+		return -1;
+	}
 
 	// Get stop query time and start reply time.
 	t_query = time_now();
@@ -928,10 +922,10 @@ static int process_query(const query_t *query, net_t *net)
 		for (size_t i = 0; i <= query->retries; i++) {
 			// Initialize network structure for current server.
 			ret = net_init(query->local, remote, iptype, socktype,
-			               query->wait,
+			               query->wait, query->tls.resumption,
 			               (struct sockaddr *)&query->proxy.src,
 			               (struct sockaddr *)&query->proxy.dst,
-			               net, &net->tls.resumption);
+			               net);
 			if (ret != KNOT_EOK) {
 				if (ret == KNOT_NET_EADDR) {
 					// Requested address family not available.
@@ -1284,9 +1278,10 @@ static int process_xfr(const query_t *query, net_t *net)
 
 	// Initialize network structure.
 	ret = net_init(query->local, remote, iptype, socktype, query->wait,
+	               query->tls.resumption,
 	               (struct sockaddr *)&query->proxy.src,
 	               (struct sockaddr *)&query->proxy.dst,
-	               net, &net->tls.resumption);
+	               net);
 	if (ret != KNOT_EOK) {
 		sign_context_deinit(&sign_ctx);
 		knot_pkt_free(out_packet);

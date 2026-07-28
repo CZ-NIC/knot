@@ -16,7 +16,7 @@ int quic_params_copy(quic_params_t *dst, const quic_params_t *src)
 		return KNOT_EINVAL;
 	}
 
-	dst->enable = src->enable;
+	memcpy(dst, src, sizeof(*src));
 
 	return KNOT_EOK;
 }
@@ -27,7 +27,7 @@ void quic_params_clean(quic_params_t *params)
 		return;
 	}
 
-	params->enable = false;
+	memset(params, 0, sizeof(*params));
 }
 
 #ifdef ENABLE_QUIC
@@ -430,11 +430,6 @@ int quic_ctx_init(quic_ctx_t *ctx, tls_ctx_t *tls_ctx, const quic_params_t *para
 		return KNOT_EINVAL;
 	}
 
-	// if (ctx->resumption_len) {
-	// 	ngtcp2_conn_decode_and_set_0rtt_transport_params(ctx->conn, ctx->resumption, ctx->resumption_len);
-	// 	ctx->resumption_len = 0;
-	// }
-
 	ctx->conn_ref = (ngtcp2_crypto_conn_ref) {
 		.get_conn = get_conn,
 		.user_data = ctx
@@ -531,16 +526,20 @@ int quic_ctx_connect(quic_ctx_t *ctx, int sockfd, struct addrinfo *dst_addr)
 		return KNOT_NET_ECONNECT;
 	}
 
+	// NOTE this has to be set as one of the first things in the context to early data work
 	bool skip_connect = false;
-	if (ctx->resumption_len) {
+	if (ctx->resumption_len > 0) {
+		assert(ctx->tls->params->resumption == true);
 		ret = ngtcp2_conn_decode_and_set_0rtt_transport_params(ctx->conn,
 		        ctx->resumption, ctx->resumption_len);
+		if (ret != 0) {
+			WARN("QUIC, failed to perform connection resumption");
+		}
 		ctx->resumption_len = 0;
 		skip_connect = true;
 	}
 
-	gnutls_handshake_set_hook_function(ctx->tls->session,
-	                                   GNUTLS_HANDSHAKE_ANY,
+	gnutls_handshake_set_hook_function(ctx->tls->session, GNUTLS_HANDSHAKE_ANY,
 	                                   GNUTLS_HOOK_POST, hook_func);
 	ret = ngtcp2_crypto_gnutls_configure_client_session(ctx->tls->session);
 	if (ret != KNOT_EOK) {
@@ -616,10 +615,6 @@ int quic_send_dns_query(quic_ctx_t *ctx, int sockfd, struct addrinfo *srv,
 	if (ctx == NULL || buf == NULL) {
 		return KNOT_EINVAL;
 	}
-
-	// if (ctx->state < CONNECTED) {
-	// 	return KNOT_ECONN;
-	// }
 
 	uint16_t query_length = htons(buf_len);
 	ngtcp2_vec datav[] = {
@@ -765,7 +760,14 @@ void quic_ctx_close(quic_ctx_t *ctx)
 		return;
 	}
 
-	ctx->resumption_len = ngtcp2_conn_encode_0rtt_transport_params2(ctx->conn, ctx->resumption, sizeof(ctx->resumption));
+	if (ctx->tls->params->resumption) {
+		ngtcp2_ssize ret = ngtcp2_conn_encode_0rtt_transport_params2(ctx->conn, ctx->resumption, sizeof(ctx->resumption));
+		if (ret < 0) {
+			WARN("QUIC, failed to obtain transport params from closed connection");
+		} else {
+			ctx->resumption_len = ret;
+		}
+	}
 
 	uint8_t enc_buf[MAX_PACKET_SIZE];
 	struct iovec msg_iov = {

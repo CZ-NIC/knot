@@ -209,10 +209,10 @@ int net_init(const srv_info_t      *local,
              const int             iptype,
              const int             socktype,
              const int             wait,
+             const bool            resumption,
              const struct sockaddr *proxy_src,
              const struct sockaddr *proxy_dst,
-             net_t                 *net,
-             gnutls_datum_t        *resumption) // TODO dont use dedicated param
+             net_t                 *net)
 {
 	if (remote == NULL || net == NULL) {
 		DBG_NULL;
@@ -222,21 +222,23 @@ int net_init(const srv_info_t      *local,
 	gnutls_datum_t resumption_bck = { 0 };
 	ngtcp2_ssize quic_resumption_len = 0;
 	uint8_t quic_resumption_data[256];
-	if (resumption != NULL && resumption->size) {
+	if (resumption && net->tls.resumption.data != NULL) {
+		assert(net->tls.resumption.size > 0);
 		// TLS
-		resumption_bck = *resumption;
-
+		resumption_bck = net->tls.resumption;
 		// QUIC
 		quic_resumption_len = net->quic.resumption_len;
-		memcpy(quic_resumption_data, net->quic.resumption, net->quic.resumption_len); 
+		memcpy(quic_resumption_data, net->quic.resumption, net->quic.resumption_len);
 	}
 
 	// Clean network structure.
 	memset(net, 0, sizeof(*net));
 	net->sockfd = -1;
+
+	// Restore resumption data
 	net->tls.resumption = resumption_bck;
 	net->quic.resumption_len = quic_resumption_len;
-	memcpy(net->quic.resumption, quic_resumption_data, quic_resumption_len); 
+	memcpy(net->quic.resumption, quic_resumption_data, quic_resumption_len);
 
 	if (iptype == AF_UNIX) {
 		struct addrinfo *info = calloc(1, sizeof(struct addrinfo));
@@ -343,7 +345,6 @@ int net_init_crypto(net_t                 *net,
 	{
 		int ret = tls_ctx_init(&net->tls, tls_params,
 		                       GNUTLS_NONBLOCK | GNUTLS_ENABLE_EARLY_DATA,
-		                    //    GNUTLS_NONBLOCK,
 		                       net->wait);
 		if (ret != KNOT_EOK) {
 			net_clean(net);

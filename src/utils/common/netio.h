@@ -153,10 +153,10 @@ int net_init(const srv_info_t      *local,
              const int             iptype,
              const int             socktype,
              const int             wait,
+             const bool            resumption,
              const struct sockaddr *proxy_src,
              const struct sockaddr *proxy_dst,
-             net_t                 *net,
-			 gnutls_datum_t        *resumption);
+             net_t                 *net);
 
 /*!
  * \brief (Re)initializes crypto protocols in network structure.

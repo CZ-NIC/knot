@@ -18,6 +18,8 @@
 typedef struct {
 	/*! Use TLS indicator. */
 	bool enable;
+	/*! Resume TLS connection. */
+	bool resumption;
 	/*! Import system certificates indicator. */
 	bool system_ca;
 	/*! Certificate files to import. */
