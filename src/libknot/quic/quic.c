@@ -364,18 +364,10 @@ static int stream_closed(ngtcp2_conn *conn, uint32_t flags, int64_t stream_id,
 static int recv_stateless_rst(ngtcp2_conn *conn, const ngtcp2_pkt_stateless_reset *sr,
                               void *user_data)
 {
-	// NOTE server can't receive stateless resets, only client
-
-	// ngtcp2 verified stateless reset token already
-	(void)(sr);
-
-	knot_quic_conn_t *ctx = (knot_quic_conn_t *)user_data;
-	assert(ctx->conn == conn);
-
-	knot_quic_table_rem(ctx, ctx->quic_table);
-	knot_quic_cleanup(&ctx, 1);
-
-	return 0;
+	/* By dropping all short-header pkts with unknown DCID in knot_quic_handle(),
+	 * we are unable to receive any legitimate stateless-reset anyway.
+	 */
+	return NGTCP2_ERR_CALLBACK_FAILURE;
 }
 
 static int recv_stream_rst(ngtcp2_conn *conn, int64_t stream_id, uint64_t final_size,
@@ -622,6 +614,7 @@ int knot_quic_handle(knot_quic_table_t *table, knot_quic_reply_t *reply,
 
 	if (decoded_cids.version == 0 /* short header */ && conn == NULL) {
 		ret = KNOT_EOK; // NOOP
+		// NOTE dropping also stateless-reset packets here
 		goto finish;
 	}
 
@@ -896,6 +889,8 @@ static int send_special(knot_quic_table_t *quic_table, knot_quic_reply_t *rpl,
 		}
 		break;
 	case -QUIC_SEND_STATELESS_RESET:
+		// NOTE this is incomplete, missing memcpy(stateless_reset_token, <actual_token>)
+		// however this piece of code is unused
 		ret = ngtcp2_pkt_write_stateless_reset(
 			rpl->out_payload->iov_base, rpl->out_payload->iov_len,
 			stateless_reset_token, sreset_rand, sizeof(sreset_rand)
