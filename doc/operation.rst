@@ -690,21 +690,28 @@ Zone removal
 ============
 
 The recommend way to remove a zone from the server consists of the following
-two steps:
+three steps:
 
-1. remove the zone from the server configuration, for example::
+1. freeze the zone, for example::
+
+   $ knotc -b zone-freeze example.com
+
+2. purge the zone, for example::
+
+   $ knotc -bf zone-purge example.com        # Purges everything but keys.
+   $ knotc -bf zone-purge example.com +keys  # Purges the keys.
+
+3. remove the zone from the server configuration, for example::
 
    $ knotc conf-begin
    $ knotc conf-unset 'zone[example.com]'
    $ knotc conf-commit
 
-2. purge the orphaned zone, for example::
+No zone thaw is needed nor possible, as the zone doesn't exist anymore at this time point.
 
-   $ knotc -f zone-purge example.com +orphan        # Purges everything but keys.
-   $ knotc -f zone-purge example.com +orphan +keys  # Purges the keys.
-
-As an alternative procedure, the zone may be frozen, then purged and deconfigured.
-No zone thaw in that case.
+As an alternative procedure, the zone may be deconfigured first and then purged as orphan
+without freezing. A drawback of this method is that the zone file isn't removed and must be
+deleted manually.
 
 Catalog member zones are automatically purged immediately upon their removal from the catalog.
 
