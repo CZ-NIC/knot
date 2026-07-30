@@ -519,6 +519,8 @@ int tls_ctx_init(tls_ctx_t *ctx, const tls_params_t *params,
 		}
 		gnutls_free(ctx->resumption.data);
 		ctx->resumption = (gnutls_datum_t){ 0 };
+		ctx->early_data_available = true;
+		return KNOT_EOK;
 	}
 
 	ret = gnutls_credentials_set(ctx->session, GNUTLS_CRD_CERTIFICATE,
@@ -577,6 +579,11 @@ int tls_ctx_connect(tls_ctx_t *ctx, int sockfd, struct sockaddr_storage *addr)
 
 	gnutls_handshake_set_timeout(ctx->session, 1000 * ctx->wait);
 
+	if (ctx->early_data_available) {
+		ctx->sockfd = sockfd;
+		return KNOT_EOK;
+	}
+
 	// Initialize poll descriptor structure.
 	struct pollfd pfd = {
 		.fd = sockfd,
@@ -616,11 +623,22 @@ int tls_ctx_send(tls_ctx_t *ctx, const uint8_t *buf, const size_t buf_len)
 
 	gnutls_record_cork(ctx->session);
 
-	if (gnutls_record_send(ctx->session, &msg_len, sizeof(msg_len)) <= 0) {
+	ssize_t (*send_function)(gnutls_session_t, const void *, size_t) = gnutls_record_send;
+	if (ctx->early_data_available) {
+		send_function = gnutls_record_send_early_data;
+	}
+
+	size_t allowed = gnutls_record_get_max_early_data_size(ctx->session);
+	ssize_t sent = send_function(ctx->session, &msg_len, sizeof(msg_len));
+	if (sent <= 0) {
 		WARN("TLS, failed to send");
+		for (size_t i = 0; i < buf_len; i++) {
+        	printf("0x%02x, ", buf[i]); // Use %02X for UPPERCASE hex
+    	}
+    	printf("\n");
 		return KNOT_NET_ESEND;
 	}
-	if (gnutls_record_send(ctx->session, buf, buf_len) <= 0) {
+	if (send_function(ctx->session, buf, buf_len) <= 0) {
 		WARN("TLS, failed to send");
 		return KNOT_NET_ESEND;
 	}
@@ -631,6 +649,31 @@ int tls_ctx_send(tls_ctx_t *ctx, const uint8_t *buf, const size_t buf_len)
 			WARN("TLS, failed to send (%s)", gnutls_strerror(ret));
 			return KNOT_NET_ESEND;
 		}
+	}
+
+	if (!ctx->early_data_available) {
+		return KNOT_EOK;
+	}
+
+	struct pollfd pfd = {
+		.fd = ctx->sockfd,
+		.events = POLLIN,
+		.revents = 0,
+	};
+	int ret = KNOT_EOK;
+	do {
+		ret = gnutls_handshake(ctx->session);
+		if (ret != GNUTLS_E_SUCCESS && gnutls_error_is_fatal(ret) == 0) {
+			if (poll(&pfd, 1, 1000 * ctx->wait) != 1) {
+				WARN("TLS, peer took too long to respond");
+				return KNOT_NET_ETIMEOUT;
+			}
+		}
+	} while (ret != GNUTLS_E_SUCCESS && gnutls_error_is_fatal(ret) == 0);
+	if (ret != GNUTLS_E_SUCCESS) {
+		WARN("TLS, handshake failed (%s)", gnutls_strerror(ret));
+		tls_ctx_close(ctx);
+		return KNOT_NET_ESOCKET;
 	}
 
 	return KNOT_EOK;
@@ -710,7 +753,7 @@ void tls_ctx_close(tls_ctx_t *ctx)
 	if (ctx->params->resumption &&
 	    gnutls_session_get_data2(ctx->session, &ctx->resumption) != GNUTLS_E_SUCCESS)
 	{
-		WARN("TLS, unable to get resumption data");;
+		WARN("TLS, unable to get resumption data");
 	}
 	gnutls_bye(ctx->session, GNUTLS_SHUT_RDWR);
 }

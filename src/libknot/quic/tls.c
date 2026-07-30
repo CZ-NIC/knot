@@ -205,16 +205,24 @@ static ssize_t recv_data(knot_tls_conn_t *conn, void *data, size_t size,
 
 	size_t total = 0;
 	ssize_t res;
+	ssize_t (*recv_data)(gnutls_session_t, void *, size_t) = gnutls_record_recv;
+	if (gnutls_session_is_resumed(conn->session)) {
+		recv_data = gnutls_record_recv_early_data;
+	}
 	while (total < size) {
 		TIMEOUT_CTX_INIT
-		res = gnutls_record_recv(conn->session, data + total, size - total);
+		res = recv_data(conn->session, data + total, size - total);
 		if (res > 0) {
 			if (oneshot) {
 				return res;
 			}
 			total += res;
 		} else if (res == 0) {
-			return KNOT_ECONNRESET;
+			if (recv_data == gnutls_record_recv_early_data) {
+				recv_data = gnutls_record_recv;
+			} else {
+				return KNOT_ECONNRESET;
+			}
 		} else if (gnutls_error_is_fatal(res) != 0) {
 			return KNOT_NET_ERECV;
 		}

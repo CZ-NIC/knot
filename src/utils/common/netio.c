@@ -344,7 +344,8 @@ int net_init_crypto(net_t                 *net,
 #endif //ENABLE_QUIC
 	{
 		int ret = tls_ctx_init(&net->tls, tls_params,
-		                       GNUTLS_NONBLOCK | GNUTLS_ENABLE_EARLY_DATA,
+		                       GNUTLS_NONBLOCK | GNUTLS_ENABLE_EARLY_DATA |
+		                       GNUTLS_NO_END_OF_EARLY_DATA,
 		                       net->wait);
 		if (ret != KNOT_EOK) {
 			net_clean(net);
@@ -467,12 +468,14 @@ int net_connect(net_t *net)
 #endif //LIBNGHTTP2
 			{
 				// Establish TLS connection.
+				// if (!net->tls.early_data_available) {
 				ret = tls_ctx_setup_remote_endpoint(&net->tls, &dot_alpn, 1,
-				        knot_tls_priority(true), net_get_remote(net));
+				        knot_tls_priority(false), net_get_remote(net));
 				if (ret != 0) {
 					net_close(net);
 					return ret;
 				}
+				// }
 				ret = tls_ctx_connect(&net->tls, sockfd,
 				        (struct sockaddr_storage *)net->srv->ai_addr);
 			}

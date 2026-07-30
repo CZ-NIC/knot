@@ -52,6 +52,7 @@ typedef struct {
 	gnutls_certificate_credentials_t credentials;
 	/*! GnuTLS resumption data. */
 	gnutls_datum_t resumption;
+	bool early_data_available;
 } tls_ctx_t;
 
 extern const gnutls_datum_t dot_alpn;
