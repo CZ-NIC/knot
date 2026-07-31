@@ -190,6 +190,7 @@ int evsched_schedule(event_t *ev, uint32_t dt)
 	/* Lock calendar. */
 	pthread_mutex_lock(&sched->heap_lock);
 
+	int ret = KNOT_EOK;
 	ev->tv = new_time;
 
 	/* Make sure it's not already enqueued. */
@@ -197,15 +198,18 @@ int evsched_schedule(event_t *ev, uint32_t dt)
 	if (found > 0) {
 		/* "Replacing" with itself -- just repositioning it. */
 		heap_replace(&sched->heap, found, (heap_val_t *)ev);
-	} else {
-		heap_insert(&sched->heap, (heap_val_t *)ev);
+	} else if (!heap_insert(&sched->heap, (heap_val_t *)ev)) {
+		ret = KNOT_ENOMEM;
+		goto done;
 	}
 
-	/* Unlock calendar. */
 	pthread_cond_signal(&sched->notify);
+
+done:
+	/* Unlock calendar. */
 	pthread_mutex_unlock(&sched->heap_lock);
 
-	return KNOT_EOK;
+	return ret;
 }
 
 int evsched_cancel(event_t *ev)
