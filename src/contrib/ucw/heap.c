@@ -116,11 +116,13 @@ void heap_delmin(struct heap *h)
 int heap_insert(struct heap *h, heap_val_t *e)
 {
 	if (h->num == h->max_size) {
-		h->max_size = h->max_size * HEAP_INCREASE_STEP;
-		h->data = realloc(h->data, (h->max_size + 1) * sizeof(heap_val_t*));
-		if (!h->data) {
+		int ms = h->max_size * HEAP_INCREASE_STEP;
+		heap_val_t **d = realloc(h->data, (ms + 1) * sizeof(heap_val_t*));
+		if (!d) {
 			return 0;
 		}
+		h->max_size = ms;
+		h->data = d;
 	}
 
 	h->num++;
@@ -147,7 +149,11 @@ void heap_delete(struct heap *h, int e)
 	}
 
 	if ((h->num > INITIAL_HEAP_SIZE) && (h->num < h->max_size / HEAP_DECREASE_THRESHOLD)) {
-		h->max_size = h->max_size / HEAP_INCREASE_STEP;
-		h->data = realloc(h->data, (h->max_size + 1) * sizeof(heap_val_t*));
+		int ms = h->max_size / HEAP_INCREASE_STEP;
+		heap_val_t **d = realloc(h->data, (ms + 1) * sizeof(heap_val_t*));
+		if (d) {
+			h->max_size = ms;
+			h->data = d;
+		}
 	}
 }
