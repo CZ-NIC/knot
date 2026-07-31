@@ -36,7 +36,7 @@ stdenv.mkDerivation rec {
   version = "{{ version }}";
 
   src = fetchurl {
-    url = "https://secure.nic.cz/files/knot-dns/knot-${version}.tar.xz";
+    url = "https://knot-dns.nic.cz/release/knot-${version}.tar.xz";
     sha256 = "{{ src_hash }}";
   };
 

@@ -1,7 +1,7 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: Knot DNS
 Upstream-Contact: knot-dns@labs.nic.cz
-Source: https://secure.nic.cz/files/knot-dns/
+Source: https://knot-dns.nic.cz/release/
 
 Files: *
 Copyright: 2011-2025 CZ.NIC, z.s.p.o. and contributors <knot-dns@labs.nic.cz>

@@ -5,8 +5,8 @@ make_archive_script = "scripts/make_dev_archive.sh"
 
 [upstream]
 # needed for get-archive
-archive_url = "https://secure.nic.cz/files/knot-dns/knot-{{ version }}.tar.xz"
-signature_url = "https://secure.nic.cz/files/knot-dns/knot-{{ version }}.tar.xz.asc"
+archive_url = "https://knot-dns.nic.cz/release/knot-{{ version }}.tar.xz"
+signature_url = "https://knot-dns.nic.cz/release/knot-{{ version }}.tar.xz.asc"
 
 [apkg]
 compat = 6

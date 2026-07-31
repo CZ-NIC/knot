@@ -1,5 +1,5 @@
 Version: 5
-Source: https://secure.nic.cz/files/knot-dns/
+Source: https://knot-dns.nic.cz/release/
 Matching-Pattern: (?:|.*/)knot(?:[_\-]v?|)(\d\S*)\.(?:tar\.xz|txz|tar\.bz2|tbz2|tar\.gz|tgz)
 Dversionmangle: s/\+hotfix//
 Pgpsigurlmangle: s/$/.asc/
