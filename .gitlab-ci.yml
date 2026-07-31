@@ -400,13 +400,13 @@ pkg:ubuntu-22.04:
   <<: *pkg_test_deb
   image: $CI_REGISTRY/packaging/apkg/test/ubuntu-22.04
 
-pkg:fedora-41:
+pkg:fedora-43:
   <<: *pkg_test
-  image: $CI_REGISTRY/packaging/apkg/test/fedora-41
+  image: $CI_REGISTRY/packaging/apkg/test/fedora-43
 
-pkg:fedora-42:
+pkg:fedora-44:
   <<: *pkg_test
-  image: $CI_REGISTRY/packaging/apkg/test/fedora-42
+  image: $CI_REGISTRY/packaging/apkg/test/fedora-44
 
 pkg:alma-9:
   <<: *pkg_test
