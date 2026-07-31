@@ -3,6 +3,8 @@
  *  For more information, see <https://www.knot-dns.cz/>
  */
 
+#include <lmdb.h>
+
 #include "knot/common/log.h"
 #include "knot/conf/migration.h"
 #include "knot/conf/confdb.h"
@@ -96,6 +98,11 @@ int migrate_lmdb(
 {
 	if (db_dir == NULL) {
 		return KNOT_EINVAL;
+	}
+
+	if (MDB_VERSION_MAJOR == 0) {
+		log_error("database, incompatible '%s', migration not possible", db_dir);
+		return KNOT_EMALF;
 	}
 
 	log_notice("database, incompatible '%s', migrating to LMDB version 1.x", db_dir);
