@@ -107,7 +107,7 @@ void evsched_event_free(event_t *ev);
  * \param dt Time difference in milliseconds from now (dt is relative).
  *
  * \retval KNOT_EOK on success.
- * \retval KNOT_EINVAL
+ * \retval KNOT_EINVAL or KNOT_ENOMEM
  */
 int evsched_schedule(event_t *ev, uint32_t dt);
 
