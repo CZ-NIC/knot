@@ -174,8 +174,10 @@ static void policy_load(knot_kasp_policy_t *policy, conf_t *conf, conf_val_t *id
 	}
 
 	val = conf_id_get(conf, C_POLICY, C_DNSSEC_JITTER, id);
-	policy->rrsig_refresh_before += conf_jitter(&val, policy->rrsig_refresh_before, zone_name);
-	policy->zsk_lifetime -= conf_jitter(&val, policy->zsk_lifetime, zone_name);
+	policy->rrsig_refresh_before += conf_jitter(&val, policy->rrsig_refresh_before, policy->rrsig_lifetime - 1, zone_name);
+	if (policy->zsk_lifetime != 0) { // 0 ~ infinity!
+		policy->zsk_lifetime -= conf_jitter(&val, policy->zsk_lifetime, policy->zsk_lifetime - 1, zone_name);
+	}
 }
 
 int kdnssec_ctx_init(conf_t *conf, kdnssec_ctx_t *ctx, const knot_dname_t *zone_name,

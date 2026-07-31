@@ -491,6 +491,7 @@ inline static int64_t conf_int(
  *
  * \param[in] jitter_val    Jitter value item.
  * \param[in] basic_value   Basic value for percentual computation.
+ * \param[in] max_value     Maximum allowed output value.
  * \param[in] zone          Zone name.
  *
  * \return Integer.
@@ -498,6 +499,7 @@ inline static int64_t conf_int(
 int64_t conf_jitter(
 	conf_val_t *jitter_val,
 	int64_t basic_value,
+	int64_t max_value,
 	const knot_dname_t *zone
 );
 

@@ -637,6 +637,7 @@ int64_t conf_int_alt(
 int64_t conf_jitter(
 	conf_val_t *jitter_val,
 	int64_t basic_value,
+	int64_t max_value,
 	const knot_dname_t *zone)
 {
 	bool percent;
@@ -655,7 +656,7 @@ int64_t conf_jitter(
 	uint64_t granularity = (1 << 16);
 
 	int64_t out = (1 + intval) * (random64 & (granularity - 1)) / granularity;
-	return (out <= basic_value) ? out : basic_value;
+	return (out <= max_value) ? out : max_value;
 }
 
 bool conf_bool(
