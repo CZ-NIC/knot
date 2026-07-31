@@ -35,5 +35,5 @@ void heap_deinit(struct heap *);
 void heap_delmin(struct heap *);
 int heap_insert(struct heap *, heap_val_t *);
 int heap_find(struct heap *, heap_val_t *);
-void heap_delete(struct heap *, int);
+int heap_delete(struct heap *, int);
 void heap_replace(struct heap *, int, heap_val_t *);
