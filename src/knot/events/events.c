@@ -179,12 +179,21 @@ static void reschedule(zone_events_t *events, bool mx_handover)
 	}
 
 	time_t diff = time_until(event_get_time(events, type));
+	zone_t *zone = events->task.ctx;
 
 	pthread_mutex_unlock(&events->mx);
 
-	evsched_schedule(events->event, diff * 1000);
+	int ret = evsched_schedule(events->event, diff * 1000);
 
 	pthread_mutex_unlock(&events->reschedule_lock);
+
+	if (ret != KNOT_EOK) {
+		assert(zone);
+		knot_dname_t *name = zone->name;
+		assert(name);
+		log_zone_error(name, "reschedule of event '%s' failed (%s)",
+		               zone_events_get_name(type), knot_strerror(ret));
+	}
 }
 
 /*!
