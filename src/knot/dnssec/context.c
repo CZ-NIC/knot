@@ -87,7 +87,8 @@ static void policy_load(knot_kasp_policy_t *policy, conf_t *conf, conf_val_t *id
 	}
 
 	val = conf_id_get(conf, C_POLICY, C_RRSIG_PREREFRESH, id);
-	policy->rrsig_prerefresh = conf_int(&val);
+	num = conf_int(&val);
+	policy->rrsig_prerefresh = (num != YP_NIL) ? num : 0.005 * policy->rrsig_lifetime;
 
 	val = conf_id_get(conf, C_POLICY, C_REPRO_SIGNING, id);
 	policy->reproducible_sign = conf_bool(&val);

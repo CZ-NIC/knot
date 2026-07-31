@@ -2439,7 +2439,7 @@ A period (in seconds) how long at most before a signature refresh time the signa
 might be refreshed, in order to refresh RRSIGs in bigger batches on a frequently updated
 zone (avoid re-sign event too often).
 
-*Default:* ``1h`` (1 hour)
+*Default:* 0.005 * :ref:`policy_rrsig-lifetime`
 
 .. _policy_reproducible-signing:
 
