@@ -212,19 +212,25 @@ int evsched_cancel(event_t *ev)
 	/* Lock calendar. */
 	pthread_mutex_lock(&sched->heap_lock);
 
+	int ret = KNOT_EOK;
 	int found = heap_find(&sched->heap, (heap_val_t *)ev);
 	if (found > 0) {
-		heap_delete(&sched->heap, found);
-		pthread_cond_signal(&sched->notify);
+		if (heap_delete(&sched->heap, found)) {
+			pthread_cond_signal(&sched->notify);
+		} else {
+			ret = KNOT_ENOMEM;
+		}
 	}
 
 	/* Unlock calendar. */
 	pthread_mutex_unlock(&sched->heap_lock);
 
-	/* Reset event timer. */
-	memset(&ev->tv, 0, sizeof(struct timeval));
+	if (ret == KNOT_EOK) {
+		/* Reset event timer. */
+		memset(&ev->tv, 0, sizeof(struct timeval));
+	}
 
-	return KNOT_EOK;
+	return ret;
 }
 
 void evsched_start(evsched_t *sched)

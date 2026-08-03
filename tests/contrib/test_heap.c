@@ -120,7 +120,7 @@ int main(int argc, char *argv[])
 			continue;
 
 		}
-		heap_delete(&heap, pos);
+		(void)heap_delete(&heap, pos);
 		pos = heap_find(&heap, value);
 		if (pos != 0) {
 			valid = false;
