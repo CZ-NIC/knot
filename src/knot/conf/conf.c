@@ -630,6 +630,9 @@ int64_t conf_int_alt(
 		conf_val(val);
 		return (percent == NULL) ? yp_int(val->data) : yp_int_pct(val->data, percent);
 	} else {
+		if (percent != NULL) {
+			*percent = false;
+		}
 		return alternative ? val->item->var.i.dflt_alt : val->item->var.i.dflt;
 	}
 }
