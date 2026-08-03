@@ -64,7 +64,9 @@ int main(void)
 
 	evsched_t sched = { 0 };
 	worker_pool_t *pool = NULL;
-	zone_t zone = { 0 };
+	zone_t zone = {
+		.name = (uint8_t *)"\x7""example""\x3""com",
+	};
 
 	r = evsched_init(&sched, NULL);
 	ok(r == KNOT_EOK, "create scheduler");

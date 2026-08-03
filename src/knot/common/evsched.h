@@ -123,7 +123,7 @@ int evsched_schedule(event_t *ev, uint32_t dt);
  * \param ev Scheduled event.
  *
  * \retval KNOT_EOK
- * \retval KNOT_EINVAL
+ * \retval KNOT_EINVAL or KNOT_ENOMEM
  */
 int evsched_cancel(event_t *ev);
 
