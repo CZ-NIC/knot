@@ -136,6 +136,15 @@ SipHash(const SIPHASH_KEY *key, int rc, int rf, const void *src, size_t len)
 	return (SipHash_End(&ctx, rc, rf));
 }
 
+uint64_t
+SipHash_Key0(int rc, int rf, const void *src, size_t len)
+{
+	SIPHASH_KEY zero_key = { 0, 0 };
+
+	return SipHash(&zero_key, rc, rf, src, len);
+}
+
+
 #define SIP_ROTL(x, b) ((x) << (b)) | ( (x) >> (64 - (b)))
 
 static void

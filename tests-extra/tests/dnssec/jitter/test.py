@@ -24,6 +24,7 @@ master.dnssec(zones).rrsig_lifetime = 30
 master.dnssec(zones).rrsig_refresh = 5
 master.dnssec(zones).rrsig_pre_refresh = 1
 master.dnssec(zones).dnssec_jitter = 12
+master.dnssec(zones).zone_max_ttl = 1
 
 def wait_for_any(server, zns, rrtype, callback, arg):
     for i in range(100):

@@ -24,7 +24,6 @@
 #include "contrib/strtonum.h"
 #include "contrib/string.h"
 #include "contrib/wire_ctx.h"
-#include "contrib/openbsd/siphash.h"
 #include "contrib/openbsd/strlcat.h"
 #include "contrib/openbsd/strlcpy.h"
 
@@ -638,28 +637,19 @@ int64_t conf_int_alt(
 }
 
 int64_t conf_jitter(
-	conf_val_t *jitter_val,
-	int64_t base_value,
-	int64_t max_value,
-	const knot_dname_t *zone)
+	int64_t value,
+	bool percent,
+	uint64_t random,
+	int64_t base_value)
 {
-	bool percent;
-	int64_t intval = conf_int_alt(jitter_val, false, &percent);
-	if (intval < 1) {
-		return intval;
+	if (value < 1) {
+		return value;
 	} else if (percent) {
-		intval = intval * base_value / 100;
+		value = value * base_value / 100;
 	}
 
-	SIPHASH_KEY zero_key = { 0, 0 };
-	SIPHASH_CTX ctx;
-	SipHash24_Init(&ctx, &zero_key);
-	SipHash24_Update(&ctx, zone, knot_dname_size(zone));
-	uint64_t random64 = SipHash24_End(&ctx);
 	uint64_t granularity = (1 << 16);
-
-	int64_t out = (1 + intval) * (random64 & (granularity - 1)) / granularity;
-	return MIN(out, max_value);
+	return (1 + value) * (random & (granularity - 1)) / granularity;
 }
 
 bool conf_bool(
