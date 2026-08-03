@@ -8,6 +8,7 @@
 #include <urcu.h>
 
 #include "contrib/mempattern.h"
+#include "contrib/openbsd/siphash.h"
 #include "libknot/dnssec/random.h"
 #include "knot/common/log.h"
 #include "knot/conf/conf.h"
@@ -203,10 +204,19 @@ static void finalize_timers_base(struct refresh_data *data, bool also_expire)
 	uint32_t soa_refresh = knot_soa_refresh(soa->rdata);
 	limit_timer(conf, zone->name, &soa_refresh, "refresh",
 	            C_REFRESH_MIN_INTERVAL, C_REFRESH_MAX_INTERVAL);
-	conf_val_t refresh_jitter = conf_zone_get(conf, C_REFRESH_JITTER, zone->name);
 	zone->timers->next_refresh = now + soa_refresh;
-	zone->timers->next_refresh -= conf_jitter(&refresh_jitter, soa_refresh, soa_refresh - 1, zone->name);
 	zone->timers->flags |= LAST_REFRESH_OK | TIMERS_MODIFIED;
+
+	conf_val_t refresh_jitter = conf_zone_get(conf, C_REFRESH_JITTER, zone->name);
+	bool percent;
+	int64_t jitter = conf_int_alt(&refresh_jitter, false, &percent);
+	SIPHASH_KEY zero_key = { 0, 0 };
+	SIPHASH_CTX ctx;
+	SipHash24_Init(&ctx, &zero_key);
+	SipHash24_Update(&ctx, zone->name, knot_dname_size(zone->name));
+	uint64_t random = SipHash24_End(&ctx);
+	zone->timers->next_refresh -= conf_jitter(jitter, percent, random,
+	                                          soa_refresh, soa_refresh -1);
 
 	if (zone->is_catalog_flag) {
 		// It's already zero in most cases.

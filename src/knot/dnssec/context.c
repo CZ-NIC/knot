@@ -7,6 +7,7 @@
 #include <string.h>
 
 #include "contrib/macros.h"
+#include "contrib/openbsd/siphash.h"
 #include "contrib/time.h"
 #include "libknot/libknot.h"
 #include "knot/dnssec/context.h"
@@ -26,7 +27,15 @@ static void policy_load(knot_kasp_policy_t *policy, conf_t *conf, conf_val_t *id
 		policy->string = strdup(conf_str(id));
 	}
 
-	conf_val_t val = conf_id_get(conf, C_POLICY, C_MANUAL, id);
+	conf_val_t val = conf_id_get(conf, C_POLICY, C_DNSSEC_JITTER, id);
+	policy->jitter.value = conf_int_alt(&val, false, &policy->jitter.percent);
+	SIPHASH_KEY zero_key = { 0, 0 };
+	SIPHASH_CTX ctx;
+	SipHash24_Init(&ctx, &zero_key);
+	SipHash24_Update(&ctx, zone_name, knot_dname_size(zone_name));
+	policy->jitter.random = SipHash24_End(&ctx);
+
+	val = conf_id_get(conf, C_POLICY, C_MANUAL, id);
 	policy->manual = conf_bool(&val);
 
 	val = conf_id_get(conf, C_POLICY, C_SINGLE_TYPE_SIGNING, id);
@@ -59,6 +68,11 @@ static void policy_load(knot_kasp_policy_t *policy, conf_t *conf, conf_val_t *id
 
 	val = conf_id_get(conf, C_POLICY, C_ZSK_LIFETIME, id);
 	policy->zsk_lifetime = conf_int(&val);
+	if (policy->zsk_lifetime != 0) { // 0 ~ infinity!
+		policy->zsk_lifetime -= conf_jitter(policy->jitter.value, policy->jitter.percent,
+		                                    policy->jitter.random, policy->zsk_lifetime,
+		                                    policy->zsk_lifetime - 1);
+	}
 
 	val = conf_id_get(conf, C_POLICY, C_KSK_LIFETIME, id);
 	policy->ksk_lifetime = conf_int(&val);
@@ -79,16 +93,23 @@ static void policy_load(knot_kasp_policy_t *policy, conf_t *conf, conf_val_t *id
 	policy->rrsig_lifetime = conf_int(&val);
 	policy->trash_delay = (trash != YP_NIL) ? trash : 2 * policy->rrsig_lifetime;
 
-	val = conf_id_get(conf, C_POLICY, C_RRSIG_REFRESH, id);
-	num = conf_int(&val);
-	policy->rrsig_refresh_before = (num != YP_NIL) ? num : UINT32_MAX;
-	if (policy->rrsig_refresh_before == UINT32_MAX && policy->zone_maximal_ttl != UINT32_MAX) {
-		policy->rrsig_refresh_before = policy->propagation_delay + policy->zone_maximal_ttl;
-	}
-
 	val = conf_id_get(conf, C_POLICY, C_RRSIG_PREREFRESH, id);
 	num = conf_int(&val);
-	policy->rrsig_prerefresh = (num != YP_NIL) ? num : 0.05 * policy->rrsig_lifetime;
+	policy->rrsig_prerefresh = (num != YP_NIL) ? num :
+	                           rrsig_pre_refresh_dflt(policy->rrsig_lifetime);
+
+	val = conf_id_get(conf, C_POLICY, C_RRSIG_REFRESH, id);
+	num = conf_int(&val);
+	if (num != YP_NIL || policy->zone_maximal_ttl != UINT32_MAX) {
+		policy->rrsig_refresh_before = (num != YP_NIL) ? num :
+		                               rrsig_refresh_dflt(policy->rrsig_lifetime,
+		                               policy->propagation_delay,
+		                               policy->zone_maximal_ttl);
+		rrsig_refresh_jitter(policy);
+	} else {
+		policy->rrsig_refresh_before = UINT32_MAX;
+		// Will be updated in update_policy_from_zone().
+	}
 
 	val = conf_id_get(conf, C_POLICY, C_REPRO_SIGNING, id);
 	policy->reproducible_sign = conf_bool(&val);
@@ -175,12 +196,6 @@ static void policy_load(knot_kasp_policy_t *policy, conf_t *conf, conf_val_t *id
 	                              &policy->keytag_modulo, &zero);
 	if (ret != KNOT_EOK || zero != 0) {
 		assert(0); // cannot happen - ensured by conf check
-	}
-
-	val = conf_id_get(conf, C_POLICY, C_DNSSEC_JITTER, id);
-	policy->rrsig_refresh_before += conf_jitter(&val, policy->rrsig_refresh_before, policy->rrsig_lifetime - 1, zone_name);
-	if (policy->zsk_lifetime != 0) { // 0 ~ infinity!
-		policy->zsk_lifetime -= conf_jitter(&val, policy->zsk_lifetime, policy->zsk_lifetime - 1, zone_name);
 	}
 }
 

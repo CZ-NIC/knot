@@ -137,5 +137,36 @@ typedef struct {
 	unsigned unsafe;
 	uint32_t keytag_remain;
 	uint32_t keytag_modulo;
+	struct {
+		uint64_t random;
+		int64_t value;
+		bool percent;
+	} jitter;
 } knot_kasp_policy_t;
 // TODO make the time parameters knot_timediff_t ??
+
+inline static uint32_t zone_max_ttl_dflt(void)
+{
+	return 1;
+}
+
+inline static uint32_t rrsig_pre_refresh_dflt(uint32_t rrsig_lifetime)
+{
+	return 0.05 * rrsig_lifetime;
+}
+
+inline static uint32_t rrsig_refresh_dflt(uint32_t rrsig_lifetime, uint32_t propagation_delay,
+                                          uint32_t zone_maximal_ttl)
+{
+	uint32_t minimum = propagation_delay + zone_maximal_ttl;
+	uint32_t reserve = 0.1 * rrsig_lifetime;
+	return minimum + reserve;
+}
+
+inline static void rrsig_refresh_jitter(knot_kasp_policy_t *policy)
+{
+	uint32_t maximum = policy->rrsig_lifetime - policy->rrsig_prerefresh - 1;
+	policy->rrsig_refresh_before += conf_jitter(policy->jitter.value, policy->jitter.percent,
+	                                            policy->jitter.random, policy->rrsig_refresh_before, maximum);
+	assert(policy->rrsig_refresh_before + policy->rrsig_prerefresh < policy->rrsig_lifetime);
+}
