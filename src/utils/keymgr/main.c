@@ -82,7 +82,7 @@ static void print_help(void)
 	       "                   Use a configured keystore id or '-' for the default.\n"
 	       "  keystore-bench  Conduct a signing benchmark for each supported algorithm.\n"
 	       "                   Use a configured keystore id or '-' for the default.\n"
-	       "                   (syntax: keystore_bench [<num_threads>])\n"
+	       "                   (syntax: keystore_bench [<num_threads>] [<alg_name>])\n"
 	       "\n"
 	       "Commands related to Offline KSK feature:\n"
 	       "  pregenerate   Pre-generate ZSKs for later rollovers with offline KSK.\n"
@@ -287,8 +287,28 @@ static int key_command(int argc, char *argv[], int opt_ind, knot_lmdb_db_t *kasp
 		if (argc > 2) {
 			ret = str_to_u16(argv[2], &threads);
 		}
+		int alg = -1;
+		if (ret == KNOT_EOK && argc > 3) {
+			const knot_lookup_t *item = knot_lookup_by_name(knot_dnssec_alg_names, argv[3]);
+			if (item == NULL) {
+				ERR2("unknown algorithm '%s'", argv[3]);
+				goto main_end;
+			}
+			alg = item->id;
+			bool found = false;
+			for (int i = 0; KEYS[i] != NULL; i++) {
+				if (KEYS[i]->algorithm == alg) {
+					found = true;
+					break;
+				}
+			}
+			if (!found) {
+				ERR2("unsupported algorithm '%s'", argv[3]);
+				goto main_end;
+			}
+		}
 		if (ret == KNOT_EOK && threads > 0) {
-			ret = keymgr_keystore_bench(id_str, list_params, threads);
+			ret = keymgr_keystore_bench(id_str, list_params, threads, alg);
 		} else {
 			ret = KNOT_EINVAL;
 		}

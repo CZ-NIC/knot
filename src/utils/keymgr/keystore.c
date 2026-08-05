@@ -28,7 +28,7 @@
 #define BENCH_FORMAT "%-20s %9"
 #define BENCH_TIME   3000
 
-static const key_parameters_t *KEYS[] = {
+const key_parameters_t *KEYS[] = {
 	&SAMPLE_RSA1024_SHA256_KEY,
 	&SAMPLE_RSA2048_SHA256_KEY,
 	&SAMPLE_RSA4096_SHA256_KEY,
@@ -39,8 +39,8 @@ static const key_parameters_t *KEYS[] = {
 	&SAMPLE_ECDSA_P384_SHA384_KEY,
 	&SAMPLE_ED25519_KEY,
 	&SAMPLE_ED448_KEY,
+	NULL
 };
-static const int KEYS_COUNT = sizeof(KEYS) / sizeof(*KEYS);
 
 static int create_dnskeys(dnssec_keystore_t *keystore, const char *id,
                           dnssec_key_algorithm_t algorithm,
@@ -196,7 +196,7 @@ static void test_algorithm(dnssec_keystore_t *store,
 }
 
 static int init_keystore(dnssec_keystore_t **store, const char *keystore_id,
-                         unsigned threads)
+                         unsigned threads, int algorithm)
 {
 	size_t len = strlen(keystore_id) + 1;
 	conf_val_t id = conf_rawid_get(conf(), C_KEYSTORE, C_ID,
@@ -227,6 +227,9 @@ static int init_keystore(dnssec_keystore_t **store, const char *keystore_id,
 	if (threads > 0) {
 		printf(", threads %u", threads);
 	}
+	if (algorithm > 0) {
+		printf(", algorithm %u", algorithm);
+	}
 	printf("\n\n");
 
 	free(keystores);
@@ -237,7 +240,7 @@ int keymgr_keystore_test(const char *keystore_id, keymgr_list_params_t *params)
 {
 	dnssec_keystore_t *store = NULL;
 
-	int ret = init_keystore(&store, keystore_id, 0);
+	int ret = init_keystore(&store, keystore_id, 0, -1);
 	if (ret != KNOT_EOK) {
 		goto done;
 	}
@@ -247,7 +250,7 @@ int keymgr_keystore_test(const char *keystore_id, keymgr_list_params_t *params)
 	       COL_UNDR(c),
 	       "Algorithm", "Generate", "Import", "Remove", "Use",
 	       COL_RST(c));
-	for (int i = 0; i < KEYS_COUNT; i++) {
+	for (int i = 0; KEYS[i] != NULL; i++) {
 		test_algorithm(store, KEYS[i]);
 	}
 done:
@@ -308,11 +311,11 @@ static int bench(dthread_t *dt)
 }
 
 int keymgr_keystore_bench(const char *keystore_id, keymgr_list_params_t *params,
-                          uint16_t threads)
+                          uint16_t threads, int algorithm)
 {
 	dnssec_keystore_t *store = NULL;
 
-	int ret = init_keystore(&store, keystore_id, threads);
+	int ret = init_keystore(&store, keystore_id, threads, algorithm);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -323,7 +326,11 @@ int keymgr_keystore_bench(const char *keystore_id, keymgr_list_params_t *params,
 	       "Algorithm", "Sigs/sec",
 	       COL_RST(c));
 
-	for (int i = 0; i < KEYS_COUNT; i++) {
+	for (int i = 0; KEYS[i] != NULL; i++) {
+		if (algorithm > 0 && algorithm != KEYS[i]->algorithm) {
+			continue;
+		}
+
 		dnssec_key_t *keys[threads];
 		dnssec_sign_ctx_t *ctxs[threads];
 		struct result results[threads];
