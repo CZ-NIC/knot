@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include <net/if.h>
 #include <pthread.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -16,6 +17,7 @@ typedef struct {
 	node_t n;
 	struct sockaddr_storage addr;
 	struct sockaddr_storage via;
+	char dev[IFNAMSIZ];
 	uint32_t time_ms;
 } knot_unreachable_t;
 
@@ -57,12 +59,14 @@ uint32_t knot_unreachables_ttl(knot_unreachables_t *urs, uint32_t new_ttl_ms);
  * \param urs     Unreachables structure.
  * \param addr    Address and port in question.
  * \param via     Local outgoing address.
+ * \param dev     Local outgoing device binding, if any (can be NULL).
  *
  * \return True iff unreachable within TTL.
  */
 bool knot_unreachable_is(knot_unreachables_t *urs,
                          const struct sockaddr_storage *addr,
-                         const struct sockaddr_storage *via);
+                         const struct sockaddr_storage *via,
+                         const char *dev);
 
 /*!
  * \brief Add an unreachable into Unreachables structure.
@@ -70,7 +74,9 @@ bool knot_unreachable_is(knot_unreachables_t *urs,
  * \param urs     Unreachables structure.
  * \param addr    Address and port being unreachable.
  * \param via     Local outgoing address.
+ * \param dev     Local outgoing device binding, if any (can be NULL).
  */
 void knot_unreachable_add(knot_unreachables_t *urs,
                           const struct sockaddr_storage *addr,
-                          const struct sockaddr_storage *via);
+                          const struct sockaddr_storage *via,
+                          const char *dev);

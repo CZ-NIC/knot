@@ -266,6 +266,23 @@ static void check_addrs(struct sockaddr_storage *addr, struct sockaddr_storage *
 	}
 }
 
+static void check_via_dev(struct sockaddr_storage *via, const char *dev,
+                          int family, const char *via_str, const char *exp_dev)
+{
+	struct sockaddr_storage ref = { 0 };
+
+	int set_ret = sockaddr_set(&ref, family, via_str, 0);
+	int cmp_ret = sockaddr_cmp(&ref, via, true);
+	is_int(KNOT_EOK, set_ret, "set via '%s'", via_str);
+	is_int(KNOT_EOK, cmp_ret, "cmp via '%s'", via_str);
+
+	if (exp_dev != NULL) {
+		ok(dev != NULL && strcmp(dev, exp_dev) == 0, "via dev '%s'", exp_dev);
+	} else {
+		ok(dev == NULL, "empty via dev");
+	}
+}
+
 static void test_conf_remote(void)
 {
 	const char *conf_string =
@@ -276,11 +293,21 @@ static void test_conf_remote(void)
 		"  - id: r2\n"
 		"    address: [1::2, 1.0.0.2, 2::2]\n"
 		"    via:     [1::1, 2::1, 3::1]\n"
+		"  - id: r1dev\n"
+		"    address: [ 1.0.0.2, 2.0.0.2 ]\n"
+		"    via:     [ 0.0.0.0%eth0, 1.0.0.1 ]\n"
+		"  - id: r2dev\n"
+		"    address: [ 1::2 ]\n"
+		"    via:     [ ::%eth1 ]\n"
 		"template:\n"
 		"  - id: t1\n"
 		"    notify: r1\n"
 		"  - id: t2\n"
-		"    notify: r2\n";
+		"    notify: r2\n"
+		"  - id: t1dev\n"
+		"    notify: r1dev\n"
+		"  - id: t2dev\n"
+		"    notify: r2dev\n";
 
 	int ret = test_conf(conf_string, NULL);
 	is_int(KNOT_EOK, ret, "Prepare configuration");
@@ -307,6 +334,18 @@ static void test_conf_remote(void)
 	check_addrs(&r.addr, &r.via, AF_INET, "1.0.0.2", NULL);
 	r = conf_remote(conf(), &id, 2);
 	check_addrs(&r.addr, &r.via, AF_INET6, "2::2", "2::1");
+
+	// First address's matching via has a device, the second one doesn't -- the
+	// device from the first candidate must not leak into the second lookup.
+	id = conf_rawid_get(conf(), C_TPL, C_NOTIFY, (const uint8_t *)"t1dev", 6);
+	r = conf_remote(conf(), &id, 0);
+	check_via_dev(&r.via, r.via_dev, AF_INET, "0.0.0.0", "eth0");
+	r = conf_remote(conf(), &id, 1);
+	check_via_dev(&r.via, r.via_dev, AF_INET, "1.0.0.1", NULL);
+
+	id = conf_rawid_get(conf(), C_TPL, C_NOTIFY, (const uint8_t *)"t2dev", 6);
+	r = conf_remote(conf(), &id, 0);
+	check_via_dev(&r.via, r.via_dev, AF_INET6, "::", "eth1");
 
 	test_conf_free();
 }

@@ -85,7 +85,7 @@ static int quic_exchange(knot_quic_conn_t *conn, knot_quic_reply_t *r, int timeo
 		void *sessticket = knot_quic_session_save(conn);
 		if (sessticket != NULL) {
 			intptr_t tofree = conn_pool_put(global_sessticket_pool, r->ip_loc,
-			                                r->ip_rem, (intptr_t)sessticket);
+			                                r->ip_rem, NULL, (intptr_t)sessticket);
 			global_sessticket_pool->close_cb(tofree);
 		}
 	}
@@ -206,7 +206,7 @@ int knot_qreq_connect(struct knot_quic_reply **out,
 
 	intptr_t sessticket = CONN_POOL_FD_INVALID;
 	if (reused_fd != NULL) {
-		sessticket = conn_pool_get(global_sessticket_pool, r->ip_loc, r->ip_rem);
+		sessticket = conn_pool_get(global_sessticket_pool, r->ip_loc, r->ip_rem, NULL);
 	}
 	if (sessticket != CONN_POOL_FD_INVALID) {
 		ret = knot_quic_session_load(conn, (void *)sessticket);

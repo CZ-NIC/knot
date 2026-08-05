@@ -5,9 +5,12 @@
 
 #include <assert.h>
 #include <stdlib.h>
+#include <string.h>
 #include <time.h>
 
 #include "unreachable.h"
+
+#include "contrib/openbsd/strlcpy.h"
 
 knot_unreachables_t *global_unreachables = NULL;
 
@@ -74,7 +77,8 @@ static bool clear_old(knot_unreachable_t *ur, uint32_t now, uint32_t ttl_ms)
 // also clears up (some) expired unreachables
 static knot_unreachable_t *get_ur(knot_unreachables_t *urs,
                                   const struct sockaddr_storage *addr,
-                                  const struct sockaddr_storage *via)
+                                  const struct sockaddr_storage *via,
+                                  const char *dev)
 {
 	assert(urs != NULL);
 
@@ -86,7 +90,8 @@ static knot_unreachable_t *get_ur(knot_unreachables_t *urs,
 		}
 
 		if (sockaddr_cmp(&ur->addr, addr, false) == 0 &&
-		    sockaddr_cmp(&ur->via, via, true) == 0) {
+		    sockaddr_cmp(&ur->via, via, true) == 0 &&
+		    strcmp(ur->dev, (dev != NULL) ? dev : "") == 0) {
 			return ur;
 		}
 	}
@@ -96,7 +101,8 @@ static knot_unreachable_t *get_ur(knot_unreachables_t *urs,
 
 bool knot_unreachable_is(knot_unreachables_t *urs,
                          const struct sockaddr_storage *addr,
-                         const struct sockaddr_storage *via)
+                         const struct sockaddr_storage *via,
+                         const char *dev)
 {
 	if (urs == NULL) {
 		return false;
@@ -106,7 +112,7 @@ bool knot_unreachable_is(knot_unreachables_t *urs,
 
 	pthread_mutex_lock(&urs->mutex);
 
-	bool res = (get_ur(urs, addr, via) != NULL);
+	bool res = (get_ur(urs, addr, via, dev) != NULL);
 
 	pthread_mutex_unlock(&urs->mutex);
 
@@ -115,7 +121,8 @@ bool knot_unreachable_is(knot_unreachables_t *urs,
 
 void knot_unreachable_add(knot_unreachables_t *urs,
                           const struct sockaddr_storage *addr,
-                          const struct sockaddr_storage *via)
+                          const struct sockaddr_storage *via,
+                          const char *dev)
 {
 	if (urs == NULL) {
 		return;
@@ -129,6 +136,7 @@ void knot_unreachable_add(knot_unreachables_t *urs,
 	if (ur != NULL) {
 		memcpy(&ur->addr, addr, sizeof(ur->addr));
 		memcpy(&ur->via, via, sizeof(ur->via));
+		strlcpy(ur->dev, (dev != NULL) ? dev : "", sizeof(ur->dev));
 		ur->time_ms = get_timestamp();
 		add_head(&urs->urs, (node_t *)ur);
 	}

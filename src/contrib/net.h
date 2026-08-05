@@ -57,11 +57,12 @@ int net_bound_socket(int type, const struct sockaddr_storage *addr,
  * \param type      Socket transport type (SOCK_STREAM, SOCK_DGRAM).
  * \param dst_addr  Destination address.
  * \param src_addr  Source address (can be NULL).
+ * \param src_dev   Optional device name to bind to (used only if src_addr is set).
  *
  * \return socket or error code
  */
 int net_connected_socket(int type, const struct sockaddr_storage *dst_addr,
-                         const struct sockaddr_storage *src_add);
+                         const struct sockaddr_storage *src_add, const char *src_dev);
 
 /*!
  * \brief Tell kernel to send ECN bits thru CMSG on packet receival.

@@ -51,7 +51,8 @@ static int request_ensure_connected(knot_request_t *request, bool *reused_fd, in
 	if (sock_type == SOCK_STREAM) {
 		request->fd = (int)conn_pool_get(global_conn_pool,
 		                                 &request->source,
-		                                 &request->remote);
+		                                 &request->remote,
+		                                 request->source_dev);
 		if (request->fd >= 0) {
 			if (reused_fd != NULL) {
 				*reused_fd = true;
@@ -60,18 +61,19 @@ static int request_ensure_connected(knot_request_t *request, bool *reused_fd, in
 		}
 
 		if (knot_unreachable_is(global_unreachables, &request->remote,
-		                        &request->source)) {
+		                        &request->source, request->source_dev)) {
 			return KNOT_EUNREACH;
 		}
 	}
 
 	request->fd = net_connected_socket(sock_type,
 	                                   &request->remote,
-	                                   &request->source);
+	                                   &request->source,
+	                                   request->source_dev);
 	if (request->fd < 0) {
 		if (request->fd == KNOT_ETIMEOUT) {
 			knot_unreachable_add(global_unreachables, &request->remote,
-			                     &request->source);
+			                     &request->source, request->source_dev);
 		}
 		return request->fd;
 	}
@@ -146,7 +148,7 @@ static int request_send(knot_request_t *request, int timeout_ms, bool *reused_fd
 		ret = net_dns_tcp_send(request->fd, wire, wire_len, timeout_ms);
 		if (ret == KNOT_ETIMEOUT) { // Includes establishing conn which times out.
 			knot_unreachable_add(global_unreachables, &request->remote,
-			                     &request->source);
+			                     &request->source, request->source_dev);
 		}
 	} else {
 		ret = net_dgram_send(request->fd, wire, wire_len, NULL);
@@ -204,6 +206,7 @@ static int request_recv(knot_request_t *request, int timeout_ms)
 knot_request_t *knot_request_make_generic(knot_mm_t *mm,
                                           const struct sockaddr_storage *remote,
                                           const struct sockaddr_storage *source,
+                                          const char *source_dev,
                                           knot_pkt_t *query,
                                           const struct knot_creds *creds,
                                           const query_edns_data_t *edns,
@@ -236,6 +239,7 @@ knot_request_t *knot_request_make_generic(knot_mm_t *mm,
 	} else {
 		request->source.ss_family = AF_UNSPEC;
 	}
+	request->source_dev = source_dev;
 
 	if (tsig_key && (tsig_key->algorithm == DNSSEC_TSIG_UNKNOWN ||
 	                 (flags & KNOT_REQUEST_FWD))) {
@@ -271,8 +275,8 @@ knot_request_t *knot_request_make(knot_mm_t *mm,
 		flags |= KNOT_REQUEST_TLS;
 	}
 
-	return knot_request_make_generic(mm, &remote->addr, &remote->via, query,
-	                                 creds, edns,  &remote->key, remote->hostnames,
+	return knot_request_make_generic(mm, &remote->addr, &remote->via, remote->via_dev,
+	                                 query, creds, edns,  &remote->key, remote->hostnames,
 	                                 remote->pins, flags);
 }
 
@@ -305,6 +309,7 @@ void knot_request_free(knot_request_t *request, knot_mm_t *mm)
 		request->fd = (int)conn_pool_put(global_conn_pool,
 		                                 &request->source,
 		                                 &request->remote,
+		                                 request->source_dev,
 		                                 (conn_pool_fd_t)request->fd);
 	}
 	if (request->fd >= 0) {

@@ -53,6 +53,7 @@ check_PROGRAMS = \
 	contrib/test_base32hex			\
 	contrib/test_base64			\
 	contrib/test_base64url			\
+	contrib/test_conn_pool			\
 	contrib/test_heap			\
 	contrib/test_inet_ntop			\
 	contrib/test_net			\

@@ -323,7 +323,7 @@ redisContext *rdb_connect(conf_t *conf, bool require_master, const char *info)
 	while (db_listen.code == KNOT_EOK) {
 		struct sockaddr_storage addr = conf_addr(&db_listen, NULL, NULL);
 
-		rdb = (void *)conn_pool_get(global_redis_pool, &addr, &addr);
+		rdb = (void *)conn_pool_get(global_redis_pool, &addr, &addr, NULL);
 		if (rdb != NULL && (intptr_t)rdb != CONN_POOL_FD_INVALID) {
 			role = zone_redis_role(rdb);
 			if (!require_master || role == 0) {
@@ -396,7 +396,7 @@ void rdb_disconnect(redisContext *rdb, bool pool_save)
 		if (sockaddr_set(&addr, AF_INET6, rdb->tcp.host, rdb->tcp.port) == KNOT_EOK ||
 		    sockaddr_set(&addr, AF_INET, rdb->tcp.host, rdb->tcp.port) == KNOT_EOK ||
 		    sockaddr_set(&addr, AF_UNIX, rdb->unix_sock.path, 0) == KNOT_EOK) {
-			rdb = (void *)conn_pool_put(global_redis_pool, &addr, &addr, (intptr_t)rdb);
+			rdb = (void *)conn_pool_put(global_redis_pool, &addr, &addr, NULL, (intptr_t)rdb);
 		}
 	}
 

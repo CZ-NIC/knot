@@ -29,17 +29,34 @@ int main(int argc, char *argv[])
 		struct sockaddr_storage *via = &ur_test_via[i % 2];
 		struct sockaddr_storage *not_via = &ur_test_via[1 - i % 2];
 
-		ok(!knot_unreachable_is(global_unreachables, s, via), "unreachables: pre[%d]", i);
-		knot_unreachable_add(global_unreachables, s, via);
-		ok(knot_unreachable_is(global_unreachables, s, via), "unreachables: post[%d]", i);
-		ok(!knot_unreachable_is(global_unreachables, s, not_via), "unreachables: via[%d]", i);
+		ok(!knot_unreachable_is(global_unreachables, s, via, NULL), "unreachables: pre[%d]", i);
+		knot_unreachable_add(global_unreachables, s, via, NULL);
+		ok(knot_unreachable_is(global_unreachables, s, via, NULL), "unreachables: post[%d]", i);
+		ok(!knot_unreachable_is(global_unreachables, s, not_via, NULL), "unreachables: via[%d]", i);
 
 		usleep(1000);
 		if (i >= 10) {
-			ok(!knot_unreachable_is(global_unreachables, &ur_test_addrs[i - 10], via),
+			ok(!knot_unreachable_is(global_unreachables, &ur_test_addrs[i - 10], via, NULL),
 			   "unreachables: expired[%d]", i - 10);
 		}
 	}
+
+	// Device keying: same address/via with a different (or no) device must
+	// be tracked independently, not collapsed into one another.
+	struct sockaddr_storage dev_addr = { 0 };
+	sockaddr_set(&dev_addr, AF_INET6, "::99", 53);
+	struct sockaddr_storage dev_via = { 0 };
+	sockaddr_set(&dev_via, AF_INET6, "::1", 0);
+
+	ok(!knot_unreachable_is(global_unreachables, &dev_addr, &dev_via, "eth0"),
+	   "unreachables: dev pre[eth0]");
+	knot_unreachable_add(global_unreachables, &dev_addr, &dev_via, "eth0");
+	ok(knot_unreachable_is(global_unreachables, &dev_addr, &dev_via, "eth0"),
+	   "unreachables: dev post[eth0]");
+	ok(!knot_unreachable_is(global_unreachables, &dev_addr, &dev_via, "eth1"),
+	   "unreachables: dev[eth1] unaffected by dev[eth0] entry");
+	ok(!knot_unreachable_is(global_unreachables, &dev_addr, &dev_via, NULL),
+	   "unreachables: no-device unaffected by dev[eth0] entry");
 
 	knot_unreachables_deinit(&global_unreachables);
 	ok(global_unreachables == NULL, "unreachables: deinit");
