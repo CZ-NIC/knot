@@ -163,8 +163,8 @@ Keystore commands
   import, removal, and use (signing and verification) are tested.
   Use a configured *keystore_id* or **-** for the default.
 
-**keystore-bench** [*num_threads*]
-  Conduct a signing benchmark on the specified keystore.
+**keystore-bench** [*num_threads*] [*alg_name*]
+  Conduct a signing benchmark on the specified keystore (and optionally algorithm).
   Random blocks of data are signed by the selected number of threads
   (default is 1) in a loop, and the average number of signing operations per
   second for each algorithm is returned.

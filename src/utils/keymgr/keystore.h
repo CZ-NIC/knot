@@ -5,9 +5,12 @@
 
 #pragma once
 
+#include "libknot/dnssec/sample_keys.h"
 #include "utils/keymgr/functions.h"
+
+extern const key_parameters_t *KEYS[];
 
 int keymgr_keystore_test(const char *keystore_id, keymgr_list_params_t *params);
 
 int keymgr_keystore_bench(const char *keystore_id, keymgr_list_params_t *params,
-                          uint16_t threads);
+                          uint16_t threads, int algorithm);
