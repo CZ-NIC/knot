@@ -194,6 +194,42 @@ update.send("NXRRSET")
 resp = srv.dig("17-2.ddns.", "TXT")
 resp.check(rcode="NXDOMAIN")
 
+# OK - RRSET in zone exactly
+update = srv.update(zone)
+update.prereq_yx("multi.ddns.", "AAAA", "1::2")
+update.prereq_yx("multi.ddns.", "AAAA", "1::1")
+update.add("17-3.ddns.", 1, "TXT", "text")
+update.send("NOERROR")
+resp = srv.dig("17-3.ddns.", "TXT")
+resp.check("text")
+
+# RRSET incomplete
+update = srv.update(zone)
+update.prereq_yx("multi.ddns.", "AAAA", "1::1")
+update.add("17-4.ddns.", 1, "TXT", "text")
+update.send("NXRRSET")
+resp = srv.dig("17-4.ddns.", "TXT")
+resp.check(rcode="NXDOMAIN")
+
+# RRSET too much
+update = srv.update(zone)
+update.prereq_yx("multi.ddns.", "AAAA", "1::1")
+update.prereq_yx("multi.ddns.", "AAAA", "1::2")
+update.prereq_yx("multi.ddns.", "AAAA", "1::3")
+update.add("17-5.ddns.", 1, "TXT", "text")
+update.send("NXRRSET")
+resp = srv.dig("17-5.ddns.", "TXT")
+resp.check(rcode="NXDOMAIN")
+
+# RRSET partly different
+update = srv.update(zone)
+update.prereq_yx("multi.ddns.", "AAAA", "1::1")
+update.prereq_yx("multi.ddns.", "AAAA", "1::3")
+update.add("17-6.ddns.", 1, "TXT", "text")
+update.send("NXRRSET")
+resp = srv.dig("17-6.ddns.", "TXT")
+resp.check(rcode="NXDOMAIN")
+
 # NAME out of zone
 update = srv.update(zone)
 update.prereq_yx("nonexistent.", "TYPE65535")
