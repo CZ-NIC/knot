@@ -53,4 +53,10 @@ knot2.zone_wait(zone, serial)
 resp = knot2.dig(zone[0].name, "DNSKEY")
 resp.cmp(knot1)
 
+# Run keystore test and benchmark
+_, out, _ = Keymgr.run_check(knot1.confile, "keys1", "keystore-test", env=keys1.env())
+isset("PKCS #11" in out, "keystore-test")
+_, out, _ = Keymgr.run_check(knot1.confile, "keys1", "keystore-bench", "1", "ECDSAP256SHA256", env=keys1.env())
+isset("ECDSAP256SHA256" in out, "keystore-bench")
+
 t.end()
