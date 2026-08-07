@@ -205,7 +205,8 @@ knot_quic_conn_t *quic_table_add(ngtcp2_conn *ngconn, const ngtcp2_cid *cid,
 
 	knot_quic_cid_t **addto = quic_table_insert(conn, cid, table);
 	if (addto == NULL) {
-		heap_delete(table->expiry_heap, heap_find(table->expiry_heap, (heap_val_t *)conn));
+		(void)heap_delete(table->expiry_heap,
+		                  heap_find(table->expiry_heap, (heap_val_t *)conn));
 		free(conn);
 		return NULL;
 	}
@@ -300,7 +301,7 @@ void knot_quic_table_rem(knot_quic_conn_t *conn, knot_quic_table_t *table)
 	}
 
 	int pos = heap_find(table->expiry_heap, (heap_val_t *)conn);
-	heap_delete(table->expiry_heap, pos);
+	(void)heap_delete(table->expiry_heap, pos);
 
 	free(scids);
 
