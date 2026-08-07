@@ -770,6 +770,11 @@ int check_keystore(
 int check_policy(
 	knotd_conf_check_args_t *args)
 {
+	/* Note that if a value is automatically set based on the zone contents,
+	 * some of the following relation (hard) checks cannot be precise.
+	 * The affected (soft) checks are repeated in update_policy_from_zone().
+	 */
+
 	conf_val_t sts = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_POLICY,
 	                                    C_SINGLE_TYPE_SIGNING, args->id, args->id_len);
 	conf_val_t alg = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_POLICY,
@@ -784,6 +789,8 @@ int check_policy(
 	                                    C_RRSIG_REFRESH, args->id, args->id_len);
 	conf_val_t prerefresh = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_POLICY,
 	                                    C_RRSIG_PREREFRESH, args->id, args->id_len);
+	conf_val_t jitter = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_POLICY,
+	                                       C_DNSSEC_JITTER, args->id, args->id_len);
 	conf_val_t prop_del = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_POLICY,
 						 C_PROPAG_DELAY, args->id, args->id_len);
 	conf_val_t zsk_life = conf_rawid_get_txn(args->extra->conf, args->extra->txn, C_POLICY,
@@ -813,25 +820,48 @@ int check_policy(
 		return KNOT_EINVAL;
 	}
 
-	int64_t lifetime_val = conf_int(&lifetime);
-	int64_t refresh_val = conf_int(&refresh);
-	int64_t preref_val = conf_int(&prerefresh);
-	if (lifetime_val <= refresh_val + preref_val) {
-		args->err_str = "RRSIG refresh + pre-refresh has to be lower than RRSIG lifetime";
-		return KNOT_EINVAL;
-	}
-
+	bool jitter_percent;
+	int64_t jitter_val = conf_int_alt(&jitter, false, &jitter_percent);
+	const uint64_t rnd_max = UINT64_MAX;
 	bool sts_val = conf_bool(&sts);
 	int64_t prop_del_val = conf_int(&prop_del);
 	int64_t zsk_life_val = conf_int(&zsk_life);
+	if (zsk_life_val != 0) { // 0 ~ infinity!
+		if (conf_jitter(jitter_val, jitter_percent, rnd_max, zsk_life_val) >= zsk_life_val) {
+			args->err_str = "DNSSEC jitter too high for ZSK lifetime";
+			return KNOT_EINVAL;
+		}
+	}
 	int64_t ksk_life_val = conf_int(&ksk_life);
 	int64_t dnskey_ttl_val = conf_int(&dnskey_ttl);
 	if (dnskey_ttl_val == YP_NIL) {
-		dnskey_ttl_val = 0;
+		dnskey_ttl_val = 1;
+		// default DNSKEY TTL is to read it from zone, which can't be done here
+		// assuming no higher than 1 due to possibly "fast DNSSEC" in tests
+		// if it is higher in fact and breaking the limits, warning will be logged
 	}
 	int64_t zone_max_ttl_val = conf_int(&zone_max_ttl);
 	if (zone_max_ttl_val == YP_NIL) {
-		zone_max_ttl_val = dnskey_ttl_val; // Better than 0.
+		zone_max_ttl_val = dnskey_ttl_val;
+		// assuming DNSKEY TTL as there is nothing better, possible warning later
+	}
+	int64_t lifetime_val = conf_int(&lifetime);
+	int64_t preref_val = conf_int(&prerefresh);
+	if (preref_val == YP_NIL) {
+		preref_val = rrsig_pre_refresh_dflt(lifetime_val);
+	}
+	int64_t refresh_val = conf_int(&refresh);
+	if (refresh_val == YP_NIL) {
+		refresh_val = rrsig_refresh_dflt(lifetime_val, prop_del_val, zone_max_ttl_val);
+	}
+	int64_t refresh_min = refresh_val;
+	int64_t refresh_max = refresh_val + conf_jitter(jitter_val, jitter_percent, rnd_max, refresh_val);
+	if (refresh_min < zone_max_ttl_val + prop_del_val) {
+		CONF_LOG(LOG_WARNING, "RRSIG refresh lower than maximum zone TTL + propagation delay");
+	}
+	if (lifetime_val <= refresh_max + preref_val) {
+		args->err_str = "RRSIG refresh + pre-refresh higher than RRSIG lifetime";
+		return KNOT_EINVAL;
 	}
 
 	if (sts_val) {

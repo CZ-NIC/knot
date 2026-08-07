@@ -193,7 +193,7 @@ class ModOnlineSign(KnotModule):
 
     def __init__(self, algorithm=None, key_size=None, prop_delay=3600, ksc=[ ],
                  ksci=999, ksk_life=9999, ksk_shared=False, cds_publish="rollover",
-                 cds_digesttype="sha256", single_type_signing=True):
+                 cds_digesttype="sha256", single_type_signing=True, dnskey_ttl=None):
         super().__init__()
         self.algorithm = algorithm
         self.key_size = key_size
@@ -207,6 +207,7 @@ class ModOnlineSign(KnotModule):
         self.cds_publish = cds_publish
         self.cds_digesttype = cds_digesttype
         self.single_type_signing = single_type_signing
+        self.dnskey_ttl = dnskey_ttl
 
     def get_conf(self, conf=None):
         if not conf:
@@ -237,6 +238,8 @@ class ModOnlineSign(KnotModule):
             conf.item("cds-cdnskey-publish", self.cds_publish)
             conf.item("cds-digest-type", self.cds_digesttype)
             conf.item("single-type-signing", self.single_type_signing)
+            if self.dnskey_ttl != None:
+                conf.item("dnskey-ttl", self.dnskey_ttl)
             conf.end()
 
             conf.begin(self.conf_name)

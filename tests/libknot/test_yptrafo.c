@@ -25,7 +25,14 @@ static void int_test(const char *txt, int64_t num, yp_style_t s,
 	diag("integer \"%s\":", txt);
 	ret = yp_item_to_bin(&i, txt, strlen(txt), b, &b_len);
 	is_int(KNOT_EOK, ret, "txt to bin");
-	ok(yp_int(b) == num, "compare");
+	if (s & YP_SPERCENT) {
+		bool pct;
+		ok(yp_int_pct(b, &pct) == num, "compare percent");
+		const char *pos = strchr(txt, '%');
+		ok((pos != NULL) == pct, "compare percent indicator");
+	} else {
+		ok(yp_int(b) == num, "compare");
+	}
 	ret = yp_item_to_txt(&i, b, b_len, t, &t_len, s | YP_SNOQUOTE);
 	is_int(KNOT_EOK, ret, "bin to txt");
 	ok(strlen(t) == t_len, "txt ret length");
@@ -325,12 +332,12 @@ int main(int argc, char *argv[])
 	plan_lazy();
 
 	/* Integer tests. */
-	int64_t min = -20000000000, max = 20000000000;
+	int64_t min = YP_INT_MIN, max = YP_INT_MAX;
 	int_test("5", 5, YP_SNONE, min, max);
 	int_test("0", 0, YP_SNONE, min, max);
 	int_test("-5", -5, YP_SNONE, min, max);
-	int_test("20000000000", max, YP_SNONE, min, max);
-	int_test("-20000000000", min, YP_SNONE, min, max);
+	int_test("281474976710655", max, YP_SNONE, min, max);
+	int_test("-281474976710656", min, YP_SNONE, min, max);
 	int_test("11B", 11LL * 1, YP_SSIZE, min, max);
 	int_test("11K", 11LL * 1024, YP_SSIZE, min, max);
 	int_test("11M", 11LL * 1024 * 1024, YP_SSIZE, min, max);
@@ -344,10 +351,19 @@ int main(int argc, char *argv[])
 	int_test("2y",  2LL * 365 * 24 * 3600, YP_STIME, min, max);
 	int_test("1025B", 1025LL, YP_SSIZE, min, max);
 	int_test("61s", 61LL, YP_STIME, min, max);
-	int_bad_test("20000000001", KNOT_ERANGE, YP_SNONE, min, max);
-	int_bad_test("-20000000001", KNOT_ERANGE, YP_SNONE, min, max);
+	int_test("-11B", -11LL * 1, YP_SSIZE, min, max);
+	int_test("-11K", -11LL * 1024, YP_SSIZE, min, max);
+	int_test("-11s", -11LL * 1, YP_STIME, min, max);
+	int_test("-11h", -11LL * 3600, YP_STIME, min, max);
+	int_bad_test("281474976710656", KNOT_ERANGE, YP_SNONE, min, max);
+	int_bad_test("-281474976710657", KNOT_ERANGE, YP_SNONE, min, max);
 	int_bad_test("1x", KNOT_EINVAL, YP_SNONE, min, max);
 	int_bad_test("1sx", KNOT_EINVAL, YP_STIME, min, max);
+
+	int_test("-1", -1LL, YP_SPERCENT, min, max);
+	int_test("11%", 11LL, YP_SPERCENT, min, max);
+	int_test("-11%", -11LL, YP_SPERCENT, min, max);
+	int_test("101M", 101LL * 1024 * 1024, YP_SPERCENT | YP_SSIZE, INT64_MIN, max);
 
 	/* Boolean tests. */
 	bool_test("on", true);

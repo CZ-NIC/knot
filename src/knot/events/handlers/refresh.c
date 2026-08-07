@@ -8,6 +8,7 @@
 #include <urcu.h>
 
 #include "contrib/mempattern.h"
+#include "contrib/openbsd/siphash.h"
 #include "libknot/dnssec/random.h"
 #include "knot/common/log.h"
 #include "knot/conf/conf.h"
@@ -205,6 +206,13 @@ static void finalize_timers_base(struct refresh_data *data, bool also_expire)
 	            C_REFRESH_MIN_INTERVAL, C_REFRESH_MAX_INTERVAL);
 	zone->timers->next_refresh = now + soa_refresh;
 	zone->timers->flags |= LAST_REFRESH_OK | TIMERS_MODIFIED;
+
+	conf_val_t refresh_jitter = conf_zone_get(conf, C_REFRESH_JITTER, zone->name);
+	bool percent;
+	int64_t jitter = conf_int_alt(&refresh_jitter, false, &percent);
+	uint64_t random = SipHash24_Key0(zone->name, knot_dname_size(zone->name));
+	jitter = conf_jitter(jitter, percent, random, soa_refresh);
+	zone->timers->next_refresh -= MIN(jitter, soa_refresh -1);
 
 	if (zone->is_catalog_flag) {
 		// It's already zero in most cases.
@@ -1536,7 +1544,7 @@ int event_refresh(conf_t *conf, zone_t *zone, zone_evflag_t flags)
 		zone_schedule_notify(conf, zone, 1);
 	}
 	if (trctx.more_xfr && ret == KNOT_EOK) {
-		zone_schedule_update(conf, zone, ZONE_EVENT_REFRESH);
+		zone_schedule_update(conf, zone, ZONE_EVENT_REFRESH, 0);
 	}
 
 	return ret;

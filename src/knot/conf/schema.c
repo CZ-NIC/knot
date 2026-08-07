@@ -239,7 +239,7 @@ static const yp_item_t desc_server[] = {
 	{ C_TCP_MAX_CLIENTS,      YP_TINT,  YP_VINT = { 0, INT32_MAX, YP_NIL } },
 	{ C_TCP_REUSEPORT,        YP_TBOOL, YP_VNONE },
 	{ C_QUIC_MAX_CLIENTS,     YP_TINT,  YP_VINT = { 128, INT32_MAX, 10000 } },
-	{ C_QUIC_OUTBUF_MAX_SIZE, YP_TINT,  YP_VINT = { MEGA(1), SSIZE_MAX, MEGA(100), YP_SSIZE } },
+	{ C_QUIC_OUTBUF_MAX_SIZE, YP_TINT,  YP_VINT = { MEGA(1), YP_INT_MAX, MEGA(100), YP_SSIZE } },
 	{ C_QUIC_IDLE_CLOSE,      YP_TINT,  YP_VINT = { 1, INT32_MAX, 4, YP_STIME } },
 	{ C_RMT_POOL_LIMIT,       YP_TINT,  YP_VINT = { 0, INT32_MAX, 0 } },
 	{ C_RMT_POOL_TIMEOUT,     YP_TINT,  YP_VINT = { 1, INT32_MAX, 5, YP_STIME } },
@@ -279,8 +279,8 @@ static const yp_item_t desc_xdp[] = {
 	{ C_QUIC,                 YP_TBOOL, YP_VNONE },
 	{ C_QUIC_PORT,            YP_TINT,  YP_VINT = { 1, 65535, CONF_DNS_TLS_PORT } },
 	{ C_TCP_MAX_CLIENTS,      YP_TINT,  YP_VINT = { 1024, INT32_MAX, 1000000 } },
-	{ C_TCP_INBUF_MAX_SIZE,   YP_TINT,  YP_VINT = { MEGA(1), SSIZE_MAX, MEGA(100), YP_SSIZE } },
-	{ C_TCP_OUTBUF_MAX_SIZE,  YP_TINT,  YP_VINT = { MEGA(1), SSIZE_MAX, MEGA(100), YP_SSIZE } },
+	{ C_TCP_INBUF_MAX_SIZE,   YP_TINT,  YP_VINT = { MEGA(1), YP_INT_MAX, MEGA(100), YP_SSIZE } },
+	{ C_TCP_OUTBUF_MAX_SIZE,  YP_TINT,  YP_VINT = { MEGA(1), YP_INT_MAX, MEGA(100), YP_SSIZE } },
 	{ C_TCP_IDLE_CLOSE,       YP_TINT,  YP_VINT = { 1, INT32_MAX, 10, YP_STIME } },
 	{ C_TCP_IDLE_RESET,       YP_TINT,  YP_VINT = { 1, INT32_MAX, 20, YP_STIME } },
 	{ C_TCP_RESEND,           YP_TINT,  YP_VINT = { 1, INT32_MAX, 5, YP_STIME } },
@@ -444,6 +444,7 @@ static const yp_item_t desc_policy[] = {
 	{ C_ZONE_MAX_TTL,        YP_TINT,  YP_VINT = { 0, INT32_MAX, YP_NIL, YP_STIME },
 	                                   CONF_IO_FRLD_ZONES },
 	{ C_KEYTAG_MODULO,       YP_TSTR,  YP_VSTR = { "0/1" }, YP_FNONE, { check_modulo } },
+	{ C_DNSSEC_JITTER,       YP_TINT,  YP_VINT = { 0, UINT32_MAX, 0, YP_STIME | YP_SPERCENT } },
 	{ C_KSK_LIFETIME,        YP_TINT,  YP_VINT = { 0, UINT32_MAX, 0, YP_STIME },
 	                                   CONF_IO_FRLD_ZONES },
 	{ C_ZSK_LIFETIME,        YP_TINT,  YP_VINT = { 0, UINT32_MAX, DAYS(30), YP_STIME },
@@ -455,9 +456,9 @@ static const yp_item_t desc_policy[] = {
 	                                   CONF_IO_FRLD_ZONES },
 	{ C_RRSIG_LIFETIME,      YP_TINT,  YP_VINT = { 1, INT32_MAX, DAYS(14), YP_STIME },
 	                                   CONF_IO_FRLD_ZONES },
-	{ C_RRSIG_REFRESH,       YP_TINT,  YP_VINT = { 1, INT32_MAX, YP_NIL, YP_STIME },
+	{ C_RRSIG_REFRESH,       YP_TINT,  YP_VINT = { 1, INT32_MAX, YP_NIL, YP_STIME, DAYS(1) },
 	                                   CONF_IO_FRLD_ZONES },
-	{ C_RRSIG_PREREFRESH,    YP_TINT,  YP_VINT = { 0, INT32_MAX, HOURS(1), YP_STIME, DAYS(1) },
+	{ C_RRSIG_PREREFRESH,    YP_TINT,  YP_VINT = { 0, INT32_MAX, YP_NIL, YP_STIME },
 	                                   CONF_IO_FRLD_ZONES },
 	{ C_REPRO_SIGNING,       YP_TBOOL, YP_VNONE, CONF_IO_FRLD_ZONES },
 	{ C_NSEC3,               YP_TBOOL, YP_VNONE, CONF_IO_FRLD_ZONES },
@@ -516,12 +517,12 @@ static const yp_item_t desc_external[] = {
 	{ C_ZONEFILE_LOAD,       YP_TOPT,  YP_VOPT = { zonefile_load, ZONEFILE_LOAD_WHOLE } }, \
 	{ C_ZONEFILE_SKIP,       YP_TSTR,  YP_VNONE, YP_FMULTI, { check_zonefile_skip } }, \
 	{ C_JOURNAL_CONTENT,     YP_TOPT,  YP_VOPT = { journal_content, JOURNAL_CONTENT_CHANGES }, FLAGS }, \
-	{ C_JOURNAL_MAX_USAGE,   YP_TINT,  YP_VINT = { KILO(40), SSIZE_MAX, MEGA(100), YP_SSIZE } }, \
-	{ C_JOURNAL_MAX_DEPTH,   YP_TINT,  YP_VINT = { 2, SSIZE_MAX, 20 } }, \
+	{ C_JOURNAL_MAX_USAGE,   YP_TINT,  YP_VINT = { KILO(40), YP_INT_MAX, MEGA(100), YP_SSIZE } }, \
+	{ C_JOURNAL_MAX_DEPTH,   YP_TINT,  YP_VINT = { 2, YP_INT_MAX, 20 } }, \
 	{ C_IXFR_BENEVOLENT,     YP_TBOOL, YP_VNONE }, \
 	{ C_IXFR_BY_ONE,         YP_TBOOL, YP_VNONE }, \
 	{ C_IXFR_FROM_AXFR,      YP_TBOOL, YP_VNONE }, \
-	{ C_ZONE_MAX_SIZE,       YP_TINT,  YP_VINT = { 0, SSIZE_MAX, SSIZE_MAX, YP_SSIZE }, FLAGS }, \
+	{ C_ZONE_MAX_SIZE,       YP_TINT,  YP_VINT = { 0, YP_INT_MAX, YP_INT_MAX, YP_SSIZE }, FLAGS }, \
 	{ C_ADJUST_THR,          YP_TINT,  YP_VINT = { 1, UINT16_MAX, 1 } }, \
 	{ C_EXTERNAL_VLDT,       YP_TREF,  YP_VREF = { C_EXTERNAL }, FLAGS, { check_ref_dflt } }, \
 	{ C_DNSSEC_SIGNING,      YP_TBOOL, YP_VNONE, FLAGS }, \
@@ -536,6 +537,7 @@ static const yp_item_t desc_external[] = {
 	{ C_SERIAL_MODULO,       YP_TSTR,  YP_VSTR = { "0/1" }, YP_FNONE, { check_modulo_shift } }, \
 	{ C_ZONEMD_GENERATE,     YP_TOPT,  YP_VOPT = { zone_digest, ZONE_DIGEST_NONE }, FLAGS }, \
 	{ C_ZONEMD_VERIFY,       YP_TBOOL, YP_VNONE, FLAGS }, \
+	{ C_REFRESH_JITTER,      YP_TINT,  YP_VINT = { 0, UINT32_MAX, 0, YP_STIME | YP_SPERCENT } }, \
 	{ C_REFRESH_MIN_INTERVAL,YP_TINT,  YP_VINT = { 2, UINT32_MAX, 2, YP_STIME } }, \
 	{ C_REFRESH_MAX_INTERVAL,YP_TINT,  YP_VINT = { 2, UINT32_MAX, UINT32_MAX, YP_STIME } }, \
 	{ C_RETRY_MIN_INTERVAL,  YP_TINT,  YP_VINT = { 1, UINT32_MAX, 1, YP_STIME } }, \

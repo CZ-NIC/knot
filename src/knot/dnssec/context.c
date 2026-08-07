@@ -7,6 +7,7 @@
 #include <string.h>
 
 #include "contrib/macros.h"
+#include "contrib/openbsd/siphash.h"
 #include "contrib/time.h"
 #include "libknot/libknot.h"
 #include "knot/dnssec/context.h"
@@ -26,7 +27,11 @@ static void policy_load(knot_kasp_policy_t *policy, conf_t *conf, conf_val_t *id
 		policy->string = strdup(conf_str(id));
 	}
 
-	conf_val_t val = conf_id_get(conf, C_POLICY, C_MANUAL, id);
+	conf_val_t val = conf_id_get(conf, C_POLICY, C_DNSSEC_JITTER, id);
+	policy->jitter.value = conf_int_alt(&val, false, &policy->jitter.percent);
+	policy->jitter.random = SipHash24_Key0(zone_name, knot_dname_size(zone_name));
+
+	val = conf_id_get(conf, C_POLICY, C_MANUAL, id);
 	policy->manual = conf_bool(&val);
 
 	val = conf_id_get(conf, C_POLICY, C_SINGLE_TYPE_SIGNING, id);
@@ -59,6 +64,12 @@ static void policy_load(knot_kasp_policy_t *policy, conf_t *conf, conf_val_t *id
 
 	val = conf_id_get(conf, C_POLICY, C_ZSK_LIFETIME, id);
 	policy->zsk_lifetime = conf_int(&val);
+	if (policy->zsk_lifetime != 0) { // 0 ~ infinity!
+		int64_t jitter = conf_jitter(policy->jitter.value, policy->jitter.percent,
+		                             policy->jitter.random, policy->zsk_lifetime);
+		assert(jitter < policy->zsk_lifetime);
+		policy->zsk_lifetime -= jitter;
+	}
 
 	val = conf_id_get(conf, C_POLICY, C_KSK_LIFETIME, id);
 	policy->ksk_lifetime = conf_int(&val);
@@ -79,15 +90,20 @@ static void policy_load(knot_kasp_policy_t *policy, conf_t *conf, conf_val_t *id
 	policy->rrsig_lifetime = conf_int(&val);
 	policy->trash_delay = (trash != YP_NIL) ? trash : 2 * policy->rrsig_lifetime;
 
+	val = conf_id_get(conf, C_POLICY, C_RRSIG_PREREFRESH, id);
+	num = conf_int(&val);
+	policy->rrsig_prerefresh = (num != YP_NIL) ? num :
+	                           rrsig_pre_refresh_dflt(policy->rrsig_lifetime);
+
 	val = conf_id_get(conf, C_POLICY, C_RRSIG_REFRESH, id);
 	num = conf_int(&val);
-	policy->rrsig_refresh_before = (num != YP_NIL) ? num : UINT32_MAX;
-	if (policy->rrsig_refresh_before == UINT32_MAX && policy->zone_maximal_ttl != UINT32_MAX) {
-		policy->rrsig_refresh_before = policy->propagation_delay + policy->zone_maximal_ttl;
+	if (num != YP_NIL || policy->zone_maximal_ttl != UINT32_MAX) {
+		policy->rrsig_refresh_before = rrsig_refresh(policy, num);
+		assert(policy->rrsig_refresh_before + policy->rrsig_prerefresh < policy->rrsig_lifetime);
+	} else {
+		policy->rrsig_refresh_before = UINT32_MAX;
+		// Will be updated in update_policy_from_zone().
 	}
-
-	val = conf_id_get(conf, C_POLICY, C_RRSIG_PREREFRESH, id);
-	policy->rrsig_prerefresh = conf_int(&val);
 
 	val = conf_id_get(conf, C_POLICY, C_REPRO_SIGNING, id);
 	policy->reproducible_sign = conf_bool(&val);
@@ -385,7 +401,7 @@ int kdnssec_validation_ctx(conf_t *conf, kdnssec_ctx_t *ctx, const zone_contents
 		conf_val_t val = conf_id_get(conf, C_POLICY, C_SIGNING_THREADS, &policy_id);
 		ctx->policy->signing_threads = conf_int(&val);
 		val = conf_id_get(conf, C_POLICY, C_RRSIG_REFRESH, &policy_id);
-		ctx->policy->rrsig_refresh_before = conf_int_alt(&val, true);
+		ctx->policy->rrsig_refresh_before = conf_int_alt(&val, true, NULL);
 	} else if (threads > 0) {
 		ctx->policy->signing_threads = threads;
 	} else {

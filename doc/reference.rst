@@ -2119,6 +2119,7 @@ DNSSEC policy configuration.
      dnskey-ttl: TIME
      zone-max-ttl: TIME
      keytag-modulo: INT/INT
+     dnssec-jitter: TIME | INT%
      ksk-lifetime: TIME
      zsk-lifetime: TIME
      deleg-adt: BOOL
@@ -2296,6 +2297,23 @@ or :ref:`DNSSEC multi-signer` (and possibly other) setups.
 
 *Default:* ``0/1``
 
+.. _policy_dnssec-jitter:
+
+dnssec-jitter
+-------------
+
+A pseudo-random jitter added to :ref:`policy_rrsig-refresh` and subtracted from
+:ref:`policy_zsk-lifetime`.
+
+The jitter value (in seconds or as a percentage of the adjusted value) is selected
+from the interval between 0 and the configured value and is deterministic
+based on the zone name.
+
+The goal is to prevent DNSSEC maintenance events for a large number of configured
+zones from interfering with other regular zone events.
+
+*Default:* 0
+
 .. _policy_ksk-lifetime:
 
 ksk-lifetime
@@ -2421,7 +2439,7 @@ A period (in seconds) how long at most before a signature refresh time the signa
 might be refreshed, in order to refresh RRSIGs in bigger batches on a frequently updated
 zone (avoid re-sign event too often).
 
-*Default:* ``1h`` (1 hour)
+*Default:* 0.005 * :ref:`policy_rrsig-lifetime`
 
 .. _policy_reproducible-signing:
 
@@ -2811,6 +2829,7 @@ Definition of zones served by the server.
      serial-modulo: INT/INT | +INT | -INT | INT/INT+INT | INT/INT-INT
      reverse-generate: DNAME ...
      include-from: DNAME ...
+     refresh-jitter: TIME | INT%
      refresh-min-interval: TIME
      refresh-max-interval: TIME
      retry-min-interval: TIME
@@ -3520,6 +3539,22 @@ In case of secondary zone (i.e. :ref:`zone_master` is specified) this option imp
 :ref:`zone_zonefile-load`: *difference-no-serial* and :ref:`zone_journal-content`: *all*.
 
 *Default:* none
+
+.. _zone_refresh-jitter:
+
+refresh-jitter
+---------------
+
+A pseudo-random jitter that shortens the SOA refresh timer.
+
+The jitter value (in seconds or as a percentage of the adjusted value) is selected
+from the interval between 0 and the configured value and is deterministic
+based on the zone name.
+
+The goal is to prevent zone refreshes for a large number of configured zones
+from interfering with NOTIFY-initiated zone refreshes.
+
+*Default:* 0
 
 .. _zone_refresh-min-interval:
 

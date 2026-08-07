@@ -469,19 +469,41 @@ void conf_mix_iter_next(
  * Gets the numeric value of the item.
  *
  * \param[in] val          Item value.
+ * \param[out] percent     Percentual value indication.
  * \param[in] alternative  Use alternative default value.
  *
  * \return Integer.
  */
 int64_t conf_int_alt(
 	conf_val_t *val,
-	bool alternative
+	bool alternative,
+	bool *percent
 );
 inline static int64_t conf_int(
 	conf_val_t *val)
 {
-	return conf_int_alt(val, false);
+	return conf_int_alt(val, false, NULL);
 }
+
+/*!
+ * Gets a numeric value of the jitter.
+ *
+ * It is from interval from 0 to configured jitter value...
+ * ...pseudo-random, deterministic based on zone name.
+ *
+ * \param[in] value         Jitter value.
+ * \param[in] percent       Percentual value indication.
+ * \param[in] random        Random value (based on the zone name).
+ * \param[in] base_value    Base value for percentual computation.
+ *
+ * \return Integer.
+ */
+int64_t conf_jitter(
+	int64_t value,
+	bool percent,
+	uint64_t random,
+	int64_t base_value
+);
 
 /*!
  * Gets the boolean value of the item.

@@ -615,7 +615,8 @@ void conf_mix_iter_next(
 
 int64_t conf_int_alt(
 	conf_val_t *val,
-	bool alternative)
+	bool alternative,
+	bool *percent)
 {
 	assert(val != NULL && val->item != NULL);
 	assert(val->item->type == YP_TINT ||
@@ -626,10 +627,29 @@ int64_t conf_int_alt(
 
 	if (val->code == KNOT_EOK) {
 		conf_val(val);
-		return yp_int(val->data);
+		return (percent == NULL) ? yp_int(val->data) : yp_int_pct(val->data, percent);
 	} else {
+		if (percent != NULL) {
+			*percent = false;
+		}
 		return alternative ? val->item->var.i.dflt_alt : val->item->var.i.dflt;
 	}
+}
+
+int64_t conf_jitter(
+	int64_t value,
+	bool percent,
+	uint64_t random,
+	int64_t base_value)
+{
+	if (value < 1) {
+		return value;
+	} else if (percent) {
+		value = value * base_value / 100;
+	}
+
+	uint64_t granularity = (1 << 16);
+	return (1 + value) * (random & (granularity - 1)) / granularity;
 }
 
 bool conf_bool(
