@@ -379,6 +379,10 @@ int zone_contents_find_nsec3(const zone_contents_t *zone,
                              const zone_node_t **nsec3_node,
                              const zone_node_t **nsec3_previous)
 {
+	if (zone->nsec3_nodes == NULL) {
+		return KNOT_EINVAL;
+	}
+
 	zone_node_t *found = NULL, *prev = NULL;
 	bool match = find_in_tree(zone->nsec3_nodes, nsec3_name, &found, &prev);
 
