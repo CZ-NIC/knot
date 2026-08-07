@@ -43,6 +43,54 @@ static int add_rr_to_list(list_t *l, const knot_rrset_t *rr)
 	return ptrlist_add(l, rr_copy, NULL) != NULL ? KNOT_EOK : KNOT_ENOMEM;
 }
 
+static void log_prereq(zone_update_t *update, const knot_dname_t *owner,
+                       uint16_t rcode, const knot_rrset_t *rrset)
+{
+	if (!log_enabled_debug()) {
+		return;
+	}
+
+	const knot_lookup_t *item = knot_lookup_by_id(knot_rcode_names, rcode);
+	if (item == NULL) {
+		return;
+	}
+
+	knot_dname_txt_storage_t name;
+	if (knot_dname_to_str(name, owner, sizeof(name)) == NULL) {
+		return;
+	}
+
+	char type[16] = "";
+	if (rrset != NULL && knot_rrtype_to_string(rrset->type, type, sizeof(type)) < 0) {
+		return;
+	}
+
+	char rdata[1026] = "";
+	if (rrset != NULL && rrset->rrs.count > 0) {
+		unsigned pos = 0;
+		for (int i = 0; i < rrset->rrs.count; i++) {
+			char tmp[1024];
+			int ret = knot_rrset_txt_dump_data(rrset, i, tmp, sizeof(tmp),
+			                                   &KNOT_DUMP_STYLE_DEFAULT);
+			if (ret <= 0) {
+				break;
+			}
+			ret = snprintf_check(rdata + pos, sizeof(rdata) - pos, "%s'%s'",
+			                     (i > 0 ? " " : ""), tmp);
+			if (ret <= 0) {
+				break;
+			}
+			pos += ret;
+		}
+		rdata[pos] = '\0';
+	}
+
+	log_zone_debug(update->zone->name, "DDNS, prerequisite name %s%s%s%s%s (%s)", name,
+	               (rrset != NULL ? ", type " : ""), (rrset != NULL ? type : ""),
+	               (rdata[0] != '\0' ? ", data " : ""), (rdata[0] != '\0' ? rdata : ""),
+	               item->name);
+}
+
 /*!< \brief Checks whether RRSet exists in the zone. */
 static int check_rrset_exists(zone_update_t *update, const knot_rrset_t *rrset,
                               uint16_t *rcode)
@@ -60,6 +108,7 @@ static int check_rrset_exists(zone_update_t *update, const knot_rrset_t *rrset,
 			return KNOT_EOK;
 		} else {
 			*rcode = KNOT_RCODE_NXRRSET;
+			log_prereq(update, rrset->owner, *rcode, rrset);
 			return KNOT_EPREREQ;
 		}
 	}
@@ -103,6 +152,7 @@ static int check_type_exist(zone_update_t *update,
 		return KNOT_EOK;
 	} else {
 		*rcode = KNOT_RCODE_NXRRSET;
+		log_prereq(update, rrset->owner, *rcode, rrset);
 		return KNOT_EPREREQ;
 	}
 }
@@ -114,6 +164,7 @@ static int check_type_not_exist(zone_update_t *update,
 	assert(rrset->rclass == KNOT_CLASS_NONE);
 	if (check_type(update, rrset)) {
 		*rcode = KNOT_RCODE_YXRRSET;
+		log_prereq(update, rrset->owner, *rcode, rrset);
 		return KNOT_EPREREQ;
 	} else {
 		return KNOT_EOK;
@@ -127,6 +178,7 @@ static int check_in_use(zone_update_t *update,
 	const zone_node_t *node = zone_update_get_node(update, dname);
 	if (node == NULL || node->rrset_count == 0) {
 		*rcode = KNOT_RCODE_NXDOMAIN;
+		log_prereq(update, dname, *rcode, NULL);
 		return KNOT_EPREREQ;
 	} else {
 		return KNOT_EOK;
@@ -142,6 +194,7 @@ static int check_not_in_use(zone_update_t *update,
 		return KNOT_EOK;
 	} else {
 		*rcode = KNOT_RCODE_YXDOMAIN;
+		log_prereq(update, dname, *rcode, NULL);
 		return KNOT_EPREREQ;
 	}
 }
@@ -171,6 +224,7 @@ static int process_prereq(const knot_rrset_t *rrset, uint16_t qclass,
 
 	if (knot_dname_in_bailiwick(rrset->owner, update->zone->name) < 0) {
 		*rcode = KNOT_RCODE_NOTZONE;
+		log_prereq(update, rrset->owner, *rcode, NULL);
 		return KNOT_EOUTOFZONE;
 	}
 

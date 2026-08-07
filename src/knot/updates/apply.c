@@ -58,7 +58,7 @@ static void clear_new_rrs(zone_node_t *node, uint16_t type)
 /*! \brief Logs redundant rrset operation. */
 static void can_log_rrset(const knot_rrset_t *rrset, int pos, apply_ctx_t *ctx, bool remove)
 {
-	if (!(ctx->flags & APPLY_STRICT)) {
+	if (!log_enabled_debug() || !(ctx->flags & APPLY_STRICT)) {
 		return;
 	}
 

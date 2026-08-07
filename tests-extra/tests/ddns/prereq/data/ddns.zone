@@ -17,3 +17,6 @@ mail	A	192.0.2.3
 
 existing	A	1.2.3.4
 *.wildcard	A	4.3.2.1
+
+multi	AAAA	1::1
+multi	AAAA	1::2
