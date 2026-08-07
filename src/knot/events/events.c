@@ -332,7 +332,7 @@ void zone_events_deinit(zone_t *zone)
 	pthread_mutex_lock(&events->reschedule_lock);
 	pthread_mutex_lock(&events->mx);
 
-	evsched_cancel(events->event);
+	(void)evsched_cancel(events->event);
 	evsched_event_free(events->event);
 	worker_pool_unassign(events->pool, &events->task);
 
@@ -470,7 +470,7 @@ void zone_events_freeze(zone_t *zone)
 	pthread_mutex_unlock(&events->mx);
 
 	/* Cancel current event. */
-	evsched_cancel(events->event);
+	(void)evsched_cancel(events->event);
 	pthread_mutex_unlock(&events->reschedule_lock);
 }
 
