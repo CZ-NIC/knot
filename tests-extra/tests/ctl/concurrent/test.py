@@ -176,6 +176,6 @@ slave.zones_wait(zones) # check that server is still operable
 
 t.end()
 
-time.sleep(4)
+time.sleep(5)
 for s in [ master, slave ]:
     check_shutdown(s)
