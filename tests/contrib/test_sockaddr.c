@@ -193,6 +193,12 @@ static void test_range_match(void)
 	ret = sockaddr_range_match(&t, &min, &max);
 	ok(ret == false, "match: ipv4 middle range - negative far max");
 
+	check_sockaddr_set(&min, AF_INET, "172.21.1.0", 0);
+	check_sockaddr_set(&max, AF_INET, "172.21.1.200", 0);
+	check_sockaddr_set(&t, AF_INET, "172.21.0.200", 0);
+	ret = sockaddr_range_match(&t, &min, &max);
+	ok(ret == false, "match: ipv4 middle range if wrongly compared in little-endian");
+
 	// IPv6 tests.
 
 	check_sockaddr_set(&min, AF_INET6, "::0", 0);
