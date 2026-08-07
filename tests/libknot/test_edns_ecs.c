@@ -118,15 +118,15 @@ static void test_parse(void)
 		{ "IPv4, 9 bits in LSB", KNOT_EOK,   6, "\x00\x01\x10\x00\xff\xff",         { 1, 16, 0, "\xff\xff" } },
 		{ "IPv4, 1 bit in LSB",  KNOT_EOK,   7, "\x00\x01\x11\x00\xff\xff\x80",     { 1, 17, 0, "\xff\xff\x80" } },
 		{ "IPv4, source = max",  KNOT_EOK,   8, "\x00\x01\x20\x00\xaa\xbb\xcc\xdd", { 1, 32, 0, "\xaa\xbb\xcc\xdd" } },
-		{ "IPv4, dirty source",  KNOT_EOK,   8, "\x00\x01\x0b\x00\xff\xff\xff\xff", { 1, 11, 0, "\xff\xe0" } },
+		{ "IPv4, dirty source",  KNOT_EMALF, 8, "\x00\x01\x0b\x00\xff\xff\xff\xff" },
 		{ "IPv4, source > max",  KNOT_EMALF, 9, "\x00\x01\x21\x00\xaa\xbb\xcc\xdd\xee" },
 		// IPv6 scope
 		{ "IPv6 scope < source", KNOT_EOK,   5, "\x00\x02\x07\x05\xff", { 2, 7, 5, "\xfe" } },
 		{ "IPv6 scope = source", KNOT_EOK,   5, "\x00\x02\x06\x06\xff", { 2, 6, 6, "\xfc" } },
 		{ "IPv6 scope > max",    KNOT_EMALF, 5, "\x00\x02\x06\x81\xff" },
 		// extra buffer size
-		{ "extra space", KNOT_EOK, 6, "\x00\x01\x00\x00\xff\x00", { 1 } },
-		{ "extra space", KNOT_EOK, 6, "\x00\x01\x01\x00\xff\x00", { 1, 1, 0, "\x80" } },
+		{ "extra space", KNOT_EMALF, 6, "\x00\x01\x00\x00\xff\x00" },
+		{ "extra space", KNOT_EMALF, 6, "\x00\x01\x01\x00\xff\x00" },
 		{ NULL }
 	};
 
