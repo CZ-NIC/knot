@@ -470,7 +470,7 @@ int knot_edns_client_subnet_parse(knot_edns_client_subnet_t *ecs,
 	result.scope_len  = wire_ctx_read_u8(&wire);
 	ecs_write_address(&addr, &wire, result.source_len);
 
-	if (addr.error != KNOT_EOK || wire.error != KNOT_EOK) {
+	if (addr.error != KNOT_EOK || wire.error != KNOT_EOK || wire_ctx_available(&wire) != 0) {
 		return KNOT_EMALF;
 	}
 
