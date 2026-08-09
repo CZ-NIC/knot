@@ -19,6 +19,7 @@
 #include "libknot/consts.h"
 #include "libknot/packet/rrset-wire.h"
 #include "libknot/wire.h"
+#include "contrib/macros.h"
 #include "contrib/string.h"
 
 const int KNOT_TSIG_MAX_DIGEST_SIZE = 64;    // size of HMAC-SHA512 digest
@@ -556,18 +557,17 @@ static int check_digest(const knot_rrset_t *tsig_rr,
 
 	/* Compare MAC from TSIG RR RDATA with just computed digest. */
 
-	/*!< \todo move to function. */
 	const knot_dname_t *alg_name = knot_tsig_rdata_alg_name(tsig_rr);
 	dnssec_tsig_algorithm_t alg = dnssec_tsig_algorithm_from_dname(alg_name);
+	size_t alg_size = dnssec_tsig_algorithm_size(alg);
+	size_t floor = MAX(alg_size / 2, 10);
 
-	/*! \todo [TSIG] TRUNCATION */
 	uint16_t mac_length = knot_tsig_rdata_mac_length(tsig_rr);
-	const uint8_t *tsig_mac = knot_tsig_rdata_mac(tsig_rr);
-
-	if (mac_length != dnssec_tsig_algorithm_size(alg)) {
-		return KNOT_TSIG_EBADSIG;
+	if (mac_length > alg_size || mac_length < floor) {
+		return KNOT_EMALF;
 	}
 
+	const uint8_t *tsig_mac = knot_tsig_rdata_mac(tsig_rr);
 	if (const_time_memcmp(tsig_mac, digest_tmp, mac_length) != 0) {
 		return KNOT_TSIG_EBADSIG;
 	}
