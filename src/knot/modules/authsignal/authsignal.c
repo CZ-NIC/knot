@@ -58,7 +58,7 @@ static knotd_in_state_t signal_query(knotd_in_state_t state, knot_pkt_t *pkt,
 	rrset.owner = (knot_dname_t *)qdata->name;
 
 	// Insert synthetic response into packet.
-	if (knot_pkt_put(pkt, 0, &rrset, KNOT_PF_FREE) != KNOT_EOK) {
+	if (knot_pkt_put(pkt, 0, &rrset, 0) != KNOT_EOK) {
 		return KNOTD_IN_STATE_ERROR;
 	}
 
