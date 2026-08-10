@@ -1340,6 +1340,9 @@ static int refresh_finish(knot_layer_t *layer)
 	axfr_cleanup(data);
 	ixfr_cleanup(data);
 
+	knot_rrset_free(data->initial_soa_copy, data->mm);
+	data->initial_soa_copy = NULL;
+
 	return KNOT_STATE_NOOP;
 }
 
