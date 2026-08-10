@@ -207,6 +207,9 @@ static int ixfr_answer_init(knotd_qdata_t *qdata, uint32_t *serial_from)
 
 	const knot_pktsection_t *authority = knot_pkt_section(qdata->query, KNOT_AUTHORITY);
 	const knot_rrset_t *their_soa = knot_pkt_rr(authority, 0);
+	if (their_soa->type != KNOT_RRTYPE_SOA || their_soa->rclass != KNOT_CLASS_IN) {
+		return KNOT_EMALF;
+	}
 	*serial_from = knot_soa_serial(their_soa->rrs.rdata);
 
 	knot_mm_t *mm = qdata->mm;

@@ -69,7 +69,7 @@ knot_layer_state_t notify_process_query(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 	const knot_pktsection_t *answer = knot_pkt_section(qdata->query, KNOT_ANSWER);
 	if (answer->count > 0) {
 		const knot_rrset_t *soa = knot_pkt_rr(answer, 0);
-		if (soa->type == KNOT_RRTYPE_SOA) {
+		if (soa->type == KNOT_RRTYPE_SOA && soa->rclass == KNOT_CLASS_IN) {
 			uint32_t zone_serial, serial = knot_soa_serial(soa->rrs.rdata);
 			NOTIFY_IN_LOG(LOG_INFO, qdata, "serial %u", serial);
 			if (zone->contents != NULL &&
