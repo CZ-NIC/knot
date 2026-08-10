@@ -53,6 +53,7 @@ enum {
 	KNOT_PF_ORIGTTL   = 1 << 6, /*!< Write RRSIGs with their original TTL. */
 	KNOT_PF_SOAMINTTL = 1 << 7, /*!< Write SOA with its minimum-ttl as TTL. */
 	KNOT_PF_NULLBYTE  = 1 << 8, /*!< At lest one \0 byte is present in some qname label. */
+	KNOT_PF_ONLYIN    = 1 << 9, /*!< Only allow IN class RRsets. */
 };
 
 typedef struct knot_pkt knot_pkt_t;

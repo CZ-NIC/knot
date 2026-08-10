@@ -31,6 +31,7 @@
 // TODO refactor to simply use KNOT_PF_*, on some occasion of possible API change
 typedef enum {
 	KNOT_RRWIRE_DOCANON = 1,
+	KNOT_RRWIRE_ONLYIN  = 2,
 } knot_rr_from_wire_flags;
 
 /*!
