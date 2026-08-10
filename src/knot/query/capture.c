@@ -44,7 +44,9 @@ static int capture(knot_layer_t *ctx, knot_pkt_t *pkt)
 	assert(pkt && ctx && ctx->data);
 	struct capture_param *param = ctx->data;
 
-	knot_pkt_copy(param->sink, pkt);
+	if (knot_pkt_copy(param->sink, pkt) != KNOT_EOK) {
+		return KNOT_STATE_FAIL;
+	}
 
 	return KNOT_STATE_DONE;
 }
