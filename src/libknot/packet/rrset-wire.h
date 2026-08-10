@@ -28,6 +28,11 @@
 #include "libknot/rrset.h"
 #include "libknot/packet/compr.h"
 
+// TODO refactor to simply use KNOT_PF_*, on some occasion of possible API change
+typedef enum {
+	KNOT_RRWIRE_DOCANON = 1,
+} knot_rr_from_wire_flags;
+
 /*!
  * \brief Write RR Set content to a wire.
  *
@@ -59,11 +64,12 @@ static inline int knot_rrset_to_wire(const knot_rrset_t *rrset, uint8_t *wire,
 * \param max_size   Total size of data in \a wire (size of the packet).
 * \param rrset      Destination RRSet.
 * \param mm         Memory context.
-* \param canonical  Convert rrset to canonical format indication.
+* \param flags      Parsing flags.
 *
 * \return KNOT_E*
 */
 int knot_rrset_rr_from_wire(const uint8_t *wire, size_t *pos, size_t max_size,
-                            knot_rrset_t *rrset, knot_mm_t *mm, bool canonical);
+                            knot_rrset_t *rrset, knot_mm_t *mm,
+                            knot_rr_from_wire_flags flags);
 
 /*! @} */
