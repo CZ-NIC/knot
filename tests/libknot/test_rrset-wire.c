@@ -181,7 +181,7 @@ static const struct wire_data FROM_CASES[FROM_CASE_COUNT] = {
 
 #define TEST_CASE_FROM(rrset, i) size_t _pos##i = FROM_CASES[i].pos; \
 	ok(knot_rrset_rr_from_wire(FROM_CASES[i].wire, &_pos##i, FROM_CASES[i].size, \
-	rrset, NULL, true) == FROM_CASES[i].code, "rrset wire: %s", FROM_CASES[i].msg)
+	rrset, NULL, KNOT_RRWIRE_DOCANON) == FROM_CASES[i].code, "rrset wire: %s", FROM_CASES[i].msg)
 
 static void test_inputs(void)
 {
@@ -199,7 +199,7 @@ static void check_canon(uint8_t *wire, size_t size, size_t pos, bool canon,
 	knot_rrset_t rrset;
 	knot_rrset_init_empty(&rrset);
 
-	int ret = knot_rrset_rr_from_wire(wire, &pos, size, &rrset, NULL, canon);
+	int ret = knot_rrset_rr_from_wire(wire, &pos, size, &rrset, NULL, canon ? KNOT_RRWIRE_DOCANON : 0);
 	is_int(KNOT_EOK, ret, "OK %s canonization", canon ? "with" : "without");
 	ok(memcmp(rrset.owner, qname, knot_dname_size(qname)) == 0, "compare owner");
 
@@ -240,7 +240,7 @@ int main(int argc, char *argv[])
 	plan_lazy();
 
 	diag("Test NULL parameters");
-	int ret = knot_rrset_rr_from_wire(NULL, NULL, 0, NULL, NULL, true);
+	int ret = knot_rrset_rr_from_wire(NULL, NULL, 0, NULL, NULL, KNOT_RRWIRE_DOCANON);
 	is_int(KNOT_EINVAL, ret, "rr wire: Invalid params");
 
 	diag("Test various inputs");
