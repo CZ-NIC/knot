@@ -656,6 +656,7 @@ static knot_rr_from_wire_flags rrfw_flags_from_parse(unsigned flags)
 {
 	knot_rr_from_wire_flags res = 0;
 	res |= (flags & KNOT_PF_NOCANON) ? 0 : KNOT_RRWIRE_DOCANON;
+	res |= (flags & KNOT_PF_ONLYIN) ? KNOT_RRWIRE_ONLYIN : 0;
 	return res;
 }
 

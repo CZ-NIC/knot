@@ -702,6 +702,11 @@ int knot_rrset_rr_from_wire(const uint8_t *wire, size_t *pos, size_t max_size,
 		return ret;
 	}
 
+	if ((flags & KNOT_RRWIRE_ONLYIN) && rrset->rclass != KNOT_CLASS_IN && !knot_rrtype_is_metatype(rrset->type)) {
+		knot_rrset_clear(rrset, mm);
+		return KNOT_EMALF;
+	}
+
 	ret = parse_rdata(wire, pos, max_size, mm, rdlen, rrset);
 	if (ret != KNOT_EOK) {
 		knot_rrset_clear(rrset, mm);

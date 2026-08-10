@@ -434,7 +434,7 @@ static int request_consume(knot_requestor_t *req, knot_request_t *last,
 		return ret;
 	}
 
-	ret = knot_pkt_parse(last->resp, 0);
+	ret = knot_pkt_parse(last->resp, KNOT_PF_ONLYIN);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
