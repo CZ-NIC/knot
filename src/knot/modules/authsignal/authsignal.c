@@ -16,11 +16,12 @@ static knotd_in_state_t signal_query(knotd_in_state_t state, knot_pkt_t *pkt,
 	}
 
 	const unsigned name_len = knot_dname_size(qdata->name);
+	const unsigned zone_len = knot_dname_size(knotd_qdata_zone_name(qdata));
 
 	// Check for prefix mismatch.
 	const char *prefix = "\x07_dsboot";
 	const size_t prefix_len = 8;
-	if (name_len < prefix_len || memcmp(qdata->name, prefix, prefix_len) != 0) {
+	if (name_len <= prefix_len + zone_len || memcmp(qdata->name, prefix, prefix_len) != 0) {
 		// promote NXDOMAIN to NODATA to accommodate synthesis below (= may be ENT)
 		qdata->rcode = KNOT_RCODE_NOERROR;
 		return KNOTD_IN_STATE_NODATA;
@@ -36,7 +37,7 @@ static knotd_in_state_t signal_query(knotd_in_state_t state, knot_pkt_t *pkt,
 
 	// Copy target zone name
 	knot_dname_storage_t target;
-	unsigned target_len = name_len - knot_dname_size(knotd_qdata_zone_name(qdata)) - prefix_len;
+	unsigned target_len = name_len - zone_len - prefix_len;
 	memcpy(target, qdata->name + prefix_len, target_len);
 	target[target_len] = '\0';
 
