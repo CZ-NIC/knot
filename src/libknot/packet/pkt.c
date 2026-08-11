@@ -652,14 +652,6 @@ static int check_rr_constraints(knot_pkt_t *pkt, knot_rrset_t *rr, size_t rr_siz
 	return KNOT_EOK;
 }
 
-static knot_rr_from_wire_flags rrfw_flags_from_parse(unsigned flags)
-{
-	knot_rr_from_wire_flags res = 0;
-	res |= (flags & KNOT_PF_NOCANON) ? 0 : KNOT_RRWIRE_DOCANON;
-	res |= (flags & KNOT_PF_ONLYIN) ? KNOT_RRWIRE_ONLYIN : 0;
-	return res;
-}
-
 static int parse_rr(knot_pkt_t *pkt, unsigned flags)
 {
 	assert(pkt);
@@ -683,7 +675,7 @@ static int parse_rr(knot_pkt_t *pkt, unsigned flags)
 	size_t rr_size = pkt->parsed;
 	knot_rrset_t *rr = &pkt->rr[pkt->rrset_count];
 	ret = knot_rrset_rr_from_wire(pkt->wire, &pkt->parsed, pkt->size,
-	                              rr, &pkt->mm, rrfw_flags_from_parse(flags));
+	                              rr, &pkt->mm, flags);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
