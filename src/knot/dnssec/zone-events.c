@@ -160,6 +160,12 @@ int knot_dnssec_zone_sign(zone_update_t *update,
 		ctx.now = adjust_now;
 	}
 
+	result = zone_adjust_contents(update->new_cont, adjust_cb_flags, adjust_cb_void,
+	                              true, false, 1, update->a_ctx->node_ptrs);
+	if (result != KNOT_EOK) {
+		return result;
+	}
+
 	// update policy based on the zone content
 	update_policy_from_zone(ctx.policy, update->new_cont);
 
@@ -229,12 +235,6 @@ int knot_dnssec_zone_sign(zone_update_t *update,
 		log_zone_error(zone_name, "DNSSEC, failed to update DNSKEY records (%s)",
 			       knot_strerror(result));
 		goto done;
-	}
-
-	result = zone_adjust_contents(update->new_cont, adjust_cb_flags, NULL,
-	                              false, false, 1, update->a_ctx->node_ptrs);
-	if (result != KNOT_EOK) {
-		return result;
 	}
 
 	result = knot_zone_create_nsec_chain(update, &ctx);
@@ -336,6 +336,11 @@ int knot_dnssec_sign_update(zone_update_t *update, conf_t *conf)
 		return result;
 	}
 
+	// just measure max TTL
+	result = zone_adjust_update(update, adjust_cb_void, adjust_cb_void, true);
+	if (result != KNOT_EOK) {
+		goto done;
+	}
 	update_policy_from_zone(ctx.policy, update->new_cont);
 
 	// create placeholder ZONEMD to be signed and later filled in
