@@ -196,7 +196,6 @@ static void finalize_timers_base(struct refresh_data *data, bool also_expire)
 
 	// EDNS EXPIRE -- RFC 7314, section 4, fourth paragraph.
 	data->expire_timer = MIN(data->expire_timer, zone_soa_expire(data->zone));
-	assert(data->expire_timer != EXPIRE_TIMER_INVALID);
 
 	time_t now = time(NULL);
 	const knot_rdataset_t *soa = zone_soa(zone);
