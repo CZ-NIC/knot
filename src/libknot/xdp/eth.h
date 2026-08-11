@@ -37,6 +37,7 @@ typedef struct {
 	size_t table_size; /*!< Size of indirection table in four-bytes. */
 	size_t key_size;   /*!< Size of the RSS key in bytes. */
 	uint32_t mask;     /*!< Input mask for accessing the table. */
+	uint32_t rss_xfmr; /*!< RSS XFMR settings */
 	uint32_t data[];   /*!< Serialized key and table. */
 } knot_eth_rss_conf_t;
 

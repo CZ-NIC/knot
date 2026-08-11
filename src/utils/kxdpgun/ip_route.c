@@ -19,6 +19,7 @@
 
 #include "utils/kxdpgun/ip_route.h"
 #include "contrib/sockaddr.h"
+#include "libknot/netlink.h"
 
 #define ROUTE_LOOKUP_LOOP_LIMIT 10000
 
@@ -58,69 +59,6 @@ static int send_dummy_pkt(const struct sockaddr_storage *ip)
 		ret = -errno;
 	}
 	close(fd);
-	return ret;
-}
-
-static int netlink_query(int family, uint16_t type, mnl_cb_t cb, void *data,
-                         void *qextra, size_t qextra_len, uint16_t qextra_type)
-{
-	// open and bind NETLINK socket
-	struct mnl_socket *nl = mnl_socket_open(NETLINK_ROUTE);
-	if (nl == NULL) {
-		return -errno;
-	}
-	if (mnl_socket_bind(nl, 0, MNL_SOCKET_AUTOPID) < 0) {
-		mnl_socket_close(nl);
-		return -errno;
-	}
-	unsigned portid = mnl_socket_get_portid(nl);
-	int ret = 0;
-
-	// allocate request
-	char buf[MNL_SOCKET_BUFFER_SIZE];
-	struct nlmsghdr *nlh = mnl_nlmsg_put_header(buf);
-	if (nlh == NULL) {
-		ret = -ENOMEM;
-		goto end;
-	}
-	unsigned seq = time(NULL);
-	nlh->nlmsg_seq = seq;
-	nlh->nlmsg_type = type;
-	nlh->nlmsg_flags = NLM_F_REQUEST | NLM_F_DUMP;
-	struct rtmsg *rtm = mnl_nlmsg_put_extra_header(nlh, sizeof(*rtm));
-	if (rtm == NULL) {
-		ret = -ENOMEM;
-		goto end;
-	}
-
-	if (qextra_len > 0) {
-		nlh->nlmsg_flags = NLM_F_REQUEST;
-		rtm->rtm_dst_len = qextra_len * 8; // 8 bits per byte
-		mnl_attr_put(nlh, qextra_type, qextra_len, qextra);
-	}
-
-	// send request
-	rtm->rtm_family = family;
-	ret = mnl_socket_sendto(nl, nlh, nlh->nlmsg_len);
-	if (ret < 0) {
-		ret = -errno;
-		goto end;
-	}
-
-	// collect replies with callback
-	while ((ret = mnl_socket_recvfrom(nl, buf, sizeof(buf))) > 0) {
-		ret = mnl_cb_run(buf, ret, seq, portid, cb, data);
-		if (ret <= MNL_CB_STOP) {
-			break;
-		}
-		if (qextra_len > 0) {
-			break;
-		}
-	}
-	ret = ret < 0 ? -errno : 0;
-
-end:
-	mnl_socket_close(nl);
 	return ret;
 }
 
@@ -235,7 +173,30 @@ static int ip_route_get_cb(const struct nlmsghdr *nlh, void *data)
 	}
 
 	memset(ctx->tb, 0, sizeof(void *) * (RTA_MAX+1));
-	return MNL_CB_OK;
+	return MNL_CB_STOP;
+}
+
+static int rmt_getroute_init(struct nlmsghdr *nlh, void *user_data)
+{
+	ip_route_get_ctx_t *ctx = user_data;
+	nlh->nlmsg_flags = NLM_F_REQUEST;
+
+	struct rtmsg *rtm = mnl_nlmsg_put_extra_header(nlh, sizeof(*rtm));
+	if (rtm == NULL) {
+		return -ENOMEM;
+	}
+	rtm->rtm_family = ctx->ip->ss_family;
+
+	size_t qextra_len;
+	void *qextra = sockaddr_raw(ctx->ip, &qextra_len);
+	if (qextra_len == 0) {
+		return -EINVAL;
+	}
+
+	rtm->rtm_dst_len = qextra_len * 8; // 8 bits per byte
+	mnl_attr_put(nlh, IFA_ADDRESS, qextra_len, qextra);
+
+	return 0;
 }
 
 int ip_route_get(const struct sockaddr_storage *ip,
@@ -248,11 +209,9 @@ int ip_route_get(const struct sockaddr_storage *ip,
 	do {
 		ctx.priority = UINT64_MAX;
 
-		size_t qextra_len;
-		void *qextra = sockaddr_raw(ip, &qextra_len);
-		int ret = netlink_query(ip->ss_family, RTM_GETROUTE,
-		                        ip_route_get_cb, &ctx, qextra,
-		                        qextra_len, IFA_ADDRESS);
+		int ret = knot_netlink_query(NETLINK_ROUTE, RTM_GETROUTE,
+		                             rmt_getroute_init, &ctx,
+		                             ip_route_get_cb, &ctx);
 		if (ret != 0) {
 			return ret;
 		}
@@ -328,6 +287,20 @@ static int ip_neigh_cb(const struct nlmsghdr *nlh, void *data)
 	return MNL_CB_OK;
 }
 
+static int ip_neigh_init(struct nlmsghdr *nlh, void *user_data)
+{
+	ip_route_get_ctx_t *ctx = user_data;
+	nlh->nlmsg_flags = NLM_F_REQUEST | NLM_F_DUMP;
+
+	struct rtmsg *rtm = mnl_nlmsg_put_extra_header(nlh, sizeof(*rtm));
+	if (rtm == NULL) {
+		return -ENOMEM;
+	}
+	rtm->rtm_family = ctx->ip->ss_family;
+
+	return 0;
+}
+
 int ip_neigh_get(const struct sockaddr_storage *ip, bool dummy_sendto, uint8_t *mac)
 {
 	if (dummy_sendto) {
@@ -338,8 +311,8 @@ int ip_neigh_get(const struct sockaddr_storage *ip, bool dummy_sendto, uint8_t *
 		usleep(10000);
 	}
 	ip_neigh_ctx_t ctx = { ip, mac, 0 };
-	int ret = netlink_query(ip->ss_family, RTM_GETNEIGH, ip_neigh_cb, &ctx,
-	                        NULL, 0, 0);
+	int ret = knot_netlink_query(NETLINK_ROUTE, RTM_GETNEIGH,
+	                             ip_neigh_init, &ctx, ip_neigh_cb, &ctx);
 	if (ret == 0 && ctx.match == 0) {
 		return -ENOENT;
 	}

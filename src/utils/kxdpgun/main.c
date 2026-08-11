@@ -31,6 +31,7 @@
 #include "libknot/xdp/tcp_iobuf.h"
 #ifdef ENABLE_QUIC
 #include <gnutls/gnutls.h>
+#include "libknot/netlink.h"
 #include "libknot/quic/quic.h"
 #endif // ENABLE_QUIC
 #include "contrib/atomic.h"
@@ -149,6 +150,54 @@ static void put_dns_payload(struct iovec *put_into, bool zero_copy, xdp_gun_ctx_
 }
 
 #ifdef ENABLE_QUIC
+
+#define TRANSFORM(dst, op) \
+	for (int idx = 0; idx < addr_len; ++idx) { \
+		(dst)[idx] = (((uint32_t *)addr_a)[idx]) ^ (((uint32_t *)addr_b)[idx]); \
+	}
+
+static int symmetric_store(uint8_t *data, int af, int hash_flags, void *addr_a, void *addr_b, uint16_t port_a, uint16_t port_b)
+{
+	size_t addr_len;
+	if (af == AF_INET) {
+		addr_len = sizeof(struct in_addr) / sizeof(uint32_t);
+	} else if (af == AF_INET6) {
+		addr_len = sizeof(struct in6_addr) / sizeof(uint32_t);
+	} else {
+		return KNOT_ENOTSUP;
+	}
+
+	uint32_t addr_a_storage[addr_len];
+	uint32_t addr_b_storage[addr_len];
+	uint16_t port_a_storage;
+	uint16_t port_b_storage;
+	if (hash_flags & RXH_XFRM_SYM_XOR) {
+		TRANSFORM(addr_a_storage, ^);
+		port_a_storage = port_a ^ port_b;
+		addr_a = addr_a_storage;
+		addr_b = addr_a_storage;
+		port_a = port_a_storage;
+		port_b = port_a_storage;
+	} else if (hash_flags & RXH_XFRM_SYM_OR_XOR) {
+		TRANSFORM(addr_a_storage, |);
+		TRANSFORM(addr_b_storage, ^);
+		port_a_storage = port_a | port_b;
+		port_b_storage = port_a ^ port_b;
+		addr_a = addr_a_storage;
+		addr_b = addr_b_storage;
+		port_a = port_a_storage;
+		port_b = port_b_storage;
+	}
+	
+	uint8_t *ptr = data;
+	memcpy(ptr, addr_a, addr_len * sizeof(uint32_t)); ptr += addr_len * sizeof(uint32_t);
+	memcpy(ptr, addr_b, addr_len * sizeof(uint32_t)); ptr += addr_len * sizeof(uint32_t);
+	memcpy(ptr, &port_a, sizeof(port_a)); ptr += sizeof(port_a);
+	memcpy(ptr, &port_b, sizeof(port_b)); ptr += sizeof(port_b);
+
+	return ptr - data;
+}
+
 static uint16_t get_rss_id(xdp_gun_ctx_t *ctx, uint16_t local_port)
 {
 	assert(ctx->rss_conf);
@@ -157,23 +206,21 @@ static uint16_t get_rss_id(xdp_gun_ctx_t *ctx, uint16_t local_port)
 	const size_t key_len = ctx->rss_conf->key_size;
 	uint8_t data[2 * sizeof(struct in6_addr) + 2 * sizeof(uint16_t)];
 
-	size_t addr_len;
+	int ret = 0;
 	if (ctx->ipv6) {
-		addr_len = sizeof(struct in6_addr);
-		memcpy(data, &ctx->target_ip.sin6_addr, addr_len);
-		memcpy(data + addr_len, &ctx->local_ip.sin6_addr, addr_len);
+		ret = symmetric_store(data, AF_INET6, ctx->rss_conf->rss_xfmr,
+		                      &ctx->target_ip.sin6_addr,
+		                      &ctx->local_ip.sin6_addr,
+		                      htobe16(ctx->target_port), htobe16(local_port));
 	} else {
-		addr_len = sizeof(struct in_addr);
-		memcpy(data, &ctx->target_ip4.sin_addr, addr_len);
-		memcpy(data + addr_len, &ctx->local_ip4.sin_addr, addr_len);
+		ret = symmetric_store(data, AF_INET, ctx->rss_conf->rss_xfmr,
+		                      &ctx->target_ip4.sin_addr,
+		                      &ctx->local_ip4.sin_addr,
+		                      htobe16(ctx->target_port), htobe16(local_port));
 	}
+	assert(ret >= 0);
 
-	uint16_t src_port = htobe16(ctx->target_port);
-	memcpy(data + 2 * addr_len, &src_port, sizeof(src_port));
-	uint16_t dst_port = htobe16(local_port);
-	memcpy(data + 2 * addr_len + sizeof(uint16_t), &dst_port, sizeof(dst_port));
-
-	size_t data_len = 2 * addr_len + 2 * sizeof(uint16_t);
+	size_t data_len = ret;
 	uint16_t hash = toeplitz_hash(key, key_len, data, data_len);
 
 	return ctx->rss_conf->data[hash & ctx->rss_conf->mask];

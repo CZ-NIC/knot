@@ -8,6 +8,8 @@
 #include <errno.h>
 #include <ifaddrs.h>
 #include <linux/ethtool.h>
+#include <linux/ethtool_netlink.h>
+#include <linux/genetlink.h>
 #include <linux/if_link.h>
 #include <linux/if_vlan.h>
 #include <linux/sockios.h>
@@ -22,6 +24,7 @@
 #include "libknot/attribute.h"
 #include "libknot/endian.h"
 #include "libknot/errcode.h"
+#include "libknot/netlink.h"
 #include "libknot/xdp/eth.h"
 
 _public_
@@ -63,6 +66,96 @@ int knot_eth_queues(const char *devname)
 	return ret;
 }
 
+static int get_ethtool_id_init(struct nlmsghdr *nlh, void *user_data)
+{
+	struct genlmsghdr *genl = mnl_nlmsg_put_extra_header(nlh, sizeof(*genl));
+	if (genl == NULL) {
+		return -ENOMEM;
+	}
+	genl->cmd = CTRL_CMD_GETFAMILY;
+	genl->version = 1;
+
+	mnl_attr_put_strz(nlh, CTRL_ATTR_FAMILY_NAME, ETHTOOL_GENL_NAME);
+
+	return 0;
+}
+
+static int cb_ctrl_family(const struct nlmsghdr *nlh, void *data) {
+	uint16_t *out_family_id = data;
+	struct nlattr *attr;
+
+	mnl_attr_for_each(attr, nlh, sizeof(struct genlmsghdr)) {
+		if (mnl_attr_get_type(attr) == CTRL_ATTR_FAMILY_ID) {
+			*out_family_id = mnl_attr_get_u16(attr);
+			return MNL_CB_STOP;
+		}
+	}
+	return MNL_CB_OK;
+}
+
+static int get_rss_xfmr_init(struct nlmsghdr *nlh, void *user_data)
+{
+	struct genlmsghdr *genl = mnl_nlmsg_put_extra_header(nlh, sizeof(*genl));
+	if (genl == NULL) {
+		return -ENOMEM;
+	}
+	genl->cmd = ETHTOOL_MSG_RSS_GET;
+	genl->version = ETHTOOL_GENL_VERSION;
+
+	struct nlattr *nest = mnl_attr_nest_start(nlh, ETHTOOL_A_RSS_HEADER);
+	mnl_attr_put_strz(nlh, ETHTOOL_A_HEADER_DEV_NAME, (const char *)user_data);
+	mnl_attr_nest_end(nlh, nest);
+
+	return 0;
+}
+
+static int attr_cb(const struct nlattr *attr, void *data) {
+	const struct nlattr **tb = data;
+	int type = mnl_attr_get_type(attr);
+
+	if (mnl_attr_type_valid(attr, ETHTOOL_A_RSS_MAX) < 0) {
+		return MNL_CB_ERROR;
+	}
+	tb[type] = attr;
+	return MNL_CB_OK;
+}
+
+static int cb_rss_msg(const struct nlmsghdr *nlh, void *data) {
+	assert(data != NULL);
+
+	struct genlmsghdr *genl = mnl_nlmsg_get_payload(nlh);
+	struct nlattr *tb[ETHTOOL_A_RSS_MAX] = {0};
+	uint32_t *val = data;
+
+	mnl_attr_parse(nlh, sizeof(*genl), attr_cb, tb);
+	if (tb[ETHTOOL_A_RSS_INPUT_XFRM]) {
+		*val = mnl_attr_get_u32(tb[ETHTOOL_A_RSS_INPUT_XFRM]);
+	} else {
+		*val = 0;
+	}
+
+	return MNL_CB_STOP;
+}
+
+static int link_get_rss_xfmr(const char *ifname)
+{
+	uint16_t ethtool_id = 0;
+	int ret = 0;
+	ret = knot_netlink_query(NETLINK_GENERIC, GENL_ID_CTRL, get_ethtool_id_init,
+	                         NULL, cb_ctrl_family, &ethtool_id);
+	if (ret < 0) {
+		return ret;
+	}
+
+	uint32_t flags = 0;
+	ret = knot_netlink_query(NETLINK_GENERIC, ethtool_id, get_rss_xfmr_init,
+	                         (void *)ifname, cb_rss_msg, &flags);
+	if (ret < 0) {
+		return ret;
+	}
+	return flags;
+}
+
 _public_
 int knot_eth_rss(const char *devname, knot_eth_rss_conf_t **rss_conf)
 {
@@ -93,6 +186,8 @@ int knot_eth_rss(const char *devname, knot_eth_rss_conf_t **rss_conf)
 		goto finish;
 	}
 
+	int xfmr = link_get_rss_xfmr(devname);
+
 	const unsigned data_size = sizes.indir_size * sizeof(sizes.rss_config[0]) +
 	                           sizes.key_size;
 
@@ -122,6 +217,10 @@ int knot_eth_rss(const char *devname, knot_eth_rss_conf_t **rss_conf)
 	out->key_size = sizes.key_size;
 	memcpy(out->data, ctx->rss_config, data_size);
 	out->mask = out->table_size - 1;
+	if (xfmr >= 0) {
+		out->rss_xfmr = xfmr & (RXH_XFRM_SYM_XOR | RXH_XFRM_SYM_OR_XOR);
+	}
+
 finish:
 	*rss_conf = out;
 

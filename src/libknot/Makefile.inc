@@ -7,7 +7,7 @@ libknot_la_CPPFLAGS = $(embedded_libngtcp2_CFLAGS) \
 libknot_la_LDFLAGS  = $(AM_LDFLAGS) $(libknot_VERSION_INFO) $(LDFLAG_EXCLUDE_LIBS) \
                       ${fuzzer_LDFLAGS}
 libknot_la_LIBADD   = $(libcontrib_LIBS) $(libemblmdb_LIBS) $(lmdb_LIBS) \
-                      $(gnutls_LIBS) $(math_LIBS)
+                      $(libmnl_LIBS) $(gnutls_LIBS) $(math_LIBS)
 
 if EMBEDDED_LIBNGTCP2
 libknot_la_LIBADD  += $(libembngtcp2_LIBS)
@@ -36,6 +36,7 @@ nobase_include_libknot_HEADERS = \
 	libknot/libknot.h			\
 	libknot/lookup.h			\
 	libknot/mm_ctx.h			\
+	libknot/netlink.h			\
 	libknot/db/db.h				\
 	libknot/db/db_lmdb.h			\
 	libknot/db/db_trie.h			\
@@ -142,6 +143,7 @@ libknot_la_SOURCES = \
 	libknot/probe/probe.c			\
 	libknot/quic/tls.c			\
 	libknot/quic/tls_common.c		\
+	libknot/netlink.c			\
 	libknot/rdataset.c			\
 	libknot/rrset-dump.c			\
 	libknot/rrset.c				\
