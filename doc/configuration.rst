@@ -688,6 +688,15 @@ A catalog zone may be modified using any standard means (e.g. AXFR/IXFR, DDNS,
 zone file reload). In the case of incremental change, only affected
 member zones are reloaded.
 
+.. TIP::
+   If the catalog zone is created and maintained by a different party,
+   it is advisable to prepare policies and protections against their
+   malicious actions or errors. For example, the number of member zones
+   or their domain names can be restricted. Policies should prevent resource
+   exhaustion and partial shadowing of important namespaces. To enforce
+   these policies, :ref:`External validation` can be configured for the
+   catalog zone.
+
 The catalog zone must have at least one :ref:`zone_catalog-template`
 configured. The configuration for any defined member zone is taken from its
 *group* property value, which should match some catalog-template name.
