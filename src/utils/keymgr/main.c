@@ -220,7 +220,7 @@ static int key_command(int argc, char *argv[], int opt_ind, knot_lmdb_db_t *kasp
 		CHECK_MISSING_ARG("PEM file to import not specified");
 		ret = keymgr_import_pem(&kctx, argv[2], argc - 3, argv + 3);
 	} else if (same_command(argv[1], "import-pkcs11", false)) {
-		CHECK_MISSING_ARG("Key ID to import not specified");
+		CHECK_MISSING_ARG("key ID to import not specified");
 		ret = keymgr_import_pkcs11(&kctx, argv[2], argc - 3, argv + 3);
 	} else if (same_command(argv[1], "nsec3-salt", false)) {
 		if (argc > 2) {
@@ -241,7 +241,7 @@ static int key_command(int argc, char *argv[], int opt_ind, knot_lmdb_db_t *kasp
 			print_ok_on_succes = false;
 		}
 	} else if (same_command(argv[1], "set", false)) {
-		CHECK_MISSING_ARG("Key is not specified");
+		CHECK_MISSING_ARG("key is not specified");
 		knot_kasp_key_t *key2set;
 		ret = keymgr_get_key(&kctx, argv[2], &key2set);
 		if (ret == KNOT_EOK) {
@@ -258,8 +258,8 @@ static int key_command(int argc, char *argv[], int opt_ind, knot_lmdb_db_t *kasp
 		ret = keymgr_dss_dnskeys(&kctx, argc - 1, argv + 1);
 		print_ok_on_succes = false;
 	} else if (same_command(argv[1], "share", false)) {
-		CHECK_MISSING_ARG("Key to be shared is not specified");
-		CHECK_MISSING_ARG2("Zone to be shared from not specified");
+		CHECK_MISSING_ARG("key to be shared is not specified");
+		CHECK_MISSING_ARG2("zone to be shared from not specified");
 		knot_dname_t *other_zone = NULL;
 		char *key_to_share = NULL;
 		ret = keymgr_foreign_key_id(argv, kaspdb, &other_zone, &key_to_share);
@@ -269,7 +269,7 @@ static int key_command(int argc, char *argv[], int opt_ind, knot_lmdb_db_t *kasp
 		knot_dname_free(other_zone, NULL);
 		free(key_to_share);
 	} else if (same_command(argv[1], "delete", false)) {
-		CHECK_MISSING_ARG("Key is not specified");
+		CHECK_MISSING_ARG("key is not specified");
 		knot_kasp_key_t *key2del;
 		ret = keymgr_get_key(&kctx, argv[2], &key2del);
 		if (ret == KNOT_EOK) {
@@ -280,15 +280,15 @@ static int key_command(int argc, char *argv[], int opt_ind, knot_lmdb_db_t *kasp
 		ret = keymgr_list_trash(&kctx, zone_name, list_params);
 		print_ok_on_succes = false;
 	} else if (same_command(argv[1], "trash-discard", false)) {
-		CHECK_MISSING_ARG("Key ID not specified");
+		CHECK_MISSING_ARG("key ID not specified");
 		bool all = !strncmp(argv[2], "-", 2) || !strncmp(argv[2], "--", 3);
 		ret = kasp_db_delete_trash(kaspdb, zone_name, all ? NULL : argv[2],
 		                           NULL, NULL);
 	} else if (same_command(argv[1], "import-trash", false)) {
-		CHECK_MISSING_ARG("Key ID to re-import not specified");
+		CHECK_MISSING_ARG("key ID to re-import not specified");
 		ret = keymgr_import_trash(&kctx, argv[2], argc - 3, argv + 3);
 	} else if (same_command(argv[1], "pregenerate", false)) {
-		CHECK_MISSING_ARG("Timestamp to not specified");
+		CHECK_MISSING_ARG("timestamp to not specified");
 		ret = keymgr_pregenerate_zsks(&kctx, argc > 3 ? argv[2] : NULL,
 		                                     argc > 3 ? argv[3] : argv[2]);
 	} else if (same_command(argv[1], "show-offline", false)) {
@@ -296,24 +296,24 @@ static int key_command(int argc, char *argv[], int opt_ind, knot_lmdb_db_t *kasp
 		                                          argc > 3 ? argv[3] : NULL);
 		print_ok_on_succes = false;
 	} else if (same_command(argv[1], "del-offline", false)) {
-		CHECK_MISSING_ARG2("Timestamps from-to not specified");
+		CHECK_MISSING_ARG2("timestamps from-to not specified");
 		ret = keymgr_delete_offline_records(&kctx, argv[2], argv[3]);
 	} else if (same_command(argv[1], "del-all-old", false)) {
 		ret = keymgr_del_all_old(&kctx);
 	} else if (same_command(argv[1], "generate-ksr", false)) {
-		CHECK_MISSING_ARG("Timestamps to not specified");
+		CHECK_MISSING_ARG("timestamps to not specified");
 		ret = keymgr_print_ksr(&kctx, argc > 3 ? argv[2] : NULL,
 		                              argc > 3 ? argv[3] : argv[2]);
 		print_ok_on_succes = false;
 	} else if (same_command(argv[1], "sign-ksr", false)) {
-		CHECK_MISSING_ARG("Input file not specified");
+		CHECK_MISSING_ARG("input file not specified");
 		ret = keymgr_sign_ksr(&kctx, argv[2]);
 		print_ok_on_succes = false;
 	} else if (same_command(argv[1], "validate-skr", false)) {
-		CHECK_MISSING_ARG("Input file not specified");
+		CHECK_MISSING_ARG("input file not specified");
 		ret = keymgr_validate_skr(&kctx, argv[2]);
 	} else if (same_command(argv[1], "import-skr", false)) {
-		CHECK_MISSING_ARG("Input file not specified");
+		CHECK_MISSING_ARG("input file not specified");
 		ret = keymgr_import_skr(&kctx, argv[2]);
 	} else if (same_command(argv[1], "keystore-test", false)) {
 		ret = keymgr_keystore_test(id_str, list_params);

@@ -72,7 +72,7 @@ int parse_timestamp(char *arg, knot_time_t *stamp)
 	int ret = knot_time_parse("YMDhms|'now'+-#u|'t'+-#u|+-#u|'t'+-#|+-#|#",
 	                          arg, stamp);
 	if (ret < 0) {
-		ERR2("invalid timestamp: %s", arg);
+		ERR2("invalid timestamp '%s'", arg);
 		return KNOT_EINVAL;
 	}
 	return KNOT_EOK;
@@ -249,13 +249,13 @@ static bool genkeyargs(int argc, char *argv[], bool just_timing, key_params_t *k
 				}
 			}
 			if (alg > 255) {
-				ERR2("unknown algorithm: %s", argv[i] + 10);
+				ERR2("unknown algorithm '%s'", argv[i] + 10);
 				return false;
 			}
 			*algorithm = alg;
 		} else if (!just_timing && same_command(argv[i], "size=", true)) {
 			if (str_to_u16(argv[i] + 5, keysize) != KNOT_EOK) {
-				ERR2("invalid size: '%s'", argv[i] + 5);
+				ERR2("invalid size '%s'", argv[i] + 5);
 				return false;
 			}
 		} else if (!just_timing && same_command(argv[i], "addtopolicy=", true) && addtopolicy != NULL) {
@@ -272,7 +272,7 @@ static bool genkeyargs(int argc, char *argv[], bool just_timing, key_params_t *k
 		}else if (same_command_bool(argv[i], "adt", &res)) {
 			bitmap_set(flags, DNSKEY_GENERATE_ADT_ON, res);
 		} else if (!init_timestamps(argv[i], timing)) {
-			ERR2("invalid parameter: %s", argv[i]);
+			ERR2("invalid parameter '%s'", argv[i]);
 			return false;
 		}
 	}
