@@ -20,7 +20,7 @@
     __asan_unpoison_memory_region((addr), (size))
 
   #if defined(__GNUC__) && !defined(__clang__)  /* A faulty GCC workaround. */
-    #if (__GNUC__ >= 14)  /* newer versions of gcc */
+    #if (__GNUC__ >= 13)  /* newer versions of gcc */
       #define ASAN_POISON_MEMORY_REGION(addr, size)                    \
         do {                                                           \
           _Pragma("GCC diagnostic push");                              \
