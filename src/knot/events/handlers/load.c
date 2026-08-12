@@ -315,7 +315,7 @@ zonefile_loaded:
 			zu_from_zf_conts = true;
 		} else {
 			// compute ZF diff and if success, apply it
-			ret = zone_update_from_differences(&up, zone, NULL, zf_conts, UPDATE_INCREMENTAL | UPDATE_NO_CHSET, &skip);
+			ret = zone_update_from_differences(&up, zone, NULL, zf_conts, UPDATE_INCREMENTAL | UPDATE_NO_CHSET | UPDATE_DIFF_NOSEMCHK, &skip);
 		}
 	} else {
 		if (journal_conts != NULL && zf_from != ZONEFILE_LOAD_WHOLE) {
@@ -325,7 +325,7 @@ zonefile_loaded:
 			} else {
 				// load zone-in-journal, compute ZF diff and if success, apply it
 				ret = zone_update_from_differences(&up, zone, journal_conts, zf_conts,
-				                                   UPDATE_HYBRID, &skip);
+				                                   UPDATE_HYBRID | UPDATE_DIFF_NOSEMCHK, &skip);
 				if (ret == KNOT_ESEMCHECK || ret == KNOT_ERANGE) {
 					log_zone_warning(zone->name,
 					                 "zone file changed with SOA serial %s, "
