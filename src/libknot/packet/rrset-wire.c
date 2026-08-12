@@ -631,7 +631,8 @@ static int rdata_traverse_parse(const uint8_t **src, size_t *src_avail,
 
 static bool allow_zero_rdata(const knot_rrset_t *rr)
 {
-	return rr->rclass != KNOT_CLASS_IN /* DDNS */ || knot_rrtype_allows_empty(rr->type);
+	return (rr->rclass == KNOT_CLASS_ANY || rr->rclass == KNOT_CLASS_NONE) /* DDNS */
+	       || knot_rrtype_allows_empty(rr->type);
 }
 
 static int parse_rdata(const uint8_t *pkt_wire, size_t *pos, size_t pkt_size,
@@ -688,7 +689,7 @@ static int parse_rdata(const uint8_t *pkt_wire, size_t *pos, size_t pkt_size,
 
 _public_
 int knot_rrset_rr_from_wire(const uint8_t *wire, size_t *pos, size_t max_size,
-                            knot_rrset_t *rrset, knot_mm_t *mm, bool canonical)
+                            knot_rrset_t *rrset, knot_mm_t *mm, unsigned flags)
 {
 	if (wire == NULL || pos == NULL || *pos > max_size || rrset == NULL) {
 		return KNOT_EINVAL;
@@ -700,6 +701,12 @@ int knot_rrset_rr_from_wire(const uint8_t *wire, size_t *pos, size_t max_size,
 		return ret;
 	}
 
+	if ((flags & KNOT_PF_ONLYIN) &&
+	    rrset->rclass != KNOT_CLASS_IN && !knot_rrtype_is_metatype(rrset->type)) {
+		knot_rrset_clear(rrset, mm);
+		return KNOT_EMALF;
+	}
+
 	ret = parse_rdata(wire, pos, max_size, mm, rdlen, rrset);
 	if (ret != KNOT_EOK) {
 		knot_rrset_clear(rrset, mm);
@@ -707,7 +714,7 @@ int knot_rrset_rr_from_wire(const uint8_t *wire, size_t *pos, size_t max_size,
 	}
 
 	// Convert RR to the canonical format.
-	if (canonical) {
+	if (!(flags & KNOT_PF_NOCANON)) {
 		ret = knot_rrset_rr_to_canonical(rrset);
 		if (ret != KNOT_EOK) {
 			knot_rrset_clear(rrset, mm);

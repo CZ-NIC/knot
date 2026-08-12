@@ -675,7 +675,7 @@ static int parse_rr(knot_pkt_t *pkt, unsigned flags)
 	size_t rr_size = pkt->parsed;
 	knot_rrset_t *rr = &pkt->rr[pkt->rrset_count];
 	ret = knot_rrset_rr_from_wire(pkt->wire, &pkt->parsed, pkt->size,
-	                              rr, &pkt->mm, !(flags & KNOT_PF_NOCANON));
+	                              rr, &pkt->mm, flags);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
