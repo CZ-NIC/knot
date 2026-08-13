@@ -8,6 +8,7 @@ libknot.so.16 libknot16 #MINVER#
  KNOT_DB_LMDB_RDONLY@Base 3.5.0
  KNOT_DB_LMDB_WRITEMAP@Base 3.5.0
  KNOT_DUMP_STYLE_DEFAULT@Base 3.5.0
+ dnssec_algorithm_digest_from_string@Base 3.6.0
  dnssec_algorithm_digest_support@Base 3.5.0
  dnssec_algorithm_key_size_check@Base 3.5.0
  dnssec_algorithm_key_size_default@Base 3.5.0
