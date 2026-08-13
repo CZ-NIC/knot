@@ -1258,6 +1258,7 @@ struct sockaddr_storage yp_addr_noport(
 	// Set address.
 	switch (type) {
 	case ADDR_TYPE_UNIX:
+		addr_len = 0;
 		sockaddr_set(&ss, AF_UNIX, (char *)data, 0);
 		break;
 	case ADDR_TYPE_IPV4:
