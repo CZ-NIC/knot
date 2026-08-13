@@ -24,6 +24,6 @@ resp = slave.dig(zone[0].name, "NSEC3PARAM", dnssec=True)
 resp.check_count(1, "NSEC3PARAM")
 
 resp = slave.dig("dowiejoiewj." + zone[0].name, "AAAA", dnssec=True)
-resp.check(rcode="NXDOMAIN")
+resp.check(rcode="SERVFAIL")
 
 t.end()

@@ -548,7 +548,8 @@ static knot_layer_state_t process_query_err(knot_layer_t *ctx, knot_pkt_t *pkt)
 	}
 
 	/* Set final RCODE to packet. */
-	if (qdata->rcode == KNOT_RCODE_NOERROR && !qdata->err_truncated) {
+	if ((qdata->rcode == KNOT_RCODE_NOERROR || qdata->rcode == KNOT_RCODE_NXDOMAIN)
+	    && !qdata->err_truncated) {
 		/* Default RCODE is SERVFAIL if not otherwise specified. */
 		qdata->rcode = KNOT_RCODE_SERVFAIL;
 	}
