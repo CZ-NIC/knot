@@ -32,6 +32,13 @@ def check_log_err(server, expect_err):
         set_err("WRONG ERRCODE")
         detail_log("!Unexpected errcode '%s' != '%s'" % (log_errcode(last_log), expect_err))
 
+def check_log_migrated(server, backup_dir):
+    with open(server.fout) as logf:
+        for logline in logf:
+            if "restore, migrating backup in %s" % backup_dir in logline:
+                return True
+    return False
+
 t = Test()
 
 master = t.server("knot")
@@ -252,6 +259,7 @@ except:
 check_log_err(master2, "malformed data")
 
 # Attempt to restore from a backup made by incompatible CPU architecture (incompatible CPU architecture).
+# Either restore or migration fails, it depends on current LMDB version. Same error code in both cases.
 try:
     master2.ctl("zone-restore +backupdir %s" % backup8_dir, wait=True)
     set_err("RESTORE FROM INCOMPATIBLE ARCHITECTURE ALLOWED")
@@ -260,9 +268,18 @@ except:
 check_log_err(master2, "incompatible CPU architecture")
 
 # Attempt to restore a zonefile from a backup made by incompatible CPU architecture, expected OK.
+# With LMDB 1+, backup migration fails, expected (incompatible CPU architecture).
+migrated = check_log_migrated(master2, backup8_dir) # Side effect of the previous test-case.
 try:
     master2.ctl("zone-restore +zonefile +notimers +nokaspdb +nojournal +nocatalog +backupdir %s" % backup8_dir, wait=True)
+    if migrated:
+        set_err("ZONEFILE RESTORE FROM NON-MIGRATED BACKUP ALLOWED")
+    else:
+        pass
 except:
-    set_err("ZONEFILE RESTORE FROM INCOMPATIBLE CPU FAILED")
+    if migrated:
+        pass
+    else:
+        set_err("ZONEFILE RESTORE FROM INCOMPATIBLE CPU FAILED")
 
 t.stop()
