@@ -40,9 +40,13 @@ int sockaddr_len(const struct sockaddr_storage *ss)
 static int cmp_ipv4(const struct sockaddr_in *a, const struct sockaddr_in *b,
                     bool ignore_port)
 {
-	if (a->sin_addr.s_addr < b->sin_addr.s_addr) {
+	// Convert from network to host byte order for correct comparison.
+	uint32_t a_host = ntohl(a->sin_addr.s_addr);
+	uint32_t b_host = ntohl(b->sin_addr.s_addr);
+
+	if (a_host < b_host) {
 		return -1;
-	} else if (a->sin_addr.s_addr > b->sin_addr.s_addr) {
+	} else if (a_host > b_host) {
 		return 1;
 	} else {
 		return ignore_port ? 0 : a->sin_port - b->sin_port;

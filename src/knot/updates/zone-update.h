@@ -54,6 +54,7 @@ typedef enum {
 	UPDATE_EVREQ          = 1 << 10, /*!< Update requires external validation (if configured). */
 	UPDATE_WFEV           = 1 << 11, /*!< Update waiting for external validation. */
 	UPDATE_EVOK           = 1 << 12, /*!< External validation accepted the update. */
+	UPDATE_DIFF_NOSEMCHK  = 1 << 13, /*!< Diff: silently continue without ESEMCHECK if unchanged SOA serial.*/
 } zone_update_flags_t;
 
 /*!

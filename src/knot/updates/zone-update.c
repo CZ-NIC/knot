@@ -181,9 +181,13 @@ int zone_update_from_differences(zone_update_t *update, zone_t *zone, zone_conte
 	ret = zone_contents_diff(old_cont, new_cont, &diff, skip);
 	switch (ret) {
 	case KNOT_ENODIFF:
-	case KNOT_ESEMCHECK:
 	case KNOT_EOK:
 		break;
+	case KNOT_ESEMCHECK:
+		if (flags & UPDATE_DIFF_NOSEMCHK) {
+			break;
+		}
+		// FALLTHROUGH
 	case KNOT_ERANGE:
 		additionals_tree_free(update->new_cont->adds_tree);
 		update->new_cont->adds_tree = NULL;
