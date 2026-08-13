@@ -855,7 +855,7 @@ static void json_print_edns(jsonw_t *w, const knot_pkt_t *pkt)
 		return;
 	}
 
-	char tmp[11] = { 0 };
+	char tmp[16] = { 0 };
 
 	jsonw_object(w, "EDNS");
 	uint16_t version = (pkt->opt_rr->ttl & 0x00ff0000) >> 16;
