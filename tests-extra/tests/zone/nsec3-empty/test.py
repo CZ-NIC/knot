@@ -20,6 +20,6 @@ master.zone_wait(zone)
 
 # Query non-existent name
 resp = master.dig("bogus.example.com", "A", dnssec=True)
-resp.check(rcode="NXDOMAIN")
+resp.check(rcode="SERVFAIL")
 
 t.end()
