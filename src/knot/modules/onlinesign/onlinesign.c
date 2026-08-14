@@ -171,6 +171,18 @@ static bool is_deleg(const knot_pkt_t *pkt)
 	return !knot_wire_get_aa(pkt->wire);
 }
 
+static int pkt_put_trunc(knot_pkt_t *pkt, uint16_t compr_hint, const knot_rrset_t *rr,
+                         uint16_t flags, knotd_qdata_t *qdata)
+{
+	int ret = knot_pkt_put(pkt, compr_hint, rr, flags);
+	if (ret == KNOT_ESPACE) {
+		qdata->err_truncated = true;
+		ret = KNOT_EOK;
+	}
+
+	return ret;
+}
+
 static knot_rrset_t *synth_nsec(knot_pkt_t *pkt, knotd_qdata_t *qdata, knotd_mod_t *mod,
                                 knot_mm_t *mm)
 {
@@ -325,7 +337,7 @@ static knotd_in_state_t sign_section(knotd_in_state_t state, knot_pkt_t *pkt,
 			break;
 		}
 
-		int r = knot_pkt_put(pkt, KNOT_COMPR_HINT_NONE, rrsig, KNOT_PF_FREE);
+		int r = pkt_put_trunc(pkt, KNOT_COMPR_HINT_NONE, rrsig, KNOT_PF_FREE, qdata);
 		if (r != KNOT_EOK) {
 			knot_rrset_free(rrsig, &pkt->mm);
 			state = KNOTD_IN_STATE_ERROR;
@@ -349,7 +361,7 @@ static knotd_in_state_t synth_authority(knotd_in_state_t state, knot_pkt_t *pkt,
 
 	if (want_dnssec(qdata)) {
 		knot_rrset_t *nsec = synth_nsec(pkt, qdata, mod, &pkt->mm);
-		int r = knot_pkt_put(pkt, KNOT_COMPR_HINT_NONE, nsec, KNOT_PF_FREE);
+		int r = pkt_put_trunc(pkt, KNOT_COMPR_HINT_NONE, nsec, KNOT_PF_FREE, qdata);
 		if (r != KNOT_EOK) {
 			knot_rrset_free(nsec, &pkt->mm);
 			return KNOTD_IN_STATE_ERROR;
@@ -534,7 +546,7 @@ static knotd_in_state_t synth_answer(knotd_in_state_t state, knot_pkt_t *pkt,
 			return KNOTD_IN_STATE_ERROR;
 		}
 
-		int r = knot_pkt_put(pkt, KNOT_COMPR_HINT_QNAME, dnskey, KNOT_PF_FREE);
+		int r = pkt_put_trunc(pkt, KNOT_COMPR_HINT_QNAME, dnskey, KNOT_PF_FREE, qdata);
 		if (r != KNOT_EOK) {
 			knot_rrset_free(dnskey, &pkt->mm);
 			return KNOTD_IN_STATE_ERROR;
@@ -548,7 +560,7 @@ static knotd_in_state_t synth_answer(knotd_in_state_t state, knot_pkt_t *pkt,
 			return KNOTD_IN_STATE_ERROR;
 		}
 
-		int r = knot_pkt_put(pkt, KNOT_COMPR_HINT_QNAME, dnskey, KNOT_PF_FREE);
+		int r = pkt_put_trunc(pkt, KNOT_COMPR_HINT_QNAME, dnskey, KNOT_PF_FREE, qdata);
 		if (r != KNOT_EOK) {
 			knot_rrset_free(dnskey, &pkt->mm);
 			return KNOTD_IN_STATE_ERROR;
@@ -562,7 +574,7 @@ static knotd_in_state_t synth_answer(knotd_in_state_t state, knot_pkt_t *pkt,
 			return KNOTD_IN_STATE_ERROR;
 		}
 
-		int r = knot_pkt_put(pkt, KNOT_COMPR_HINT_QNAME, ds, KNOT_PF_FREE);
+		int r = pkt_put_trunc(pkt, KNOT_COMPR_HINT_QNAME, ds, KNOT_PF_FREE, qdata);
 		if (r != KNOT_EOK) {
 			knot_rrset_free(ds, &pkt->mm);
 			return KNOTD_IN_STATE_ERROR;
@@ -576,7 +588,7 @@ static knotd_in_state_t synth_answer(knotd_in_state_t state, knot_pkt_t *pkt,
 			return KNOTD_IN_STATE_ERROR;
 		}
 
-		int r = knot_pkt_put(pkt, KNOT_COMPR_HINT_QNAME, nsec, KNOT_PF_FREE);
+		int r = pkt_put_trunc(pkt, KNOT_COMPR_HINT_QNAME, nsec, KNOT_PF_FREE, qdata);
 		if (r != KNOT_EOK) {
 			knot_rrset_free(nsec, &pkt->mm);
 			return KNOTD_IN_STATE_ERROR;
