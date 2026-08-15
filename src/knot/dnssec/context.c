@@ -83,15 +83,20 @@ static void policy_load(knot_kasp_policy_t *policy, conf_t *conf, conf_val_t *id
 	val = conf_id_get(conf, C_POLICY, C_RRSIG_LIFETIME, id);
 	policy->rrsig_lifetime = conf_int(&val);
 
+	val = conf_id_get(conf, C_POLICY, C_RRSIG_PREREFRESH, id);
+	policy->rrsig_prerefresh = conf_int(&val);
+
 	val = conf_id_get(conf, C_POLICY, C_RRSIG_REFRESH, id);
 	num = conf_int(&val);
 	policy->rrsig_refresh_before = (num != YP_NIL) ? num : UINT32_MAX;
 	if (policy->rrsig_refresh_before == UINT32_MAX && policy->zone_maximal_ttl != UINT32_MAX) {
-		policy->rrsig_refresh_before = policy->propagation_delay + policy->zone_maximal_ttl;
+		uint32_t min = policy->propagation_delay + policy->zone_maximal_ttl;
+		uint32_t reserve = 0.1 * policy->rrsig_lifetime;
+		policy->rrsig_refresh_before = MIN(
+			policy->rrsig_lifetime - policy->rrsig_prerefresh - 1,
+			min + reserve
+		);
 	}
-
-	val = conf_id_get(conf, C_POLICY, C_RRSIG_PREREFRESH, id);
-	policy->rrsig_prerefresh = conf_int(&val);
 
 	val = conf_id_get(conf, C_POLICY, C_REPRO_SIGNING, id);
 	policy->reproducible_sign = conf_bool(&val);
