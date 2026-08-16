@@ -1,0 +1,85 @@
+;; Zone dump (Knot DNS 3.6.dev0+1787314019.5c371d6bc)
+example1.           	10	SOA	a.ns.example1. admin.example1. 2 10 10 120 10
+example1.           	10	NS	a.ns.example1.
+example1.           	10	NS	b.ns.example1.
+example1.           	10	NS	ns.out.
+example1.           	10	DNSKEY	256 3 13 giqvuyXVtci48/kUYjhI/Ni120cb1MfN8w9kNofR6NqK7arRANW0UK4HuGmg558AInCz4WDlimlU7P6nqaqukw==
+example1.           	10	DNSKEY	257 3 13 h373SNOgz5fLnpuhuTSI06FUm2ha/octFwud4uW5E9WAbeqhqcTlxUD1cTZpoXGtsPqlqEjnHv6pXVHKbYGtJw==
+example1.           	0	CDS	63786 13 2 3FE075ACFD1CB8F6D252DFA5D644237F6375100B7C8A07B0F8E39742ACE43961
+example1.           	0	CDNSKEY	257 3 13 h373SNOgz5fLnpuhuTSI06FUm2ha/octFwud4uW5E9WAbeqhqcTlxUD1cTZpoXGtsPqlqEjnHv6pXVHKbYGtJw==
+deleg.example1.     	10	NS	a.ns.deleg.example1.
+deleg.example1.     	10	NS	ns.out.
+a.ns.deleg.example1.	10	A	10.0.1.1
+a.ns.deleg.example1.	10	AAAA	fd00::1:1
+a.mail.example1.    	10	A	10.0.1.1
+b.mail.example1.    	10	AAAA	fd00::1:1
+cname.mail.example1.	10	CNAME	a.mail.example1.
+mx.example1.        	10	MX	10 a.mail.example1.
+mx.example1.        	10	MX	20 b.mail.example1.
+mx.example1.        	10	MX	30 mail.out.
+mx-cname.example1.  	10	MX	10 cname.mail.example1.
+a.ns.example1.      	10	A	10.0.0.1
+a.ns.example1.      	10	AAAA	fd00::a1
+b.ns.example1.      	10	AAAA	fd00::b1
+b.ns.example1.      	10	AAAA	fd00::b2
+ptr.example1.       	10	PTR	target.example1.
+a.service.example1. 	10	TXT	"no address"
+b.service.example1. 	10	AAAA	fd00::2:1
+b.service.example1. 	10	AAAA	fd00::2:2
+b.service.example1. 	10	AAAA	fd00::2:3
+srv.example1.       	10	SRV	10 0 1000 a.service.example1.
+srv.example1.       	10	SRV	10 0 1000 b.service.example1.
+srv.example1.       	10	SRV	10 0 1000 service.out.
+target.example1.    	10	A	10.0.3.1
+target.example1.    	10	AAAA	fd00::3:1
+;; DNSSEC signatures
+example1.           	10	RRSIG	NS 13 1 10 20260904173822 20260821160822 52498 example1. pP3NxiF6ZLLRsiFTdLXQIv/DOkmTRyxNFKIar2MCn7TZ0Awhutwi2YNUpcXXDlnhhZz3Rh5EzXiJvQVAnj7faA==
+example1.           	10	RRSIG	SOA 13 1 10 20260904173822 20260821160822 52498 example1. sDeD2doWZ+CYHBGEdDNiNi/4Wj7jgejHw8kfb2YtCGllr1h8zKOkyXWg6j2zZQyOkQsli71zos7UXFRJgb3J5Q==
+example1.           	10	RRSIG	NSEC 13 1 10 20260904173822 20260821160822 52498 example1. Ulx3ijyLC6wO7r79M94BfZXgdfly3V6rsGlk57IcCDtUUjBAqubSHF3lSILW47VeliF3Tg3ncnTqjm2XAWMlwQ==
+example1.           	10	RRSIG	DNSKEY 13 1 10 20260904173822 20260821160822 63786 example1. NN1P5HyvuxeEnsQCAV2ViiJ+dW32N4TB+jao17qXXvR8ERD7Ubux+Iqzv5Jej6MfdfdCZxVOa3jx8hYaSKt/zg==
+example1.           	0	RRSIG	CDS 13 1 0 20260904173822 20260821160822 63786 example1. YB9LOrMjquSbPSICZ/EVgtqlh+k2tiYIpy7rKDKALFTIfP4zzmadlTJ09x7X7eeVLRnARChHuHYK8NuUl6zN0g==
+example1.           	0	RRSIG	CDNSKEY 13 1 0 20260904173822 20260821160822 63786 example1. kRa7UcQ7fULQyZKqs3zYI01p7QFLGSsFZ+85LAZyFiFI9wPs53vtBfoc4M6LbfULt07ZJCgtRNqz6gULJAdLyg==
+deleg.example1.     	10	RRSIG	NSEC 13 2 10 20260904173822 20260821160822 52498 example1. jES2gAlHlh4Au/j3Zk12b8NR776gm8mLGujnKtJ3lO7263JI8FHsx2snsePK4AOBUUad7gFlH90ymzheJuGT3A==
+a.mail.example1.    	10	RRSIG	A 13 3 10 20260904173822 20260821160822 52498 example1. 0c8xlbaLjkf/dWTUr/hAUejbuu+h15IVOJWIrOBNQ3wJVjtb8savNGHgR51psHAeJlpoUc7CH+w1fI3AHvRALQ==
+a.mail.example1.    	10	RRSIG	NSEC 13 3 10 20260904173822 20260821160822 52498 example1. FB6el1ULPodsUSmJz1D1Yhd4HZaqNqrWzOylWPEGiiJKrPX9Xp3tJpRa5HrJ/D3/TzoyAPuXLtMLOqZL78D39w==
+b.mail.example1.    	10	RRSIG	AAAA 13 3 10 20260904173822 20260821160822 52498 example1. QXhPnJqu0REI4iWjesos01wgcmWuZvG6k0VZLegEccnLiyrcW22QqpUqjjUcTIZzHNUTnJ8wXgPi0593nxpN7w==
+b.mail.example1.    	10	RRSIG	NSEC 13 3 10 20260904173822 20260821160822 52498 example1. 63JioU4qNpeh5ntrd0USVf31zQnvxG0SrFWfay90Lv4Wl1ZzS6oD/Z6k5Fx2GXoqD+gswr4K8c7mGtBMmvImKg==
+cname.mail.example1.	10	RRSIG	CNAME 13 3 10 20260904173822 20260821160822 52498 example1. rsu37nCHyoSiz9A1MKNgVJP5nFlCVRkEsWeze6N/vDI+URaDWUcSAQmqQhbJKX15bXfHKu0ecllmvHh1tQrccw==
+cname.mail.example1.	10	RRSIG	NSEC 13 3 10 20260904173822 20260821160822 52498 example1. xMd/eAjcGYntm+suOkePZSDOAIfyHEVF4ORCW2qyKe25YNucQrJZMkzCAHslZBSmf/VrEuJjlZxNjRtDTIXbyg==
+mx.example1.        	10	RRSIG	MX 13 2 10 20260904173822 20260821160822 52498 example1. blXUyYQ9o0NZNzQu/S2MuusyFV8xryovlDi+jLvq4pvzwJk6/GnlR+Rt3S+8DOp/a5u6YKbIY4pSnJ9E4sqy4Q==
+mx.example1.        	10	RRSIG	NSEC 13 2 10 20260904173822 20260821160822 52498 example1. ++OReiPtZYbAUd88XCxjkbbQVGwQaVoHAy2V1w5p2iQzuIw+K9GBgQkopXp7nJpd8b0uXwQ7UgSNMys9+mpQAw==
+mx-cname.example1.  	10	RRSIG	MX 13 2 10 20260904173822 20260821160822 52498 example1. uPUK+ZrW+HP92uHboVEhwA/LjIgL+kh/mkVt0MqTqKS4iNmJESkjCgc18NLxvjP2KxdDDM3Z9dxdl/UiQVdRuw==
+mx-cname.example1.  	10	RRSIG	NSEC 13 2 10 20260904173822 20260821160822 52498 example1. Nbybl6SMatcahlLS/DuCRXppL8X4roa6qMROoXko+wV6fSy2iiwxbkuZLx6vkanq7Oiv3TFmeGfDrYYVCjDGxw==
+a.ns.example1.      	10	RRSIG	A 13 3 10 20260904173822 20260821160822 52498 example1. CsqvN0Wd8uYrKgnaIOdkYWwx8N9dbMg+vTeCKq5CkKlYakCEN04jdRuzh1oFyq1n9XFA0GkGEHs76rhQr0/Xaw==
+a.ns.example1.      	10	RRSIG	AAAA 13 3 10 20260904173822 20260821160822 52498 example1. +lOl9FnTNEo4Bcqu39pmYEEpjh/ncKkhR6p5tE7aqanlzYx7JYR4xynT/y+xDVUofPn8pYaMaBONP+0atucAww==
+a.ns.example1.      	10	RRSIG	NSEC 13 3 10 20260904173822 20260821160822 52498 example1. 8SSlaiQ8As/huKO3SxzYXIKrXbRO0wRH/KEAZGnZTA8GJOkZeb8ldlECqNe0Rf5s0OnCMYireEqCXpDD5TXFcw==
+b.ns.example1.      	10	RRSIG	AAAA 13 3 10 20260904173822 20260821160822 52498 example1. aRVy7zh6OtT9BHJ84vxtmSOYdbRyCj608wsy3qyZTn9XkmYqBRHZX+Ch/tML5qvXmOy5iffAZtsukkLeBHCePw==
+b.ns.example1.      	10	RRSIG	NSEC 13 3 10 20260904173822 20260821160822 52498 example1. Lb0RP/gH3Dr3CEmzXD48Fpx7CALM3iHisuC1AHB1J71gxQn4ujPLvD3gpoljRYTrxssPBPrrysqmDmI6NN6XeA==
+ptr.example1.       	10	RRSIG	PTR 13 2 10 20260904173822 20260821160822 52498 example1. +MIQi52C1YAV2dgmuPZE9pGO5OrMQY1S/rbd2RHBRuBHpKmXPlj5iVa1EBKYWwL4mmkkS0HHKF+dKZWJsv+A8g==
+ptr.example1.       	10	RRSIG	NSEC 13 2 10 20260904173822 20260821160822 52498 example1. LKPlzeVE+180Cpn5NPnmQu/9OryGuRgtQ3rqkEKjliMjQbOWMNlJzl84Fj4nWlx5sLu+L2zBgFRGP/UeUVb5Nw==
+a.service.example1. 	10	RRSIG	TXT 13 3 10 20260904173822 20260821160822 52498 example1. RvqDKmv81Bbp5nf/7Gk+7AqylwgIxxjUmzf9Ei+RgDBuAEFh4cDRk7WqEt1Vtxt0n0eBGb4aLwgxeInD7GP4pw==
+a.service.example1. 	10	RRSIG	NSEC 13 3 10 20260904173822 20260821160822 52498 example1. jvP95PNIl9ybCG4qdRLos/gQPbkU95kBYj2zd/xFo3ho3CDniY8LH0Pq2iaS4oN70zLa8eaLDgCKlXz+3N0LAw==
+b.service.example1. 	10	RRSIG	AAAA 13 3 10 20260904173822 20260821160822 52498 example1. ZBBJBrefEBtGA6YWPH92AMnt7fq+gdqfo01OkV6JxgZt/sU8uAgd6YM1kvf4hkJtqk1gPL261PTrA4e9yCq5qA==
+b.service.example1. 	10	RRSIG	NSEC 13 3 10 20260904173822 20260821160822 52498 example1. 6DUJ0OCWO9M+KPH89DK/1vJ834LssvOEAQWEUiCw8Fu1m4QH+9LP549mi+Zg4p05st4PETEvBK6DtNO6vnMJEw==
+srv.example1.       	10	RRSIG	SRV 13 2 10 20260904173822 20260821160822 52498 example1. WT8pOU1c4zXSqbCY4w9bihy8zkKEyx2UJg+S1bplypuOp5c1H22zzCPQ9sy/9UE2CJj9QgvbqgAqKqOuQPk0Rw==
+srv.example1.       	10	RRSIG	NSEC 13 2 10 20260904173822 20260821160822 52498 example1. hdfbm7BTk1G2YViawNTwmKbx5s0lwuewvmddY+jUBvKfJaX800jKldVIHRxrvrxAPgC+jrprblWOXbAv7G4Taw==
+target.example1.    	10	RRSIG	A 13 2 10 20260904173822 20260821160822 52498 example1. pALNY+mTqiwucAGaawCzbNjmPvmEzhS7ZiTM3nCGU1S/s29WMVBAyzotspbbSoBtetA67YKa1YL0inVbfZK4rA==
+target.example1.    	10	RRSIG	AAAA 13 2 10 20260904173822 20260821160822 52498 example1. 5qSFSYHZZ4AIAfMHYdUpX1zJKSm3nHZnsZDPLdcelSaGNff2kteOHPXdzShLySSp01YuSdhY4+nrmeeLAes19w==
+target.example1.    	10	RRSIG	NSEC 13 2 10 20260904173822 20260821160822 52498 example1. Xi5WlLUUtxWua07Qk+riu2hB0WmyyV+A88cnf0IhJryqCDOmdP2xCZ5rkshDSZeCI2ZtnIOgLcIJ0BZopf96rA==
+;; DNSSEC NSEC chain
+example1.           	10	NSEC	deleg.example1. NS SOA RRSIG NSEC DNSKEY CDS CDNSKEY
+deleg.example1.     	10	NSEC	a.mail.example1. NS RRSIG NSEC
+a.mail.example1.    	10	NSEC	b.mail.example1. A RRSIG NSEC
+b.mail.example1.    	10	NSEC	cname.mail.example1. AAAA RRSIG NSEC
+cname.mail.example1.	10	NSEC	mx.example1. CNAME RRSIG NSEC
+mx.example1.        	10	NSEC	mx-cname.example1. MX RRSIG NSEC
+mx-cname.example1.  	10	NSEC	a.ns.example1. MX RRSIG NSEC
+a.ns.example1.      	10	NSEC	b.ns.example1. A AAAA RRSIG NSEC
+b.ns.example1.      	10	NSEC	ptr.example1. AAAA RRSIG NSEC
+ptr.example1.       	10	NSEC	a.service.example1. PTR RRSIG NSEC
+a.service.example1. 	10	NSEC	b.service.example1. TXT RRSIG NSEC
+b.service.example1. 	10	NSEC	srv.example1. AAAA RRSIG NSEC
+srv.example1.       	10	NSEC	target.example1. SRV RRSIG NSEC
+target.example1.    	10	NSEC	example1. A AAAA RRSIG NSEC
+;; Written 80 records
+;; Time 2026-08-21 19:38:23 CEST

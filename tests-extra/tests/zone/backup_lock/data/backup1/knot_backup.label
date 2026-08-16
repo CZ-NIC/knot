@@ -1,0 +1,10 @@
+label: Knot DNS Backup
+backup_format: 2
+server_identity: tester
+started_time: 2026-08-21 19:38:23 CEST
+finished_time: 2026-08-21 19:38:23 CEST
+knot_version: 3.6.dev0+1787314019.5c371d6bc
+lmdb_version: 0.9.31
+architecture: 64LE
+parameters: +zonefile +journal +timers +kaspdb +nokeysonly +catalog +quic +backupdir /home/dvasek/LMDB/TESTS/knottest-1787333803-cnfhrv3x/zone/backup_lock/knot2/newbackup
+zone_count: 3

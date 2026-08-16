@@ -58,7 +58,7 @@ zones2 = t.zone("example1.", file_name="example1.file", storage=".")  \
          + t.zone("example2.", file_name="example2.file", storage=".") \
          + t.zone("example3.", file_name="example3.file", storage=".")
 t.link(zones2, master2)
-for i in range(2, 9):
+for i in range(1, 9):
     dir_from = os.path.join(t.data_dir, "backup%d" % i)
     dir_to = os.path.join(master2.dir, "backup%d" % i)
     shutil.copytree(dir_from, dir_to)
@@ -203,6 +203,13 @@ for filters in test_filters:
     check_log_err(master, "requested data not in backup")
 
 # Tests with preconfigured backups, server master2. #############################
+
+# Do a simple restore of a format 2 backup in LMDB 0.9 layout, expected OK.
+# Depending on the current LMDB version, do either restore or migration-and-restore.
+try:
+    master2.ctl("-f zone-restore +backupdir %s" % backup1_dir, wait=True)
+except:
+    set_err("RESTORE FROM LMDB 0.9 BACKUP FAILED")
 
 # Attempt to restore without the "-f" option from the format 1 backup, expected (malformed data).
 try:
