@@ -12,13 +12,20 @@ t = Test(stress=False)
 ModOnlineSign.check()
 
 knot = t.server("knot")
-zones = t.zone_rnd(4, dnssec=False, records=5)
+zones = t.zone_rnd(1, dnssec=False, records=5) + \
+        t.zone_rnd(3, dnssec=False, records=5)
 t.link(zones, knot, journal_content="none")
 knot.add_module(zones[0], ModOnlineSign())
 knot.add_module(zones[1], ModOnlineSign("ECDSAP384SHA384", key_size="384"))
 knot.dnssec(zones[2]).enable = True
 knot.dnssec(zones[3]).enable = True
 knot.dnssec(zones[3]).nsec3 = True
+
+knot.zones[zones[0].name].zfile.append_rndTXT("tc", rdlen=255)
+knot.zones[zones[0].name].zfile.append_rndTXT("tc", rdlen=255)
+knot.zones[zones[0].name].zfile.append_rndTXT("tc", rdlen=255)
+knot.zones[zones[0].name].zfile.append_rndTXT("tc", rdlen=255)
+knot.zones[zones[0].name].zfile.append_rndTXT("tc", rdlen=80)
 
 def check_zone(zone, dnskey_rdata_start):
     # Check SOA record.
@@ -71,6 +78,12 @@ serial = knot.zones_wait(zones)
 
 check_zone(zones[0], "257 3 13")
 check_zone(zones[1], "257 3 14")
+
+# Check only TC when adding an RRSIG; other cases are difficult to trigger even with minimum packet size of 512 bytes.
+resp = knot.dig("tc." + zones[0].name, "TXT", udp=True, bufsize=1232, tsig=False, dnssec=False)
+resp.check(rcode="NOERROR", flags="QR AA", noflags="TC")
+resp = knot.dig("tc." + zones[0].name, "TXT", udp=True, bufsize=1232, tsig=False, dnssec=True)
+resp.check(rcode="NOERROR", flags="QR AA TC")
 
 for z in zones:
     knot.update_zonefile(z, random=True)
