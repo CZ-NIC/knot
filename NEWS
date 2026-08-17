@@ -1,3 +1,36 @@
+Knot DNS 3.5.7 (2026-08-18)
+===========================
+
+Improvements:
+-------------
+ - knotd: new debug logging for DDNS prerequisite errors
+ - knotd: support for SO_BINDTODEVICE for remotes/via #977 (Thanks to Tore Anderson)
+ - keymgr: 'keystore-bench' is slow with many threads and a high-latency HSM connection
+ - keymgr: 'keystore-bench' command accepts a filter by signing algorithm
+ - libs: upgraded embedded libngtcp2 to 1.25.0
+ - doc: various improvements
+
+Bugfixes:
+---------
+ - knotd: server crash due to a missing check for malformed TCP packet in XDP mode (Thanks to Arthur Chan)
+ - knotd: server crash when processing XFR or NOTIFY with non-IN records (Thanks to Qifan Zhang)
+ - knotd: server crash when processing an outbound reply with non-IN records (Thanks to Qifan Zhang)
+ - knotd: server crash on zone with NSEC3PARAM but without NSEC3 records (Thanks to Qifan Zhang)
+ - knotd: incorrect ACL address range evaluation (Thanks to Qifan Zhang)
+ - knotd: assertion failure if zone expire is set to maximum (Thanks to Qifan Zhang)
+ - knotd: server crash if SOA serial is not increased during IXFR from AXFR processing (Thanks to Qifan Zhang)
+ - knotd: default 'policy.rrsig-refresh' value not considered for DNSSEC validation
+ - knotd: missing '0.1 * policy.rrsig_lifetime' part in 'rrsig-refresh' default if 'policy.zone-max-ttl' is set #978
+ - libknot: defective QUIC stateless-reset handler vulnerable to a crash (Thanks to Arthur Chan and Kushal Das)
+ - libknot: insufficient check for oversized ECS EDNS option (Thanks to Qifan Zhang)
+ - libknot: TSIG truncation check not implemented (Thanks to Qifan Zhang)
+ - libs: inappropriate realloc failure handlings in heap structure
+ - mod-authsignal: server crash if insertion to packet fails (Thanks to Qifan Zhang)
+ - mod-authsignal: server crash if zone name contains _dsboot prefix (Thanks to Qifan Zhang)
+ - mod-dnsproxy: outbound packet insertion error not propagated to client (Thanks to Qifan Zhang)
+ - mod-onlinesign: server responds with SERVFAIL instead of NOERROR if reply is truncated
+ - man: incorrect default paths for files, databases and sockets #976
+
 Knot DNS 3.5.6 (2026-07-20)
 ===========================
 
