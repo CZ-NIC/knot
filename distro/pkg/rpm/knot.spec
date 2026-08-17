@@ -94,9 +94,8 @@ Requires(postun):	systemd
 
 Requires:	%{name}-libs%{?_isa} = %{version}-%{release}
 
-%if 0%{?suse_version}
+Provides:	user(knot)
 Provides:	group(knot)
-%endif
 
 %description
 Knot DNS is a high-performance authoritative DNS server implementation.
