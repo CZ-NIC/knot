@@ -1,3 +1,33 @@
+Knot DNS 3.4.11 (2026-08-18)
+============================
+
+Bugfixes:
+---------
+ - knotd: server crash on zone with NSEC3PARAM but without NSEC3 records (Thanks to Qifan Zhang)
+ - knotd: server crash due to a missing check for malformed TCP packet in XDP mode (Thanks to Arthur Chan)
+ - knotd: server crash when processing XFR or NOTIFY with non-IN records (Thanks to Qifan Zhang)
+ - knotd: server crash when processing an outbound reply with non-IN records (Thanks to Qifan Zhang)
+ - knotd: server crashes if the QUIC client limit is lower than the number of UDP workers
+ - knotd: incorrect ACL address range evaluation (Thanks to Qifan Zhang)
+ - knotd: assertion failure if zone expire is set to maximum (Thanks to Qifan Zhang)
+ - knotd: default 'policy.rrsig-refresh' value not considered for DNSSEC validation
+ - knotd: missing '0.1 * policy.rrsig_lifetime' part in 'rrsig-refresh' default if 'policy.zone-max-ttl' is set #978
+ - knotd: segfault on SIGTERM if periodic statistics dumping is enabled #972
+ - knotd: redundant RRSIGs are removed during DNSSEC validation
+ - knotd: missing AA flag in AXFR and IXFR responses
+ - libdnssec: memory leak when PEM key generation fails
+ - libknot: defective QUIC stateless-reset handler vulnerable to a crash (Thanks to Arthur Chan and Kushal Das)
+ - libknot: assertion failure in QUIC connection handling under high load
+ - libknot: undefined behavior in QUIC data stream processing
+ - libknot: TSIG truncation check not implemented (Thanks to Qifan Zhang)
+ - libknot: insufficient check for oversized ECS EDNS option (Thanks to Qifan Zhang)
+ - libs: inappropriate realloc failure handlings in heap structure
+ - mod-geoip: inconsistent behavior for specific records and ANY queries #971
+ - mod-dnsproxy: outbound packet insertion error not propagated to client (Thanks to Qifan Zhang)
+ - mod-onlinesign: server responds with SERVFAIL instead of NOERROR if reply is truncated
+ - kxdpgun: crash when reusing a swept-out QUIC connection
+ - knot-exporter: uncaught exception when connecting to knotd that is not running #974
+
 Knot DNS 3.4.10 (2026-04-02)
 ============================
 
