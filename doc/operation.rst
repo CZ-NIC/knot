@@ -1652,24 +1652,21 @@ handles one RX and TX network queue pair.
 
 .. _Mode XDP_pre-requisites:
 
-Pre-requisites
---------------
+Prerequisites
+-------------
 
 * Linux kernel 4.18+ (5.x+ is recommended for optimal performance) compiled with
   the `CONFIG_XDP_SOCKETS=y` option. The XDP mode isn't supported in other operating systems.
-* A multiqueue network card, which offers enough Combined RX/TX channels, with
-  native XDP support is highly recommended. Successfully tested cards:
+* A multiqueue network card that offers enough combined RX/TX channels and supports
+  native XDP is highly recommended. Successfully tested cards:
 
-  * NVIDIA (Mellanox) ConnectX-6 Dx (driver `mlx5_core`), the maximum number of channels
-    per interface is 127.
-  * Intel series E810 (driver `ice`), the maximum number of channels per interface must
-    be limited to 127 or fewer. Linux kernel 6.10.4 or later, along with its driver,
-    is required for stability.
-  * Intel series 700 (driver `i40e`), the maximum number of channels per interface is 64.
-    Linux kernel drivers are recommended.
+  * NVIDIA (Mellanox) ConnectX-7, ConnectX-6 Dx (driver `mlx5_core`).
 
-  Cards with known instability issues:
+  Cards with known instability issues when :ref:`xdp_zero-copy` is enabled
+  on some Linux kernels:
 
+  * Intel series E810 (driver `ice`).
+  * Intel series 700 (driver `i40e`).
   * Intel series 500 (driver `ixgbe`).
 
 * If the `knotd` service is not directly executed in the privileged mode, some
