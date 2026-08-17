@@ -97,9 +97,8 @@ Requires:	%{name}-libs%{?_isa} = %{version}-%{release}
 
 Recommends:	%{name}-keymgr
 
-%if 0%{?suse_version}
+Provides:	user(knot)
 Provides:	group(knot)
-%endif
 
 %description
 Knot DNS is a high-performance authoritative DNS server implementation.
