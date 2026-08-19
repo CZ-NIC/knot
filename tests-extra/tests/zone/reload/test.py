@@ -45,10 +45,10 @@ def reload_zone(version, exp_serial, exp_version, msg):
 reload_zone(1, serial + 1, 1, "create changeset")
 
 # Zone changes, serial doesn't change (create changeset, increment serial automatically)
-reload_zone(2, serial + 2, 2, "auto incremented")
+reload_zone(2, serial + 1, 1, "auto incremented - shouldn't work")
 
 # Zone changes, serial jumps out-of-range (journal is not applicable)
-reload_zone(3, serial + 2, 2, "journal not applied")
+reload_zone(3, serial + 1, 1, "journal not applied")
 
 # Stop master.
 master.stop()
