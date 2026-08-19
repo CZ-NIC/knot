@@ -13,6 +13,8 @@
 #include "knot/zone/node.h"
 #include "knot/zone/zone-tree.h"
 
+#define NSEC3PARAM_MAX_ITERS	256
+
 enum zone_contents_find_dname_result {
 	ZONE_NAME_NOT_FOUND = 0,
 	ZONE_NAME_FOUND     = 1

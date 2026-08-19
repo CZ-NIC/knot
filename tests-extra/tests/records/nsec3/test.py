@@ -26,4 +26,11 @@ resp.check_count(1, "NSEC3PARAM")
 resp = slave.dig("dowiejoiewj." + zone[0].name, "AAAA", dnssec=True)
 resp.check(rcode="SERVFAIL")
 
+master.update_zonefile(zone, version=1)
+try:
+    master.ctl("zone-reload", wait=True)
+    set_err("NSEC3PARAM with iterations accepted")
+except:
+    pass
+
 t.end()

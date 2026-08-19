@@ -601,6 +601,11 @@ int zone_contents_load_nsec3param(zone_contents_t *contents)
 		return ret;
 	}
 
+	if (new_params.iterations > NSEC3PARAM_MAX_ITERS) {
+		dnssec_nsec3_params_free(&new_params);
+		return KNOT_ENSEC3PAR;
+	}
+
 	dnssec_nsec3_params_free(&contents->nsec3_params);
 	contents->nsec3_params = new_params;
 	return KNOT_EOK;
