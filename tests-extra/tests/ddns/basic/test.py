@@ -677,14 +677,11 @@ def do_refusal_tests(master, zone, dnssec=False):
     check_log("Added NSEC3PARAM")
     up = master.update(zone)
     up.add("ddns.", 3600, "NSEC3PARAM", "1 0 0 -")
-    up.send("REFUSED" if master.dnssec(zone).nsec3 else "NOERROR")
+    up.send("REFUSED")
+    check_soa(master, prev_soa)
     resp = master.dig("ddns.", "NSEC3PARAM")
-    resp.check_count(1, "NSEC3PARAM")
-    if master.dnssec(zone).nsec3:
-        check_soa(master, prev_soa)
-        resp.check(nordata="1 0 0 -")
-    else:
-        resp.check(rdata="1 0 0 -")
+    resp.check_count(1 if master.dnssec(zone).nsec3 else 0, "NSEC3PARAM")
+    resp.check(nordata="1 0 0 -")
 
     if dnssec:
         # Add DNSKEY
