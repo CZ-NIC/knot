@@ -432,7 +432,8 @@ static int axfr_consume_rr(const knot_rrset_t *rr, struct refresh_data *data)
 	zone_contents_t *contents = data->axfr.zone;
 
 	if (rr->type == KNOT_RRTYPE_SOA &&
-	    node_rrtype_exists(contents->apex, KNOT_RRTYPE_SOA)) {
+	    node_rrtype_exists(contents->apex, KNOT_RRTYPE_SOA) &&
+	    knot_dname_is_equal(rr->owner, contents->apex->owner)) {
 		return KNOT_STATE_DONE;
 	}
 
