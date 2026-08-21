@@ -146,8 +146,8 @@ int migrate_lmdb(
 		ret = move_files(tmp_dir, db_dir, "data.mdb", "lock.mdb");
 		MIGR_LOG(ret, "moving new database to '%s'", db_dir);
 	}
+	remove_path(tmp_dir, false);
 	if (ret != KNOT_EOK) {
-		remove_path(tmp_dir, false);
 		remove_path(dump_file, false);
 		log_error("database, migration of '%s' failed", db_dir);
 	} else {
