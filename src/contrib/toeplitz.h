@@ -36,14 +36,10 @@ inline static uint32_t toeplitz_hash(const uint8_t *key, const size_t key_len,
 
 	for (int i = 0; i < data_len; i++) {
 		for (int bit = 7; bit >= 0; bit--) {
-			if (data[i] & (1 << bit)) {
-				ret ^= key32;
-			}
-
+			ret ^= (!!(data[i] & (1 << bit))) * key32;
 			key32 <<= 1;
-			key32 |= !!(key[0] & (1 << bit));
+			key32 |= !!(key[i] & (1 << bit));
 		}
-		key++;
 	}
 
 	return ret;
