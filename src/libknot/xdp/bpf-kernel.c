@@ -212,6 +212,11 @@ int xdp_redirect_dns_func(struct xdp_md *ctx)
 			return XDP_DROP;
 		}
 
+		/* Check that the advertised IP length doesn't exceed IP + TCP header length. */
+		if ((void *)tcp - ip_hdr > ip_len - tcp->doff * 4) {
+			return XDP_DROP;
+		}
+
 		port_dest = bpf_ntohs(tcp->dest);
 
 		if ((opts.flags & KNOT_XDP_FILTER_TCP) &&
