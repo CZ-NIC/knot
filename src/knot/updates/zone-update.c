@@ -556,6 +556,12 @@ int zone_update_remove(zone_update_t *update, const knot_rrset_t *rrset)
 	if (update->flags & UPDATE_INCREMENTAL) {
 		if (rrset->type == KNOT_RRTYPE_SOA) {
 			/* SOA is replaced with addition */
+			if (update->flags & UPDATE_STRICT) {
+				knot_rdataset_t *old_soa = node_rdataset(update->new_cont->apex, KNOT_RRTYPE_SOA);
+				if (!knot_rdataset_eq(old_soa, &rrset->rrs)) {
+					ret = KNOT_ESOAINVAL;
+				}
+			}
 		} else {
 			ret = apply_remove_rr(update->a_ctx, rrset_copy);
 			if (ret == KNOT_EOK) {
