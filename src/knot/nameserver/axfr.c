@@ -38,7 +38,7 @@ static int axfr_put_rrsets(knot_pkt_t *pkt, zone_node_t *node,
 	/* Append all RRs. */
 	for (unsigned i = state->cur_rrset; i < node->rrset_count; ++i) {
 		knot_rrset_t rrset = node_rrset_at(node, i);
-		if (rrset.type == KNOT_RRTYPE_SOA) {
+		if (rrset.type == KNOT_RRTYPE_SOA && knot_dname_is_equal(rrset.owner, ((struct axfr_proc*)state)->proc.contents->apex->owner)) {
 			continue;
 		}
 
@@ -164,6 +164,7 @@ static int axfr_query_init(knotd_qdata_t *qdata)
 	if (!zone_tree_is_empty(contents->nsec3_nodes)) {
 		ptrlist_add(&axfr->proc.nodes, contents->nsec3_nodes, mm);
 	}
+	axfr->proc.contents = (zone_contents_t *)contents;
 
 	/* Set up cleanup callback. */
 	qdata->extra->ext = axfr;
