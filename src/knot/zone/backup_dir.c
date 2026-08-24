@@ -325,12 +325,17 @@ int backupdir_deinit(zone_backup_ctx_t *ctx)
 		ret = make_label_file(ctx);
 		if (ret == KNOT_EOK) {
 			// Remove the lock file only when the label file has been created.
-			PREPARE_PATH(lock_path, lock_file_name);
-			unlink(lock_path);
+			backupdir_unlock(ctx);
 		} else {
 			log_error("failed to create a backup label in %s", ctx->backup_dir);
 		}
 	}
 
 	return ret;
+}
+
+void backupdir_unlock(zone_backup_ctx_t *ctx)
+{
+	PREPARE_PATH(lock_path, lock_file_name);
+	unlink(lock_path);
 }

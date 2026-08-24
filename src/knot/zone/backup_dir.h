@@ -28,3 +28,5 @@ int backupdir_init(zone_backup_ctx_t *ctx);
  * \return Error code, KNOT_EOK if successful.
  */
 int backupdir_deinit(zone_backup_ctx_t *ctx);
+
+void backupdir_unlock(zone_backup_ctx_t *ctx);
