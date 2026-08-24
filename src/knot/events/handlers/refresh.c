@@ -764,8 +764,12 @@ static int ixfr_solve_soa_del(const knot_rrset_t *rr, struct refresh_data *data)
 /*! \brief Stores ending SOA into changeset. */
 static int ixfr_solve_soa_add(const knot_rrset_t *rr, changeset_t *change, knot_mm_t *mm)
 {
-	if (rr->type != KNOT_RRTYPE_SOA) {
+	if (rr->type != KNOT_RRTYPE_SOA || rr->rrs.count != 1) {
 		return KNOT_EMALF;
+	}
+
+	if (serial_compare(changeset_from(change), knot_soa_serial(rr->rrs.rdata)) & SERIAL_MASK_GEQ) {
+		return KNOT_ESOAINVAL;
 	}
 
 	change->soa_to = knot_rrset_copy(rr, NULL);
