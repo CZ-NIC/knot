@@ -2485,7 +2485,8 @@ static const desc_t cmd_table[] = {
 	[CTL_ZONE_RETRANSFER] = { "zone-retransfer",    ctl_zone,         CTL_LOCK_SRV_R },
 	[CTL_ZONE_NOTIFY]     = { "zone-notify",        ctl_zone,         CTL_LOCK_SRV_R },
 	[CTL_ZONE_FLUSH]      = { "zone-flush",         ctl_zone,         CTL_LOCK_SRV_R },
-	[CTL_ZONE_BACKUP]     = { "zone-backup",        ctl_zone,         CTL_LOCK_SRV_W }, // Backup and restore must be exclusive as the global backup ctx is accessed.
+	  // Backup and restore must be exclusive as the global backup ctx is accessed.
+	[CTL_ZONE_BACKUP]     = { "zone-backup",        ctl_zone,         CTL_LOCK_SRV_W },
 	[CTL_ZONE_RESTORE]    = { "zone-restore",       ctl_zone,         CTL_LOCK_SRV_W },
 	[CTL_ZONE_SIGN]       = { "zone-sign",          ctl_zone,         CTL_LOCK_SRV_R },
 	[CTL_ZONE_VALIDATE]   = { "zone-validate",      ctl_zone,         CTL_LOCK_SRV_R },
@@ -2509,9 +2510,13 @@ static const desc_t cmd_table[] = {
 	[CTL_ZONE_STATS]      = { "zone-stats",	        ctl_zone,         CTL_LOCK_SRV_R },
 	[CTL_ZONE_SERIAL_SET] = { "zone-serial-set",    ctl_zone,         CTL_LOCK_SRV_R },
 
-	[CTL_CONF_LIST]       = { "conf-list",          ctl_conf_list,    CTL_LOCK_SRV_R }, // Can either read live conf or conf txn. The latter would deserve CTL_LOCK_SRV_W, but when conf txn exists, all cmds are done by single thread anyway.
+	  // CTL_CONF_LIST can either read live conf or conf txn. The latter would deserve
+	  // CTL_LOCK_SRV_W, but when conf txn exists, all cmds are done by single thread anyway.
+	[CTL_CONF_LIST]       = { "conf-list",          ctl_conf_list,    CTL_LOCK_SRV_R },
 	[CTL_CONF_READ]       = { "conf-read",          ctl_conf_read,    CTL_LOCK_SRV_R },
-	[CTL_CONF_BEGIN]      = { "conf-begin",         ctl_conf_txn,     CTL_LOCK_SRV_W }, // It's locked only during conf-begin, not for the whole duration of the transaction.
+	  // CTL_CONF_BEGIN is locked only during conf-begin, not for the whole duration of
+	  // the transaction.
+	[CTL_CONF_BEGIN]      = { "conf-begin",         ctl_conf_txn,     CTL_LOCK_SRV_W },
 	[CTL_CONF_COMMIT]     = { "conf-commit",        ctl_conf_txn,     CTL_LOCK_SRV_W },
 	[CTL_CONF_ABORT]      = { "conf-abort",         ctl_conf_txn,     CTL_LOCK_SRV_W },
 	[CTL_CONF_DIFF]       = { "conf-diff",          ctl_conf_read,    CTL_LOCK_SRV_W },
@@ -2556,7 +2561,7 @@ static int ctl_lock(server_t *server, ctl_lock_flag_t flags, uint64_t timeout_ms
 	ts.tv_sec += timeout_ms / 1000;
 	ts.tv_nsec += (timeout_ms % 1000) * 1000000LU;
 
-	if ((flags & CTL_LOCK_SRV_W)) {
+	if (flags & CTL_LOCK_SRV_W) {
 		assert(!(flags & CTL_LOCK_SRV_R));
 #if !defined(__APPLE__)
 		ret = pthread_rwlock_timedwrlock(&server->ctl_lock, &ts);
@@ -2564,7 +2569,7 @@ static int ctl_lock(server_t *server, ctl_lock_flag_t flags, uint64_t timeout_ms
 		ret = pthread_rwlock_wrlock(&server->ctl_lock);
 #endif
 	}
-	if ((flags & CTL_LOCK_SRV_R)) {
+	if (flags & CTL_LOCK_SRV_R) {
 #if !defined(__APPLE__)
 		ret = pthread_rwlock_timedrdlock(&server->ctl_lock, &ts);
 #else
