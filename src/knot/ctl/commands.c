@@ -2460,9 +2460,10 @@ static int ctl_conf_modify(ctl_args_t *args, ctl_cmd_t cmd)
 }
 
 typedef enum {
-	CTL_LOCK_NONE   = 0x00,
-	CTL_LOCK_SRV_R  = 0x01, // Can run in parallel with other R commands.
-	CTL_LOCK_SRV_W  = 0x02, // Cannot run in parallel with other commands.
+	CTL_LOCK_NONE  = 0,
+	CTL_LOCK_SRV_N = 1 << 0, // Can run in parallel with other R or N commands (not an event).
+	CTL_LOCK_SRV_R = 1 << 1, // Can run in parallel with other R or N commands (an event).
+	CTL_LOCK_SRV_W = 1 << 2, // Cannot run in parallel with other commands.
 } ctl_lock_flag_t;
 
 typedef struct {
@@ -2474,12 +2475,12 @@ typedef struct {
 static const desc_t cmd_table[] = {
 	[CTL_NONE]            = { "" },
 
-	[CTL_STATUS]          = { "status",             ctl_server,       CTL_LOCK_SRV_R },
-	[CTL_STOP]            = { "stop",               ctl_server,       CTL_LOCK_SRV_R },
+	[CTL_STATUS]          = { "status",             ctl_server,       CTL_LOCK_SRV_N },
+	[CTL_STOP]            = { "stop",               ctl_server,       CTL_LOCK_SRV_N },
 	[CTL_RELOAD]          = { "reload",             ctl_server,       CTL_LOCK_SRV_W },
-	[CTL_STATS]           = { "stats",              ctl_stats,        CTL_LOCK_SRV_R },
+	[CTL_STATS]           = { "stats",              ctl_stats,        CTL_LOCK_SRV_N },
 
-	[CTL_ZONE_STATUS]     = { "zone-status",        ctl_zone,         CTL_LOCK_SRV_R },
+	[CTL_ZONE_STATUS]     = { "zone-status",        ctl_zone,         CTL_LOCK_SRV_N },
 	[CTL_ZONE_RELOAD]     = { "zone-reload",        ctl_zone,         CTL_LOCK_SRV_R },
 	[CTL_ZONE_REFRESH]    = { "zone-refresh",       ctl_zone,         CTL_LOCK_SRV_R },
 	[CTL_ZONE_RETRANSFER] = { "zone-retransfer",    ctl_zone,         CTL_LOCK_SRV_R },
@@ -2495,8 +2496,8 @@ static const desc_t cmd_table[] = {
 	[CTL_ZONE_KSK_SBM]    = { "zone-ksk-submitted", ctl_zone,         CTL_LOCK_SRV_R },
 	[CTL_ZONE_FREEZE]     = { "zone-freeze",        ctl_zone,         CTL_LOCK_SRV_R },
 	[CTL_ZONE_THAW]       = { "zone-thaw",          ctl_zone,         CTL_LOCK_SRV_R },
-	[CTL_ZONE_XFR_FREEZE] = { "zone-xfr-freeze",    ctl_zone,         CTL_LOCK_SRV_R },
-	[CTL_ZONE_XFR_THAW]   = { "zone-xfr-thaw",      ctl_zone,         CTL_LOCK_SRV_R },
+	[CTL_ZONE_XFR_FREEZE] = { "zone-xfr-freeze",    ctl_zone,         CTL_LOCK_SRV_N },
+	[CTL_ZONE_XFR_THAW]   = { "zone-xfr-thaw",      ctl_zone,         CTL_LOCK_SRV_N },
 
 	[CTL_ZONE_READ]       = { "zone-read",          ctl_zone,         CTL_LOCK_SRV_R },
 	[CTL_ZONE_BEGIN]      = { "zone-begin",         ctl_zone,         CTL_LOCK_SRV_R },
@@ -2507,13 +2508,13 @@ static const desc_t cmd_table[] = {
 	[CTL_ZONE_SET]        = { "zone-set",           ctl_zone,         CTL_LOCK_SRV_R },
 	[CTL_ZONE_UNSET]      = { "zone-unset",         ctl_zone,         CTL_LOCK_SRV_R },
 	[CTL_ZONE_PURGE]      = { "zone-purge",         ctl_zone,         CTL_LOCK_SRV_W },
-	[CTL_ZONE_STATS]      = { "zone-stats",	        ctl_zone,         CTL_LOCK_SRV_R },
-	[CTL_ZONE_SERIAL_SET] = { "zone-serial-set",    ctl_zone,         CTL_LOCK_SRV_R },
+	[CTL_ZONE_STATS]      = { "zone-stats",	        ctl_zone,         CTL_LOCK_SRV_N },
+	[CTL_ZONE_SERIAL_SET] = { "zone-serial-set",    ctl_zone,         CTL_LOCK_SRV_N },
 
 	  // CTL_CONF_LIST can either read live conf or conf txn. The latter would deserve
 	  // CTL_LOCK_SRV_W, but when conf txn exists, all cmds are done by single thread anyway.
-	[CTL_CONF_LIST]       = { "conf-list",          ctl_conf_list,    CTL_LOCK_SRV_R },
-	[CTL_CONF_READ]       = { "conf-read",          ctl_conf_read,    CTL_LOCK_SRV_R },
+	[CTL_CONF_LIST]       = { "conf-list",          ctl_conf_list,    CTL_LOCK_SRV_N },
+	[CTL_CONF_READ]       = { "conf-read",          ctl_conf_read,    CTL_LOCK_SRV_N },
 	  // CTL_CONF_BEGIN is locked only during conf-begin, not for the whole duration of
 	  // the transaction.
 	[CTL_CONF_BEGIN]      = { "conf-begin",         ctl_conf_txn,     CTL_LOCK_SRV_W },
@@ -2565,23 +2566,38 @@ static int ctl_lock(server_t *server, ctl_lock_flag_t flags, uint64_t timeout_ms
 		assert(!(flags & CTL_LOCK_SRV_R));
 #if !defined(__APPLE__)
 		ret = pthread_rwlock_timedwrlock(&server->ctl_lock, &ts);
+		ret = pthread_rwlock_timedwrlock(&server->ctl_lock_n, &ts);
 #else
 		ret = pthread_rwlock_wrlock(&server->ctl_lock);
+		ret = pthread_rwlock_wrlock(&server->ctl_lock_n);
 #endif
 	}
 	if (flags & CTL_LOCK_SRV_R) {
+		assert(!(flags & CTL_LOCK_SRV_W));
 #if !defined(__APPLE__)
 		ret = pthread_rwlock_timedrdlock(&server->ctl_lock, &ts);
 #else
 		ret = pthread_rwlock_rdlock(&server->ctl_lock);
 #endif
 	}
+	if (flags & CTL_LOCK_SRV_N) {
+#if !defined(__APPLE__)
+		ret = pthread_rwlock_timedrdlock(&server->ctl_lock_n, &ts);
+#else
+		ret = pthread_rwlock_rdlock(&server->ctl_lock_n);
+#endif
+	}
 	return (ret != 0 ? KNOT_EBUSY : KNOT_EOK);
 }
 
-static void ctl_unlock(server_t *server)
+static void ctl_unlock(server_t *server, ctl_lock_flag_t flags)
 {
-	pthread_rwlock_unlock(&server->ctl_lock);
+	if (flags & (CTL_LOCK_SRV_R | CTL_LOCK_SRV_W)) {
+		pthread_rwlock_unlock(&server->ctl_lock);
+	}
+	if (flags & (CTL_LOCK_SRV_N | CTL_LOCK_SRV_W)) {
+		pthread_rwlock_unlock(&server->ctl_lock_n);
+	}
 }
 
 int ctl_exec(ctl_cmd_t cmd, ctl_args_t *args)
@@ -2593,7 +2609,7 @@ int ctl_exec(ctl_cmd_t cmd, ctl_args_t *args)
 	int ret = ctl_lock(args->server, cmd_table[cmd].locks, conf()->cache.ctl_timeout);
 	if (ret == KNOT_EOK) {
 		ret = cmd_table[cmd].fcn(args, cmd);
-		ctl_unlock(args->server);
+		ctl_unlock(args->server, cmd_table[cmd].locks);
 	}
 
 	return ret;

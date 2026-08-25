@@ -129,8 +129,9 @@ typedef struct server {
 	bool quic_active;
 	bool tls_active;
 
-	/*! \brief Mutex protecting simultaneous access from concurrent CTL threads. */
-	pthread_rwlock_t ctl_lock;
+	/*! \brief Mutexes protecting simultaneous access from concurrent CTL threads. */
+	pthread_rwlock_t ctl_lock;    /* For events. */
+	pthread_rwlock_t ctl_lock_n;  /* For non-events. */
 
 	/*! \brief Pending changes to catalog member zones, update indication. */
 	catalog_update_t catalog_upd;
@@ -229,8 +230,10 @@ int server_reconfigure(conf_t *conf, server_t *server);
  * \param conf    Configuration.
  * \param server  Server instance.
  * \param mode    Reload mode.
+ * \param lock    If true, protect zone_reload() call by locking non-event CTL
+ *                command. (Normally, these commands are locked already.)
  */
-void server_update_zones(conf_t *conf, server_t *server, reload_t mode);
+void server_update_zones(conf_t *conf, server_t *server, reload_t mode, bool lock);
 
 /*!
  * \brief Returns current server certificate public key PIN as base64 string.

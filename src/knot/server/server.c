@@ -1063,6 +1063,7 @@ int server_init(server_t *server, int bg_workers)
 	ATOMIC_INIT(server->catalog_upd_signal, false);
 
 	knot_spin_init(&server->trash_gc.lock);
+	pthread_rwlock_init(&server->ctl_lock_n, NULL);
 	pthread_rwlock_init(&server->ctl_lock, NULL);
 
 	zone_backups_init(&server->backup_ctxs);
@@ -1136,6 +1137,7 @@ void server_deinit(server_t *server)
 	/* Deinit locks. */
 	knot_spin_destroy(&server->trash_gc.lock);
 	pthread_rwlock_destroy(&server->ctl_lock);
+	pthread_rwlock_destroy(&server->ctl_lock_n);
 
 	/* Free catalog zone context. */
 	catalog_update_clear(&server->catalog_upd);
@@ -1611,7 +1613,7 @@ int server_reload(server_t *server, reload_t mode)
 		stats_reconfigure(conf(), server);
 	}
 	if (full || (flags & (CONF_IO_FRLD_ZONES | CONF_IO_FRLD_ZONE))) {
-		server_update_zones(conf(), server, mode);
+		server_update_zones(conf(), server, mode, false);
 	}
 
 	/* Free old config needed for module unload in zone reload. */
@@ -1925,7 +1927,7 @@ int server_reconfigure(conf_t *conf, server_t *server)
 	return KNOT_EOK;
 }
 
-void server_update_zones(conf_t *conf, server_t *server, reload_t mode)
+void server_update_zones(conf_t *conf, server_t *server, reload_t mode, bool lock)
 {
 	if (conf == NULL || server == NULL) {
 		return;
@@ -1943,11 +1945,21 @@ void server_update_zones(conf_t *conf, server_t *server, reload_t mode)
 	worker_pool_wait(server->workers);
 	log_debug("suspended zone events");
 
+	/* As an option, lock non-event CTL commands now. */
+	if (lock) {
+		pthread_rwlock_wrlock(&server->ctl_lock_n);
+	}
+
 	/* Reload zone database and free old zones. */
 	zonedb_reload(conf, server, mode);
 
 	/* Trim extra heap. */
 	mem_trim();
+
+	/* Unlock non-event CTL commands. */
+	if (lock) {
+		pthread_rwlock_unlock(&server->ctl_lock_n);
+	}
 
 	/* Resume processing events on new zones. */
 	evsched_resume(&server->sched);
