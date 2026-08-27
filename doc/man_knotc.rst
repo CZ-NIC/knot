@@ -135,10 +135,13 @@ Actions
 
 .. _knotc_zone-retransfer:
 
-**zone-retransfer** [*zone*...]
-  Trigger a zone transfer from the zone's primary server. The server
+**zone-retransfer** [*zone*...] [**+fixfr**]
+  Trigger a full (AXFR) zone transfer from the zone's primary server. The server
   doesn't check the serial of the primary server's zone. This command is valid
-  for secondary zones. (#)
+  for secondary zones. With **+fixfr**, the SOA serial on the secondary is updated
+  according to the configured policy if the serial on the primary is decreased
+  or unchanged. Moreover, the zone difference is computed so that outgoing
+  IXFR is maintained. (#)
 
 .. _knotc_zone-notify:
 
