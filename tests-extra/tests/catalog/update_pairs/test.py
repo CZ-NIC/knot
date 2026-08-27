@@ -41,8 +41,7 @@ t = Test()
 knot = t.server("knot")
 
 catz = t.zone("catalog1.", storage=".")
-rzone = t.zone(".") # to slow down background workers
-rzone[0].update_rnd() # it needs to be larger, slower
+rzone = t.zone_rnd(1, records=600, names=["bigzone.example."]) # to slow down background workers
 
 t.link(catz, knot)
 t.link(rzone, knot)
@@ -63,7 +62,7 @@ for z in rzone:
     knot.dnssec(z).signing_threads = "2"
     if not knot.valgrind: # it would be too slow with valgrind
         knot.dnssec(z).nsec3 = True
-        knot.dnssec(z).nsec3_iterations = "65000"
+        knot.dnssec(z).nsec3_iterations = "1"
         knot.dnssec(z).algorithm = "rsasha512"
         knot.dnssec(z).zsk_size = "4096"
 
@@ -131,8 +130,7 @@ else:
 
     # Check a DNS query / zonedb.
     resp = knot.dig("cataloged2.", "SOA")
-    resp.check(rcode="NXDOMAIN") # not REFUSED due to presence of root zone;
-                                 # not SERVFAIL what is the point of the test
+    resp.check(rcode="REFUSED") # not SERVFAIL what is the point of the test
 
     # Check the catalog DB.
     knot.stop()
