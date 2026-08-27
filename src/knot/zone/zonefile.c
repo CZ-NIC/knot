@@ -158,8 +158,13 @@ int zonefile_open(zloader_t *loader, const char *source, const knot_dname_t *ori
 	if (origin == NULL) { // Origin autodetection based on SOA owner and source.
 		const char *ext = ".zone";
 		char *origin_str = basename((char *)source);
-		if (strcmp(origin_str + strlen(origin_str) - strlen(ext), ext) == 0) {
-			origin_str = strndup(origin_str, strlen(origin_str) - strlen(ext));
+		size_t origin_str_len = strlen(origin_str), ext_len = strlen(ext);
+		if (origin_str_len >= ext_len &&
+		    strcmp(origin_str + origin_str_len - ext_len, ext) == 0) {
+			if (origin_str_len == ext_len) { // The root zone case.
+				ext_len--;
+			}
+			origin_str = strndup(origin_str, origin_str_len - ext_len);
 		} else {
 			origin_str = strdup(origin_str);
 		}
