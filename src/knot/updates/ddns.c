@@ -286,14 +286,6 @@ static inline bool is_node_removal(const knot_rrset_t *rr)
 	return rr->rclass == KNOT_CLASS_ANY && rr->type == KNOT_RRTYPE_ANY;
 }
 
-/*!< \brief Returns true if last addition of certain types is to be replaced. */
-static bool should_replace(const knot_rrset_t *rrset)
-{
-	return rrset->type == KNOT_RRTYPE_CNAME ||
-	       rrset->type == KNOT_RRTYPE_DNAME ||
-	       rrset->type == KNOT_RRTYPE_NSEC3PARAM;
-}
-
 /*!< \brief Returns true if node contains given RR in its RRSets. */
 static bool node_contains_rr(const zone_node_t *node,
                              const knot_rrset_t *rrset)
@@ -359,23 +351,9 @@ static bool skip_soa(const knot_rrset_t *rr, int64_t sn)
 	return false;
 }
 
-/*!< \brief Replaces possible singleton RR type in changeset. */
-static bool singleton_replaced(zone_update_t *update, const knot_rrset_t *rr)
-{
-	if (!should_replace(rr)) {
-		return false;
-	}
-
-	return zone_update_remove_rrset(update, rr->owner, rr->type) == KNOT_EOK;
-}
-
 /*!< \brief Adds RR into add section of changeset if it is deemed worthy. */
 static int add_rr_to_changeset(const knot_rrset_t *rr, zone_update_t *update)
 {
-	if (singleton_replaced(update, rr)) {
-		return KNOT_EOK;
-	}
-
 	return zone_update_add(update, rr);
 }
 
@@ -613,15 +591,9 @@ static int check_update(const knot_rrset_t *rrset, const knot_pkt_t *query,
 	}
 
 	if (rrset->type == KNOT_RRTYPE_NSEC3PARAM) {
-		if (!knot_dname_is_equal(rrset->owner, zone->apex->owner)) {
-			log_warning("DDNS, refusing to add NSEC3PARAM to non-apex node");
-			*rcode = KNOT_RCODE_REFUSED;
-			return KNOT_EDENIED;
-		} else if (node_rrtype_exists(zone->apex, rrset->type)) {
-			log_warning("DDNS, refusing to add second NSEC3PARAM to zone apex");
-			*rcode = KNOT_RCODE_REFUSED;
-			return KNOT_EDENIED;
-		}
+		log_warning("DDNS, refusing to modify NSEC3PARAM");
+		*rcode = KNOT_RCODE_REFUSED;
+		return KNOT_EDENIED;
 	}
 
 	if (rrset->rclass == knot_pkt_qclass(query)) {
