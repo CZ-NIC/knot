@@ -1063,8 +1063,8 @@ int server_init(server_t *server, int bg_workers)
 	ATOMIC_INIT(server->catalog_upd_signal, false);
 
 	knot_spin_init(&server->trash_gc.lock);
-	pthread_rwlock_init(&server->ctl_lock_n, NULL);
 	pthread_rwlock_init(&server->ctl_lock, NULL);
+	pthread_rwlock_init(&server->ctl_lock_n, NULL);
 
 	zone_backups_init(&server->backup_ctxs);
 
@@ -1953,13 +1953,13 @@ void server_update_zones(conf_t *conf, server_t *server, reload_t mode, bool loc
 	/* Reload zone database and free old zones. */
 	zonedb_reload(conf, server, mode);
 
-	/* Trim extra heap. */
-	mem_trim();
-
 	/* Unlock non-event CTL commands. */
 	if (lock) {
 		pthread_rwlock_unlock(&server->ctl_lock_n);
 	}
+
+	/* Trim extra heap. */
+	mem_trim();
 
 	/* Resume processing events on new zones. */
 	evsched_resume(&server->sched);

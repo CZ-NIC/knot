@@ -231,7 +231,7 @@ int server_reconfigure(conf_t *conf, server_t *server);
  * \param server  Server instance.
  * \param mode    Reload mode.
  * \param lock    If true, protect zone_reload() call by locking non-event CTL
- *                command. (Normally, these commands are locked already.)
+ *                commands. (Normally, these commands are locked already.)
  */
 void server_update_zones(conf_t *conf, server_t *server, reload_t mode, bool lock);
 

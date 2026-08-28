@@ -2563,24 +2563,30 @@ static int ctl_lock(server_t *server, ctl_lock_flag_t flags, uint64_t timeout_ms
 	ts.tv_nsec += (timeout_ms % 1000) * 1000000LU;
 
 	if (flags & CTL_LOCK_SRV_W) {
-		assert(!(flags & CTL_LOCK_SRV_R));
 #if !defined(__APPLE__)
 		ret = pthread_rwlock_timedwrlock(&server->ctl_lock, &ts);
-		ret = pthread_rwlock_timedwrlock(&server->ctl_lock_n, &ts);
+		if (ret == 0) {
+			ret = pthread_rwlock_timedwrlock(&server->ctl_lock_n, &ts);
+			if (ret != 0) {
+				pthread_rwlock_unlock(&server->ctl_lock);
+			}
+		}
 #else
 		ret = pthread_rwlock_wrlock(&server->ctl_lock);
-		ret = pthread_rwlock_wrlock(&server->ctl_lock_n);
+		if (ret == 0) {
+			ret = pthread_rwlock_wrlock(&server->ctl_lock_n);
+			if (ret != 0) {
+				pthread_rwlock_unlock(&server->ctl_lock);
+			}
+		}
 #endif
-	}
-	if (flags & CTL_LOCK_SRV_R) {
-		assert(!(flags & CTL_LOCK_SRV_W));
+	} else if (flags & CTL_LOCK_SRV_R) {
 #if !defined(__APPLE__)
 		ret = pthread_rwlock_timedrdlock(&server->ctl_lock, &ts);
 #else
 		ret = pthread_rwlock_rdlock(&server->ctl_lock);
 #endif
-	}
-	if (flags & CTL_LOCK_SRV_N) {
+	} else if (flags & CTL_LOCK_SRV_N) {
 #if !defined(__APPLE__)
 		ret = pthread_rwlock_timedrdlock(&server->ctl_lock_n, &ts);
 #else
@@ -2592,11 +2598,11 @@ static int ctl_lock(server_t *server, ctl_lock_flag_t flags, uint64_t timeout_ms
 
 static void ctl_unlock(server_t *server, ctl_lock_flag_t flags)
 {
-	if (flags & (CTL_LOCK_SRV_R | CTL_LOCK_SRV_W)) {
-		pthread_rwlock_unlock(&server->ctl_lock);
-	}
 	if (flags & (CTL_LOCK_SRV_N | CTL_LOCK_SRV_W)) {
 		pthread_rwlock_unlock(&server->ctl_lock_n);
+	}
+	if (flags & (CTL_LOCK_SRV_R | CTL_LOCK_SRV_W)) {
+		pthread_rwlock_unlock(&server->ctl_lock);
 	}
 }
 
