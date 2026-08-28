@@ -173,10 +173,10 @@ if USE_CTL:
     ctl_end(ctl)
 
     t.sleep(2)
-    resp = master.dig("flags.", "SOA")
-    compare(resp.soa_serial(), 10, "master zone reloaded")
-    resp = master.dig("records.", "SOA")
-    compare(resp.soa_serial(), 1, "master zone not reloaded")
+    resp = master.dig("dummy.flags.", "TXT")
+    resp.check_count(1, "TXT")
+    resp = master.dig("dummy.records.", "TXT")
+    resp.check_count(0, "TXT")
     slave.zone_wait(zone_add[0], 1)
 
 t.end()
