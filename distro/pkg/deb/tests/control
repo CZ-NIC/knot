@@ -1,18 +1,22 @@
-Tests: kdig
-Restrictions: skippable
+Tests:
+ kdig,
+Restrictions:
+ skippable,
 Depends:
  ca-certificates,
  iputils-ping,
  knot-dnsutils,
 
-Tests: authoritative-server
+Tests:
+ authoritative-server,
 Depends:
  findutils,
  knot,
- knot-dnsutils,
  knot-dnssecutils,
+ knot-dnsutils,
  knot-keymgr,
 
-Tests: python-libknot
+Tests:
+ python-libknot,
 Depends:
  python3-libknot,
