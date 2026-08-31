@@ -1720,7 +1720,7 @@ class Knot(Server):
             for zone in self.conf[subsection]:
                 s.begin(subsection)
                 s.id_item("id", zone)
-                for ci, val in self.conf[subsection][z.name].items():
+                for ci, val in self.conf[subsection][zone].items():
                     s.item_type(ci.replace("_", "-"), val)
                 s.end()
 
