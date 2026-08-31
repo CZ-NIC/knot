@@ -361,7 +361,7 @@ static void path_lookup(EditLine *el, const char *str, bool dirsonly)
 	for (int i = 0; i < nnames; ++i) {
 		const struct dirent *it = namelist[i];
 		bool is_dir = (it->d_type == DT_DIR);
-		if (it->d_type == DT_LNK) {
+		if (it->d_type == DT_LNK || it->d_type == DT_UNKNOWN) {
 			strlcpy(base, it->d_name, PATH_MAX - (size_t)(base - path));
 			is_dir = !stat(path, &sb) && S_ISDIR(sb.st_mode);
 		}
