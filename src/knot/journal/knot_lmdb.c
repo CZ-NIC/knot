@@ -756,9 +756,10 @@ static bool unmake_key_part(const void *key_data, size_t key_len, const char *fo
 		case 'D':
 			tmsize = va_arg(arg, size_t);
 			if (tmp != NULL) {
-				memcpy(tmp, wire.position, tmsize);
+				wire_ctx_read(&wire, tmp, tmsize);
+			} else {
+				wire_ctx_skip(&wire, tmsize);
 			}
-			wire_ctx_skip(&wire, tmsize);
 			break;
 		}
 	}
