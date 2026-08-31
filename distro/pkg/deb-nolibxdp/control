@@ -1,6 +1,5 @@
 Source: knot
 Section: net
-Priority: optional
 Maintainer: Knot DNS <knot-dns@labs.nic.cz>
 Uploaders:
  Daniel Salzman <daniel.salzman@nic.cz>,
@@ -10,7 +9,7 @@ Build-Depends-Indep:
 Build-Depends:
  autoconf,
  automake,
- debhelper (>= 11),
+ debhelper-compat (= 13),
  dh-python,
  libbpf-dev,
  libcap-ng-dev,
@@ -31,7 +30,7 @@ Build-Depends:
  protobuf-c-compiler,
  python3-all,
  softhsm2 <!nocheck>,
-Standards-Version: 4.7.2
+Standards-Version: 4.7.4
 Homepage: https://www.knot-dns.cz/
 Vcs-Browser: https://gitlab.nic.cz/knot/knot-dns
 Vcs-Git: https://gitlab.nic.cz/knot/knot-dns.git
@@ -60,6 +59,7 @@ Description: Authoritative DNS server
 
 Package: libknot16
 Architecture: any
+Multi-Arch: same
 Depends:
  ${misc:Depends},
  ${shlibs:Depends},
@@ -74,6 +74,7 @@ Description: DNS shared library from Knot DNS
 
 Package: libzscanner5
 Architecture: any
+Multi-Arch: same
 Depends:
  ${misc:Depends},
  ${shlibs:Depends},
@@ -88,6 +89,7 @@ Description: DNS zone-parsing shared library from Knot DNS
 
 Package: libknot-dev
 Architecture: any
+Multi-Arch: same
 Depends:
  libgnutls28-dev,
  libknot16 (= ${binary:Version}),
@@ -114,6 +116,7 @@ Description: DNS clients from Knot DNS
  .
   - kdig - query a DNS server in various ways
   - knsupdate - perform dynamic updates (See RFC2136)
+  - kxdpgun - send a DNS query stream
  .
  Knot DNS is developed by CZ.NIC Labs, the R&D department of .CZ
  registry and hence is well suited to run anything from the root
@@ -211,6 +214,7 @@ Description: Documentation for Knot DNS
 Package: knot-exporter
 Architecture: all
 Depends:
+ procps,
  ${misc:Depends},
  ${python3:Depends},
 Section: python

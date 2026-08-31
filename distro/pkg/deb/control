@@ -10,7 +10,7 @@ Build-Depends-Indep:
 Build-Depends:
  autoconf,
  automake,
- debhelper (>= 11),
+ debhelper-compat (= 13),
  dh-python,
  dh-sequence-installsysusers,
  libbpf-dev,
