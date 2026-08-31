@@ -856,6 +856,16 @@ AC_CHECK_FUNC([vasprintf], [], [
   AC_MSG_ERROR([vasprintf support in the libc is required])
 ])
 
+# Check for d_type members of dirent.
+AC_CHECK_MEMBERS([struct dirent.d_type], [
+  AC_DEFINE([HAVE_DIRENT_D_TYPE], [1], [struct dirent.d_type available])], [], [[
+    #include <sys/types.h>
+    #ifdef HAVE_DIRENT_H
+    # include <dirent.h>
+    #endif
+  ]]
+)
+
 # Check for cpu_set_t/cpuset_t compatibility
 AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <pthread.h>]], [[cpu_set_t set; CPU_ZERO(&set);]])],
 [AC_DEFINE(HAVE_CPUSET_LINUX, 1, [Define if Linux-like cpu_set_t exists.])])

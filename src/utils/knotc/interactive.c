@@ -360,11 +360,16 @@ static void path_lookup(EditLine *el, const char *str, bool dirsonly)
 	struct stat sb;
 	for (int i = 0; i < nnames; ++i) {
 		const struct dirent *it = namelist[i];
+#ifdef HAVE_DIRENT_D_TYPE
 		bool is_dir = (it->d_type == DT_DIR);
 		if (it->d_type == DT_LNK || it->d_type == DT_UNKNOWN) {
 			strlcpy(base, it->d_name, PATH_MAX - (size_t)(base - path));
 			is_dir = !stat(path, &sb) && S_ISDIR(sb.st_mode);
 		}
+#else
+		strlcpy(base, it->d_name, PATH_MAX - (size_t)(base - path));
+		bool is_dir = !stat(path, &sb) && S_ISDIR(sb.st_mode);
+#endif // HAVE_DIRENT_D_TYPE
 		if ((!dirsonly || is_dir) &&
 		    (strcmp(it->d_name, ".") && strcmp(it->d_name, ".."))) {
 			char buf[NAME_MAX + 2];  // Max. name length + slash + terminator.
