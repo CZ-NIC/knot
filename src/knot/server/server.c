@@ -1611,7 +1611,7 @@ int server_reload(server_t *server, reload_t mode)
 		stats_reconfigure(conf(), server);
 	}
 	if (full || (flags & (CONF_IO_FRLD_ZONES | CONF_IO_FRLD_ZONE))) {
-		server_update_zones(conf(), server, mode);
+		server_update_zones(conf(), server, mode, false);
 	}
 
 	/* Free old config needed for module unload in zone reload. */
@@ -1925,15 +1925,17 @@ int server_reconfigure(conf_t *conf, server_t *server)
 	return KNOT_EOK;
 }
 
-void server_update_zones(conf_t *conf, server_t *server, reload_t mode)
+void server_update_zones(conf_t *confp, server_t *server, reload_t mode, bool ctl_lock)
 {
-	if (conf == NULL || server == NULL) {
+	if (server == NULL) {
 		return;
 	}
 
 	/* Prevent emitting of new zone events. */
 	if (server->zone_db) {
+		rcu_read_lock();
 		knot_zonedb_foreach(server->zone_db, zone_events_freeze);
+		rcu_read_unlock();
 	}
 
 	/* Suspend adding events to worker pool queue, wait for queued events. */
@@ -1944,7 +1946,13 @@ void server_update_zones(conf_t *conf, server_t *server, reload_t mode)
 	log_debug("suspended zone events");
 
 	/* Reload zone database and free old zones. */
-	zonedb_reload(conf, server, mode);
+	if (ctl_lock) {
+		pthread_rwlock_wrlock(&server->ctl_lock);
+	}
+	zonedb_reload(confp == NULL ? conf() : confp, server, mode);
+	if (ctl_lock) {
+		pthread_rwlock_unlock(&server->ctl_lock);
+	}
 
 	/* Trim extra heap. */
 	mem_trim();
@@ -1952,7 +1960,9 @@ void server_update_zones(conf_t *conf, server_t *server, reload_t mode)
 	/* Resume processing events on new zones. */
 	evsched_resume(&server->sched);
 	if (server->zone_db) {
+		rcu_read_lock();
 		knot_zonedb_foreach(server->zone_db, zone_events_start);
+		rcu_read_unlock();
 	}
 	server->state &= ~ServerShutting;
 	log_debug("resumed zone events");
