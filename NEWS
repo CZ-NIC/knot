@@ -1,3 +1,61 @@
+Knot DNS 3.6.0 (2026-09-08)
+===========================
+
+Features:
+---------
+ - knotd: DELEG-aware answering (see 'zone.deleg-aware')
+ - knotd: DELEG-aware zone signing (see 'policy.deleg-adt')
+ - knotd: configurable storage for the last signed serial (see 'zone.dnssec-metadata-db')
+ - knotd: optional jitter for DNSSEC events (see 'policy.dnssec-jitter')
+ - knotd: optional jitter for SOA refresh events (see 'zone.refresh-jitter')
+ - knotd: implemented a "trash bin" for deleted DNSSEC keys (see 'DNSSEC key delete and recovery')
+ - knotc: zone retransfer with automatic IXFR fix-up (see '+fixfr')
+ - kdig: per zone DNSSEC answer validation (see '+validate')
+ - utils: automatic LMDB migration from version 0.9 using embedded LMDB 0.9.35
+ - libknot: support for DELEG and DELEGPARAM record types
+
+Improvements:
+-------------
+ - knotd: millisecond-precision prefix timestamps in non-syslog logging
+ - knotd: enforced serial policy during initial zone file load if 'difference-no-serial' is enabled
+ - knotd: if NXDOMAIN answering encounters a failure, SERVFAIL is returned
+ - knotd: new check for mismatches between zone and parent NS RRsets
+ - knotd: the control timeout applies to blocking events
+ - knotc: better compatibility with SmartOS #979
+ - kdig: extended IDN transformation configuration (see '+[no]idnin' and '+[no]idnout')
+ - keymgr: optional digest algorithm option for 'ds' command
+ - doc: described cleanup of legacy DNSSEC keys (see 'Cleanup of removed legacy DNSSEC keys')
+ - doc: described the zone deconfiguration procedure (see 'Zone removal')
+ - doc: various improvements
+
+Bugfixes:
+---------
+ - knotd: CNAME leading to a different zone is followed
+ - mod-onlinesign: inconsistent SOA TTL in negative responses
+
+Packaging:
+----------
+ - distro: Debian 11 and Ubuntu 20.04 no longer supported
+ - debian,ubuntu: i386 and armhf architectures no longer supported
+
+Compatibility:
+--------------
+ - knotd: default value for 'policy.rrsig-pre-refresh' changed to 0.005 * 'policy.rrsig-lifetime'
+ - knotd: removed TCP Fast Open support ('server.tcp-fastopen' has no effect)
+ - knotd: default storage for the last signed serial is KASP database again
+ - knotd: zone file load with 'difference' no longer tolerates zone changes without incremented SOA serial
+ - knotd: added colon to TZ specification in non-system logging according to ISO 8601
+ - knotd: the maximum allowed number of NSEC3 iterations is restricted to 256
+ - knotd: changing NSEC3PARAM via DDNS is no longer possible
+ - knotc: unified and extended some command output
+ - kdig: removed '+noidn' in favor of '+[no]idnin' and '+[no]idnout'
+ - kdig: removed TCP Fast Open support ('+fastopen')
+ - mod-dnsproxy: removed TCP Fast Open support ('tcp-fastopen')
+ - libs: libdnssec integrated into libknot
+ - libs: minimum required version of GnuTLS is 3.6.12
+ - libs: added a workaround for compatibility with LMDB mdb-drop() version 1.0.0
+ - tests-fuzz: removed AFL support
+
 Knot DNS 3.5.8 (2026-09-04)
 ===========================
 
