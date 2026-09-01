@@ -4,6 +4,7 @@
 
 from dnstest.utils import *
 from dnstest.test import Test
+import os
 import random
 import threading
 import time
@@ -12,6 +13,7 @@ zone_backup_running = dict()
 
 def check_shutdown(server):
     if not server.log_search("shutting down"):
+        server.backtrace()
         set_err("server %s not shut down" % server.name)
 
 def random_sleep():
@@ -31,7 +33,7 @@ def random_ctl(server, zone_name):
     if random.choice([False, True]):
         cmd = "-b " + cmd
     try:
-        server.ctl(cmd, availability=False)
+        server.ctl(cmd, availability=False, do_backtrace=False)
     except:
         pass
 
@@ -43,30 +45,30 @@ def random_ctls(server, zone_name):
 def ctl_txn_generic(server, txn_start, txn_modify, txn_commit, txn_abort, abort_failed_start):
     txnsock = server.ctl_sock_rnd()
     try:
-        server.ctl("zone-status", availability=False, custom_parm=txnsock)
+        server.ctl("zone-status", availability=False, do_backtrace=False, custom_parm=txnsock)
     except:
         pass
     try:
-        server.ctl(txn_start, availability=False, custom_parm=txnsock)
+        server.ctl(txn_start, availability=False, do_backtrace=False, custom_parm=txnsock)
     except:
         try:
             if abort_failed_start:
-                server.ctl(txn_abort, availability=False, custom_parm=txnsock)
+                server.ctl(txn_abort, availability=False, do_backtrace=False, custom_parm=txnsock)
         except:
             pass
         return
     random_sleep()
     try:
-        server.ctl(txn_modify, availability=False, custom_parm=txnsock)
+        server.ctl(txn_modify, availability=False, do_backtrace=False, custom_parm=txnsock)
         random_sleep()
-        server.ctl(txn_commit, availability=False, custom_parm=txnsock)
+        server.ctl(txn_commit, availability=False, do_backtrace=False, custom_parm=txnsock)
     except:
         attempts = 9
         while attempts > 0:
             time.sleep(2)
             attempts -= 1
             try:
-                server.ctl(txn_abort, availability=False, custom_parm=txnsock)
+                server.ctl(txn_abort, availability=False, do_backtrace=False, custom_parm=txnsock)
                 attempts = 0
             except:
                 pass
@@ -89,11 +91,11 @@ def bck_purge_rest(server, zone_name):
     cmd_res = "-b zone-restore " + zone_name + bckdir
     ctl_txn_generic(server, cmd_bck, cmd_pur, cmd_res, cmd_res, False)
     try:
-        server.ctl("zone-refresh " + zone_name, availability=False)
+        server.ctl("zone-refresh " + zone_name, availability=False, do_backtrace=False)
     except:
         pass
     try:
-        server.ctl("zone-reload " + zone_name, availability=False)
+        server.ctl("zone-reload " + zone_name, availability=False, do_backtrace=False)
     except:
         pass
     for i in range(10):
@@ -107,8 +109,9 @@ def bck_purge_rest(server, zone_name):
     zone_backup_running[zone_name] = False
 
 def ctl_update(server, zone_name):
+    i = random.randint(1, 254)
     ctl_txn_generic(server, "-b zone-begin " + zone_name,
-                    random.choice(["zone-set " + zone_name + " abc 3600 A 1.2.3." + str(random.randint(1, 254)),
+                    random.choice(["zone-set " + zone_name + (" abc%d.zones 3600 PTR example%d" % (i, i)),
                                    "zone-serial-set " + zone_name + " " + random.choice(["+", "="]) + str(random.randint(0, 4000000000))]),
                     "zone-commit " + zone_name, "zone-abort " + zone_name, True)
 
@@ -128,7 +131,9 @@ t = Test()
 
 master = t.server("knot")
 slave = t.server("knot")
-zones = t.zone_rnd(2, dnssec=False, records=40)
+catz = t.zone("catalog.")
+normz = t.zone_rnd(2, dnssec=False, records=40)
+zones = normz + catz
 t.link(zones, master, slave)
 
 for z in zones:
@@ -139,9 +144,10 @@ for s in [ master, slave ]:
     s.conf_srv().background_workers = 3
     s.conf_srv().udp_workers = 1
     s.conf_srv().tcp_workers = 1
+    s.cat_interpret(catz[0])
 
 t.start()
-slave.zones_wait(zones)
+slave.zones_wait(normz)
 
 for i in range(60):
     s = random.choice([master, slave])
@@ -152,30 +158,37 @@ for i in range(60):
 for s in [ master, slave ]:
     for z in zones:
         try:
-            s.ctl("zone-xfr-thaw " + z.name, availability=False)
-            s.ctl("zone-thaw " + z.name, availability=False)
-            s.ctl("zone-notify " + z.name, availability=False)
+            s.ctl("zone-xfr-thaw " + z.name, availability=False, do_backtrace=False)
+            s.ctl("zone-thaw " + z.name, availability=False, do_backtrace=False)
+            s.ctl("zone-notify " + z.name, availability=False, do_backtrace=False)
         except:
             pass
 
 for s in [ master, slave ]:
     try:
-        s.ctl("conf-abort", availability=False)
+        s.ctl("conf-abort", availability=False, do_backtrace=False)
     except:
         pass
     for z in zones:
         try:
-            s.ctl("zone-abort " + z.name, availability=False)
+            s.ctl("zone-abort " + z.name, availability=False, do_backtrace=False)
         except:
             pass
 
 
 t.sleep(10)
-master.zones_wait(zones) # check that server is still operable
-slave.zones_wait(zones) # check that server is still operable
+master.zones_wait(normz) # check that server is still operable
+slave.zones_wait(normz) # check that server is still operable
 
-t.end()
+master.proc.terminate()
+slave.proc.terminate()
 
-time.sleep(5)
+attempts = 10
+while attempts > 0 and not (master.log_search("shutting down") and slave.log_search("shutting down")):
+    time.sleep(5)
+    attempts -= 1
+
 for s in [ master, slave ]:
     check_shutdown(s)
+
+t.end()
