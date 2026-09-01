@@ -265,6 +265,65 @@ finally:
 ```
 
 ```python3
+import json
+import libknot.control
+
+# Initialization
+ctl = libknot.control.KnotCtl()
+ctl.connect("/var/run/knot/knot.sock")
+ctl.set_timeout(60)
+
+# Zone to change and outcome TTL
+ZONE = 'example.com.'
+TTL = '86400'
+
+txn = None
+try:
+    # Start zone transaction
+    ctl.send_block('zone-begin', zone=ZONE)
+    txn = ctl.receive_block()
+
+    ctl.send_block('zone-get', zone=ZONE)
+    resp = ctl.receive_block()
+
+    for owner in resp[ZONE].items():
+        for rtype in owner[1].items():
+            # Setting one of (zone, owner, rtype) identifier TTL change TTL for all data
+            ctl.send_block('zone-unset', zone=ZONE, owner=owner[0], rtype=rtype[0], data=rtype[1]['data'][0])
+            resp = ctl.receive_block()
+            ctl.send_block('zone-set', zone=ZONE, owner=owner[0], ttl=TTL, rtype=rtype[0], data=rtype[1]['data'][0])
+            resp = ctl.receive_block()
+
+    # Update serial
+    ctl.send_block('zone-serial-set', zone=ZONE, rtype='+', data='1')
+    resp = ctl.receive_block()
+
+    # Commit changes
+    ctl.send_block('zone-commit', zone=ZONE)
+    resp = ctl.receive_block()
+    txn = None
+
+    # Print outcome
+    ctl.send_block('zone-read', zone=ZONE)
+    resp = ctl.receive_block()
+    print(json.dumps(resp, indent=4))
+except libknot.control.KnotCtlError as exc:
+    # Abort zone transaction
+    if txn != None:
+        ctl.send_block('zone-abort', zone=ZONE)
+        resp = ctl.receive_block()
+    # Print libknot error
+    print(exc)
+finally:
+    # Deinitialization
+    try:
+        ctl.send(libknot.control.KnotCtlType.END)
+        ctl.close()
+    except:
+        pass
+```
+
+```python3
     # Print expirations as unixtime for all secondary zones
     ctl.send_block(cmd="zone-status", filters="u")
     resp = ctl.receive_block()
