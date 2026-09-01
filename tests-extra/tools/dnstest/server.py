@@ -401,7 +401,7 @@ class Server(object):
         else:
             check_log("BUSY PORTS, START OF %s FAILED" % self.name)
 
-    def ctl(self, cmd, wait=False, availability=True, read_result=False, custom_parm=None):
+    def ctl(self, cmd, wait=False, availability=True, read_result=False, do_backtrace=True, custom_parm=None):
         if custom_parm is None:
             custom_parm = self.ctl_sock_rnd()
 
@@ -417,7 +417,8 @@ class Server(object):
                 ok = True
                 break
             if not ok:
-                self.backtrace()
+                if do_backtrace:
+                    self.backtrace()
                 raise Failed("Unavailable remote control server='%s'" % self.name)
 
         # Send control command.
@@ -427,7 +428,8 @@ class Server(object):
                        stdout=open(self.dir + "/call.out", mode="a"),
                        stderr=open(self.dir + "/call.err", mode="a"))
         except CalledProcessError as e:
-            self.backtrace()
+            if do_backtrace:
+                self.backtrace()
             raise Failed("Can't control='%s' server='%s', ret='%i'" %
                          (cmd, self.name, e.returncode))
 
