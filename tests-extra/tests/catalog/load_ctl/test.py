@@ -8,7 +8,7 @@ import glob
 import random
 import shutil
 
-t = Test(stress=False, tsig=False)
+t = Test(tsig=False) # TSIG prevents zone_wait(catz)
 
 master = t.server("knot")
 
@@ -56,6 +56,8 @@ resp.check(rcode="SERVFAIL") # otherwise test failure, signing too fast
 
 resp = master.dig("records.com.", "SOA")
 resp.check(rcode="REFUSED") # otherwise test failure, signing too fast
+
+master.ctl("reload", custom_parm=confsock) # blocks until catalog is populated and earlier zone-reload processed
 
 master.zone_wait(bigz)
 t.sleep(1)
