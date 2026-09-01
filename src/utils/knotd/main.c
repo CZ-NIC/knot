@@ -354,7 +354,7 @@ static int event_loop(server_t *server, const char *socket, bool daemonize,
 			signals_req_zones_reload = false;
 			reload_t mode = ATOMIC_GET(server->catalog_upd_signal) ?
 			                RELOAD_CATALOG : RELOAD_FULL;
-			pthread_rwlock_rdlock(&server->ctl_lock);
+			pthread_rwlock_wrlock(&server->ctl_lock);
 			ATOMIC_SET(server->catalog_upd_signal, false);
 			server_update_zones(conf(), server, mode);
 			pthread_rwlock_unlock(&server->ctl_lock);
