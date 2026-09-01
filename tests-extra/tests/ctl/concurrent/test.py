@@ -4,7 +4,9 @@
 
 from dnstest.utils import *
 from dnstest.test import Test
+import os
 import random
+import signal
 import threading
 import time
 
@@ -107,8 +109,9 @@ def bck_purge_rest(server, zone_name):
     zone_backup_running[zone_name] = False
 
 def ctl_update(server, zone_name):
+    i = random.randint(1, 254)
     ctl_txn_generic(server, "-b zone-begin " + zone_name,
-                    random.choice(["zone-set " + zone_name + " abc 3600 A 1.2.3." + str(random.randint(1, 254)),
+                    random.choice(["zone-set " + zone_name + (" abc%d.zones 3600 PTR example%d" % (i, i)),
                                    "zone-serial-set " + zone_name + " " + random.choice(["+", "="]) + str(random.randint(0, 4000000000))]),
                     "zone-commit " + zone_name, "zone-abort " + zone_name, True)
 
@@ -128,7 +131,9 @@ t = Test()
 
 master = t.server("knot")
 slave = t.server("knot")
-zones = t.zone_rnd(2, dnssec=False, records=40)
+catz = t.zone("catalog.")
+normz = t.zone_rnd(2, dnssec=False, records=40)
+zones = normz + catz
 t.link(zones, master, slave)
 
 for z in zones:
@@ -139,15 +144,18 @@ for s in [ master, slave ]:
     s.conf_srv().background_workers = 3
     s.conf_srv().udp_workers = 1
     s.conf_srv().tcp_workers = 1
+    s.cat_interpret(catz[0])
 
 t.start()
-slave.zones_wait(zones)
+slave.zones_wait(normz)
 
 for i in range(60):
     s = random.choice([master, slave])
     z = random.choice(zones)
     run_thr(random_thing, s, z.name)
     random_sleep()
+    #if random.choice([False, True]):
+    #    os.kill(s.proc.pid, signal.SIGUSR1)
 
 for s in [ master, slave ]:
     for z in zones:
@@ -171,8 +179,8 @@ for s in [ master, slave ]:
 
 
 t.sleep(10)
-master.zones_wait(zones) # check that server is still operable
-slave.zones_wait(zones) # check that server is still operable
+master.zones_wait(normz) # check that server is still operable
+slave.zones_wait(normz) # check that server is still operable
 
 t.end()
 
