@@ -265,6 +265,46 @@ finally:
 ```
 
 ```python3
+    # Unify TTL value for each record in the specified zone
+    ZONE = "example.com."
+    TTL = "60"
+
+    # Start zone transaction
+    ctl.send_block("zone-begin", zone=ZONE)
+    ctl.receive_block()
+
+    # Get the zone contents
+    ctl.send_block("zone-get", zone=ZONE)
+    resp = ctl.receive_block()
+
+    for owner, rtypes in resp[ZONE].items():
+        for rtype, rrset in rtypes.items():
+            ttl = rrset["ttl"]
+            # Skip RRsets with correct TTL
+            if ttl == TTL:
+                continue
+
+            # Remove the whole RRSet
+            ctl.send_block("zone-unset", zone=ZONE, owner=owner, rtype=rtype)
+            resp = ctl.receive_block()
+
+            rdataset = rrset["data"]
+            for rdata in rdataset:
+                # Add each record with new TTL
+                ctl.send_block("zone-set", zone=ZONE, owner=owner, ttl=TTL, rtype=rtype, data=rdata)
+                resp = ctl.receive_block()
+
+            if rtype == "SOA":
+                # Explicitly increment the SOA serial as the record has been touched
+                ctl.send_block("zone-serial-set", zone=ZONE, rtype="+", data="1")
+                resp = ctl.receive_block()
+
+    # Commit the changes
+    ctl.send_block("zone-commit", zone=ZONE)
+    resp = ctl.receive_block()
+```
+
+```python3
     # Print expirations as unixtime for all secondary zones
     ctl.send_block(cmd="zone-status", filters="u")
     resp = ctl.receive_block()
