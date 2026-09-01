@@ -63,7 +63,7 @@ typedef enum {
 
 /* testcase env extra flags */
 typedef enum {
-	TEST_SEND_ONE_PAYLOAD,
+	TEST_SEND_ONE_PAYLOAD = (1 << 2),
 } quic_extra_flags;
 
 typedef struct test_env {
@@ -72,7 +72,7 @@ typedef struct test_env {
 	char *buf;
 	size_t bufsize;
 	size_t bufend;
-	uint32_t extra;
+	int extra;
 } test_env_t;
 
 typedef struct quic_ctx {
@@ -98,9 +98,14 @@ typedef struct quic_ctx {
 	quic_state_t state;
 	kdig_callbacks_t *cbs;
 	test_env_t *env;
+	ngtcp2_cid last_scid;
+	uint8_t last_scid_token[NGTCP2_STATELESS_RESET_TOKENLEN];
+	bool last_scid_valid;
 } quic_ctx_t;
 
 extern const gnutls_datum_t doq_alpn;
+
+#define RECEIVED_CLOSE_MAGIC 0xa91d3b8
 
 int recv_stream_data_cb(ngtcp2_conn *conn, uint32_t flags,
 	int64_t stream_id, uint64_t offset, const uint8_t *data,
@@ -108,6 +113,14 @@ int recv_stream_data_cb(ngtcp2_conn *conn, uint32_t flags,
 int recv_stream_data_ignore_all_but_0(ngtcp2_conn *conn, uint32_t flags,
 	int64_t stream_id, uint64_t offset, const uint8_t *data,
 	size_t datalen, void *user_data, void *stream_user_data);
+
+int stream_reset_cb(ngtcp2_conn *conn, int64_t stream_id,
+	uint64_t final_size, uint64_t app_error_code, void *user_data,
+	void *stream_user_data);
+
+int stream_reset_cb_malicious_survival(ngtcp2_conn *conn, int64_t stream_id,
+	uint64_t final_size, uint64_t app_error_code, void *user_data,
+	void *stream_user_data);
 
 int quic_send_data(quic_ctx_t *ctx, int sockfd, int family,
 	ngtcp2_vec *datav, size_t datavlen);
@@ -117,8 +130,16 @@ int quic_send_data_defer_second_packet(quic_ctx_t *ctx, int sockfd, int family,
 	ngtcp2_vec *datav, size_t datavlen);
 int quic_send_data_split(quic_ctx_t *ctx, int sockfd, int family,
 	ngtcp2_vec *datav, size_t datavlen);
+int quic_send_data_terminate(quic_ctx_t *ctx, int sockfd, int family,
+	ngtcp2_vec *datav, size_t datavlen);
+int quic_send_ping(quic_ctx_t *ctx, int sockfd, int family,
+	ngtcp2_vec *datav, size_t datavlen);
+int quic_send_data_split_reset_stream(quic_ctx_t *ctx, int sockfd, int family,
+	ngtcp2_vec *datav, size_t datavlen);
 
-int quic_recv_close_proto_violation(quic_ctx_t *ctx, int sockfd);
+/* The env->scenario has to contain the rfc 9250 doq error code that should
+ * be received, DOQ_ERROR_RESERVED (0xd098ea5e) for unspecified errors. */
+int quic_recv_close_doq_error(quic_ctx_t *ctx, int sockfd);
 int quic_recv(quic_ctx_t *ctx, int sockfd);
 int quic_recv_with_ack(quic_ctx_t *ctx, int sockfd);
 
@@ -139,6 +160,9 @@ int get_expiry(quic_ctx_t *ctx);
 
 int quic_ctx_connect(quic_ctx_t *ctx, int sockfd, struct addrinfo *dst_addr);
 
+int quic_ctx_connect_only_initial(quic_ctx_t *ctx, int sockfd,
+		struct addrinfo *dst_addr);
+
 int offset_span(ngtcp2_vec **vec, size_t *veclen, size_t sub);
 
 int quic_send_dns_query(quic_ctx_t *ctx, int sockfd, struct addrinfo *srv,
@@ -147,7 +171,18 @@ int quic_send_dns_query_split(quic_ctx_t *ctx, int sockfd, struct addrinfo *srv,
 	const uint8_t *buf, const size_t buf_len);
 int quic_send_dns_query_sync(quic_ctx_t *ctx, int sockfd,
 		struct addrinfo *srv, const uint8_t *buf, const size_t buf_len);
-
+int quic_send_dns_query_terminate(quic_ctx_t *ctx, int sockfd, struct addrinfo *srv,
+        const uint8_t *buf, const size_t buf_len);
+int quic_send_dns_query_stop_sending(quic_ctx_t *ctx, int sockfd,
+		struct addrinfo *srv, const uint8_t *buf, const size_t buf_len);
+int quic_send_dns_query_wrong_size_prefix(quic_ctx_t *ctx, int sockfd,
+		struct addrinfo *srv, const uint8_t *buf, const size_t buf_len);
+int quic_send_dns_ping(quic_ctx_t *ctx, int sockfd,
+		struct addrinfo *srv, const uint8_t *buf, const size_t buf_len);
+int quic_recv_dns_response_send_stls_reset(quic_ctx_t *ctx, uint8_t *buf,
+		const size_t buf_len, struct addrinfo *srv);
+int quic_maybe_send_stateless_reset(quic_ctx_t *ctx,  uint8_t *pkt,
+		const size_t pktlen, struct addrinfo *srv);
 int quic_recv_dns_response(quic_ctx_t *ctx, uint8_t *buf, const size_t buf_len,
         struct addrinfo *srv);
 
@@ -180,6 +215,10 @@ typedef int (*qtest_tls_ctx_setup_remote_endpoint)(tls_ctx_t *ctx, const gnutls_
         size_t alpn_size, const char *priority, const char *remote);
 
 typedef int (*qtest_quic_ctx_connect)(quic_ctx_t *ctx, int sockfd, struct addrinfo *dst_addr);
+
+typedef int (*qtest_stream_reset_cb)(ngtcp2_conn *conn, int64_t stream_id,
+	uint64_t final_size, uint64_t app_error_code, void *user_data,
+	void *stream_user_data);
 
 typedef int (*qtest_net_set_local_info)(net_t *net);
 
@@ -225,6 +264,7 @@ typedef struct kdig_callbacks {
 	qtest_verify_certificate verify_certificate;
 	qtest_net_set_local_info net_set_local_info;
 	qtest_quic_ctx_connect quic_ctx_connect;
+	qtest_stream_reset_cb quic_stream_reset_cb;
 	qtest_net_get_remote net_get_remote;
 	qtest_quic_send_data quic_send_data;
 	qtest_quic_timestamp quic_timestamp;

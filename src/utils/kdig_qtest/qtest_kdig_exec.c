@@ -686,6 +686,11 @@ static int process_query_packet(const knot_pkt_t      *query,
 		// Receive a reply message.
 		in_len = net->cbs->net_receive(net, in, sizeof(in));
 		t_end = time_now();
+		if (net->cbs->net_receive == net_receive_fail_ok) {
+			knot_pkt_free(reply);
+			net_close(net);
+			return in_len;
+		}
 		if (in_len <= 0) {
 			goto fail;
 		}
@@ -703,6 +708,7 @@ static int process_query_packet(const knot_pkt_t      *query,
 		reply = knot_pkt_new(in, in_len, NULL);
 		if (reply == NULL) {
 			ERR("internal error (%s)", knot_strerror(KNOT_ENOMEM));
+
 			goto fail;
 		}
 

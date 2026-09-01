@@ -233,6 +233,14 @@ int net_send(const net_t *net, const uint8_t *buf, const size_t buf_len);
 int net_receive(const net_t *net, uint8_t *buf, const size_t buf_len);
 
 /*!
+ * Only a single receive attempt that is expected to yield no results.
+ * This function return 0 when there is no data to be received over QUIC,
+ * used for tests which cause the remote to enter a state where it cannot
+ * send any further messages.
+ * */
+int net_receive_fail_ok(const net_t *net, uint8_t *buf, const size_t buf_len);
+
+/*!
  * \brief Closes current network connection.
  *
  * \param net		Connection parameters.

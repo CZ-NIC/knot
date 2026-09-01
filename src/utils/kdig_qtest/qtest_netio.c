@@ -283,27 +283,27 @@ int net_init(const srv_info_t      *local,
 		net_clean(net);
 		return KNOT_EINVAL;
 	}
-	net->cbs->tls_ctx_setup_remote_endpoint = tls_ctx_setup_remote_endpoint; //TODO: done
-	net->cbs->net_set_local_info = net_set_local_info; //TODO: done
-	net->cbs->net_get_remote = net_get_remote; //TODO: done
-	net->cbs->tls_ctx_init = tls_ctx_init; //TODO: done
-	net->cbs->get_addr_str = get_addr_str; //TODO: done
-	net->cbs->net_receive = net_receive; //TODO:
+	net->cbs->tls_ctx_setup_remote_endpoint = tls_ctx_setup_remote_endpoint;
+	net->cbs->net_set_local_info = net_set_local_info;
+	net->cbs->net_get_remote = net_get_remote;
+	net->cbs->tls_ctx_init = tls_ctx_init;
+	net->cbs->get_addr_str = get_addr_str;
+	// net->cbs->net_receive = net_receive; // TODO: replace in code with calls to func pointer
 #ifdef ENABLE_QUIC
-	// net->cbs->ngtcp2_recv_stream_data_cb = recv_stream_data_cb;
-	net->cbs->quic_recv_dns_response = quic_recv_dns_response; //TODO: done
-	net->cbs->quic_generate_secret = quic_generate_secret; //TODO: done
-	net->cbs->quic_send_dns_query = quic_send_dns_query; //TODO: done
-	net->cbs->verify_certificate = verify_certificate; //TODO: done
-	net->cbs->quic_ctx_connect = quic_ctx_connect; //TODO: done
-	net->cbs->quic_send_data = quic_send_data; //TODO: done
-	net->cbs->quic_timestamp = quic_timestamp; //TODO: done
-	net->cbs->quic_ctx_init = quic_ctx_init; //TODO: done
-	net->cbs->offset_span = offset_span; //TODO: done
-	net->cbs->net_ecn_set = net_ecn_set; //TODO: done
-	net->cbs->get_expiry = get_expiry; //TODO: done
-	net->cbs->quic_recv = quic_recv; //TODO: done
-	net->cbs->get_conn = get_conn; //TODO: done
+	// net->cbs->ngtcp2_recv_stream_data_cb = recv_stream_data_cb; // TODO: replace in code with calls to func pointer
+	net->cbs->quic_recv_dns_response = quic_recv_dns_response;
+	net->cbs->quic_generate_secret = quic_generate_secret;
+	net->cbs->quic_send_dns_query = quic_send_dns_query;
+	net->cbs->verify_certificate = verify_certificate;
+	net->cbs->quic_ctx_connect = quic_ctx_connect;
+	net->cbs->quic_send_data = quic_send_data;
+	net->cbs->quic_timestamp = quic_timestamp;
+	net->cbs->quic_ctx_init = quic_ctx_init;
+	net->cbs->offset_span = offset_span;
+	net->cbs->net_ecn_set = net_ecn_set;
+	net->cbs->get_expiry = get_expiry;
+	net->cbs->quic_recv = quic_recv;
+	net->cbs->get_conn = get_conn;
 #endif /* ENABLE_QUIC */
 
 	return KNOT_EOK;
@@ -890,6 +890,30 @@ int net_receive(const net_t *net, uint8_t *buf, const size_t buf_len)
 
 	return KNOT_NET_ERECV;
 }
+
+int net_receive_fail_ok(const net_t *net, uint8_t *buf, const size_t buf_len)
+{
+	if (net == NULL || buf == NULL) {
+		DBG_NULL;
+		return KNOT_EINVAL;
+	}
+
+	if (net->quic.params.enable) {
+		int ret = net->cbs->quic_recv_dns_response(
+				(quic_ctx_t *)&net->quic, buf,
+				buf_len, net->srv);
+		if (ret < 0) {
+			return KNOT_EOK;
+		} else {
+			WARN("Reply should not be received from %s", net->remote_str);
+			return KNOT_NET_ERECV;
+		}
+		return ret;
+	}
+
+	return KNOT_EINVAL;
+}
+
 
 void net_close(net_t *net)
 {
