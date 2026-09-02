@@ -298,11 +298,10 @@ int conf_new(
 		return KNOT_EINVAL;
 	}
 
-	conf_t *out = malloc(sizeof(conf_t));
+	conf_t *out = calloc(1, sizeof(conf_t));
 	if (out == NULL) {
 		return KNOT_ENOMEM;
 	}
-	memset(out, 0, sizeof(conf_t));
 
 	// Initialize config schema.
 	int ret = yp_schema_copy(&out->schema, schema);
@@ -425,11 +424,10 @@ int conf_clone(
 		return KNOT_EINVAL;
 	}
 
-	conf_t *out = malloc(sizeof(conf_t));
+	conf_t *out = calloc(1, sizeof(conf_t));
 	if (out == NULL) {
 		return KNOT_ENOMEM;
 	}
-	memset(out, 0, sizeof(conf_t));
 
 	// Initialize config schema.
 	int ret = yp_schema_copy(&out->schema, s_conf->schema);

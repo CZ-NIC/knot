@@ -156,11 +156,10 @@ flush_journal_replan:
 
 zone_t* zone_new(const knot_dname_t *name)
 {
-	zone_t *zone = malloc(sizeof(zone_t));
+	zone_t *zone = calloc(1, sizeof(zone_t));
 	if (zone == NULL) {
 		return NULL;
 	}
-	memset(zone, 0, sizeof(zone_t));
 
 	zone->name = knot_dname_copy(name, NULL);
 	if (zone->name == NULL) {

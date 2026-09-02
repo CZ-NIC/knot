@@ -80,12 +80,11 @@ static int worker_main(dthread_t *thread)
 
 worker_pool_t *worker_pool_create(unsigned threads)
 {
-	worker_pool_t *pool = malloc(sizeof(worker_pool_t));
+	worker_pool_t *pool = calloc(1, sizeof(worker_pool_t));
 	if (pool == NULL) {
 		return NULL;
 	}
 
-	memset(pool, 0, sizeof(worker_pool_t));
 	pool->threads = dt_create(threads, worker_main, NULL, pool);
 	if (pool->threads == NULL) {
 		goto fail;

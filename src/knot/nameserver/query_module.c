@@ -495,11 +495,10 @@ static void set_conf_out(knotd_conf_t *out, conf_val_t *val)
 			return;
 		}
 
-		out->multi = malloc(count * sizeof(*out->multi));
+		out->multi = calloc(count, sizeof(*out->multi));
 		if (out->multi == NULL) {
 			return;
 		}
-		memset(out->multi, 0, count * sizeof(*out->multi));
 
 		for (size_t i = 0; i < count; i++) {
 			set_val(val->item->type, &out->multi[i], val);

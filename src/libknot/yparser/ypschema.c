@@ -64,11 +64,10 @@ static int set_grp_item(
 
 	// Allocate space for subitems + terminal zero item.
 	size_t memsize = (count + 1) * sizeof(yp_item_t);
-	dst->sub_items = malloc(memsize);
+	dst->sub_items = calloc(1, memsize);
 	if (dst->sub_items == NULL) {
 		return KNOT_ENOMEM;
 	}
-	memset(dst->sub_items, 0, memsize);
 
 	// Copy subitems.
 	for (size_t i = 0; i < count; i++) {
@@ -202,11 +201,10 @@ int yp_schema_copy(
 
 	// Allocate space for new schema (+ terminal NULL item).
 	size_t size = (schema_count(src) + 1) * sizeof(yp_item_t);
-	yp_item_t *out = malloc(size);
+	yp_item_t *out = calloc(1, size);
 	if (out == NULL) {
 		return KNOT_ENOMEM;
 	}
-	memset(out, 0, size);
 
 	// Copy the schema.
 	int ret = schema_copy(out, src, out);
@@ -235,11 +233,10 @@ int yp_schema_merge(
 
 	// Allocate space for new schema (+ terminal NULL item).
 	size_t size = (count1 + count2 + 1) * sizeof(yp_item_t);
-	yp_item_t *out = malloc(size);
+	yp_item_t *out = calloc(1, size);
 	if (out == NULL) {
 		return KNOT_ENOMEM;
 	}
-	memset(out, 0, size);
 
 	// Copy the first schema.
 	int ret = schema_copy(out, src1, out);
@@ -341,11 +338,10 @@ yp_check_ctx_t* yp_schema_check_init(
 		return NULL;
 	}
 
-	yp_check_ctx_t *ctx = malloc(sizeof(yp_check_ctx_t));
+	yp_check_ctx_t *ctx = calloc(1, sizeof(yp_check_ctx_t));
 	if (ctx == NULL) {
 		return NULL;
 	}
-	memset(ctx, 0, sizeof(yp_check_ctx_t));
 
 	ctx->schema = schema;
 

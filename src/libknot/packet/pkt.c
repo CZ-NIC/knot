@@ -68,7 +68,7 @@ static int pkt_wire_alloc(knot_pkt_t *pkt, uint16_t len)
 		return KNOT_ERANGE;
 	}
 
-	pkt->wire = mm_alloc(&pkt->mm, len);
+	pkt->wire = mm_calloc(&pkt->mm, len, sizeof(uint8_t));
 	if (pkt->wire == NULL) {
 		return KNOT_ENOMEM;
 	}
@@ -78,7 +78,6 @@ static int pkt_wire_alloc(knot_pkt_t *pkt, uint16_t len)
 
 	/* Reset to header size. */
 	pkt->size = KNOT_WIRE_HEADER_SIZE;
-	memset(pkt->wire, 0, pkt->size);
 
 	return KNOT_EOK;
 }

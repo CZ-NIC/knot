@@ -101,11 +101,10 @@ static bool ttl_changed(struct rr_data *node_data, const knot_rrset_t *rrset)
 
 zone_node_t *node_new(const knot_dname_t *owner, bool binode, bool second, knot_mm_t *mm)
 {
-	zone_node_t *ret = mm_alloc(mm, (binode ? 2 : 1) * sizeof(zone_node_t));
+	zone_node_t *ret = mm_calloc(mm, (binode ? 2 : 1), sizeof(zone_node_t));
 	if (ret == NULL) {
 		return NULL;
 	}
-	memset(ret, 0, sizeof(*ret));
 
 	if (owner) {
 		ret->owner = knot_dname_copy(owner, mm);

@@ -204,12 +204,10 @@ static void *thread_ep(void *data)
 static dthread_t *dt_create_thread(dt_unit_t *unit, unsigned idx)
 {
 	// Alloc thread
-	dthread_t *thread = malloc(sizeof(dthread_t));
+	dthread_t *thread = calloc(1, sizeof(dthread_t));
 	if (thread == 0) {
 		return 0;
 	}
-
-	memset(thread, 0, sizeof(dthread_t));
 
 	// Blank thread state
 	thread->state = ThreadJoined;

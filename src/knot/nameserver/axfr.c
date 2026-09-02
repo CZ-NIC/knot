@@ -147,11 +147,10 @@ static int axfr_query_init(knotd_qdata_t *qdata)
 
 	/* Create transfer processing context. */
 	knot_mm_t *mm = qdata->mm;
-	struct axfr_proc *axfr = mm_alloc(mm, sizeof(struct axfr_proc));
+	struct axfr_proc *axfr = mm_calloc(mm, 1, sizeof(struct axfr_proc));
 	if (axfr == NULL) {
 		return KNOT_ENOMEM;
 	}
-	memset(axfr, 0, sizeof(struct axfr_proc));
 	init_list(&axfr->proc.nodes);
 
 	/* Put data to process. */

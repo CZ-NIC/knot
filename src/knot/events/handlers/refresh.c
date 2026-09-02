@@ -522,12 +522,11 @@ static int axfr_consume(knot_pkt_t *pkt, struct refresh_data *data, bool reuse_s
 /*! \brief Initialize IXFR-in processing context. */
 static int ixfr_init(struct refresh_data *data)
 {
-	struct ixfr_proc *proc = mm_alloc(data->mm, sizeof(*proc));
+	struct ixfr_proc *proc = mm_calloc(data->mm, 1, sizeof(*proc));
 	if (proc == NULL) {
 		return KNOT_ENOMEM;
 	}
 
-	memset(proc, 0, sizeof(struct ixfr_proc));
 	proc->state = IXFR_START;
 	proc->mm = data->mm;
 

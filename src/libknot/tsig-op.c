@@ -226,12 +226,10 @@ static int create_sign_wire(const uint8_t *msg, size_t msg_len,
 	 */
 	size_t wire_len = msg_len + request_mac_len + (request_mac_len > 0 ? 2 : 0) +
 	                  knot_tsig_rdata_tsig_variables_length(tmp_tsig);
-	uint8_t *wire = malloc(wire_len);
+	uint8_t *wire = calloc(wire_len, sizeof(uint8_t));
 	if (!wire) {
 		return KNOT_ENOMEM;
 	}
-
-	memset(wire, 0, wire_len);
 
 	uint8_t *pos = wire;
 
@@ -283,12 +281,10 @@ static int create_sign_wire_next(const uint8_t *msg, size_t msg_len,
 	 * plus request mac plus tsig variables.
 	 */
 	size_t wire_len = msg_len + prev_mac_len + knot_tsig_rdata_tsig_timers_length() + 2;
-	uint8_t *wire = malloc(wire_len);
+	uint8_t *wire = calloc(wire_len, sizeof(uint8_t));
 	if (!wire) {
 		return KNOT_ENOMEM;
 	}
-
-	memset(wire, 0, wire_len);
 
 	/* Copy the request MAC - should work even if NULL. */
 	knot_wire_write_u16(wire, prev_mac_len);
@@ -433,12 +429,11 @@ int knot_tsig_sign_next(uint8_t *msg, size_t *msg_len, size_t msg_max_len,
 
 	/* Create wire to be signed. */
 	size_t wire_len = prev_digest_len + to_sign_len + KNOT_TSIG_TIMERS_LENGTH + 2;
-	uint8_t *wire = malloc(wire_len);
+	uint8_t *wire = calloc(wire_len, sizeof(uint8_t));
 	if (!wire) {
 		knot_rrset_free(tmp_tsig, NULL);
 		return KNOT_ENOMEM;
 	}
-	memset(wire, 0, wire_len);
 
 	/* Write previous digest length. */
 	knot_wire_write_u16(wire, prev_digest_len);

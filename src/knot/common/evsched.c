@@ -142,13 +142,12 @@ event_t *evsched_event_create(evsched_t *sched, event_cb_t cb, void *data)
 	}
 
 	/* Allocate. */
-	event_t *e = malloc(sizeof(event_t));
+	event_t *e = calloc(1, sizeof(event_t));
 	if (e == NULL) {
 		return NULL;
 	}
 
 	/* Initialize. */
-	memset(e, 0, sizeof(event_t));
 	e->sched = sched;
 	e->cb = cb;
 	e->data = data;

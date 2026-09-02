@@ -206,12 +206,11 @@ static int init(knot_db_t **db_ptr, knot_mm_t *mm, void *arg)
 		return KNOT_EINVAL;
 	}
 
-	struct lmdb_env *env = mm_alloc(mm, sizeof(struct lmdb_env));
+	struct lmdb_env *env = mm_calloc(mm, 1, sizeof(struct lmdb_env));
 	if (env == NULL) {
 		return KNOT_ENOMEM;
 	}
 
-	memset(env, 0, sizeof(struct lmdb_env));
 	env->pool = mm;
 
 	/* Open new environment. */
