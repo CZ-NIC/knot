@@ -74,30 +74,27 @@ static void sink_free(log_t *log)
  */
 static log_t *sink_setup(size_t file_count)
 {
-	log_t *log = malloc(sizeof(*log));
+	log_t *log = calloc(1, sizeof(*log));
 	if (log == NULL) {
 		return NULL;
 	}
-	memset(log, 0, sizeof(*log));
 
 	// Reserve space for targets.
 	log->target_count = LOG_TARGET_FILE + file_count;
-	log->target = malloc(LOG_SOURCE_ANY * sizeof(int) * log->target_count);
+	log->target = calloc(LOG_SOURCE_ANY * log->target_count, sizeof(int));
 	if (!log->target) {
 		free(log);
 		return NULL;
 	}
-	memset(log->target, 0, LOG_SOURCE_ANY * sizeof(int) * log->target_count);
 
 	// Reserve space for log files.
 	if (file_count > 0) {
-		log->file = malloc(sizeof(FILE *) * file_count);
+		log->file = calloc(file_count, sizeof(FILE *));
 		if (!log->file) {
 			free(log->target);
 			free(log);
 			return NULL;
 		}
-		memset(log->file, 0, sizeof(FILE *) * file_count);
 	}
 
 	return log;
