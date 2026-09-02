@@ -48,6 +48,11 @@ struct timespec time_now(void);
 struct timespec time_diff(const struct timespec *begin, const struct timespec *end);
 
 /*!
+ * \brief Determine if the given timestamp has already passed according to given clock.
+ */
+bool time_passed(clockid_t clockid, const struct timespec *ts);
+
+/*!
  * \brief Get time elapsed between two events in milliseconds.
  */
 double time_diff_ms(const struct timespec *begin, const struct timespec *end);

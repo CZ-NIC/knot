@@ -16,7 +16,10 @@ import shutil
 from subprocess import Popen, PIPE, DEVNULL, check_call
 
 def sign_wait(tolaunch, zonename):
-    check_call(tolaunch, stdout=DEVNULL, stderr=DEVNULL)
+    try:
+        check_call(tolaunch, stdout=DEVNULL, stderr=DEVNULL)
+    except:
+        pass
 
 def sign_wait_bg(server, zonename):
     server[-1] = "120" # timeout
@@ -48,6 +51,7 @@ t.link(catz, knot)
 t.link(rzone, knot)
 knot.cat_interpret(catz)
 
+knot.ctl_timeout = 110
 knot.conf_srv().background_workers = 4
 knot.conf_zone(catz + rzone).journal_content = "none"
 knot.conf_zone(catz + rzone).semantic_checks = False

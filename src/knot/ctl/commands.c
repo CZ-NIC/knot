@@ -121,7 +121,7 @@ static int schedule_trigger(zone_t *zone, ctl_args_t *args, zone_event_type_t ev
 		    zone->control_update != NULL) {
 			return KNOT_TXN_EEXISTS;
 		}
-		ret = zone_events_schedule_blocking(zone, event, flags);
+		ret = zone_events_schedule_blocking(zone, event, flags, conf()->cache.ctl_timeout);
 	} else {
 		zone_events_schedule_now_flags(zone, event, flags);
 	}

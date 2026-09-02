@@ -254,7 +254,7 @@ static void event_wrap(worker_task_t *task)
 	events->running = 0;
 	events->type = ZONE_EVENT_INVALID;
 
-	if (blocking != NULL) {
+	if (blocking != NULL && events->blocking[type] == blocking) {
 		events->blocking[type] = NULL;
 		events->result[type] = ret;
 		pthread_cond_broadcast(blocking);
@@ -398,19 +398,31 @@ void zone_events_schedule_flags(zone_t *zone, zone_event_type_t type, time_t at,
 	reschedule(events, false);
 }
 
-int zone_events_schedule_blocking(zone_t *zone, zone_event_type_t type, zone_evflag_t flags)
+int zone_events_schedule_blocking(zone_t *zone, zone_event_type_t type, zone_evflag_t flags, long timeout_ms)
 {
 	if (!zone || !valid_event(type)) {
 		return KNOT_EINVAL;
 	}
+
+	struct timespec ts;
+	int ret = clock_gettime(CLOCK_REALTIME, &ts);
+	if (ret != 0) {
+		return KNOT_ERROR;
+	}
+	ts.tv_sec += timeout_ms / 1000;
+	ts.tv_nsec += (timeout_ms % 1000) * 1000000LU;
 
 	zone_events_t *events = &zone->events;
 	pthread_cond_t local_cond;
 	pthread_cond_init(&local_cond, NULL);
 
 	pthread_mutex_lock(&events->mx);
-	while (events->blocking[type] != NULL) {
-		pthread_cond_wait(events->blocking[type], &events->mx);
+	while (events->blocking[type] != NULL && !time_passed(CLOCK_REALTIME, &ts)) {
+		pthread_cond_timedwait(events->blocking[type], &events->mx, &ts);
+	}
+	if (events->blocking[type] != NULL) {
+		ret = KNOT_EBUSY;
+		goto done;
 	}
 	events->blocking[type] = &local_cond;
 	pthread_mutex_unlock(&events->mx);
@@ -418,10 +430,16 @@ int zone_events_schedule_blocking(zone_t *zone, zone_event_type_t type, zone_evf
 	zone_events_schedule_now_flags(zone, type, flags);
 
 	pthread_mutex_lock(&events->mx);
-	while (events->blocking[type] == &local_cond) {
-		pthread_cond_wait(&local_cond, &events->mx);
+	while (events->blocking[type] == &local_cond && !time_passed(CLOCK_REALTIME, &ts)) {
+		pthread_cond_timedwait(&local_cond, &events->mx, &ts);
 	}
-	int ret = events->result[type];
+	if (events->blocking[type] == &local_cond) {
+		events->blocking[type] = NULL;
+		ret = KNOT_EBUSY;
+		goto done;
+	}
+	ret = events->result[type];
+done:
 	pthread_mutex_unlock(&events->mx);
 	pthread_cond_destroy(&local_cond);
 
