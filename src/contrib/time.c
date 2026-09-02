@@ -39,6 +39,20 @@ struct timespec time_diff(const struct timespec *begin, const struct timespec *e
 	return result;
 }
 
+bool time_passed(clockid_t clockid, const struct timespec *ts)
+{
+	struct timespec now = { 0 };
+	if (clock_gettime(clockid, &now) != 0) {
+		return true; // error -> declare "passed"
+	}
+
+	if (now.tv_sec == ts->tv_sec) {
+		return now.tv_nsec >= ts->tv_nsec;
+	} else {
+		return now.tv_sec > ts->tv_sec;
+	}
+}
+
 double time_diff_ms(const struct timespec *begin, const struct timespec *end)
 {
 	struct timespec result = time_diff(begin, end);
