@@ -828,6 +828,7 @@ int process_query_verify(knotd_qdata_t *qdata)
 		break;
 	case KNOT_EMALF:
 		qdata->rcode = KNOT_RCODE_FORMERR;
+		qdata->rcode_tsig = KNOT_RCODE_FORMERR; // Indicates the response must not be signed.
 		break;
 	default:
 		qdata->rcode = KNOT_RCODE_SERVFAIL;
@@ -893,14 +894,13 @@ int process_query_sign_response(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 		} else {
 			++ctx->pkt_count;
 		}
-	} else {
+	} else if (query->tsig_rr != NULL && qdata->rcode_tsig != KNOT_RCODE_NOERROR &&
+	                                     qdata->rcode_tsig != KNOT_RCODE_FORMERR) {
 		/* Copy TSIG from query and set RCODE. */
-		if (query->tsig_rr && qdata->rcode_tsig != KNOT_RCODE_NOERROR) {
-			ret = knot_tsig_add(pkt->wire, &pkt->size, pkt->max_size,
-			                    qdata->rcode_tsig, query->tsig_rr);
-			if (ret != KNOT_EOK) {
-				goto fail; /* Whatever it is, it's server fail. */
-			}
+		ret = knot_tsig_add(pkt->wire, &pkt->size, pkt->max_size,
+		                    qdata->rcode_tsig, query->tsig_rr);
+		if (ret != KNOT_EOK) {
+			goto fail; /* Whatever it is, it's server fail. */
 		}
 	}
 
