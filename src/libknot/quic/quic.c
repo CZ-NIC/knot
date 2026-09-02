@@ -354,7 +354,6 @@ static int stream_closed(ngtcp2_conn *conn, uint32_t flags, int64_t stream_id,
 
 	// NOTE possible error is stored in (flags & NGTCP2_STREAM_CLOSE_FLAG_APP_ERROR_CODE_SET)
 
-	// ngtcp2_conn_extend_max_streams_bidi(conn, 1);
 	bool keep = !ngtcp2_conn_is_server(conn); // kxdpgun: process incomming reply after recvd&closed
 	if (!keep) {
 		knot_quic_conn_stream_free(ctx, stream_id);
@@ -641,7 +640,6 @@ int knot_quic_handle(knot_quic_table_t *table, knot_quic_reply_t *reply,
 		ngtcp2_pkt_hd header = { 0 };
 		ret = ngtcp2_accept(&header, reply->in_payload->iov_base,
 		                    reply->in_payload->iov_len);
-		/* this cannot happen */
 		if (ret == NGTCP2_ERR_RETRY) {
 			ret = -QUIC_SEND_RETRY;
 			goto finish;
@@ -652,7 +650,6 @@ int knot_quic_handle(knot_quic_table_t *table, knot_quic_reply_t *reply,
 
 		assert(header.type == NGTCP2_PKT_INITIAL);
 		if (header.tokenlen == 0 && quic_require_retry(table)) {
-		// if (header.tokenlen == 0 /*&& quic_require_retry(table)*/) {
 			ret = -QUIC_SEND_RETRY;
 			goto finish;
 		}
@@ -714,9 +711,6 @@ int knot_quic_handle(knot_quic_table_t *table, knot_quic_reply_t *reply,
 	ret = ngtcp2_conn_read_pkt(conn->conn, &path, &pi, reply->in_payload->iov_base,
 	                           reply->in_payload->iov_len, now);
 
-	if (ret == NGTCP2_ERR_RETRY) {
-		printf("Retry error has been returned\n");
-	}
 
 	*out_conn = conn;
 	if (ret == NGTCP2_ERR_RETRY) {
@@ -740,14 +734,6 @@ int knot_quic_handle(knot_quic_table_t *table, knot_quic_reply_t *reply,
 		knot_quic_table_rem(conn, table);
 		goto finish;
 	} else if (ret != NGTCP2_NO_ERROR) { // non-fatal error, discard packet
-		if (ret == NGTCP2_ERR_RETRY) {
-			/* NGTCP2_ERR_RETRY
-			 * Server must perform address validation by sending
-			 * Retry packet (see ngtcp2_crypto_write_retry()
-			 * and ngtcp2_pkt_write_retry()), and discard the
-			 * connection state. Client application does not get this error code. */
-			printf("Server must perform address validation and discard conn state, this does not happen\n");
-		}
 		ret = KNOT_EOK;
 		goto finish;
 	}
