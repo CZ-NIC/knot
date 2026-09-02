@@ -202,11 +202,10 @@ static int ixfr_answer_init(knotd_qdata_t *qdata, uint32_t *serial_from)
 	*serial_from = knot_soa_serial(their_soa->rrs.rdata);
 
 	knot_mm_t *mm = qdata->mm;
-	struct ixfr_proc *xfer = mm_alloc(mm, sizeof(*xfer));
+	struct ixfr_proc *xfer = mm_calloc(mm, 1, sizeof(*xfer));
 	if (xfer == NULL) {
 		return KNOT_ENOMEM;
 	}
-	memset(xfer, 0, sizeof(*xfer));
 
 	int ret = ixfr_load_chsets(&xfer->journal_ctx, (zone_t *)qdata->extra->zone,
 	                           qdata->extra->contents, their_soa);
