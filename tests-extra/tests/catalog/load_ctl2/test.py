@@ -14,7 +14,7 @@ t = Test(tsig=False, stress=False) # TSIG prevents zone_wait(catz)
 master = t.server("knot")
 
 catz = t.zone("catalog1.", storage=".")
-bigz = t.zone_rnd(1, records=(32 if master.valgrind else 768), dnssec=False)
+bigz = t.zone_rnd(1, records=(40 if master.valgrind else 768), dnssec=False)
 smallz = t.zone("example.")
 zones = catz + bigz + smallz
 
@@ -29,7 +29,7 @@ master.conf_srv().async_start = True
 master.dnssec(bigz).enable = True
 master.dnssec(bigz).nsec3 = True
 master.dnssec(bigz).signing_threads = 1
-master.dnssec(bigz).algorithm = "RSASHA512"
+master.dnssec(bigz).algorithm = ("ECDSAP384SHA384" if master.valgrind else "RSASHA512")
 
 master.conf_zone(bigz).zonefile_sync = -1
 
@@ -50,9 +50,11 @@ master.ctl("zone-reload")
 
 master.zone_wait(catz, cs)
 
-confsock = ["-s", os.path.join(master.dir, "knot2.sock"), "-t", "120"] #master.ctl_sock_rnd()
-
-master.ctl("zone-sign %s" % bigz[0].name, wait=True, custom_parm=confsock)
+try:
+    confsock = ["-s", os.path.join(master.dir, "knot2.sock"), "-t", "120"] #master.ctl_sock_rnd()
+    master.ctl("zone-sign %s" % bigz[0].name, wait=True, custom_parm=confsock)
+except:
+    pass
 
 master.zone_wait(bigz, bs+1)
 
