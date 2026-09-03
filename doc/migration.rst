@@ -324,8 +324,8 @@ Configuration changes
 
   - ``server.listen-xdp``
 
-Utilities:
-----------
+Utilities
+---------
 
 - :doc:`knotc<man_knotc>` prints simplified zones status by default. Use ``-e``
   for full output.
@@ -509,6 +509,99 @@ Utilities
       ``knot_zone_refresh(zone)``;          ``knot_zone_refresh(zone)``;    ``seconds``
       ``knot_zone_retry(zone)``;            ``knot_zone_retry(zone)``;      ``seconds``
       ``knot_zone_expiration(zone)``;       ``knot_zone_expiration(zone)``; ``seconds``
+
+.. _Upgrade 3.5.x to 3.6.x:
+
+Upgrade 3.5.x to 3.6.x
+======================
+
+There are the following changes between Knot DNS versions 3.6.x and 3.5.x.
+
+Database
+--------
+
+- Knot DNS uses several LMDB databases to store various types of data,
+  specifically the `journal`, `KASP`, `timer`, `catalog`, and `confdb` databases.
+  Since LMDB version 1.0, the underlying format has changed and is incompatible
+  with the long-standing 0.9 format. For operational convenience, Knot DNS
+  can automatically migrate databases from 0.9 to 1.x when opening them.
+
+  This also applies when databases are opened by utilities (e.g. `confdb`
+  accessed by :doc:`knotc<man_knotc>` or `journal` accessed by
+  :doc:`kjournalprint<man_kjournalprint>`). If the migration is successful,
+  the previous database is stored in a backup directory (see the logs for details).
+
+  Users should ensure exclusive access to each database during its migration
+  (i.e. do not run the server and utilities concurrently). Making a backup of
+  the data before migration is recommended.
+- LMDB is also used in the :ref:`backup<Data and metadata backup>` format.
+  Knot DNS can migrate backups based on the LMDB format 0.9 to 1.x during data
+  restoration.
+
+  Users should ensure exclusive access to the backup data during its migration.
+  Only one zone should be restored with migration.
+  After a successful migration, the backup data can be accessed normally.
+  If migration is expected, restoring from a copy of the backup data is recommended.
+- Note that LMDB incompatibility and migration issues are not related to
+  Knot DNS 3.6 itself, but to the LMDB version that Knot DNS is linked against.
+
+DNSSEC
+------
+
+- In on-secondary signing mode, the last signed SOA serial is store in the KASP
+  database by default. The storage can be configured via :ref:`zone_dnssec-metadata-db`.
+  Note that the value has been stored in the timer database since version 3.4.5.
+- The maximum allowed value of :ref:`policy_nsec3-iterations` is 256.
+- Signed zones with more than 256 additional NSEC3 iterations specified in
+  NSEC3PARAM are not loaded.
+- Changing NSEC3PARAM via DDNS is no longer possible.
+- Deleted keys are temporarily preserved in the :ref:`trash bin<DNSSEC key delete and recovery>`.
+
+TCP Fast Open
+-------------
+
+- The ``server.tcp-fastopen`` configuration option has no effect.
+- The ``+fastopen`` :doc:`kdig<man_kdig>` option no longer exists.
+- The ``mod-dnsproxy.tcp-fastopen`` configuration option no longer exists.
+
+Zone
+----
+
+- If :ref:`zone_zonefile-load` is set to ``difference-no-serial``, the configured
+  serial policy is enforced even during initial zone file loading.
+- If :ref:`zone_zonefile-load` is set to ``difference``, zone file updates require
+  an incremented SOA serial.
+
+Logging
+-------
+
+- Non-syslog logging uses millisecond-precision prefix timestamps.
+- A colon separator has been added to the time zone specification in non-syslog logging.
+
+Utilities
+---------
+
+- The IDN control in :doc:`kdig<man_kdig>` has changed:
+
+  - The ``+noidn`` option no longer exists.
+  - Two new options, ``+[no]idnin`` and ``+[no]idnout``, have been introduced.
+  - Conversion to Punycode is disabled by default for non-tty outputs (e.g. file, pipe).
+
+- Mostly unified and improved output from :doc:`knotc<man_knotc>` commands:
+
+  - The zone name is omitted if one zone is explicitly specified.
+  - The zone name is highlighted.
+  - Statistic values are highlighted.
+  - Zone-related output uses ``:`` as the key-value separator instead of ``=``.
+  - The ``=`` key-value separator was removed from the configuration listing
+    to make it consistent with configuration setting.
+
+Building notes
+--------------
+
+- Minimum required *GnuTLS* version is 3.6.12.
+- The shared library *libdnssec* no longer exists, as it was integrated into
+  the *libknot* library.
 
 .. _Knot DNS for BIND users:
 
