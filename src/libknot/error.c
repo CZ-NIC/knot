@@ -109,6 +109,7 @@ static const struct error errors[] = {
 	/* Control states. */
 	{ KNOT_CTL_ESTOP,     "stopping server" },
 	{ KNOT_CTL_EZONE,     "operation failed for some zones" },
+	{ KNOT_CTL_ETIMEOUT,  "timeout waiting for command finish" },
 
 	/* Network errors. */
 	{ KNOT_NET_EADDR,    "bad address or host name" },

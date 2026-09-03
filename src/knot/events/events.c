@@ -435,7 +435,7 @@ int zone_events_schedule_blocking(zone_t *zone, zone_event_type_t type, zone_evf
 	}
 	if (events->blocking[type] == &local_cond) {
 		events->blocking[type] = NULL;
-		ret = KNOT_EBUSY;
+		ret = KNOT_CTL_ETIMEOUT;
 		goto done;
 	}
 	ret = events->result[type];
