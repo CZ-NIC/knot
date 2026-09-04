@@ -1,3 +1,18 @@
+Knot DNS 3.5.8 (2026-09-04)
+===========================
+
+Improvements:
+-------------
+ - knotc: better compatibility with SmartOS #979
+ - knotd: added a check for possible errors while reading a backup label file
+ - knotd: more robust parsing of data stored in LMDB (Thanks to Jim Alves-Foss)
+
+Bugfixes:
+---------
+ - knotd: unauthenticated TSIG chosen-prefix signing that enables DDNS forgery (Thanks to Gia Bui)
+ - knotd: server crash due to a missing check for malformed TCP packet in XDP mode (Thanks to Kushal Das)
+ - kzonecheck: defective zone origin detection if the file name is too short (Thanks to Kushal Das)
+
 Knot DNS 3.5.7 (2026-08-18)
 ===========================
 
