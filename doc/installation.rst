@@ -10,13 +10,11 @@ Installation
 Installation from a package
 ===========================
 
-Knot DNS may already be included in your operating system distribution and
-therefore can be installed from packages (Linux), ports (BSD), or via
-Homebrew (macOS). This is always preferred unless you want to test the latest
-features, contribute to Knot development, or you know what you are doing.
-
-See the project `download <https://www.knot-dns.cz/download>`_ page for
-the latest information.
+Knot DNS may already be included in your operating system distribution and can
+therefore be installed from packages (Linux), ports (BSD), or via
+Homebrew (macOS). However, for up-to-date packages, the official project
+repositories are recommended. See `download <https://www.knot-dns.cz/download>`_
+for more information.
 
 .. _Installation from source code:
 
