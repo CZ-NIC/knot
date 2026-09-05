@@ -2599,7 +2599,7 @@ int ctl_exec(ctl_cmd_t cmd, ctl_args_t *args)
 
 	int ret = ctl_lock(args->server, cmd_table[cmd].locks, &args->timeout);
 	if (ret == KNOT_EOK) {
-		ret = cmd_table[cmd].fcn(args, cmd);
+		args->cmd_ret = cmd_table[cmd].fcn(args, cmd);
 		ctl_unlock(args->server, cmd_table[cmd].locks);
 	}
 
