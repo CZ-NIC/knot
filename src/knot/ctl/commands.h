@@ -135,6 +135,7 @@ typedef struct {
 	bool suppress;	// Suppress error reporting in the "all zones" ctl commands.
 	unsigned thread_idx;
 	struct timespec timeout;
+	int cmd_ret;
 } ctl_args_t;
 
 /*!
