@@ -134,6 +134,7 @@ typedef struct {
 	server_t *server;
 	bool suppress;	// Suppress error reporting in the "all zones" ctl commands.
 	unsigned thread_idx;
+	int cmd_ret;
 } ctl_args_t;
 
 /*!

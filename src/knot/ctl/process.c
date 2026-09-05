@@ -109,8 +109,16 @@ int ctl_process(knot_ctl_t *ctl, server_t *server, unsigned thread_idx, bool *ex
 
 		// Execute the command.
 		if (cmd_exec) {
-			cmd_ret = ctl_exec(cmd, &args);
+			ret = ctl_exec(cmd, &args);
 		}
+		if (ret != KNOT_EOK) {
+			log_ctl_error("control, execute command '%s' (%s)", cmd_name,
+			              knot_strerror(ret));
+			ctl_send_error(&args, knot_strerror(ret));
+			return ret;
+		}
+
+		cmd_ret = args.cmd_ret;
 		switch (cmd_ret) {
 		case KNOT_EOK:
 			strip = false;
