@@ -1,0 +1,6 @@
+$ORIGIN soa-ttl.
+$TTL 360
+
+@ SOA ns admin 1 1800 600 7200 100
+   NS ns
+ns  A 127.0.0.1
