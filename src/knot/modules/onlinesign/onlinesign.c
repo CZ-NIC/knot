@@ -239,8 +239,10 @@ static knot_rrset_t *sign_rrset(const knot_dname_t *owner,
 
 	// resulting RRSIG
 
+	uint32_t ttl = (copy->type == KNOT_RRTYPE_SOA) ?
+	               MIN(knot_soa_minimum(copy->rrs.rdata), copy->ttl) : copy->ttl;
 	knot_rrset_t *rrsig = knot_rrset_new(owner, KNOT_RRTYPE_RRSIG, copy->rclass,
-	                                     copy->ttl, mm);
+	                                     ttl, mm);
 	if (!rrsig) {
 		knot_rrset_free(copy, NULL);
 		return NULL;

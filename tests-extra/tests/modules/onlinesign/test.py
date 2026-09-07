@@ -2,6 +2,7 @@
 
 '''Check online DNSSEC signing module (just basic checks).'''
 
+import random
 import dns.rdatatype
 from dnstest.test import Test
 from dnstest.utils import *
@@ -13,7 +14,7 @@ ModOnlineSign.check()
 
 knot = t.server("knot")
 zones = t.zone_rnd(1, dnssec=False, records=5, names=["fixed"]) + \
-        t.zone_rnd(3, dnssec=False, records=5)
+        t.zone_rnd(3, dnssec=False, records=5) + t.zone("soa-ttl", storage=".")
 t.link(zones, knot)
 
 knot.conf_zone(zones).journal_content = "none"
@@ -22,6 +23,7 @@ knot.add_module(zones[1], ModOnlineSign("ECDSAP384SHA384", key_size="384"))
 knot.dnssec(zones[2]).enable = True
 knot.dnssec(zones[3]).enable = True
 knot.dnssec(zones[3]).nsec3 = True
+knot.add_module(zones[4], ModOnlineSign())
 
 knot.zones[zones[0].name].zfile.append_rndTXT("tc", rdlen=255)
 knot.zones[zones[0].name].zfile.append_rndTXT("tc", rdlen=255)
@@ -89,6 +91,15 @@ resp = knot.dig("tc." + zones[0].name, "TXT", udp=True, bufsize=1232, tsig=False
 resp.check(rcode="NOERROR", flags="QR AA", noflags="TC")
 resp = knot.dig("tc." + zones[0].name, "TXT", udp=True, bufsize=1232, tsig=False, dnssec=True)
 resp.check(rcode="NOERROR", flags="QR AA TC")
+
+# Check that each record in the negative response has TTL=min(SOA_TTL, SOA_min)
+prefix = random.choice(["", "nxdomain."])
+resp = knot.dig(prefix + "soa-ttl", "A", dnssec=True)
+resp.check(rcode="NOERROR", flags="QR AA")
+resp.check_count(2, "RRSIG", "authority")
+for r in resp.resp.authority:
+    compare(r.ttl, 100, "TTL value")
+knot.kdig(prefix + "soa-ttl", "A", validate=True)
 
 for z in zones:
     knot.update_zonefile(z, random=True)
