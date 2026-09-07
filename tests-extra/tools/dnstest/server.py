@@ -169,6 +169,7 @@ class Server(object):
         self.tsig_test = None
         self.no_xfr_edns = None
         self.via = None
+        self.ctl_timeout = 25
 
         self.zones = dict()
 
@@ -1625,7 +1626,7 @@ class Knot(Server):
 
         s.begin("control")
         s.item("listen", "[ \"knot.sock\", \"knot2.sock\"]")
-        s.item_str("timeout", "25")
+        s.item_str("timeout", str(self.ctl_timeout))
         s.end()
 
         all_remotes = set()
@@ -1720,7 +1721,7 @@ class Knot(Server):
             for zone in self.conf[subsection]:
                 s.begin(subsection)
                 s.id_item("id", zone)
-                for ci, val in self.conf[subsection][z.name].items():
+                for ci, val in self.conf[subsection][zone].items():
                     s.item_type(ci.replace("_", "-"), val)
                 s.end()
 
