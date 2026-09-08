@@ -121,7 +121,8 @@ static int schedule_trigger(zone_t *zone, ctl_args_t *args, zone_event_type_t ev
 		    zone->control_update != NULL) {
 			return KNOT_TXN_EEXISTS;
 		}
-		ret = zone_events_schedule_blocking(zone, event, flags, conf()->cache.ctl_timeout);
+
+		ret = zone_events_schedule_blocking(zone, event, flags, &args->timeout);
 	} else {
 		zone_events_schedule_now_flags(zone, event, flags);
 	}
@@ -2546,27 +2547,20 @@ ctl_cmd_t ctl_str_to_cmd(const char *cmd_str)
 	return CTL_NONE;
 }
 
-static int ctl_lock(server_t *server, ctl_lock_flag_t flags, uint64_t timeout_ms)
+static int ctl_lock(server_t *server, ctl_lock_flag_t flags, struct timespec *ts)
 {
-	struct timespec ts;
-	int ret = clock_gettime(CLOCK_REALTIME, &ts);
-	if (ret != 0) {
-		return KNOT_ERROR;
-	}
-	ts.tv_sec += timeout_ms / 1000;
-	ts.tv_nsec += (timeout_ms % 1000) * 1000000LU;
-
+	int ret;
 	if ((flags & CTL_LOCK_SRV_W)) {
 		assert(!(flags & CTL_LOCK_SRV_R));
 #if !defined(__APPLE__)
-		ret = pthread_rwlock_timedwrlock(&server->ctl_lock, &ts);
+		ret = pthread_rwlock_timedwrlock(&server->ctl_lock, ts);
 #else
 		ret = pthread_rwlock_wrlock(&server->ctl_lock);
 #endif
 	}
 	if ((flags & CTL_LOCK_SRV_R)) {
 #if !defined(__APPLE__)
-		ret = pthread_rwlock_timedrdlock(&server->ctl_lock, &ts);
+		ret = pthread_rwlock_timedrdlock(&server->ctl_lock, ts);
 #else
 		ret = pthread_rwlock_rdlock(&server->ctl_lock);
 #endif
@@ -2585,7 +2579,9 @@ int ctl_exec(ctl_cmd_t cmd, ctl_args_t *args)
 		return KNOT_EINVAL;
 	}
 
-	int ret = ctl_lock(args->server, cmd_table[cmd].locks, conf()->cache.ctl_timeout);
+	args->timeout = time_now2(CLOCK_REALTIME, conf()->cache.ctl_timeout);
+
+	int ret = ctl_lock(args->server, cmd_table[cmd].locks, &args->timeout);
 	if (ret == KNOT_EOK) {
 		ret = cmd_table[cmd].fcn(args, cmd);
 		ctl_unlock(args->server);
