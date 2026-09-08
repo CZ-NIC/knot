@@ -118,6 +118,7 @@ def enable_zone_dnssec(server, zone, custom):
     server.ctl("conf-begin", custom_parm=custom)
     server.ctl("conf-set zone[%s].dnssec-signing on" % zone.name, custom_parm=custom)
     server.ctl("conf-commit", custom_parm=custom)
+    t.sleep(1) # Provide some time to finish signing (stop accessing the keystore).
 
 t = Test()
 
