@@ -398,18 +398,11 @@ void zone_events_schedule_flags(zone_t *zone, zone_event_type_t type, time_t at,
 	reschedule(events, false);
 }
 
-int zone_events_schedule_blocking(zone_t *zone, zone_event_type_t type, zone_evflag_t flags, long timeout_ms)
+int zone_events_schedule_blocking(zone_t *zone, zone_event_type_t type, zone_evflag_t flags, struct timespec *timeout)
 {
 	if (!zone || !valid_event(type)) {
 		return KNOT_EINVAL;
 	}
-
-	struct timespec ts;
-	if (clock_gettime(CLOCK_REALTIME, &ts) != 0) {
-		return KNOT_ERROR;
-	}
-	ts.tv_sec += timeout_ms / 1000;
-	ts.tv_nsec += (timeout_ms % 1000) * 1000000LU;
 
 	int ret = KNOT_EOK;
 	zone_events_t *events = &zone->events;
@@ -417,8 +410,8 @@ int zone_events_schedule_blocking(zone_t *zone, zone_event_type_t type, zone_evf
 	pthread_cond_init(&local_cond, NULL);
 
 	pthread_mutex_lock(&events->mx);
-	while (events->blocking[type] != NULL && !time_passed(CLOCK_REALTIME, &ts)) {
-		pthread_cond_timedwait(events->blocking[type], &events->mx, &ts);
+	while (events->blocking[type] != NULL && !time_passed(CLOCK_REALTIME, timeout)) {
+		pthread_cond_timedwait(events->blocking[type], &events->mx, timeout);
 	}
 	if (events->blocking[type] != NULL) {
 		ret = KNOT_EBUSY;
@@ -430,8 +423,8 @@ int zone_events_schedule_blocking(zone_t *zone, zone_event_type_t type, zone_evf
 	zone_events_schedule_now_flags(zone, type, flags);
 
 	pthread_mutex_lock(&events->mx);
-	while (events->blocking[type] == &local_cond && !time_passed(CLOCK_REALTIME, &ts)) {
-		pthread_cond_timedwait(&local_cond, &events->mx, &ts);
+	while (events->blocking[type] == &local_cond && !time_passed(CLOCK_REALTIME, timeout)) {
+		pthread_cond_timedwait(&local_cond, &events->mx, timeout);
 	}
 	if (events->blocking[type] == &local_cond) {
 		events->blocking[type] = NULL;
