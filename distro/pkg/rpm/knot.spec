@@ -105,7 +105,7 @@ Knot DNS is a high-performance authoritative DNS server implementation.
 
 %package libs
 Summary:	Libraries used by the Knot DNS server and client applications
-Conflicts:	knot-resolver < 5.7.3
+Conflicts:	knot-resolver < 6.1.0
 
 %description libs
 The package contains shared libraries used by the Knot DNS server and
