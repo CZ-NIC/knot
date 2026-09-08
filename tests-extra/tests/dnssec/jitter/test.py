@@ -83,10 +83,14 @@ master.dnssec(zones).zone_max_ttl = None # effectively computes the maximum TTL 
 master.gen_confile()
 master.reload()
 t.sleep(1)
-warnings = master.log_search_count("RRSIG refresh lower")
-detail_log(str(warnings))
+warnings = set()
+with open(master.fout, "r") as f:
+    for line in f:
+        if "RRSIG refresh lower" in line:
+            warnings.add(line.split("[")[1].split("]")[0])
+detail_log(str(len(warnings)))
 threshold = len(zones) * 15 / 100
-isset(warnings > threshold, "low refresh warnings some")
-isset(warnings < len(zones) - threshold, "low refresh warnings not all")
+isset(len(warnings) > threshold, "low refresh warnings some")
+isset(len(warnings) < len(zones) - threshold, "low refresh warnings not all")
 
 t.end()
