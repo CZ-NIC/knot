@@ -40,7 +40,11 @@ typedef enum {
 /*!
  * \brief Get current time.
  */
-struct timespec time_now(void);
+struct timespec time_now2(clockid_t clockid, unsigned long shift_millis);
+inline static struct timespec time_now(void)
+{
+	return time_now2(CLOCK_MONOTONIC, 0);
+}
 
 /*!
  * \brief Get time elapsed between two events.

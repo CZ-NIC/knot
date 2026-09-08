@@ -157,11 +157,11 @@ void zone_events_schedule_flags(struct zone *zone, zone_event_type_t type, time_
  * \param zone        Zone to schedule new event for.
  * \param type        Zone event type.
  * \param flags       Event flags.
- * \param timeout_ms  Maximum amount of time waiting to complete in milliseconds.
+ * \param timeout     Timestamp of when the operation shall time out.
  *
  * \return KNOT_E*
  */
-int zone_events_schedule_blocking(struct zone *zone, zone_event_type_t type, zone_evflag_t flags, long timeout_ms);
+int zone_events_schedule_blocking(struct zone *zone, zone_event_type_t type, zone_evflag_t flags, struct timespec *timeout);
 
 /*!
  * \brief Freeze all zone events and prevent new events from running.
