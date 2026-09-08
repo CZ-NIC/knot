@@ -471,11 +471,11 @@ server.ctl("-f zone-purge +keys %s %s" % (zones[6].name, zones[7].name), wait=Tr
 server.dnssec(zones[7]).enable = False
 server.gen_confile()
 server.reload()
-server.zones_wait(zones)
+server.zone_wait(zones[6]);
 # Keys for zones[6] are ready in SoftHSM now.
 enable_zone_dnssec(server, zones[7], confsock)
 
-server.zones_wait([zones[0], zones[1], zones[2], zones[3], zones[4], zones[5]])
+server.zones_wait(zones)
 # Six additional keys are generated, three for zones[2] together with zones[3],
 # one for each of zones[4], zones[6], and zones[7].
 server.ctl("zone-restore +backupdir %s %s %s %s %s" % (bckdir, zones[2].name, zones[3].name,
