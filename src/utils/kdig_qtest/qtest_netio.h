@@ -74,6 +74,7 @@ typedef struct net {
 #ifdef ENABLE_QUIC
 	/*! QUIC context. */
 	quic_ctx_t quic;
+	int verbosity;
 #endif
 	kdig_callbacks_t *cbs;
 	struct {

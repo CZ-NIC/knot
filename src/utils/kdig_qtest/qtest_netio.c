@@ -1,6 +1,6 @@
 /*  Copyright (C) CZ.NIC, z.s.p.o. and contributors
  *  SPDX-License-Identifier: GPL-2.0-or-later
- *  For more information, see <https://www.knot-dns.cz/>
+ *  For more information, see <https://www.knot-dns.cz/>netio
  */
 
 #include "libknot/errcode.h"
@@ -288,9 +288,9 @@ int net_init(const srv_info_t      *local,
 	net->cbs->net_get_remote = net_get_remote;
 	net->cbs->tls_ctx_init = tls_ctx_init;
 	net->cbs->get_addr_str = get_addr_str;
-	// net->cbs->net_receive = net_receive; // TODO: replace in code with calls to func pointer
+	net->verbosity = 1;
 #ifdef ENABLE_QUIC
-	// net->cbs->ngtcp2_recv_stream_data_cb = recv_stream_data_cb; // TODO: replace in code with calls to func pointer
+	net->verbosity = net->quic.verbosity;
 	net->cbs->quic_recv_dns_response = quic_recv_dns_response;
 	net->cbs->quic_generate_secret = quic_generate_secret;
 	net->cbs->quic_send_dns_query = quic_send_dns_query;
@@ -352,6 +352,7 @@ int net_init_crypto(net_t                 *net,
 		}
 		quic_ctx_deinit(&net->quic);
 		net->quic.cbs = net->cbs;
+		net->quic.verbosity = net->verbosity;
 		ret = net->cbs->quic_ctx_init(&net->quic, &net->tls, quic_params);
 		if (ret != KNOT_EOK) {
 			net_clean(net);
@@ -562,6 +563,7 @@ int net_connect(net_t *net)
 	else if (net->socktype == SOCK_DGRAM) {
 		if (net->quic.params.enable) {
 			// Establish QUIC connection.
+			net->quic.verbosity = net->verbosity;
 			ret = net_cmsg_ecn_enable(sockfd, net->srv->ai_family);
 			if (ret != KNOT_EOK && ret != KNOT_ENOTSUP) {
 				net_close(net);
@@ -645,7 +647,6 @@ int net_send(const net_t *net, const uint8_t *buf, const size_t buf_len)
 		int ret = net->cbs->quic_send_dns_query((quic_ctx_t *)&net->quic,
 		                              net->sockfd, net->srv, buf, buf_len);
 		if (ret != KNOT_EOK) {
-			WARN("can't send query to %s", net->remote_str);
 			return KNOT_NET_ESEND;
 		}
 	} else

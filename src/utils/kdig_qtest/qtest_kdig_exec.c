@@ -362,34 +362,9 @@ static bool use_edns(const query_t *query)
 	       !ednsopt_list_empty(&query->edns_opts);
 }
 
-static knot_pkt_t *create_query_packet(const query_t *query)
+knot_pkt_t *create_query_packet_common(const query_t *query,
+		knot_pkt_t *packet, uint16_t max_size)
 {
-	// Set packet buffer size.
-	uint16_t max_size;
-	if (query->udp_size < 0) {
-		if (use_edns(query)) {
-			max_size = DEFAULT_EDNS_SIZE;
-		} else {
-			max_size = DEFAULT_UDP_SIZE;
-		}
-	} else {
-		max_size = query->udp_size;
-	}
-
-	// Create packet skeleton.
-	knot_pkt_t *packet = create_empty_packet(max_size);
-	if (packet == NULL) {
-		return NULL;
-	}
-
-	// Set ID = 0 for packet send over HTTPS
-	// Due HTTP cache it is convenient to set the query ID to 0 - GET messages has same header then
-#if defined(LIBNGHTTP2) || defined(ENABLE_QUIC)
-	if (query->https.enable || query->quic.enable) {
-		knot_wire_set_id(packet->wire, 0);
-	}
-#endif
-
 	// Set flags to wireformat.
 	if (query->flags.aa_flag) {
 		knot_wire_set_aa(packet->wire);
@@ -497,6 +472,61 @@ static knot_pkt_t *create_query_packet(const query_t *query)
 	}
 
 	return packet;
+}
+
+knot_pkt_t *create_query_packet(const query_t *query)
+{
+	// Set packet buffer size.
+	uint16_t max_size;
+	if (query->udp_size < 0) {
+		if (use_edns(query)) {
+			max_size = DEFAULT_EDNS_SIZE;
+		} else {
+			max_size = DEFAULT_UDP_SIZE;
+		}
+	} else {
+		max_size = query->udp_size;
+	}
+
+	// Create packet skeleton.
+	knot_pkt_t *packet = create_empty_packet(max_size);
+	if (packet == NULL) {
+		return NULL;
+	}
+
+	// Set ID = 0 for packet send over HTTPS
+	// Due HTTP cache it is convenient to set the query ID to 0 - GET messages has same header then
+#if defined(LIBNGHTTP2) || defined(ENABLE_QUIC)
+	if (query->https.enable || query->quic.enable) {
+		knot_wire_set_id(packet->wire, 0);
+	}
+#endif
+	return create_query_packet_common(query, packet, max_size);
+}
+
+knot_pkt_t *create_query_packet_with_msgid(const query_t *query)
+{
+	// Set packet buffer size.
+	uint16_t max_size;
+	if (query->udp_size < 0) {
+		if (use_edns(query)) {
+			max_size = DEFAULT_EDNS_SIZE;
+		} else {
+			max_size = DEFAULT_UDP_SIZE;
+		}
+	} else {
+		max_size = query->udp_size;
+	}
+
+	// Create packet skeleton.
+	knot_pkt_t *packet = create_empty_packet(max_size);
+	if (packet == NULL) {
+		return NULL;
+	}
+
+	/* Keep msgid for the purpose of this test */
+
+	return create_query_packet_common(query, packet, max_size);
 }
 
 static bool check_reply_id(const knot_pkt_t *reply,
@@ -675,141 +705,152 @@ static int process_query_packet(const knot_pkt_t      *query,
 		} else {
 			ERR("can't print query packet");
 		}
-
 		printf("\n");
 	}
 
-	// Loop over incoming messages, unless reply id is correct or timeout.
-	while (true) {
-		reply = NULL;
+	size_t expect = 1;
+	if (net->quic.env != NULL && net->quic.env->extra > 1) {
+		expect = (size_t)net->quic.env->extra;
+	}
 
-		// Receive a reply message.
-		in_len = net->cbs->net_receive(net, in, sizeof(in));
-		t_end = time_now();
-		if (net->cbs->net_receive == net_receive_fail_ok) {
-			knot_pkt_free(reply);
-			net_close(net);
-			return in_len;
-		}
-		if (in_len <= 0) {
-			goto fail;
-		}
+	for (size_t got = 0; got < expect; got++) {
+		// Loop over incoming messages, unless reply id is correct or timeout.
+		while (true) {
+			reply = NULL;
+
+			// Receive a reply message.
+			in_len = net->cbs->net_receive(net, in, sizeof(in));
+			t_end = time_now();
+			if (net->cbs->net_receive == net_receive_fail_ok) {
+				knot_pkt_free(reply);
+				net_close(net);
+				return in_len;
+			}
+			if (in_len <= 0) {
+				goto fail;
+			}
 
 #if USE_DNSTAP
-		struct timespec t_end_full = time_diff(&t_start, &t_end);
-		t_end_full.tv_sec += timestamp;
+			struct timespec t_end_full = time_diff(&t_start, &t_end);
+			t_end_full.tv_sec += timestamp;
 
-		// Make the dnstap copy of the response.
-		write_dnstap(query_ctx->dt_writer, false, in, in_len, net,
-		             &t_end_full);
+			// Make the dnstap copy of the response.
+			write_dnstap(query_ctx->dt_writer, false, in, in_len, net,
+				     &t_end_full);
 #endif // USE_DNSTAP
 
-		// Create reply packet structure to fill up.
-		reply = knot_pkt_new(in, in_len, NULL);
-		if (reply == NULL) {
-			ERR("internal error (%s)", knot_strerror(KNOT_ENOMEM));
+			// Create reply packet structure to fill up.
+			reply = knot_pkt_new(in, in_len, NULL);
+			if (reply == NULL) {
+				ERR("internal error (%s)", knot_strerror(KNOT_ENOMEM));
 
-			goto fail;
+				goto fail;
+			}
+
+			// Parse reply to the packet structure.
+			ret = knot_pkt_parse(reply, KNOT_PF_NOCANON);
+			if (ret == KNOT_ETRAIL) {
+				WARN("malformed reply packet (%s)", knot_strerror(ret));
+			} else if (ret != KNOT_EOK) {
+				ERR("malformed reply packet from %s", net->remote_str);
+				goto fail;
+			}
+
+			// Compare reply header id.
+			if (check_reply_id(reply, query)) {
+				break;
+			// Check for timeout.
+			} else if (time_diff_ms(&t_query, &t_end) > 1000 * net->wait) {
+				goto fail;
+			}
+
+			knot_pkt_free(reply);
 		}
 
-		// Parse reply to the packet structure.
-		ret = knot_pkt_parse(reply, KNOT_PF_NOCANON);
-		if (ret == KNOT_ETRAIL) {
-			WARN("malformed reply packet (%s)", knot_strerror(ret));
-		} else if (ret != KNOT_EOK) {
-			ERR("malformed reply packet from %s", net->remote_str);
-			goto fail;
+		// Check for TC bit and repeat query with TCP if required.
+		if (knot_wire_get_tc(reply->wire) != 0 &&
+		    ignore_tc == false && net->socktype == SOCK_DGRAM) {
+			WARN("truncated reply from %s, retrying over TCP\n",
+			     net->remote_str);
+			knot_pkt_free(reply);
+			net_close_keepopen(net, query_ctx);
+
+			net->socktype = SOCK_STREAM;
+
+			return process_query_packet(query, net, query_ctx, true,
+						    sign_ctx, style);
+		}
+		//
+		// Check for question sections equality.
+		check_reply_question(reply, query);
+
+		// Check QR bit
+		check_reply_qr(reply);
+
+		// Print reply packet.
+		if (style->format != FORMAT_JSON) {
+			// Intentionaly start-end because of QUIC can have receive time.
+			print_packet(reply, net, in_len, time_diff_ms(&t_start, &t_end),
+				     timestamp, true, style);
+		} else {
+			knot_pkt_t *q = knot_pkt_new(query->wire, query->size, NULL);
+			(void)knot_pkt_parse(q, KNOT_PF_NOCANON);
+			print_packets_json(q, reply, net, timestamp, style);
+			knot_pkt_free(q);
 		}
 
-		// Compare reply header id.
-		if (check_reply_id(reply, query)) {
-			break;
-		// Check for timeout.
-		} else if (time_diff_ms(&t_query, &t_end) > 1000 * net->wait) {
-			goto fail;
+		// Verify signature if a key was specified.
+		if (sign_ctx->digest != NULL) {
+			ret = verify_packet(reply, sign_ctx);
+			if (ret != KNOT_EOK) {
+				WARN("reply verification for %s (%s)",
+				     net->remote_str, knot_strerror(ret));
+			}
+		}
+
+		// Check for BADCOOKIE RCODE and repeat query with the new cookie if required.
+		if (knot_pkt_ext_rcode(reply) == KNOT_RCODE_BADCOOKIE && query_ctx->badcookie > 0) {
+			printf("\n");
+			WARN("bad cookie from %s, retrying with the received one\n",
+			     net->remote_str);
+			net_close_keepopen(net, query_ctx);
+
+			// Prepare new query context.
+			query_t new_ctx = *query_ctx;
+
+			uint8_t *opt = knot_pkt_edns_option(reply, KNOT_EDNS_OPTION_COOKIE);
+			if (opt == NULL) {
+				ERR("bad cookie, missing EDNS section");
+				goto fail;
+			}
+
+			const uint8_t *data = knot_edns_opt_get_data(opt);
+			uint16_t data_len = knot_edns_opt_get_length(opt);
+			ret = knot_edns_cookie_parse(&new_ctx.cc, &new_ctx.sc, data, data_len);
+			if (ret != KNOT_EOK) {
+				ERR("bad cookie, missing EDNS cookie option");
+				goto fail;
+			}
+			knot_pkt_free(reply);
+
+			// Restore the original client cookie.
+			new_ctx.cc = query_ctx->cc;
+
+			new_ctx.badcookie--;
+
+			knot_pkt_t *new_query = net->cbs->create_query_packet(&new_ctx);
+			ret = process_query_packet(new_query, net, &new_ctx, ignore_tc,
+						   sign_ctx, style);
+			knot_pkt_free(new_query);
+
+			return ret;
 		}
 
 		knot_pkt_free(reply);
-	}
-
-	// Check for TC bit and repeat query with TCP if required.
-	if (knot_wire_get_tc(reply->wire) != 0 &&
-	    ignore_tc == false && net->socktype == SOCK_DGRAM) {
-		printf("\n");
-		WARN("truncated reply from %s, retrying over TCP\n",
-		     net->remote_str);
-		knot_pkt_free(reply);
-		net_close_keepopen(net, query_ctx);
-
-		net->socktype = SOCK_STREAM;
-
-		return process_query_packet(query, net, query_ctx, true,
-		                            sign_ctx, style);
-	}
-
-	// Check for question sections equality.
-	check_reply_question(reply, query);
-
-	// Check QR bit
-	check_reply_qr(reply);
-
-	// Print reply packet.
-	if (style->format != FORMAT_JSON) {
-		// Intentionaly start-end because of QUIC can have receive time.
-		print_packet(reply, net, in_len, time_diff_ms(&t_start, &t_end),
-		             timestamp, true, style);
-	} else {
-		knot_pkt_t *q = knot_pkt_new(query->wire, query->size, NULL);
-		(void)knot_pkt_parse(q, KNOT_PF_NOCANON);
-		print_packets_json(q, reply, net, timestamp, style);
-		knot_pkt_free(q);
-	}
-
-	// Verify signature if a key was specified.
-	if (sign_ctx->digest != NULL) {
-		ret = verify_packet(reply, sign_ctx);
-		if (ret != KNOT_EOK) {
-			WARN("reply verification for %s (%s)",
-			     net->remote_str, knot_strerror(ret));
+		reply = NULL;
+		if (got + 1 < expect && net->verbosity > 0) {
+			printf("\n");
 		}
-	}
-
-	// Check for BADCOOKIE RCODE and repeat query with the new cookie if required.
-	if (knot_pkt_ext_rcode(reply) == KNOT_RCODE_BADCOOKIE && query_ctx->badcookie > 0) {
-		printf("\n");
-		WARN("bad cookie from %s, retrying with the received one\n",
-		     net->remote_str);
-		net_close_keepopen(net, query_ctx);
-
-		// Prepare new query context.
-		query_t new_ctx = *query_ctx;
-
-		uint8_t *opt = knot_pkt_edns_option(reply, KNOT_EDNS_OPTION_COOKIE);
-		if (opt == NULL) {
-			ERR("bad cookie, missing EDNS section");
-			goto fail;
-		}
-
-		const uint8_t *data = knot_edns_opt_get_data(opt);
-		uint16_t data_len = knot_edns_opt_get_length(opt);
-		ret = knot_edns_cookie_parse(&new_ctx.cc, &new_ctx.sc, data, data_len);
-		if (ret != KNOT_EOK) {
-			ERR("bad cookie, missing EDNS cookie option");
-			goto fail;
-		}
-		knot_pkt_free(reply);
-
-		// Restore the original client cookie.
-		new_ctx.cc = query_ctx->cc;
-
-		new_ctx.badcookie--;
-
-		knot_pkt_t *new_query = create_query_packet(&new_ctx);
-		ret = process_query_packet(new_query, net, &new_ctx, ignore_tc,
-		                           sign_ctx, style);
-		knot_pkt_free(new_query);
-
-		return ret;
 	}
 
 	knot_pkt_free(reply);
@@ -842,7 +883,7 @@ int process_query(const query_t *query, net_t *net)
 	int        ret;
 
 	// Create query packet.
-	out_packet = create_query_packet(query);
+	out_packet = net->cbs->create_query_packet(query);
 	if (out_packet == NULL) {
 		ERR("can't create query packet");
 		return -1;
@@ -914,8 +955,6 @@ int process_query(const query_t *query, net_t *net)
 		if (server->next->next && query->style.show_query) {
 			printf("\n");
 		}
-next_server:
-		continue;
 	}
 finish:
 	sign_context_deinit(&sign_ctx);
@@ -1162,7 +1201,7 @@ static int process_xfr(const query_t *query, net_t *net)
 	int        ret;
 
 	// Create query packet.
-	out_packet = create_query_packet(query);
+	out_packet = net->cbs->create_query_packet(query);
 	if (out_packet == NULL) {
 		ERR("can't create query packet");
 		return -1;

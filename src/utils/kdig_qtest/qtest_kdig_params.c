@@ -26,7 +26,8 @@
 #include "libdnssec/error.h"
 #include "libdnssec/random.h"
 
-#define PROGRAM_NAME "kdig"
+/* FIXME Duplicate, also defined in qtest_main.c */
+#define PROGRAM_NAME "qtest"
 
 #define DEFAULT_RETRIES_DIG		2
 #define DEFAULT_TIMEOUT_DIG		5

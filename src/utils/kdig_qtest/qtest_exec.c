@@ -12,13 +12,10 @@
 #include "utils/common/msg.h"
 #include "utils/kdig_qtest/qtest_netio.h"
 #include "utils/kdig_qtest/qtest_params.h"
-#include "libknot/libknot.h"
 #include "contrib/ctype.h"
 #include "contrib/macros.h"
 #include "contrib/sockaddr.h"
 #include "contrib/time.h"
-#include "contrib/openbsd/strlcat.h"
-#include "contrib/ucw/lists.h"
 #include "contrib/wire_ctx.h"
 #include "contrib/json.h"
 
@@ -1166,6 +1163,9 @@ void print_packet(const knot_pkt_t *packet,
 	if (style->show_header) {
 		if (net != NULL) {
 #ifdef ENABLE_QUIC
+			if (net->verbosity < 1)
+				return;
+
 			if (net->quic.params.enable) {
 				print_quic(&net->quic);
 			} else

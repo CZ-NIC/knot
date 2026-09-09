@@ -29,83 +29,37 @@
 #include <string.h>
 #include <unistd.h>
 
-/* Setting this to false will disable tests that require inspection of the
- * server state. Not all tests defined in this utility can be fully automated.
- * some require deep inspection of the server state, for these tests the result
- * only informs the user that the test was performed succesfully. These
- * are disabled for automated testing (e.g. CI/CD) to avoid confusion */
-#define MANUAL_TESTING true
+#define PROGRAM_NAME "qtest"
 
-#define QUERIES_1_COUNT 1
-#define QUERIES_3_COUNT 3
-#define QUERIES_10_COUNT 10
-#define QUERIES_MANY_COUT 239
-#define QUERIES_1 "example.com"
-#define QUERIES_3 "example.com", "nic.cz", "nic.de"
-// #define QUERIES_10 "example.com", "ulaanbaatar.mn", "nic.cz", "venmo.com",\
-// "cern.ch", "adyen.com", "dlocal.com", "redis.io", "skrill.com", "paxum.com"
-#define QUERIES_10 "domreg.net.fj", "ulaanbaatar.mn", "nic.cz", "venmo.com",\
-"cern.ch", "adyen.com", "dlocal.com", "redis.io", "skrill.com", "paxum.com"
-#define QUERIES_MANY "nic.cz", "nic.de", "ulaanbaatar.mn", \
-"venmo.com", "zellepay.com", "adyen.com", "dlocal.com", "braintreepayments.com", \
-"skrill.com", "paxum.com", "neteller.com", "remitly.com", "worldremit.com", \
-"moneygram.com", "westernunion.com", "numpy.org", "pandas.pydata.org", \
-"databricks.com", "snowflake.com", "tableau.com", "powerbi.com", "qlik.com", \
-"splunk.com", "elastic.co", "mongodb.com", "cassandra.apache.org", \
-"postgresql.org", "mysql.com", "mariadb.com", "redis.io", "apache.org", \
-"nginx.com", "tomcat.apache.org", "societegenerale.com", "unicreditgroup.eu", \
-"credit-suisse.com", "ubs.com", "ing.com", "capitalone.com", "pnc.com", \
-"turbotax.intuit.com", "dell.com", "adtax.com", "xerox.com", "docusign.com", \
-"house.gov", "nato.int", "iaea.org", "oecd.org", "wto.org", "imf.org", \
-"worldbank.org", "esa.int", "esa.org", "cern.ch", "jaxa.jp", "spacex.com", \
-"blueorigin.com", "virgingalactic.com", "rocketlabusa.com", "thespacestore.com", \
-"livechat.com", "zendesk.com", "google.com", "cloudflare.com", "example.com", \
-"nic.cz", "seznam.cz", "kosice.sk", "ulaanbaatar.mn", "ars.electronica.art", \
-"www.joburg.org.za", "amazon.com", "microsoft.com", "apple.com", "github.com", \
-"facebook.com", "twitter.com", "linkedin.com", "netflix.com", "usa.gov", \
-"gov.uk", "europa.eu", "canada.ca", "gov.in", "gov.au", "gov.sg", "house.gov", \
-"nato.int", "iaea.org", "oecd.org", "wto.org", "imf.org", "worldbank.org", \
-"esa.int", "esa.org", "cern.ch", "jaxa.jp", "spacex.com", "blueorigin.com", \
-"virgingalactic.com", "rocketlabusa.com", "thespacestore.com", "livechat.com", \
-"zendesk.com", "helpscout.com", "freshdesk.com", "intercom.com", "genesys.com", \
-"avaya.com", "twilio.com", "ringcentral.com", "zoom.us", "logitech.com", \
-"poly.com", "clearbit.com", "hubspot.com", "bbc.com", "nytimes.com", "cnn.com", \
-"aljazeera.com", "reuters.com", "forbes.com", "braintreepayments.com", \
-"skrill.com", "paxum.com", "neteller.com", "remitly.com", "worldremit.com", \
-"moneygram.com", "westernunion.com", "numpy.org", "pandas.pydata.org", \
-"databricks.com", "snowflake.com", "tableau.com", "powerbi.com", "qlik.com", \
-"splunk.com", "elastic.co", "mongodb.com", "cassandra.apache.org", \
-"postgresql.org", "mysql.com", "mariadb.com", "redis.io", "apache.org", \
-"nginx.com", "tomcat.apache.org", "societegenerale.com", "unicreditgroup.eu", \
-"credit-suisse.com", "ubs.com", "ing.com", "capitalone.com", "pnc.com", \
-"turbotax.intuit.com", "dell.com", "adtax.com", "xerox.com", "docusign.com", \
-"house.gov", "nato.int", "iaea.org", "oecd.org", "wto.org", "imf.org", \
-"worldbank.org", "esa.int", "esa.org", "cern.ch", "jaxa.jp", "spacex.com", \
-"blueorigin.com", "virgingalactic.com", "rocketlabusa.com", "thespacestore.com", \
-"livechat.com", "zendesk.com", "google.com", "cloudflare.com", "example.com", \
-"nic.cz", "seznam.cz", "kosice.sk", "ulaanbaatar.mn", "ars.electronica.art", \
-"www.joburg.org.za", "amazon.com", "microsoft.com", "apple.com", "github.com", \
-"facebook.com", "twitter.com", "linkedin.com", "netflix.com", "usa.gov", \
-"gov.uk", "europa.eu", "canada.ca", "gov.in", "gov.au", "gov.sg", "house.gov", \
-"nato.int", "iaea.org", "oecd.org", "wto.org", "imf.org", "worldbank.org", \
-"esa.int", "esa.org", "cern.ch", "jaxa.jp", "spacex.com", "blueorigin.com", \
-"virgingalactic.com", "rocketlabusa.com", "thespacestore.com", "livechat.com", \
-"zendesk.com", "helpscout.com", "freshdesk.com", "intercom.com", "genesys.com", \
-"avaya.com", "twilio.com", "ringcentral.com", "zoom.us", "logitech.com", \
-"poly.com", "clearbit.com", "hubspot.com", "bbc.com", "nytimes.com", "cnn.com", \
-"aljazeera.com", "reuters.com", "forbes.com"
-
-/* how many connection will be open for each unit test group.
- * Some tests are designed to close the connection, it is simpler
- * to create more connections and just use the next once the
- * terminal test finishes */
+/* Max number of connection the array can hold, in case some test requires
+ * more than one connection. */
 #define CONN_COUNT 10
 
 #define ENV_BUF_SIZE (1 << 16)
+/* Perhaps a bit missleading name since we are actually retrieving net_ctx_t,
+ * but the reason for this is to save width, so it is fine. */
+#define getconn(x) x->conns[x->flc]
 
-/* Global variable is ugly, but cmocka setup doesn't allow
- * arguments so this is an acceptable hack for now */
 static char address[INET6_ADDRSTRLEN + 6/* port */ + 2/* @ chars */] = "@";
+static int verbosity = 0;
+static uint64_t query_index = 0;
+#define QUERY_COUNT 15
+static char* qtest_queries[QUERY_COUNT] = {
+	"example.com", "example.hu", "example.no", "example.sk", "example.de",
+	"example.fi", "example.uk", "example.nl", "example.be", "example.fr",
+	"example.es", "example.pl", "example.ee", "example.ie", "example.it"
+};
+
+enum test_suites {
+	STREAM_TESTS = 0,
+	PROTO_TESTS = 1,
+	MANUAL_TESTS = 2,
+};
+char *test_suite_names[] = {
+	"General stream data handling tests",
+	"Protocol compliance tests",
+	"Tests requiring manual veriifcation",
+};
 
 typedef struct net_ctx {
 	net_t *net;
@@ -120,63 +74,10 @@ typedef struct qtest_state {
 	size_t counter;
 } qtest_state_t;
 
-int create_net(const query_t *query, net_t *net)
-{
-	node_t *server;
-	int ret;
-
-	// Get connection parameters.
-	int socktype = get_socktype(query->protocol, query->type_num);
-	int flags = query->fastopen ? NET_FLAGS_FASTOPEN : NET_FLAGS_NONE;
-
-	/* Currently there is no use for multiserver kdigs */
-	assert(list_size(&query->servers) == 1);
-
-	server = HEAD(query->servers);
-
-	srv_info_t *remote = (srv_info_t *)server;
-	int iptype = get_iptype(query->ip, remote);
-
-	for (size_t i = 0; i <= query->retries; i++) {
-		// Initialize network structure for current server.
-		ret = net_init(query->local, remote, iptype, socktype,
-			       query->wait, flags,
-			       (struct sockaddr *)&query->proxy.src,
-			       (struct sockaddr *)&query->proxy.dst,
-			       net);
-
-		if (ret != KNOT_EOK) {
-			if (ret == KNOT_NET_EADDR) {
-				return KNOT_EADDRNOTAVAIL;
-			}
-
-			continue;
-		}
-
-		// Loop over all resolved addresses for remote.
-		while (net->srv != NULL) {
-			ret = net_init_crypto(net, &query->tls, &query->https,
-					      &query->quic);
-			if (ret == 0) {
-				break;
-			}
-
-			net->srv = net->srv->ai_next;
-		}
-
-		break;
-	}
-
-	if (ret == 0) {
-		return KNOT_EOK;
-	}
-
-	assert(0);
-}
-
 static void reset_callbacks(net_t *net)
 {
 	net->cbs->tls_ctx_setup_remote_endpoint = tls_ctx_setup_remote_endpoint;
+	net->cbs->create_query_packet = create_query_packet;
 	net->cbs->net_set_local_info = net_set_local_info;
 	net->cbs->net_get_remote = net_get_remote;
 	net->cbs->tls_ctx_init = tls_ctx_init;
@@ -216,104 +117,204 @@ static void reset_conn_state(net_t *net)
 	reset_env(net);
 }
 
+static int create_net(const query_t *query, net_t *net)
+{
+	int ret;
+	node_t *server;
+	int socktype = get_socktype(query->protocol, query->type_num);
+	int flags = query->fastopen ? NET_FLAGS_FASTOPEN : NET_FLAGS_NONE;
+	/* Currently there is no use for multiserver kdigs */
+	assert(list_size(&query->servers) == 1);
+	server = HEAD(query->servers);
+	srv_info_t *remote = (srv_info_t *)server;
+	int iptype = get_iptype(query->ip, remote);
+
+	for (size_t i = 0; i <= query->retries; i++) {
+		// Initialize network structure for current server.
+		ret = net_init(query->local, remote, iptype, socktype,
+			       query->wait, flags,
+			       (struct sockaddr *)&query->proxy.src,
+			       (struct sockaddr *)&query->proxy.dst,
+			       net);
+
+		if (ret != KNOT_EOK) {
+			if (ret == KNOT_NET_EADDR) {
+				return KNOT_EADDRNOTAVAIL;
+			}
+			continue;
+		}
+		// Loop over all resolved addresses for remote.
+		while (net->srv != NULL) {
+			ret = net_init_crypto(net, &query->tls, &query->https,
+					      &query->quic);
+			if (ret == 0) {
+				break;
+			}
+			net->srv = net->srv->ai_next;
+		}
+		break;
+	}
+	if (ret == 0) {
+		return KNOT_EOK;
+	}
+	assert(0);
+}
+
 
 static int setup(void **state)
 {
-	int i = 0;
-	int ret = KNOT_ENOMEM;
-	net_t *uc_net = NULL;
-	query_t *uc_query = NULL;
+	*state = NULL;
 	qtest_state_t *ctx = calloc(1, sizeof(*ctx));
 	if (!ctx)
-		goto fail;
+		return KNOT_ENOMEM;
 
 	ctx->conns = calloc(CONN_COUNT, sizeof(struct net_ctx));
 	if (!ctx->conns) {
-		goto fail;
+		free(ctx);
+		return KNOT_ENOMEM;
 	}
-
-	int uc_argc = 3 + QUERIES_10_COUNT;
-	char *uc_argv[] = {
-		"", /* not relevant */
-		"+quic",
-		address,
-		QUERIES_10
-	};
-
 	dnssec_crypto_init();
-	for (; i < CONN_COUNT; i++) {
-		if ((ret = kdig_parse(&ctx->conns[i].params, uc_argc, uc_argv,
-					uc_query)) != KNOT_EOK) {
-			dnssec_crypto_cleanup();
-			goto fail;
-		}
+	*state = ctx;
+	return KNOT_EOK;
+}
 
-		ctx->conns[i].net = calloc(1, sizeof(*uc_net));
+/* ctx and uc_net arguments are mandatory. extra is there just in a case
+ * some test requires more than one connection, the number of additional
+ * connections is then passed to this function via the extra parameter as the
+ * number of total connections required to run the test i.e. 2 if 2 conns are
+ * required (the one initialized by defailt and an additional one). */
+static int create_conn(qtest_state_t *ctx, int *extra)
+{
+	/* Currently unused, prevent programming errors,
+	 * TODO if some test requires > 1 conn remove the following if. */
+	if (extra) return KNOT_EINVAL;
+
+	if (!ctx || (extra && *extra > 1))
+		return KNOT_EINVAL;
+
+	int i = 0;
+	for (; i < (!extra ? 1 : (*extra - 1)); i++) {
+		ctx->conns[i].net = calloc(1, sizeof(net_t));
 		if (!ctx->conns[i].net) {
-			goto loop_fail;
+			goto fail;
 		}
 
 		ctx->conns[i].net->sockfd = -1;
 		if (create_net(ctx->conns[i].params.config, ctx->conns[i].net)
 				!= KNOT_EOK) {
-			goto loop_fail;
+			goto fail_current;
 		}
 
 		ctx->conns[i].net->quic.env =
 			calloc(1, sizeof(struct test_env));
 		if (!ctx->conns[i].net->quic.env) {
-			goto loop_fail;
+			goto fail_current;
 		}
 
 		ctx->conns[i].net->quic.env->buf =
 			calloc(ENV_BUF_SIZE, sizeof(char));
 		if (!ctx->conns[i].net->quic.env->buf) {
-			goto loop_fail;
+			goto fail_current;
 		}
 		ctx->conns[i].net->quic.env->bufsize = ENV_BUF_SIZE;
+		ctx->conns[i].net->quic.verbosity = verbosity;
+		ctx->conns[i].net->verbosity = verbosity;
 		ctx->conns[i].net->quic.env->bufend = 0;
 		reset_callbacks(ctx->conns[i].net);
 	}
 
-	*state = ctx;
-	return KNOT_EOK;
+	return 0;
 
-loop_fail:
-	dnssec_crypto_cleanup();
-	kdig_clean(&ctx->conns[i].params);
-
-	if (ctx->conns[i].net) {
-		if (ctx->conns[i].net->quic.env) {
-			if (ctx->conns[i].net->quic.env->buf) {
-				free(ctx->conns[i].net->quic.env->buf);
+fail_current:
+	if (ctx->conns[0].net) {
+		if (ctx->conns[0].net->quic.env) {
+			if (ctx->conns[0].net->quic.env->buf) {
+				free(ctx->conns[0].net->quic.env->buf);
 			}
-			free(ctx->conns[i].net->quic.env);
+			free(ctx->conns[0].net->quic.env);
 		}
-		net_clean(ctx->conns[i].net);
-		free(ctx->conns[i].net);
+		net_clean(ctx->conns[0].net);
+		free(ctx->conns[0].net);
 	}
 
 fail:
-	if (ctx->conns) {
-		for (int k = 0; k < i; k++) {
-			if (ctx->conns[k].net->quic.env) {
-				free(ctx->conns[k].net->quic.env->buf);
-				free(ctx->conns[k].net->quic.env);
-			}
-
-			kdig_clean(&ctx->conns[i].params);
-			net_clean(ctx->conns[k].net);
-			free(ctx->conns[k].net);
+	for (int k = 0; k < i; k++) {
+		if (ctx->conns[k].net->quic.env) {
+			free(ctx->conns[k].net->quic.env->buf);
+			free(ctx->conns[k].net->quic.env);
 		}
 
-		free(ctx->conns);
+		kdig_clean(&ctx->conns[i].params);
+		net_clean(ctx->conns[k].net);
+		free(ctx->conns[k].net);
 	}
 
-	if (ctx)
-		free(ctx);
+	return KNOT_ENOMEM;
+}
 
+static int test_send_query(net_ctx_t conn)
+{
+
+	if (process_query(HEAD(conn.params.queries), conn.net) != KNOT_EOK) {
+		WARN("Sanity check failed for new conn, test result is bogus!");
+		assert_true(false);
+		return -1;
+	}
+	reset_conn_state(conn.net);
+	return 0;
+}
+
+/* Runs before every test, initilizes the query and one connetion*/
+static int setup_unit_test_state(void **state)
+{
+	qtest_state_t *ctx = *state;
 	*state = NULL;
+	int ret = KNOT_EINVAL;
+
+	query_t *uc_query = NULL;
+	int uc_argc = 3 + 1;
+	char *uc_argv[] = {
+		"", /* not relevant */
+		"+quic",
+		address,
+		qtest_queries[query_index++ % QUERY_COUNT],
+	};
+
+	int i = 0;
+	if (ctx->conns[0].net != NULL) {
+		WARN("Connection list has to be empty in setup_unit_test_state!");
+		return ret;
+	}
+	if ((ret = kdig_parse(&ctx->conns[i].params, uc_argc, uc_argv,
+					uc_query)) != KNOT_EOK) {
+		WARN("Failed to parse params (%d)", ret);
+		dnssec_crypto_cleanup();
+		return ret;
+	}
+	if ((ret = create_conn(ctx, NULL)) != 0) {
+		dnssec_crypto_cleanup();
+		kdig_clean(&ctx->conns[0].params);
+		WARN("Failed to create a connection (%d)", ret);
+		return ret;
+	}
+	// /* TODO: We do not do keepalive here, should this really
+	//  * be here? */
+	if (test_send_query(ctx->conns[0]) != 0) {
+		return -1;
+	}
+	*state = ctx;
 	return ret;
+}
+
+static void terminate_conn(net_ctx_t conn)
+{
+	free(conn.net->quic.env->buf);
+	free(conn.net->quic.env);
+	net_close(conn.net);
+	net_clean(conn.net);
+	free(conn.net);
+	kdig_clean(&conn.params);
+
 }
 
 static int teardown(void **state)
@@ -324,65 +325,66 @@ static int teardown(void **state)
 	qtest_state_t *ctx = *state;
 	dnssec_crypto_cleanup();
 
-	for (int i = 0; i < CONN_COUNT; i++) {
-		free(ctx->conns[i].net->quic.env->buf);
-		free(ctx->conns[i].net->quic.env);
-		net_close(ctx->conns[i].net);
-		net_clean(ctx->conns[i].net);
-		free(ctx->conns[i].net);
-		kdig_clean(&ctx->conns[i].params);
-	}
-
 	free(ctx->conns);
 	free(*state);
 	*state = NULL;
 
+	fflush(stdout);
+	fflush(stderr);
 	return KNOT_EOK;
 }
 
-static void burned_conn(qtest_state_t *ctx)
+static int test_cleanup(void **state)
 {
-	/* The enrite program should fail if we have insufficient number
-	 * of connections for this test group */
-	if (ctx->flc + 1 < CONN_COUNT) {
-		WARN("Insufficient number of conns for the run tests, either some test killed the connection unexpectedly or programming error.");
-		/* TODO cleaner death */
-		assert(false);
-	}
-	++ctx->flc;
-}
+	qtest_state_t *ctx = *state;
 
+	int i = 0;
+	assert_non_null(HEAD(ctx->conns[i].params.queries));
+	assert_non_null(ctx->conns[i].net);
+	do {
+		reset_conn_state(ctx->conns[i].net);
+		assert_non_null(ctx->conns[i].net->quic.env);
+		terminate_conn(ctx->conns[i]);
+		ctx->conns[i].net = NULL;
+		i++;
+	} while (HEAD(ctx->conns[i].params.queries) && ctx->conns[i].net);
+
+	return 0;
+}
 
 /*****************************************************************************
 * 				Automated tests
+* ----------------------------------------------------------------------------
+* Following set of test verify basic protocol functionality as well as some
+* interesting or unusual situations, some of them violate the RFC specification.
 ******************************************************************************/
 
 /* sanity check that all connections are able to query the server. */
 static void simple_sanity(void **state)
 {
 	qtest_state_t *ctx = *state;
-	for (int i = 0; i < CONN_COUNT; i++) {
-		assert_int_equal(process_query(
-					HEAD(ctx->conns[i].params.queries),
-					ctx->conns[i].net), KNOT_EOK);
-		reset_conn_state(ctx->conns[i].net);
-	}
+	assert_int_equal(process_query(HEAD(ctx->conns[0].params.queries),
+				ctx->conns[0].net), 0);
 }
 
+/* This test opens a stream, sends the bidi stream opening request to the
+ * remote and then waits. Implementations that do not set relatively strict
+ * handshake timeouts might fails this test if they choose to terminate
+ * the connection localy without sending any information back to the client. */
 static void open_stream_and_timeout(void **state)
 {
 	qtest_state_t *ctx = *state;
-	ctx->conns[ctx->flc].net->cbs->quic_send_data = quic_send_data_test;
-	ctx->conns[ctx->flc].net->quic.env->scenario = 1;
+	getconn(ctx).net->cbs->quic_send_data = quic_send_data_test;
+	getconn(ctx).net->cbs->quic_recv = quic_recv_close_doq_error;
+	getconn(ctx).net->quic.env->scenario = 1;
 
 	/* query should fail */
-	assert_int_equal(process_query(
-				HEAD(ctx->conns[ctx->flc].params.queries),
-				ctx->conns[ctx->flc].net), -1);
-	assert_int_equal(ctx->conns[ctx->flc].net->quic.last_err.error_code,
-			NGTCP2_ERR_IDLE_CLOSE);
-	// assert_int_equal(ctx->conns[ctx->flc].net->quic.state, CLOSED);
-	burned_conn(ctx);
+	assert_int_equal(process_query(HEAD(getconn(ctx).params.queries),
+				getconn(ctx).net), -1);
+	assert_int_equal(getconn(ctx).net->quic.last_err.type,
+			NGTCP2_CCERR_TYPE_APPLICATION);
+	assert_int_equal(getconn(ctx).net->quic.last_err.error_code,
+			NGTCP2_APPLICATION_ERROR);
 }
 
 /* most DNS queries come in a single packet that opens the stream,
@@ -390,102 +392,38 @@ static void open_stream_and_timeout(void **state)
 static void stream_data_split_to_two_pkts(void **state)
 {
 	qtest_state_t *ctx = *state;
-	reset_callbacks(ctx->conns[ctx->flc].net);
-	ctx->conns[ctx->flc].net->cbs->quic_send_dns_query =
-		quic_send_dns_query_split;
-	ctx->conns[ctx->flc].net->cbs->quic_send_data = quic_send_data_split;
-
-	ctx->conns[ctx->flc].net->quic.env->scenario =
-		NGTCP2_WRITE_STREAM_FLAG_NONE;
-	ctx->conns[ctx->flc].net->quic.env->counter = 2;
-	/* FIXME: this test shouldn't terminate the connection
-	 * it ends up in PROTOCOL ERROR for some reason */
-	assert_int_equal(process_query(
-				HEAD(ctx->conns[ctx->flc].params.queries),
-				ctx->conns[ctx->flc].net), 0);
-	reset_conn_state(ctx->conns[ctx->flc].net);
+	getconn(ctx).net->cbs->quic_send_dns_query = quic_send_dns_query_split;
+	getconn(ctx).net->cbs->quic_send_data = quic_send_data_split;
+	getconn(ctx).net->quic.env->counter = 2;
+	assert_int_equal(process_query(HEAD(getconn(ctx).params.queries),
+				getconn(ctx).net), 0);
 }
 
 static void stream_data_split_to_ten_pkts(void **state)
 {
 	qtest_state_t *ctx = *state;
-	reset_callbacks(ctx->conns[ctx->flc].net);
-	ctx->conns[ctx->flc].net->cbs->quic_send_dns_query =
-		quic_send_dns_query_split;
-	ctx->conns[ctx->flc].net->cbs->quic_send_data = quic_send_data_split;
-	ctx->conns[ctx->flc].net->quic.env->scenario =
-		NGTCP2_WRITE_STREAM_FLAG_NONE;
-	ctx->conns[ctx->flc].net->quic.env->counter = 10;
-
-	assert_int_equal(process_query(
-				HEAD(ctx->conns[ctx->flc].params.queries),
-				ctx->conns[ctx->flc].net), 0);
-	reset_conn_state(ctx->conns[ctx->flc].net);
-
-	burned_conn(ctx);
+	getconn(ctx).net->cbs->quic_send_dns_query = quic_send_dns_query_split;
+	getconn(ctx).net->cbs->quic_send_data = quic_send_data_split;
+	getconn(ctx).net->quic.env->counter = 10;
+	assert_int_equal(process_query(HEAD(getconn(ctx).params.queries),
+				getconn(ctx).net), 0);
 }
 
-/* By splitting the query into two and setting the scenario to FIN we'll only
- * send the first half of the query */
-static void stream_data_send_half_of_query(void **state)
-{
-	qtest_state_t *ctx = *state;
-	reset_callbacks(ctx->conns[ctx->flc].net);
-	ctx->conns[ctx->flc].net->cbs->quic_send_dns_query =
-		quic_send_dns_query_split;
-	ctx->conns[ctx->flc].net->cbs->quic_send_data = quic_send_data_split;
-	ctx->conns[ctx->flc].net->cbs->quic_recv =
-		quic_recv_close_doq_error;
-	ctx->conns[ctx->flc].net->quic.env->scenario =
-		NGTCP2_WRITE_STREAM_FLAG_FIN;
-	ctx->conns[ctx->flc].net->quic.env->scenario = DOQ_PROTOCOL_ERROR;
-	ctx->conns[ctx->flc].net->quic.env->counter = 2;
-	assert(ctx->conns[ctx->flc].net->quic.env->extra == 0);
-	ctx->conns[ctx->flc].net->quic.env->extra = TEST_SEND_ONE_PAYLOAD;
-
-	assert_int_equal(process_query(
-				HEAD(ctx->conns[ctx->flc].params.queries),
-				ctx->conns[ctx->flc].net), -1);
-	assert_int_equal(ctx->conns[ctx->flc].net->quic.last_err.error_code,
-			DOQ_PROTOCOL_ERROR);
-	burned_conn(ctx);
-}
-
-/* test multiple active streams which send their queries split in half
- * this test is quite pointless. This test doesn't work as there is
- * a lot of missing code for handligh multiple streams. you can run it
- * and ispect the server that it actually accepted N streams, resolved the
- * queries and attemped to send the answers to the N streams.
- * if this functionality is ever added replace the asserted
- * return code from -1 back to 0 */
+/* Test multiple active streams which send their queries split in half
+ * so all the streams send their first half of the query
+ * first and then send again with FIN the rest. */
 static void multiple_parallel_streams(void **state)
 {
 	qtest_state_t *ctx = *state;
 
-	if (ctx->flc + 2 >= CONN_COUNT) {
-		printf("Insufficient number of connection for this test, need >= 2");
-		assert_true(false);
-		return;
-	}
-
-	ctx->conns[ctx->flc].net->cbs->quic_send_dns_query =
-		quic_send_dns_query_sync;
-	ctx->conns[ctx->flc].net->cbs->quic_send_data = quic_send_data_split;
-	ctx->conns[ctx->flc].net->cbs->quic_recv = quic_recv_with_ack;
-	ctx->conns[ctx->flc].net->quic.env->scenario =
-		NGTCP2_WRITE_STREAM_FLAG_NONE;
-	ctx->conns[ctx->flc].net->quic.env->counter = 2;
-
-	/* FIXME I do not really remember what this checks but it fails
-	 * when qtest tests unbound */
-	assert_int_equal(ctx->conns[ctx->flc].net->quic.env->extra, 0);
-
-	assert_int_equal(process_query(
-				HEAD(ctx->conns[ctx->flc].params.queries),
-				ctx->conns[ctx->flc].net), -1/*shoudl be 0 but this test is unfinished*/);
-	reset_conn_state(ctx->conns[ctx->flc].net);
-
-	burned_conn(ctx);
+	getconn(ctx).net->quic.env->extra = 10;
+	getconn(ctx).net->quic.env->counter = 2;
+	getconn(ctx).net->quic.env->scenario = NGTCP2_WRITE_STREAM_FLAG_NONE;
+	getconn(ctx).net->cbs->quic_send_dns_query = quic_send_dns_query_sync;
+	getconn(ctx).net->cbs->quic_send_data = quic_send_data_split;
+	getconn(ctx).net->cbs->quic_recv = quic_recv_with_ack;
+	assert_int_equal(process_query(HEAD(getconn(ctx).params.queries),
+				getconn(ctx).net), 0);
 }
 
 static void send_one_byte_at_a_time(void **state)
@@ -498,102 +436,14 @@ static void send_one_byte_at_a_time(void **state)
 		return;
 	}
 
-	reset_callbacks(ctx->conns[ctx->flc].net);
-	ctx->conns[ctx->flc].net->cbs->quic_send_dns_query =
-		quic_send_dns_query_split;
-	ctx->conns[ctx->flc].net->cbs->quic_send_data =
-		quic_send_data_split;
-	ctx->conns[ctx->flc].net->quic.env->scenario =
-		NGTCP2_WRITE_STREAM_FLAG_NONE;
+	getconn(ctx).net->cbs->quic_send_dns_query = quic_send_dns_query_split;
+	getconn(ctx).net->cbs->quic_send_data = quic_send_data_split;
+	getconn(ctx).net->quic.env->scenario = NGTCP2_WRITE_STREAM_FLAG_NONE;
 	/* -1 means send one byte at a time */
-	ctx->conns[ctx->flc].net->quic.env->counter = -1;
+	getconn(ctx).net->quic.env->counter = -1;
 
-	assert_int_equal(process_query(
-				HEAD(ctx->conns[ctx->flc].params.queries),
-				ctx->conns[ctx->flc].net), 0);
-	reset_conn_state(ctx->conns[ctx->flc].net);
-
-	burned_conn(ctx);
-}
-
-/* this test attempts to reach the limits of the congestion control window.
- * it expects both the remote and local endpoints to increase these limits
- * since sending a large amount. */
-static void test_stream_data_extension(void **state)
-{
-	qtest_state_t *ctx = *state;
-	reset_callbacks(ctx->conns[ctx->flc].net);
-	ssize_t pld_size = (1 << 16) - (1 << 10);
-	assert(ctx->conns[ctx->flc].net->quic.env->bufsize >= pld_size);
-	memset(&ctx->conns[ctx->flc].net->quic.env->buf, 0x0, pld_size);
-	knot_wire_write_u16((uint8_t *)ctx->conns[ctx->flc].net->quic.env->buf,
-			pld_size - 2);
-	ctx->conns[ctx->flc].net->quic.env->bufend = pld_size;
-}
-
-/* Check the handling of a situation where a server receives
- * less data than advertised in the size prefix, should result
- * in a CONNECTION_CLOSE frame with DOQ_PROTOCOL_ERROR, but really
- * only should, silent con termination is also acceptable according to RFC 9250
- *
- * This and the subsequert test use env->extra to store the
- * value that is to be added or subracted from the size_prefix */
-static void send_less_data_than_size_prefix(void **state)
-{
-	qtest_state_t *ctx = *state;
-	reset_callbacks(ctx->conns[ctx->flc].net);
-	ctx->conns[ctx->flc].net->cbs->quic_send_dns_query =
-		quic_send_dns_query_wrong_size_prefix;
-	ctx->conns[ctx->flc].net->cbs->quic_recv =
-		quic_recv_close_doq_error;
-	ctx->conns[ctx->flc].net->quic.env->extra = 50;
-	ctx->conns[ctx->flc].net->quic.env->scenario = DOQ_PROTOCOL_ERROR;
-
-	assert_int_equal(process_query(
-				HEAD(ctx->conns[ctx->flc].params.queries),
-				ctx->conns[ctx->flc].net), -1);
-	assert_int_equal(ctx->conns[ctx->flc].net->quic.env->extra,
-			RECEIVED_CLOSE_MAGIC);
-	burned_conn(ctx);
-}
-
-/* Same as above but send more */
-static void send_more_data_than_size_prefix(void **state)
-{
-	qtest_state_t *ctx = *state;
-	reset_callbacks(ctx->conns[ctx->flc].net);
-	ctx->conns[ctx->flc].net->cbs->quic_send_dns_query =
-		quic_send_dns_query_wrong_size_prefix;
-	ctx->conns[ctx->flc].net->cbs->quic_recv =
-		quic_recv_close_doq_error;
-	ctx->conns[ctx->flc].net->quic.env->extra = -50;
-	ctx->conns[ctx->flc].net->quic.env->scenario = DOQ_PROTOCOL_ERROR;
-
-	assert_int_equal(process_query(
-				HEAD(ctx->conns[ctx->flc].params.queries),
-				ctx->conns[ctx->flc].net), -1);
-	assert_int_equal(ctx->conns[ctx->flc].net->quic.env->extra,
-			RECEIVED_CLOSE_MAGIC);
-	burned_conn(ctx);
-}
-
-/* This test is anomalous and should not be used! */
-static void send_only_initial(void **state)
-{
-	qtest_state_t *ctx = *state;
-	reset_callbacks(ctx->conns[ctx->flc].net);
-	ctx->conns[ctx->flc].net->cbs->quic_ctx_connect =
-		quic_ctx_connect_only_initial;
-	ctx->conns[ctx->flc].net->cbs->quic_recv =
-		quic_recv_close_doq_error;
-	ctx->conns[ctx->flc].net->quic.env->scenario = DOQ_NO_ERROR;
-
-	assert_int_equal(process_query(
-				HEAD(ctx->conns[ctx->flc].params.queries),
-				ctx->conns[ctx->flc].net), -1);
-	assert_int_equal(ctx->conns[ctx->flc].net->quic.env->extra,
-			RECEIVED_CLOSE_MAGIC);
-	burned_conn(ctx);
+	assert_int_equal(process_query(HEAD(getconn(ctx).params.queries),
+				getconn(ctx).net), 0);
 }
 
 /* This test sends the first half of tha payload and right after that
@@ -602,48 +452,171 @@ static void send_only_initial(void **state)
 static void send_stream_reset_prefin(void **state)
 {
 	qtest_state_t *ctx = *state;
-	reset_callbacks(ctx->conns[ctx->flc].net);
-	ctx->conns[ctx->flc].net->cbs->quic_send_data =
+	getconn(ctx).net->cbs->quic_send_data =
 		quic_send_data_split_reset_stream;
-	ctx->conns[ctx->flc].net->cbs->quic_send_dns_query =
-		quic_send_dns_query_split;
-	ctx->conns[ctx->flc].net->quic.env->scenario =
-		NGTCP2_WRITE_STREAM_FLAG_NONE;
-	assert_int_equal(process_query(
-				HEAD(ctx->conns[ctx->flc].params.queries),
-				ctx->conns[ctx->flc].net), -1);
-	burned_conn(ctx);
+	getconn(ctx).net->cbs->quic_send_dns_query = quic_send_dns_query_split;
+	getconn(ctx).net->quic.env->scenario = NGTCP2_WRITE_STREAM_FLAG_NONE;
+	assert_int_equal(process_query(HEAD(getconn(ctx).params.queries),
+				getconn(ctx).net), -1);
 }
 
 /* Same as send_stream_reset_prefin but sends the entire payload including
  * the FIN flag prior to sending RESET_STREAM.
  * WARNING: This test requires the tested upstream to delay its answer.
- * Ideally configure your setup such that it forwards to a dead 'up'upstream,
- * meaning there will be several seconds to transmit the reset stream before
- * the tested upstream responds with an answer of SERVFAIL. */
+ * Ideally configure your setup such that the server forwards to a dead
+ * upstream, meaning there will be several seconds to transmit the reset stream
+ * before the tested upstream responds with an answer of SERVFAIL. */
 static void send_stream_reset_postfin(void **state)
 {
 	qtest_state_t *ctx = *state;
-	reset_callbacks(ctx->conns[ctx->flc].net);
-	ctx->conns[ctx->flc].net->cbs->quic_send_data =
+	getconn(ctx).net->cbs->quic_send_data =
 		quic_send_data_split_reset_stream;
-	ctx->conns[ctx->flc].net->cbs->quic_send_dns_query =
-		quic_send_dns_query;
-	ctx->conns[ctx->flc].net->quic.env->scenario =
-		NGTCP2_WRITE_STREAM_FLAG_FIN;
-	assert_int_equal(process_query(
-				HEAD(ctx->conns[ctx->flc].params.queries),
-				ctx->conns[ctx->flc].net), -1);
-	burned_conn(ctx);
+	getconn(ctx).net->cbs->quic_send_dns_query = quic_send_dns_query;
+	getconn(ctx).net->quic.env->scenario = NGTCP2_WRITE_STREAM_FLAG_FIN;
+	assert_int_equal(process_query(HEAD(getconn(ctx).params.queries),
+				getconn(ctx).net), -1);
+}
+
+/*****************************************************************************
+*	 		RFC 9250 Protocol Error tests
+* ----------------------------------------------------------------------------
+* This set of tests simulates some protocol errors defined in RFC 9250 4.3.3.
+* The response to these tests from the upstream server should forcibly abort
+* the connection via CONNECTION_CLOSE and set the appropriate DoQ error code.
+*
+* These tests are automatic. Meaning they verify that the server responds to
+* such errors in compliance with the RFC specification.
+******************************************************************************/
+
+/* a client or server receives a message with a non-zero Message ID */
+static void send_non_zero_msgid(void **state)
+{
+	qtest_state_t *ctx = *state;
+	getconn(ctx).net->cbs->create_query_packet =
+		create_query_packet_with_msgid;
+	getconn(ctx).net->cbs->quic_recv = quic_recv_close_doq_error;
+	assert_int_equal(process_query(HEAD(getconn(ctx).params.queries),
+				getconn(ctx).net), -1);
+	assert_int_equal(getconn(ctx).net->quic.last_err.type,
+			NGTCP2_CCERR_TYPE_APPLICATION);
+	assert_int_equal(getconn(ctx).net->quic.last_err.error_code,
+			DOQ_PROTOCOL_ERROR);
+}
+
+/* a client or server receives a STREAM FIN before receiving all the
+ * bytes for a message indicated in the 2-octet length field */
+static void send_less_data_than_size_prefix(void **state)
+{
+	qtest_state_t *ctx = *state;
+	getconn(ctx).net->cbs->quic_send_dns_query =
+		quic_send_dns_query_wrong_size_prefix;
+	getconn(ctx).net->cbs->quic_recv = quic_recv_close_doq_error;
+	getconn(ctx).net->quic.env->extra = 50;
+	assert_int_equal(process_query(HEAD(getconn(ctx).params.queries),
+				getconn(ctx).net), -1);
+	assert_int_equal(getconn(ctx).net->quic.last_err.type,
+			NGTCP2_CCERR_TYPE_APPLICATION);
+	assert_int_equal(getconn(ctx).net->quic.last_err.error_code,
+			DOQ_PROTOCOL_ERROR);
+}
+/* Same as above but send more */
+static void send_more_data_than_size_prefix(void **state)
+{
+	qtest_state_t *ctx = *state;
+	getconn(ctx).net->cbs->quic_send_dns_query =
+		quic_send_dns_query_wrong_size_prefix;
+	getconn(ctx).net->cbs->quic_recv = quic_recv_close_doq_error;
+	getconn(ctx).net->quic.env->extra = -50;
+	assert_int_equal(process_query(HEAD(getconn(ctx).params.queries),
+				getconn(ctx).net), -1);
+	assert_int_equal(getconn(ctx).net->quic.last_err.type,
+			NGTCP2_CCERR_TYPE_APPLICATION);
+	assert_int_equal(getconn(ctx).net->quic.last_err.error_code,
+			DOQ_PROTOCOL_ERROR);
+}
+
+/* a server receives more than one query on a stream */
+/* DEV NOTE: this isn't really different for out implementation, but some
+ * other miplementation might accept secondary query if it is prepended
+ * like a proper query with the size prefix. TODO but low prio since this
+ * cannot happen in out implementation. */
+static void send_two_size_prefixed_queries(void **state)
+{
+	qtest_state_t *ctx = *state;
+	getconn(ctx).net->cbs->quic_send_dns_query = quic_send_doubled;
+	getconn(ctx).net->cbs->quic_recv = quic_recv_close_doq_error;
+	assert_int_equal(process_query(HEAD(getconn(ctx).params.queries),
+				getconn(ctx).net), -1);
+	assert_int_equal(getconn(ctx).net->quic.last_err.type,
+			NGTCP2_CCERR_TYPE_APPLICATION);
+	assert_int_equal(getconn(ctx).net->quic.last_err.error_code,
+			DOQ_PROTOCOL_ERROR);
+}
+
+/* the client or server does not indicate the expected STREAM FIN
+ * after sending requests or responses (see Section 4.2[meant in RFC 9250])
+ * WARNING: This test is not really automated since the RFC doesn't exactly
+ * specify how this situation should be handled. Most implementations will
+ * just timeout the connection, that solution should be ok. */
+static void missing_stream_fin(void **state)
+{
+	qtest_state_t *ctx = *state;
+	getconn(ctx).net->quic.env->scenario = NGTCP2_STREAM_DATA_FLAG_NONE;
+	getconn(ctx).net->quic.env->extra = TEST_SEND_ONE_PAYLOAD;
+	getconn(ctx).net->quic.env->counter = 1;
+	getconn(ctx).net->cbs->quic_send_dns_query = quic_send_dns_query_split;
+	getconn(ctx).net->cbs->quic_send_data = quic_send_data_split;
+	getconn(ctx).net->cbs->quic_recv = quic_recv_close_doq_error;
+	assert_int_equal(process_query(HEAD(getconn(ctx).params.queries),
+				getconn(ctx).net), 0);
+}
+
+/* an implementation receives a message containing the edns-tcp-keepalive
+ * EDNS(0) Option [RFC7828] (see Section 5.5.2[meant in RFC 9250]) */
+static void send_edns_keepalive(void **state)
+{
+	qtest_state_t *ctx = *state;
+	query_t *q = HEAD(ctx->conns[0].params.queries);
+	ednsopt_t *opt =
+		ednsopt_create(KNOT_EDNS_OPTION_TCP_KEEPALIVE, 0, NULL);
+	add_tail(&q->edns_opts, &opt->n);
+	getconn(ctx).net->cbs->quic_recv = quic_recv_close_doq_error;
+	assert_int_equal(process_query(HEAD(getconn(ctx).params.queries),
+				getconn(ctx).net), -1);
+	assert_int_equal(getconn(ctx).net->quic.last_err.type,
+			NGTCP2_CCERR_TYPE_APPLICATION);
+	assert_int_equal(getconn(ctx).net->quic.last_err.error_code,
+			DOQ_PROTOCOL_ERROR);
+}
+
+/* a client or a server attempts to open a unidirectional QUIC stream */
+/* NOTE This situation might be handled by the QUIC library used
+ * for the server's DoQ implementation since the server should prevent
+ * the counterside from opening unidirectional streams at all by setting
+ * initial_max_stream_uni to 0. If this is not set the implementation will
+ * attempt to open such stream, if uni stream limit is 0 the test passes. */
+static void open_unidirectional(void **state)
+{
+	qtest_state_t *ctx = *state;
+	getconn(ctx).net->cbs->quic_send_dns_query =
+		quic_send_dns_query_open_uni_stream;
+	assert_int_equal(process_query(HEAD(getconn(ctx).params.queries),
+				getconn(ctx).net), -1);
 }
 
 /*****************************************************************************
 * 		Tests that require manual verification
+* ----------------------------------------------------------------------------
+* These tests do not provide any meaningful information in the cmocka output.
+* If these tests pass it ONLY means that they were executed without any
+* problems. The result itself and the response of the tested implementation has
+* to be verified manually, it is strongly recomended to enable ngtcp2 debug log
+* (using the -V option) when running these tests.
 ******************************************************************************/
 
-/* This test is supposted to test the state handling
+/* This test is supposed to test the state handling
  * of an abandoned stream. Disable the test or create such a setup in which
- * the tested resolver takes a long time to receive (but eventually it does
+ * the tested server takes a long time to receive (but eventually it does
  * receive) the query. For example using a modified resolver which the tested
  * implementation forwards to.
  * This tests only fails if the sequence of sends wan't performed
@@ -655,115 +628,119 @@ static void send_stream_reset_postfin(void **state)
 static void send_and_close(void **state)
 {
 	qtest_state_t *ctx = *state;
-	reset_callbacks(ctx->conns[ctx->flc].net);
-	ctx->conns[ctx->flc].net->cbs->quic_send_data =
-		quic_send_data_terminate;
-	ctx->conns[ctx->flc].net->cbs->quic_send_dns_query =
+	getconn(ctx).net->cbs->quic_send_dns_query =
 		quic_send_dns_query_terminate;
-	ctx->conns[ctx->flc].net->quic.env->scenario =
-		NGTCP2_WRITE_STREAM_FLAG_NONE;
-	assert_int_equal(process_query(
-				HEAD(ctx->conns[ctx->flc].params.queries),
-				ctx->conns[ctx->flc].net), -1);
-	burned_conn(ctx);
+	getconn(ctx).net->cbs->quic_send_data = quic_send_data_terminate;
+	getconn(ctx).net->quic.env->scenario = NGTCP2_WRITE_STREAM_FLAG_NONE;
+	assert_int_equal(process_query(HEAD(getconn(ctx).params.queries),
+				getconn(ctx).net), -1);
 }
 
-/* This test is not able to correctly verify the result. a success of this
- * test is ONLY A HINT that the test might have been performed correctly.
- * The verification of the result is up to the programmer. the correct behaviour
- * is for the server to respond to the initial RESET_STREAM by stopping the
- * transaction as stated in RFC 9250 4.3.1.  Transaction Cancellation.
- * The server should also handle the fact that the client maliciosly
- * transports a stream frame after the STOP_SENDING frame. */
+/* This test is intended to verify that the server correctly handles
+ * a situation where the client sends data after STOP_SENDING. */
 static void send_after_stop_sending(void **state)
 {
 	qtest_state_t *ctx = *state;
-	reset_callbacks(ctx->conns[ctx->flc].net);
-	ctx->conns[ctx->flc].net->cbs->net_receive = net_receive_fail_ok;
-	ctx->conns[ctx->flc].net->cbs->quic_send_data = quic_send_data_split;
-	ctx->conns[ctx->flc].net->cbs->quic_send_dns_query =
+	getconn(ctx).net->cbs->quic_send_dns_query =
 		quic_send_dns_query_stop_sending;
-	ctx->conns[ctx->flc].net->cbs->quic_stream_reset_cb =
+	getconn(ctx).net->cbs->quic_stream_reset_cb =
 		stream_reset_cb_malicious_survival;
-	ctx->conns[ctx->flc].net->quic.env->scenario =
-		NGTCP2_WRITE_STREAM_FLAG_NONE;
-	ctx->conns[ctx->flc].net->quic.env->counter = 2;
-	assert_int_equal(process_query(
-				HEAD(ctx->conns[ctx->flc].params.queries),
-				ctx->conns[ctx->flc].net), 0);
-	burned_conn(ctx);
+	getconn(ctx).net->cbs->net_receive = net_receive_fail_ok;
+	getconn(ctx).net->cbs->quic_send_data = quic_send_data_split;
+	getconn(ctx).net->quic.env->scenario = NGTCP2_WRITE_STREAM_FLAG_NONE;
+	getconn(ctx).net->quic.env->counter = 2;
+	assert_int_equal(process_query(HEAD(getconn(ctx).params.queries),
+				getconn(ctx).net), 0);
 }
 
-static void client_send_stateless_reset(void **state)
-{
-	qtest_state_t *ctx = *state;
-	reset_callbacks(ctx->conns[ctx->flc].net);
-	ctx->conns[ctx->flc].net->cbs->quic_recv_dns_response =
-		quic_maybe_send_stateless_reset;
-	ctx->conns[ctx->flc].net->quic.env->scenario =
-		NGTCP2_WRITE_STREAM_FLAG_NONE;
-	assert_int_equal(process_query(
-				HEAD(ctx->conns[ctx->flc].params.queries),
-				ctx->conns[ctx->flc].net), 0);
-	burned_conn(ctx);
-}
-
-/* Every test has to have as the very last line either of the following
- * Option 1: // The test is expected to terminate the connection
- * 	burned_conn(ctx);
- * Option 2: // The conn should survive the test and the env variables are to be reset
- * 	reset_conn_state(ctx->conns[ctx->flc].net);
- */
 int main(int argc, char *argv[])
 {
-	if (argc == 2 && (strcmp(argv[0], "--help") || strcmp(argv[0], "-h"))) {
-		printf("qtest address port     qtest requires an address and a port of the DoQ server that is to be tested\n");
-		printf("qtest --help displays this help message\n");
+	bool enable_manual = false;
+	if (argc == 2 && (!strcmp(argv[1], "--help") || !strcmp(argv[1], "-h"))) {
+		printf("qtest [OPTIONS] address port\tqtest requires an address and a port of the DoQ server that is to be tested\n");
+		printf("qtest --help \t\t\tdisplays this help message\n");
+		printf("qtest OPTIONS:\n");
+		printf("\t -v\t\t\tprint usual kdig output alongside test results\n");
+		printf("\t -V\t\t\tprint usual kdig output and ngtcp2 log alongside test results\n");
+		printf("\t -m\t\t\tRun manual tests, these have no interpretable results and have to be verified on the server side (via log inspection and/or debug)\n");
 		return KNOT_EINVAL;
 	}
 
-	if (argc != 3) {
+#define MAX_ARGS 5
+#define MIN_ARGS 3
+#define FLAG_ARGS_MIN_POS 1
+#define FLAG_ARGS_MAX_POS 2
+	if ((argc == MIN_ARGS && argv[FLAG_ARGS_MAX_POS][0] == '-')
+			|| argc < MIN_ARGS
+			|| argc > MAX_ARGS) {
 		printf("Invalid number of arguments, see --help\n");
 		return KNOT_EINVAL;
 	}
 
-	size_t addrlen = strlen(argv[1]);
-	size_t portlen = strlen(argv[2]);
-	strncpy(address + 1, argv[1], addrlen);
+	for (int i = FLAG_ARGS_MIN_POS;
+			i < (FLAG_ARGS_MIN_POS + argc - MIN_ARGS); i++) {
+		if (strlen(argv[i]) != 2) {
+			printf("Unknown option '%s', see --help\n", argv[i]);
+			return KNOT_EINVAL;
+		} else if (!strcmp(argv[i], "-v") && verbosity == 0) {
+			verbosity = 1;
+		} else if (!strcmp(argv[i], "-V") && verbosity == 0) {
+			verbosity = 2;
+		} else if (!strcmp(argv[i], "-m") && enable_manual == false) {
+			enable_manual = true;
+		} else {
+			printf("Unknown or duplicit option '%s', see --help\n",
+					argv[i]);
+			return KNOT_EINVAL;
+		}
+	}
+
+	size_t addrlen = strlen(argv[1 + !!verbosity + enable_manual]);
+	size_t portlen = strlen(argv[2 + !!verbosity + enable_manual]);
+	strncpy(address + 1, argv[1 + !!verbosity + enable_manual], addrlen);
 	address[addrlen + 1] = '@';
-	strncpy(address + 1 + addrlen + 1, argv[2], portlen);
+	strncpy(address + 1 + addrlen + 1,
+			argv[2 + !!verbosity + enable_manual], portlen);
 
 	printf("testing address: %s\n", address);
 
-	#define c_u_t(x) cmocka_unit_test(x)
+	#define c_u_t(test_fun) cmocka_unit_test_setup_teardown(test_fun, \
+			setup_unit_test_state, test_cleanup)
 	#define c_m_unit_test CMUnitTest
+
 	const struct c_m_unit_test stream_tests[] = {
 		c_u_t(simple_sanity),
-		/* Causes timeout issues for the precreated conns, that part has
-		 * to be fixed, therefore TODO: Create conns per started test,
-		 * not in advance! */
-		// c_u_t(open_stream_and_timeout),
+		c_u_t(open_stream_and_timeout),
 		c_u_t(stream_data_split_to_two_pkts),
 		c_u_t(stream_data_split_to_ten_pkts),
-		c_u_t(stream_data_send_half_of_query),
 		c_u_t(multiple_parallel_streams),
 		c_u_t(send_one_byte_at_a_time),
-		// c_u_t(test_stream_data_extension),
-		c_u_t(send_less_data_than_size_prefix),
-		c_u_t(send_more_data_than_size_prefix),
-		// /* This test is anomalous and should not be used! */
-		// // c_u_t(send_only_initial),
 		c_u_t(send_stream_reset_prefin),
 		c_u_t(send_stream_reset_postfin),
-#if MANUAL_TESTING
-		// c_u_t(send_and_close),
-		// c_u_t(send_after_stop_sending),
-		// c_u_t(client_send_stateless_reset),
-#if ENABLE_SLOWLORIS_TEST
-		c_u_t(slowloris_test),
-#endif /* ENABLE_SLOWLORIS_TEST */
-#endif /* MANUAL_TESTING */
 	};
+	cmocka_run_group_tests_name(test_suite_names[STREAM_TESTS],
+			stream_tests, setup, teardown);
 
-	return cmocka_run_group_tests(stream_tests, setup, teardown);
+	const struct c_m_unit_test proto_compliance_tests[] = {
+		c_u_t(send_non_zero_msgid),
+		c_u_t(send_less_data_than_size_prefix),
+		c_u_t(send_more_data_than_size_prefix),
+		c_u_t(send_two_size_prefixed_queries),
+		c_u_t(missing_stream_fin),
+		c_u_t(send_edns_keepalive),
+		c_u_t(open_unidirectional),
+	};
+	cmocka_run_group_tests_name(test_suite_names[PROTO_TESTS],
+			proto_compliance_tests, setup, teardown);
+
+	if (enable_manual) {
+		const struct c_m_unit_test manual_verification_tests[] = {
+			c_u_t(send_and_close),
+			c_u_t(send_after_stop_sending),
+		};
+		cmocka_run_group_tests_name(test_suite_names[MANUAL_TESTS],
+				manual_verification_tests, setup, teardown);
+	}
+
+	return KNOT_EOK;
 }
