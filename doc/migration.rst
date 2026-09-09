@@ -596,6 +596,11 @@ Utilities
   - The ``=`` key-value separator was removed from the configuration listing
     to make it consistent with configuration setting.
 
+- In :doc:`knotc<man_knotc>` command ``zone-purge``, DNSSEC keys metadata are no longer
+  purged with the filter ``+kaspdb`` or by default. DNSSEC keys and their metadata can
+  be purged with a new filter ``+keys``, while the filter ``+kaspdb`` purges all other
+  KASP DB data.
+
 Building notes
 --------------
 
