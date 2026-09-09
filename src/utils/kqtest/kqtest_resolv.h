@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "utils/kdig_qtest/qtest_netio.h"
+#include "utils/kqtest/kqtest_netio.h"
 #include "contrib/ucw/lists.h"
 
 srv_info_t* parse_nameserver(const char *str, const char *def_port);

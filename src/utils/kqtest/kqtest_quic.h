@@ -186,68 +186,68 @@ void quic_ctx_deinit(quic_ctx_t *ctx);
 
 void print_quic(const quic_ctx_t *ctx);
 
-typedef int (*qtest_getaddr)(const srv_info_t *server, const int iptype,
+typedef int (*kqtest_getaddr)(const srv_info_t *server, const int iptype,
 		const int socktype, struct addrinfo  **info);
 
-typedef void (*qtest_get_addr_str)(const struct sockaddr_storage *ss,
+typedef void (*kqtest_get_addr_str)(const struct sockaddr_storage *ss,
 		  const knot_probe_proto_t protocol, char **dst);
 
 /* Forward declaration */
 struct query;
 typedef struct query query_t;
 
-typedef knot_pkt_t *(*qtest_create_query_packet)(const query_t *query);
+typedef knot_pkt_t *(*kqtest_create_query_packet)(const query_t *query);
 
-typedef int (*qtest_tls_ctx_init)(tls_ctx_t *ctx, const tls_params_t *params,
+typedef int (*kqtest_tls_ctx_init)(tls_ctx_t *ctx, const tls_params_t *params,
 	unsigned int flags, int wait);
 
-typedef int (*qtest_quic_ctx_init)(quic_ctx_t *ctx, tls_ctx_t *tls_ctx,
+typedef int (*kqtest_quic_ctx_init)(quic_ctx_t *ctx, tls_ctx_t *tls_ctx,
 		const quic_params_t *params);
 
-typedef char *(*qtest_net_get_remote)(const net_t *net);
+typedef char *(*kqtest_net_get_remote)(const net_t *net);
 
-typedef int (*qtest_tls_ctx_setup_remote_endpoint)(tls_ctx_t *ctx,
+typedef int (*kqtest_tls_ctx_setup_remote_endpoint)(tls_ctx_t *ctx,
 		const gnutls_datum_t *alpn, size_t alpn_size,
 		const char *priority, const char *remote);
 
-typedef int (*qtest_quic_ctx_connect)(quic_ctx_t *ctx, int sockfd,
+typedef int (*kqtest_quic_ctx_connect)(quic_ctx_t *ctx, int sockfd,
 		struct addrinfo *dst_addr);
 
-typedef int (*qtest_stream_reset_cb)(ngtcp2_conn *conn, int64_t stream_id,
+typedef int (*kqtest_stream_reset_cb)(ngtcp2_conn *conn, int64_t stream_id,
 	uint64_t final_size, uint64_t app_error_code, void *user_data,
 	void *stream_user_data);
 
-typedef int (*qtest_net_set_local_info)(net_t *net);
+typedef int (*kqtest_net_set_local_info)(net_t *net);
 
-typedef int (*qtest_quic_send_dns_query)(quic_ctx_t *ctx, int sockfd,
+typedef int (*kqtest_quic_send_dns_query)(quic_ctx_t *ctx, int sockfd,
 		struct addrinfo *srv, const uint8_t *buf, const size_t buf_len);
 
-typedef int (*qtest_offset_span)(ngtcp2_vec **vec, size_t *veclen, size_t sub);
+typedef int (*kqtest_offset_span)(ngtcp2_vec **vec, size_t *veclen, size_t sub);
 
-typedef int (*qtest_quic_send_data)(quic_ctx_t *ctx, int sockfd, int family,
+typedef int (*kqtest_quic_send_data)(quic_ctx_t *ctx, int sockfd, int family,
 	ngtcp2_vec *datav, size_t datavlen);
 
-typedef int (*qtest_net_ecn_set)(int sock, int family, uint8_t ecn);
+typedef int (*kqtest_net_ecn_set)(int sock, int family, uint8_t ecn);
 
-typedef int (*qtest_quic_recv)(quic_ctx_t *ctx, int sockfd);
+typedef int (*kqtest_quic_recv)(quic_ctx_t *ctx, int sockfd);
 
-typedef uint64_t (*qtest_quic_timestamp)(void);
+typedef uint64_t (*kqtest_quic_timestamp)(void);
 
-typedef int (*qtest_quic_generate_secret)(uint8_t *buf, size_t buflen);
+typedef int (*kqtest_quic_generate_secret)(uint8_t *buf, size_t buflen);
 
-typedef int (*qtest_verify_certificate)(gnutls_session_t session);
+typedef int (*kqtest_verify_certificate)(gnutls_session_t session);
 
-typedef ngtcp2_conn *(*qtest_get_conn)(ngtcp2_crypto_conn_ref *conn_ref);
+typedef ngtcp2_conn *(*kqtest_get_conn)(ngtcp2_crypto_conn_ref *conn_ref);
 
-typedef int (*qtest_get_expiry)(quic_ctx_t *ctx);
+typedef int (*kqtest_get_expiry)(quic_ctx_t *ctx);
 
-typedef int (*qtest_net_receive)(const net_t *net, uint8_t *buf,
+typedef int (*kqtest_net_receive)(const net_t *net, uint8_t *buf,
 		const size_t buf_len);
 
-typedef int (*qtest_quic_recv_dns_response)(quic_ctx_t *ctx, uint8_t *buf,
+typedef int (*kqtest_quic_recv_dns_response)(quic_ctx_t *ctx, uint8_t *buf,
 		const size_t buf_len, struct addrinfo *srv);
 
-typedef int (*qtest_quic_recv_dns_response)(quic_ctx_t *ctx, uint8_t *buf,
+typedef int (*kqtest_quic_recv_dns_response)(quic_ctx_t *ctx, uint8_t *buf,
 		const size_t buf_len, struct addrinfo *srv);
 
 typedef int (*ngtcp2_recv_stream_data_cb)( ngtcp2_conn * conn, uint32_t flags,
@@ -255,28 +255,28 @@ typedef int (*ngtcp2_recv_stream_data_cb)( ngtcp2_conn * conn, uint32_t flags,
 		size_t datalen, void * user_data, void * stream_user_data);
 
 typedef struct kdig_callbacks {
-	qtest_tls_ctx_setup_remote_endpoint tls_ctx_setup_remote_endpoint;
-	qtest_quic_recv_dns_response quic_recv_dns_response;
-	qtest_quic_generate_secret quic_generate_secret;
-	qtest_create_query_packet create_query_packet;
-	qtest_quic_send_dns_query quic_send_dns_query;
-	qtest_verify_certificate verify_certificate;
-	qtest_net_set_local_info net_set_local_info;
-	qtest_stream_reset_cb quic_stream_reset_cb;
-	qtest_quic_ctx_connect quic_ctx_connect;
-	qtest_net_get_remote net_get_remote;
-	qtest_quic_send_data quic_send_data;
-	qtest_quic_timestamp quic_timestamp;
-	qtest_quic_ctx_init quic_ctx_init;
-	qtest_get_addr_str get_addr_str;
-	qtest_tls_ctx_init tls_ctx_init;
-	qtest_offset_span offset_span;
-	qtest_net_ecn_set net_ecn_set;
-	qtest_net_receive net_receive;
-	qtest_get_expiry get_expiry;
-	qtest_quic_recv quic_recv;
-	qtest_get_conn get_conn;
-	qtest_getaddr getaddr;
+	kqtest_tls_ctx_setup_remote_endpoint tls_ctx_setup_remote_endpoint;
+	kqtest_quic_recv_dns_response quic_recv_dns_response;
+	kqtest_quic_generate_secret quic_generate_secret;
+	kqtest_create_query_packet create_query_packet;
+	kqtest_quic_send_dns_query quic_send_dns_query;
+	kqtest_verify_certificate verify_certificate;
+	kqtest_net_set_local_info net_set_local_info;
+	kqtest_stream_reset_cb quic_stream_reset_cb;
+	kqtest_quic_ctx_connect quic_ctx_connect;
+	kqtest_net_get_remote net_get_remote;
+	kqtest_quic_send_data quic_send_data;
+	kqtest_quic_timestamp quic_timestamp;
+	kqtest_quic_ctx_init quic_ctx_init;
+	kqtest_get_addr_str get_addr_str;
+	kqtest_tls_ctx_init tls_ctx_init;
+	kqtest_offset_span offset_span;
+	kqtest_net_ecn_set net_ecn_set;
+	kqtest_net_receive net_receive;
+	kqtest_get_expiry get_expiry;
+	kqtest_quic_recv quic_recv;
+	kqtest_get_conn get_conn;
+	kqtest_getaddr getaddr;
 } kdig_callbacks_t;
 
 #endif //ENABLE_QUIC

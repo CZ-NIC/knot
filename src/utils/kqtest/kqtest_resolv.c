@@ -7,10 +7,9 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include "utils/kdig_qtest/qtest_resolv.h"
+#include "utils/kqtest/kqtest_resolv.h"
 #include "utils/common/msg.h"
-#include "utils/kdig_qtest/qtest_params.h"
-#include "libknot/libknot.h"
+#include "utils/kqtest/kqtest_params.h"
 #include "contrib/ucw/lists.h"
 
 #define RESOLV_FILE	"/etc/resolv.conf"

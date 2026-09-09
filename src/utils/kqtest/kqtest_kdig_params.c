@@ -9,16 +9,14 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include "utils/kdig_qtest/qtest_kdig_params.h"
+#include "utils/kqtest/kqtest_kdig_params.h"
 #include "utils/common/hex.h"
 #include "utils/common/msg.h"
-#include "utils/kdig_qtest/qtest_netio.h"
-#include "utils/kdig_qtest/qtest_params.h"
-#include "utils/kdig_qtest/qtest_resolv.h"
+#include "utils/kqtest/kqtest_netio.h"
+#include "utils/kqtest/kqtest_params.h"
+#include "utils/kqtest/kqtest_resolv.h"
 #include "libknot/descriptor.h"
-#include "libknot/libknot.h"
 #include "contrib/base64.h"
-#include "contrib/sockaddr.h"
 #include "contrib/string.h"
 #include "contrib/strtonum.h"
 #include "contrib/time.h"
@@ -27,7 +25,7 @@
 #include "libdnssec/random.h"
 
 /* FIXME Duplicate, also defined in qtest_main.c */
-#define PROGRAM_NAME "qtest"
+#define PROGRAM_NAME "kqtest"
 
 #define DEFAULT_RETRIES_DIG		2
 #define DEFAULT_TIMEOUT_DIG		5

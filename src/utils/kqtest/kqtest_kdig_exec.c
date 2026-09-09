@@ -9,18 +9,15 @@
 #include <sys/socket.h>
 #include <sys/time.h>
 
-#include "utils/kdig_qtest/qtest_kdig_exec.h"
-// #include "utils/kdig/kdig_exec.h"
-#include "utils/kdig_qtest/qtest_exec.h"
+#include "utils/kqtest/kqtest_kdig_exec.h"
+#include "utils/kqtest/kqtest_exec.h"
 #include "utils/common/msg.h"
-#include "utils/kdig_qtest/qtest_netio.h"
+#include "utils/kqtest/kqtest_netio.h"
 #include "utils/common/sign.h"
-#include "libknot/libknot.h"
 #include "contrib/json.h"
-#include "contrib/sockaddr.h"
 #include "contrib/time.h"
 #include "contrib/ucw/lists.h"
-#include "utils/kdig_qtest/qtest_quic.h"
+#include "utils/kqtest/kqtest_quic.h"
 
 #if USE_DNSTAP
 #include "contrib/dnstap/convert.h"

@@ -19,17 +19,15 @@
 #include "libdnssec/crypto.h"
 #include "libknot/errcode.h"
 #include "utils/common/msg.h"
-#include "utils/kdig_qtest/qtest_netio.h"
-#include "utils/kdig_qtest/qtest_params.h"
-#include "utils/kdig_qtest/qtest_kdig_params.h"
-#include "utils/kdig_qtest/qtest_kdig_exec.h"
-#include "libknot/libknot.h"
-#include "utils/kdig_qtest/qtest_quic.h"
+#include "utils/kqtest/kqtest_netio.h"
+#include "utils/kqtest/kqtest_kdig_params.h"
+#include "utils/kqtest/kqtest_kdig_exec.h"
+#include "utils/kqtest/kqtest_quic.h"
 #include <pthread.h>
 #include <string.h>
 #include <unistd.h>
 
-#define PROGRAM_NAME "qtest"
+#define PROGRAM_NAME "kqtest"
 
 /* Max number of connection the array can hold, in case some test requires
  * more than one connection. */
@@ -44,7 +42,7 @@ static char address[INET6_ADDRSTRLEN + 6/* port */ + 2/* @ chars */] = "@";
 static int verbosity = 0;
 static uint64_t query_index = 0;
 #define QUERY_COUNT 15
-static char* qtest_queries[QUERY_COUNT] = {
+static char* kqtest_queries[QUERY_COUNT] = {
 	"example.com", "example.hu", "example.no", "example.sk", "example.de",
 	"example.fi", "example.uk", "example.nl", "example.be", "example.fr",
 	"example.es", "example.pl", "example.ee", "example.ie", "example.it"
@@ -66,13 +64,13 @@ typedef struct net_ctx {
 	kdig_params_t params;
 } net_ctx_t;
 
-typedef struct qtest_state {
+typedef struct kqtest_state {
 	net_ctx_t *conns;
 	/* idx of the current conn, tests that terminate the connection
 	 * should use burned_conn() to increment this value */
 	size_t flc;
 	size_t counter;
-} qtest_state_t;
+} kqtest_state_t;
 
 static void reset_callbacks(net_t *net)
 {
@@ -164,7 +162,7 @@ static int create_net(const query_t *query, net_t *net)
 static int setup(void **state)
 {
 	*state = NULL;
-	qtest_state_t *ctx = calloc(1, sizeof(*ctx));
+	kqtest_state_t *ctx = calloc(1, sizeof(*ctx));
 	if (!ctx)
 		return KNOT_ENOMEM;
 
@@ -183,7 +181,7 @@ static int setup(void **state)
  * connections is then passed to this function via the extra parameter as the
  * number of total connections required to run the test i.e. 2 if 2 conns are
  * required (the one initialized by defailt and an additional one). */
-static int create_conn(qtest_state_t *ctx, int *extra)
+static int create_conn(kqtest_state_t *ctx, int *extra)
 {
 	/* Currently unused, prevent programming errors,
 	 * TODO if some test requires > 1 conn remove the following if. */
@@ -267,7 +265,7 @@ static int test_send_query(net_ctx_t conn)
 /* Runs before every test, initilizes the query and one connetion*/
 static int setup_unit_test_state(void **state)
 {
-	qtest_state_t *ctx = *state;
+	kqtest_state_t *ctx = *state;
 	*state = NULL;
 	int ret = KNOT_EINVAL;
 
@@ -277,7 +275,7 @@ static int setup_unit_test_state(void **state)
 		"", /* not relevant */
 		"+quic",
 		address,
-		qtest_queries[query_index++ % QUERY_COUNT],
+		kqtest_queries[query_index++ % QUERY_COUNT],
 	};
 
 	int i = 0;
@@ -322,7 +320,7 @@ static int teardown(void **state)
 	if (!*state)
 		return KNOT_EOK;
 
-	qtest_state_t *ctx = *state;
+	kqtest_state_t *ctx = *state;
 	dnssec_crypto_cleanup();
 
 	free(ctx->conns);
@@ -336,7 +334,7 @@ static int teardown(void **state)
 
 static int test_cleanup(void **state)
 {
-	qtest_state_t *ctx = *state;
+	kqtest_state_t *ctx = *state;
 
 	int i = 0;
 	assert_non_null(HEAD(ctx->conns[i].params.queries));
@@ -362,7 +360,7 @@ static int test_cleanup(void **state)
 /* sanity check that all connections are able to query the server. */
 static void simple_sanity(void **state)
 {
-	qtest_state_t *ctx = *state;
+	kqtest_state_t *ctx = *state;
 	assert_int_equal(process_query(HEAD(ctx->conns[0].params.queries),
 				ctx->conns[0].net), 0);
 }
@@ -373,7 +371,7 @@ static void simple_sanity(void **state)
  * the connection localy without sending any information back to the client. */
 static void open_stream_and_timeout(void **state)
 {
-	qtest_state_t *ctx = *state;
+	kqtest_state_t *ctx = *state;
 	getconn(ctx).net->cbs->quic_send_data = quic_send_data_test;
 	getconn(ctx).net->cbs->quic_recv = quic_recv_close_doq_error;
 	getconn(ctx).net->quic.env->scenario = 1;
@@ -391,7 +389,7 @@ static void open_stream_and_timeout(void **state)
  * and contains the FIN flag as well. This test splits the payload */
 static void stream_data_split_to_two_pkts(void **state)
 {
-	qtest_state_t *ctx = *state;
+	kqtest_state_t *ctx = *state;
 	getconn(ctx).net->cbs->quic_send_dns_query = quic_send_dns_query_split;
 	getconn(ctx).net->cbs->quic_send_data = quic_send_data_split;
 	getconn(ctx).net->quic.env->counter = 2;
@@ -401,7 +399,7 @@ static void stream_data_split_to_two_pkts(void **state)
 
 static void stream_data_split_to_ten_pkts(void **state)
 {
-	qtest_state_t *ctx = *state;
+	kqtest_state_t *ctx = *state;
 	getconn(ctx).net->cbs->quic_send_dns_query = quic_send_dns_query_split;
 	getconn(ctx).net->cbs->quic_send_data = quic_send_data_split;
 	getconn(ctx).net->quic.env->counter = 10;
@@ -414,7 +412,7 @@ static void stream_data_split_to_ten_pkts(void **state)
  * first and then send again with FIN the rest. */
 static void multiple_parallel_streams(void **state)
 {
-	qtest_state_t *ctx = *state;
+	kqtest_state_t *ctx = *state;
 
 	getconn(ctx).net->quic.env->extra = 10;
 	getconn(ctx).net->quic.env->counter = 2;
@@ -428,7 +426,7 @@ static void multiple_parallel_streams(void **state)
 
 static void send_one_byte_at_a_time(void **state)
 {
-	qtest_state_t *ctx = *state;
+	kqtest_state_t *ctx = *state;
 
 	if (ctx->flc + 1 >= CONN_COUNT) {
 		printf("Insufficient number of connection for this test, need >= 1");
@@ -451,7 +449,7 @@ static void send_one_byte_at_a_time(void **state)
  * and silently terminate the DNS request and delete the stream state. */
 static void send_stream_reset_prefin(void **state)
 {
-	qtest_state_t *ctx = *state;
+	kqtest_state_t *ctx = *state;
 	getconn(ctx).net->cbs->quic_send_data =
 		quic_send_data_split_reset_stream;
 	getconn(ctx).net->cbs->quic_send_dns_query = quic_send_dns_query_split;
@@ -468,7 +466,7 @@ static void send_stream_reset_prefin(void **state)
  * before the tested upstream responds with an answer of SERVFAIL. */
 static void send_stream_reset_postfin(void **state)
 {
-	qtest_state_t *ctx = *state;
+	kqtest_state_t *ctx = *state;
 	getconn(ctx).net->cbs->quic_send_data =
 		quic_send_data_split_reset_stream;
 	getconn(ctx).net->cbs->quic_send_dns_query = quic_send_dns_query;
@@ -491,7 +489,7 @@ static void send_stream_reset_postfin(void **state)
 /* a client or server receives a message with a non-zero Message ID */
 static void send_non_zero_msgid(void **state)
 {
-	qtest_state_t *ctx = *state;
+	kqtest_state_t *ctx = *state;
 	getconn(ctx).net->cbs->create_query_packet =
 		create_query_packet_with_msgid;
 	getconn(ctx).net->cbs->quic_recv = quic_recv_close_doq_error;
@@ -507,7 +505,7 @@ static void send_non_zero_msgid(void **state)
  * bytes for a message indicated in the 2-octet length field */
 static void send_less_data_than_size_prefix(void **state)
 {
-	qtest_state_t *ctx = *state;
+	kqtest_state_t *ctx = *state;
 	getconn(ctx).net->cbs->quic_send_dns_query =
 		quic_send_dns_query_wrong_size_prefix;
 	getconn(ctx).net->cbs->quic_recv = quic_recv_close_doq_error;
@@ -522,7 +520,7 @@ static void send_less_data_than_size_prefix(void **state)
 /* Same as above but send more */
 static void send_more_data_than_size_prefix(void **state)
 {
-	qtest_state_t *ctx = *state;
+	kqtest_state_t *ctx = *state;
 	getconn(ctx).net->cbs->quic_send_dns_query =
 		quic_send_dns_query_wrong_size_prefix;
 	getconn(ctx).net->cbs->quic_recv = quic_recv_close_doq_error;
@@ -542,7 +540,7 @@ static void send_more_data_than_size_prefix(void **state)
  * cannot happen in out implementation. */
 static void send_two_size_prefixed_queries(void **state)
 {
-	qtest_state_t *ctx = *state;
+	kqtest_state_t *ctx = *state;
 	getconn(ctx).net->cbs->quic_send_dns_query = quic_send_doubled;
 	getconn(ctx).net->cbs->quic_recv = quic_recv_close_doq_error;
 	assert_int_equal(process_query(HEAD(getconn(ctx).params.queries),
@@ -560,7 +558,7 @@ static void send_two_size_prefixed_queries(void **state)
  * just timeout the connection, that solution should be ok. */
 static void missing_stream_fin(void **state)
 {
-	qtest_state_t *ctx = *state;
+	kqtest_state_t *ctx = *state;
 	getconn(ctx).net->quic.env->scenario = NGTCP2_STREAM_DATA_FLAG_NONE;
 	getconn(ctx).net->quic.env->extra = TEST_SEND_ONE_PAYLOAD;
 	getconn(ctx).net->quic.env->counter = 1;
@@ -575,7 +573,7 @@ static void missing_stream_fin(void **state)
  * EDNS(0) Option [RFC7828] (see Section 5.5.2[meant in RFC 9250]) */
 static void send_edns_keepalive(void **state)
 {
-	qtest_state_t *ctx = *state;
+	kqtest_state_t *ctx = *state;
 	query_t *q = HEAD(ctx->conns[0].params.queries);
 	ednsopt_t *opt =
 		ednsopt_create(KNOT_EDNS_OPTION_TCP_KEEPALIVE, 0, NULL);
@@ -597,7 +595,7 @@ static void send_edns_keepalive(void **state)
  * attempt to open such stream, if uni stream limit is 0 the test passes. */
 static void open_unidirectional(void **state)
 {
-	qtest_state_t *ctx = *state;
+	kqtest_state_t *ctx = *state;
 	getconn(ctx).net->cbs->quic_send_dns_query =
 		quic_send_dns_query_open_uni_stream;
 	assert_int_equal(process_query(HEAD(getconn(ctx).params.queries),
@@ -627,7 +625,7 @@ static void open_unidirectional(void **state)
  * be inspected on the server. */
 static void send_and_close(void **state)
 {
-	qtest_state_t *ctx = *state;
+	kqtest_state_t *ctx = *state;
 	getconn(ctx).net->cbs->quic_send_dns_query =
 		quic_send_dns_query_terminate;
 	getconn(ctx).net->cbs->quic_send_data = quic_send_data_terminate;
@@ -640,7 +638,7 @@ static void send_and_close(void **state)
  * a situation where the client sends data after STOP_SENDING. */
 static void send_after_stop_sending(void **state)
 {
-	qtest_state_t *ctx = *state;
+	kqtest_state_t *ctx = *state;
 	getconn(ctx).net->cbs->quic_send_dns_query =
 		quic_send_dns_query_stop_sending;
 	getconn(ctx).net->cbs->quic_stream_reset_cb =
@@ -657,9 +655,9 @@ int main(int argc, char *argv[])
 {
 	bool enable_manual = false;
 	if (argc == 2 && (!strcmp(argv[1], "--help") || !strcmp(argv[1], "-h"))) {
-		printf("qtest [OPTIONS] address port\tqtest requires an address and a port of the DoQ server that is to be tested\n");
-		printf("qtest --help \t\t\tdisplays this help message\n");
-		printf("qtest OPTIONS:\n");
+		printf("kqtest [OPTIONS] address port\tkqtest requires an address and a port of the DoQ server that is to be tested\n");
+		printf("kqtest --help \t\t\tdisplays this help message\n");
+		printf("kqtest OPTIONS:\n");
 		printf("\t -v\t\t\tprint usual kdig output alongside test results\n");
 		printf("\t -V\t\t\tprint usual kdig output and ngtcp2 log alongside test results\n");
 		printf("\t -m\t\t\tRun manual tests, these have no interpretable results and have to be verified on the server side (via log inspection and/or debug)\n");

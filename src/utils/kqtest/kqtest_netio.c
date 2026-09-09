@@ -3,8 +3,6 @@
  *  For more information, see <https://www.knot-dns.cz/>netio
  */
 
-#include "libknot/errcode.h"
-#include "utils/kdig_qtest/qtest_quic.h"
 #include <arpa/inet.h>
 #include <fcntl.h>
 #include <netdb.h>
@@ -19,10 +17,11 @@
 #include <sys/uio.h>
 #endif
 
-#include "utils/kdig_qtest/qtest_netio.h"
+#include "libknot/errcode.h"
+#include "utils/kqtest/kqtest_quic.h"
+#include "utils/kqtest/kqtest_netio.h"
 #include "utils/common/msg.h"
 #include "utils/common/tls.h"
-#include "libknot/libknot.h"
 #include "libknot/quic/tls_common.h"
 #include "contrib/net.h"
 #include "contrib/proxyv2/proxyv2.h"

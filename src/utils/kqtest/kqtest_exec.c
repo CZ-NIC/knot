@@ -8,10 +8,10 @@
 #include <time.h>
 
 #include "libdnssec/random.h"
-#include "utils/kdig_qtest/qtest_exec.h"
+#include "utils/kqtest/kqtest_exec.h"
 #include "utils/common/msg.h"
-#include "utils/kdig_qtest/qtest_netio.h"
-#include "utils/kdig_qtest/qtest_params.h"
+#include "utils/kqtest/kqtest_netio.h"
+#include "utils/kqtest/kqtest_params.h"
 #include "contrib/ctype.h"
 #include "contrib/macros.h"
 #include "contrib/sockaddr.h"

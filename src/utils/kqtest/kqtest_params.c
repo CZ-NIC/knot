@@ -13,14 +13,10 @@
 #include <idn2.h>
 #endif
 
-#include "utils/kdig_qtest/qtest_params.h"
+#include "utils/kqtest/kqtest_params.h"
 #include "utils/common/msg.h"
-#include "utils/kdig_qtest/qtest_resolv.h"
-#include "utils/common/token.h"
-#include "libknot/libknot.h"
+#include "utils/kqtest/kqtest_resolv.h"
 #include "contrib/macros.h"
-#include "contrib/mempattern.h"
-#include "contrib/openbsd/strlcpy.h"
 #include "contrib/strtonum.h"
 
 #define IPV4_REVERSE_DOMAIN	"in-addr.arpa."

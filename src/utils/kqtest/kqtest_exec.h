@@ -7,9 +7,8 @@
 
 #include <time.h>
 
-#include "utils/kdig_qtest/qtest_netio.h"
-#include "utils/kdig_qtest/qtest_params.h"
-#include "libknot/libknot.h"
+#include "utils/kqtest/kqtest_netio.h"
+#include "utils/kqtest/kqtest_params.h"
 #include "contrib/json.h"
 
 /*!

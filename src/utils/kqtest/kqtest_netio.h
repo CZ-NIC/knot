@@ -11,8 +11,8 @@
 
 #include "libknot/probe/data.h"
 #include "utils/common/https.h"
-#include "utils/kdig_qtest/qtest_params.h"
-#include "utils/kdig_qtest/qtest_quic.h"
+#include "utils/kqtest/kqtest_params.h"
+#include "utils/kqtest/kqtest_quic.h"
 #include "utils/common/tls.h"
 
 /*! \brief Structure containing server information. */
@@ -185,7 +185,7 @@ int net_init_crypto(net_t                 *net,
                     const quic_params_t   *quic_params);
 
 /* TODO: description
- * this is only public for QTESTS */
+ * this is only public for kqtest */
 char *net_get_remote(const net_t *net);
 
 /*!

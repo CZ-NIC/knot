@@ -3,7 +3,6 @@
  *  For more information, see <https://www.knot-dns.cz/>
  */
 
-#include <errno.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdarg.h>
@@ -16,14 +15,10 @@
 #include <threads.h>
 
 #include "contrib/net.h"
-#include "knot/server/handler.h"
-#include "libknot/descriptor.h"
 #include "libknot/errcode.h"
-#include "utils/kdig_qtest/qtest_quic.h"
-#include "libknot/wire.h"
+#include "utils/kqtest/kqtest_quic.h"
 #include "utils/common/msg.h"
-#include "utils/kdig_qtest/qtest_kdig_params.h"
-#include "utils/kdig_qtest/qtest_params.h"
+#include "utils/kqtest/kqtest_params.h"
 
 int quic_params_copy(quic_params_t *dst, const quic_params_t *src)
 {

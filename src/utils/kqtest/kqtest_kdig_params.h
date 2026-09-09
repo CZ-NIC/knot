@@ -7,13 +7,9 @@
 
 #include <stdbool.h>
 
-#include "utils/kdig_qtest/qtest_params.h"
-#include "utils/kdig_qtest/qtest_exec.h"
+#include "utils/kqtest/kqtest_params.h"
 #include "utils/common/https.h"
-#include "utils/kdig_qtest/qtest_quic.h"
-#include "utils/common/sign.h"
-#include "libknot/libknot.h"
-#include "contrib/sockaddr.h"
+#include "utils/kqtest/kqtest_quic.h"
 
 #if USE_DNSTAP
 # include "contrib/dnstap/reader.h"

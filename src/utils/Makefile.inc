@@ -8,7 +8,7 @@ libknotus_la_CPPFLAGS = $(embedded_libngtcp2_CFLAGS) \
                         $(AM_CPPFLAGS) $(CFLAG_VISIBILITY) $(gnutls_CFLAGS) \
                         $(libedit_CFLAGS) $(libidn2_CFLAGS) $(libidn_CFLAGS) \
                         $(libkqueue_CFLAGS) $(libnghttp2_CFLAGS) $(libngtcp2_CFLAGS)
-libqtestus_la_CPPFLAGS = $(embedded_libngtcp2_CFLAGS) \
+libkqtestus_la_CPPFLAGS = $(embedded_libngtcp2_CFLAGS) \
                         $(AM_CPPFLAGS) $(CFLAG_VISIBILITY) $(gnutls_CFLAGS) \
                         $(libedit_CFLAGS) $(libidn2_CFLAGS) $(libidn_CFLAGS) \
                         $(libkqueue_CFLAGS) $(libnghttp2_CFLAGS) $(libngtcp2_CFLAGS) \
@@ -17,7 +17,7 @@ libknotus_la_LDFLAGS  = $(AM_LDFLAGS) $(LDFLAG_EXCLUDE_LIBS)
 libknotus_la_LIBADD   = $(libidn2_LIBS) $(libidn_LIBS) $(libnghttp2_LIBS) $(libngtcp2_LIBS)
 libknotus_LIBS        = libknotus.la libknot.la $(libcontrib_LIBS) \
                         $(gnutls_LIBS) $(libedit_LIBS)
-libqtestus_LIBS        = libknotus.la libknot.la libdnssec.la $(cmocka_LIBS) \
+libkqtestus_LIBS      = libknotus.la libknot.la libdnssec.la $(cmocka_LIBS) \
                         $(libcontrib_LIBS) $(gnutls_LIBS) $(libedit_LIBS)
 
 if EMBEDDED_LIBNGTCP2
@@ -58,25 +58,25 @@ endif HAVE_LIBUTILS
 if HAVE_UTILS
 bin_PROGRAMS += kdig khost knsec3hash knsupdate
 
-if ENABLE_QTEST
-bin_PROGRAMS += qtest
-qtest_SOURCES = \
-	utils/kdig_qtest/qtest_exec.c \
-	utils/kdig_qtest/qtest_exec.h \
-	utils/kdig_qtest/qtest_kdig_exec.c  \
-	utils/kdig_qtest/qtest_kdig_exec.h \
-	utils/kdig_qtest/qtest_main.c \
-	utils/kdig_qtest/qtest_netio.c \
-	utils/kdig_qtest/qtest_netio.h \
-	utils/kdig_qtest/qtest_params.c \
-	utils/kdig_qtest/qtest_kdig_params.c \
-	utils/kdig_qtest/qtest_kdig_params.h \
-	utils/kdig_qtest/qtest_params.h \
-	utils/kdig_qtest/qtest_quic.c \
-	utils/kdig_qtest/qtest_quic.h \
-	utils/kdig_qtest/qtest_resolv.c \
-	utils/kdig_qtest/qtest_resolv.h
-endif ENABLE_QTEST
+if ENABLE_KQTEST
+bin_PROGRAMS += kqtest
+kqtest_SOURCES = \
+	utils/kqtest/kqtest_exec.c \
+	utils/kqtest/kqtest_exec.h \
+	utils/kqtest/kqtest_kdig_exec.c  \
+	utils/kqtest/kqtest_kdig_exec.h \
+	utils/kqtest/kqtest_main.c \
+	utils/kqtest/kqtest_netio.c \
+	utils/kqtest/kqtest_netio.h \
+	utils/kqtest/kqtest_params.c \
+	utils/kqtest/kqtest_kdig_params.c \
+	utils/kqtest/kqtest_kdig_params.h \
+	utils/kqtest/kqtest_params.h \
+	utils/kqtest/kqtest_quic.c \
+	utils/kqtest/kqtest_quic.h \
+	utils/kqtest/kqtest_resolv.c \
+	utils/kqtest/kqtest_resolv.h
+endif ENABLE_KQTEST
 
 kdig_SOURCES = \
 	utils/kdig/kdig_exec.c			\
@@ -122,8 +122,8 @@ knsupdate_SOURCES = \
 
 kdig_CPPFLAGS          = $(libknotus_la_CPPFLAGS)
 kdig_LDADD             = $(libknotus_LIBS)
-qtest_CPPFLAGS         = $(libqtestus_la_CPPFLAGS)
-qtest_LDADD            = $(libqtestus_LIBS)
+kqtest_CPPFLAGS        = $(libkqtestus_la_CPPFLAGS)
+kqtest_LDADD           = $(libkqtestus_LIBS)
 khost_CPPFLAGS         = $(libknotus_la_CPPFLAGS)
 khost_LDADD            = $(libknotus_LIBS)
 knsec3hash_CPPFLAGS    = $(libknotus_la_CPPFLAGS)
