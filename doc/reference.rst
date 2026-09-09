@@ -3074,6 +3074,7 @@ are subject to the optional soft mode.
 
 Extra checks:
 
+- SOA record at a non-apex node
 - Missing NS record at the zone apex
 - Missing glue A or AAAA record
 - Invalid DS or NSEC3PARAM record

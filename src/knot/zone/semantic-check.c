@@ -18,6 +18,8 @@ static const char *error_messages[SEM_ERR_UNKNOWN + 1] = {
 	"missing SOA at the zone apex",
 	[SEM_ERR_SOA_MULTIPLE] =
 	"multiple SOA records",
+	[SEM_ERR_SOA_NONAPEX] =
+	"SOA records at a non-apex node",
 
 	[SEM_ERR_CNAME_EXTRA_RECORDS] =
 	"another record exists beside CNAME",
@@ -127,7 +129,7 @@ struct check_function {
 };
 
 static const struct check_function CHECK_FUNCTIONS[] = {
-	{ check_soa,            MANDATORY },
+	{ check_soa,            MANDATORY | SOFT }, // mandatory for apex, optional for others
 	{ check_cname,          MANDATORY | SOFT },
 	{ check_dname,          MANDATORY | SOFT },
 	{ check_delegation,     MANDATORY | SOFT }, // mandatory for apex, optional for others
@@ -382,15 +384,27 @@ static int check_deleg(const zone_node_t *node, semchecks_data_t *data)
 
 static int check_soa(const zone_node_t *node, semchecks_data_t *data)
 {
-	if (data->zone->apex != node) {
+	bool optional = (data->level & OPTIONAL);
+	bool is_apex = data->zone->apex == node;
+
+	// always check zone apex
+	if (!optional && !is_apex) {
 		return KNOT_EOK;
 	}
 
 	const knot_rdataset_t *soa_rrs = node_rdataset(node, KNOT_RRTYPE_SOA);
 	if (soa_rrs == NULL) {
-		data->handler->error = true;
-		data->handler->cb(data->handler, data->zone, node->owner,
-		                  SEM_ERR_SOA_NONE, NULL);
+		if (is_apex) {
+			data->handler->error = true;
+			data->handler->cb(data->handler, data->zone, node->owner,
+			                  SEM_ERR_SOA_NONE, NULL);
+		}
+	} else {
+		if (!is_apex) {
+			data->handler->error = true;
+			data->handler->cb(data->handler, data->zone, node->owner,
+			                  SEM_ERR_SOA_NONAPEX, NULL);
+		}
 	}
 
 	return KNOT_EOK;
