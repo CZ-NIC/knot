@@ -15,17 +15,6 @@ import threading
 import shutil
 from subprocess import Popen, PIPE, DEVNULL, check_call
 
-def sign_wait(tolaunch, zonename):
-    try:
-        check_call(tolaunch, stdout=DEVNULL, stderr=DEVNULL)
-    except:
-        pass
-
-def sign_wait_bg(server, zonename):
-    server[-1] = "120" # timeout
-    tolaunch = server + ["-b", "zone-sign", zonename]
-    threading.Thread(target=sign_wait, args=[tolaunch, zonename]).start()
-
 def check_catalog_db(server, memb_name):
     '''Check that the member is not present in server's catalog DB'''
     pipe = Popen([dnstest.params.kcatalogprint_bin, "-c", server.confile],
@@ -44,7 +33,7 @@ t = Test()
 knot = t.server("knot")
 
 catz = t.zone("catalog1.", storage=".")
-rzone = t.zone_rnd(1, records=600, names=["bigzone.example."]) # to slow down background workers
+rzone = t.zone_rnd(1, records=800, names=["bigzone.example."]) # to slow down background workers
 
 t.link(catz, knot)
 t.link(rzone, knot)
@@ -81,35 +70,34 @@ t.sleep(5)
 
 for z in rzone:
     knot.ctl("zone-sign " + z.name)
-t.sleep(0.5)
-
-for z in rzone:
-    sign_wait_bg([knot.control_bin] + knot.ctl_params, z.name)
 t.sleep(1)
 
-up = knot.update(catz)
+confsock = knot.ctl_sock_rnd()
+knot.ctl("zone-begin %s" % catz[0].name, custom_parm=confsock)
 if scenario == "uniq2x":
-    up.delete("uniq1.zones." + catz[0].name, "PTR", "cataloged1.")
-    up.add("uniq2.zones." + catz[0].name, 0, "PTR", "cataloged1.")
+    knot.ctl("zone-unset %s uniq1.zones" % catz[0].name, custom_parm=confsock)
+    knot.ctl("zone-set %s uniq2.zones 0 PTR cataloged1." % catz[0].name, custom_parm=confsock)
 else:
-    up.add("bar.zones." + catz[0].name, 0, "PTR", "cataloged2.")
-up.try_send()
+    knot.ctl("zone-set %s bar.zones 0 PTR cataloged2." % catz[0].name, custom_parm=confsock)
+    knot.ctl("zone-set %s group.bar.zones 0 TXT catalog-unsigned" % catz[0].name, custom_parm=confsock)
+knot.ctl("zone-commit %s" % catz[0].name, custom_parm=confsock)
 
 t.sleep(0.5)
 
-up = knot.update(catz)
+knot.ctl("zone-begin %s" % catz[0].name, custom_parm=confsock)
 if scenario == "uniq2x":
-    up.delete("uniq2.zones." + catz[0].name, "PTR", "cataloged1.")
-    up.add("uniq3.zones." + catz[0].name, 0, "PTR", "cataloged1.")
+    knot.ctl("zone-unset %s uniq2.zones" % catz[0].name, custom_parm=confsock)
+    knot.ctl("zone-set %s uniq3.zones 0 PTR cataloged1." % catz[0].name, custom_parm=confsock)
 elif scenario == "propchange":
-    up.delete("group.bar.zones." + catz[0].name, "TXT")
-    up.add("group.bar.zones." + catz[0].name, 0, "TXT", "catalog-signed")
+    knot.ctl("zone-unset %s group.bar.zones" % catz[0].name, custom_parm=confsock)
+    knot.ctl("zone-set %s group.bar.zones 0 TXT catalog-signed" % catz[0].name, custom_parm=confsock)
 else:
-    up.delete("bar.zones." + catz[0].name, "PTR", "cataloged2.")
-up.try_send()
+    knot.ctl("zone-unset %s bar.zones" % catz[0].name, custom_parm=confsock)
+    knot.ctl("zone-unset %s group.bar.zones" % catz[0].name, custom_parm=confsock)
+knot.ctl("zone-commit %s" % catz[0].name, custom_parm=confsock)
 
-knot.zone_wait(rzone, rootser + 2, equal=True) # signed twice
-t.sleep(10)
+knot.zone_wait(rzone, rootser + 1, equal=True)
+t.sleep(2)
 
 if scenario == "uniq2x":
     # Check the catalog zone.
