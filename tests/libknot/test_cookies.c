@@ -14,11 +14,11 @@
 #include "contrib/sockaddr.h"
 
 static knot_edns_cookie_t client_generate(
-	struct sockaddr_storage *s_addr, const uint8_t *c_secret,
+	struct sockaddr_storage *srv_addr, const uint8_t *c_secret,
 	const char *msg, int code, const char *ref)
 {
 	knot_edns_cookie_params_t params = {
-		.server_addr = s_addr,
+		.server_addr = srv_addr,
 	};
 	memcpy(params.secret, c_secret, sizeof(params.secret));
 
@@ -54,11 +54,11 @@ static knot_edns_cookie_t server_generate(
 }
 
 static void client_check(
-	struct sockaddr_storage *s_addr, const uint8_t *secret,
+	struct sockaddr_storage *srv_addr, const uint8_t *secret,
 	knot_edns_cookie_t *cc, const char *msg, int code)
 {
 	knot_edns_cookie_params_t params = {
-		.server_addr = s_addr,
+		.server_addr = srv_addr,
 	};
 	memcpy(params.secret, secret, sizeof(params.secret));
 
