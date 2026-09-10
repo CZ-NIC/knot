@@ -423,3 +423,13 @@ pkg:rocky-8:
 pkg:opensuse-15.6:
   <<: *pkg_test
   image: $CI_REGISTRY/packaging/apkg/test/opensuse-15.6
+
+ai_mr_review:
+  stage: test
+  image: python:3.11-slim
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+  before_script:
+    - pip install requests
+  script:
+    - python ./ci/review_mr.py
