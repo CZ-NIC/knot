@@ -1756,6 +1756,8 @@ static const param_t kdig_opts2[] = {
 	{ "idnout",         ARG_NONE,     opt_idnout },
 	{ "noidnout",       ARG_NONE,     opt_noidnout },
 
+	{ "noidn",          ARG_NONE,     opt_noidnout }, // Backward compatibility.
+
 	{ NULL }
 };
 
