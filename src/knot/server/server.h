@@ -130,7 +130,8 @@ typedef struct server {
 	bool tls_active;
 
 	/*! \brief Mutex protecting simultaneous access from concurrent CTL threads. */
-	pthread_rwlock_t ctl_lock;
+	pthread_rwlock_t ctl_lock;   // general protection of many ctl-accessed resources, including zonedb (which is not RCU-protected from ctl!)
+	pthread_mutex_t ctl_lock_ex; // exclusive lock of event/evsched freezing/resuming between main thread (catalog) and ctl (reload et al.)
 
 	/*! \brief Pending changes to catalog member zones, update indication. */
 	catalog_update_t catalog_upd;

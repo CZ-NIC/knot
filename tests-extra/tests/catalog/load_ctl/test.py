@@ -104,4 +104,16 @@ t.sleep(1)
 resp = master.dig("djeljdlkejeee.%s" % Z, "A")
 resp.check(rcode="NXDOMAIN", nordata="1.1.1.1")
 
+SUSP=0
+with open(master.fout, "r") as f:
+    for line in f:
+        if "resumed zone events" in line:
+            SUSP -= 1
+            if SUSP < 0:
+                set_err("resumed too much")
+        if "suspended zone events" in line:
+            SUSP += 1
+            if SUSP > 1:
+                set_err("Concurrently suspended evsched")
+
 t.end()
