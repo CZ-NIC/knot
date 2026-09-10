@@ -5,6 +5,7 @@
 
 #include <pthread.h>
 #include <signal.h>
+#include <stdint.h>
 #include <tap/basic.h>
 
 #include "contrib/atomic.h"
@@ -49,11 +50,11 @@ static int thread_add(struct dthread *thread)
 
 static int thread_set(struct dthread *thread)
 {
-	u_int64_t val = (dt_get_id(thread) % 2) ? UPPER : LOWER;
+	uint64_t val = (dt_get_id(thread) % 2) ? UPPER : LOWER;
 
 	for (int i = 0; i < CYCLES2; i++) {
 		ATOMIC_SET(atomic_var, val);
-		volatile u_int64_t read = ATOMIC_GET(atomic_var);
+		volatile uint64_t read = ATOMIC_GET(atomic_var);
 		if (read != UPPER && read != LOWER) {
 			// Non-atomic counter, won't be accurate!
 			// However, it's sufficient for fault detection.
