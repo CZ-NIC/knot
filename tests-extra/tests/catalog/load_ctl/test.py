@@ -43,6 +43,10 @@ threading.Thread(target=tstart, args=(t,)).start()
 cs = master.zone_wait(catz)
 s = master.zone_wait(smallz)
 
+addz = t.zone_rnd(2, records=5)
+t.link(addz, master)
+master.gen_confile()
+
 confsock = master.ctl_sock_rnd()
 
 master.ctl("zone-status", custom_parm=confsock)
@@ -66,7 +70,7 @@ resp.check(rcode="REFUSED") # otherwise test failure, signing too fast
 master.ctl("reload", custom_parm=confsock) # blocks until catalog is populated and earlier zone-reload processed
 
 bs = master.zone_wait(bigz)
-t.sleep(1)
+t.sleep(4)
 resp = master.dig("records.com.", "SOA")
 resp.check(rcode="SERVFAIL")
 
