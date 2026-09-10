@@ -2464,6 +2464,7 @@ typedef enum {
 	CTL_LOCK_NONE   = 0x00,
 	CTL_LOCK_SRV_R  = 0x01, // Can run in parallel with other R commands.
 	CTL_LOCK_SRV_W  = 0x02, // Cannot run in parallel with other commands.
+	CTL_LOCK_EX     = 0x04,
 } ctl_lock_flag_t;
 
 typedef struct {
@@ -2477,7 +2478,7 @@ static const desc_t cmd_table[] = {
 
 	[CTL_STATUS]          = { "status",             ctl_server,       CTL_LOCK_SRV_R },
 	[CTL_STOP]            = { "stop",               ctl_server,       CTL_LOCK_SRV_R },
-	[CTL_RELOAD]          = { "reload",             ctl_server,       CTL_LOCK_SRV_W },
+	[CTL_RELOAD]          = { "reload",             ctl_server,       CTL_LOCK_SRV_W | CTL_LOCK_EX },
 	[CTL_STATS]           = { "stats",              ctl_stats,        CTL_LOCK_SRV_R },
 
 	[CTL_ZONE_STATUS]     = { "zone-status",        ctl_zone,         CTL_LOCK_SRV_R },
@@ -2518,7 +2519,7 @@ static const desc_t cmd_table[] = {
 	  // CTL_CONF_BEGIN is locked only during conf-begin, not for the whole duration of
 	  // the transaction.
 	[CTL_CONF_BEGIN]      = { "conf-begin",         ctl_conf_txn,     CTL_LOCK_SRV_W },
-	[CTL_CONF_COMMIT]     = { "conf-commit",        ctl_conf_txn,     CTL_LOCK_SRV_W },
+	[CTL_CONF_COMMIT]     = { "conf-commit",        ctl_conf_txn,     CTL_LOCK_SRV_W | CTL_LOCK_EX },
 	[CTL_CONF_ABORT]      = { "conf-abort",         ctl_conf_txn,     CTL_LOCK_SRV_W },
 	[CTL_CONF_DIFF]       = { "conf-diff",          ctl_conf_read,    CTL_LOCK_SRV_W },
 	[CTL_CONF_GET]        = { "conf-get",           ctl_conf_read,    CTL_LOCK_SRV_W },
@@ -2555,6 +2556,13 @@ ctl_cmd_t ctl_str_to_cmd(const char *cmd_str)
 static int ctl_lock(server_t *server, ctl_lock_flag_t flags, struct timespec *ts)
 {
 	int ret;
+	if ((flags & CTL_LOCK_EX)) {
+		ret = pthread_mutex_timedlock(&server->ctl_lock_ex, ts);
+		if (ret != 0) {
+			return KNOT_EBUSY;
+		}
+	}
+
 	if ((flags & CTL_LOCK_SRV_W)) {
 		assert(!(flags & CTL_LOCK_SRV_R));
 #if !defined(__APPLE__)
@@ -2573,9 +2581,13 @@ static int ctl_lock(server_t *server, ctl_lock_flag_t flags, struct timespec *ts
 	return (ret != 0 ? KNOT_EBUSY : KNOT_EOK);
 }
 
-static void ctl_unlock(server_t *server)
+static void ctl_unlock(server_t *server, ctl_lock_flag_t flags)
 {
 	pthread_rwlock_unlock(&server->ctl_lock);
+
+	if ((flags & CTL_LOCK_EX)) {
+		pthread_mutex_unlock(&server->ctl_lock_ex);
+	}
 }
 
 int ctl_exec(ctl_cmd_t cmd, ctl_args_t *args)
@@ -2589,7 +2601,7 @@ int ctl_exec(ctl_cmd_t cmd, ctl_args_t *args)
 	int ret = ctl_lock(args->server, cmd_table[cmd].locks, &args->timeout);
 	if (ret == KNOT_EOK) {
 		ret = cmd_table[cmd].fcn(args, cmd);
-		ctl_unlock(args->server);
+		ctl_unlock(args->server, cmd_table[cmd].locks);
 	}
 
 	return ret;

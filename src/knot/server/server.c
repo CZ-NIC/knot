@@ -1064,6 +1064,7 @@ int server_init(server_t *server, int bg_workers)
 
 	knot_spin_init(&server->trash_gc.lock);
 	pthread_rwlock_init(&server->ctl_lock, NULL);
+	pthread_mutex_init(&server->ctl_lock_ex, NULL);
 
 	zone_backups_init(&server->backup_ctxs);
 
@@ -1136,6 +1137,7 @@ void server_deinit(server_t *server)
 	/* Deinit locks. */
 	knot_spin_destroy(&server->trash_gc.lock);
 	pthread_rwlock_destroy(&server->ctl_lock);
+	pthread_mutex_destroy(&server->ctl_lock_ex);
 
 	/* Free catalog zone context. */
 	catalog_update_clear(&server->catalog_upd);
