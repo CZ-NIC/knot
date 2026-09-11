@@ -76,18 +76,6 @@ int dnssec_pem_to_privkey(const dnssec_binary_t *pem, gnutls_privkey_t *key)
 	return KNOT_EOK;
 }
 
-static int try_export_pem(gnutls_x509_privkey_t key, dnssec_binary_t *pem)
-{
-	assert(key);
-
-	gnutls_x509_crt_fmt_t format = GNUTLS_X509_FMT_PEM;
-	char *password = NULL;
-	int flags = GNUTLS_PKCS_PLAIN;
-
-	return gnutls_x509_privkey_export_pkcs8(key, format, password, flags,
-						pem->data, &pem->size);
-}
-
 _public_
 int dnssec_pem_from_x509(gnutls_x509_privkey_t key, dnssec_binary_t *pem)
 {
@@ -95,24 +83,17 @@ int dnssec_pem_from_x509(gnutls_x509_privkey_t key, dnssec_binary_t *pem)
 		return KNOT_EINVAL;
 	}
 
-	dnssec_binary_t _pem = { 0 };
-	int r = try_export_pem(key, &_pem);
-	if (r != GNUTLS_E_SHORT_MEMORY_BUFFER || _pem.size == 0) {
-		return KNOT_KEY_EEXPORT;
-	}
+	gnutls_x509_crt_fmt_t format = GNUTLS_X509_FMT_PEM;
+	char *password = NULL;
+	int flags = GNUTLS_PKCS_PLAIN;
 
-	r = dnssec_binary_alloc(&_pem, _pem.size);
-	if (r != KNOT_EOK) {
-		return r;
-	}
-
-	r = try_export_pem(key, &_pem);
+	gnutls_datum_t _pem = { 0 };
+	int r = gnutls_x509_privkey_export2_pkcs8(key, format, password, flags, &_pem);
 	if (r != GNUTLS_E_SUCCESS) {
-		dnssec_binary_free(&_pem);
 		return KNOT_KEY_EEXPORT;
 	}
 
-	*pem = _pem;
+	*pem = binary_from_datum(&_pem);
 
 	return KNOT_EOK;
 }
