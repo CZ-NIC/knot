@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 
 import subprocess
+import pathlib
 from dnstest.test import Test
 from dnstest.keys import Tsig
 from dnstest.utils import *
+
+POC_PATH = pathlib.Path(__file__).parent.joinpath("data/poc.py")
 
 KEY = "audit-key"
 ZONE = "example.com"
@@ -21,7 +24,7 @@ t.start()
 knot.zone_wait(zone)
 
 result = subprocess.run(
-    ["tests/tsig/bad_mac_len/data/poc.py",
+    [str(POC_PATH),
     "--host", str(knot.addr), "--port", str(knot.port), "--zone", str(ZONE),
     "--owner", str(OWNER), "--address", str(ADDRESS)],
     capture_output=True, text=True
