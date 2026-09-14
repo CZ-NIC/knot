@@ -227,12 +227,11 @@ int server_reconfigure(conf_t *conf, server_t *server);
  *
  * Routine for dynamic server zones reconfiguration.
  *
- * \param conf    Configuration.
  * \param server  Server instance.
  * \param mode    Reload mode.
  * \param ctl_lock   Lock CTL lock.
  */
-void server_update_zones(conf_t *conf, server_t *server, reload_t mode, bool ctl_lock);
+void server_update_zones(server_t *server, reload_t mode, bool ctl_lock);
 
 /*!
  * \brief Returns current server certificate public key PIN as base64 string.

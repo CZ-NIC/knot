@@ -1613,7 +1613,7 @@ int server_reload(server_t *server, reload_t mode)
 		stats_reconfigure(conf(), server);
 	}
 	if (full || (flags & (CONF_IO_FRLD_ZONES | CONF_IO_FRLD_ZONE))) {
-		server_update_zones(conf(), server, mode, false);
+		server_update_zones(server, mode, false);
 	}
 
 	/* Free old config needed for module unload in zone reload. */
@@ -1927,7 +1927,7 @@ int server_reconfigure(conf_t *conf, server_t *server)
 	return KNOT_EOK;
 }
 
-void server_update_zones(conf_t *confp, server_t *server, reload_t mode, bool ctl_lock)
+void server_update_zones(server_t *server, reload_t mode, bool ctl_lock)
 {
 	if (server == NULL) {
 		return;
@@ -1951,7 +1951,7 @@ void server_update_zones(conf_t *confp, server_t *server, reload_t mode, bool ct
 	if (ctl_lock) {
 		pthread_rwlock_wrlock(&server->ctl_lock);
 	}
-	zonedb_reload(confp == NULL ? conf() : confp, server, mode);
+	zonedb_reload(conf(), server, mode);
 	if (ctl_lock) {
 		pthread_rwlock_unlock(&server->ctl_lock);
 	}
