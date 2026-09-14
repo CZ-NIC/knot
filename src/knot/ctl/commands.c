@@ -2461,10 +2461,10 @@ static int ctl_conf_modify(ctl_args_t *args, ctl_cmd_t cmd)
 }
 
 typedef enum {
-	CTL_LOCK_NONE   = 0x00,
-	CTL_LOCK_SRV_R  = 0x01, // Can run in parallel with other R commands.
-	CTL_LOCK_SRV_W  = 0x02, // Cannot run in parallel with other commands.
-	CTL_LOCK_EX     = 0x04,
+	CTL_LOCK_NONE  = 0,
+	CTL_LOCK_SRV_R = 1 << 0, // Can run in parallel with other R commands.
+	CTL_LOCK_SRV_W = 1 << 1, // Cannot run in parallel with other commands.
+	CTL_LOCK_EX    = 1 << 2, // Cannot run in parallel with the main thread (is exclusive).
 } ctl_lock_flag_t;
 
 typedef struct {
@@ -2570,8 +2570,7 @@ static int ctl_lock(server_t *server, ctl_lock_flag_t flags, struct timespec *ts
 #else
 		ret = pthread_rwlock_wrlock(&server->ctl_lock);
 #endif
-	}
-	if ((flags & CTL_LOCK_SRV_R)) {
+	} else if ((flags & CTL_LOCK_SRV_R)) {
 #if !defined(__APPLE__)
 		ret = pthread_rwlock_timedrdlock(&server->ctl_lock, ts);
 #else

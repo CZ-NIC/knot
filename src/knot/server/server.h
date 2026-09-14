@@ -131,7 +131,7 @@ typedef struct server {
 
 	/*! \brief Mutex protecting simultaneous access from concurrent CTL threads. */
 	pthread_rwlock_t ctl_lock;
-	pthread_mutex_t ctl_lock_ex;
+	pthread_mutex_t ctl_lock_ex; /* Protects against main-thread/ctl-thread concurrency. */
 
 	/*! \brief Pending changes to catalog member zones, update indication. */
 	catalog_update_t catalog_upd;
