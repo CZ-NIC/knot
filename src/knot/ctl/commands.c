@@ -2464,8 +2464,10 @@ typedef enum {
 	CTL_LOCK_NONE  = 0,
 	CTL_LOCK_SRV_R = 1 << 0, // Can run in parallel with other R commands.
 	CTL_LOCK_SRV_W = 1 << 1, // Cannot run in parallel with other commands.
-	CTL_LOCK_EX    = 1 << 2, // Cannot run in parallel with the main thread (is exclusive).
+	CTL_LOCK_SRV_E = 1 << 2, // Cannot run in parallel with the main thread (is exclusive).
 } ctl_lock_flag_t;
+
+#define CTL_LOCK_EX (CTL_LOCK_SRV_W | CTL_LOCK_SRV_E)
 
 typedef struct {
 	const char *name;
@@ -2478,7 +2480,7 @@ static const desc_t cmd_table[] = {
 
 	[CTL_STATUS]          = { "status",             ctl_server,       CTL_LOCK_SRV_R },
 	[CTL_STOP]            = { "stop",               ctl_server,       CTL_LOCK_SRV_R },
-	[CTL_RELOAD]          = { "reload",             ctl_server,       CTL_LOCK_SRV_W | CTL_LOCK_EX },
+	[CTL_RELOAD]          = { "reload",             ctl_server,       CTL_LOCK_EX    },
 	[CTL_STATS]           = { "stats",              ctl_stats,        CTL_LOCK_SRV_R },
 
 	[CTL_ZONE_STATUS]     = { "zone-status",        ctl_zone,         CTL_LOCK_SRV_R },
@@ -2519,7 +2521,7 @@ static const desc_t cmd_table[] = {
 	  // CTL_CONF_BEGIN is locked only during conf-begin, not for the whole duration of
 	  // the transaction.
 	[CTL_CONF_BEGIN]      = { "conf-begin",         ctl_conf_txn,     CTL_LOCK_SRV_W },
-	[CTL_CONF_COMMIT]     = { "conf-commit",        ctl_conf_txn,     CTL_LOCK_SRV_W | CTL_LOCK_EX },
+	[CTL_CONF_COMMIT]     = { "conf-commit",        ctl_conf_txn,     CTL_LOCK_EX    },
 	[CTL_CONF_ABORT]      = { "conf-abort",         ctl_conf_txn,     CTL_LOCK_SRV_W },
 	[CTL_CONF_DIFF]       = { "conf-diff",          ctl_conf_read,    CTL_LOCK_SRV_W },
 	[CTL_CONF_GET]        = { "conf-get",           ctl_conf_read,    CTL_LOCK_SRV_W },
@@ -2556,7 +2558,7 @@ ctl_cmd_t ctl_str_to_cmd(const char *cmd_str)
 static int ctl_lock(server_t *server, ctl_lock_flag_t flags, struct timespec *ts)
 {
 	int ret;
-	if ((flags & CTL_LOCK_EX)) {
+	if ((flags & CTL_LOCK_SRV_E)) {
 		ret = pthread_mutex_timedlock(&server->ctl_lock_ex, ts);
 		if (ret != 0) {
 			return KNOT_EBUSY;
@@ -2584,7 +2586,7 @@ static void ctl_unlock(server_t *server, ctl_lock_flag_t flags)
 {
 	pthread_rwlock_unlock(&server->ctl_lock);
 
-	if ((flags & CTL_LOCK_EX)) {
+	if ((flags & CTL_LOCK_SRV_E)) {
 		pthread_mutex_unlock(&server->ctl_lock_ex);
 	}
 }
