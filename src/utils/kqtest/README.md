@@ -1,34 +1,40 @@
-# qtest
-qtest is an DoQ server implementation testing tool based on kdig.
+# kqtest
+kqtest is an DoQ server implementation testing tool based on kdig.
 It uses function pointers instead of normal kdig function calls to some
 functions relevant to DoQ testing. This allows the user and developer to write
 an altered function implementation and run the kdig resolution with this
 altered code in order to test some DoQ server implementation.
 
-# WARNING
+## WARNING
 *THIS IS A TOOL FOR LOCAL TESTING ONLY.*
 Some test cases may corrupt server state, **Only use this tool on DNS servers
 you own, manage, or have explicit written permission to test.** Using this
 tool against public DNS servers or any infrastructure without authorization may
 result in legal repercussions.
 
-See qtest_main.c for all the test cases.
-See `qtest --help` for options
+## stdout warnings
+Some kdig warnings might get printed even if the test succeeds, this is
+fine and is merely the result of us breaking the usual kdig pipeline.
+Warnings that stats with ';; WARNING: QUIC' might sometimes indicate an issue
+with the test but are also likely nothing to worry about.
+
+See kqtest_main.c for all the test cases.
+See `kqtest --help` for options
 
 `-m` option also runs manual tests, these tests require human analysis on the
-server side and their success only **suggests** a successful execution of the
+server side and their success only **suggests** a correct execution of the
 test, not the result itself. These tests are intended to help a server
 implementation make sure the connection and server itself remain in a correct
 state after a malicious or unexpected performed by the client.
 
 # Adding more tests
 ## Disclaimer
-qtest is a tool intended for use by developers. qtest's design offers a
+kqtest is a tool intended for use by developers. kqtest's design offers a
 straightforward way to design new DoQ tests, but this claim expects the user
 to be an experienced developer.
 
 ## Lets add a test
-As mentioned before the design of qtest is based around function pointers.
+As mentioned before the design of kqtest is based around function pointers.
 These are selected functions that are relevant to DoQ behaviour, we test
 by changing the default kdig DoQ implementation with our modified code.
 This allows us to explore the server behaviour under unexpected, malicious
@@ -40,9 +46,9 @@ potentially any user can maliciously or accidentally use this to attack the
 server.
 
 All the function calls that were replaced by function pointer calls can be
-viewed at the top of qtest_main.c. These pointers are stored in `net->cbs`.
-The interface for these function pointers is defined in qtest_quic.h
-Additionally qtest uses the `net->quic.env` which contains free to use fields.
+viewed at the top of kqtest_main.c. These pointers are stored in `net->cbs`.
+The interface for these function pointers is defined in kqtest_quic.h
+Additionally kqtest uses the `net->quic.env` which contains free to use fields.
 
 To design a new test we simply replace the function pointers to the functions
 that we want to exhibit altered behaviour. As an example lets look at
@@ -59,11 +65,14 @@ DoQ Error code is checked.
 
 Having designed a new test and implemented the altered functions we append the
 unit test to one of the `struct c_m_unit_test` unit test suites in the `main`
-function in qtest_main.c and run the program.
+function in kqtest_main.c and run the program.
 
 # Compilation
-To build qtest two flags have to be enabled in the initial Knot-dns configure
+To build kqtest two flags have to be enabled in the initial Knot-dns configure
 `--enable-quic=yes|embedded` and
-`--enable-qtest=yes`
-the resulting binary is named qtest and can be found alongside kdig and other
+`--enable-kqtest=yes`
+the resulting binary is named kqtest and can be found alongside kdig and other
 utility programs in path/to/build/bin/
+
+# exit value
+The exit value is equal to the number of failed tests.
