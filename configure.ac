@@ -465,29 +465,21 @@ AC_ARG_ENABLE([cap-ng],
 
 AC_ARG_ENABLE([kqtest],
   [AS_HELP_STRING([--enable-kqtest=yes|no],
-    [Build kqtest, a DoQ test utility (requires Knot be compiled with QUIC and cmocka >= 1.1.7) [default: no]])],
-  [enable_kqtest="$enableval"],
-  [enable_kqtest=no]
-)
+  [Build kqtest, a DoQ testing utility (requires QUIC and cmocka >= 1.1.7) [default=no]])],
+  [enable_kqtest="$enableval"], [enable_kqtest=no])
 
 AS_CASE([$enable_kqtest],
   [yes], [
-    PKG_CHECK_MODULES([cmocka], [cmocka >= 1.1.7],
-      [enable_quic=yes],
-      [AC_MSG_ERROR([cmocka not found, but --enable-kqtest=yes was requested])]
-    )
+    AS_IF([test "$enable_quic" != "yes"],
+      [AC_MSG_ERROR([kqtest requires QUIC, reconfigure with --enable-quic])])
+    PKG_CHECK_MODULES([cmocka], [cmocka >= 1.1.7], [],
+      [AC_MSG_ERROR([cmocka >= 1.1.7 not found, but --enable-kqtest=yes was requested])])
   ],
   [no], [],
-  [*], [AC_MSG_ERROR([Invalid value for --enable-kqtest])]
+  [*], [AC_MSG_ERROR([Invalid value '$enable_kqtest' for --enable-kqtest])]
 )
 
-AM_CONDITIONAL([ENABLE_KQTEST], [test "x$enable_kqtest" = "xyes"])
-AC_SUBST([cmocka_CFLAGS])
-AC_SUBST([cmocka_LIBS])
-
-AS_IF([test "x$enable_kqtest" = "xyes"], [
-  AC_DEFINE([ENABLE_KQTEST], [1], [Define to 1 to build DoQ testing utility])
-])
+AM_CONDITIONAL([ENABLE_KQTEST], [test "$enable_kqtest" = "yes"])
 
 # Socket polling method (1/2)
 AC_ARG_WITH([socket-polling],
