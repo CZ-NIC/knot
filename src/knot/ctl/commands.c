@@ -2603,10 +2603,13 @@ int ctl_exec(ctl_cmd_t cmd, ctl_args_t *args)
 	args->timeout = time_now_opt(CLOCK_REALTIME, conf()->cache.ctl_timeout);
 
 	int ret = ctl_lock(args->server, cmd_table[cmd].locks, &args->timeout);
-	if (ret == KNOT_EOK) {
-		ret = cmd_table[cmd].fcn(args, cmd);
-		ctl_unlock(args->server, cmd_table[cmd].locks);
+	if (ret != KNOT_EOK) {
+		ctl_send_error(args, knot_strerror(ret));
+		return ret;
 	}
+
+	ret = cmd_table[cmd].fcn(args, cmd);
+	ctl_unlock(args->server, cmd_table[cmd].locks);
 
 	return ret;
 }
