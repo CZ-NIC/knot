@@ -110,12 +110,12 @@ int ctl_process(knot_ctl_t *ctl, server_t *server, unsigned thread_idx, bool *ex
 		// Execute the command.
 		if (cmd_exec) {
 			ret = ctl_exec(cmd, &args);
-		}
-		if (ret != KNOT_EOK) {
-			log_ctl_warning("control, execute command '%s' (%s)", cmd_name,
-			                knot_strerror(ret));
-			ctl_send_error(&args, knot_strerror(ret));
-			return ret;
+			if (ret != KNOT_EOK) {
+				log_ctl_warning("control, command '%s' execution failed (%s)",
+				                cmd_name, knot_strerror(ret));
+				ctl_send_error(&args, knot_strerror(ret));
+				return ret;
+			}
 		}
 
 		cmd_ret = args.cmd_ret;
