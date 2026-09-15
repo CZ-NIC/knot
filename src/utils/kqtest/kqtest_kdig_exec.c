@@ -18,7 +18,7 @@
 #include "contrib/time.h"
 #include "contrib/ucw/lists.h"
 #include "utils/kqtest/kqtest_quic.h"
-#include "libdnssec/random.h"
+#include "libknot/dnssec/random.h"
 
 #if USE_DNSTAP
 #include "contrib/dnstap/convert.h"

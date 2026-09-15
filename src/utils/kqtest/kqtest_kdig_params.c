@@ -21,8 +21,7 @@
 #include "contrib/strtonum.h"
 #include "contrib/time.h"
 #include "contrib/ucw/lists.h"
-#include "libdnssec/error.h"
-#include "libdnssec/random.h"
+#include "libknot/dnssec/random.h"
 
 /* FIXME Duplicate, also defined in qtest_main.c */
 #define PROGRAM_NAME "kqtest"
@@ -1076,8 +1075,8 @@ static int opt_cookie(const char *arg, void *query)
 		q->cc.len = KNOT_EDNS_COOKIE_CLNT_SIZE;
 
 		int ret = dnssec_random_buffer(q->cc.data, q->cc.len);
-		if (ret != DNSSEC_EOK) {
-			return knot_error_from_libdnssec(ret);
+		if (ret != KNOT_EOK) {
+			return ret;
 		}
 	}
 
@@ -2022,7 +2021,7 @@ static int parse_name(const char *value, list_t *queries, const query_t *conf)
 
 	if (value != NULL && value[0] != '\0') {
 		if (conf->idn) {
-			ascii_name = name_from_idn(value);
+			ascii_name = name_from_idn(value, true);
 			if (ascii_name == NULL) {
 				return KNOT_EINVAL;
 			}

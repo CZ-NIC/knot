@@ -7,7 +7,7 @@
 #include <stdlib.h>
 #include <time.h>
 
-#include "libdnssec/random.h"
+#include "libknot/dnssec/random.h"
 #include "utils/kqtest/kqtest_exec.h"
 #include "utils/common/msg.h"
 #include "utils/kqtest/kqtest_netio.h"

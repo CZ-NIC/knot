@@ -533,7 +533,7 @@ int net_connect(net_t *net)
 				if (remote && net->https.authority == NULL) {
 					net->https.authority = strdup(remote);
 				}
-				ret = https_ctx_connect(&net->https, sockfd, fastopen,
+				ret = https_ctx_connect(&net->https, sockfd,
 				        (struct sockaddr_storage *)net->srv->ai_addr);
 			} else
 #endif //LIBNGHTTP2
@@ -545,7 +545,7 @@ int net_connect(net_t *net)
 					net_close(net);
 					return ret;
 				}
-				ret = tls_ctx_connect(&net->tls, sockfd, fastopen,
+				ret = tls_ctx_connect(&net->tls, sockfd,
 				        (struct sockaddr_storage *)net->srv->ai_addr);
 			}
 			if (ret != KNOT_EOK) {

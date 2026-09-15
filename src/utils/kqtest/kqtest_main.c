@@ -16,7 +16,7 @@
 #include <cmocka.h>
 
 #include "contrib/ucw/lists.h"
-#include "libdnssec/crypto.h"
+#include "libknot/dnssec/crypto.h"
 #include "libknot/errcode.h"
 #include "utils/common/msg.h"
 #include "utils/kqtest/kqtest_netio.h"
