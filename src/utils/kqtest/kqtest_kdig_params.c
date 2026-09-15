@@ -13,7 +13,7 @@
 #include "utils/common/hex.h"
 #include "utils/common/msg.h"
 #include "utils/kqtest/kqtest_netio.h"
-#include "utils/kqtest/kqtest_params.h"
+#include "utils/common/params.h"
 #include "utils/kqtest/kqtest_resolv.h"
 #include "libknot/descriptor.h"
 #include "contrib/base64.h"

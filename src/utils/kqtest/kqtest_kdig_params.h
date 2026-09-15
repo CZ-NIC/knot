@@ -7,7 +7,7 @@
 
 #include <stdbool.h>
 
-#include "utils/kqtest/kqtest_params.h"
+#include "utils/common/params.h"
 #include "utils/common/https.h"
 #include "utils/kqtest/kqtest_quic.h"
 

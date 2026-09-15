@@ -18,7 +18,7 @@
 #include "libknot/errcode.h"
 #include "utils/kqtest/kqtest_quic.h"
 #include "utils/common/msg.h"
-#include "utils/kqtest/kqtest_params.h"
+#include "utils/common/params.h"
 
 int quic_params_copy(quic_params_t *dst, const quic_params_t *src)
 {

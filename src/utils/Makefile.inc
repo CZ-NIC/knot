@@ -68,10 +68,8 @@ kqtest_SOURCES = \
 	utils/kqtest/kqtest_main.c \
 	utils/kqtest/kqtest_netio.c \
 	utils/kqtest/kqtest_netio.h \
-	utils/kqtest/kqtest_params.c \
 	utils/kqtest/kqtest_kdig_params.c \
 	utils/kqtest/kqtest_kdig_params.h \
-	utils/kqtest/kqtest_params.h \
 	utils/kqtest/kqtest_quic.c \
 	utils/kqtest/kqtest_quic.h \
 	utils/kqtest/kqtest_resolv.c \

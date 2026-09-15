@@ -8,7 +8,7 @@
 #include <time.h>
 
 #include "utils/kqtest/kqtest_netio.h"
-#include "utils/kqtest/kqtest_params.h"
+#include "utils/common/params.h"
 #include "contrib/json.h"
 
 /*!
