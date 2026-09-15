@@ -18,6 +18,7 @@
 #include "contrib/time.h"
 #include "contrib/ucw/lists.h"
 #include "utils/kqtest/kqtest_quic.h"
+#include "libdnssec/random.h"
 
 #if USE_DNSTAP
 #include "contrib/dnstap/convert.h"
@@ -521,6 +522,9 @@ knot_pkt_t *create_query_packet_with_msgid(const query_t *query)
 		return NULL;
 	}
 
+	/* 1 in 2^16 chance, msgid == 0 by chance => false negative */
+	while (knot_wire_get_id(packet->wire) == 0)
+		knot_wire_set_id(packet->wire, dnssec_random_uint16_t());
 	/* Keep msgid for the purpose of this test */
 
 	return create_query_packet_common(query, packet, max_size);
