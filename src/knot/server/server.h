@@ -130,7 +130,8 @@ typedef struct server {
 	bool tls_active;
 
 	/*! \brief Mutex protecting simultaneous access from concurrent CTL threads. */
-	pthread_rwlock_t ctl_lock;
+	pthread_rwlock_t ctl_lock;   // general protection of many ctl-accessed resources, including zonedb (which is not RCU-protected from ctl!)
+	pthread_mutex_t ctl_lock_ex; // exclusive lock of event/evsched freezing/resuming between main thread (catalog) and ctl (reload et al.)
 
 	/*! \brief Pending changes to catalog member zones, update indication. */
 	catalog_update_t catalog_upd;
@@ -226,11 +227,11 @@ int server_reconfigure(conf_t *conf, server_t *server);
  *
  * Routine for dynamic server zones reconfiguration.
  *
- * \param conf    Configuration.
  * \param server  Server instance.
  * \param mode    Reload mode.
+ * \param ctl_lock   Lock CTL lock.
  */
-void server_update_zones(conf_t *conf, server_t *server, reload_t mode);
+void server_update_zones(server_t *server, reload_t mode, bool ctl_lock);
 
 /*!
  * \brief Returns current server certificate public key PIN as base64 string.

@@ -121,7 +121,8 @@ static int schedule_trigger(zone_t *zone, ctl_args_t *args, zone_event_type_t ev
 		    zone->control_update != NULL) {
 			return KNOT_TXN_EEXISTS;
 		}
-		ret = zone_events_schedule_blocking(zone, event, flags, conf()->cache.ctl_timeout);
+
+		ret = zone_events_schedule_blocking(zone, event, flags, &args->timeout);
 	} else {
 		zone_events_schedule_now_flags(zone, event, flags);
 	}
@@ -2460,9 +2461,10 @@ static int ctl_conf_modify(ctl_args_t *args, ctl_cmd_t cmd)
 }
 
 typedef enum {
-	CTL_LOCK_NONE   = 0x00,
-	CTL_LOCK_SRV_R  = 0x01, // Can run in parallel with other R commands.
-	CTL_LOCK_SRV_W  = 0x02, // Cannot run in parallel with other commands.
+	CTL_LOCK_NONE   = 0,
+	CTL_LOCK_SRV_R  = (1 << 0), // Can run in parallel with other R commands.
+	CTL_LOCK_SRV_W  = (1 << 1), // Cannot run in parallel with other commands.
+	CTL_LOCK_SRV_E  = (1 << 2), // Cannot run in parallel with evsched freezing/resuming routines in main thr.
 } ctl_lock_flag_t;
 
 typedef struct {
@@ -2476,7 +2478,7 @@ static const desc_t cmd_table[] = {
 
 	[CTL_STATUS]          = { "status",             ctl_server,       CTL_LOCK_SRV_R },
 	[CTL_STOP]            = { "stop",               ctl_server,       CTL_LOCK_SRV_R },
-	[CTL_RELOAD]          = { "reload",             ctl_server,       CTL_LOCK_SRV_W },
+	[CTL_RELOAD]          = { "reload",             ctl_server,       CTL_LOCK_SRV_W | CTL_LOCK_SRV_E },
 	[CTL_STATS]           = { "stats",              ctl_stats,        CTL_LOCK_SRV_R },
 
 	[CTL_ZONE_STATUS]     = { "zone-status",        ctl_zone,         CTL_LOCK_SRV_R },
@@ -2485,7 +2487,8 @@ static const desc_t cmd_table[] = {
 	[CTL_ZONE_RETRANSFER] = { "zone-retransfer",    ctl_zone,         CTL_LOCK_SRV_R },
 	[CTL_ZONE_NOTIFY]     = { "zone-notify",        ctl_zone,         CTL_LOCK_SRV_R },
 	[CTL_ZONE_FLUSH]      = { "zone-flush",         ctl_zone,         CTL_LOCK_SRV_R },
-	[CTL_ZONE_BACKUP]     = { "zone-backup",        ctl_zone,         CTL_LOCK_SRV_W }, // Backup and restore must be exclusive as the global backup ctx is accessed.
+	  // Backup and restore must be exclusive as the global backup ctx is accessed.
+	[CTL_ZONE_BACKUP]     = { "zone-backup",        ctl_zone,         CTL_LOCK_SRV_W },
 	[CTL_ZONE_RESTORE]    = { "zone-restore",       ctl_zone,         CTL_LOCK_SRV_W },
 	[CTL_ZONE_SIGN]       = { "zone-sign",          ctl_zone,         CTL_LOCK_SRV_R },
 	[CTL_ZONE_VALIDATE]   = { "zone-validate",      ctl_zone,         CTL_LOCK_SRV_R },
@@ -2509,10 +2512,14 @@ static const desc_t cmd_table[] = {
 	[CTL_ZONE_STATS]      = { "zone-stats",	        ctl_zone,         CTL_LOCK_SRV_R },
 	[CTL_ZONE_SERIAL_SET] = { "zone-serial-set",    ctl_zone,         CTL_LOCK_SRV_R },
 
-	[CTL_CONF_LIST]       = { "conf-list",          ctl_conf_list,    CTL_LOCK_SRV_R }, // Can either read live conf or conf txn. The latter would deserve CTL_LOCK_SRV_W, but when conf txn exists, all cmds are done by single thread anyway.
+	  // CTL_CONF_LIST can either read live conf or conf txn. The latter would deserve
+	  // CTL_LOCK_SRV_W, but when conf txn exists, all cmds are done by single thread anyway.
+	[CTL_CONF_LIST]       = { "conf-list",          ctl_conf_list,    CTL_LOCK_SRV_R },
 	[CTL_CONF_READ]       = { "conf-read",          ctl_conf_read,    CTL_LOCK_SRV_R },
-	[CTL_CONF_BEGIN]      = { "conf-begin",         ctl_conf_txn,     CTL_LOCK_SRV_W }, // It's locked only during conf-begin, not for the whole duration of the transaction.
-	[CTL_CONF_COMMIT]     = { "conf-commit",        ctl_conf_txn,     CTL_LOCK_SRV_W },
+	  // CTL_CONF_BEGIN is locked only during conf-begin, not for the whole duration of
+	  // the transaction.
+	[CTL_CONF_BEGIN]      = { "conf-begin",         ctl_conf_txn,     CTL_LOCK_SRV_W },
+	[CTL_CONF_COMMIT]     = { "conf-commit",        ctl_conf_txn,     CTL_LOCK_SRV_W | CTL_LOCK_SRV_E },
 	[CTL_CONF_ABORT]      = { "conf-abort",         ctl_conf_txn,     CTL_LOCK_SRV_W },
 	[CTL_CONF_DIFF]       = { "conf-diff",          ctl_conf_read,    CTL_LOCK_SRV_W },
 	[CTL_CONF_GET]        = { "conf-get",           ctl_conf_read,    CTL_LOCK_SRV_W },
@@ -2546,27 +2553,31 @@ ctl_cmd_t ctl_str_to_cmd(const char *cmd_str)
 	return CTL_NONE;
 }
 
-static int ctl_lock(server_t *server, ctl_lock_flag_t flags, uint64_t timeout_ms)
+static int ctl_lock(server_t *server, ctl_lock_flag_t flags, struct timespec *ts)
 {
-	struct timespec ts;
-	int ret = clock_gettime(CLOCK_REALTIME, &ts);
-	if (ret != 0) {
-		return KNOT_ERROR;
+	int ret;
+	if ((flags & CTL_LOCK_SRV_E)) {
+#if !defined(__APPLE__)
+		ret = pthread_mutex_timedlock(&server->ctl_lock_ex, ts);
+#else
+		ret = pthread_mutex_lock(&server->ctl_lock_ex);
+#endif
+		if (ret != 0) {
+			return KNOT_EBUSY;
+		}
 	}
-	ts.tv_sec += timeout_ms / 1000;
-	ts.tv_nsec += (timeout_ms % 1000) * 1000000LU;
 
 	if ((flags & CTL_LOCK_SRV_W)) {
 		assert(!(flags & CTL_LOCK_SRV_R));
 #if !defined(__APPLE__)
-		ret = pthread_rwlock_timedwrlock(&server->ctl_lock, &ts);
+		ret = pthread_rwlock_timedwrlock(&server->ctl_lock, ts);
 #else
 		ret = pthread_rwlock_wrlock(&server->ctl_lock);
 #endif
 	}
 	if ((flags & CTL_LOCK_SRV_R)) {
 #if !defined(__APPLE__)
-		ret = pthread_rwlock_timedrdlock(&server->ctl_lock, &ts);
+		ret = pthread_rwlock_timedrdlock(&server->ctl_lock, ts);
 #else
 		ret = pthread_rwlock_rdlock(&server->ctl_lock);
 #endif
@@ -2574,9 +2585,13 @@ static int ctl_lock(server_t *server, ctl_lock_flag_t flags, uint64_t timeout_ms
 	return (ret != 0 ? KNOT_EBUSY : KNOT_EOK);
 }
 
-static void ctl_unlock(server_t *server)
+static void ctl_unlock(server_t *server, ctl_lock_flag_t flags)
 {
 	pthread_rwlock_unlock(&server->ctl_lock);
+
+	if ((flags & CTL_LOCK_SRV_E)) {
+		pthread_mutex_unlock(&server->ctl_lock_ex);
+	}
 }
 
 int ctl_exec(ctl_cmd_t cmd, ctl_args_t *args)
@@ -2585,11 +2600,16 @@ int ctl_exec(ctl_cmd_t cmd, ctl_args_t *args)
 		return KNOT_EINVAL;
 	}
 
-	int ret = ctl_lock(args->server, cmd_table[cmd].locks, conf()->cache.ctl_timeout);
-	if (ret == KNOT_EOK) {
-		ret = cmd_table[cmd].fcn(args, cmd);
-		ctl_unlock(args->server);
+	args->timeout = time_now_opt(CLOCK_REALTIME, conf()->cache.ctl_timeout);
+
+	int ret = ctl_lock(args->server, cmd_table[cmd].locks, &args->timeout);
+	if (ret != KNOT_EOK) {
+		ctl_send_error(args, knot_strerror(ret));
+		return ret;
 	}
+
+	ret = cmd_table[cmd].fcn(args, cmd);
+	ctl_unlock(args->server, cmd_table[cmd].locks);
 
 	return ret;
 }

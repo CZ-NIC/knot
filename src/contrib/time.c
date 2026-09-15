@@ -24,11 +24,17 @@ static long get_gmtoff(const struct tm *tm)
 #endif
 }
 
-struct timespec time_now(void)
+struct timespec time_now_opt(clockid_t clockid, unsigned long shift_ms)
 {
 	struct timespec result = { 0 };
 
-	clock_gettime(CLOCK_MONOTONIC, &result);
+	clock_gettime(clockid, &result);
+
+	if (shift_ms > 0) {
+		long millis_ex = (shift_ms % 1000) + (result.tv_nsec / 1000000LU);
+		result.tv_sec += shift_ms / 1000 + millis_ex / 1000;
+		result.tv_nsec = (millis_ex % 1000) * 1000000LU;
+	}
 
 	return result;
 }
