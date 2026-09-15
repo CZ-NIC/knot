@@ -56,7 +56,7 @@ enum test_suites {
 char *test_suite_names[] = {
 	"General stream data handling tests",
 	"Protocol compliance tests",
-	"Tests requiring manual veriifcation",
+	"Tests requiring manual verifcation",
 };
 
 typedef struct net_ctx {
