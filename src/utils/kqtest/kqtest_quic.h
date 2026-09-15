@@ -63,18 +63,21 @@ typedef enum {
 /* testcase env extra flags */
 typedef enum {
 	TEST_SEND_ONE_PAYLOAD = (1 << 2),
+	TEST_KEEP_SPLIT_VECTOR = (1 << 3),
 } quic_extra_flags;
 
 typedef struct test_env {
 	uint64_t scenario;
 	int16_t counter;
-	char *buf;
-	size_t bufsize;
-	size_t bufend;
 	size_t stream_count;
-	int extra;
-	/* Can be used to store any additional test info both in and out */
-	int result_buffer[1<<10];
+	/* Random values required for some tests */
+	struct  {
+		quic_extra_flags bitflag;
+		int error_observed;
+		int add_to_size_prefix;
+		int request_stream_count;
+		int expected_response_count;
+	} extra;
 } test_env_t;
 
 struct stream {
@@ -112,8 +115,6 @@ typedef struct quic_ctx {
 } quic_ctx_t;
 
 extern const gnutls_datum_t doq_alpn;
-
-#define RECEIVED_CLOSE_MAGIC 0xa91d3b8
 
 int recv_stream_data_cb(ngtcp2_conn *conn, uint32_t flags,
 	int64_t stream_id, uint64_t offset, const uint8_t *data,
@@ -172,8 +173,6 @@ int quic_send_dns_query_stop_sending(quic_ctx_t *ctx, int sockfd,
 		struct addrinfo *srv, const uint8_t *buf, const size_t buf_len);
 int quic_send_dns_query_wrong_size_prefix(quic_ctx_t *ctx, int sockfd,
 		struct addrinfo *srv, const uint8_t *buf, const size_t buf_len);
-int quic_send_dns_query_open_uni_stream(quic_ctx_t *ctx, int sockfd,
-		struct addrinfo *srv, const uint8_t *buf, const size_t buf_len);
 int quic_send_doubled(quic_ctx_t *ctx, int sockfd,
 		struct addrinfo *srv, const uint8_t *buf, const size_t buf_len);
 
@@ -185,9 +184,6 @@ void quic_ctx_close(quic_ctx_t *ctx);
 void quic_ctx_deinit(quic_ctx_t *ctx);
 
 void print_quic(const quic_ctx_t *ctx);
-
-typedef int (*kqtest_getaddr)(const srv_info_t *server, const int iptype,
-		const int socktype, struct addrinfo  **info);
 
 typedef void (*kqtest_get_addr_str)(const struct sockaddr_storage *ss,
 		  const knot_probe_proto_t protocol, char **dst);
@@ -227,8 +223,6 @@ typedef int (*kqtest_offset_span)(ngtcp2_vec **vec, size_t *veclen, size_t sub);
 typedef int (*kqtest_quic_send_data)(quic_ctx_t *ctx, int sockfd, int family,
 	ngtcp2_vec *datav, size_t datavlen);
 
-typedef int (*kqtest_net_ecn_set)(int sock, int family, uint8_t ecn);
-
 typedef int (*kqtest_quic_recv)(quic_ctx_t *ctx, int sockfd);
 
 typedef uint64_t (*kqtest_quic_timestamp)(void);
@@ -247,9 +241,6 @@ typedef int (*kqtest_net_receive)(const net_t *net, uint8_t *buf,
 typedef int (*kqtest_quic_recv_dns_response)(quic_ctx_t *ctx, uint8_t *buf,
 		const size_t buf_len, struct addrinfo *srv);
 
-typedef int (*kqtest_quic_recv_dns_response)(quic_ctx_t *ctx, uint8_t *buf,
-		const size_t buf_len, struct addrinfo *srv);
-
 typedef int (*ngtcp2_recv_stream_data_cb)( ngtcp2_conn * conn, uint32_t flags,
 		int64_t stream_id, uint64_t offset, const uint8_t * data,
 		size_t datalen, void * user_data, void * stream_user_data);
@@ -262,7 +253,7 @@ typedef struct kdig_callbacks {
 	kqtest_quic_send_dns_query quic_send_dns_query;
 	kqtest_verify_certificate verify_certificate;
 	kqtest_net_set_local_info net_set_local_info;
-	kqtest_stream_reset_cb quic_stream_reset_cb;
+	kqtest_stream_reset_cb stream_reset_cb;
 	kqtest_quic_ctx_connect quic_ctx_connect;
 	kqtest_net_get_remote net_get_remote;
 	kqtest_quic_send_data quic_send_data;
@@ -271,12 +262,10 @@ typedef struct kdig_callbacks {
 	kqtest_get_addr_str get_addr_str;
 	kqtest_tls_ctx_init tls_ctx_init;
 	kqtest_offset_span offset_span;
-	kqtest_net_ecn_set net_ecn_set;
 	kqtest_net_receive net_receive;
 	kqtest_get_expiry get_expiry;
 	kqtest_quic_recv quic_recv;
 	kqtest_get_conn get_conn;
-	kqtest_getaddr getaddr;
 } kdig_callbacks_t;
 
 #endif //ENABLE_QUIC

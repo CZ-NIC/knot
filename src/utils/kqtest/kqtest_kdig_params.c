@@ -1957,7 +1957,7 @@ void kdig_clean(kdig_params_t *params)
 {
 	node_t *n, *nxt;
 
-	if (params == NULL) {
+	if (params == NULL || EMPTY_LIST(params->queries)) {
 		DBG_NULL;
 		return;
 	}
@@ -2786,7 +2786,17 @@ int kdig_parse(kdig_params_t *params, int argc, char *argv[],
 		}
 
 		/* no mistakes allowed here */
-		assert(ret == KNOT_EOK);
+		switch (ret) {
+		case KNOT_EOK:
+			if (params->stop) {
+				return KNOT_EOK;
+			}
+			break;
+		case KNOT_ENOTSUP:
+			print_help();
+		default: // Fall through.
+			return ret;
+		}
 	}
 
 	// Complete missing data in queries based on defaults.

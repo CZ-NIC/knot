@@ -20,6 +20,7 @@
 #include "libknot/errcode.h"
 #include "utils/kqtest/kqtest_quic.h"
 #include "utils/kqtest/kqtest_netio.h"
+#include "utils/kqtest/kqtest_kdig_exec.h"
 #include "utils/common/msg.h"
 #include "utils/common/tls.h"
 #include "libknot/quic/tls_common.h"
@@ -280,31 +281,28 @@ int net_init(const srv_info_t      *local,
 	net->cbs = calloc(1, sizeof(*net->cbs));
 	if (!net->cbs) {
 		net_clean(net);
-		return KNOT_EINVAL;
+		return KNOT_ENOMEM;
 	}
 	net->cbs->tls_ctx_setup_remote_endpoint = tls_ctx_setup_remote_endpoint;
-	net->cbs->net_set_local_info = net_set_local_info;
-	net->cbs->net_get_remote = net_get_remote;
-	net->cbs->tls_ctx_init = tls_ctx_init;
-	net->cbs->get_addr_str = get_addr_str;
-	net->verbosity = 1;
-#ifdef ENABLE_QUIC
-	net->verbosity = net->quic.verbosity;
 	net->cbs->quic_recv_dns_response = quic_recv_dns_response;
 	net->cbs->quic_generate_secret = quic_generate_secret;
+	net->cbs->create_query_packet = create_query_packet;
 	net->cbs->quic_send_dns_query = quic_send_dns_query;
 	net->cbs->verify_certificate = verify_certificate;
+	net->cbs->net_set_local_info = net_set_local_info;
+	net->cbs->stream_reset_cb = stream_reset_cb;
 	net->cbs->quic_ctx_connect = quic_ctx_connect;
+	net->cbs->net_get_remote = net_get_remote;
 	net->cbs->quic_send_data = quic_send_data;
 	net->cbs->quic_timestamp = quic_timestamp;
 	net->cbs->quic_ctx_init = quic_ctx_init;
+	net->cbs->get_addr_str = get_addr_str;
+	net->cbs->tls_ctx_init = tls_ctx_init;
 	net->cbs->offset_span = offset_span;
-	net->cbs->net_ecn_set = net_ecn_set;
+	net->cbs->net_receive = net_receive;
 	net->cbs->get_expiry = get_expiry;
 	net->cbs->quic_recv = quic_recv;
 	net->cbs->get_conn = get_conn;
-#endif /* ENABLE_QUIC */
-
 	return KNOT_EOK;
 }
 
@@ -346,7 +344,6 @@ int net_init_crypto(net_t                 *net,
 		                       GNUTLS_NONBLOCK | GNUTLS_ENABLE_EARLY_DATA |
 		                       GNUTLS_NO_END_OF_EARLY_DATA, net->wait);
 		if (ret != KNOT_EOK) {
-			net_clean(net);
 			return ret;
 		}
 		quic_ctx_deinit(&net->quic);
@@ -354,7 +351,6 @@ int net_init_crypto(net_t                 *net,
 		net->quic.verbosity = net->verbosity;
 		ret = net->cbs->quic_ctx_init(&net->quic, &net->tls, quic_params);
 		if (ret != KNOT_EOK) {
-			net_clean(net);
 			return ret;
 		}
 	} else
@@ -771,8 +767,8 @@ int net_receive(const net_t *net, uint8_t *buf, const size_t buf_len)
 	// Receive data over QUIC.
 	if (net->quic.params.enable) {
 		int ret = net->cbs->quic_recv_dns_response(
-		/*int ret = quic_recv_dns_response(*/(quic_ctx_t *)&net->quic, buf,
-		                                 buf_len, net->srv);
+				(quic_ctx_t *)&net->quic,
+				buf, buf_len, net->srv);
 		if (ret < 0) {
 			WARN("can't receive reply from %s", net->remote_str);
 			return KNOT_NET_ERECV;

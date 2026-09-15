@@ -668,10 +668,6 @@ static int process_query_packet(const knot_pkt_t      *query,
 		net_close(net);
 		return -1;
 	}
-	if (net->quic.env->extra == TEST_SEND_ONE_PAYLOAD) {
-		net_close(net);
-		return ret;
-	}
 
 	// Get stop query time and start reply time.
 	t_query = time_now();
@@ -706,8 +702,9 @@ static int process_query_packet(const knot_pkt_t      *query,
 	}
 
 	size_t expect = 1;
-	if (net->quic.env != NULL && net->quic.env->extra > 1) {
-		expect = (size_t)net->quic.env->extra;
+	if (net->quic.env != NULL
+			&& net->quic.env->extra.expected_response_count > 1) {
+		expect = (size_t)net->quic.env->extra.expected_response_count;
 	}
 
 	for (size_t got = 0; got < expect; got++) {
