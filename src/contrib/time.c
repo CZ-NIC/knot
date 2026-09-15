@@ -15,15 +15,15 @@
 #include "contrib/ctype.h"
 #include "contrib/string.h"
 
-struct timespec time_now2(clockid_t clockid, unsigned long shift_millis)
+struct timespec time_now_opt(clockid_t clockid, unsigned long shift_ms)
 {
 	struct timespec result = { 0 };
 
 	clock_gettime(clockid, &result);
 
-	if (shift_millis > 0) {
-		long millis_ex = (shift_millis % 1000) + (result.tv_nsec / 1000000LU);
-		result.tv_sec += shift_millis / 1000 + millis_ex / 1000;
+	if (shift_ms > 0) {
+		long millis_ex = (shift_ms % 1000) + (result.tv_nsec / 1000000LU);
+		result.tv_sec += shift_ms / 1000 + millis_ex / 1000;
 		result.tv_nsec = (millis_ex % 1000) * 1000000LU;
 	}
 

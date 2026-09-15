@@ -2595,7 +2595,7 @@ int ctl_exec(ctl_cmd_t cmd, ctl_args_t *args)
 		return KNOT_EINVAL;
 	}
 
-	args->timeout = time_now2(CLOCK_REALTIME, conf()->cache.ctl_timeout);
+	args->timeout = time_now_opt(CLOCK_REALTIME, conf()->cache.ctl_timeout);
 
 	int ret = ctl_lock(args->server, cmd_table[cmd].locks, &args->timeout);
 	if (ret == KNOT_EOK) {
