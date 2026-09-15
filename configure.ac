@@ -463,24 +463,6 @@ AC_ARG_ENABLE([cap-ng],
   [], [enable_cap_ng=auto]
 )
 
-AC_ARG_ENABLE([kqtest],
-  [AS_HELP_STRING([--enable-kqtest=yes|no],
-  [Build kqtest, a DoQ testing utility (requires QUIC and cmocka >= 1.1.7) [default=no]])],
-  [enable_kqtest="$enableval"], [enable_kqtest=no])
-
-AS_CASE([$enable_kqtest],
-  [yes], [
-    AS_IF([test "$enable_quic" != "yes"],
-      [AC_MSG_ERROR([kqtest requires QUIC, reconfigure with --enable-quic])])
-    PKG_CHECK_MODULES([cmocka], [cmocka >= 1.1.7], [],
-      [AC_MSG_ERROR([cmocka >= 1.1.7 not found, but --enable-kqtest=yes was requested])])
-  ],
-  [no], [],
-  [*], [AC_MSG_ERROR([Invalid value '$enable_kqtest' for --enable-kqtest])]
-)
-
-AM_CONDITIONAL([ENABLE_KQTEST], [test "$enable_kqtest" = "yes"])
-
 # Socket polling method (1/2)
 AC_ARG_WITH([socket-polling],
   AS_HELP_STRING([--with-socket-polling=auto|poll|epoll|kqueue|libkqueue],
@@ -765,6 +747,28 @@ AS_IF([test "$enable_daemon" = "yes" -o "$enable_utilities" = "yes"], [
   AC_DEFINE_UNQUOTED([CONF_MAPSIZE], [$conf_mapsize], [Configuration DB mapsize.])
   AC_SUBST(conf_mapsize)
 ])
+
+AS_IF([test "$enable_quic" != "no"], [
+  AC_DEFINE([ENABLE_QUIC], [1], [Define to 1 to enable DoQ support using libngtcp2 and GnuTLS])])
+
+# kqtest utility
+AC_ARG_ENABLE([kqtest],
+  [AS_HELP_STRING([--enable-kqtest=yes|no],
+  [Build kqtest, a DoQ testing utility (requires QUIC and cmocka >= 1.1.7) [default=no]])],
+  [enable_kqtest="$enableval"], [enable_kqtest=no])
+
+AS_CASE([$enable_kqtest],
+  [yes], [
+    AS_IF([test "$enable_quic" != "yes"],
+      [AC_MSG_ERROR([kqtest requires QUIC, reconfigure with --enable-quic])])
+    PKG_CHECK_MODULES([cmocka], [cmocka >= 1.1.7], [],
+      [AC_MSG_ERROR([cmocka >= 1.1.7 not found, but --enable-kqtest=yes was requested])])
+  ],
+  [no], [],
+  [*], [AC_MSG_ERROR([Invalid value '$enable_kqtest' for --enable-kqtest])]
+)
+
+AM_CONDITIONAL([ENABLE_KQTEST], [test "$enable_kqtest" = "yes"])
 
 # IDN support in kdig (1/2)
 AC_ARG_WITH([libidn],
