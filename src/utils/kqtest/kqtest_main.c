@@ -42,11 +42,13 @@ static char* kqtest_queries[QUERY_COUNT] = {
 };
 
 enum test_suites {
-	STREAM_TESTS = 0,
-	PROTO_TESTS = 1,
-	MANUAL_TESTS = 2,
+	SANITY_TESTS = 0,
+	STREAM_TESTS = 1,
+	PROTO_TESTS = 2,
+	MANUAL_TESTS = 3,
 };
 char *test_suite_names[] = {
+	"Send a query over DoQ",
 	"General stream data handling tests",
 	"Protocol compliance tests",
 	"Tests requiring manual verifcation",
@@ -568,19 +570,28 @@ static void send_stream_reset_postfin(void **state)
 				ctx->net), -1);
 }
 
+
 /*****************************************************************************/
+
+void print_help(void)
+{
+	printf("Usage: %s [-v|-V log level] [-m manual tests] address port\n"
+	       "       -h, --help   displays this help message\n"
+	       "       -v           print usual kdig output alongside test results\n"
+	       "       -V           print usual kdig output and ngtcp2 log\n"
+	       "                    alongside test results\n"
+	       "       -m           Run manual tests, these have no interpretable results\n"
+	       "                    and have to be verified on the server side\n"
+	       "                    (via log inspection and/or debug)\n",
+	       PROGRAM_NAME);
+}
 
 int main(int argc, char *argv[])
 {
 	int result = 0;
 	bool enable_manual = false;
 	if (argc == 2 && (!strcmp(argv[1], "--help") || !strcmp(argv[1], "-h"))) {
-		printf("kqtest [OPTIONS] address port\tkqtest requires an address and a port of the DoQ server that is to be tested\n");
-		printf("kqtest --help \t\t\tdisplays this help message\n");
-		printf("kqtest OPTIONS:\n");
-		printf("\t -v\t\t\tprint usual kdig output alongside test results\n");
-		printf("\t -V\t\t\tprint usual kdig output and ngtcp2 log alongside test results\n");
-		printf("\t -m\t\t\tRun manual tests, these have no interpretable results and have to be verified on the server side (via log inspection and/or debug)\n");
+		print_help();
 		return KNOT_EINVAL;
 	}
 
@@ -591,14 +602,14 @@ int main(int argc, char *argv[])
 	if ((argc == MIN_ARGS && argv[FLAG_ARGS_MAX_POS][0] == '-')
 			|| argc < MIN_ARGS
 			|| argc > MAX_ARGS) {
-		printf("Invalid number of arguments, see --help\n");
+		ERR("Invalid number of arguments, see --help");
 		return KNOT_EINVAL;
 	}
 
 	int i = FLAG_ARGS_MIN_POS;
 	for (; i < (FLAG_ARGS_MIN_POS + argc - MIN_ARGS); i++) {
 		if (strlen(argv[i]) != 2) {
-			printf("Unknown option '%s', see --help\n", argv[i]);
+			ERR("Unknown option '%s', see --help", argv[i]);
 			return KNOT_EINVAL;
 		} else if (!strcmp(argv[i], "-v") && verbosity == 0) {
 			verbosity = 1;
@@ -607,7 +618,7 @@ int main(int argc, char *argv[])
 		} else if (!strcmp(argv[i], "-m") && enable_manual == false) {
 			enable_manual = true;
 		} else {
-			printf("Unknown or duplicit option '%s', see --help\n",
+			ERR("Unknown or duplicit option '%s', see --help",
 					argv[i]);
 			return KNOT_EINVAL;
 		}
@@ -616,18 +627,28 @@ int main(int argc, char *argv[])
 	int n = snprintf(address, sizeof(address), "@%s@%s",
 			 argv[i], argv[i + 1]);
 	if (n < 0 || (size_t)n >= sizeof(address)) {
-		printf("address or port too long\n");
+		ERR("address or port too long\n");
 		return KNOT_EINVAL;
 	}
 
-	printf("testing address: %s\n", address);
+	INFO("testing address: %s\n", address);
 
 	#define c_u_t(test_fun) cmocka_unit_test_setup_teardown(test_fun, \
 			setup_unit_test_state, test_cleanup)
 	#define c_m_unit_test CMUnitTest
 
+	const struct c_m_unit_test regular_query_test[] = {
+		c_u_t(simple_sanity)
+	};
+	result = cmocka_run_group_tests_name(test_suite_names[SANITY_TESTS],
+			regular_query_test, setup, teardown);
+	if (result != 0) {
+		ERR("Upstream failed to resolve a query send via DoQ, aborting tests, check that upstream is alive and accepts DoQ on '%s'",
+				address);
+		return result;
+	}
+
 	const struct c_m_unit_test stream_tests[] = {
-		c_u_t(simple_sanity),
 		c_u_t(open_stream_and_timeout),
 		c_u_t(stream_data_split_to_two_pkts),
 		c_u_t(stream_data_split_to_ten_pkts),
@@ -635,7 +656,7 @@ int main(int argc, char *argv[])
 		c_u_t(send_one_byte_at_a_time),
 		c_u_t(send_stream_reset_prefin),
 	};
-	result = cmocka_run_group_tests_name(test_suite_names[STREAM_TESTS],
+	result += cmocka_run_group_tests_name(test_suite_names[STREAM_TESTS],
 			stream_tests, setup, teardown);
 
 	const struct c_m_unit_test proto_compliance_tests[] = {
