@@ -104,13 +104,12 @@ static void reset_conn_state(net_t *net)
 static int create_net(const query_t *query, net_t *net)
 {
 	int socktype = get_socktype(query->protocol, query->type_num);
-	int flags = query->fastopen ? NET_FLAGS_FASTOPEN : NET_FLAGS_NONE;
 	assert(list_size(&query->servers) == 1);
 	srv_info_t *remote = (srv_info_t *)HEAD(query->servers);
 	int iptype = get_iptype(query->ip, remote);
 
 	int ret = net_init(query->local, remote, iptype, socktype, query->wait,
-			flags, (struct sockaddr *)&query->proxy.src,
+			(struct sockaddr *)&query->proxy.src,
 			(struct sockaddr *)&query->proxy.dst, net);
 	if (ret != KNOT_EOK) {
 		return (ret == KNOT_NET_EADDR) ? KNOT_EADDRNOTAVAIL : ret;

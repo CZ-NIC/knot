@@ -44,6 +44,8 @@ typedef struct {
 	bool	cd_flag;
 	/*!< DNSSEC OK flag. */
 	bool	do_flag;
+	/*!< DELEG-aware flag. */
+	bool	de_flag;
 } flags_t;
 
 /*! \brief Basic parameters for DNS query. */
@@ -65,8 +67,6 @@ struct query {
 	ip_t		ip;
 	/*!< Protocol type (TCP, UDP) to use. */
 	protocol_t	protocol;
-	/*!< Use TCP Fast Open. */
-	bool		fastopen;
 	/*!< Keep TCP connection open. */
 	bool		keepopen;
 	/*!< Port/service to connect to. */
@@ -93,7 +93,7 @@ struct query {
 	flags_t		flags;
 	/*!< Output settings. */
 	style_t		style;
-	/*!< IDN conversion. */
+	/*!< Unicode to IDN input conversion. */
 	bool		idn;
 	/*!< Query for NSID. */
 	bool		nsid;
@@ -128,6 +128,9 @@ struct query {
 		struct sockaddr_storage src;
 		struct sockaddr_storage dst;
 	} proxy;
+	/*!< Trigger of DNSSEC validation and related contents_t. */
+	int		dnssec_validation;
+	struct kdig_dnssec_ctx *dv_ctx;
 #if USE_DNSTAP
 	/*!< Context for dnstap reader input. */
 	dt_reader_t	*dt_reader;

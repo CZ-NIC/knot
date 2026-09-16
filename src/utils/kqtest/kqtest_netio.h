@@ -25,11 +25,6 @@ typedef struct srv_info {
 	char	*service;
 } srv_info_t;
 
-typedef enum net_flags {
-	NET_FLAGS_NONE = 0,
-	NET_FLAGS_FASTOPEN = 1 << 0,
-} net_flags_t;
-
 typedef struct net {
 	/*! Socket descriptor. */
 	int sockfd;
@@ -40,8 +35,6 @@ typedef struct net {
 	int socktype;
 	/*! Timeout for all network operations. */
 	int wait;
-	/*! Connection flags. */
-	net_flags_t flags;
 
 	/*! Local interface parameters. */
 	const srv_info_t *local;
@@ -150,7 +143,6 @@ void get_addr_str(const struct sockaddr_storage *ss,
  * \param iptype	IP version.
  * \param socktype	Socket type.
  * \param wait		Network timeout interval.
- * \param flags		Connection flags.
  * \param proxy_src	Proxy source address.
  * \param proxy_dst	Proxy destination address.
  * \param net		Network structure to initialize.
@@ -163,7 +155,6 @@ int net_init(const srv_info_t      *local,
              const int             iptype,
              const int             socktype,
              const int             wait,
-             const net_flags_t     flags,
              const struct sockaddr *proxy_src,
              const struct sockaddr *proxy_dst,
              net_t                 *net);

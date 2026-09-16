@@ -57,7 +57,7 @@ static int write_dnstap(dt_writer_t           *writer,
 
 	ret = dt_message_fill(&msg, msg_type, net->local_info->ai_addr,
 	                      net->srv->ai_addr, protocol,
-	                      wire, wire_len, mtime);
+	                      wire, wire_len, mtime, NULL, 0);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}
@@ -243,6 +243,9 @@ static int add_query_edns(knot_pkt_t *packet, const query_t *query, uint16_t max
 	if (query->flags.do_flag) {
 		knot_edns_set_do(&opt_rr);
 	}
+	if (query->flags.de_flag) {
+		knot_edns_set_de(&opt_rr);
+	}
 
 	/* Append NSID. */
 	if (query->nsid) {
@@ -357,7 +360,7 @@ static bool use_edns(const query_t *query)
 	return query->edns > -1 || query->udp_size > -1 || query->nsid ||
 	       query->zoneversion || query->subnet.family != AF_UNSPEC ||
 	       query->flags.do_flag || query->cc.len > 0 || do_padding(query) ||
-	       !ednsopt_list_empty(&query->edns_opts);
+	       query->flags.de_flag || !ednsopt_list_empty(&query->edns_opts);
 }
 
 knot_pkt_t *create_query_packet_common(const query_t *query,
@@ -905,6 +908,9 @@ int process_query(const query_t *query, net_t *net)
 		goto finish;
 	}
 
+	// Get connection parameters.
+	int socktype = get_socktype(query->protocol, query->type_num);
+
 	// Loop over server list to process query.
 	WALK_LIST(server, query->servers) {
 		// Loop over the number of retries.
@@ -1225,7 +1231,6 @@ static int process_xfr(const query_t *query, net_t *net)
 
 	// Get connection parameters.
 	int socktype = get_socktype(query->protocol, query->type_num);
-	int flags = query->fastopen ? NET_FLAGS_FASTOPEN : NET_FLAGS_NONE;
 
 	// Use the first nameserver from the list.
 	srv_info_t *remote = HEAD(query->servers);
@@ -1237,7 +1242,7 @@ static int process_xfr(const query_t *query, net_t *net)
 	    get_sockname(socktype));
 
 	// Initialize network structure.
-	ret = net_init(query->local, remote, iptype, socktype, query->wait, flags,
+	ret = net_init(query->local, remote, iptype, socktype, query->wait,
 	               (struct sockaddr *)&query->proxy.src,
 	               (struct sockaddr *)&query->proxy.dst,
 	               net);

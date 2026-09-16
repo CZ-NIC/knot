@@ -61,18 +61,18 @@ bin_PROGRAMS += kdig khost knsec3hash knsupdate
 if ENABLE_KQTEST
 bin_PROGRAMS += kqtest
 kqtest_SOURCES = \
-	utils/kqtest/kqtest_exec.c \
-	utils/kqtest/kqtest_exec.h \
-	utils/kqtest/kqtest_kdig_exec.c  \
-	utils/kqtest/kqtest_kdig_exec.h \
-	utils/kqtest/kqtest_main.c \
-	utils/kqtest/kqtest_netio.c \
-	utils/kqtest/kqtest_netio.h \
-	utils/kqtest/kqtest_kdig_params.c \
-	utils/kqtest/kqtest_kdig_params.h \
-	utils/kqtest/kqtest_quic.c \
-	utils/kqtest/kqtest_quic.h \
-	utils/kqtest/kqtest_resolv.c \
+	utils/kqtest/kqtest_exec.c		\
+	utils/kqtest/kqtest_exec.h		\
+	utils/kqtest/kqtest_kdig_exec.c 	\
+	utils/kqtest/kqtest_kdig_exec.h		\
+	utils/kqtest/kqtest_main.c		\
+	utils/kqtest/kqtest_netio.c		\
+	utils/kqtest/kqtest_netio.h		\
+	utils/kqtest/kqtest_kdig_params.c	\
+	utils/kqtest/kqtest_kdig_params.h	\
+	utils/kqtest/kqtest_quic.c		\
+	utils/kqtest/kqtest_quic.h		\
+	utils/kqtest/kqtest_resolv.c		\
 	utils/kqtest/kqtest_resolv.h
 endif ENABLE_KQTEST
 
