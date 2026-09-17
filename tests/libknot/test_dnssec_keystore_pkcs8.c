@@ -28,7 +28,7 @@ int main(void)
 	r = dnssec_keystore_init(store, dir);
 	ok(r == KNOT_EOK, "init");
 
-	r = dnssec_keystore_open(store, dir);
+	r = dnssec_keystore_open(store, dir, NULL);
 	ok(r == KNOT_EOK, "open");
 
 	// writing new content
