@@ -260,7 +260,7 @@ static int rsa_params_to_pem(const bind_privkey_t *params, dnssec_binary_t *pem)
 		return KNOT_KEY_EIMPORT;
 	}
 
-	return dnssec_pem_from_x509(key, pem);
+	return dnssec_pem_from_x509(key, pem, NULL);
 }
 
 /*!
@@ -315,7 +315,7 @@ static int ecdsa_params_to_pem(dnssec_key_t *dnskey, const bind_privkey_t *param
 
 	gnutls_x509_privkey_fix(key);
 
-	return dnssec_pem_from_x509(key, pem);
+	return dnssec_pem_from_x509(key, pem, NULL);
 }
 
 static void eddsa_extract_public_params(dnssec_key_t *key, gnutls_ecc_curve_t *curve,
@@ -352,7 +352,7 @@ static int eddsa_params_to_pem(dnssec_key_t *dnskey, const bind_privkey_t *param
 
 	gnutls_x509_privkey_fix(key);
 
-	return dnssec_pem_from_x509(key, pem);
+	return dnssec_pem_from_x509(key, pem, NULL);
 }
 
 int bind_privkey_to_pem(dnssec_key_t *key, bind_privkey_t *params, dnssec_binary_t *pem)

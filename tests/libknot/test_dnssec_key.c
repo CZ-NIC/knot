@@ -105,7 +105,7 @@ static void test_private_key(const key_parameters_t *params)
 	r = dnssec_key_set_rdata(key, &params->rdata);
 	ok(r == KNOT_EOK, "set RDATA");
 
-	r = dnssec_key_load_pkcs8(key, &params->pem);
+	r = dnssec_key_load_pkcs8(key, &params->pem, NULL);
 	ok(r == KNOT_EOK, "load private key (1)");
 
 	ok(dnssec_key_can_verify(key), "can verify");
@@ -117,7 +117,7 @@ static void test_private_key(const key_parameters_t *params)
 
 	dnssec_key_set_algorithm(key, params->algorithm);
 	dnssec_key_set_flags(key, params->flags);
-	r = dnssec_key_load_pkcs8(key, &params->pem);
+	r = dnssec_key_load_pkcs8(key, &params->pem, NULL);
 	ok(r == KNOT_EOK, "load private key (2)");
 
 	dnssec_binary_t rdata = { 0 };
