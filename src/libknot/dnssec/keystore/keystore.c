@@ -70,13 +70,13 @@ int dnssec_keystore_init(dnssec_keystore_t *store, const char *config)
 }
 
 _public_
-int dnssec_keystore_open(dnssec_keystore_t *store, const char *config)
+int dnssec_keystore_open(dnssec_keystore_t *store, const char *config, const char *password)
 {
 	if (!store) {
 		return KNOT_EINVAL;
 	}
 
-	return store->functions->open(store->ctx, config);
+	return store->functions->open(store->ctx, config, password);
 }
 
 _public_

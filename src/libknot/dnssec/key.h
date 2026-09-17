@@ -233,7 +233,8 @@ int dnssec_key_set_rdata(dnssec_key_t *key, const dnssec_binary_t *rdata);
  * \ref dnssec_key_set_pubkey or \ref dnssec_key_set_rdata). If the public key
  * was set, the function will prevent loading of non-matching private key.
  */
-int dnssec_key_load_pkcs8(dnssec_key_t *key, const dnssec_binary_t *pem);
+int dnssec_key_load_pkcs8(dnssec_key_t *key, const dnssec_binary_t *pem,
+                          const char *password);
 
 /*!
  * Check if the key can be used for signing.
