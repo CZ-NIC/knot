@@ -19,27 +19,15 @@
 	     RedisModule_ZsetRangeNext(key))
 #define foreach_in_zset(key) foreach_in_zset_subset(key, REDISMODULE_NEGATIVE_INFINITE, REDISMODULE_POSITIVE_INFINITE)
 
-#define zone_meta_keyname_construct(...) meta_keyname_construct(ZONE_META, __VA_ARGS__)
-#define upd_meta_keyname_construct(...)  meta_keyname_construct(UPD_META, __VA_ARGS__)
+#define zone_meta_keyname_construct(...) meta_keyname_construct(RDB_TYPE_ZONE_META, __VA_ARGS__)
+#define upd_meta_keyname_construct(...)  meta_keyname_construct(RDB_TYPE_UPD_META, __VA_ARGS__)
 
-#define delete_zone_index(...)  delete_index(ZONE, __VA_ARGS__)
-#define delete_upd_index(...)  delete_index(UPD_TMP, __VA_ARGS__)
+#define delete_zone_index(...)  delete_index(RDB_TYPE_ZONE, __VA_ARGS__)
+#define delete_upd_index(...)  delete_index(RDB_TYPE_UPD_TMP, __VA_ARGS__)
 
 #define throw(_ret, _msg) return (exception_t){ .ret = _ret, .what = _msg }
 #define raise(e)          return e
 #define return_ok         throw(KNOT_EOK, NULL)
-
-typedef enum {
-	EVENT     = 1, // Keep synchronized with RDB_EVENT_KEY!
-	ZONES     = 2,
-	ZONE_META = 3,
-	ZONE      = 4,
-	RRSET     = 5,
-	UPD_META  = 6,
-	UPD_TMP   = 7,
-	UPD       = 8,
-	DIFF      = 9,
-} rdb_type_t;
 
 typedef struct {
 	const char *what;
@@ -118,7 +106,7 @@ static RedisModuleString *rrset_keyname_construct(RedisModuleCtx *ctx, const arg
                                                   const rdb_txn_t *txn, const arg_dname_t *owner,
                                                   uint16_t rtype)
 {
-	static const uint8_t prefix = RRSET;
+	static const uint8_t prefix = RDB_TYPE_RRSET;
 
 	char buf[RDB_PREFIX_LEN + 1 + 1 + KNOT_DNAME_MAXLEN + 1 + KNOT_DNAME_MAXLEN + 2 + 2];
 
@@ -140,7 +128,7 @@ static RedisModuleString *diff_keyname_construct(RedisModuleCtx *ctx, const arg_
                                                  const rdb_txn_t *txn, const arg_dname_t *owner,
                                                  uint16_t rtype, uint16_t id)
 {
-	static const uint8_t prefix = DIFF;
+	static const uint8_t prefix = RDB_TYPE_DIFF;
 
 	char buf[RDB_PREFIX_LEN + 1 + 1 + KNOT_DNAME_MAXLEN + 1 + KNOT_DNAME_MAXLEN + 2 + 2 + 2];
 
@@ -248,7 +236,7 @@ static void commit_event(RedisModuleCtx *ctx, rdb_event_t type, const arg_dname_
 
 static RedisModuleKey *get_zones_index(RedisModuleCtx *ctx, int rights)
 {
-	static const uint8_t prefix = ZONES;
+	static const uint8_t prefix = RDB_TYPE_ZONES;
 
 	char buf[RDB_PREFIX_LEN + 1 + 1];
 
@@ -267,7 +255,7 @@ static RedisModuleKey *get_zones_index(RedisModuleCtx *ctx, int rights)
 static index_k get_zone_index(RedisModuleCtx *ctx, const arg_dname_t *origin,
                               const rdb_txn_t *txn, int rights)
 {
-	static const uint8_t prefix = ZONE;
+	static const uint8_t prefix = RDB_TYPE_ZONE;
 
 	char buf[RDB_PREFIX_LEN + 1 + 1 + KNOT_DNAME_MAXLEN + 2];
 
@@ -289,7 +277,7 @@ static index_k get_zone_index(RedisModuleCtx *ctx, const arg_dname_t *origin,
 static index_k get_upd_index(RedisModuleCtx *ctx, const arg_dname_t *origin,
                              const rdb_txn_t *txn, uint16_t id, int rights)
 {
-	static const uint8_t prefix = UPD_TMP;
+	static const uint8_t prefix = RDB_TYPE_UPD_TMP;
 
 	char buf[RDB_PREFIX_LEN + 1 + 1 + KNOT_DNAME_MAXLEN + 2 + 2];
 
@@ -312,7 +300,7 @@ static index_k get_upd_index(RedisModuleCtx *ctx, const arg_dname_t *origin,
 static index_k get_commited_upd_index(RedisModuleCtx *ctx, const arg_dname_t *origin,
                                       const rdb_txn_t *txn, const uint32_t serial, int rights)
 {
-	static const uint8_t prefix = UPD;
+	static const uint8_t prefix = RDB_TYPE_UPD;
 
 	char buf[RDB_PREFIX_LEN + 1 + 1 + KNOT_DNAME_MAXLEN + 1 + 4];
 
@@ -605,10 +593,10 @@ static int delete_index(const uint8_t prefix, RedisModuleCtx *ctx, const arg_dna
 {
 	index_k index_key = NULL;
 	switch (prefix) {
-	case ZONE:
+	case RDB_TYPE_ZONE:
 		index_key = get_zone_index(ctx, origin, txn, REDISMODULE_READ | REDISMODULE_WRITE);
 		break;
-	case UPD_TMP:;
+	case RDB_TYPE_UPD_TMP:;
 		int ret = get_id(ctx, origin, txn);
 		if (ret < 0 || ret > UINT16_MAX) {
 			return KNOT_EEXIST;
