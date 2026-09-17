@@ -386,7 +386,7 @@ static int backup_keystore(conf_t *conf, zone_t *zone, zone_backup_ctx_t *ctx)
 	dnssec_keystore_t *to_ks;
 	char kasp_dir[strlen(ctx->backup_dir) + 6];
 	(void)snprintf(kasp_dir, sizeof(kasp_dir), "%s/keys", ctx->backup_dir);
-	ret = keystore_load("keys", KEYSTORE_BACKEND_PEM, kasp_dir, &to_ks);
+	ret = keystore_load("keys", KEYSTORE_BACKEND_PEM, NULL, kasp_dir, &to_ks);
 	if (ret != KNOT_EOK) {
 		LOG_FAIL("keystore load");
 		goto done;
@@ -394,12 +394,13 @@ static int backup_keystore(conf_t *conf, zone_t *zone, zone_backup_ctx_t *ctx)
 	to->keystore = to_ks;
 	to->count = 1;
 	to->backend = KEYSTORE_BACKEND_PEM;
+	to->password = from->password;
 
 	BACKUP_SWAP(ctx, from, to);
 
 	list_t key_params;
 	init_list(&key_params);
-	ret = kasp_db_list_keys(zone_kaspdb(zone), zone->name, NULL, &key_params, false);
+	ret = kasp_db_list_keys(zone_kaspdb(zone), zone->name, from->password, &key_params, false);
 	ret = (ret == KNOT_ENOENT ? KNOT_EOK : ret);
 	if (ret != KNOT_EOK) {
 		LOG_FAIL("keystore list");

@@ -60,6 +60,7 @@ typedef struct {
 typedef struct {
 	dnssec_keystore_t *keystore;
 	const char *name;
+	const char *password;
 	unsigned backend;
 	bool ksk_only;
 	bool key_label;
