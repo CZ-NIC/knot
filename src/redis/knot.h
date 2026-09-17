@@ -45,6 +45,18 @@ typedef struct {
 } rdb_txn_t;
 
 typedef enum {
+	RDB_TYPE_EVENT     = 1, // Keep synchronized with RDB_EVENT_KEY!
+	RDB_TYPE_ZONES     = 2,
+	RDB_TYPE_ZONE_META = 3,
+	RDB_TYPE_ZONE      = 4,
+	RDB_TYPE_RRSET     = 5,
+	RDB_TYPE_UPD_META  = 6,
+	RDB_TYPE_UPD_TMP   = 7,
+	RDB_TYPE_UPD       = 8,
+	RDB_TYPE_DIFF      = 9,
+} rdb_type_t;
+
+typedef enum {
 	RDB_EVENT_ZONE  = 1,
 	RDB_EVENT_UPD   = 2,
 } rdb_event_t;
