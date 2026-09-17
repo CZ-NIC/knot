@@ -29,7 +29,7 @@ static char *fix_path(const char *config, const char *base_path)
 	return path;
 }
 
-int keystore_load(const char *config, unsigned backend,
+int keystore_load(const char *config, unsigned backend, const char *password,
                   const char *kasp_base_path, dnssec_keystore_t **keystore)
 {
 	int ret = KNOT_EINVAL;
@@ -65,7 +65,7 @@ int keystore_load(const char *config, unsigned backend,
 		return ret;
 	}
 
-	ret = dnssec_keystore_open(*keystore, fixed_config, NULL);
+	ret = dnssec_keystore_open(*keystore, fixed_config, password);
 	free(fixed_config);
 	if (ret != KNOT_EOK) {
 		dnssec_keystore_deinit(*keystore);
