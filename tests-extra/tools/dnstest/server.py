@@ -1742,6 +1742,8 @@ class Knot(Server):
                 s.id_item("id", ks.id)
                 s.item_type("config", ks.config())
                 s.item_type("backend", ks.backend())
+                if ks.backend() == "pem":
+                    s.item_type("password", "test")
                 if ks.ksk_only:
                     s.item_type("ksk-only", ks.ksk_only)
                 if ks.key_label:
