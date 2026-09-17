@@ -20,6 +20,7 @@
 
 #define KNOT_TLS_PIN_LEN    32
 #define KNOT_TLS_MAX_PINS    4
+#define KNOT_TLS_MAX_EARLY_DATA    386 // 2 bytes legnth prefix + 384 for DNS message (usually padded up to N*128 bytes!) to accomodate most DNS queries but remain small enough
 
 struct gnutls_priority_st;
 struct gnutls_session_int;
