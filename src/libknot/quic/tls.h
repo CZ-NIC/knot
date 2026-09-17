@@ -27,6 +27,7 @@ typedef enum {
 	KNOT_TLS_CONN_SESSION_TAKEN  = (1 << 1), // unused, to be implemeted later
 	KNOT_TLS_CONN_BLOCKED        = (1 << 2),
 	KNOT_TLS_CONN_AUTHORIZED     = (1 << 3),
+	KNOT_TLS_CONN_NO_EARLY_DATA  = (1 << 4),
 } knot_tls_conn_flag_t;
 
 typedef struct knot_tls_ctx {
