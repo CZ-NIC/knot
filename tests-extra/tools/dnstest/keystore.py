@@ -2,6 +2,7 @@
 
 import os
 import random
+import re
 import shutil
 from subprocess import Popen, check_output
 from dnstest.context import Context
@@ -9,15 +10,20 @@ from dnstest.server import Server
 from dnstest.utils import *
 
 class Keystore(object):
-    def __init__(self, id: str, ksk_only: bool = None, key_label: bool = None):
+    def __init__(self, id: str, ksk_only: bool = None, key_label: bool = None,
+                 passwd = None):
         self.id = id
         self.ksk_only = ksk_only
         self.key_label = key_label
+        self.passwd = passwd
+
+    def has_key(self, id: str):
+        return id in self.keys()
 
 class KeystorePEM(Keystore):
     def __init__(self, id: str, ksk_only: bool = None, key_label: bool = None,
-                 server_default: Server = None):
-        super().__init__(id, ksk_only, key_label)
+                 passwd = None, server_default: Server = None):
+        super().__init__(id, ksk_only, key_label, passwd)
         self.server = server_default
 
     def config(self):
@@ -29,6 +35,9 @@ class KeystorePEM(Keystore):
     def backend(self):
         return "pem"
 
+    def password(self):
+        return self.passwd
+
     def env(self):
         return { }
 
@@ -38,18 +47,48 @@ class KeystorePEM(Keystore):
     def keys(self):
         return [name.removesuffix('.pem') for name in os.listdir(self.config())]
 
-    def has_key(self, id: str):
-        return id in self.keys()
+class KeystoreRdb(Keystore):
+    def __init__(self, id: str, ksk_only: bool = None, key_label: bool = None,
+                 passwd = None, rdb: Redis = None):
+        super().__init__(id, ksk_only, key_label, passwd)
+        self.rdb = rdb
+
+    def config(self):
+        return None
+
+    def backend(self):
+        return "zonedb"
+
+    def password(self):
+        return self.passwd
+
+    def env(self):
+        return { }
+
+    def clear(self):
+        self.rdb.cli("FLUSHDB")
+        self.rdb.cli("WAITOF", "1", "0", "10")
+
+    def keys(self, raw_db_names: bool = False):
+        PREFIX = b"k\x01\n\x01"
+        txt = self.rdb.cli("--no-raw", "KEYS", PREFIX + b"*")
+        names = [
+            bytes(k, "utf-8").decode("unicode_escape")
+            for k in re.findall(r'\d+\)\s+"(.*?)"', txt)
+        ]
+        if raw_db_names:
+            return names
+        else:
+            return [n.removeprefix(PREFIX.decode("utf-8")) for n in names]
 
 class KeystoreSoftHSM(Keystore):
     so_pin = "12345"
 
     def __init__(self, id: str, ksk_only: bool = None, key_label: bool = None,
-                 token: str = None, passwd: str = None, so_path: str = None):
-        super().__init__(id, ksk_only, key_label)
+                 token: str = "knot", passwd: str = "1234", so_path: str = None):
+        super().__init__(id, ksk_only, key_label, passwd)
         self.so_path = so_path if so_path else "/usr/lib/x86_64-linux-gnu/softhsm/libsofthsm2.so"
-        self.passwd = passwd if passwd else "1234"
-        self.token = token if token else "knot"
+        self.token = token
         self.dir = os.path.join(Context().test.out_dir, f"{self.backend()}-{self.id}")
         self.init()
 
@@ -58,6 +97,9 @@ class KeystoreSoftHSM(Keystore):
 
     def backend(self):
         return "pkcs11"
+
+    def password(self):
+        return None
 
     def config_file(self):
         return os.path.join(self.dir, "softhsm.conf")
@@ -91,9 +133,6 @@ class KeystoreSoftHSM(Keystore):
                         time.sleep(random.uniform(0.4, 1.0))
 
         raise Failed("'p11tool --list-keys' failed")
-
-    def has_key(self, id: str):
-        return id in self.keys()
 
     def init(self, keystore=None):
         if not os.path.isdir(self.dir):
