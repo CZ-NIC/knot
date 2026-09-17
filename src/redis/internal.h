@@ -178,7 +178,7 @@ static bool zone_txn_is_open(RedisModuleCtx *ctx, const arg_dname_t *origin, con
 static void commit_event(RedisModuleCtx *ctx, rdb_event_t type, const arg_dname_t *origin,
                          uint8_t instance, uint32_t serial, RedisModuleStreamID *stream_id)
 {
-	RedisModuleString *keyname = RedisModule_CreateString(ctx, RDB_EVENT_KEY, strlen(RDB_EVENT_KEY));
+	RedisModuleString *keyname = RedisModule_CreateString(ctx, RDB_KEY_EVENT, RDB_KEY_LEN);
 	RedisModuleKey *stream_key = RedisModule_OpenKey(ctx, keyname, REDISMODULE_READ | REDISMODULE_WRITE);
 	RedisModule_FreeString(ctx, keyname);
 
