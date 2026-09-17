@@ -207,7 +207,14 @@ static ssize_t recv_data(knot_tls_conn_t *conn, void *data, size_t size,
 	ssize_t res;
 	while (total < size) {
 		TIMEOUT_CTX_INIT
-		res = gnutls_record_recv(conn->session, data + total, size - total);
+		res = 0;
+		if (!(conn->flags & KNOT_TLS_CONN_NO_EARLY_DATA)) {
+			res = gnutls_record_recv_early_data(conn->session, data + total, size - total);
+		}
+		if (res == 0 || res == GNUTLS_E_REQUESTED_DATA_NOT_AVAILABLE || res == GNUTLS_E_INVALID_REQUEST) {
+			conn->flags |= KNOT_TLS_CONN_NO_EARLY_DATA;
+			res = gnutls_record_recv(conn->session, data + total, size - total);
+		}
 		if (res > 0) {
 			if (oneshot) {
 				return res;
