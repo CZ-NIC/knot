@@ -1749,10 +1749,9 @@ class Knot(Server):
                 s.id_item("id", ks.id)
                 s.item_type("config", ks.config())
                 s.item_type("backend", ks.backend())
-                if ks.ksk_only:
-                    s.item_type("ksk-only", ks.ksk_only)
-                if ks.key_label:
-                    s.item_type("key-label", ks.key_label)
+                s.item_type("password", ks.password())
+                s.item_type("ksk-only", ks.ksk_only)
+                s.item_type("key-label", ks.key_label)
         if have_keystore:
             s.end()
 

@@ -9,15 +9,17 @@ from dnstest.server import Server
 from dnstest.utils import *
 
 class Keystore(object):
-    def __init__(self, id: str, ksk_only: bool = None, key_label: bool = None):
+    def __init__(self, id: str, ksk_only: bool = None, key_label: bool = None,
+                 passwd = None):
         self.id = id
         self.ksk_only = ksk_only
         self.key_label = key_label
+        self.passwd = passwd
 
 class KeystorePEM(Keystore):
     def __init__(self, id: str, ksk_only: bool = None, key_label: bool = None,
-                 server_default: Server = None):
-        super().__init__(id, ksk_only, key_label)
+                 passwd = None, server_default: Server = None):
+        super().__init__(id, ksk_only, key_label, passwd)
         self.server = server_default
 
     def config(self):
@@ -28,6 +30,9 @@ class KeystorePEM(Keystore):
 
     def backend(self):
         return "pem"
+
+    def password(self):
+        return self.passwd
 
     def env(self):
         return { }
@@ -41,15 +46,31 @@ class KeystorePEM(Keystore):
     def has_key(self, id: str):
         return id in self.keys()
 
+class KeystoreRdb(Keystore):
+    def __init__(self, id: str, ksk_only: bool = None, key_label: bool = None,
+                 passwd = None):
+        super().__init__(id, ksk_only, key_label, passwd)
+
+    def config(self):
+        return None
+
+    def backend(self):
+        return "zonedb"
+
+    def password(self):
+        return self.passwd
+
+    def env(self):
+        return { }
+
 class KeystoreSoftHSM(Keystore):
     so_pin = "12345"
 
     def __init__(self, id: str, ksk_only: bool = None, key_label: bool = None,
-                 token: str = None, passwd: str = None, so_path: str = None):
-        super().__init__(id, ksk_only, key_label)
+                 token: str = "knot", passwd: str = "1234", so_path: str = None):
+        super().__init__(id, ksk_only, key_label, passwd)
         self.so_path = so_path if so_path else "/usr/lib/x86_64-linux-gnu/softhsm/libsofthsm2.so"
-        self.passwd = passwd if passwd else "1234"
-        self.token = token if token else "knot"
+        self.token = token
         self.dir = os.path.join(Context().test.out_dir, f"{self.backend()}-{self.id}")
         self.init()
 
@@ -58,6 +79,9 @@ class KeystoreSoftHSM(Keystore):
 
     def backend(self):
         return "pkcs11"
+
+    def password(self):
+        return None
 
     def config_file(self):
         return os.path.join(self.dir, "softhsm.conf")
