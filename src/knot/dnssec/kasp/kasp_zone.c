@@ -393,13 +393,13 @@ int zone_init_keystore(conf_t *conf, conf_val_t *policy_id, conf_val_t *keystore
 		ks->ksk_only = conf_bool(&val);
 		val = conf_id_get(conf, C_KEYSTORE, C_KEY_LABEL, keystore_id);
 		ks->key_label = conf_bool(&val);
+		val = conf_id_get(conf, C_KEYSTORE, C_PASSWORD, keystore_id);
+		ks->password = conf_str(&val);
 		ks->count = ks_count;
 
 		val = conf_id_get(conf, C_KEYSTORE, C_CONFIG, keystore_id);
 		const char *config = conf_str(&val);
-		val = conf_id_get(conf, C_KEYSTORE, C_PASSWORD, keystore_id);
-		const char *password = conf_str(&val);
-		ret = keystore_load(config, ks->backend, password, zone_path, &ks->keystore);
+		ret = keystore_load(config, ks->backend, ks->password, zone_path, &ks->keystore);
 
 		if (ks_count > 1) { // Don't try to iterate if not multivalued.
 			conf_val_next(keystore_id);
