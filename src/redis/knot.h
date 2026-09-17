@@ -11,9 +11,10 @@
 #define RDB_PARAM_EVENT_AGE	"max-event-age"
 #define RDB_PARAM_UPD_DEPTH	"max-update-depth"
 
-#define RDB_VERSION		"\x01"
-#define RDB_PREFIX		"k" RDB_VERSION
-#define RDB_PREFIX_LEN		(sizeof(RDB_PREFIX) - 1)
+#define RDB_VERSION		'\x01'
+#define RDB_PREFIX_RAW		'k', RDB_VERSION
+#define RDB_PREFIX		((const char[]){ RDB_PREFIX_RAW })
+#define RDB_PREFIX_LEN		sizeof(RDB_PREFIX)
 
 #define RDB_CMD_ZONE_EXISTS	"KNOT_BIN.ZONE.EXISTS"
 #define RDB_CMD_ZONE_BEGIN	"KNOT_BIN.ZONE.BEGIN"
@@ -33,11 +34,13 @@
 
 #define RDB_RETURN_OK		"OK"
 
-#define RDB_EVENT_KEY		(RDB_PREFIX "\x01")
 #define RDB_EVENT_ARG_EVENT	"e"
 #define RDB_EVENT_ARG_ORIGIN	"o"
 #define RDB_EVENT_ARG_INSTANCE	"i"
 #define RDB_EVENT_ARG_SERIAL	"s"
+
+#define RDB_KEY_EVENT		((const char[]){ RDB_PREFIX_RAW, RDB_TYPE_EVENT })
+#define RDB_KEY_LEN		sizeof(RDB_KEY_EVENT)
 
 typedef struct {
 	uint8_t instance;
@@ -45,7 +48,7 @@ typedef struct {
 } rdb_txn_t;
 
 typedef enum {
-	RDB_TYPE_EVENT     = 1, // Keep synchronized with RDB_EVENT_KEY!
+	RDB_TYPE_EVENT     = 1,
 	RDB_TYPE_ZONES     = 2,
 	RDB_TYPE_ZONE_META = 3,
 	RDB_TYPE_ZONE      = 4,
