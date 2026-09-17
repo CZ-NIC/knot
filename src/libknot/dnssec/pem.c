@@ -15,7 +15,8 @@
 #include "libknot/dnssec/shared/shared.h"
 
 _public_
-int dnssec_pem_to_x509(const dnssec_binary_t *pem, gnutls_x509_privkey_t *key)
+int dnssec_pem_to_x509(const dnssec_binary_t *pem, gnutls_x509_privkey_t *key,
+                       const char *password)
 {
 	if (!pem || !key) {
 		return KNOT_EINVAL;
@@ -30,9 +31,12 @@ int dnssec_pem_to_x509(const dnssec_binary_t *pem, gnutls_x509_privkey_t *key)
 	}
 
 	int format = GNUTLS_X509_FMT_PEM;
-	char *password = NULL;
-	int flags = GNUTLS_PKCS_PLAIN;
-	r = gnutls_x509_privkey_import_pkcs8(_key, &data, format, password, flags);
+	if (password != NULL) {
+		r = gnutls_x509_privkey_import_pkcs8(_key, &data, format, password, 0);
+	}
+	if (password == NULL || r == GNUTLS_E_DECRYPTION_FAILED) {
+		r = gnutls_x509_privkey_import_pkcs8(_key, &data, format, NULL, GNUTLS_PKCS_PLAIN);
+	}
 	if (r != GNUTLS_E_SUCCESS) {
 		gnutls_x509_privkey_deinit(_key);
 		return KNOT_KEY_EIMPORT;
@@ -44,14 +48,15 @@ int dnssec_pem_to_x509(const dnssec_binary_t *pem, gnutls_x509_privkey_t *key)
 }
 
 _public_
-int dnssec_pem_to_privkey(const dnssec_binary_t *pem, gnutls_privkey_t *key)
+int dnssec_pem_to_privkey(const dnssec_binary_t *pem, gnutls_privkey_t *key,
+                          const char *password)
 {
 	if (!pem || !key) {
 		return KNOT_EINVAL;
 	}
 
 	gnutls_x509_privkey_t key_x509 = NULL;
-	int r = dnssec_pem_to_x509(pem, &key_x509);
+	int r = dnssec_pem_to_x509(pem, &key_x509, password);
 	if (r != KNOT_EOK) {
 		return r;
 	}
@@ -77,15 +82,15 @@ int dnssec_pem_to_privkey(const dnssec_binary_t *pem, gnutls_privkey_t *key)
 }
 
 _public_
-int dnssec_pem_from_x509(gnutls_x509_privkey_t key, dnssec_binary_t *pem)
+int dnssec_pem_from_x509(gnutls_x509_privkey_t key, dnssec_binary_t *pem,
+                         const char *password)
 {
 	if (!key || !pem) {
 		return KNOT_EINVAL;
 	}
 
 	gnutls_x509_crt_fmt_t format = GNUTLS_X509_FMT_PEM;
-	char *password = NULL;
-	int flags = GNUTLS_PKCS_PLAIN;
+	int flags = (password != NULL) ? GNUTLS_PKCS_USE_PBES2_AES_256 : GNUTLS_PKCS_PLAIN;
 
 	gnutls_datum_t _pem = { 0 };
 	int r = gnutls_x509_privkey_export2_pkcs8(key, format, password, flags, &_pem);
@@ -108,7 +113,8 @@ static int privkey_export_x509(gnutls_privkey_t key, gnutls_x509_privkey_t *_key
 }
 
 _public_
-int dnssec_pem_from_privkey(gnutls_privkey_t key, dnssec_binary_t *pem)
+int dnssec_pem_from_privkey(gnutls_privkey_t key, dnssec_binary_t *pem,
+                            const char *password)
 {
 	if (!key || !pem) {
 		return KNOT_EINVAL;
@@ -122,7 +128,7 @@ int dnssec_pem_from_privkey(gnutls_privkey_t key, dnssec_binary_t *pem)
 	}
 
 	dnssec_binary_t _pem = { 0 };
-	r = dnssec_pem_from_x509(_key, &_pem);
+	r = dnssec_pem_from_x509(_key, &_pem, password);
 	if (r != KNOT_EOK) {
 		return r;
 	}

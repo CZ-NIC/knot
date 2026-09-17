@@ -65,7 +65,7 @@ int keystore_load(const char *config, unsigned backend,
 		return ret;
 	}
 
-	ret = dnssec_keystore_open(*keystore, fixed_config);
+	ret = dnssec_keystore_open(*keystore, fixed_config, NULL);
 	free(fixed_config);
 	if (ret != KNOT_EOK) {
 		dnssec_keystore_deinit(*keystore);

@@ -27,7 +27,8 @@
  *
  * \return Error code, KNOT_EOK if successful.
  */
-int dnssec_pem_to_x509(const dnssec_binary_t *pem, gnutls_x509_privkey_t *key);
+int dnssec_pem_to_x509(const dnssec_binary_t *pem, gnutls_x509_privkey_t *key,
+                       const char *password);
 
 /*!
  * Create GnuTLS private key from unencrypted PEM data.
@@ -37,7 +38,8 @@ int dnssec_pem_to_x509(const dnssec_binary_t *pem, gnutls_x509_privkey_t *key);
  *
  * \return Error code, KNOT_EOK if successful.
  */
-int dnssec_pem_to_privkey(const dnssec_binary_t *pem, gnutls_privkey_t *key);
+int dnssec_pem_to_privkey(const dnssec_binary_t *pem, gnutls_privkey_t *key,
+                          const char *password);
 
 /*!
  * Export GnuTLS X.509 private key to PEM binary.
@@ -47,7 +49,8 @@ int dnssec_pem_to_privkey(const dnssec_binary_t *pem, gnutls_privkey_t *key);
  *
  * \return Error code, KNOT_EOK if successful.
  */
-int dnssec_pem_from_x509(gnutls_x509_privkey_t key, dnssec_binary_t *pem);
+int dnssec_pem_from_x509(gnutls_x509_privkey_t key, dnssec_binary_t *pem,
+                         const char *password);
 
 /*!
  * Export GnuTLS private key to PEM binary.
@@ -57,6 +60,7 @@ int dnssec_pem_from_x509(gnutls_x509_privkey_t key, dnssec_binary_t *pem);
  *
  * \return Error code, KNOT_EOK if successful.
  */
-int dnssec_pem_from_privkey(gnutls_privkey_t key, dnssec_binary_t *pem);
+int dnssec_pem_from_privkey(gnutls_privkey_t key, dnssec_binary_t *pem,
+                            const char *password);
 
 /*! @} */
