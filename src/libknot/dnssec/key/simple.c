@@ -18,7 +18,8 @@
 /* -- public API ----------------------------------------------------------- */
 
 _public_
-int dnssec_key_load_pkcs8(dnssec_key_t *key, const dnssec_binary_t *pem)
+int dnssec_key_load_pkcs8(dnssec_key_t *key, const dnssec_binary_t *pem,
+                          const char *password)
 {
 	if (!key || !pem || !pem->data) {
 		return KNOT_EINVAL;
@@ -29,7 +30,7 @@ int dnssec_key_load_pkcs8(dnssec_key_t *key, const dnssec_binary_t *pem)
 	}
 
 	gnutls_privkey_t privkey = NULL;
-	int r = dnssec_pem_to_privkey(pem, &privkey);
+	int r = dnssec_pem_to_privkey(pem, &privkey, password);
 	if (r != KNOT_EOK) {
 		return r;
 	}

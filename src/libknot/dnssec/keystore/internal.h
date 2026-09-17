@@ -18,7 +18,7 @@ typedef struct keystore_functions {
 	void (*ctx_free)(void *ctx);
 	// keystore init/open/close
 	int (*init)(void *ctx, const char *config);
-	int (*open)(void *ctx, const char *config);
+	int (*open)(void *ctx, const char *config, const char *password);
 	int (*close)(void *ctx);
 	// keystore access
 	int (*generate_key)(void *ctx, gnutls_pk_algorithm_t algorithm,
