@@ -169,9 +169,13 @@ static int pkcs11_init(void *ctx, const char *config)
 	return safe_open(config, &url);
 }
 
-static int pkcs11_open(void *_ctx, const char *config)
+static int pkcs11_open(void *_ctx, const char *config, const char *password)
 {
 	pkcs11_ctx_t *ctx = _ctx;
+
+	if (password) {
+		return KNOT_ENOTSUP;
+	}
 
 	return safe_open(config, &ctx->url);
 }
@@ -221,7 +225,7 @@ static int import_pem(const dnssec_binary_t *pem,
 	gnutls_privkey_t key = NULL;
 	gnutls_pubkey_t pubkey = NULL;
 
-	int r = dnssec_pem_to_x509(pem, &x509_key);
+	int r = dnssec_pem_to_x509(pem, &x509_key, NULL);
 	if (r != KNOT_EOK) {
 		goto fail;
 	}
@@ -342,7 +346,7 @@ static int pkcs11_get_private(void *_ctx, const char *id, gnutls_privkey_t *key_
 static int pkcs11_set_private(void *ctx, gnutls_privkey_t key)
 {
 	_cleanup_binary_ dnssec_binary_t pem = { 0 };
-	int r = dnssec_pem_from_privkey(key, &pem);
+	int r = dnssec_pem_from_privkey(key, &pem, NULL);
 	if (r != KNOT_EOK) {
 		return r;
 	}

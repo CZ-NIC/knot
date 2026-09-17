@@ -101,7 +101,7 @@ static void check_key(const key_parameters_t *key_data, const dnssec_binary_t *d
 
 	// create new signature and self-validate
 
-	r = dnssec_key_load_pkcs8(key, &key_data->pem);
+	r = dnssec_key_load_pkcs8(key, &key_data->pem, NULL);
 	ok(r == KNOT_EOK, "load private key");
 
 	if (signature_match) {
