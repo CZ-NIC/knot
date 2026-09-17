@@ -16,9 +16,10 @@ class Keystore(object):
 
 class KeystorePEM(Keystore):
     def __init__(self, id: str, ksk_only: bool = None, key_label: bool = None,
-                 server_default: Server = None):
+                 server_default: Server = None, passwd = None):
         super().__init__(id, ksk_only, key_label)
         self.server = server_default
+        self.passwd = passwd
 
     def config(self):
         if self.server:
