@@ -69,7 +69,7 @@ int dnssec_keystore_init(dnssec_keystore_t *store, const char *config);
 /*!
  * Open private key store.
  */
-int dnssec_keystore_open(dnssec_keystore_t *store, const char *config);
+int dnssec_keystore_open(dnssec_keystore_t *store, const char *config, const char *password);
 
 /*!
  * Close private key store.
