@@ -156,7 +156,7 @@ static void pkcs11_ctx_free(void *ctx)
 	free(ctx);
 }
 
-static int pkcs11_init(void *ctx, const char *config)
+static int pkcs11_init(void *ctx, void *config)
 {
 	/*
 	 * Current keystore initialization is idempotent. We don't really
@@ -169,7 +169,7 @@ static int pkcs11_init(void *ctx, const char *config)
 	return safe_open(config, &url);
 }
 
-static int pkcs11_open(void *_ctx, const char *config, const char *password)
+static int pkcs11_open(void *_ctx, void *config, const char *password)
 {
 	pkcs11_ctx_t *ctx = _ctx;
 

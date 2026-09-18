@@ -231,7 +231,7 @@ static void pkcs8_ctx_free(void *ctx)
 	free(ctx);
 }
 
-static int pkcs8_init(void *ctx, const char *config)
+static int pkcs8_init(void *ctx, void *config)
 {
 	if (!ctx || !config) {
 		return KNOT_EINVAL;
@@ -240,7 +240,7 @@ static int pkcs8_init(void *ctx, const char *config)
 	return make_dir(config, DIR_INIT_MODE, true);
 }
 
-static int pkcs8_open(void *ctx, const char *config, const char *password)
+static int pkcs8_open(void *ctx, void *config, const char *password)
 {
 	if (!ctx || !config) {
 		return KNOT_EINVAL;

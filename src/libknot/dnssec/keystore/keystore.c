@@ -60,7 +60,7 @@ int dnssec_keystore_deinit(dnssec_keystore_t *store)
 }
 
 _public_
-int dnssec_keystore_init(dnssec_keystore_t *store, const char *config)
+int dnssec_keystore_init(dnssec_keystore_t *store, void *config)
 {
 	if (!store) {
 		return KNOT_EINVAL;
@@ -70,7 +70,7 @@ int dnssec_keystore_init(dnssec_keystore_t *store, const char *config)
 }
 
 _public_
-int dnssec_keystore_open(dnssec_keystore_t *store, const char *config, const char *password)
+int dnssec_keystore_open(dnssec_keystore_t *store, void *config, const char *password)
 {
 	if (!store) {
 		return KNOT_EINVAL;
