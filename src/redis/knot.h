@@ -40,6 +40,7 @@
 #define RDB_EVENT_ARG_SERIAL	"s"
 
 #define RDB_KEY_EVENT		((const char[]){ RDB_PREFIX_RAW, RDB_TYPE_EVENT })
+#define RDB_KEY_KEYSTORE(item)	((const char[]){ RDB_PREFIX_RAW, RDB_TYPE_KEYSTORE, item })
 #define RDB_KEY_LEN		sizeof(RDB_KEY_EVENT)
 
 typedef struct {
@@ -57,6 +58,7 @@ typedef enum {
 	RDB_TYPE_UPD_TMP   = 7,
 	RDB_TYPE_UPD       = 8,
 	RDB_TYPE_DIFF      = 9,
+	RDB_TYPE_KEYSTORE  = 10,
 } rdb_type_t;
 
 typedef enum {
