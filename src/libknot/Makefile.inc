@@ -3,11 +3,11 @@ pkgconfig_DATA  += libknot.pc
 
 libknot_la_CPPFLAGS = $(embedded_libngtcp2_CFLAGS) \
                       $(AM_CPPFLAGS) $(CFLAG_VISIBILITY) $(lmdb_CFLAGS) \
-                      $(gnutls_CFLAGS) ${fuzzer_CFLAGS}
+                      $(gnutls_CFLAGS) $(libhiredis_CFLAGS) ${fuzzer_CFLAGS}
 libknot_la_LDFLAGS  = $(AM_LDFLAGS) $(libknot_VERSION_INFO) $(LDFLAG_EXCLUDE_LIBS) \
                       ${fuzzer_LDFLAGS}
 libknot_la_LIBADD   = $(libcontrib_LIBS) $(libemblmdb_LIBS) $(lmdb_LIBS) \
-                      $(gnutls_LIBS) $(math_LIBS)
+                      $(gnutls_LIBS) $(hiredis_LIBS) $(math_LIBS)
 
 if EMBEDDED_LIBNGTCP2
 libknot_la_LIBADD  += $(libembngtcp2_LIBS)
@@ -119,6 +119,7 @@ libknot_la_SOURCES = \
 	libknot/dnssec/keystore/keystore.c	\
 	libknot/dnssec/keystore/pkcs11.c	\
 	libknot/dnssec/keystore/pkcs8.c		\
+	libknot/dnssec/keystore/rdb.c		\
 	libknot/dnssec/nsec/bitmap.c		\
 	libknot/dnssec/nsec/hash.c		\
 	libknot/dnssec/nsec/nsec.c		\

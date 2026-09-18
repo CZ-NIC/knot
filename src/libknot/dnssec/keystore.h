@@ -54,6 +54,8 @@ int dnssec_keystore_init_pkcs8(dnssec_keystore_t **store);
  */
 int dnssec_keystore_init_pkcs11(dnssec_keystore_t **store);
 
+int dnssec_keystore_init_rdb(dnssec_keystore_t **store);
+
 /*!
  * Deinitialize private key store context.
  *
