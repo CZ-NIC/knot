@@ -119,6 +119,7 @@ libknot_la_SOURCES = \
 	libknot/dnssec/keystore/keystore.c	\
 	libknot/dnssec/keystore/pkcs11.c	\
 	libknot/dnssec/keystore/pkcs8.c		\
+	libknot/dnssec/keystore/rdb.c		\
 	libknot/dnssec/nsec/bitmap.c		\
 	libknot/dnssec/nsec/hash.c		\
 	libknot/dnssec/nsec/nsec.c		\

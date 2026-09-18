@@ -479,6 +479,7 @@ src/libknot/dnssec/keystore/internal.h
 src/libknot/dnssec/keystore/keystore.c
 src/libknot/dnssec/keystore/pkcs11.c
 src/libknot/dnssec/keystore/pkcs8.c
+src/libknot/dnssec/keystore/rdb.c
 src/libknot/dnssec/keytag.h
 src/libknot/dnssec/nsec.h
 src/libknot/dnssec/nsec/bitmap.c
