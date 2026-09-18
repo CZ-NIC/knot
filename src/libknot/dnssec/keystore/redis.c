@@ -11,6 +11,8 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
+#include <hiredis/hiredis.h>
+
 #include "contrib/files.h"
 #include "libknot/dnssec/binary.h"
 #include "libknot/errcode.h"
@@ -20,16 +22,15 @@
 #include "libknot/dnssec/shared/shared.h"
 #include "libknot/dnssec/shared/keyid_gnutls.h"
 
-#define DIR_INIT_MODE 0750
-
 /*!
  * Context for PKCS #8 key directory.
  */
 typedef struct {
-	char *dir_name;
+	redisContext *rdb;
 	char *password;
-} pkcs8_dir_handle_t;
+} redis_handle_t;
 
+#if 0
 /* -- internal functions --------------------------------------------------- */
 
 /*!
@@ -207,16 +208,16 @@ static int pem_generate(gnutls_pk_algorithm_t algorithm, unsigned bits,
 
 	return KNOT_EOK;
 }
-
+#endif
 /* -- internal API --------------------------------------------------------- */
 
-static int pkcs8_ctx_new(void **ctx_ptr)
+static int redis_ctx_new(void **ctx_ptr)
 {
 	if (!ctx_ptr) {
 		return KNOT_EINVAL;
 	}
 
-	pkcs8_dir_handle_t *ctx = calloc(1, sizeof(*ctx));
+	redis_handle_t *ctx = calloc(1, sizeof(*ctx));
 	if (!ctx) {
 		return KNOT_ENOMEM;
 	}
@@ -226,20 +227,19 @@ static int pkcs8_ctx_new(void **ctx_ptr)
 	return KNOT_EOK;
 }
 
-static void pkcs8_ctx_free(void *ctx)
+static void redis_ctx_free(void *ctx)
 {
 	free(ctx);
 }
 
-static int pkcs8_init(void *ctx, const char *config)
+static int redis_init(void *ctx, const char *config)
 {
 	if (!ctx || !config) {
 		return KNOT_EINVAL;
 	}
 
-	return make_dir(config, DIR_INIT_MODE, true);
 }
-
+/*
 static int pkcs8_open(void *ctx, const char *config, const char *password)
 {
 	if (!ctx || !config) {
@@ -479,23 +479,23 @@ static int pkcs8_set_private(void *ctx, gnutls_privkey_t key)
 
 	return pkcs8_import_key(ctx, &pem, &keyid);
 }
-
+*/
 /* -- public API ----------------------------------------------------------- */
 
 _public_
-int dnssec_keystore_init_pkcs8(dnssec_keystore_t **store_ptr)
+int dnssec_keystore_init_redis(dnssec_keystore_t **store_ptr)
 {
 	static const keystore_functions_t IMPLEMENTATION = {
-		.ctx_new      = pkcs8_ctx_new,
-		.ctx_free     = pkcs8_ctx_free,
-		.init         = pkcs8_init,
-		.open         = pkcs8_open,
-		.close        = pkcs8_close,
-		.generate_key = pkcs8_generate_key,
-		.import_key   = pkcs8_import_key,
-		.remove_key   = pkcs8_remove_key,
-		.get_private  = pkcs8_get_private,
-		.set_private  = pkcs8_set_private,
+		.ctx_new      = redis_ctx_new,
+		.ctx_free     = redis_ctx_free,
+		.init         = redis_init,
+		.open         = redis_open,
+		.close        = redis_close,
+		.generate_key = redis_generate_key,
+		.import_key   = redis_import_key,
+		.remove_key   = redis_remove_key,
+		.get_private  = redis_get_private,
+		.set_private  = redis_set_private,
 	};
 
 	return keystore_create(store_ptr, &IMPLEMENTATION);
