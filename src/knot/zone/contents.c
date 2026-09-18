@@ -31,44 +31,6 @@ static int destroy_node_rrsets_from_tree(zone_node_t *node, _unused_ void *data)
 }
 
 /*!
- * \brief Tries to find the given domain name in the zone tree.
- *
- * \param zone Zone to search in.
- * \param name Domain name to find.
- * \param node Found node.
- * \param previous Previous node in canonical order (i.e. the one directly
- *                 preceding \a name in canonical order, regardless if the name
- *                 is in the zone or not).
- *
- * \retval true if the domain name was found. In such case \a node holds the
- *              zone node with \a name as its owner. \a previous is set
- *              properly.
- * \retval false if the domain name was not found. \a node may hold any (or none)
- *               node. \a previous is set properly.
- */
-static bool find_in_tree(zone_tree_t *tree, const knot_dname_t *name,
-                         zone_node_t **node, zone_node_t **previous)
-{
-	assert(tree != NULL);
-	assert(name != NULL);
-	assert(node != NULL);
-	assert(previous != NULL);
-
-	zone_node_t *found = NULL, *prev = NULL;
-
-	int match = zone_tree_get_less_or_equal(tree, name, &found, &prev);
-	if (match < 0) {
-		assert(0);
-		return false;
-	}
-
-	*node = found;
-	*previous = prev;
-
-	return match > 0;
-}
-
-/*!
  * \brief Create a node suitable for inserting into this contents.
  */
 static zone_node_t *node_new_for_contents(const knot_dname_t *owner, const zone_contents_t *contents)
@@ -379,12 +341,15 @@ int zone_contents_find_nsec3(const zone_contents_t *zone,
                              const zone_node_t **nsec3_node,
                              const zone_node_t **nsec3_previous)
 {
-	if (zone->nsec3_nodes == NULL) {
+	if (zone->nsec3_nodes == NULL || nsec3_name == NULL) {
 		return KNOT_EINVAL;
 	}
 
 	zone_node_t *found = NULL, *prev = NULL;
-	bool match = find_in_tree(zone->nsec3_nodes, nsec3_name, &found, &prev);
+	int match = zone_tree_get_less_or_equal(zone->nsec3_nodes, nsec3_name, &found, &prev);
+	if (match < 0) {
+		return match;
+	}
 
 	*nsec3_node = found;
 
@@ -392,7 +357,7 @@ int zone_contents_find_nsec3(const zone_contents_t *zone,
 		// either the returned node is the root of the tree, or it is
 		// the leftmost node in the tree; in both cases node was found
 		// set the previous node of the found node
-		assert(match);
+		assert(match > 0);
 		assert(*nsec3_node != NULL);
 		*nsec3_previous = node_prev(*nsec3_node);
 		assert(*nsec3_previous != NULL);
@@ -411,7 +376,7 @@ int zone_contents_find_nsec3(const zone_contents_t *zone,
 		}
 	}
 
-	return (match ? ZONE_NAME_FOUND : ZONE_NAME_NOT_FOUND);
+	return (match > 0 ? ZONE_NAME_FOUND : ZONE_NAME_NOT_FOUND);
 }
 
 const zone_node_t *zone_contents_find_wildcard_child(const zone_contents_t *contents,

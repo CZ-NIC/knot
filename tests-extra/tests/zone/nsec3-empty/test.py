@@ -9,17 +9,21 @@ t = Test()
 master = t.server("knot")
 
 # Zone setup
-zone = t.zone("example.com.", storage=".")
+zones = t.zone("example.com.", storage=".") + t.zone("evil.test.", storage=".")
 
-t.link(zone, master)
+t.link(zones, master)
+
+master.conf_zone(zones[1]).semantic_checks = False
 
 t.start()
 
 # Load zone
-master.zone_wait(zone)
+master.zones_wait(zones)
 
-# Query non-existent name
+# Query non-existent names
 resp = master.dig("bogus.example.com", "A", dnssec=True)
+resp.check(rcode="SERVFAIL")
+resp = master.dig("nx.evil.test", "A", dnssec=True)
 resp.check(rcode="SERVFAIL")
 
 t.end()
