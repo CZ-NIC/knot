@@ -445,8 +445,7 @@ static int check_nsec_bitmap(zone_node_t *node, void *ctx)
 	if (may_no_nsec && nsec == NULL) {
 		assert(data->nsec_type == KNOT_RRTYPE_NSEC3);
 		const zone_node_t *found_nsec3 = NULL, *prev_nsec3 = NULL;
-		if (node->nsec3_hash == NULL ||
-		    zone_contents_find_nsec3(data->update->new_cont, node->nsec3_hash, &found_nsec3, &prev_nsec3) != ZONE_NAME_NOT_FOUND ||
+		if (zone_contents_find_nsec3(data->update->new_cont, node->nsec3_hash, &found_nsec3, &prev_nsec3) != ZONE_NAME_NOT_FOUND ||
 		    found_nsec3 != NULL) {
 			return KNOT_ERROR;
 		}

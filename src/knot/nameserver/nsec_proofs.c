@@ -431,8 +431,7 @@ static int put_nsec3_nxdomain(const knot_dname_t *qname,
 	// NSEC3 covering the (nonexistent) wildcard at the closest encloser.
 
 	const zone_node_t *nsec3_wildcard_prev, *ignored;
-	if (cpe->nsec3_wildcard_name == NULL ||
-	    zone_contents_find_nsec3(zone, cpe->nsec3_wildcard_name, &ignored, &nsec3_wildcard_prev) != ZONE_NAME_NOT_FOUND) {
+	if (zone_contents_find_nsec3(zone, cpe->nsec3_wildcard_name, &ignored, &nsec3_wildcard_prev) != ZONE_NAME_NOT_FOUND) {
 		return KNOT_ERROR;
 	}
 
