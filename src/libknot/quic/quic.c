@@ -327,6 +327,12 @@ static int recv_stream_data(ngtcp2_conn *conn, uint32_t flags,
 	knot_quic_conn_t *ctx = (knot_quic_conn_t *)user_data;
 	assert(ctx->conn == conn);
 
+	if (flags & NGTCP2_STREAM_DATA_FLAG_0RTT) {
+		ctx->flags |= KNOT_QUIC_CONN_EARLY_DATA;
+	} else {
+		ctx->flags &= ~KNOT_QUIC_CONN_EARLY_DATA;
+	}
+
 	int ret = knot_quic_stream_recv_data(ctx, stream_id, data, datalen,
 	                                     (flags & NGTCP2_STREAM_DATA_FLAG_FIN));
 

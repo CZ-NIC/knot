@@ -208,11 +208,14 @@ static ssize_t recv_data(knot_tls_conn_t *conn, void *data, size_t size,
 	while (total < size) {
 		TIMEOUT_CTX_INIT
 		res = 0;
-		if (!(conn->flags & KNOT_TLS_CONN_NO_EARLY_DATA)) {
+		if (!(conn->flags & KNOT_TLS_CONN_EARLY_READDONE)) {
 			res = gnutls_record_recv_early_data(conn->session, data + total, size - total);
+			if (res > 0) {
+				conn->flags |= KNOT_TLS_CONN_EARLY_DATA;
+			}
 		}
 		if (res == 0 || res == GNUTLS_E_REQUESTED_DATA_NOT_AVAILABLE || res == GNUTLS_E_INVALID_REQUEST) {
-			conn->flags |= KNOT_TLS_CONN_NO_EARLY_DATA;
+			conn->flags |= KNOT_TLS_CONN_EARLY_READDONE;
 			res = gnutls_record_recv(conn->session, data + total, size - total);
 		}
 		if (res > 0) {
@@ -249,8 +252,9 @@ ssize_t knot_tls_recv(knot_tls_conn_t *conn, void *data, size_t size)
 		return ret;
 	}
 
-	int timeout = conn->ctx->io_timeout;
+	conn->flags &= ~KNOT_TLS_CONN_EARLY_DATA;
 
+	int timeout = conn->ctx->io_timeout;
 	if (conn->ctx->flags & KNOT_TLS_DNS) {
 		uint16_t msg_len;
 		ret = recv_data(conn, &msg_len, sizeof(msg_len), &timeout, false);
