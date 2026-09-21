@@ -432,10 +432,6 @@ int knot_quic_stream_recv_data(knot_quic_conn_t *conn, int64_t stream_id,
 	if (stream->inbufs != NULL) {
 		stream_inprocess(conn, stream);
 	}
-
-	// (void)ngtcp2_conn_extend_max_stream_offset(conn->conn, stream_id, len);
-	// ngtcp2_conn_extend_max_offset(conn->conn, len);
-
 	return KNOT_EOK;
 }
 

@@ -711,7 +711,6 @@ int knot_quic_handle(knot_quic_table_t *table, knot_quic_reply_t *reply,
 	ret = ngtcp2_conn_read_pkt(conn->conn, &path, &pi, reply->in_payload->iov_base,
 	                           reply->in_payload->iov_len, now);
 
-
 	*out_conn = conn;
 	if (ret == NGTCP2_ERR_RETRY) {
 		ret = -QUIC_SEND_RETRY;
