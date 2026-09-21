@@ -460,7 +460,8 @@ int knot_tls_session(struct gnutls_session_int **session,
 			gnutls_alpn_set_protocols(*session, &alpn_datum, 1, GNUTLS_ALPN_MANDATORY);
 		}
 		if (early_data) {
-			gnutls_record_set_max_early_data_size(*session, KNOT_TLS_MAX_EARLY_DATA);
+			uint32_t limit = quic ? 0xffffffffu : KNOT_TLS_MAX_EARLY_DATA;
+			gnutls_record_set_max_early_data_size(*session, limit);
 		}
 		if (server) {
 			gnutls_anti_replay_enable(*session, creds->tls_anti_replay);
