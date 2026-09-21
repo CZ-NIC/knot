@@ -1,3 +1,4 @@
+aioquic
 dnspython>=2.2.0
 jsonschema
 psutil
