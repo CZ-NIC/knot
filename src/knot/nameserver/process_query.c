@@ -720,29 +720,39 @@ bool process_query_acl_check(conf_t *conf, acl_action_t action,
 
 	bool automatic = false;
 	bool allowed = false;
+	bool early_data = false;
 
 	struct gnutls_session_int *tls_session;
 	switch (qdata->params->proto) {
-	case KNOTD_QUERY_PROTO_QUIC: tls_session = qdata->params->quic_conn->tls_session; break;
-	case KNOTD_QUERY_PROTO_TLS:  tls_session = qdata->params->tls_conn->session; break;
-	default:                     tls_session = NULL;
+	case KNOTD_QUERY_PROTO_QUIC:
+		tls_session = qdata->params->quic_conn->tls_session;
+		early_data = qdata->params->quic_conn->flags & KNOT_QUIC_CONN_EARLY_DATA;
+		break;
+	case KNOTD_QUERY_PROTO_TLS:
+		tls_session = qdata->params->tls_conn->session;
+		early_data = qdata->params->tls_conn->flags & KNOT_TLS_CONN_EARLY_DATA;
+		break;
+	default:
+		tls_session = NULL;
 	}
 
-	if (conf->cache.srv_auto_acl && action != ACL_ACTION_UPDATE) {
-		// ACL_ACTION_QUERY is used for SOA/refresh query.
-		assert(action == ACL_ACTION_QUERY || action == ACL_ACTION_NOTIFY ||
-		       action == ACL_ACTION_TRANSFER);
-		const yp_name_t *item = (action == ACL_ACTION_NOTIFY) ? C_MASTER : C_NOTIFY;
-		conf_val_t rmts = conf_zone_get(conf, item, zone_name);
-		allowed = rmt_allowed(conf, &rmts, query_source, &tsig, tls_session,
-		                      qdata->params->proto);
-		automatic = allowed;
-	}
-	if (!allowed) {
-		conf_val_t acl = conf_zone_get(conf, C_ACL, zone_name);
-		allowed = acl_allowed(conf, &acl, action, query_source, &tsig,
-		                      zone_name, query, tls_session,
-		                      qdata->params->proto);
+	if (!early_data || action == ACL_ACTION_QUERY) {
+		if (conf->cache.srv_auto_acl && action != ACL_ACTION_UPDATE) {
+			// ACL_ACTION_QUERY is used for SOA/refresh query.
+			assert(action == ACL_ACTION_QUERY || action == ACL_ACTION_NOTIFY ||
+			       action == ACL_ACTION_TRANSFER);
+			const yp_name_t *item = (action == ACL_ACTION_NOTIFY) ? C_MASTER : C_NOTIFY;
+			conf_val_t rmts = conf_zone_get(conf, item, zone_name);
+			allowed = rmt_allowed(conf, &rmts, query_source, &tsig, tls_session,
+			                      qdata->params->proto);
+			automatic = allowed;
+		}
+		if (!allowed) {
+			conf_val_t acl = conf_zone_get(conf, C_ACL, zone_name);
+			allowed = acl_allowed(conf, &acl, action, query_source, &tsig,
+			                      zone_name, query, tls_session,
+			                      qdata->params->proto);
+		}
 	}
 
 	if (log_enabled_debug()) {
@@ -774,10 +784,11 @@ bool process_query_acl_check(conf_t *conf, acl_action_t action,
 		}
 
 		log_zone_debug(zone_name,
-		               "ACL, %s, action %s, remote %s%s%s%s%s%.*s%s",
+		               "ACL, %s, action %s, remote %s%s%s%s%s%s%.*s%s",
 		               allowed ? "allowed" : "denied",
 		               (act != NULL) ? act->name : "query",
 		               addr_str, proto_str,
+		               (early_data ? "/0-RTT " : ""),
 		               (key_name[0] != '\0') ? ", key " : "",
 		               (key_name[0] != '\0') ? key_name : "",
 		               (pin_size > 0) ? " cert-key " : "",

@@ -64,6 +64,7 @@ typedef enum {
 	KNOT_QUIC_CONN_SESSION_TAKEN  = (1 << 1),
 	KNOT_QUIC_CONN_BLOCKED        = (1 << 2),
 	KNOT_QUIC_CONN_AUTHORIZED     = (1 << 3),
+	KNOT_QUIC_CONN_EARLY_DATA     = (1 << 4),
 } knot_quic_conn_flag_t;
 
 typedef struct knot_quic_conn {
