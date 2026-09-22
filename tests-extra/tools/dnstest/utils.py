@@ -61,7 +61,7 @@ def ssearch(s, pattern):
 def fsearch(fname, pattern, pattern2=None):
     with open(fname) as f:
         for line in f:
-            if pattern in line and (pattern2 is None or pattern2 in line):
+            if re.search(pattern, line) and (pattern2 is None or re.search(pattern2, line)):
                 return True
     return False
 
@@ -69,7 +69,7 @@ def fsearch_count(fname, pattern):
     count = 0
     with open(fname) as f:
         for line in f:
-            if pattern in line:
+            if re.search(pattern, line):
                 count += 1
     return count
 
