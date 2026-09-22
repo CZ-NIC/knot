@@ -705,10 +705,12 @@ AM_CONDITIONAL([HAVE_KDIG_VALIDATION], [test "$enable_kdig_validation" = "yes"])
 
 # cmocka for kdig (kqtest replaces kdig on this branch)
 AS_IF([test "$enable_utilities" = "yes"], [
-  PKG_CHECK_MODULES([cmocka], [cmocka >= 1.1.7], [], [
-    AC_MSG_ERROR([cmocka >= 1.1.7 not found (required by kdig on this branch)])
+  PKG_CHECK_MODULES([cmocka], [cmocka >= 1.1.7], [have_cmocka=yes], [
+    have_cmocka=n
+    AC_MSG_WARN([cmocka >= 1.1.7 not found, kdig will not be built])
   ])
-])
+], [have_cmocka=no])
+AM_CONDITIONAL([HAVE_CMOCKA], [test "$have_cmocka" = "yes"])
 
 # libedit in knotc and/or knsupdate
 AS_IF([test "$enable_daemon" = "yes" -o "$enable_utilities" = "yes"], [

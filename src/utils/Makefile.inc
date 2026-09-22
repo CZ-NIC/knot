@@ -50,7 +50,10 @@ libknotus_la_SOURCES = \
 endif HAVE_LIBUTILS
 
 if HAVE_UTILS
-bin_PROGRAMS += kdig khost knsec3hash knsupdate
+bin_PROGRAMS += khost knsec3hash knsupdate
+if HAVE_CMOCKA
+bin_PROGRAMS += kdig 
+endif HAVE_CMOCKA
 
 kdig_SOURCES = \
 	utils/kdig/kdig_exec.c			\
