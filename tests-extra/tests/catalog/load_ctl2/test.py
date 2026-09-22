@@ -13,6 +13,9 @@ t = Test(tsig=False, stress=False) # TSIG prevents zone_wait(catz)
 
 master = t.server("knot")
 
+t.start()
+# Start an empty server and reconfigure it - avoid delays when starting the entire test.
+
 catz = t.zone("catalog1.", storage=".")
 bigz = t.zone_rnd(1, records=(40 if master.valgrind else 768), dnssec=False)
 smallz = t.zone("example.")
@@ -36,9 +39,10 @@ master.conf_zone(bigz).zonefile_sync = -1
 if not master.valgrind:
     master.dnssec(bigz).zsk_size = 4096
 
-def tstart(pt):
-    pt.start()
-threading.Thread(target=tstart, args=(t,)).start()
+master.gen_confile()
+master.reload()
+
+# Testing starts here.
 
 cs = master.zone_wait(catz)
 s = master.zone_wait(smallz)
