@@ -64,6 +64,7 @@ typedef enum {
 typedef enum {
 	TEST_SEND_ONE_PAYLOAD = (1 << 2),
 	TEST_KEEP_SPLIT_VECTOR = (1 << 3),
+	TEST_FAIL_IS_OK = (1 << 4),
 } quic_extra_flags;
 
 typedef struct test_env {

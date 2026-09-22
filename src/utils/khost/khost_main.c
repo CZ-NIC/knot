@@ -8,7 +8,7 @@
 #include "libknot/dnssec/crypto.h"
 #include "utils/common/msg.h"
 #include "utils/khost/khost_params.h"
-#include "utils/kdig/kqtest_kdig_exec.h"
+#include "utils/kdig/kdig_exec.h"
 #include "libknot/libknot.h"
 
 int main(int argc, char *argv[])

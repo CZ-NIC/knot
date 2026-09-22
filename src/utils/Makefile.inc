@@ -58,8 +58,8 @@ endif HAVE_CMOCKA
 kdig_SOURCES = \
 	utils/kdig/kdig_exec.c			\
 	utils/kdig/kdig_exec.h			\
-	utils/kdig/kqtest_kdig_exec.c		\
-	utils/kdig/kqtest_kdig_exec.h		\
+	utils/kdig/kqtest_exec.c		\
+	utils/kdig/kqtest_exec.h		\
 	utils/kdig/kdig_main.c			\
 	utils/kdig/kdig_netio.c			\
 	utils/kdig/kdig_netio.h			\

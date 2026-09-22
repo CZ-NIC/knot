@@ -21,7 +21,7 @@
 #include "utils/common/msg.h"
 #include "utils/kdig/kdig_netio.h"
 #include "utils/kdig/kdig_params.h"
-#include "utils/kdig/kqtest_kdig_exec.h"
+#include "utils/kdig/kdig_exec.h"
 #include "utils/kdig/kdig_quic.h"
 #include <pthread.h>
 #include <string.h>
@@ -546,6 +546,7 @@ static void send_after_stop_sending(void **state)
 	ctx->net->cbs->net_receive = net_receive_fail_ok;
 	ctx->net->cbs->quic_send_data = quic_send_data_split;
 	ctx->net->quic.env->extra.bitflag |= TEST_KEEP_SPLIT_VECTOR;
+	ctx->net->quic.env->extra.bitflag |= TEST_FAIL_IS_OK;
 	ctx->net->quic.env->scenario = NGTCP2_WRITE_STREAM_FLAG_NONE;
 	ctx->net->quic.env->counter = 2;
 	assert_int_equal(process_query(HEAD(ctx->params.queries),
