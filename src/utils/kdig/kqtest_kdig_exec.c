@@ -9,15 +9,15 @@
 #include <sys/socket.h>
 #include <sys/time.h>
 
-#include "utils/kqtest/kqtest_kdig_exec.h"
-#include "utils/kqtest/kqtest_exec.h"
+#include "utils/kdig/kqtest_kdig_exec.h"
+#include "utils/kdig/kdig_exec.h"
 #include "utils/common/msg.h"
-#include "utils/kqtest/kqtest_netio.h"
+#include "utils/kdig/kdig_netio.h"
 #include "utils/common/sign.h"
 #include "contrib/json.h"
 #include "contrib/time.h"
 #include "contrib/ucw/lists.h"
-#include "utils/kqtest/kqtest_quic.h"
+#include "utils/kdig/kdig_quic.h"
 #include "libknot/dnssec/random.h"
 
 #if USE_DNSTAP

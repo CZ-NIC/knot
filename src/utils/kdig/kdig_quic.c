@@ -16,7 +16,7 @@
 
 #include "contrib/net.h"
 #include "libknot/errcode.h"
-#include "utils/kqtest/kqtest_quic.h"
+#include "utils/kdig/kdig_quic.h"
 #include "utils/common/msg.h"
 #include "utils/common/params.h"
 

@@ -17,9 +17,10 @@
 #endif
 
 #include "libknot/errcode.h"
-#include "utils/kqtest/kqtest_quic.h"
-#include "utils/kqtest/kqtest_netio.h"
-#include "utils/kqtest/kqtest_kdig_exec.h"
+#include "utils/kdig/kdig_quic.h"
+#include "utils/kdig/kdig_netio.h"
+#include "utils/kdig/kdig_exec.h"
+#include "utils/kdig/kqtest_kdig_exec.h"
 #include "utils/common/msg.h"
 #include "utils/common/tls.h"
 #include "libknot/quic/tls_common.h"

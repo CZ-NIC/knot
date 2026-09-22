@@ -7,17 +7,11 @@ noinst_LTLIBRARIES += libknotus.la
 libknotus_la_CPPFLAGS = $(embedded_libngtcp2_CFLAGS) \
                         $(AM_CPPFLAGS) $(CFLAG_VISIBILITY) $(gnutls_CFLAGS) \
                         $(libedit_CFLAGS) $(libidn2_CFLAGS) $(libidn_CFLAGS) \
-                        $(libkqueue_CFLAGS) $(libnghttp2_CFLAGS) $(libngtcp2_CFLAGS)
-libkqtestus_la_CPPFLAGS = $(embedded_libngtcp2_CFLAGS) \
-                        $(AM_CPPFLAGS) $(CFLAG_VISIBILITY) $(gnutls_CFLAGS) \
-                        $(libedit_CFLAGS) $(libidn2_CFLAGS) $(libidn_CFLAGS) \
                         $(libkqueue_CFLAGS) $(libnghttp2_CFLAGS) $(libngtcp2_CFLAGS) \
                         $(lmdb_CFLAGS) $(cmocka_CFLAGS)
 libknotus_la_LDFLAGS  = $(AM_LDFLAGS) $(LDFLAG_EXCLUDE_LIBS)
 libknotus_la_LIBADD   = $(libidn2_LIBS) $(libidn_LIBS) $(libnghttp2_LIBS) $(libngtcp2_LIBS)
-libknotus_LIBS        = libknotus.la libknot.la $(libcontrib_LIBS) \
-                        $(gnutls_LIBS) $(libedit_LIBS)
-libkqtestus_LIBS      = libknotus.la libknot.la libdnssec.la $(cmocka_LIBS) \
+libknotus_LIBS        = libknotus.la libknot.la $(cmocka_LIBS) \
                         $(libcontrib_LIBS) $(gnutls_LIBS) $(libedit_LIBS)
 
 if EMBEDDED_LIBNGTCP2
@@ -58,30 +52,20 @@ endif HAVE_LIBUTILS
 if HAVE_UTILS
 bin_PROGRAMS += kdig khost knsec3hash knsupdate
 
-if ENABLE_KQTEST
-bin_PROGRAMS += kqtest
-kqtest_SOURCES = \
-	utils/kqtest/kqtest_exec.c		\
-	utils/kqtest/kqtest_exec.h		\
-	utils/kqtest/kqtest_kdig_exec.c 	\
-	utils/kqtest/kqtest_kdig_exec.h		\
-	utils/kqtest/kqtest_main.c		\
-	utils/kqtest/kqtest_netio.c		\
-	utils/kqtest/kqtest_netio.h		\
-	utils/kqtest/kqtest_kdig_params.c	\
-	utils/kqtest/kqtest_kdig_params.h	\
-	utils/kqtest/kqtest_quic.c		\
-	utils/kqtest/kqtest_quic.h		\
-	utils/kqtest/kqtest_resolv.c		\
-	utils/kqtest/kqtest_resolv.h
-endif ENABLE_KQTEST
-
 kdig_SOURCES = \
 	utils/kdig/kdig_exec.c			\
 	utils/kdig/kdig_exec.h			\
+	utils/kdig/kqtest_kdig_exec.c		\
+	utils/kdig/kqtest_kdig_exec.h		\
 	utils/kdig/kdig_main.c			\
+	utils/kdig/kdig_netio.c			\
+	utils/kdig/kdig_netio.h			\
 	utils/kdig/kdig_params.c		\
-	utils/kdig/kdig_params.h
+	utils/kdig/kdig_params.h		\
+	utils/kdig/kdig_quic.c			\
+	utils/kdig/kdig_quic.h			\
+	utils/kdig/kdig_resolv.c		\
+	utils/kdig/kdig_resolv.h
 
 if HAVE_KDIG_VALIDATION
 noinst_LTLIBRARIES += libdummy.la
@@ -120,8 +104,6 @@ knsupdate_SOURCES = \
 
 kdig_CPPFLAGS          = $(libknotus_la_CPPFLAGS)
 kdig_LDADD             = $(libknotus_LIBS)
-kqtest_CPPFLAGS        = $(libkqtestus_la_CPPFLAGS)
-kqtest_LDADD           = $(libkqtestus_LIBS)
 khost_CPPFLAGS         = $(libknotus_la_CPPFLAGS)
 khost_LDADD            = $(libknotus_LIBS)
 knsec3hash_CPPFLAGS    = $(libknotus_la_CPPFLAGS)
@@ -135,8 +117,8 @@ khost_CPPFLAGS         += -DNO_DNSSEC_VALIDATION
 endif HAVE_KDIG_VALIDATION
 
 if HAVE_DNSTAP
-kdig_CPPFLAGS          += $(DNSTAP_CFLAGS)
-kdig_LDADD             += $(libdnstap_LIBS)
+kdig_CPPFLAGS          += $(DNSTAP_CFLAGS) $(libknotus_la_CPPFLAGS) $(cmocka_CFLAGS)
+kdig_LDADD             += $(libdnstap_LIBS) $(libknotus_LIBS) $(cmocka_LIBS)
 khost_CPPFLAGS         += $(DNSTAP_CFLAGS)
 khost_LDADD            += $(libdnstap_LIBS)
 endif HAVE_DNSTAP

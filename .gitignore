@@ -67,7 +67,6 @@ Makefile.in
 # Binaries
 /src/kcatalogprint
 /src/kdig
-/src/kqtest
 /src/keymgr
 /src/khost
 /src/kjournalprint

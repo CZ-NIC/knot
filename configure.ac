@@ -703,6 +703,13 @@ AS_IF([test "$enable_kdig_validation" = "yes"], [
 ])
 AM_CONDITIONAL([HAVE_KDIG_VALIDATION], [test "$enable_kdig_validation" = "yes"])
 
+# cmocka for kdig (kqtest replaces kdig on this branch)
+AS_IF([test "$enable_utilities" = "yes"], [
+  PKG_CHECK_MODULES([cmocka], [cmocka >= 1.1.7], [], [
+    AC_MSG_ERROR([cmocka >= 1.1.7 not found (required by kdig on this branch)])
+  ])
+])
+
 # libedit in knotc and/or knsupdate
 AS_IF([test "$enable_daemon" = "yes" -o "$enable_utilities" = "yes"], [
   PKG_CHECK_MODULES([libedit], [libedit], [with_libedit=yes], [
@@ -750,25 +757,6 @@ AS_IF([test "$enable_daemon" = "yes" -o "$enable_utilities" = "yes"], [
 
 AS_IF([test "$enable_quic" != "no"], [
   AC_DEFINE([ENABLE_QUIC], [1], [Define to 1 to enable DoQ support using libngtcp2 and GnuTLS])])
-
-# kqtest utility
-AC_ARG_ENABLE([kqtest],
-  [AS_HELP_STRING([--enable-kqtest=yes|no],
-  [Build kqtest, a DoQ testing utility (requires QUIC and cmocka >= 1.1.7) [default=no]])],
-  [enable_kqtest="$enableval"], [enable_kqtest=no])
-
-AS_CASE([$enable_kqtest],
-  [yes], [
-    AS_IF([test "$enable_quic" != "yes"],
-      [AC_MSG_ERROR([kqtest requires QUIC, reconfigure with --enable-quic])])
-    PKG_CHECK_MODULES([cmocka], [cmocka >= 1.1.7], [],
-      [AC_MSG_ERROR([cmocka >= 1.1.7 not found, but --enable-kqtest=yes was requested])])
-  ],
-  [no], [],
-  [*], [AC_MSG_ERROR([Invalid value '$enable_kqtest' for --enable-kqtest])]
-)
-
-AM_CONDITIONAL([ENABLE_KQTEST], [test "$enable_kqtest" = "yes"])
 
 # IDN support in kdig (1/2)
 AC_ARG_WITH([libidn],
@@ -948,7 +936,6 @@ result_msg_base="
     Use SO_REUSEPORT(_LB):  ${enable_reuseport}
     XDP support:            ${enable_xdp}
     DoQ support:            ${enable_quic}
-    DoQ testing utility:    ${enable_kqtest}
     Redis support:          ${enable_redis}
     Socket polling:         ${with_socket_polling}
     Atomic support:         ${atomic_type}

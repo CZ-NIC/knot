@@ -7,7 +7,7 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include "utils/kqtest/kqtest_resolv.h"
+#include "utils/kdig/kdig_resolv.h"
 #include "utils/common/msg.h"
 #include "utils/common/params.h"
 #include "contrib/ucw/lists.h"

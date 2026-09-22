@@ -13,7 +13,7 @@
 #include "utils/kdig/kdig_params.h"
 #include "utils/common/msg.h"
 #include "utils/common/params.h"
-#include "utils/common/resolv.h"
+// #include "utils/common/resolv.h"
 #include "libknot/libknot.h"
 #include "contrib/strtonum.h"
 #include "contrib/ucw/lists.h"

@@ -8,12 +8,8 @@
 #include <stdbool.h>
 
 #include "utils/common/params.h"
-#include "utils/common/exec.h"
 #include "utils/common/https.h"
-#include "utils/common/quic.h"
-#include "utils/common/sign.h"
-#include "libknot/libknot.h"
-#include "contrib/sockaddr.h"
+#include "utils/kdig/kdig_quic.h"
 
 #if USE_DNSTAP
 # include "contrib/dnstap/reader.h"
@@ -167,11 +163,13 @@ typedef struct {
 
 query_t *query_create(const char *owner, const query_t *config);
 void query_free(query_t *query);
+// void complete_queries(list_t *queries, const query_t *conf, query_t *out_query);
 void complete_queries(list_t *queries, const query_t *conf);
 
 ednsopt_t *ednsopt_create(uint16_t code, uint16_t length, uint8_t *data);
 ednsopt_t *ednsopt_dup(const ednsopt_t *opt);
 void ednsopt_free(ednsopt_t *opt);
+int parse_token(const char *value, kdig_params_t *params);
 
 void ednsopt_list_init(list_t *list);
 void ednsopt_list_deinit(list_t *list);
@@ -179,5 +177,6 @@ int ednsopt_list_dup(list_t *dst, const list_t *src);
 bool ednsopt_list_empty(const list_t *list);
 
 int kdig_init(kdig_params_t *params);
-int kdig_parse(kdig_params_t *params, int argc, char *argv[]);
+int kdig_parse(kdig_params_t *params, int argc, char *argv[],
+		query_t *out_ref_query);
 void kdig_clean(kdig_params_t *params);
