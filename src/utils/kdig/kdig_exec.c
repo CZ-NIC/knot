@@ -5,11 +5,11 @@
 
 #include <arpa/inet.h>
 #include <stdlib.h>
-#include <string.h>
 #include <time.h>
 
 #include "libknot/dnssec/random.h"
 #include "utils/kdig/kdig_exec.h"
+#include "contrib/string.h"
 #include "utils/common/msg.h"
 #include "utils/kdig/kdig_netio.h"
 #include "utils/common/params.h"
