@@ -13,6 +13,9 @@ t = Test(tsig=False, stress=False) # TSIG prevents zone_wait(catz)
 
 master = t.server("knot")
 
+master.conf_srv().background_workers = 2
+master.conf_srv().async_start = True
+
 t.start()
 # Start an empty server and reconfigure it - avoid delays when starting the entire test.
 
@@ -25,9 +28,6 @@ t.link(zones, master)
 Z = smallz[0].name
 
 master.cat_interpret(catz[0])
-
-master.conf_srv().background_workers = 2
-master.conf_srv().async_start = True
 
 master.dnssec(bigz).enable = True
 master.dnssec(bigz).nsec3 = True
