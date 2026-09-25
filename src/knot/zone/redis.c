@@ -3,9 +3,6 @@
  *  For more information, see <https://www.knot-dns.cz/>
  */
 
-#include <poll.h>
-#include <string.h>
-
 #include "knot/zone/redis.h"
 #include "knot/zone/contents.h"
 
@@ -23,84 +20,6 @@ struct redisContext *zone_redis_connect(conf_t *conf, bool require_master)
 void zone_redis_disconnect(struct redisContext *ctx, bool pool_save)
 {
 	return rdb_disconnect(ctx, pool_save);
-}
-
-bool zone_redis_ping(struct redisContext *ctx)
-{
-	if (ctx == NULL) {
-		return false;
-	}
-
-	if (redisAppendCommand(ctx, "PING") != REDIS_OK) {
-		return false;
-	}
-
-	int done = 0;
-	while (!done) {
-		if (redisBufferWrite(ctx, &done) != REDIS_OK) {
-			return false;
-		}
-	}
-
-	struct pollfd pfd = { .fd = ctx->fd, .events = POLLIN };
-	if (poll(&pfd, 1, 500) == 0) {
-		return false;
-	}
-
-	redisReply *reply;
-	if (redisGetReply(ctx, (void **)&reply) != REDIS_OK) {
-		return false;
-	}
-
-	bool res = reply->type == REDIS_REPLY_STATUS &&
-	           strcmp(reply->str, "PONG") == 0;
-
-	freeReplyObject(reply);
-
-	return res;
-}
-
-int zone_redis_role(struct redisContext *ctx)
-{
-	if (ctx == NULL) {
-		return -1;
-	}
-
-	if (redisAppendCommand(ctx, "ROLE") != REDIS_OK) {
-		return -1;
-	}
-
-	int done = 0;
-	while (!done) {
-		if (redisBufferWrite(ctx, &done) != REDIS_OK) {
-			return -1;
-		}
-	}
-
-	struct pollfd pfd = { .fd = ctx->fd, .events = POLLIN };
-	if (poll(&pfd, 1, 1000) == 0) {
-		return -1;
-	}
-
-	redisReply *reply;
-	if (redisGetReply(ctx, (void **)&reply) != REDIS_OK) {
-		return -1;
-	}
-
-	int res = -1;
-	if (reply->type == REDIS_REPLY_ARRAY) {
-		if (strcmp(reply->element[0]->str, "master") == 0) {
-			res = 0;
-		} else if (strcmp(reply->element[0]->str, "sentinel") == 0) {
-			res = 2;
-		} else {
-			res = 1;
-		}
-	}
-
-	freeReplyObject(reply);
-
-	return res;
 }
 
 static int check_reply(struct redisContext *rdb, redisReply *reply,
@@ -480,16 +399,6 @@ struct redisContext *zone_redis_connect(conf_t *conf, bool require_master)
 void zone_redis_disconnect(struct redisContext *ctx, bool pool_save)
 {
 	return;
-}
-
-bool zone_redis_ping(struct redisContext *ctx)
-{
-	return false;
-}
-
-int zone_redis_role(struct redisContext *ctx)
-{
-	return -1;
 }
 
 int zone_redis_txn_begin(zone_redis_txn_t *txn, struct redisContext *rdb,

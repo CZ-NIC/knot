@@ -1766,7 +1766,7 @@ static void free_redis_conn(intptr_t ptr)
 
 static bool invalid_redis_conn(intptr_t ptr)
 {
-	return ptr == CONN_POOL_FD_INVALID || !zone_redis_ping((void *)ptr);
+	return ptr == CONN_POOL_FD_INVALID || !rdb_ping((void *)ptr);
 }
 
 static uint64_t db_listen_hash(conf_val_t *val)
