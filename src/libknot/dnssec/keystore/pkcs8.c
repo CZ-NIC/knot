@@ -231,7 +231,7 @@ static void pkcs8_ctx_free(void *ctx)
 	free(ctx);
 }
 
-static int pkcs8_init(void *ctx, const char *config)
+static int pkcs8_init(void *ctx, const char *config, _unused_ void *conn)
 {
 	if (!ctx || !config) {
 		return KNOT_EINVAL;
