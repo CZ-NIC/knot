@@ -120,7 +120,7 @@ int event_load(conf_t *conf, zone_t *zone, zone_evflag_t flags)
 	if (db_enabled && !rdb_reload && (old_contents_exist || journal_conts != NULL) &&
 	    zone->cat_members == NULL && EMPTY_LIST(zone->include_from) &&
 	    zf_from != ZONEFILE_LOAD_DIFSE && !includes_configured) {
-		zone_redis_err_t err;
+		rdb_err_t err;
 		uint32_t db_serial = 0;
 		ret = zone_redis_serial(db_ctx, db_instance, zone->name, &db_serial, err);
 		if (ret == KNOT_EOK && old_contents_exist && db_serial == zone_contents_serial(zone->contents)) {
@@ -168,7 +168,7 @@ int event_load(conf_t *conf, zone_t *zone, zone_evflag_t flags)
 	// If configured, attempt to load zonefile.
 	if ((zf_from != ZONEFILE_LOAD_NONE || db_enabled) && zone->cat_members == NULL) {
 		if (db_enabled) {
-			zone_redis_err_t err;
+			rdb_err_t err;
 			ret = zone_redis_load(db_ctx, db_instance, zone->name, &zf_conts, err);
 			if (ret != KNOT_EOK) {
 				log_zone_error(zone->name, "failed to load from database (%s)",

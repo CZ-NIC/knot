@@ -3,9 +3,6 @@
  *  For more information, see <https://www.knot-dns.cz/>
  */
 
-#include <poll.h>
-#include <string.h>
-
 #include "knot/zone/redis.h"
 #include "knot/zone/contents.h"
 
@@ -23,109 +20,6 @@ struct redisContext *zone_redis_connect(conf_t *conf, bool require_master)
 void zone_redis_disconnect(struct redisContext *ctx, bool pool_save)
 {
 	return rdb_disconnect(ctx, pool_save);
-}
-
-bool zone_redis_ping(struct redisContext *ctx)
-{
-	if (ctx == NULL) {
-		return false;
-	}
-
-	if (redisAppendCommand(ctx, "PING") != REDIS_OK) {
-		return false;
-	}
-
-	int done = 0;
-	while (!done) {
-		if (redisBufferWrite(ctx, &done) != REDIS_OK) {
-			return false;
-		}
-	}
-
-	struct pollfd pfd = { .fd = ctx->fd, .events = POLLIN };
-	if (poll(&pfd, 1, 500) == 0) {
-		return false;
-	}
-
-	redisReply *reply;
-	if (redisGetReply(ctx, (void **)&reply) != REDIS_OK) {
-		return false;
-	}
-
-	bool res = reply->type == REDIS_REPLY_STATUS &&
-	           strcmp(reply->str, "PONG") == 0;
-
-	freeReplyObject(reply);
-
-	return res;
-}
-
-int zone_redis_role(struct redisContext *ctx)
-{
-	if (ctx == NULL) {
-		return -1;
-	}
-
-	if (redisAppendCommand(ctx, "ROLE") != REDIS_OK) {
-		return -1;
-	}
-
-	int done = 0;
-	while (!done) {
-		if (redisBufferWrite(ctx, &done) != REDIS_OK) {
-			return -1;
-		}
-	}
-
-	struct pollfd pfd = { .fd = ctx->fd, .events = POLLIN };
-	if (poll(&pfd, 1, 1000) == 0) {
-		return -1;
-	}
-
-	redisReply *reply;
-	if (redisGetReply(ctx, (void **)&reply) != REDIS_OK) {
-		return -1;
-	}
-
-	int res = -1;
-	if (reply->type == REDIS_REPLY_ARRAY) {
-		if (strcmp(reply->element[0]->str, "master") == 0) {
-			res = 0;
-		} else if (strcmp(reply->element[0]->str, "sentinel") == 0) {
-			res = 2;
-		} else {
-			res = 1;
-		}
-	}
-
-	freeReplyObject(reply);
-
-	return res;
-}
-
-static int check_reply(struct redisContext *rdb, redisReply *reply,
-                       int expected_type, zone_redis_err_t err)
-{
-	if (reply == NULL) {
-		if (rdb->err != REDIS_OK) {
-			strlcpy(err, rdb->errstr, sizeof(zone_redis_err_t));
-		} else {
-			strlcpy(err, "no reply", sizeof(zone_redis_err_t));
-		}
-		return KNOT_ERDB;
-	} else if (reply->type == REDIS_REPLY_ERROR) {
-		strlcpy(err, reply->str, sizeof(zone_redis_err_t));
-		return KNOT_ERDB;
-	} else if (reply->type != expected_type) {
-		strlcpy(err, "unexpected reply", sizeof(zone_redis_err_t));
-		return KNOT_ERDB;
-	} else if (reply->type == REDIS_REPLY_ARRAY && reply->elements == 0) {
-		return KNOT_ENOENT;
-	} else if (reply->type == REDIS_REPLY_STATUS && strcmp(RDB_RETURN_OK, reply->str) != 0) {
-		return KNOT_EACCES;
-	}
-
-	return KNOT_EOK;
 }
 
 int zone_redis_txn_begin(zone_redis_txn_t *txn, struct redisContext *rdb,
@@ -150,7 +44,7 @@ int zone_redis_txn_begin(zone_redis_txn_t *txn, struct redisContext *rdb,
 
 	redisReply *reply = redisCommand(txn->rdb, cmd, txn->origin, txn->origin_len,
 	                                 &txn->instance, sizeof(txn->instance));
-	int ret = check_reply(rdb, reply, REDIS_REPLY_STRING, txn->err);
+	int ret = rdb_check_reply(rdb, reply, REDIS_REPLY_STRING, txn->err);
 	if (ret != KNOT_EOK) {
 		freeReplyObject(reply);
 		return ret;
@@ -178,12 +72,12 @@ static int finish_unread(zone_redis_txn_t *txn, size_t max)
 	for (size_t i = 0; i < max; i++) {
 		if (redisGetReply(txn->rdb, (void **)&reply) == REDIS_OK) {
 			if (ret == KNOT_EOK) {
-				ret = check_reply(txn->rdb, reply, REDIS_REPLY_STATUS, txn->err);
+				ret = rdb_check_reply(txn->rdb, reply, REDIS_REPLY_STATUS, txn->err);
 			}
 			freeReplyObject(reply);
 		} else {
 			if (ret == KNOT_EOK) {
-				ret = check_reply(txn->rdb, NULL, REDIS_REPLY_ERROR, txn->err);
+				ret = rdb_check_reply(txn->rdb, NULL, REDIS_REPLY_ERROR, txn->err);
 			}
 		}
 	}
@@ -208,7 +102,7 @@ int zone_redis_write_rrset(zone_redis_txn_t *txn, const knot_rrset_t *rr)
 	                             rr->owner, knot_dname_size(rr->owner), rr->type, rr->ttl,
 	                             rr->rrs.count, rr->rrs.rdata, (size_t)rr->rrs.size);
 	if (ret != REDIS_OK) {
-		return check_reply(txn->rdb, NULL, REDIS_REPLY_ERROR, txn->err);
+		return rdb_check_reply(txn->rdb, NULL, REDIS_REPLY_ERROR, txn->err);
 	}
 
 	txn->unread++;
@@ -247,7 +141,7 @@ int zone_redis_txn_commit(zone_redis_txn_t *txn)
 
 	redisReply *reply = redisCommand(txn->rdb, cmd, txn->origin, txn->origin_len,
 	                                 &txn->rdb_txn, sizeof(txn->rdb_txn));
-	ret = check_reply(txn->rdb, reply, REDIS_REPLY_STATUS, txn->err);
+	ret = rdb_check_reply(txn->rdb, reply, REDIS_REPLY_STATUS, txn->err);
 	if (ret != KNOT_EOK) {
 		freeReplyObject(reply);
 		return ret;
@@ -272,7 +166,7 @@ int zone_redis_txn_abort(zone_redis_txn_t *txn)
 
 	redisReply *reply = redisCommand(txn->rdb, cmd, txn->origin, txn->origin_len,
 	                                 &txn->rdb_txn, sizeof(txn->rdb_txn));
-	int ret = check_reply(txn->rdb, reply, REDIS_REPLY_STATUS, txn->err);
+	int ret = rdb_check_reply(txn->rdb, reply, REDIS_REPLY_STATUS, txn->err);
 	if (ret != KNOT_EOK) {
 		freeReplyObject(reply);
 		return ret;
@@ -286,7 +180,7 @@ int zone_redis_txn_abort(zone_redis_txn_t *txn)
 
 int zone_redis_serial(struct redisContext *rdb, uint8_t instance,
                       const knot_dname_t *zone, uint32_t *serial,
-                      zone_redis_err_t err)
+                      rdb_err_t err)
 {
 	if (rdb == NULL) {
 		return KNOT_NET_ECONNECT;
@@ -297,7 +191,7 @@ int zone_redis_serial(struct redisContext *rdb, uint8_t instance,
 	redisReply *reply = redisCommand(rdb, RDB_CMD_ZONE_EXISTS " %b %b",
 	                                 zone, knot_dname_size(zone),
 	                                 &instance, sizeof(instance));
-	int ret = check_reply(rdb, reply, REDIS_REPLY_INTEGER, err);
+	int ret = rdb_check_reply(rdb, reply, REDIS_REPLY_INTEGER, err);
 	if (ret != KNOT_EOK) {
 		freeReplyObject(reply);
 		return ret;
@@ -345,7 +239,7 @@ static int process_rdb_rr(zone_contents_t *contents, redisReply *data)
 
 int zone_redis_load(struct redisContext *rdb, uint8_t instance,
                     const knot_dname_t *zone_name, struct zone_contents **out,
-                    zone_redis_err_t err)
+                    rdb_err_t err)
 {
 	if (rdb == NULL) {
 		return KNOT_NET_ECONNECT;
@@ -356,7 +250,7 @@ int zone_redis_load(struct redisContext *rdb, uint8_t instance,
 	redisReply *reply = redisCommand(rdb, RDB_CMD_ZONE_LOAD " %b %b",
 	                                 zone_name, knot_dname_size(zone_name),
 	                                 &instance, sizeof(instance));
-	int ret = check_reply(rdb, reply, REDIS_REPLY_ARRAY, err);
+	int ret = rdb_check_reply(rdb, reply, REDIS_REPLY_ARRAY, err);
 	if (ret != KNOT_EOK) {
 		freeReplyObject(reply);
 		return ret;
@@ -437,7 +331,7 @@ static int process_rdb_upd(zone_redis_load_upd_cb_t cb, void *ctx, redisReply *d
 int zone_redis_load_upd(struct redisContext *rdb, uint8_t instance,
                         const knot_dname_t *zone_name, uint32_t soa_from,
                         zone_redis_load_upd_cb_t cb, void *ctx,
-                        zone_redis_err_t err)
+                        rdb_err_t err)
 {
 	if (rdb == NULL) {
 		return KNOT_NET_ECONNECT;
@@ -448,7 +342,7 @@ int zone_redis_load_upd(struct redisContext *rdb, uint8_t instance,
 	redisReply *reply = redisCommand(rdb, RDB_CMD_UPD_LOAD " %b %b %d",
 	                                 zone_name, knot_dname_size(zone_name),
 	                                 &instance, sizeof(instance), soa_from);
-	int ret = check_reply(rdb, reply, REDIS_REPLY_ARRAY, err);
+	int ret = rdb_check_reply(rdb, reply, REDIS_REPLY_ARRAY, err);
 	if (ret != KNOT_EOK) {
 		freeReplyObject(reply);
 		return ret;
@@ -480,16 +374,6 @@ struct redisContext *zone_redis_connect(conf_t *conf, bool require_master)
 void zone_redis_disconnect(struct redisContext *ctx, bool pool_save)
 {
 	return;
-}
-
-bool zone_redis_ping(struct redisContext *ctx)
-{
-	return false;
-}
-
-int zone_redis_role(struct redisContext *ctx)
-{
-	return -1;
 }
 
 int zone_redis_txn_begin(zone_redis_txn_t *txn, struct redisContext *rdb,

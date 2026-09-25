@@ -768,7 +768,7 @@ static int commit_redis(conf_t *conf, zone_update_t *update)
 
 	bool incremental = ((update->flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) && update->zone->contents != NULL);
 	if (incremental) {
-		zone_redis_err_t err;
+		rdb_err_t err;
 		uint32_t redis_soa = 0, chset_soa = zone_update_from_serial(update);
 		int soa_ret = zone_redis_serial(db_ctx, db_instance, update->zone->name, &redis_soa, err);
 		incremental = (soa_ret == KNOT_EOK && redis_soa == chset_soa);
