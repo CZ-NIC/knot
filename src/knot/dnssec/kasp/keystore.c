@@ -11,6 +11,20 @@
 #include "knot/conf/schema.h"
 #include "libknot/error.h"
 
+#ifdef ENABLE_REDIS
+#include "knot/common/hiredis.h"
+
+static struct redisContext *_connect(void *conf)
+{
+	return rdb_connect(conf, true, " keystore");
+}
+
+static void _disconnect(struct redisContext *ctx, bool pool_save)
+{
+	return rdb_disconnect(ctx, pool_save);
+}
+#endif // ENABLE_REDIS
+
 static char *fix_path(const char *config, const char *base_path)
 {
 	assert(config);
@@ -29,11 +43,12 @@ static char *fix_path(const char *config, const char *base_path)
 	return path;
 }
 
-int keystore_load(const char *config, unsigned backend, const char *password,
+int keystore_load(conf_t *conf, const char *config, unsigned backend, const char *password,
                   const char *kasp_base_path, dnssec_keystore_t **keystore)
 {
 	int ret = KNOT_EINVAL;
 	char *fixed_config = NULL;
+	dnssec_rdb_conn_t conn = { .conf = conf };
 
 	switch (backend) {
 	case KEYSTORE_BACKEND_PEM:
@@ -44,6 +59,13 @@ int keystore_load(const char *config, unsigned backend, const char *password,
 		ret = dnssec_keystore_init_pkcs11(keystore);
 		fixed_config = strdup(config);
 		break;
+	case KEYSTORE_BACKEND_ZONEDB:
+#ifdef ENABLE_REDIS
+		conn.connect =_connect;
+		conn.disconnect = _disconnect;
+#endif // ENABLE_REDIS
+		ret = dnssec_keystore_init_rdb(keystore, &conn);
+		break;
 	default:
 		assert(0);
 	}
@@ -51,7 +73,7 @@ int keystore_load(const char *config, unsigned backend, const char *password,
 		free(fixed_config);
 		return ret;
 	}
-	if (fixed_config == NULL) {
+	if (fixed_config == NULL && backend != KEYSTORE_BACKEND_ZONEDB) {
 		dnssec_keystore_deinit(*keystore);
 		*keystore = NULL;
 		return KNOT_ENOMEM;
