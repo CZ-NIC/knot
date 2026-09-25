@@ -1,6 +1,6 @@
 noinst_LTLIBRARIES += libcontrib.la libemblmdb.la
 
-libcontrib_la_CPPFLAGS = $(AM_CPPFLAGS) $(CFLAG_VISIBILITY)
+libcontrib_la_CPPFLAGS = $(AM_CPPFLAGS) $(CFLAG_VISIBILITY) $(hiredis_CFLAGS)
 libcontrib_la_LDFLAGS  = $(AM_LDFLAGS) $(LDFLAG_EXCLUDE_LIBS)
 libcontrib_la_LIBADD   = $(pthread_LIBS)
 libcontrib_LIBS        = libcontrib.la
@@ -54,6 +54,8 @@ libcontrib_la_SOURCES = \
 	contrib/os.h				\
 	contrib/qp-trie/trie.c			\
 	contrib/qp-trie/trie.h			\
+	contrib/rdb/common.c			\
+	contrib/rdb/common.h			\
 	contrib/redis/redismodule.h		\
 	contrib/semaphore.c			\
 	contrib/semaphore.h			\

@@ -18,5 +18,3 @@ int rdb_addr_to_str(struct sockaddr_storage *addr, char *out, size_t out_len, in
 redisContext *rdb_connect(conf_t *conf, bool require_master, const char *info);
 
 void rdb_disconnect(redisContext *rdb, bool pool_save);
-
-bool rdb_compatible(redisContext *rdb);
