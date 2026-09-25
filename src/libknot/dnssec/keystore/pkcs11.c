@@ -156,7 +156,7 @@ static void pkcs11_ctx_free(void *ctx)
 	free(ctx);
 }
 
-static int pkcs11_init(void *ctx, const char *config)
+static int pkcs11_init(_unused_ void *ctx, const char *config, _unused_ void *handle)
 {
 	/*
 	 * Current keystore initialization is idempotent. We don't really

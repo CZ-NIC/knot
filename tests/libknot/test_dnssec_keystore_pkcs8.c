@@ -25,7 +25,7 @@ int main(void)
 	int r = dnssec_keystore_init_pkcs8(&store);
 	ok(r == KNOT_EOK, "dnssec_keystore_init_pkcs8()");
 
-	r = dnssec_keystore_init(store, dir);
+	r = dnssec_keystore_init(store, dir, NULL);
 	ok(r == KNOT_EOK, "init");
 
 	r = dnssec_keystore_open(store, dir, NULL);

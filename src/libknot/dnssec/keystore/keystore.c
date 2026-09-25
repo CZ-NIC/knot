@@ -60,13 +60,13 @@ int dnssec_keystore_deinit(dnssec_keystore_t *store)
 }
 
 _public_
-int dnssec_keystore_init(dnssec_keystore_t *store, const char *config)
+int dnssec_keystore_init(dnssec_keystore_t *store, const char *config, void *handle)
 {
 	if (!store) {
 		return KNOT_EINVAL;
 	}
 
-	return store->functions->init(store->ctx, config);
+	return store->functions->init(store->ctx, config, handle);
 }
 
 _public_

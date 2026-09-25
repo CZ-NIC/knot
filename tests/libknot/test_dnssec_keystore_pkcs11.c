@@ -380,7 +380,7 @@ int main(int argc, char *argv[])
 
 	// key store access
 
-	r = dnssec_keystore_init(store, config);
+	r = dnssec_keystore_init(store, config, NULL);
 	ok(r == KNOT_EOK, "dnssec_keystore_init()");
 
 	r = dnssec_keystore_open(store, config, NULL);

@@ -64,7 +64,7 @@ int dnssec_keystore_deinit(dnssec_keystore_t *store);
 /*!
  * Initialize new private key store.
  */
-int dnssec_keystore_init(dnssec_keystore_t *store, const char *config);
+int dnssec_keystore_init(dnssec_keystore_t *store, const char *config, void *handle);
 
 /*!
  * Open private key store.
