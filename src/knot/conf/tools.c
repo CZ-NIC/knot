@@ -759,7 +759,7 @@ int check_keystore(
 		args->err_str = "no PKCS #11 configuration defined";
 		return KNOT_EINVAL;
 	}
-	if (conf_opt(&backend) != KEYSTORE_BACKEND_PKCS11 && conf_bool(&key_label)) {
+	if (conf_opt(&backend) == KEYSTORE_BACKEND_PEM && conf_bool(&key_label)) {
 		args->err_str = "key labels not supported with the specified keystore";
 		return KNOT_EINVAL;
 	}
