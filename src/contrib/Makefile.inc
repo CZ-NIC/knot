@@ -54,6 +54,8 @@ libcontrib_la_SOURCES = \
 	contrib/os.h				\
 	contrib/qp-trie/trie.c			\
 	contrib/qp-trie/trie.h			\
+	contrib/rdb/common.c			\
+	contrib/rdb/common.h			\
 	contrib/redis/redismodule.h		\
 	contrib/semaphore.c			\
 	contrib/semaphore.h			\

@@ -8,12 +8,8 @@
 #include "knot/conf/conf.h"
 #include "knot/zone/node.h"
 #include "redis/knot.h"
+#include "contrib/rdb/common.h"
 
-#ifdef ENABLE_REDIS
-#include <hiredis/hiredis.h>
-#else // ENABLE_REDIS
-struct redisContext;
-#endif // ENABLE_REDIS
 struct zone_contents;
 
 typedef char zone_redis_err_t[128];
@@ -39,21 +35,6 @@ typedef struct {
  */
 struct redisContext *zone_redis_connect(conf_t *conf, bool require_master);
 void zone_redis_disconnect(struct redisContext *ctx, bool pool_save);
-
-/*!
- * \brief Check if the conection to the DB is still alive.
- */
-bool zone_redis_ping(struct redisContext *ctx);
-
-/*!
- * \brief Check the connected DB role.
- *
- * \retval -1	Error
- * \retval  0	Master
- * \retval  1	Replica
- * \retval  2	Sentinel
- */
-int zone_redis_role(struct redisContext *ctx);
 
 /*!
  * \brief Start a writing stransaction into Redis zone database.
