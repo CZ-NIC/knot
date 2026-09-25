@@ -33,6 +33,7 @@
 static const knot_lookup_t keystore_backends[] = {
 	{ KEYSTORE_BACKEND_PEM,    "pem" },
 	{ KEYSTORE_BACKEND_PKCS11, "pkcs11" },
+	{ KEYSTORE_BACKEND_ZONEDB, "zonedb" },
 	{ 0, NULL }
 };
 
