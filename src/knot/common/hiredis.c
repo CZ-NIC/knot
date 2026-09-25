@@ -325,7 +325,7 @@ redisContext *rdb_connect(conf_t *conf, bool require_master, const char *info)
 
 		rdb = (void *)conn_pool_get(global_redis_pool, &addr, &addr, NULL);
 		if (rdb != NULL && (intptr_t)rdb != CONN_POOL_FD_INVALID) {
-			role = zone_redis_role(rdb);
+			role = rdb_role(rdb);
 			if (!require_master || role == 0) {
 				goto connected;
 			}
@@ -345,7 +345,7 @@ redisContext *rdb_connect(conf_t *conf, bool require_master, const char *info)
 			continue;
 		}
 
-		role = zone_redis_role(rdb);
+		role = rdb_role(rdb);
 		if (role == 0) { // Master
 			goto connected;
 		} else if (role == 1 && !require_master) { // Replica
@@ -403,27 +403,4 @@ void rdb_disconnect(redisContext *rdb, bool pool_save)
 	if (rdb != NULL && (intptr_t)rdb != CONN_POOL_FD_INVALID) {
 		redisFree(rdb);
 	}
-}
-
-bool rdb_compatible(redisContext *rdb)
-{
-	if (rdb == NULL) {
-		return false;
-	}
-
-#ifdef ENDIANITY_LITTLE
-  #define ENDIAN 1
-#else
-  #define ENDIAN 0
-#endif
-
-	const char *lua = "local n=1; local s=string.dump(function() return n end); " \
-	                  "local e=string.byte(s,7); if e==0 then return 0 else return 1 end";
-
-	redisReply *reply = redisCommand(rdb, "EVAL %s 0", lua);
-	bool res = (reply != NULL &&
-	            reply->type == REDIS_REPLY_INTEGER &&
-	            reply->integer == ENDIAN);
-	freeReplyObject(reply);
-	return res;
 }
