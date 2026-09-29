@@ -1451,6 +1451,7 @@ static void wire_tsig_rcode_to_str(rrset_dump_params_t *p)
 
 static void wire_svcb_paramkey_to_str(rrset_dump_params_t *p)
 {
+	CHECK_INMAX(2)
 	uint16_t param_key = knot_wire_read_u16(p->in);
 	const knot_lookup_t *type = knot_lookup_by_id(knot_svcb_param_names, param_key);
 
