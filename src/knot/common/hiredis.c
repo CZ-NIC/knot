@@ -264,9 +264,20 @@ static int get_master(redisContext *rdb, char *out, size_t out_len, int *port)
 	}
 
 	redisReply *first_master = masters_reply->element[0];
-	const char *master_name = NULL;
+	if (first_master == NULL || first_master->type != REDIS_REPLY_ARRAY ||
+	    first_master->elements % 2 != 0) {
+		freeReplyObject(masters_reply);
+		return KNOT_EINVAL;
+	}
 
+	const char *master_name = NULL;
 	for (size_t j = 0; j < first_master->elements; j += 2) {
+		if (first_master->element[j] == NULL || first_master->element[j + 1] == NULL ||
+		    first_master->element[j]->type != REDIS_REPLY_STRING ||
+		    first_master->element[j + 1]->type != REDIS_REPLY_STRING) {
+			freeReplyObject(masters_reply);
+			return KNOT_EINVAL;
+		}
 		const char *field = first_master->element[j]->str;
 		const char *value = first_master->element[j + 1]->str;
 		if (strcmp(field, "name") == 0) {
@@ -283,8 +294,9 @@ static int get_master(redisContext *rdb, char *out, size_t out_len, int *port)
 	                                      master_name);
 	freeReplyObject(masters_reply);
 
-	if (addr_reply == NULL || addr_reply->type != REDIS_REPLY_ARRAY ||
-	    addr_reply->elements != 2) {
+	if (addr_reply == NULL || addr_reply->type != REDIS_REPLY_ARRAY || addr_reply->elements != 2 ||
+	    addr_reply->element[0] == NULL || addr_reply->element[0]->type != REDIS_REPLY_STRING ||
+	    addr_reply->element[1] == NULL || addr_reply->element[1]->type != REDIS_REPLY_STRING) {
 		if (addr_reply != NULL) {
 			freeReplyObject(addr_reply);
 		}
