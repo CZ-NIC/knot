@@ -185,6 +185,23 @@ static void rem_align_pointers(knot_tcp_conn_t *to_rem, knot_tcp_table_t *table)
 	}
 }
 
+static void readd_align_pointers(knot_tcp_conn_t *to_readd, knot_tcp_table_t *table)
+{
+	assert(!conn_removed(to_readd));
+	if (table->next_close == NULL) {
+		table->next_close = to_readd;
+	}
+	if (table->next_ibuf == NULL && to_readd->inbuf.iov_len > 0) {
+		table->next_ibuf = to_readd;
+	}
+	if (table->next_obuf == NULL && knot_tcp_outbufs_usage(to_readd->outbufs) > 0) {
+		table->next_obuf = to_readd;
+	}
+	if (table->next_resend == NULL && knot_tcp_outbufs_usage(to_readd->outbufs) > 0) {
+		table->next_resend = to_readd;
+	}
+}
+
 static void tcp_table_remove_conn(knot_tcp_conn_t **todel)
 {
 	rem_node(tcp_conn_node(*todel)); // remove from timeout double-linked list
@@ -309,6 +326,8 @@ int knot_tcp_recv(knot_tcp_relay_t *relay, knot_xdp_msg_t *msg,
 			conn->acked = msg->ackno;
 			knot_tcp_outbufs_ack(&conn->outbufs, msg->ackno, &tcp_table->outbufs_total);
 		}
+
+		readd_align_pointers(conn, tcp_table);
 	}
 
 	relay->msg = msg;
