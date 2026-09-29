@@ -186,6 +186,15 @@ class ModWhoami(KnotModule):
     def __init__(self):
         super().__init__()
 
+class ModEcs(KnotModule):
+    '''ECS module'''
+
+    mod_name = "ecs"
+    empty = True
+
+    def __init__(self):
+        super().__init__()
+
 class ModOnlineSign(KnotModule):
     '''Online-sign module'''
 
