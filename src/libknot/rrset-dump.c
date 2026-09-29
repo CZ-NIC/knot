@@ -1721,6 +1721,7 @@ static int ber_to_oid(char *dst,
 		return KNOT_EINVAL;
 	}
 
+	bool non_empty = false;
 	uint64_t node = 0UL;
 	for (int i = 1; i <= len; ++i) {
 		uint8_t longer_node = (src[i] & longer_mask);
@@ -1732,9 +1733,10 @@ static int ber_to_oid(char *dst,
 			dst += ret;
 			dst_len -= ret;
 			node = 0UL;
+			non_empty = true;
 		}
 	}
-	*(dst - 1) = '\0';
+	*(dst - (non_empty ? 1 : 0)) = '\0';
 
 	return KNOT_EOK;
 }
