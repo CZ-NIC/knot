@@ -7,3 +7,4 @@
 /fuzz_zscanner
 /fuzz_dname_to_str
 /fuzz_dname_from_str
+/fuzz_dnssec_verify
