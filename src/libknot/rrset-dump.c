@@ -1453,6 +1453,7 @@ static void wire_tsig_rcode_to_str(rrset_dump_params_t *p)
 
 static void wire_generic_paramkey_to_str(rrset_dump_params_t *p, const knot_lookup_t *names)
 {
+	CHECK_INMAX(2)
 	uint16_t param_key = knot_wire_read_u16(p->in);
 	const knot_lookup_t *type = knot_lookup_by_id(names, param_key);
 
