@@ -1148,7 +1148,12 @@ static void wire_ednsoptval_to_str(rrset_dump_params_t *p, uint16_t opt, uint16_
 		dump_string(p, "\"");
 		break;
 	case KNOT_EDNS_OPTION_CHAIN:
-		wire_dname_to_str(p);
+		if (knot_dname_wire_check(p->in, p->in + p->in_max, NULL) > 0) {
+			wire_dname_to_str(p);
+		} else {
+			p->in += len;
+			p->in_max -= len;
+		}
 		break;
 	case KNOT_EDNS_OPTION_EDE:
 		wire_num16_to_str(p);
