@@ -596,6 +596,7 @@ void test_obufs(void)
 	rl.conn->window_size = 65536;
 	knot_tcp_outbuf_t *surv_ob = rl.conn->outbufs;
 	ok(surv_ob != NULL, "obufs: unACKed survived");
+	ok(test_table->next_obuf != NULL, "obufs: next pointer not NULL");
 	assert(surv_ob);
 	ok(surv_ob->next == NULL, "obufs: just one survived");
 	ok(!surv_ob->sent, "obufs: survivor not sent");
