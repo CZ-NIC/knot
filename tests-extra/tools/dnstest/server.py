@@ -682,7 +682,8 @@ class Server(object):
 
     def dig(self, rname, rtype, rclass="IN", udp=None, serial=None, timeout=None,
             tries=3, flags="", bufsize=None, edns=None, nsid=False, dnssec=False,
-            de=False, log_no_sep=False, tsig=None, addr=None, source=None, xdp=None):
+            de=False, log_no_sep=False, tsig=None, addr=None, source=None, xdp=None,
+            ecs=None):
 
         # Convert one item zone list to zone name.
         if isinstance(rname, list):
@@ -754,7 +755,7 @@ class Server(object):
                 dig_flags += " +z"
 
         # Set EDNS.
-        if edns != None or bufsize or nsid or de:
+        if edns != None or bufsize or nsid or de or ecs:
             class NsidFix(object):
                 '''Old pythondns doesn't implement NSID option.'''
                 def __init__(self):
@@ -774,16 +775,20 @@ class Server(object):
                 payload = 1232
             dig_flags += " +bufsize=%i" % payload
 
+            options = []
+
             if nsid:
                 if not hasattr(dns, 'version') or dns.version.MAJOR == 1:
-                    options = [NsidFix()]
+                    options.append(NsidFix())
                 else:
-                    options = [dns.edns.GenericOption(dns.edns.NSID, b'')]
+                    options.append(dns.edns.GenericOption(dns.edns.NSID, b''))
                 dig_flags += " +nsid"
-            else:
-                options = None
 
-            query.use_edns(edns=edns, payload=payload, options=options)
+            if ecs:
+                options.append(dns.edns.ECSOption(ecs[0], ecs[1]))
+                dig_flags += " +subnet=%s/%s" % ecs
+
+            query.use_edns(edns=edns, payload=payload, options=options or None)
 
             if de:
                 query.ednsflags |= (1<<13)

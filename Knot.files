@@ -306,6 +306,7 @@ src/knot/modules/cookies/cookies.c
 src/knot/modules/dnserr/dnserr.c
 src/knot/modules/dnsproxy/dnsproxy.c
 src/knot/modules/dnstap/dnstap.c
+src/knot/modules/ecs/ecs.c
 src/knot/modules/geoip/geodb.c
 src/knot/modules/geoip/geodb.h
 src/knot/modules/geoip/geoip.c
