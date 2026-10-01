@@ -2,6 +2,7 @@
 
 import ctypes
 import enum
+import re
 import warnings
 import libknot
 
@@ -282,6 +283,39 @@ class KnotCtl(object):
         else:
             out[zone][owner][rtype]["data"].append(data)
 
+    def _receive_status(self, out, reply):
+
+       rtype = reply[KnotCtlDataIdx.TYPE]
+       data = reply[KnotCtlDataIdx.DATA]
+       filters = reply[KnotCtlDataIdx.FILTERS]
+
+       if rtype:
+           if rtype == "configure":
+               out[rtype] = dict()
+               for line in data.splitlines():
+                   line = line.strip()
+                   if not line:
+                       continue
+
+                   key, value = line.split(":", 1)
+                   out[rtype][key.strip()] = value.strip()
+           elif rtype == "workers":
+               out[rtype] = dict()
+               for key, value in re.findall(r'([\w ]+):\s*(\d+)', data):
+                   out[rtype][key.strip()] = int(value)
+
+               # Fix nested background workers names
+               if "running" in out[rtype]:
+                   out[rtype]["background workers running"] = out[rtype].pop("running")
+               if "pending" in out[rtype]:
+                   out[rtype]["background workers pending"] = out[rtype].pop("pending")
+           else:
+               out[rtype] = data
+       elif 'l' in filters:
+           out["status"] = "Loading"
+       else:
+           out["status"] = "Running"
+
     def _receive_stats(self, out, reply):
 
         zone = reply[KnotCtlDataIdx.ZONE]
@@ -365,6 +399,9 @@ class KnotCtl(object):
                     self._receive_zone(out, reply)
                 else:
                     self._receive_zone_status(out, reply)
+            # Check for status data.
+            elif reply[KnotCtlDataIdx.COMMAND] == "status":
+                self._receive_status(out, reply)
             else:
                 continue
 
