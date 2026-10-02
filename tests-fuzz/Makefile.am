@@ -11,7 +11,8 @@ FUZZERS = \
 	fuzz_zscanner		\
 	fuzz_dname_to_str	\
 	fuzz_dname_from_str	\
-	fuzz_dnssec_verify
+	fuzz_dnssec_verify	\
+	fuzz_tsig
 
 check_PROGRAMS = $(FUZZERS)
 
@@ -50,6 +51,13 @@ fuzz_dnssec_verify_LDADD    = \
 	$(top_builddir)/src/libcontrib.la	\
 	$(lmdb_LIBS)
 
+fuzz_tsig_SOURCES  = fuzz_tsig.c
+fuzz_tsig_CPPFLAGS = $(AM_CPPFLAGS)
+fuzz_tsig_LDADD    = \
+	$(top_builddir)/src/libknot.la		\
+	$(top_builddir)/src/libcontrib.la	\
+	$(lmdb_LIBS)
+
 if OSS_FUZZ
 
 # CFLAGS, LDFLAGS, etc. are defined by the oss-fuzz environment; just link
@@ -60,6 +68,7 @@ fuzz_zscanner_LDADD       += ${LIB_FUZZING_ENGINE} -lc++
 fuzz_dname_to_str_LDADD   += ${LIB_FUZZING_ENGINE} -lc++
 fuzz_dname_from_str_LDADD += ${LIB_FUZZING_ENGINE} -lc++
 fuzz_dnssec_verify_LDADD  += ${LIB_FUZZING_ENGINE} -lc++
+fuzz_tsig_LDADD           += ${LIB_FUZZING_ENGINE} -lc++
 
 else
 
@@ -80,6 +89,9 @@ fuzz_dname_from_str_LDFLAGS   = ${fuzzer_LDFLAGS}
 fuzz_dnssec_verify_CPPFLAGS += ${fuzzer_CFLAGS}
 fuzz_dnssec_verify_LDFLAGS   = ${fuzzer_LDFLAGS}
 
+fuzz_tsig_CPPFLAGS += ${fuzzer_CFLAGS}
+fuzz_tsig_LDFLAGS   = ${fuzzer_LDFLAGS}
+
 # Ensure that fuzzers execute successfully with a benign input
 
 TESTS = check/check_fuzzers.test
@@ -92,6 +104,7 @@ fuzz_zscanner_SOURCES       += main.c
 fuzz_dname_to_str_SOURCES   += main.c
 fuzz_dname_from_str_SOURCES += main.c
 fuzz_dnssec_verify_SOURCES  += main.c
+fuzz_tsig_SOURCES           += main.c
 
 TESTS = $(FUZZERS)
 
