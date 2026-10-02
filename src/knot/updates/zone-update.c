@@ -242,6 +242,7 @@ int zone_update_from_contents(zone_update_t *update, zone_t *zone_without_conten
 		if (ret != KNOT_EOK) {
 			free(update->a_ctx);
 			update->a_ctx = NULL;
+			update->new_cont = NULL;
 			knot_sem_post(&update->zone->cow_lock);
 			return ret;
 		}
@@ -251,6 +252,7 @@ int zone_update_from_contents(zone_update_t *update, zone_t *zone_without_conten
 			changeset_clear(&update->change);
 			free(update->a_ctx);
 			update->a_ctx = NULL;
+			update->new_cont = NULL;
 			knot_sem_post(&update->zone->cow_lock);
 			return KNOT_ENOMEM;
 		}
@@ -262,6 +264,7 @@ int zone_update_from_contents(zone_update_t *update, zone_t *zone_without_conten
 		changeset_clear(&update->change);
 		free(update->a_ctx);
 		update->a_ctx = NULL;
+		update->new_cont = NULL;
 		knot_sem_post(&update->zone->cow_lock);
 		return ret;
 	}
