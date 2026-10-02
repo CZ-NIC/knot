@@ -37,7 +37,7 @@ def send_up_bg(up):
     threading.Thread(target=send_update, args=[up]).start()
 
 def check_blocked(server, zname):
-    return server.log_search(r"\[%s\]" % zname, "blocked by")
+    return server.log_search(r"\[%s\].*blocked by" % zname)
 
 t.start()
 
