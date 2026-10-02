@@ -884,8 +884,8 @@ class Server(object):
             raise Failed("Can't send RAW data (%d bytes) to server='%s'" %
                          (len(data), self.name))
 
-    def log_search(self, pattern, pattern2=None):
-        return fsearch(self.fout, pattern, pattern2) or fsearch(self.ferr, pattern, pattern2)
+    def log_search(self, pattern):
+        return fsearch(self.fout, pattern) or fsearch(self.ferr, pattern)
 
     def log_search_count(self, pattern):
         return fsearch_count(self.fout, pattern) + fsearch_count(self.ferr, pattern)

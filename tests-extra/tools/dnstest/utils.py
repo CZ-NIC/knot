@@ -58,10 +58,10 @@ def ssearch(s, pattern):
     else:
         return found.groups()[0]
 
-def fsearch(fname, pattern, pattern2=None):
+def fsearch(fname, pattern):
     with open(fname) as f:
         for line in f:
-            if re.search(pattern, line) and (pattern2 is None or re.search(pattern2, line)):
+            if re.search(pattern, line):
                 return True
     return False
 
