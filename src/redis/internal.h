@@ -342,11 +342,16 @@ static int rrset_key_set(RedisModuleCtx *ctx, rrset_k key, RedisModuleString *ke
 	if (zone_keytype != REDISMODULE_KEYTYPE_EMPTY &&
 	    zone_keytype != REDISMODULE_KEYTYPE_ZSET) {
 		RedisModule_CloseKey(zone_index_key);
+		/* ModuleTypeSetValue() transferred ownership of val to key.
+		 * Roll back the key on failure; DeleteKey() invokes the module
+		 * type destructor, so val must not be freed directly. */
+		RedisModule_DeleteKey(key);
 		return KNOT_EMALF;
 	}
 	int ret = RedisModule_ZsetAdd(zone_index_key, evaluate_score(rtype), keyname, NULL);
 	if (ret != REDISMODULE_OK) {
 		RedisModule_CloseKey(zone_index_key);
+		RedisModule_DeleteKey(key);
 		return KNOT_ENOMEM;
 	}
 	RedisModule_CloseKey(zone_index_key);
@@ -1052,7 +1057,6 @@ static void zone_store_bin_format(RedisModuleCtx *ctx, const arg_dname_t *origin
 		RedisModule_FreeString(ctx, rrset_keyname);
 		RedisModule_CloseKey(rrset_key);
 		if (ret != KNOT_EOK) {
-			RedisModule_Free(rrset);
 			RedisModule_ReplyWithError(ctx, RDB_ESTORE);
 			return;
 		}
