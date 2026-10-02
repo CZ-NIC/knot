@@ -2582,6 +2582,11 @@ static int ctl_lock(server_t *server, ctl_lock_flag_t flags, struct timespec *ts
 		ret = pthread_rwlock_rdlock(&server->ctl_lock);
 #endif
 	}
+
+	if (ret != 0 && (flags & CTL_LOCK_SRV_E)) {
+		pthread_mutex_unlock(&server->ctl_lock_ex);
+	}
+
 	return (ret != 0 ? KNOT_EBUSY : KNOT_EOK);
 }
 
