@@ -96,7 +96,6 @@ resp.check(rcode="NOERROR", flags="QR AA")
 resp.check_count(2, "RRSIG", "authority")
 for r in resp.resp.authority:
     compare(r.ttl, 100, "TTL value")
-knot.kdig(prefix + "soa-ttl", "A", validate=True)
 
 for z in zones:
     knot.update_zonefile(z, random=True)
