@@ -232,8 +232,8 @@ static bool verify_ocsp(gnutls_session_t *session)
 		WARN("TLS, error reading OCSP response");
 		goto cleanup;
 	}
-	if (status == GNUTLS_OCSP_CERT_REVOKED) {
-		WARN("TLS, OCSP data shows that cert was revoked");
+	if (status != GNUTLS_OCSP_CERT_GOOD) {
+		WARN("TLS, OCSP data shows that cert is not valid");
 		goto cleanup;
 	}
 	if (next_upd == -1) {
