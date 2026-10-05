@@ -1196,6 +1196,13 @@ static int check_zone_or_tpl(
 			CONF_LOG(LOG_NOTICE, "'zonefile-load: whole' not compatible with 'journal-content: all'");
 		}
 	}
+	if (zf_load_val == ZONEFILE_LOAD_DIFSE || zf_load_val == ZONEFILE_LOAD_DIFF) {
+		conf_val_t master = conf_get_wrap(args, C_MASTER);
+		if (master.code == KNOT_EOK) {
+			args->err_str = "'zonefile-load: difference[-no-serial]' disallowed for secondary zones";
+			return KNOT_EINVAL;
+		}
+	}
 
 	conf_val_t signing = conf_get_wrap(args, C_DNSSEC_SIGNING);
 	if (conf_bool(&signing)) {
