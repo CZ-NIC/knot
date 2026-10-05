@@ -483,7 +483,7 @@ load_end:
 		(void)snprintf(new_serial_str, sizeof(new_serial_str), " -> %u", new_serial);
 	}
 
-	/* Heursitsics: this catches most of the cases when the zone load doesn'T
+	/* Heuristics: this catches most of the cases when the zone load doesn't
 	 * introduce any change to zone contents and external validation is useless.
 	 */
 	if (!zone_journal_same_serial(up.zone, new_serial)) {
