@@ -1811,7 +1811,8 @@ class Knot(Server):
         if have_catalog is not None:
             s.id_item("id", "catalog-default")
             s.item_str("file", self.dir + "/catalog/%s.zone")
-            s.item_str("zonefile-load", "difference-no-serial")
+            if not have_catalog.masters:
+                s.item_str("zonefile-load", "difference-no-serial")
             s.item_type("journal-content", "all")
 
             # this is weird but for the sake of testing, the cataloged zones inherit dnssec policy from catalog zone
@@ -1852,7 +1853,7 @@ class Knot(Server):
             if zone in self.conf["external"]:
                 s.item("external-validation", z.name)
 
-            if "zonefile_load" not in self.conf["zone"][zone] and z.ixfr:
+            if "zonefile_load" not in self.conf["zone"][zone] and z.ixfr and not z.masters:
                 s.item_str("zonefile-load", "difference")
 
             if z.catalog_role == ZoneCatalogRole.GENERATE:
