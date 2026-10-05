@@ -76,10 +76,10 @@ static int self_key(gnutls_x509_privkey_t *privkey, const char *key_file, int ui
 		return ret;
 	}
 
-	int fd = open(key_file, O_RDONLY);
+	int fd = open(key_file, O_NOFOLLOW | O_CLOEXEC | O_RDONLY);
 	if (fd != -1) {
 		struct stat stat;
-		if (fstat(fd, &stat) != 0 ||
+		if (fstat(fd, &stat) != 0 || !S_ISREG(stat.st_mode) ||
 		    (data.data = gnutls_malloc(stat.st_size)) == NULL ||
 		    read(fd, data.data, stat.st_size) != stat.st_size) {
 			ret = GNUTLS_E_KEYFILE_ERROR;
@@ -92,7 +92,7 @@ static int self_key(gnutls_x509_privkey_t *privkey, const char *key_file, int ui
 		if (ret != GNUTLS_E_SUCCESS) {
 			goto finish;
 		}
-	} else {
+	} else if (errno == ENOENT) {
 		ret = gnutls_x509_privkey_generate(*privkey, GNUTLS_PK_EDDSA_ED25519,
 		                                   GNUTLS_CURVE_TO_BITS(GNUTLS_ECC_CURVE_ED25519), 0);
 		if (ret != GNUTLS_E_SUCCESS) {
@@ -101,13 +101,23 @@ static int self_key(gnutls_x509_privkey_t *privkey, const char *key_file, int ui
 
 		ret = gnutls_x509_privkey_export2_pkcs8(*privkey, GNUTLS_X509_FMT_PEM, NULL,
 		                                        GNUTLS_PKCS_PLAIN, &data);
-		if (ret != GNUTLS_E_SUCCESS ||
-		    (fd = open(key_file, O_WRONLY | O_CREAT, 0600)) == -1 ||
-		    fchown(fd, uid, gid) < 0 ||
-		    write(fd, data.data, data.size) != data.size) {
+		if (ret != GNUTLS_E_SUCCESS) {
+			goto finish;
+		}
+
+		if ((fd = open(key_file, O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC | O_WRONLY, 0600)) == -1) {
 			ret = GNUTLS_E_KEYFILE_ERROR;
 			goto finish;
 		}
+
+		if (fchown(fd, uid, gid) < 0 || write(fd, data.data, data.size) != data.size) {
+			unlink(key_file);
+			ret = GNUTLS_E_KEYFILE_ERROR;
+			goto finish;
+		}
+	} else {
+		ret = GNUTLS_E_KEYFILE_ERROR;
+		goto finish;
 	}
 
 finish:
