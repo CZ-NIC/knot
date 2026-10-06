@@ -812,7 +812,7 @@ static int upd_load_txt(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 
 static int upd_load_bin(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 {
-	if (argc < 3) {
+	if (argc < 4) {
 		return RedisModule_WrongArity(ctx);
 	}
 
