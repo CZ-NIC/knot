@@ -1901,15 +1901,16 @@ static void zone_load(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t 
 		wire_ctx_skip(&w, owner_len);
 		uint16_t rtype = wire_ctx_read_u16(&w);
 		RedisModule_Assert(w.error == KNOT_EOK);
-		RedisModule_FreeString(ctx, el);
 
 		if (opt_owner != NULL &&
 		    (opt_owner->len != owner_len || memcmp(owner, opt_owner->data, owner_len) != 0)) {
 			RedisModule_CloseKey(rrset_key);
+			RedisModule_FreeString(ctx, el);
 			continue;
 		}
 		if (opt_rtype != NULL && rtype != *opt_rtype) {
 			RedisModule_CloseKey(rrset_key);
+			RedisModule_FreeString(ctx, el);
 			continue;
 		}
 
@@ -1929,10 +1930,12 @@ static void zone_load(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t 
 			rrset_out.rrs = rrset->rrs;
 			if (dump_rrset(ctx, &rrset_out, buf, sizeof(buf), &count, mode) != 0) {
 				RedisModule_CloseKey(rrset_key);
+				RedisModule_FreeString(ctx, el);
 				break;
 			}
 		}
 		RedisModule_CloseKey(rrset_key);
+		RedisModule_FreeString(ctx, el);
 	}
 	RedisModule_ZsetRangeStop(index_key);
 	RedisModule_CloseKey(index_key);
@@ -2146,7 +2149,6 @@ static void upd_commit(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t
 		uint16_t rtype = wire_ctx_read_u16(&w);
 
 		diff_k diff_key = RedisModule_OpenKey(ctx, el, REDISMODULE_READ);
-		RedisModule_FreeString(ctx, el);
 		const diff_v *diff = RedisModule_ModuleTypeGetValue(diff_key);
 		RedisModule_Assert(diff != NULL);
 
@@ -2167,9 +2169,11 @@ static void upd_commit(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t
 			               err, owner_str, rtype_str);
 			RedisModule_CloseKey(upd_key);
 			RedisModule_CloseKey(meta_key);
+			RedisModule_FreeString(ctx, el);
 			RedisModule_ReplyWithError(ctx, msg);
 			return;
 		}
+		RedisModule_FreeString(ctx, el);
 	}
 
 	// Check if SOA serial was explicitly incremented; compute new serial otherwise.
@@ -2228,7 +2232,6 @@ static void upd_commit(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t
 		uint16_t rtype = wire_ctx_read_u16(&w);
 
 		diff_k diff_key = RedisModule_OpenKey(ctx, el, REDISMODULE_READ | REDISMODULE_WRITE);
-		RedisModule_FreeString(ctx, el);
 		diff_v *diff = RedisModule_ModuleTypeGetValue(diff_key);
 		RedisModule_Assert(diff != NULL);
 
@@ -2253,6 +2256,7 @@ static void upd_commit(RedisModuleCtx *ctx, const arg_dname_t *origin, rdb_txn_t
 		}
 
 		RedisModule_CloseKey(diff_key);
+		RedisModule_FreeString(ctx, el);
 	}
 	knot_wire_write_u16((uint8_t *)meta + offsetof(upd_meta_storage_t, depth), ++depth);
 	RedisModule_DeleteKey(upd_key);
@@ -2330,16 +2334,17 @@ static int upd_dump(RedisModuleCtx *ctx, index_k index_key, const arg_dname_t *o
 		wire_ctx_skip(&w, owner_len);
 		uint16_t rtype = wire_ctx_read_u16(&w);
 		RedisModule_Assert(w.error == KNOT_EOK);
-		RedisModule_FreeString(ctx, el);
 
 		if (opt_owner != NULL &&
 		    (opt_owner->len != owner_len || memcmp(owner, opt_owner->data, owner_len) != 0)) {
 			RedisModule_CloseKey(diff_key);
+			RedisModule_FreeString(ctx, el);
 			continue;
 		}
 
 		if (opt_rtype != NULL && rtype != *opt_rtype) {
 			RedisModule_CloseKey(diff_key);
+			RedisModule_FreeString(ctx, el);
 			continue;
 		}
 
@@ -2363,6 +2368,7 @@ static int upd_dump(RedisModuleCtx *ctx, index_k index_key, const arg_dname_t *o
 			rrset_out.rrs = diff->rem_rrs;
 			if (dump_rrset(ctx, &rrset_out, buf, sizeof(buf), &count_sub, mode) != 0) {
 				RedisModule_CloseKey(diff_key);
+				RedisModule_FreeString(ctx, el);
 				break;
 			}
 			RedisModule_ReplySetArrayLength(ctx, count_sub);
@@ -2373,12 +2379,14 @@ static int upd_dump(RedisModuleCtx *ctx, index_k index_key, const arg_dname_t *o
 			rrset_out.rrs = diff->add_rrs;
 			if (dump_rrset(ctx, &rrset_out, buf, sizeof(buf), &count_sub, mode) != 0) {
 				RedisModule_CloseKey(diff_key);
+				RedisModule_FreeString(ctx, el);
 				break;
 			}
 			RedisModule_ReplySetArrayLength(ctx, count_sub);
 		}
 		count++;
 		RedisModule_CloseKey(diff_key);
+		RedisModule_FreeString(ctx, el);
 	}
 	RedisModule_ZsetRangeStop(index_key);
 	RedisModule_ReplySetArrayLength(ctx, count);
