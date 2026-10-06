@@ -36,8 +36,11 @@ else:
 
 knot.dnssec(zones).enable = True
 knot.conf_zone(zones).serial_modulo = "%d/%d" % (MODULO_A, MODULO_B)
-knot.conf_zone(zones).zonefile_load = "difference-no-serial"
 knot.conf_zone(zones).journal_content = "all"
+if "xfr" in SCENARIO:
+    knot.conf_zone(zones).zonefile_load = "none"
+else:
+    knot.conf_zone(zones).zonefile_load = "difference-no-serial"
 
 detail_log("SCENARIO " + SCENARIO)
 t.start()
