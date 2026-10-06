@@ -51,7 +51,9 @@ source.ctl("zone-flush", wait=True)
 
 if "ddns" in SCENARIO:
     for z in zones:
-        source.random_ddns(z, allow_empty=False)
+        up = source.update(z)
+        up.add("test", "60", "TXT", "test")
+        up.send("NOERROR")
 else:
     for z in zones:
         source.zones[z.name].zfile.update_rnd()
