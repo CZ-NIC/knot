@@ -1576,8 +1576,12 @@ static void zone_info(RedisModuleCtx *ctx, arg_dname_t *origin, rdb_txn_t *txn)
 			RedisModule_ReplyWithError(ctx, RDB_ECORRUPTED);
 			return;
 		}
-		zone_info_cb(zones_index, origin_str, value, &sctx);
-		RedisModule_FreeString(ctx, value);
+		if (value != NULL) {
+			zone_info_cb(zones_index, origin_str, value, &sctx);
+			RedisModule_FreeString(ctx, value);
+		} else {
+			RedisModule_ReplyWithError(ctx, RDB_EZONE);
+		}
 		RedisModule_FreeString(ctx, origin_str);
 	} else {
 		RedisModuleScanCursor *cursor = RedisModule_ScanCursorCreate();
