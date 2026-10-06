@@ -123,7 +123,7 @@ static void set_rcodes(list_t *requests, const uint16_t rcode)
 	ptrnode_t *node;
 	WALK_LIST(node, *requests) {
 		knot_request_t *req = node->d;
-		if (knot_wire_get_rcode(req->resp->wire) == KNOT_RCODE_NOERROR) {
+		if (req->resp != NULL && knot_wire_get_rcode(req->resp->wire) == KNOT_RCODE_NOERROR) {
 			knot_wire_set_rcode(req->resp->wire, rcode);
 		}
 	}
