@@ -606,7 +606,7 @@ static void log_next_event(kdnssec_ctx_t *ctx, roll_action_t *next)
 }
 
 
-static int exec_new_signatures(kdnssec_ctx_t *ctx, knot_kasp_key_t *newkey, uint32_t active_retire_delay)
+static int exec_new_signatures(kdnssec_ctx_t *ctx, knot_kasp_key_t *newkey, knot_timediff_t active_retire_delay)
 {
 	if (newkey->is_ksk) {
 		log_zone_notice(ctx->zone->dname, "DNSSEC, KSK submission, confirmed");
@@ -911,7 +911,7 @@ int knot_dnssec_key_rollover(kdnssec_ctx_t *ctx, zone_sign_roll_flags_t flags,
 	return ret;
 }
 
-int knot_dnssec_ksk_sbm_confirm(kdnssec_ctx_t *ctx, uint32_t retire_delay)
+int knot_dnssec_ksk_sbm_confirm(kdnssec_ctx_t *ctx, knot_timediff_t retire_delay)
 {
 	if (ctx->policy->manual) {
 		log_zone_warning(ctx->zone->dname, "DNSSEC, ignoring KSK submission "
