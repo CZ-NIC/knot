@@ -7,7 +7,6 @@ Test of update delay.
 from dnstest.utils import *
 from dnstest.test import Test
 import random
-import threading
 import time
 
 t = Test()
@@ -37,15 +36,6 @@ def increment_serials(server, zones, serials):
 def zones_wait_eq(server, zones, serials):
     return server.zones_wait(zones, serials, greater=True, equal=True)
 
-def send_update(up):
-    try:
-        up.try_send()
-    except:
-        pass
-
-def send_up_bg(up):
-    threading.Thread(target=send_update, args=[up]).start()
-
 t.start()
 serials = master.zones_wait(zones)
 serials = zones_wait_eq(slave, zones, serials) # initial AXFR: without delay
@@ -53,7 +43,7 @@ serials = zones_wait_eq(slave, zones, serials) # initial AXFR: without delay
 for z in zones:
     up = master.update(z)
     up.add("test-update-delay-add", 3600, "A", "1.2.3.4")
-    send_up_bg(up)
+    up.try_send_bg()
 
 increment_serials(master, zones, serials)
 serials = zones_wait_eq(master, zones, serials) # DDNS processing with delay

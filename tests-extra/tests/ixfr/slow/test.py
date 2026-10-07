@@ -27,15 +27,6 @@ master.conf_srv().tcp_io_timeout = 4000
 def slow_ixfr(server, zname, serial):
     server.kdig(zname, "IXFR=" + str(serial), msgdelay=MSGDELAY)
 
-def send_update(up):
-    try:
-        up.try_send()
-    except:
-        pass
-
-def send_up_bg(up):
-    threading.Thread(target=send_update, args=[up]).start()
-
 def check_blocked(server, zname):
     return server.log_search(r"\[%s\].*blocked by" % zname)
 
@@ -54,13 +45,13 @@ for i in range(5):
 
     upf = master.update(zone_freq)
     upf.add(owner, 3600, "A", "1.2.3.4")
-    send_up_bg(upf)
+    upf.try_send_bg()
 
     t.sleep(0.5)
 
     ups = master.update(zone_slow) # updating slow zone checks that it is still protected by locks by itself
     ups.add(owner, 3600, "A", "1.2.3.4")
-    send_up_bg(ups)
+    ups.try_send_bg()
 
     t.sleep(0.5)
 

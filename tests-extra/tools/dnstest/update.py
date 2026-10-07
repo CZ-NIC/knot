@@ -4,9 +4,19 @@ import dns.query
 import dns.update
 import random
 import ssl
+import threading
 
 from dnstest.utils import *
 from dnstest.knsupdate import Knsupdate
+
+def dnstest_update_try_send(update, noexcept):
+    if noexcept:
+        try:
+            return update.try_send()
+        except:
+            return None
+    else:
+        return update.try_send()
 
 class Update(object):
     '''DNS update context'''
@@ -94,6 +104,11 @@ class Update(object):
         detail_log(SEP)
 
         return rc
+
+    def try_send_bg(self, inhibit_exceptions=True):
+        t = threading.Thread(target=dnstest_update_try_send, args=[self, inhibit_exceptions])
+        t.start()
+        return t
 
     def query_size(self):
         '''Return update query size.'''
