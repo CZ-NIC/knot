@@ -323,6 +323,13 @@
 	action _r_dname_init {
 		s->dname = rdata_tail;
 	}
+	action _r_dname_check {
+		// Rough check that a dname of the maximum size can fit into rdata.
+		if (s->dname + ZS_MAX_DNAME_LENGTH > rdata_stop + 1) {
+			WARN(ZS_RDATA_OVERFLOW);
+			fhold; fgoto err_line;
+		}
+	}
 	action _r_dname_tolower {
 		if (s->to_lower) {
 			dname_to_lower(s->dname);
@@ -332,7 +339,8 @@
 		rdata_tail += s->dname_tmp_length;
 	}
 
-	r_dname = dname >_r_dname_init %_r_dname_exit;
+	r_dname       = dname >_r_dname_init                   %_r_dname_exit;
+	r_dname_check = dname >_r_dname_init >_r_dname_check   %_r_dname_exit;
 	r_dname_lower = dname >_r_dname_init %_r_dname_tolower %_r_dname_exit;
 	# END
 
@@ -1879,7 +1887,7 @@
 	svcb_dohpath  = (text                                         >_item_length2_init %_item_length2_exit);
 	deleg_mandat_ = ((deleg_mandat_va . ("," . deleg_mandat_va)*) >_item_length2_init %_item_length2_exit);
 	deleg_mandat  = deleg_mandat_ >_mandatory_init %_mandatory_exit;
-	deleg_name    = ((r_dname         . ("," . r_dname)*)         >_item_length2_init %_item_length2_exit);
+	deleg_name    = ((r_dname_check   . ("," . r_dname_check)*)   >_item_length2_init %_item_length2_exit);
 
 	svcb_param_generic   = (svcb_key_generic   . svcb_generic);
 	svcb_param_mandatory = (svcb_key_mandatory . "=" . (svcb_mandat  | ('\"' . svcb_mandat  . '\"')));
