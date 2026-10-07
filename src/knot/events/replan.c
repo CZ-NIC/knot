@@ -20,9 +20,17 @@
  */
 static void replan_ddns(zone_t *zone, zone_t *old_zone)
 {
+	assert(zone != old_zone);
+
+	pthread_mutex_lock(&old_zone->ddns_lock);
+	assert(list_size(&old_zone->ddns_queue) == old_zone->ddns_queue_size);
+
 	if (old_zone->ddns_queue_size == 0) {
+		pthread_mutex_unlock(&old_zone->ddns_lock);
 		return;
 	}
+
+	pthread_mutex_lock(&zone->ddns_lock);
 
 	ptrnode_t *node;
 	WALK_LIST(node, old_zone->ddns_queue) {
@@ -31,6 +39,13 @@ static void replan_ddns(zone_t *zone, zone_t *old_zone)
 	zone->ddns_queue_size += old_zone->ddns_queue_size;
 
 	ptrlist_free(&old_zone->ddns_queue, NULL);
+	old_zone->ddns_queue_size = 0;
+
+	pthread_mutex_unlock(&old_zone->ddns_lock);
+
+	assert(list_size(&zone->ddns_queue) == zone->ddns_queue_size);
+
+	pthread_mutex_unlock(&zone->ddns_lock);
 
 	zone_events_schedule_now(zone, ZONE_EVENT_UPDATE);
 }
