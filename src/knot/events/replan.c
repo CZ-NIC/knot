@@ -28,7 +28,7 @@ static void replan_ddns(zone_t *zone, zone_t *old_zone)
 	WALK_LIST(node, old_zone->ddns_queue) {
 		ptrlist_add(&zone->ddns_queue, node->d, NULL);
 	}
-	zone->ddns_queue_size = old_zone->ddns_queue_size;
+	zone->ddns_queue_size += old_zone->ddns_queue_size;
 
 	ptrlist_free(&old_zone->ddns_queue, NULL);
 
