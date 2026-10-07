@@ -7,7 +7,6 @@ from dnstest.test import Test
 import glob
 import random
 import shutil
-import threading
 
 t = Test(tsig=False) # TSIG prevents zone_wait(catz)
 
