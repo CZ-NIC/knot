@@ -9,7 +9,6 @@ import os
 import random
 import time
 import hashlib
-import threading
 import shutil
 
 UPDATES = 132
@@ -33,15 +32,6 @@ knot.zone_wait(catz, tsig=True)
 
 check_names = list()
 
-def send_update(up):
-    try:
-        up.try_send()
-    except:
-        pass
-
-def send_up_bg(up):
-    threading.Thread(target=send_update, args=[up]).start()
-
 for i in range(UPDATES):
     zone_add = "member%d." % i
     name_hash = hashlib.md5(zone_add.encode()).hexdigest()
@@ -50,7 +40,7 @@ for i in range(UPDATES):
 
     up = knot.update(catz)
     up.add(name_hash + ".zones", 0, "PTR", zone_add)
-    send_up_bg(up)
+    up.try_send_bg()
 
     if i % 2 == 1:
         t.sleep(random.choice([1.5, 2, 2.5]))

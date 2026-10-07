@@ -20,22 +20,13 @@ slave = t.server("knot", address="127.0.0.4", via=True)
 zones = t.zone("example.")
 zone = zones[0]
 
-def send_update(up):
-    try:
-        up.try_send()
-    except:
-        pass
-
-def send_up_bg(up):
-    threading.Thread(target=send_update, args=[up]).start()
-
 def updating():
     i = 0
     while RUNNING:
         for s in [masterA, masterB]:
             up = s.update(zone)
             up.add("xxx" + str(i), i, "A", "1.2.3." + str(i))
-            send_up_bg(up)
+            up.try_send_bg()
             t.sleep(1)
             i = i + 1
 
