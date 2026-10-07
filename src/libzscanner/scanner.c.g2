@@ -72473,11 +72473,25 @@ tr2655:
 	{
 		s->dname = rdata_tail;
 	}
+	{
+		// Rough check that a dname of the maximum size can fit into rdata.
+		if (s->dname + ZS_MAX_DNAME_LENGTH > rdata_stop + 1) {
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st338;}
+		}
+	}
 	{ p--; {stack[top++] = 1037;goto st340;} }
 	goto st1037;
 tr2780:
 	{
 		s->dname = rdata_tail;
+	}
+	{
+		// Rough check that a dname of the maximum size can fit into rdata.
+		if (s->dname + ZS_MAX_DNAME_LENGTH > rdata_stop + 1) {
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st338;}
+		}
 	}
 	{ p--; {stack[top++] = 1037;goto st340;} }
 	goto st1037;
@@ -75391,11 +75405,25 @@ tr2654:
 	{
 		s->dname = rdata_tail;
 	}
+	{
+		// Rough check that a dname of the maximum size can fit into rdata.
+		if (s->dname + ZS_MAX_DNAME_LENGTH > rdata_stop + 1) {
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st338;}
+		}
+	}
 	{ p--; {stack[top++] = 1091;goto st340;} }
 	goto st1091;
 tr2790:
 	{
 		s->dname = rdata_tail;
+	}
+	{
+		// Rough check that a dname of the maximum size can fit into rdata.
+		if (s->dname + ZS_MAX_DNAME_LENGTH > rdata_stop + 1) {
+			WARN(ZS_RDATA_OVERFLOW);
+			p--; {goto st338;}
+		}
 	}
 	{ p--; {stack[top++] = 1091;goto st340;} }
 	goto st1091;
