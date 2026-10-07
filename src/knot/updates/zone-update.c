@@ -1265,8 +1265,11 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 	zone_t *parent_z = process_query_zone_find(update->new_cont->apex->owner, KNOT_RRTYPE_DS,
 	                                           true, update->zone->server->zone_db);
 	if (parent_z != update->zone && parent_z != NULL && parent_z->contents != NULL) {
+		rcu_read_lock();
 		const zone_node_t *parent_n = zone_contents_find_node(parent_z->contents, update->new_cont->apex->owner);
-		if (!knot_rdataset_eq(node_rdataset(parent_n, KNOT_RRTYPE_NS), node_rdataset(update->new_cont->apex, KNOT_RRTYPE_NS))) {
+		bool eq = knot_rdataset_eq(node_rdataset(parent_n, KNOT_RRTYPE_NS), node_rdataset(update->new_cont->apex, KNOT_RRTYPE_NS));
+		rcu_read_unlock();
+		if (!eq) {
 			log_zone_warning(update->new_cont->apex->owner, "zone and parent NS RRsets mismatch");
 		}
 	}
