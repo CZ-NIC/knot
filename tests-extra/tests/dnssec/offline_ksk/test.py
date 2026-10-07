@@ -207,7 +207,7 @@ out = signer.sign_ksr(ZONE, KSR)
 writef(SKR, out)
 
 cripple_skr(SKR, SKR_BROKEN)
-_, _, err = Keymgr.run_check(knot.confile, ZONE, "validate-skr", SKR_BROKEN)
+_, _, err = Keymgr.run_fail(knot.confile, ZONE, "validate-skr", SKR_BROKEN)
 if err.split()[0].casefold() != "error:":
     set_err("keymgr validate-skr")
     detail_log(err)
