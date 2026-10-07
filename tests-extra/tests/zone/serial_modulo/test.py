@@ -36,8 +36,11 @@ else:
 
 knot.dnssec(zones).enable = True
 knot.conf_zone(zones).serial_modulo = "%d/%d" % (MODULO_A, MODULO_B)
-knot.conf_zone(zones).zonefile_load = "difference-no-serial"
 knot.conf_zone(zones).journal_content = "all"
+if "xfr" in SCENARIO:
+    knot.conf_zone(zones).zonefile_load = "none"
+else:
+    knot.conf_zone(zones).zonefile_load = "difference-no-serial"
 
 detail_log("SCENARIO " + SCENARIO)
 t.start()
@@ -48,7 +51,9 @@ source.ctl("zone-flush", wait=True)
 
 if "ddns" in SCENARIO:
     for z in zones:
-        source.random_ddns(z, allow_empty=False)
+        up = source.update(z)
+        up.add("test", "60", "TXT", "test")
+        up.send("NOERROR")
 else:
     for z in zones:
         source.zones[z.name].zfile.update_rnd()

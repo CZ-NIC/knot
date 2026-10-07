@@ -1811,28 +1811,29 @@ class Knot(Server):
         if have_catalog is not None:
             s.id_item("id", "catalog-default")
             s.item_str("file", self.dir + "/catalog/%s.zone")
-            s.item_str("zonefile-load", "difference-no-serial")
+            if not have_catalog.masters:
+                s.item_str("zonefile-load", "difference-no-serial")
             s.item_type("journal-content", "all")
 
             # this is weird but for the sake of testing, the cataloged zones inherit dnssec policy from catalog zone
-            s.item_str("dnssec-signing", "on" if z.dnssec.enable else "off")
+            s.item_str("dnssec-signing", "on" if have_catalog.dnssec.enable else "off")
             s.item_str("dnssec-policy", z.name)
-            for module in z.modules:
+            for module in have_catalog.modules:
                 if module.conf_name == "mod-onlinesign":
                     s.item("module", "[%s]" % module.get_conf_ref())
 
-            self.config_xfr(z, s)
+            self.config_xfr(have_catalog, s)
 
             s.id_item("id", "catalog-signed")
             s.item_str("file", self.dir + "/catalog/%s.zone")
-            s.item_type("journal-content", self.conf_zone(z).journal_content)
+            s.item_type("journal-content", self.conf_zone(have_catalog).journal_content)
             s.item_str("dnssec-signing", "on")
-            self.config_xfr(z, s)
+            self.config_xfr(have_catalog, s)
 
             s.id_item("id", "catalog-unsigned")
             s.item_str("file", self.dir + "/catalog/%s.zone")
-            s.item_type("journal-content", self.conf_zone(z).journal_content)
-            self.config_xfr(z, s)
+            s.item_type("journal-content", self.conf_zone(have_catalog).journal_content)
+            self.config_xfr(have_catalog, s)
         s.end()
 
         s.begin("zone")
@@ -1852,7 +1853,7 @@ class Knot(Server):
             if zone in self.conf["external"]:
                 s.item("external-validation", z.name)
 
-            if "zonefile_load" not in self.conf["zone"][zone] and z.ixfr:
+            if "zonefile_load" not in self.conf["zone"][zone] and z.ixfr and not z.masters:
                 s.item_str("zonefile-load", "difference")
 
             if z.catalog_role == ZoneCatalogRole.GENERATE:
