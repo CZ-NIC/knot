@@ -46,7 +46,7 @@ knot_kasp_key_t *knot_dnssec_key2retire(kdnssec_ctx_t *ctx, knot_kasp_key_t *new
  *
  * \return KNOT_E*
  */
-int knot_dnssec_ksk_sbm_confirm(kdnssec_ctx_t *ctx, uint32_t retire_delay);
+int knot_dnssec_ksk_sbm_confirm(kdnssec_ctx_t *ctx, knot_timediff_t retire_delay);
 
 /*!
  * \brief Is there a key in submission phase?
