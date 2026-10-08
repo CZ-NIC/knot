@@ -127,5 +127,8 @@ origin-case.rEcoRDs.	A	1.2.3.4
 *.loop1 CNAME a.loop2
 *.loop2 CNAME a.loop1
 
+; NSEC3 apex owner but regular RRtype
+QBNK2KAJPOTMR8N8UMINQJTBHKMDR26V TXT "nsec3 apex"
+
 ; Reported bugs
 3.1.1.1.1.1.1.1.1.2.7.9.9 NAPTR 1 1 "u" "E2U+sip" "!^.*$!sip:123@freeswitch.org!" .
