@@ -209,6 +209,9 @@ wild-cname	CNAME	*.expanded.wildcard-cname2
 mx-additional MX 10 jump.wildcard-additional
 *.wildcard-additional A 1.2.3.4
 
+; NSEC3 apex owner but regular RRtype
+MD4GCVSDCTE8750I58VQSM0N17FE4QR2 TXT "nsec3 apex"
+
 ; Really long CNAME loop
 ab      CNAME   bc
 bc      CNAME   cd
