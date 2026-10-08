@@ -1,3 +1,46 @@
+Knot DNS 3.6.1 (2026-10-09)
+===========================
+
+Features:
+---------
+ - mod-ecs: new module for setting the ECS scope prefix length (Thanks to Branko Mijuskovic)
+
+Improvements:
+-------------
+ - knotd: additional SOA consistency checks when processing incoming XFR
+ - knotd: DDNS over 0-RTT QUIC/TLS is forbidden
+ - knotd: new warning if difference(-no-serial) is enabled on a secondary zone
+ - knotc: control blocking timeout is per full command, not per each zone
+ - kdig: backward compatibility for +noidn as an alias for +noidnout
+ - libknot: extra checks for malformed IPv4 and TCP packets in XDP filter (Thanks to Joshua Rogers)
+ - src,tests: various compatibility fixes for SmartOS #980
+ - doc: various improvements
+
+Bugfixes:
+---------
+ - knotd: missing synchronization between catalog reload and worker suspension
+ - knotd: race condition between pausing/resuming events, zonedb update, and reload/conf-commit
+ - knotd: non-consumed DoT 0-RTT early data can cause memory exhaustion (Thanks to Yuxiao Wu)
+ - knotd: server can crash if NSEC3-enabled zone has empty NSEC3 chain (Thanks to Yuxiao Wu)
+ - knotd: server sends 3 session tickets over DoQ
+ - knotd: missing checks for malformed sentinel-related replies from Redis (Thanks to Joshua Rogers)
+ - knotd: defective error handling during zone update (Thanks to Joshua Rogers)
+ - knotd: defective TSIG MAC truncation processing (Thanks to Joshua Rogers)
+ - knotd: zone update commit reads parent zone contents without RCU protection (Thanks to Joshua Rogers)
+ - knotd: parent-check TTL can overflow KSK retirement delay (Thanks to Joshua Rogers)
+ - knotd: missing DDNS queue synchronization during reload (Thanks to Joshua Rogers)
+ - keymgr: validate-skr returns success for cryptographically invalid SKR signatures (Thanks to Joshua Rogers)
+ - kdig: missing check for malformed EDNS/REPORTCHANNEL data (Thanks to Joshua Rogers)
+ - libknot: defective output buffer handling in TCP over XDP
+ - libknot: auto-generated TLS key file follows symlinks (Thanks to Joshua Rogers)
+ - libknot: missing checks for malformed data in rrset-dump (Thanks to Joshua Rogers)
+ - libzsanner: possible out-of-bounds write when parsing DELEG/DELEGPARAM dname (Thanks to Joshua Rogers)
+ - redis: possible use-after-free when rrset index update fails (Thanks to Joshua Rogers)
+ - redis: incorrect arity check for KNOT_BIN.UPD.LOAD (Thanks to Joshua Rogers)
+ - redis: KNOT.ZONE.INFO crashes on nonexistent zone (Thanks to Joshua Rogers)
+ - redis: update commit uses freed zset element buffer while applying updates (Thanks to Joshua Rogers)
+ - python: receive_block() doesn't return data from the 'status' command
+
 Knot DNS 3.6.0 (2026-09-08)
 ===========================
 
