@@ -6,20 +6,9 @@ from dnstest.test import Test
 from dnstest.utils import *
 import zone_generate
 import random
-import threading
 import time
 
 RND_LABEL_ORD = 0
-
-def send_update(up):
-    try:
-        up.try_send()
-    except:
-        pass
-
-def send_up_bg(up):
-    threading.Thread(target=send_update, args=[up]).start()
-    time.sleep(0.2)
 
 def rnd_label(): # including trailing dot
     global RND_LABEL_ORD
@@ -42,11 +31,11 @@ def check_faulty_update(faulty_up, server, zone, expect_fail, expect_faulty):
     serial = server.zone_wait(zone) # instant
 
     if test_first:
-        send_up_bg(test_up)
-        send_up_bg(faulty_up)
+        test_up.try_send_bg()
+        faulty_up.try_send_bg()
     else:
-        send_up_bg(faulty_up)
-        send_up_bg(test_up)
+        faulty_up.try_send_bg()
+        test_up.try_send_bg()
 
     server.ctl("zone-thaw " + zone.name)
 
