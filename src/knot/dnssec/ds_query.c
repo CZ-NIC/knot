@@ -261,7 +261,7 @@ int knot_parent_ds_query(conf_t *conf, kdnssec_ctx_t *kctx, struct server *serve
 		    knot_time_cmp(key->timing.active, kctx->now) > 0) {
 			assert(key->is_ksk);
 			if (parents_have_ds(conf, kctx, key, server, timeout, &max_ds_ttl)) {
-				return knot_dnssec_ksk_sbm_confirm(kctx, max_ds_ttl + kctx->policy->ksk_sbm_delay);
+				return knot_dnssec_ksk_sbm_confirm(kctx, (knot_timediff_t)max_ds_ttl + kctx->policy->ksk_sbm_delay);
 			} else {
 				return KNOT_ENOENT;
 			}

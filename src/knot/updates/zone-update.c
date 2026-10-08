@@ -219,14 +219,32 @@ int zone_update_from_contents(zone_update_t *update, zone_t *zone_without_conten
 		return KNOT_EINVAL;
 	}
 
-	memset(update, 0, sizeof(*update));
-	update->zone = zone_without_contents;
-	update->flags = flags;
-	update->new_cont = new_cont;
+	changeset_t ch = { 0 };
+	if (flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) {
+		int ret = changeset_init(&ch, zone_without_contents->name);
+		if (ret != KNOT_EOK) {
+			return ret;
+		}
 
-	update->a_ctx = calloc(1, sizeof(*update->a_ctx));
-	if (update->a_ctx == NULL) {
+		ch.soa_from = node_create_rrset(new_cont->apex, KNOT_RRTYPE_SOA);
+		if (ch.soa_from == NULL) {
+			changeset_clear(&ch);
+			return KNOT_ENOMEM;
+		}
+	}
+
+	apply_ctx_t *a_ctx = calloc(1, sizeof(*a_ctx));
+	if (a_ctx == NULL) {
+		changeset_clear(&ch);
 		return KNOT_ENOMEM;
+	}
+
+	uint32_t apply_flags = (flags & UPDATE_STRICT) ? APPLY_STRICT : 0;
+	int ret = apply_init_ctx(a_ctx, new_cont, apply_flags | APPLY_UNIFY_FULL);
+	if (ret != KNOT_EOK) {
+		free(a_ctx);
+		changeset_clear(&ch);
+		return ret;
 	}
 
 	if (zone_without_contents->control_update != NULL) {
@@ -234,37 +252,16 @@ int zone_update_from_contents(zone_update_t *update, zone_t *zone_without_conten
 		                 "blocked zone update due to open control transaction");
 	}
 
-	knot_sem_wait(&update->zone->cow_lock);
-	update->a_ctx->cow_mutex = &update->zone->cow_lock;
+	knot_sem_wait(&zone_without_contents->cow_lock);
+	a_ctx->cow_mutex = &zone_without_contents->cow_lock;
 
-	if (flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) {
-		int ret = changeset_init(&update->change, zone_without_contents->name);
-		if (ret != KNOT_EOK) {
-			free(update->a_ctx);
-			update->a_ctx = NULL;
-			knot_sem_post(&update->zone->cow_lock);
-			return ret;
-		}
+	memset(update, 0, sizeof(*update));
+	update->zone = zone_without_contents;
+	update->flags = flags;
+	update->new_cont = new_cont;
 
-		update->change.soa_from = node_create_rrset(new_cont->apex, KNOT_RRTYPE_SOA);
-		if (update->change.soa_from == NULL) {
-			changeset_clear(&update->change);
-			free(update->a_ctx);
-			update->a_ctx = NULL;
-			knot_sem_post(&update->zone->cow_lock);
-			return KNOT_ENOMEM;
-		}
-	}
-
-	uint32_t apply_flags = (update->flags & UPDATE_STRICT) ? APPLY_STRICT : 0;
-	int ret = apply_init_ctx(update->a_ctx, update->new_cont, apply_flags | APPLY_UNIFY_FULL);
-	if (ret != KNOT_EOK) {
-		changeset_clear(&update->change);
-		free(update->a_ctx);
-		update->a_ctx = NULL;
-		knot_sem_post(&update->zone->cow_lock);
-		return ret;
-	}
+	update->a_ctx = a_ctx;
+	update->change = ch;
 
 	return KNOT_EOK;
 }
@@ -1262,8 +1259,11 @@ int zone_update_commit(conf_t *conf, zone_update_t *update)
 	zone_t *parent_z = process_query_zone_find(update->new_cont->apex->owner, KNOT_RRTYPE_DS,
 	                                           true, update->zone->server->zone_db);
 	if (parent_z != update->zone && parent_z != NULL && parent_z->contents != NULL) {
+		rcu_read_lock();
 		const zone_node_t *parent_n = zone_contents_find_node(parent_z->contents, update->new_cont->apex->owner);
-		if (!knot_rdataset_eq(node_rdataset(parent_n, KNOT_RRTYPE_NS), node_rdataset(update->new_cont->apex, KNOT_RRTYPE_NS))) {
+		bool eq = knot_rdataset_eq(node_rdataset(parent_n, KNOT_RRTYPE_NS), node_rdataset(update->new_cont->apex, KNOT_RRTYPE_NS));
+		rcu_read_unlock();
+		if (!eq) {
 			log_zone_warning(update->new_cont->apex->owner, "zone and parent NS RRsets mismatch");
 		}
 	}

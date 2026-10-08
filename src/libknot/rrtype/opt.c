@@ -254,6 +254,9 @@ int knot_edns_get_options(knot_rrset_t *opt_rr, knot_edns_options_t **out,
 	}
 
 	knot_edns_options_t *options = mm_calloc(mm, 1, sizeof(*options));
+	if (options == NULL) {
+		return KNOT_ENOMEM;
+	}
 
 	wire_ctx_t wire = wire_ctx_init_const(rdata->data, rdata->len);
 

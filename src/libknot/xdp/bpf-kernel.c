@@ -112,7 +112,7 @@ int xdp_redirect_dns_func(struct xdp_md *ctx)
 		if ((void *)ip4 + sizeof(*ip4) > data_end) {
 			return XDP_DROP;
 		}
-		if (ip4->version != 4) {
+		if (ip4->version != 4 || ip4->ihl < 5) {
 			return XDP_DROP;
 		}
 
@@ -208,7 +208,7 @@ int xdp_redirect_dns_func(struct xdp_md *ctx)
 		}
 
 		/* Check that the TCP data offset doesn't extend beyond the end of the packet. */
-		if ((void *)tcp + tcp->doff * 4 > data_end) {
+		if (tcp->doff < 5 || (void *)tcp + tcp->doff * 4 > data_end) {
 			return XDP_DROP;
 		}
 

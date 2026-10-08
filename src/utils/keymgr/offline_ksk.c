@@ -483,10 +483,10 @@ static void skr_validate_header(zs_scanner_t *sc)
 	knot_time_t validity_ts = next_timestamp != 0 ? next_timestamp : ctx->timestamp;
 
 	if (ctx->timestamp > 0 && ctx->ret == KNOT_EOK) {
-		int ret = key_records_verify(&ctx->r, ctx->kctx, ctx->timestamp, validity_ts);
-		if (ret != KNOT_EOK) { // ctx->ret untouched
+		ctx->ret = key_records_verify(&ctx->r, ctx->kctx, ctx->timestamp, validity_ts);
+		if (ctx->ret != KNOT_EOK) {
 			ERR2("invalid SignedKeyResponse for %"KNOT_TIME_PRINTF" (%s)",
-			     ctx->timestamp, knot_strerror(ret));
+			     ctx->timestamp, knot_strerror(ctx->ret));
 		}
 		key_records_clear_rdatasets(&ctx->r);
 	}

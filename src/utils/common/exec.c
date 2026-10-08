@@ -289,6 +289,8 @@ static void print_dname(const uint8_t *data, uint16_t len)
 {
 	if (len == 0) {
 		printf("(empty)");
+	} else if (knot_dname_wire_check(data, data + len, NULL) <= 0) {
+		printf("(invalid)");
 	} else {
 		char str[KNOT_DNAME_TXT_MAXLEN] = "";
 		knot_dname_to_str(str, data, sizeof(str));

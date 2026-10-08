@@ -1148,7 +1148,12 @@ static void wire_ednsoptval_to_str(rrset_dump_params_t *p, uint16_t opt, uint16_
 		dump_string(p, "\"");
 		break;
 	case KNOT_EDNS_OPTION_CHAIN:
-		wire_dname_to_str(p);
+		if (knot_dname_wire_check(p->in, p->in + p->in_max, NULL) > 0) {
+			wire_dname_to_str(p);
+		} else {
+			p->in += len;
+			p->in_max -= len;
+		}
 		break;
 	case KNOT_EDNS_OPTION_EDE:
 		wire_num16_to_str(p);
@@ -1453,6 +1458,7 @@ static void wire_tsig_rcode_to_str(rrset_dump_params_t *p)
 
 static void wire_generic_paramkey_to_str(rrset_dump_params_t *p, const knot_lookup_t *names)
 {
+	CHECK_INMAX(2)
 	uint16_t param_key = knot_wire_read_u16(p->in);
 	const knot_lookup_t *type = knot_lookup_by_id(names, param_key);
 
@@ -1715,6 +1721,7 @@ static int ber_to_oid(char *dst,
 		return KNOT_EINVAL;
 	}
 
+	bool non_empty = false;
 	uint64_t node = 0UL;
 	for (int i = 1; i <= len; ++i) {
 		uint8_t longer_node = (src[i] & longer_mask);
@@ -1726,9 +1733,10 @@ static int ber_to_oid(char *dst,
 			dst += ret;
 			dst_len -= ret;
 			node = 0UL;
+			non_empty = true;
 		}
 	}
-	*(dst - 1) = '\0';
+	*(dst - (non_empty ? 1 : 0)) = '\0';
 
 	return KNOT_EOK;
 }
