@@ -18,16 +18,15 @@ typedef struct {
 	size_t buf_size;
 	uint8_t *buf;
 	struct dnssec_digest_ctx *digest_ctx;
-	const zone_node_t *apex;
 	bool ignore_dnssec;
 } contents_digest_ctx_t;
 
-static int digest_rrset(knot_rrset_t *rrset, const zone_node_t *node, void *vctx)
+static int digest_rrset(knot_rrset_t *rrset, bool is_apex, void *vctx)
 {
 	contents_digest_ctx_t *ctx = vctx;
 
 	// ignore apex ZONEMD
-	if (node == ctx->apex && rrset->type == KNOT_RRTYPE_ZONEMD) {
+	if (is_apex && rrset->type == KNOT_RRTYPE_ZONEMD) {
 		return KNOT_EOK;
 	}
 
@@ -37,7 +36,7 @@ static int digest_rrset(knot_rrset_t *rrset, const zone_node_t *node, void *vctx
 	}
 
 	// ignore RRSIGs of apex ZONEMD
-	if (node == ctx->apex && rrset->type == KNOT_RRTYPE_RRSIG) {
+	if (is_apex && rrset->type == KNOT_RRTYPE_RRSIG) {
 		knot_rdataset_t cpy = rrset->rrs, zonemd_rrsig = { 0 };
 		int ret = knot_rdataset_copy(&rrset->rrs, &cpy, NULL);
 		if (ret != KNOT_EOK) {
@@ -69,7 +68,7 @@ static int digest_rrset(knot_rrset_t *rrset, const zone_node_t *node, void *vctx
 	                                   NULL, KNOT_PF_ORIGTTL);
 
 	// cleanup apex RRSIGs mess
-	if (node == ctx->apex && rrset->type == KNOT_RRTYPE_RRSIG) {
+	if (is_apex && rrset->type == KNOT_RRTYPE_RRSIG) {
 		knot_rdataset_clear(&rrset->rrs, NULL);
 	}
 
@@ -80,16 +79,6 @@ static int digest_rrset(knot_rrset_t *rrset, const zone_node_t *node, void *vctx
 	// digest serialized RRSet
 	dnssec_binary_t bufbin = { ret, ctx->buf };
 	return dnssec_digest(ctx->digest_ctx, &bufbin);
-}
-
-static int digest_node(zone_node_t *node, void *ctx)
-{
-	int i = 0, ret = KNOT_EOK;
-	for ( ; i < node->rrset_count && ret == KNOT_EOK; i++) {
-		knot_rrset_t rrset = node_rrset_at(node, i);
-		ret = digest_rrset(&rrset, node, ctx);
-	}
-	return ret;
 }
 
 int zone_contents_digest(const zone_contents_t *contents, int algorithm,
@@ -107,7 +96,6 @@ int zone_contents_digest(const zone_contents_t *contents, int algorithm,
 	contents_digest_ctx_t ctx = {
 		.buf_size = DIGEST_BUF_MIN,
 		.buf = malloc(DIGEST_BUF_MIN),
-		.apex = contents->apex,
 		.ignore_dnssec = ignore_dnssec,
 	};
 	if (ctx.buf == NULL) {
@@ -120,28 +108,26 @@ int zone_contents_digest(const zone_contents_t *contents, int algorithm,
 		return ret;
 	}
 
-	zone_tree_t *conts = contents->nodes;
-	if (!zone_tree_is_empty(contents->nsec3_nodes)) {
-		conts = zone_tree_shallow_copy(conts);
-		if (conts == NULL) {
-			ret = KNOT_ENOMEM;;
-		}
-		if (ret == KNOT_EOK) {
-			ret = zone_tree_merge(conts, contents->nsec3_nodes);
-		}
-	}
+	zone_tree_sorted2rr_it_t it = { 0 };
+	ret = zone_tree_sorted2rr_it_begin(contents->nodes, contents->nsec3_nodes, &it);
+	bool is_apex = true;
 
-	if (ret == KNOT_EOK) {
-		ret = zone_tree_apply(conts, digest_node, &ctx);
-	}
+	while (!zone_tree_sorted2rr_it_finished(&it) && ret == KNOT_EOK) {
+		knot_rrset_t rr = zone_tree_sorted2rr_it_val(&it);
+		if (is_apex && !knot_dname_is_equal(rr.owner, contents->apex->owner)) {
+			is_apex = false;
+		}
 
-	if (conts != contents->nodes) {
-		zone_tree_free(&conts);
+		ret = digest_rrset(&rr, is_apex, &ctx);
+		zone_tree_sorted2rr_it_next(&it);
 	}
+	zone_tree_sorted2rr_it_free(&it);
 
 	dnssec_binary_t res = { 0 };
 	if (ret == KNOT_EOK) {
 		ret = dnssec_digest_finish(ctx.digest_ctx, &res);
+	} else {
+		dnssec_digest_clear(ctx.digest_ctx);
 	}
 	free(ctx.buf);
 	*out_digest = res.data;
