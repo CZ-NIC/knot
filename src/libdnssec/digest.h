@@ -38,6 +38,13 @@ typedef struct dnssec_digest_ctx dnssec_digest_ctx_t;
 int dnssec_digest_init(dnssec_digest_t algorithm, dnssec_digest_ctx_t **out_ctx);
 
 /*!
+ * \brief Free digest context without finishing computation.
+ *
+ * \param ctx    Digest context to be aborted.
+ */
+void dnssec_digest_clear(dnssec_digest_ctx_t *ctx);
+
+/*!
  * \brief Digest data.
  *
  * \param ctx    Digest context.

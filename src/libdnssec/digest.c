@@ -52,7 +52,8 @@ int dnssec_digest_init(dnssec_digest_t algorithm, dnssec_digest_ctx_t **out_ctx)
 	return DNSSEC_EOK;
 }
 
-static void digest_ctx_free(dnssec_digest_ctx_t *ctx)
+_public_
+void dnssec_digest_clear(dnssec_digest_ctx_t *ctx)
 {
 	free_gnutls_hash_ptr(&ctx->gtctx);
 	free(ctx);
@@ -67,7 +68,7 @@ int dnssec_digest(dnssec_digest_ctx_t *ctx, dnssec_binary_t *data)
 
 	int r = gnutls_hash(ctx->gtctx, data->data, data->size);
 	if (r != 0) {
-		digest_ctx_free(ctx);
+		dnssec_digest_clear(ctx);
 		return DNSSEC_DIGEST_ERROR;
 	}
 	return DNSSEC_EOK;
@@ -83,12 +84,12 @@ int dnssec_digest_finish(dnssec_digest_ctx_t *ctx, dnssec_binary_t *out)
 	int r = dnssec_binary_resize(out, ctx->size);
 	if (r < 0) {
 		dnssec_binary_free(out);
-		digest_ctx_free(ctx);
+		dnssec_digest_clear(ctx);
 		return r;
 	}
 
 	gnutls_hash_output(ctx->gtctx, out->data);
 
-	digest_ctx_free(ctx);
+	dnssec_digest_clear(ctx);
 	return DNSSEC_EOK;
 }

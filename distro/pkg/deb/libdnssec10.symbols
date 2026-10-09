@@ -17,6 +17,7 @@ libdnssec.so.10 libdnssec10 #MINVER#
  dnssec_crypto_init@Base 3.5.0
  dnssec_crypto_reinit@Base 3.5.0
  dnssec_digest@Base 3.5.0
+ dnssec_digest_clear@Base 3.5.10
  dnssec_digest_finish@Base 3.5.0
  dnssec_digest_init@Base 3.5.0
  dnssec_key_can_sign@Base 3.5.0
