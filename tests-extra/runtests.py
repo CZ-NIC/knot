@@ -12,12 +12,24 @@ import sys
 import tempfile
 import time
 import traceback
+import subprocess
 
 current_dir = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(os.path.join(current_dir, "tools"))
 from dnstest.context import Context
 import dnstest.params as params
 import dnstest.utils
+
+import ctypes
+import ctypes.util
+
+libc_name = ctypes.util.find_library('c')
+if not libc_name:
+    raise OSError("Could not locate the standard C library.")
+
+libc = ctypes.CDLL(libc_name, use_errno=True)
+
+PR_SET_DUMPABLE = 4
 
 TESTS_DIR = "tests"
 
@@ -83,6 +95,8 @@ def parse_args(cmd_args):
                         action="store_true", help="stop execution on error")
     parser.add_argument("-x", "--xdp", dest="xdp", \
                         action="store_true", help="allow XDP testing")
+    parser.add_argument("--namespaces", dest="namespaces", \
+                        action="store_true", help="use Linux network namespaces for isolation (recommended for --jobs)")
     parser.add_argument("tests", metavar="[:]test[/case]", nargs="*", \
                         help="([exclude] | run) specific (test set | [test case])")
     args = parser.parse_args(cmd_args)
@@ -91,6 +105,7 @@ def parse_args(cmd_args):
     params.repeat = max(int(args.repeat), 0)
     params.jobs = max(int(args.jobs), 1) if args.jobs else 1
     params.addresses = max(int(args.addresses), 1) if args.addresses else 1
+    params.namespaces = args.namespaces
     params.common_data_dir = os.path.join(current_dir, "data")
     params.exit_on_error = args.error_exit
     params.xdp = args.xdp
@@ -157,6 +172,64 @@ def log_failed(log_dir, msg, indent=True):
     print("%s%s" % ("  " if indent else "", msg), file=file)
     file.close()
 
+
+def namespace_worker(uid, gid, module_name, module_entry):
+    try:
+        libc.prctl(15, b"runtests KnotNS-Worker", 0, 0, 0)
+    except Exception:
+        pass
+    os.unshare(os.CLONE_NEWUSER | os.CLONE_NEWNET | os.CLONE_NEWNS)
+
+    if libc.prctl(PR_SET_DUMPABLE, 1, 0, 0, 0) != 0:
+        raise OSError(ctypes.get_errno(), "prctl(PR_SET_DUMPABLE) failed")
+
+    with open("/proc/self/setgroups", "w", encoding="utf-8") as f:
+        f.write("deny\n")
+    with open("/proc/self/uid_map", "w", encoding="utf-8") as f:
+        f.write(f"0 {uid} 1\n")
+    with open("/proc/self/gid_map", "w", encoding="utf-8") as f:
+        f.write(f"0 {gid} 1\n")
+
+    res = subprocess.run(["ip", "link", "set", "lo", "up"],
+                            capture_output=True, text=True, check=False)
+    if res.returncode != 0:
+        raise dnstest.utils.Failed(res.stderr.strip() or res.stdout.strip())
+
+    spec = importlib.util.spec_from_file_location(module_name, module_entry)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+
+def start_namespace(ctx, module_entry):
+    module_name = ctx.module_name
+    uid = os.getuid()
+    gid = os.getgid()
+
+    pid = os.fork()
+    if pid == 0:
+        code = 0
+        try:
+            namespace_worker(uid, gid, module_name, module_entry)
+        except dnstest.utils.Skip:
+            code = 2
+        except BaseException:
+            traceback.print_exc()
+            code = 1
+        finally:
+            if ctx.test:
+                ctx.test.end()
+            os._exit(code)
+
+    _, status = os.waitpid(pid, 0)
+    if os.WIFEXITED(status):
+        rc = os.WEXITSTATUS(status)
+        if rc == 2:
+            raise dnstest.utils.Skip("skipped in namespace")
+        if rc != 0:
+            raise dnstest.utils.Failed(f"test process exited with {rc}")
+    else:
+        raise dnstest.utils.Failed(f"test process killed by signal {os.WTERMSIG(status)}")
+
+
 def job(job_id, tasks, results, stop, done, print_lock):
     case_cnt = 0
     fail_cnt = 0
@@ -211,9 +284,13 @@ def job(job_id, tasks, results, stop, done, print_lock):
 
         try:
             module_entry = os.path.join(ctx.module_path, "test.py")
-            spec = importlib.util.spec_from_file_location(ctx.module_name, module_entry)
-            mod = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(mod)
+
+            if params.namespaces:
+                start_namespace(ctx, module_entry)
+            else:
+                spec = importlib.util.spec_from_file_location(ctx.module_name, module_entry)
+                mod = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(mod)
         except dnstest.utils.Skip as exc:
             progress_print(done.value, print_lock, log.error, case_str_err + "SKIPPED (%s)" % format(exc))
             skip_cnt += 1
