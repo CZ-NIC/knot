@@ -7,6 +7,7 @@
 
 #include "knot/common/systemd.h"
 #include "contrib/strtonum.h"
+#include "contrib/time.h"
 
 #ifdef ENABLE_SYSTEMD
 #include <systemd/sd-daemon.h>
@@ -52,7 +53,9 @@ void systemd_ready_notify(void)
 void systemd_reloading_notify(void)
 {
 #ifdef ENABLE_SYSTEMD
-	sd_notify(0, "RELOADING=1\nSTATUS=");
+	struct timespec now = time_now();
+	uint64_t usec = (uint64_t)now.tv_sec * 1000000 + (uint64_t)now.tv_nsec / 1000;
+	sd_notifyf(0, "RELOADING=1\nMONOTONIC_USEC=%"PRIu64"\nSTATUS=", usec);
 #endif
 }
 
