@@ -139,7 +139,6 @@ check_PROGRAMS += \
 	libknot/test_dnssec_tsig		\
 	libknot/test_control			\
 	libknot/test_cookies			\
-	libknot/test_db				\
 	libknot/test_descriptor			\
 	libknot/test_dname			\
 	libknot/test_dynarray			\
@@ -159,6 +158,11 @@ check_PROGRAMS += \
 	libknot/test_ypschema			\
 	libknot/test_yptrafo			\
 	libknot/test_wire
+
+if HAVE_DAEMON
+check_PROGRAMS += \
+	libknot/test_db
+endif HAVE_DAEMON
 
 if ENABLE_XDP
 AM_CPPFLAGS += $(libbpf_CFLAGS)
