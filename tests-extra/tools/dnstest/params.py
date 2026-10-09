@@ -42,6 +42,9 @@ debug = False
 # Number of available loopback addreeses per each IP version
 addresses = 1
 
+# Use Linux network namespaces for test isolation
+namespaces = False
+
 # Indication of allowed XDP testing
 xdp = False
 

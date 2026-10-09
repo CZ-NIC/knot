@@ -33,7 +33,7 @@ class Test(object):
     XDP_LOCK_FILE = "/tmp/knottest-xdp-lock"
     LOCAL_ADDR_COMMON = {4: "127.0.0.1", 6: "::1"}
     LOCAL_ADDR_MULTI = LOCAL_ADDR_COMMON
-    if params.addresses > 1:
+    if not params.namespaces and params.addresses > 1:
         idx = 1 + Context().job_id % params.addresses
         LOCAL_ADDR_MULTI = {4: "127.0.1.%i" % idx, 6: "::1%i" % idx}
 
@@ -56,7 +56,11 @@ class Test(object):
         self.quic = quic
         self.tls = tls
 
-        if address == 4 or address == 6:
+        self.last_port = None
+
+        if params.namespaces:
+            self.addr = Test.LOCAL_ADDR_COMMON[random.choice([4, 6])]
+        elif address == 4 or address == 6:
             self.addr = Test.LOCAL_ADDR_COMMON[address]
         elif address:
             self.addr = address
@@ -106,14 +110,14 @@ class Test(object):
         min_port = 1500
         max_port = 65000
 
-        port = Test.last_port
+        port = self.last_port
         if port:
             port = port + 1 if port < max_port else min_port
 
         while not self._check_port(port):
             port = random.randint(min_port, max_port)
 
-        Test.last_port = port
+        self.last_port = port
         return port
 
     def _gen_lock_file(self, srvname):
@@ -165,7 +169,9 @@ class Test(object):
         srv.ident = ident
         srv.version = version
 
-        if address == 4 or address == 6:
+        if params.namespaces:
+            srv.addr = self.addr
+        elif address == 4 or address == 6:
             srv.addr = Test.LOCAL_ADDR_COMMON[address]
         elif address:
             srv.addr = address

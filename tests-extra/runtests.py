@@ -8,16 +8,37 @@ import logging
 import multiprocessing
 import os
 import re
+import subprocess
 import sys
 import tempfile
 import time
 import traceback
 
+from subprocess import Popen, PIPE, DEVNULL
+
+PR_SET_DUMPABLE = 4
+
 current_dir = os.path.dirname(os.path.realpath(__file__))
-sys.path.append(os.path.join(current_dir, "tools"))
+tools_dir = os.path.join(current_dir, "tools")
+sys.path.append(tools_dir)
 from dnstest.context import Context
 import dnstest.params as params
 import dnstest.utils
+import dnstest.namespace
+
+import ctypes
+libc = ctypes.CDLL("libc.so.6", use_errno=True)
+
+# int setns(int fd, int nstype);
+_setns = libc.setns
+_setns.argtypes = [ctypes.c_int, ctypes.c_int]
+_setns.restype = ctypes.c_int
+
+INITIAL_NETNS = None
+try:
+    INITIAL_NETNS = os.readlink("/proc/self/ns/net")
+except Exception:
+    pass
 
 TESTS_DIR = "tests"
 
@@ -83,6 +104,8 @@ def parse_args(cmd_args):
                         action="store_true", help="stop execution on error")
     parser.add_argument("-x", "--xdp", dest="xdp", \
                         action="store_true", help="allow XDP testing")
+    parser.add_argument("--namespaces", dest="namespaces", \
+                        action="store_true", help="use Linux network namespaces for isolation (recommended for --jobs)")
     parser.add_argument("tests", metavar="[:]test[/case]", nargs="*", \
                         help="([exclude] | run) specific (test set | [test case])")
     args = parser.parse_args(cmd_args)
@@ -91,6 +114,7 @@ def parse_args(cmd_args):
     params.repeat = max(int(args.repeat), 0)
     params.jobs = max(int(args.jobs), 1) if args.jobs else 1
     params.addresses = max(int(args.addresses), 1) if args.addresses else 1
+    params.namespaces = args.namespaces
     params.common_data_dir = os.path.join(current_dir, "data")
     params.exit_on_error = args.error_exit
     params.xdp = args.xdp
@@ -157,6 +181,55 @@ def log_failed(log_dir, msg, indent=True):
     print("%s%s" % ("  " if indent else "", msg), file=file)
     file.close()
 
+
+def start_namespace(module_name, module_entry):
+    uid = os.getuid()
+    gid = os.getgid()
+
+    pid = os.fork()
+    if pid == 0:
+        code = 0
+        try:
+            os.unshare(os.CLONE_NEWUSER | os.CLONE_NEWNET)
+
+            # Make /proc/self/* owned by us again so we can write the maps.
+            if libc.prctl(PR_SET_DUMPABLE, 1, 0, 0, 0) != 0:
+                raise OSError(ctypes.get_errno(), "prctl(PR_SET_DUMPABLE) failed")
+
+            with open("/proc/self/setgroups", "w") as f:
+                f.write("deny\n")
+            with open("/proc/self/uid_map", "w") as f:
+                f.write(f"0 {uid} 1\n")
+            with open("/proc/self/gid_map", "w") as f:
+                f.write(f"0 {gid} 1\n")
+
+            res = subprocess.run(["ip", "link", "set", "lo", "up"],
+                                 capture_output=True, text=True, check=False)
+            if res.returncode != 0:
+                raise dnstest.utils.Failed(res.stderr.strip() or res.stdout.strip())
+
+            spec = importlib.util.spec_from_file_location(module_name, module_entry)
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+        except dnstest.utils.Skip:
+            code = 2
+        except BaseException:
+            traceback.print_exc()
+            code = 1
+        finally:
+            os._exit(code)
+
+    _, status = os.waitpid(pid, 0)
+    if os.WIFEXITED(status):
+        rc = os.WEXITSTATUS(status)
+        if rc == 2:
+            raise dnstest.utils.Skip("skipped in namespace")
+        if rc != 0:
+            raise dnstest.utils.Failed(f"test process exited with {rc}")
+    else:
+        raise dnstest.utils.Failed(f"test process killed by signal {os.WTERMSIG(status)}")
+
+
 def job(job_id, tasks, results, stop, done, print_lock):
     case_cnt = 0
     fail_cnt = 0
@@ -183,7 +256,7 @@ def job(job_id, tasks, results, stop, done, print_lock):
         if not os.path.isfile(test_file):
             skip_cnt += 1
             done.value += 1
-            progress_print(done.value, print_lock, log.error, case_str_err + "MISSING")
+            progress_print(done.value, print_lock, log.error, case_str_err + "MISSING (0.00s)")
             continue
 
         try:
@@ -209,23 +282,32 @@ def job(job_id, tasks, results, stop, done, print_lock):
             stop.value = True
             continue
 
+        start_time = time.time()
         try:
             module_entry = os.path.join(ctx.module_path, "test.py")
-            spec = importlib.util.spec_from_file_location(ctx.module_name, module_entry)
-            mod = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(mod)
+
+            if params.namespaces:
+                start_namespace(ctx.module_name, module_entry)
+            else:
+                spec = importlib.util.spec_from_file_location(ctx.module_name, module_entry)
+                mod = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(mod)
         except dnstest.utils.Skip as exc:
-            progress_print(done.value, print_lock, log.error, case_str_err + "SKIPPED (%s)" % format(exc))
+            duration = time.time() - start_time
+            time_str = f" ({duration:.2f}s)"
+            progress_print(done.value, print_lock, log.error, case_str_err + "SKIPPED (%s)" % format(exc) + time_str)
             skip_cnt += 1
         except dnstest.utils.Failed as exc:
+            duration = time.time() - start_time
+            time_str = f" ({duration:.2f}s)"
             save_traceback(ctx.out_dir, exc)
 
             desc = format(exc)
             msg = "FAILED (%s)" % (desc if desc else exc.__class__.__name__)
             if ctx.err and ctx.err_msg:
                 msg += " AND (" + ctx.err_msg + ")"
-            progress_print(done.value, print_lock, log.error, case_str_err + msg)
-            log_failed(outs_dir, case_str_fail + msg)
+            progress_print(done.value, print_lock, log.error, case_str_err + msg + time_str)
+            log_failed(outs_dir, case_str_fail + msg + time_str)
 
             if params.debug:
                 print()
@@ -234,12 +316,14 @@ def job(job_id, tasks, results, stop, done, print_lock):
             fail_cnt += 1
             stop.value = True
         except Exception as exc:
+            duration = time.time() - start_time
+            time_str = f" ({duration:.2f}s)"
             save_traceback(ctx.out_dir, exc)
 
             desc = format(exc)
             msg = "EXCEPTION (%s)" % (desc if desc else exc.__class__.__name__)
-            progress_print(done.value, print_lock, log.error, case_str_err + msg)
-            log_failed(outs_dir, case_str_fail + msg)
+            progress_print(done.value, print_lock, log.error, case_str_err + msg + time_str)
+            log_failed(outs_dir, case_str_fail + msg + time_str)
 
             if params.debug:
                 print()
@@ -255,20 +339,21 @@ def job(job_id, tasks, results, stop, done, print_lock):
             else:
                 print()
                 log.info("INTERRUPTED")
-                # Stop servers if still running.
             if ctx.test:
                 ctx.test.end()
             sys.exit(1)
         else:
+            duration = time.time() - start_time
+            time_str = f" ({duration:.2f}s)"
             if ctx.err:
                 msg = "FAILED" + \
                       ((" (" + ctx.err_msg + ")") if ctx.err_msg else "")
-                progress_print(done.value, print_lock, log.info, case_str_err + msg)
-                log_failed(outs_dir, case_str_fail + msg)
+                progress_print(done.value, print_lock, log.info, case_str_err + msg + time_str)
+                log_failed(outs_dir, case_str_fail + msg + time_str)
                 fail_cnt += 1
                 stop.value = True
             else:
-                progress_print(done.value, print_lock, log.info, case_str_err + "OK")
+                progress_print(done.value, print_lock, log.info, case_str_err + "OK" + time_str)
         done.value += 1
         # Stop servers if still running.
         if ctx.test:
@@ -321,7 +406,6 @@ def main(args):
         pass
 
     # Make the symlink in the test directory too.
-    # (For backward compatibility?)
     if os.path.realpath(params.outs_dir) != "/tmp":
         outs_dir_relative = os.path.basename(outs_dir)
         last_link_relative = os.path.join(params.outs_dir,"knottest-last")
