@@ -24,7 +24,6 @@ sys.path.append(tools_dir)
 from dnstest.context import Context
 import dnstest.params as params
 import dnstest.utils
-import dnstest.namespace
 
 import ctypes
 libc = ctypes.CDLL("libc.so.6", use_errno=True)
