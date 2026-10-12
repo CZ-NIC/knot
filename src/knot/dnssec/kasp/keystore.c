@@ -13,7 +13,17 @@
 
 #ifdef ENABLE_REDIS
 #include "knot/common/hiredis.h"
-#endif
+
+static struct redisContext *_connect(void *conf)
+{
+	return rdb_connect(conf, true, " keystore");
+}
+
+static void _disconnect(struct redisContext *ctx, bool pool_save)
+{
+	return rdb_disconnect(ctx, pool_save);
+}
+#endif // ENABLE_REDIS
 
 static char *fix_path(const char *config, const char *base_path)
 {
@@ -38,7 +48,7 @@ int keystore_load(conf_t *conf, const char *config, unsigned backend, const char
 {
 	int ret = KNOT_EINVAL;
 	char *fixed_config = NULL;
-	void *handle = NULL;
+	dnssec_rdb_conn_t conn = { .conf = conf };
 
 	switch (backend) {
 	case KEYSTORE_BACKEND_PEM:
@@ -50,7 +60,11 @@ int keystore_load(conf_t *conf, const char *config, unsigned backend, const char
 		fixed_config = strdup(config);
 		break;
 	case KEYSTORE_BACKEND_ZONEDB:
-		ret = dnssec_keystore_init_rdb(keystore);
+#ifdef ENABLE_REDIS
+		conn.connect =_connect;
+		conn.disconnect = _disconnect;
+#endif // ENABLE_REDIS
+		ret = dnssec_keystore_init_rdb(keystore, &conn);
 		break;
 	default:
 		assert(0);
@@ -59,7 +73,7 @@ int keystore_load(conf_t *conf, const char *config, unsigned backend, const char
 		free(fixed_config);
 		return ret;
 	}
-	if (fixed_config == NULL) {
+	if (fixed_config == NULL && backend != KEYSTORE_BACKEND_ZONEDB) {
 		dnssec_keystore_deinit(*keystore);
 		*keystore = NULL;
 		return KNOT_ENOMEM;

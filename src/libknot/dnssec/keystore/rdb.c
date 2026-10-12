@@ -28,6 +28,7 @@
  * Context for PKCS #8 key directory.
  */
 typedef struct {
+	dnssec_rdb_conn_t conn;
 	redisContext *rdb;
 	char *password;
 } rdb_handle_t;
@@ -119,28 +120,27 @@ static void rdb_ctx_free(void *ctx)
 	free(ctx);
 }
 
-static int rdb_init(void *ctx, _unused_ const char *config, void *conn)
+static int rdb_init(void *ctx, _unused_ const char *config)
 {
-	if (!ctx || !conn) {
+	if (!ctx) {
 		return KNOT_EINVAL;
 	}
 
 	rdb_handle_t *handle = ctx;
-
-	handle->rdb = conn;
 
 	return KNOT_EOK;
 }
 
 static int rdb_open(void *ctx, const char *config, const char *password)
 {
-	if (!ctx || !config) {
+	if (!ctx || config) {
 		return KNOT_EINVAL;
 	}
 
 	rdb_handle_t *handle = ctx;
 
-	if (!rdb_ping(handle->rdb)) {
+	handle->rdb = handle->conn.connect(handle->conn.conf);
+	if (handle->rdb == NULL) {
 		return KNOT_NET_ECONNECT;
 	}
 
@@ -148,6 +148,7 @@ static int rdb_open(void *ctx, const char *config, const char *password)
 	if (password) {
 		pass = strdup(password);
 		if (!pass) {
+			handle->conn.disconnect(handle->rdb, true);
 			return KNOT_ENOMEM;
 		}
 	}
@@ -380,7 +381,7 @@ return 0;
 }
 
 _public_
-int dnssec_keystore_init_rdb(dnssec_keystore_t **store_ptr)
+int dnssec_keystore_init_rdb(dnssec_keystore_t **store_ptr, dnssec_rdb_conn_t *conn)
 {
 	static const keystore_functions_t IMPLEMENTATION = {
 		.ctx_new      = rdb_ctx_new,
@@ -395,7 +396,16 @@ int dnssec_keystore_init_rdb(dnssec_keystore_t **store_ptr)
 		.set_private  = rdb_set_private,
 	};
 
-	return keystore_create(store_ptr, &IMPLEMENTATION);
+	if (conn == NULL || conn->conf == NULL || conn->connect == NULL || conn->disconnect == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	int ret = keystore_create(store_ptr, &IMPLEMENTATION);
+	if (ret == KNOT_EOK) {
+		rdb_handle_t *ctx = (*store_ptr)->ctx;
+		ctx->conn = *conn;
+	}
+	return ret;
 }
 
 #else // ENABLE_REDIS
