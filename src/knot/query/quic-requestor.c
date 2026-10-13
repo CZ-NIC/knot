@@ -252,7 +252,7 @@ int knot_qreq_recv(struct knot_quic_reply *r, struct iovec *out, int timeout_ms)
 		t_cur = time_now();
 		int tdiff = time_diff_ms(&t_start, &t_cur);
 		if (tdiff > timeout_ms) {
-			return KNOT_NET_ETIMEOUT;
+			return KNOT_ETIMEOUT;
 		}
 		int ret = quic_exchange(conn, r, timeout_ms - tdiff);
 		if (ret != KNOT_EOK) {
