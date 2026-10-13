@@ -312,11 +312,19 @@ ssize_t knot_tls_send(knot_tls_conn_t *conn, void *data, size_t size)
 	// Send the buffered data.
 	while (gnutls_record_check_corked(conn->session) > 0) {
 		TIMEOUT_CTX_INIT
+		struct pollfd pfd = {
+			.fd = conn->fd,
+			.events = POLLOUT
+		};
+		if (poll(&pfd, 1, *timeout_ptr) == 0) {
+			return KNOT_ETIMEOUT;
+		}
 		int ret = gnutls_record_uncork(conn->session, 0);
 		if (ret < 0 && gnutls_error_is_fatal(ret) != 0) {
 			return ret == GNUTLS_E_TIMEDOUT ? KNOT_ETIMEOUT :
 			                                  KNOT_NET_ESEND;
 		}
+
 		TIMEOUT_CTX_UPDATE
 		gnutls_record_set_timeout(conn->session, timeout);
 	}
