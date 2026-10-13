@@ -107,7 +107,7 @@ static fdset_sweep_state_t tcp_sweep(fdset_t *set, int idx, _unused_ void *data)
 }
 
 static void tcp_log_error(const struct sockaddr_storage *ss, const char *operation,
-                          int ret, server_t *server)
+                          int ret, bool tls)
 {
 	/* Don't log ECONN as it usually means client closed the connection. */
 	if (ret != KNOT_ETIMEOUT) {
@@ -119,8 +119,8 @@ static void tcp_log_error(const struct sockaddr_storage *ss, const char *operati
 	if (log_enabled_debug()) {
 		char addr_str[SOCKADDR_STRLEN];
 		sockaddr_tostr(addr_str, sizeof(addr_str), ss);
-		log_debug("TCP, failed to %s due to IO timeout, closing connection, address %s",
-		          operation, addr_str);
+		log_debug("%s, failed to %s due to IO timeout, closing connection, address %s",
+		          (tls ? "TLS" : "TCP"), operation, addr_str);
 	}
 }
 
@@ -160,10 +160,11 @@ static int tcp_handle(tcp_context_t *tcp, knotd_qdata_params_t *params,
 {
 	rx->iov_len = KNOT_WIRE_MAX_PKTSIZE;
 	tx->iov_len = KNOT_WIRE_MAX_PKTSIZE;
+	bool tls = params->tls_conn != NULL;
 
 	/* Receive data. */
 	int recv;
-	if (params->tls_conn != NULL) {
+	if (tls) {
 		int ret = knot_tls_handshake(params->tls_conn, true);
 		switch (ret) {
 		case KNOT_NET_EAGAIN: // Unfinished handshake, continue later.
@@ -182,7 +183,7 @@ static int tcp_handle(tcp_context_t *tcp, knotd_qdata_params_t *params,
 	if (recv > 0) {
 		rx->iov_len = recv;
 	} else {
-		tcp_log_error(params->remote, "receive", recv, tcp->server);
+		tcp_log_error(params->remote, "receive", recv, tls);
 		return KNOT_EOF;
 	}
 
@@ -195,14 +196,14 @@ static int tcp_handle(tcp_context_t *tcp, knotd_qdata_params_t *params,
 		/* Send, if response generation passed and wasn't ignored. */
 		if (ans->size > 0 && send_state(tcp->layer.state)) {
 			int sent;
-			if (params->tls_conn != NULL) {
+			if (tls) {
 				sent = knot_tls_send(params->tls_conn, ans->wire, ans->size);
 			} else {
 				sent = net_dns_tcp_send(params->socket, ans->wire, ans->size,
 				                        tcp->io_timeout, NULL);
 			}
 			if (sent != ans->size) {
-				tcp_log_error(params->remote, "send", sent, tcp->server);
+				tcp_log_error(params->remote, "send", sent, tls);
 				handle_finish(&tcp->layer);
 				return KNOT_EOF;
 			}
@@ -211,7 +212,7 @@ static int tcp_handle(tcp_context_t *tcp, knotd_qdata_params_t *params,
 
 	handle_finish(&tcp->layer);
 
-	if (params->tls_conn != NULL) {
+	if (tls) {
 		// Store the qdata params AUTH flag to the connection.
 		if (params->flags & KNOTD_QUERY_FLAG_AUTHORIZED) {
 			params->tls_conn->flags |= KNOT_TLS_CONN_AUTHORIZED;
