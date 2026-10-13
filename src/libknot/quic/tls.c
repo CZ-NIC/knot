@@ -175,7 +175,7 @@ int knot_tls_handshake(knot_tls_conn_t *conn, bool oneshot)
 		               ? KNOT_EOK
 		               : KNOT_EBADCERT;
 	case GNUTLS_E_TIMEDOUT:
-		return KNOT_NET_ETIMEOUT;
+		return KNOT_ETIMEOUT;
 	default:
 		if (gnutls_error_is_fatal(ret) == 0) {
 			return KNOT_NET_EAGAIN;
