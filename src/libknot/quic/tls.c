@@ -175,7 +175,7 @@ int knot_tls_handshake(knot_tls_conn_t *conn, bool oneshot)
 		               ? KNOT_EOK
 		               : KNOT_EBADCERT;
 	case GNUTLS_E_TIMEDOUT:
-		return KNOT_NET_ETIMEOUT;
+		return KNOT_ETIMEOUT;
 	default:
 		if (gnutls_error_is_fatal(ret) == 0) {
 			return KNOT_NET_EAGAIN;
@@ -194,12 +194,12 @@ int knot_tls_handshake(knot_tls_conn_t *conn, bool oneshot)
 #define TIMEOUT_CTX_UPDATE \
 	if (*timeout_ptr > 0) { \
 		clock_gettime(CLOCK_MONOTONIC, &end); \
-		int running_ms = time_diff_ms(&begin, &end); \
+		double running_ms = time_diff_ms(&begin, &end); \
 		*timeout_ptr = MAX(*timeout_ptr - running_ms, 0); \
 	}
 
 static ssize_t recv_data(knot_tls_conn_t *conn, void *data, size_t size,
-                         int *timeout_ptr, bool oneshot)
+                         double *timeout_ptr, bool oneshot)
 {
 	gnutls_record_set_timeout(conn->session, *timeout_ptr);
 
@@ -254,7 +254,7 @@ ssize_t knot_tls_recv(knot_tls_conn_t *conn, void *data, size_t size)
 
 	conn->flags &= ~KNOT_TLS_CONN_EARLY_DATA;
 
-	int timeout = conn->ctx->io_timeout;
+	double timeout = conn->ctx->io_timeout;
 	if (conn->ctx->flags & KNOT_TLS_DNS) {
 		uint16_t msg_len;
 		ret = recv_data(conn, &msg_len, sizeof(msg_len), &timeout, false);
@@ -306,17 +306,25 @@ ssize_t knot_tls_send(knot_tls_conn_t *conn, void *data, size_t size)
 		return KNOT_NET_ESEND;
 	}
 
-	int timeout = conn->ctx->io_timeout, *timeout_ptr = &timeout;
+	double timeout = conn->ctx->io_timeout, *timeout_ptr = &timeout;
 	gnutls_record_set_timeout(conn->session, timeout);
 
 	// Send the buffered data.
 	while (gnutls_record_check_corked(conn->session) > 0) {
 		TIMEOUT_CTX_INIT
+		struct pollfd pfd = {
+			.fd = conn->fd,
+			.events = POLLOUT
+		};
+		if (poll(&pfd, 1, *timeout_ptr) == 0) {
+			return KNOT_ETIMEOUT;
+		}
 		int ret = gnutls_record_uncork(conn->session, 0);
 		if (ret < 0 && gnutls_error_is_fatal(ret) != 0) {
 			return ret == GNUTLS_E_TIMEDOUT ? KNOT_ETIMEOUT :
 			                                  KNOT_NET_ESEND;
 		}
+
 		TIMEOUT_CTX_UPDATE
 		gnutls_record_set_timeout(conn->session, timeout);
 	}
