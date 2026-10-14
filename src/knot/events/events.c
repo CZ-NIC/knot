@@ -448,18 +448,21 @@ void zone_events_enqueue(zone_t *zone, zone_event_type_t type)
 	zone_events_t *events = &zone->events;
 
 	pthread_mutex_lock(&events->mx);
+	pthread_mutex_lock(&events->event->sched->heap_lock);
 
 	/* Bypass scheduler if no event is running. */
-	if (!events->running && !events->frozen &&
+	if (!events->running && !events->frozen && !events->event->sched->paused &&
 	    (!events->ufrozen || !ufreeze_applies(type))) {
 		events->running = time(NULL);
 		events->type = type;
 		event_set_time(events, type, ZONE_EVENT_IMMEDIATE);
 		worker_pool_assign(events->pool, &events->task);
+		pthread_mutex_unlock(&events->event->sched->heap_lock);
 		pthread_mutex_unlock(&events->mx);
 		return;
 	}
 
+	pthread_mutex_unlock(&events->event->sched->heap_lock);
 	pthread_mutex_unlock(&events->mx);
 
 	/* Execute as soon as possible. */
