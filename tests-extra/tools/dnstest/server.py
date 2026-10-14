@@ -1892,7 +1892,7 @@ class Knot(Server):
         else:
             conf_params = ["-c", self.confile]
         self.start_params = conf_params
-        self.ctl_params = conf_params + ["-t", "25"]
+        self.ctl_params = conf_params + ["-t", "30"]
         if self.ctl_params_append != None:
             self.ctl_params += self.ctl_params_append
 
