@@ -248,7 +248,7 @@ def g_spf(rt):
     choices = [ 'ip4:%s' % rnd_ip4(), 'ip6:%s' % rnd_ip6(), \
                 '%s:%s' % (random.choice(['a','mx']), rnd_dname()) ]
     rd = g_rdata(rt, '"v=spf1 %s -all"' % random.choice(choices))
-    return '@ IN %s %s' % (g_rtype(rt), rd)
+    return '@ %s %s' % (g_rtype(rt), rd)
 
 def g_ptr(rt):
     return '%s %s %s' % (rnd_ip4(), g_rtype(rt), rnd_dname())
@@ -310,7 +310,7 @@ def g_ipseckey(rt):
         gw = rnd_dnl()
     pkey = 'AQNRU3mG7TVTO2BkR47usntb102uFJtugbo6BSGvgqt4AQ=='
     rd = g_rdata(rt, '%d %d %d %s %s' % (prec, gwtype, algo, gw, pkey))
-    return '%s IN %s %s' % (dn, g_rtype(rt), rd)
+    return '%s %s %s' % (dn, g_rtype(rt), rd)
 
 def g_apl(rt):
     data = ''
@@ -348,7 +348,7 @@ def gen_soa(origin, serial, ttl, auth = None):
         origin += '.'
     soa =  ''
     soa += '$TTL %d\n' % ttl
-    s = '@ IN SOA %s %s' % (g_fqdn('ns'), g_fqdn('username'))
+    s = '@ SOA %s %s' % (g_fqdn('ns'), g_fqdn('username'))
     s += ' %s %d %d %s %s\n' % (serial, refresh, refresh / 3, '4w', ttl )
     if auth != None:
         if auth != '.':
