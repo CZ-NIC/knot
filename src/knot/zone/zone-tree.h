@@ -52,6 +52,15 @@ typedef struct {
 	bool incl_del;
 } zone_tree_delsafe_it_t;
 
+typedef struct {
+	zone_tree_it_t it[2];
+	const zone_node_t *n[2];
+	uint16_t pos[2];
+	int dname_cmp;
+	bool cur;
+	knot_rrset_t *merged;
+} zone_tree_sorted2rr_it_t;
+
 /*!
  * \brief Creates the zone tree.
  *
@@ -317,6 +326,18 @@ void zone_tree_delsafe_it_restart(zone_tree_delsafe_it_t *it);
 zone_node_t *zone_tree_delsafe_it_val(zone_tree_delsafe_it_t *it);
 void zone_tree_delsafe_it_next(zone_tree_delsafe_it_t *it);
 void zone_tree_delsafe_it_free(zone_tree_delsafe_it_t *it);
+
+/*!
+ * \brief Sorted zone tree iteration per RRsets (not nodes), combining two zone trees.
+ *
+ * The semantics is the same as for normal iteration.
+ * RRsets are returned in sorted order by owner and RRtype, no matter in which tree they were.
+ */
+int zone_tree_sorted2rr_it_begin(zone_tree_t *tree1, zone_tree_t *tree2, zone_tree_sorted2rr_it_t *it);
+bool zone_tree_sorted2rr_it_finished(zone_tree_sorted2rr_it_t *it);
+knot_rrset_t zone_tree_sorted2rr_it_val(zone_tree_sorted2rr_it_t *it);
+void zone_tree_sorted2rr_it_next(zone_tree_sorted2rr_it_t *it);
+void zone_tree_sorted2rr_it_free(zone_tree_sorted2rr_it_t *it);
 
 /*!
  * \brief Merge all nodes from 'what' to 'into'.

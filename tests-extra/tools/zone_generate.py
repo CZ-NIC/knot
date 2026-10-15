@@ -12,7 +12,7 @@ Parameters:
     -t, --ttl=sec      Specify default TTL.
     -o, --outfile=file Specify output file name.
     -k, --keydir=dir   Specify output key directory.
-    -c, --count=num    RR count
+    -c, --count=num    RR count of additional records
 '''
 
 import binascii
@@ -26,6 +26,7 @@ import subprocess
 import sys
 import tempfile
 import dns
+import dns.dnssec
 import dns.rdataclass
 import dns.rdatatype
 import dns.rdata
@@ -248,7 +249,7 @@ def g_spf(rt):
     choices = [ 'ip4:%s' % rnd_ip4(), 'ip6:%s' % rnd_ip6(), \
                 '%s:%s' % (random.choice(['a','mx']), rnd_dname()) ]
     rd = g_rdata(rt, '"v=spf1 %s -all"' % random.choice(choices))
-    return '@ IN %s %s' % (g_rtype(rt), rd)
+    return '@ %s %s' % (g_rtype(rt), rd)
 
 def g_ptr(rt):
     return '%s %s %s' % (rnd_ip4(), g_rtype(rt), rnd_dname())
@@ -310,7 +311,7 @@ def g_ipseckey(rt):
         gw = rnd_dnl()
     pkey = 'AQNRU3mG7TVTO2BkR47usntb102uFJtugbo6BSGvgqt4AQ=='
     rd = g_rdata(rt, '%d %d %d %s %s' % (prec, gwtype, algo, gw, pkey))
-    return '%s IN %s %s' % (dn, g_rtype(rt), rd)
+    return '%s %s %s' % (dn, g_rtype(rt), rd)
 
 def g_apl(rt):
     data = ''
@@ -348,7 +349,7 @@ def gen_soa(origin, serial, ttl, auth = None):
         origin += '.'
     soa =  ''
     soa += '$TTL %d\n' % ttl
-    s = '@ IN SOA %s %s' % (g_fqdn('ns'), g_fqdn('username'))
+    s = '@ SOA %s %s' % (g_fqdn('ns'), g_fqdn('username'))
     s += ' %s %d %d %s %s\n' % (serial, refresh, refresh / 3, '4w', ttl )
     if auth != None:
         if auth != '.':
@@ -460,6 +461,10 @@ def main(args):
     if not out_fname:
         out_fname = UPDATE if UPDATE else ctx.ORIGIN + '.zone'
 
+    nsec3_salt = ""
+    if nsec3 != 0 and sign:
+        nsec3_salt = binascii.hexlify(os.urandom(random.randint(1, 30))).decode('ascii')
+
     # Reverse zones
     if ctx.ORIGIN.find('in-addr') > 0:
         ctx.RORIGIN = ctx.ORIGIN
@@ -487,6 +492,12 @@ def main(args):
     # @TODO update reverse zone
     if UPDATE and ctx.RPREFIX != None:
         count = 0
+
+    if count > 0:
+        # generate tricky ordinary-type RR with NSEC3-like owner name
+        nsec3_apex_owner = dns.dnssec.nsec3_hash(ctx.ORIGIN, salt=nsec3_salt, iterations=0, algorithm=1)
+        outf.write("%s TXT \"nsec3 apex\"\n" % (nsec3_apex_owner))
+        count -= 1
 
     # Now generate RRs
     a_pool = count / 10
@@ -546,7 +557,7 @@ def main(args):
         elif nsec3 == 0:
             nsec3_params = ['-3', '-']
         else:
-            nsec3_params = ['-3', binascii.hexlify(os.urandom(random.randint(1, 30))).decode('ascii')]
+            nsec3_params = ['-3', nsec3_salt]
 
         subprocess.check_output(["dnssec-signzone", "-d", tmp_dir, "-P", "-u", \
                                  "-k", k2, "-x", "-o", ctx.ORIGIN, "-n", "1", \

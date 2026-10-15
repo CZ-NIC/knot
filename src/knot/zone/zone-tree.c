@@ -494,6 +494,119 @@ void zone_tree_delsafe_it_free(zone_tree_delsafe_it_t *it)
 	memset(it, 0, sizeof(*it));
 }
 
+static void sorted2rr_match(zone_tree_sorted2rr_it_t *it)
+{
+	assert(it->dname_cmp == 0 && it->n[0] != NULL && it->n[1] != NULL);
+	uint16_t type0 = it->n[0]->rrs[it->pos[0]].type;
+	uint16_t type1 = it->n[1]->rrs[it->pos[1]].type;
+
+	if (type0 == type1) {
+		knot_rrset_t rr1 = node_rrset(it->n[0], type0);
+		const knot_rdataset_t *rr2 = node_rdataset(it->n[1], type1);
+		knot_rrset_free(it->merged, NULL);
+		it->merged = knot_rrset_copy(&rr1, NULL);
+		if (it->merged != NULL) {
+			(void)knot_rdataset_merge(&it->merged->rrs, rr2, NULL);
+		}
+		/* This whole case is pretty unlikely and rare. If ENOMEM happens here
+		 * as well, it leads to wrong computation (output). Not worth
+		 * returning error out through zone_tree_sorted2rr_it_next(). */
+	}
+
+	it->cur = (type0 > type1);
+}
+
+static void sorted2rr_cur(zone_tree_sorted2rr_it_t *it)
+{
+	for (int i = 0; i < 2; i++) {
+		it->n[i] = zone_tree_it_finished(&it->it[i]) ? NULL : zone_tree_it_val(&it->it[i]);
+	}
+
+	if (it->n[0] == NULL) {
+		it->dname_cmp = 1;
+		it->cur = 1;
+	} else if (it->n[1] == NULL) {
+		it->dname_cmp = -1;
+		it->cur = 0;
+	} else {
+		it->dname_cmp = knot_dname_cmp(it->n[0]->owner, it->n[1]->owner);
+		if (it->dname_cmp == 0) {
+			sorted2rr_match(it);
+		} else {
+			it->cur = (it->dname_cmp > 0);
+		}
+	}
+}
+
+int zone_tree_sorted2rr_it_begin(zone_tree_t *tree1, zone_tree_t *tree2, zone_tree_sorted2rr_it_t *it)
+{
+	memset(it, 0, sizeof(*it));
+
+	int ret = zone_tree_it_begin(tree1, &it->it[0]);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
+	if (tree2 != NULL) {
+		ret = zone_tree_it_begin(tree2, &it->it[1]);
+		if (ret != KNOT_EOK) {
+			zone_tree_it_free(&it->it[0]);
+			return ret;
+		}
+	}
+
+	sorted2rr_cur(it);
+	return KNOT_EOK;
+}
+
+bool zone_tree_sorted2rr_it_finished(zone_tree_sorted2rr_it_t *it)
+{
+	return it == NULL || (zone_tree_it_finished(&it->it[0]) && zone_tree_it_finished(&it->it[1]));
+}
+
+knot_rrset_t zone_tree_sorted2rr_it_val(zone_tree_sorted2rr_it_t *it)
+{
+	if (it->merged != NULL) {
+		return *it->merged;
+	}
+	return node_rrset_at(it->n[it->cur], it->pos[it->cur]);
+}
+
+static int next_pos(zone_tree_sorted2rr_it_t *it, bool cur)
+{
+	it->pos[cur]++;
+
+	if (it->pos[cur] >= it->n[cur]->rrset_count) {
+		zone_tree_it_next(&it->it[cur]);
+		it->pos[cur] = 0;
+		return 1;
+	}
+
+	return 0;
+}
+
+void zone_tree_sorted2rr_it_next(zone_tree_sorted2rr_it_t *it)
+{
+	if (it->merged != NULL) {
+		knot_rrset_free(it->merged, NULL);
+		it->merged = NULL;
+		next_pos(it, 0);
+		next_pos(it, 1);
+		sorted2rr_cur(it);
+	} else if (next_pos(it, it->cur)) {
+		sorted2rr_cur(it);
+	} else if (it->dname_cmp == 0) {
+		sorted2rr_match(it);
+	}
+}
+
+void zone_tree_sorted2rr_it_free(zone_tree_sorted2rr_it_t *it)
+{
+	zone_tree_it_free(&it->it[0]);
+	zone_tree_it_free(&it->it[1]);
+	knot_rrset_free(it->merged, NULL);
+}
+
 static int merge_cb(zone_node_t *node, void *ctx)
 {
 	return zone_tree_insert(ctx, &node);
