@@ -5,6 +5,7 @@
 
 #include <assert.h>
 
+#include "knot/catalog/catalog_db.h"
 #include "knot/common/log.h"
 #include "knot/conf/confdb.h"
 #include "knot/conf/confio.h"
@@ -1545,9 +1546,16 @@ static int check_zone_section(
 		const uint8_t *id = (const uint8_t *)trie_it_key(it, &id_len);
 
 		conf_io_type_t type = conf_io_trie_val(it);
-		if (type == CONF_IO_TUNSET) {
+		if (type & CONF_IO_TUNSET) {
 			// Nothing to check.
 			continue;
+		} else if (type & CONF_IO_TSET) {
+			if (catalog_has_member(conf()->catalog, id)) {
+				log_ctl_warning("control, added zone %s conflicts with a catalog member",
+				                KNOT_DNAME_STR(id));
+				trie_it_free(it);
+				return KNOT_EEXIST;
+			}
 		}
 
 		// Check specific zone.
