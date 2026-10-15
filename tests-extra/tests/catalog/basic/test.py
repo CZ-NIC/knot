@@ -134,6 +134,44 @@ if resp2.count("DNSKEY") > 0:
             set_err("ZONE NOT PURGED")
 dnskey2 = resp2.resp.answer[0].to_rdataset()[0]
 
+# Check adding member and then configuring non-catalog zone of same name
+CONFLICT_CONFILE = random.choice([False, True])
+up = master.update(zone[1])
+up.add("baz.zones.catalog1.", 0, "PTR", "cataloged3.")
+up.send("NOERROR")
+t.sleep(2)
+resp = master.dig("static.cataloged3.", "TXT")
+resp.check(rcode="NXDOMAIN")
+if CONFLICT_CONFILE:
+    zone_add = t.zone("cataloged3.", storage=".", version="1")
+    t.link(zone_add, master, slave, ixfr=True)
+    master.gen_confile()
+    master.reload()
+    t.sleep(2)
+    resp = master.dig("static.cataloged3.", "TXT")
+    resp.check(rcode="SERVFAIL")
+else:
+    cs = master.ctl_sock_rnd()
+    master.ctl("conf-begin", custom_parm=cs)
+    master.ctl("conf-set zone[cataloged3]", custom_parm=cs)
+    master.ctl("conf-set zone[cataloged3].file " + master.zones["example.com."].zfile.path.replace("example.com.", "cataloged3.").replace("master", "catalog"), custom_parm=cs)
+    try:
+        master.ctl("conf-commit", custom_parm=cs)
+        set_err("CONFLICT COMMIT")
+    except:
+        pass
+up = master.update(zone[1])
+up.delete("baz.zones.catalog1.")
+up.send("NOERROR")
+t.sleep(2)
+if CONFLICT_CONFILE:
+    resp = master.dig("static.cataloged3.", "TXT")
+    resp.check(rcode="SERVFAIL")
+else:
+    master.ctl("conf-commit", custom_parm=cs)
+    resp = master.dig("static.cataloged3.", "TXT")
+    resp.check(rcode="SERVFAIL")
+
 # Check persistence after server restart
 slave.stop()
 slave.start()
