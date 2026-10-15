@@ -160,7 +160,7 @@ Use `@` as `OWNER` if you want to denote `ZONE` itself as the owner.
 * `zone-set([ZONE], OWNER, [TTL], TYPE, DATA)`
 * `zone-unset([ZONE], OWNER, [TYPE, [DATA]])`
 * `zone-purge([ZONE], [FILTERS={ocejktf}], [FLAGS="B"])`
-  + filters: **o**rphan, **c**atalog, **e**xpire, **j**ournal, **k**aspdb, **t**imers, zone**f**ile
+  + filters: **o**rphan, **c**atalog, **e**xpire, **j**ournal, **k**aspdb, **t**imers, zone**f**ile, ke**y**s
 * `zone-stats([ZONE], [SECTION, [ITEM]], [FLAGS="F"])`
   + `SECTION` stores the module, `ITEM` stores the counter
   + the `F` flag specifies to include 0 counters in server's response
