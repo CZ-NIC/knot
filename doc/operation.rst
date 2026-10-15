@@ -1581,6 +1581,14 @@ See `a simple demonstration script <https://gitlab.nic.cz/knot/knot-dns/-/tree/m
 showing how to implement external validation using the combined D-Bus and knotc
 interface.
 
+.. WARNING::
+   Upon full zone load (for example, but not only, during server startup),
+   the external validation is not performed if the SOA serial is unchanged.
+   The reason is to prevent redundant validation of previously validated
+   zone version. Therefore, care must be taken to always increment the SOA
+   serial whenever the zone contents are changed, or Knot can be instructed
+   to do the job with :ref:`zone_zonefile-load`: ``difference-no-serial``.
+
 .. _Data and metadata backup:
 
 Data and metadata backup
