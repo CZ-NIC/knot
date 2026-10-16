@@ -248,6 +248,7 @@ static void zone_purge(conf_t *conf, zone_t *zone)
 		zone_timers_begin(zone);
 		(void)selective_zone_purge(conf, zone, PURGE_ZONE_ALL);
 		zone_timers_commit(conf, zone);
+		zone_perform_expire(conf, zone);
 	}
 }
 
