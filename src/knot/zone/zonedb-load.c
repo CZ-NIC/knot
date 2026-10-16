@@ -242,15 +242,6 @@ static zone_t *create_zone(conf_t *conf, const knot_dname_t *name, server_t *ser
 	return z;
 }
 
-static void zone_purge(conf_t *conf, zone_t *zone)
-{
-	if (zone != NULL) {
-		zone_timers_begin(zone);
-		(void)selective_zone_purge(conf, zone, PURGE_ZONE_ALL);
-		zone_timers_commit(conf, zone);
-	}
-}
-
 static zone_contents_t *zone_expire(conf_t *conf, zone_t *zone, bool zonedb_cow)
 {
 	if (!zonedb_cow) {
@@ -261,6 +252,19 @@ static zone_contents_t *zone_expire(conf_t *conf, zone_t *zone, bool zonedb_cow)
 		zone_timers_commit(conf, zone);
 	}
 	return zone_switch_contents(zone, NULL);
+}
+
+static void zone_purge(conf_t *conf, zone_t *zone, list_t *expired_contents)
+{
+	if (zone != NULL) {
+		zone_timers_begin(zone);
+		(void)selective_zone_purge(conf, zone, PURGE_ZONE_ALL);
+		zone_timers_commit(conf, zone);
+
+		knot_sem_wait(&zone->cow_lock);
+		ptrlist_add(expired_contents, zone_expire(conf, zone, false), NULL);
+		knot_sem_post(&zone->cow_lock);
+	}
 }
 
 static bool check_open_catalog(catalog_t *cat)
@@ -315,10 +319,7 @@ static zone_t *reuse_member_zone(zone_t *zone, server_t *server, conf_t *conf,
 	if (upd != NULL) {
 		switch (upd->type) {
 		case CAT_UPD_UNIQ:
-			zone_purge(conf, zone);
-			knot_sem_wait(&zone->cow_lock);
-			ptrlist_add(expired_contents, zone_expire(conf, zone, false), NULL);
-			knot_sem_post(&zone->cow_lock);
+			zone_purge(conf, zone, expired_contents);
 			// FALLTHROUGH
 		case CAT_UPD_PROP:
 		case CAT_UPD_MINOR:
@@ -670,7 +671,7 @@ static knot_zonedb_t *create_zonedb_catalog(conf_t *conf, server_t *server,
 		catalog_upd_val_t *upd = catalog_it_val(cat_it);
 		if (upd->type == CAT_UPD_REM) {
 			zone_t *zone = knot_zonedb_find(db_old, upd->member);
-			zone_purge(conf, zone);
+			zone_purge(conf, zone, expired_contents);
 		}
 	}
 	catalog_it_free(cat_it);
@@ -718,10 +719,7 @@ static knot_zonedb_t *create_zonedb_catalog(conf_t *conf, server_t *server,
 			break;
 		case CAT_UPD_UNIQ: // Only purge the zone.
 			if (zone != NULL) {
-				zone_purge(conf, zone);
-				knot_sem_wait(&zone->cow_lock);
-				ptrlist_add(expired_contents, zone_expire(conf, zone, true), NULL);
-				knot_sem_post(&zone->cow_lock);
+				zone_purge(conf, zone, expired_contents);
 			}
 			break;
 		case CAT_UPD_MINOR: // No change to generated catalogs.
@@ -749,7 +747,7 @@ static knot_zonedb_t *create_zonedb_full(conf_t *conf, server_t *server,
 		catalog_upd_val_t *upd = catalog_it_val(cat_it);
 		if (upd->type == CAT_UPD_REM) {
 			zone_t *zone = knot_zonedb_find(db_old, upd->member);
-			zone_purge(conf, zone);
+			zone_purge(conf, zone, expired_contents);
 		}
 	}
 	catalog_it_free(cat_it);
