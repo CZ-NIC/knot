@@ -21,6 +21,20 @@
 #include "libknot/consts.h"
 #include "libknot/mm_ctx.h"
 
+/*!
+ * \brief Convert a domain name to a string using stack-allocated storage.
+ *
+ * \warning The returned string is valid only until the calling function
+ *          returns, cannot be freed, and should be used with care in loops.
+ */
+#define KNOT_DNAME_STR(name) ({ \
+	char *_str = alloca(KNOT_DNAME_TXT_MAXLEN + 1); \
+	if (knot_dname_to_str(_str, (name), KNOT_DNAME_TXT_MAXLEN + 1) == NULL) { \
+		_str[0] = '\0'; \
+	} \
+	_str; \
+})
+
 /*! \brief Type representing a domain name in wire format. */
 typedef uint8_t knot_dname_t;
 
