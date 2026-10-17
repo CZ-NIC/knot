@@ -23,6 +23,12 @@ Python modules:
 To install necessary Python modules using pip, run:
 $ pip install -r requirements.txt
 
+Configure options:
+------------------
+
+To not skip any test, run configure as such:
+$ ../configure --with-gc-interval=30 --with-module-dnstap=yes --enable-quic --enable-redis
+
 Optional loopback addresses configuration:
 ------------------------------------------
 
