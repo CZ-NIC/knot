@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <alloca.h>
 #include <stdint.h>
 #include <stdbool.h>
 
