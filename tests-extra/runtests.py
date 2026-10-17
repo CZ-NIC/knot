@@ -273,7 +273,7 @@ def job(job_id, tasks, results, stop, done, print_lock):
         if not os.path.isfile(test_file):
             skip_cnt += 1
             done.value += 1
-            progress_print(done.value, print_lock, log.error, case_str_err + "MISSING")
+            progress_print(done.value, print_lock, log.error, case_str_err + "MISSING (0.00s)")
             continue
 
         try:
@@ -299,6 +299,7 @@ def job(job_id, tasks, results, stop, done, print_lock):
             stop.value = True
             continue
 
+        start_time = time.time()
         try:
             module_entry = os.path.join(ctx.module_path, "test.py")
 
@@ -309,17 +310,21 @@ def job(job_id, tasks, results, stop, done, print_lock):
                 mod = importlib.util.module_from_spec(spec)
                 spec.loader.exec_module(mod)
         except dnstest.utils.Skip as exc:
-            progress_print(done.value, print_lock, log.error, case_str_err + "SKIPPED (%s)" % format(exc))
+            duration = time.time() - start_time
+            time_str = f" ({duration:.2f}s)"
+            progress_print(done.value, print_lock, log.error, case_str_err + "SKIPPED (%s)" % format(exc) + time_str)
             skip_cnt += 1
         except dnstest.utils.Failed as exc:
+            duration = time.time() - start_time
+            time_str = f" ({duration:.2f}s)"
             save_traceback(ctx.out_dir, exc)
 
             desc = format(exc)
             msg = "FAILED (%s)" % (desc if desc else exc.__class__.__name__)
             if ctx.err and ctx.err_msg:
                 msg += " AND (" + ctx.err_msg + ")"
-            progress_print(done.value, print_lock, log.error, case_str_err + msg)
-            log_failed(outs_dir, case_str_fail + msg)
+            progress_print(done.value, print_lock, log.error, case_str_err + msg + time_str)
+            log_failed(outs_dir, case_str_fail + msg + time_str)
 
             if params.debug:
                 print()
@@ -328,12 +333,14 @@ def job(job_id, tasks, results, stop, done, print_lock):
             fail_cnt += 1
             stop.value = True
         except Exception as exc:
+            duration = time.time() - start_time
+            time_str = f" ({duration:.2f}s)"
             save_traceback(ctx.out_dir, exc)
 
             desc = format(exc)
             msg = "EXCEPTION (%s)" % (desc if desc else exc.__class__.__name__)
-            progress_print(done.value, print_lock, log.error, case_str_err + msg)
-            log_failed(outs_dir, case_str_fail + msg)
+            progress_print(done.value, print_lock, log.error, case_str_err + msg + time_str)
+            log_failed(outs_dir, case_str_fail + msg + time_str)
 
             if params.debug:
                 print()
@@ -354,15 +361,17 @@ def job(job_id, tasks, results, stop, done, print_lock):
                 ctx.test.end()
             sys.exit(1)
         else:
+            duration = time.time() - start_time
+            time_str = f" ({duration:.2f}s)"
             if ctx.err:
                 msg = "FAILED" + \
                       ((" (" + ctx.err_msg + ")") if ctx.err_msg else "")
-                progress_print(done.value, print_lock, log.info, case_str_err + msg)
-                log_failed(outs_dir, case_str_fail + msg)
+                progress_print(done.value, print_lock, log.info, case_str_err + msg + time_str)
+                log_failed(outs_dir, case_str_fail + msg + time_str)
                 fail_cnt += 1
                 stop.value = True
             else:
-                progress_print(done.value, print_lock, log.info, case_str_err + "OK")
+                progress_print(done.value, print_lock, log.info, case_str_err + "OK" + time_str)
         done.value += 1
         # Stop servers if still running.
         if ctx.test:
