@@ -172,6 +172,9 @@ def log_failed(log_dir, msg, indent=True):
     print("%s%s" % ("  " if indent else "", msg), file=file)
     file.close()
 
+def duration(start_time):
+    duration = time.time() - start_time
+    return f" ({duration:.1f} s)"
 
 def namespace_worker(uid, gid, module_name, module_entry):
     try:
@@ -299,6 +302,7 @@ def job(job_id, tasks, results, stop, done, print_lock):
             stop.value = True
             continue
 
+        start_time = time.time()
         try:
             module_entry = os.path.join(ctx.module_path, "test.py")
 
@@ -318,8 +322,8 @@ def job(job_id, tasks, results, stop, done, print_lock):
             msg = "FAILED (%s)" % (desc if desc else exc.__class__.__name__)
             if ctx.err and ctx.err_msg:
                 msg += " AND (" + ctx.err_msg + ")"
-            progress_print(done.value, print_lock, log.error, case_str_err + msg)
-            log_failed(outs_dir, case_str_fail + msg)
+            progress_print(done.value, print_lock, log.error, case_str_err + msg + duration(start_time))
+            log_failed(outs_dir, case_str_fail + msg + duration(start_time))
 
             if params.debug:
                 print()
@@ -332,8 +336,8 @@ def job(job_id, tasks, results, stop, done, print_lock):
 
             desc = format(exc)
             msg = "EXCEPTION (%s)" % (desc if desc else exc.__class__.__name__)
-            progress_print(done.value, print_lock, log.error, case_str_err + msg)
-            log_failed(outs_dir, case_str_fail + msg)
+            progress_print(done.value, print_lock, log.error, case_str_err + msg + duration(start_time))
+            log_failed(outs_dir, case_str_fail + msg + duration(start_time))
 
             if params.debug:
                 print()
@@ -357,12 +361,12 @@ def job(job_id, tasks, results, stop, done, print_lock):
             if ctx.err:
                 msg = "FAILED" + \
                       ((" (" + ctx.err_msg + ")") if ctx.err_msg else "")
-                progress_print(done.value, print_lock, log.info, case_str_err + msg)
-                log_failed(outs_dir, case_str_fail + msg)
+                progress_print(done.value, print_lock, log.info, case_str_err + msg + duration(start_time))
+                log_failed(outs_dir, case_str_fail + msg + duration(start_time))
                 fail_cnt += 1
                 stop.value = True
             else:
-                progress_print(done.value, print_lock, log.info, case_str_err + "OK")
+                progress_print(done.value, print_lock, log.info, case_str_err + "OK" + duration(start_time))
         done.value += 1
         # Stop servers if still running.
         if ctx.test:
