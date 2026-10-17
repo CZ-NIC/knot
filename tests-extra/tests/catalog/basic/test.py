@@ -154,7 +154,6 @@ else:
     cs = master.ctl_sock_rnd()
     master.ctl("conf-begin", custom_parm=cs)
     master.ctl("conf-set zone[cataloged3]", custom_parm=cs)
-    master.ctl("conf-set zone[cataloged3].file " + master.zones["example.com."].zfile.path.replace("example.com.", "cataloged3.").replace("master", "catalog"), custom_parm=cs)
     try:
         master.ctl("conf-commit", custom_parm=cs)
         set_err("CONFLICT COMMIT")
@@ -164,13 +163,10 @@ up = master.update(zone[1])
 up.delete("baz.zones.catalog1.")
 up.send("NOERROR")
 t.sleep(2)
-if CONFLICT_CONFILE:
-    resp = master.dig("static.cataloged3.", "TXT")
-    resp.check(rcode="SERVFAIL")
-else:
+if not CONFLICT_CONFILE:
     master.ctl("conf-commit", custom_parm=cs)
-    resp = master.dig("static.cataloged3.", "TXT")
-    resp.check(rcode="SERVFAIL")
+resp = master.dig("static.cataloged3.", "TXT")
+resp.check(rcode="SERVFAIL")
 
 # Check persistence after server restart
 slave.stop()
