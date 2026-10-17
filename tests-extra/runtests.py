@@ -195,6 +195,23 @@ def namespace_worker(uid, gid, module_name, module_entry):
     if res.returncode != 0:
         raise dnstest.utils.Failed(res.stderr.strip() or res.stdout.strip())
 
+    # This is required exclusively for test cases that depend on external 
+    # ALIAS targets to resolve them locally.
+    try:
+        subprocess.run(["mount", "-t", "tmpfs", "tmpfs", "/etc"], check=True)
+    except Exception as e:
+        print(f"FAILED to setup resolv.conf - {e}")
+
+    try:
+        # Inject IP mappings for root servers needed by specific test cases
+        with open("/etc/hosts", "a", encoding="utf-8") as f:
+            f.write("192.168.0.1 a.root-servers.net.\n")
+            f.write("192.168.0.2 b.root-servers.net.\n")
+            f.write("192.168.0.3 c.root-servers.net.\n")
+            f.write("192.168.0.4 d.root-servers.net.\n")
+    except Exception:
+        pass
+
     spec = importlib.util.spec_from_file_location(module_name, module_entry)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
