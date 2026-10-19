@@ -31,6 +31,8 @@ libc = ctypes.CDLL(libc_name, use_errno=True)
 
 PR_SET_DUMPABLE = 4
 
+CASE_OK, CASE_FAILED, CASE_SKIPPED = 0, 1, 2
+
 TESTS_DIR = "tests"
 
 log = None
@@ -196,8 +198,8 @@ class CaseReport:
         self._print(log.error, "SKIPPED (%s)" % reason)
         return CASE_SKIPPED
 
-    def failed(self, msg):
-        suffix = self._duration()
+    def failed(self, msg, timed=True):
+        suffix = self._duration() if timed else ""
         self._print(log.error, msg + suffix)
         log_failed(outs_dir, self.fail_label + msg + suffix)
         self.stop.value = True
@@ -207,7 +209,45 @@ class CaseReport:
         self._print(log.error, "MISSING")
         return CASE_SKIPPED
 
-def namespace_worker(uid, gid, module_name, module_entry):
+def run_test(ctx, module_entry):
+    spec = importlib.util.spec_from_file_location(ctx.module_name, module_entry)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+
+def run_case(ctx, module_entry, rep, runner=run_test):
+    try:
+        runner(ctx, module_entry)
+    except dnstest.utils.Skip as exc:
+        return rep.skipped(format(exc))
+    except (dnstest.utils.Failed, Exception) as exc:
+        save_traceback(ctx.out_dir, exc)
+        desc = format(exc)
+        kind = "FAILED" if isinstance(exc, dnstest.utils.Failed) else "EXCEPTION"
+        msg = "%s (%s)" % (kind, desc if desc else exc.__class__.__name__)
+        if kind == "FAILED" and ctx.err and ctx.err_msg:
+            msg += " AND (" + ctx.err_msg + ")"
+        if params.debug:
+            print()
+            traceback.print_exc()
+        return rep.failed(msg)
+    except BaseException as exc:
+        save_traceback(ctx.out_dir, exc)
+        if params.debug:
+            print()
+            traceback.print_exc()
+        else:
+            print()
+            log.info("INTERRUPTED")
+        # Stop servers if still running.
+        if ctx.test:
+            ctx.test.end()
+        sys.exit(1)
+
+    if ctx.err:
+        return rep.failed("FAILED" + ((" (" + ctx.err_msg + ")") if ctx.err_msg else ""))
+    return rep.ok()
+
+def namespace_worker(uid, gid, ctx, module_entry):
     try:
         libc.prctl(15, b"runtests KnotNS-Worker", 0, 0, 0)
     except Exception:
@@ -246,12 +286,9 @@ def namespace_worker(uid, gid, module_name, module_entry):
     except Exception:
         pass
 
-    spec = importlib.util.spec_from_file_location(module_name, module_entry)
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
+    run_test(ctx, module_entry)
 
 def start_namespace(ctx, module_entry):
-    module_name = ctx.module_name
     uid = os.getuid()
     gid = os.getgid()
 
@@ -259,7 +296,7 @@ def start_namespace(ctx, module_entry):
     if pid == 0:
         code = 0
         try:
-            namespace_worker(uid, gid, module_name, module_entry)
+            namespace_worker(uid, gid, ctx, module_entry)
         except dnstest.utils.Skip:
             code = 2
         except BaseException:
@@ -323,68 +360,24 @@ def job(job_id, tasks, results, stop, done, print_lock):
             ctx.err = False
             ctx.err_msg = ""
         except OSError:
+            msg = "EXCEPTION (no dir \'%s\')" % out_dir
             done.value += 1
-            rep.failed("EXCEPTION (no dir '%s')" % out_dir)
+            rep.failed(msg)
             fail_cnt += 1
             continue
 
-        try:
-            module_entry = os.path.join(ctx.module_path, "test.py")
-
-            if params.namespaces:
-                start_namespace(ctx, module_entry)
-            else:
-                spec = importlib.util.spec_from_file_location(ctx.module_name, module_entry)
-                mod = importlib.util.module_from_spec(spec)
-                spec.loader.exec_module(mod)
-        except dnstest.utils.Skip as exc:
-            rep.skipped(format(exc))
-            skip_cnt += 1
-        except dnstest.utils.Failed as exc:
-            save_traceback(ctx.out_dir, exc)
-
-            desc = format(exc)
-            msg = "FAILED (%s)" % (desc if desc else exc.__class__.__name__)
-            if ctx.err and ctx.err_msg:
-                msg += " AND (" + ctx.err_msg + ")"
-            rep.failed(msg)
-
-            if params.debug:
-                print()
-                traceback.print_exc()
-
-            fail_cnt += 1
-        except Exception as exc:
-            save_traceback(ctx.out_dir, exc)
-
-            desc = format(exc)
-            msg = "EXCEPTION (%s)" % (desc if desc else exc.__class__.__name__)
-            rep.failed(msg)
-
-            if params.debug:
-                print()
-                traceback.print_exc()
-
-            fail_cnt += 1
-        except BaseException as exc:
-            save_traceback(ctx.out_dir, exc)
-            if params.debug:
-                print()
-                traceback.print_exc()
-            else:
-                print()
-                log.info("INTERRUPTED")
-                # Stop servers if still running.
-            if ctx.test:
-                ctx.test.end()
-            sys.exit(1)
+        module_entry = os.path.join(ctx.module_path, "test.py")
+        outcome = CASE_FAILED
+        if params.namespaces:
+            outcome = run_case(ctx, module_entry, rep, start_namespace)
         else:
-            if ctx.err:
-                msg = "FAILED" + ((" (" + ctx.err_msg + ")") if ctx.err_msg else "")
-                rep.failed(msg)
-                fail_cnt += 1
-            else:
-                rep.ok()
+            outcome = run_case(ctx, module_entry, rep, run_test)
+
+        if outcome == CASE_FAILED:
+            fail_cnt += 1
+        elif outcome == CASE_SKIPPED:
+            skip_cnt += 1
+
         done.value += 1
         # Stop servers if still running.
         if ctx.test:
