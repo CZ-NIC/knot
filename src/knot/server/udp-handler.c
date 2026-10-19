@@ -174,7 +174,7 @@ typedef struct {
 	int fd;
 	struct msghdr msg[NBUFS];
 	struct iovec iov[NBUFS];
-	uint8_t iobuf[NBUFS][KNOT_WIRE_MAX_PKTSIZE];
+	uint8_t iobuf[NBUFS][UDP_MAX_MSG_SIZE];
 	sockaddr_t addr;
 	cmsg_buf_t cmsgs;
 } udp_msg_ctx_t;
@@ -282,7 +282,7 @@ typedef struct {
 	unsigned rcvd;
 	struct mmsghdr msgs[NBUFS][RECVMMSG_BATCHLEN];
 	struct iovec iov[NBUFS][RECVMMSG_BATCHLEN];
-	uint8_t iobuf[NBUFS][RECVMMSG_BATCHLEN][KNOT_WIRE_MAX_PKTSIZE];
+	uint8_t iobuf[NBUFS][RECVMMSG_BATCHLEN][UDP_MAX_MSG_SIZE];
 	sockaddr_t addrs[RECVMMSG_BATCHLEN];
 	cmsg_buf_t cmsgs[RECVMMSG_BATCHLEN];
 } udp_mmsg_ctx_t;
