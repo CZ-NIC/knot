@@ -50,6 +50,9 @@ or
 # vim /etc/sysctl.d/10-ptrace.conf
 # kernel.yama.ptrace_scope = 0
 
+For the use of namespaces allow the creation of namespaces by unprivileged users:
+$ sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+
 XDP:
 ----
 
