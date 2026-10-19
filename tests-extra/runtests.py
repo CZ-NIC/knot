@@ -214,9 +214,11 @@ def run_test(ctx, module_entry):
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
 
-def run_case(ctx, module_entry, rep, runner=run_test):
+def run_case(ctx, module_entry, rep, setup=None):
     try:
-        runner(ctx, module_entry)
+        if setup:
+            setup()
+        run_test(ctx, module_entry)
     except dnstest.utils.Skip as exc:
         return rep.skipped(format(exc))
     except (dnstest.utils.Failed, Exception) as exc:
@@ -247,7 +249,7 @@ def run_case(ctx, module_entry, rep, runner=run_test):
         return rep.failed("FAILED" + ((" (" + ctx.err_msg + ")") if ctx.err_msg else ""))
     return rep.ok()
 
-def namespace_worker(uid, gid, ctx, module_entry):
+def setup_namespace(uid, gid):
     try:
         libc.prctl(15, b"runtests KnotNS-Worker", 0, 0, 0)
     except Exception:
@@ -286,36 +288,35 @@ def namespace_worker(uid, gid, ctx, module_entry):
     except Exception:
         pass
 
-    run_test(ctx, module_entry)
-
-def start_namespace(ctx, module_entry):
+def run_case_in_namespace(ctx, module_entry, rep):
     uid = os.getuid()
     gid = os.getgid()
 
     pid = os.fork()
     if pid == 0:
-        code = 0
+        outcome = CASE_FAILED
         try:
-            namespace_worker(uid, gid, ctx, module_entry)
-        except dnstest.utils.Skip:
-            code = 2
+            outcome = run_case(ctx, module_entry, rep,
+                               setup=lambda: setup_namespace(uid, gid))
         except BaseException:
-            traceback.print_exc()
-            code = 1
+            pass  # run_case already reported it
         finally:
-            if ctx.test:
-                ctx.test.end()
-            os._exit(code)
+            try:
+                if ctx.test:
+                    ctx.test.end()
+                ctx.case_log.flush()
+                sys.stdout.flush()
+                sys.stderr.flush()
+            finally:
+                os._exit(outcome)
 
     _, status = os.waitpid(pid, 0)
     if os.WIFEXITED(status):
         rc = os.WEXITSTATUS(status)
-        if rc == 2:
-            raise dnstest.utils.Skip("skipped in namespace")
-        if rc != 0:
-            raise dnstest.utils.Failed(f"test process exited with {rc}")
-    else:
-        raise dnstest.utils.Failed(f"test process killed by signal {os.WTERMSIG(status)}")
+        if rc in (CASE_OK, CASE_FAILED, CASE_SKIPPED):
+            return rc
+        return rep.failed("FAILED (test process exited with %d)" % rc)
+    return rep.failed("FAILED (test process killed by signal %d)" % os.WTERMSIG(status))
 
 def job(job_id, tasks, results, stop, done, print_lock):
     case_cnt = 0
@@ -369,9 +370,9 @@ def job(job_id, tasks, results, stop, done, print_lock):
         module_entry = os.path.join(ctx.module_path, "test.py")
         outcome = CASE_FAILED
         if params.namespaces:
-            outcome = run_case(ctx, module_entry, rep, start_namespace)
+            outcome = run_case_in_namespace(ctx, module_entry, rep)
         else:
-            outcome = run_case(ctx, module_entry, rep, run_test)
+            outcome = run_case(ctx, module_entry, rep)
 
         if outcome == CASE_FAILED:
             fail_cnt += 1
