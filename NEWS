@@ -1,3 +1,20 @@
+Knot DNS 3.6.2 (2026-10-21)
+===========================
+
+Improvements:
+-------------
+ - knotd: added MONOTONIC_USEC to sd_notify() for systemd's notify-reload service type
+
+Bugfixes:
+---------
+ - knotd: ZONEMD verification omits regular nodes that collide with NSEC3 ones (Thanks to Joshua Rogers)
+ - knotd: catalog updates can purge non-catalog zones with conflicting names (Thanks to Joshua Rogers)
+ - knotd: blocking transfer freeze operation returns prematurely
+ - libknot: connection table exhaustion during QUIC sweep
+ - libknot: uncontrolled compression-pointer traversal in DNS message parsing
+ - libknot: unbounded write-backpressure busy-spin in the DoT send path
+ - tests: build fails if --disable-daemon is specified
+
 Knot DNS 3.6.1 (2026-10-09)
 ===========================
 
