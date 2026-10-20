@@ -103,8 +103,13 @@ class Test(object):
         return True
 
     def _gen_port(self):
-        min_port = 1500
-        max_port = 65000
+        # chosen as "nice" numbers above well-known ports and below dynamic and/or private / ephemeral ports
+        if params.namespaces:
+            min_port = 1500
+            max_port = 10000
+        else:
+            min_port = 1500
+            max_port = 65000
 
         if params.namespaces:
             port = Test.last_port + 1 if Test.last_port else min_port
