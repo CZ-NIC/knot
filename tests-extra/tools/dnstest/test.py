@@ -106,15 +106,24 @@ class Test(object):
         min_port = 1500
         max_port = 65000
 
-        port = Test.last_port
-        if port:
-            port = port + 1 if port < max_port else min_port
+        if params.namespaces:
+            port = Test.last_port + 1 if Test.last_port else min_port
+            while port < max_port:
+                if self._check_port(port):
+                    Test.last_port = port
+                    return port
+                port += 1
+            raise Failed("All port exhausted")
+        else:
+            port = Test.last_port
+            if port:
+                port = port + 1 if port < max_port else min_port
 
-        while not self._check_port(port):
-            port = random.randint(min_port, max_port)
+            while not self._check_port(port):
+                port = random.randint(min_port, max_port)
 
-        Test.last_port = port
-        return port
+            Test.last_port = port
+            return port
 
     def _gen_lock_file(self, srvname):
         try:
@@ -292,6 +301,8 @@ class Test(object):
 
     def start(self):
         '''Start all test servers'''
+
+        self.last_port = None
 
         if self.start_tries > Test.MAX_START_TRIES:
             self.start_tries = 0  # Some tests make repeated test startup attempts.
