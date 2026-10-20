@@ -1,3 +1,22 @@
+Knot DNS 3.5.10 (2026-10-21)
+============================
+
+Improvements:
+-------------
+ - knotd: added MONOTONIC_USEC to sd_notify() for systemd's notify-reload service type
+
+Bugfixes:
+---------
+ - knotd: ZONEMD verification omits regular nodes that collide with NSEC3 ones (Thanks to Joshua Rogers)
+ - knotd: blocking transfer freeze operation returns prematurely
+ - libknot: connection table exhaustion during QUIC sweep
+ - libknot: uncontrolled compression-pointer traversal in DNS message parsing
+ - libknot: unbounded write-backpressure busy-spin in the DoT send path
+
+Packaging:
+----------
+ - debian,ubuntu: i386 and armhf architectures no longer supported
+
 Knot DNS 3.5.9 (2026-10-09)
 ===========================
 
