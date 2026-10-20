@@ -896,6 +896,11 @@ static int zone_xfr_freeze(zone_t *zone, _unused_ ctl_args_t *args)
 {
 	zone->timers->flags |= LAST_XFROUT_FROZEN | TIMERS_MODIFIED;
 
+	while (!(zone->timers_static->flags & LAST_XFROUT_FROZEN) &&
+	       ctl_has_flag(args->data[KNOT_CTL_IDX_FLAGS], CTL_FLAG_BLOCKING)) {
+		usleep(100000);
+	}
+
 	log_zone_info(zone->name, "outgoing XFR frozen");
 
 	return KNOT_EOK;
@@ -904,7 +909,12 @@ static int zone_xfr_freeze(zone_t *zone, _unused_ ctl_args_t *args)
 static int zone_xfr_thaw(zone_t *zone, _unused_ ctl_args_t *args)
 {
 	zone->timers->flags &= ~LAST_XFROUT_FROZEN;
-        zone->timers->flags |= TIMERS_MODIFIED;
+	zone->timers->flags |= TIMERS_MODIFIED;
+
+	while ((zone->timers_static->flags & LAST_XFROUT_FROZEN) &&
+	       ctl_has_flag(args->data[KNOT_CTL_IDX_FLAGS], CTL_FLAG_BLOCKING)) {
+		usleep(100000);
+	}
 
 	log_zone_info(zone->name, "outgoing XFR unfrozen");
 
