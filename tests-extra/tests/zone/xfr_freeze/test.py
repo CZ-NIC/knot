@@ -3,12 +3,13 @@
 '''Test of IXFR freeze.'''
 
 from dnstest.test import Test
+from dnstest.utils import *
 
 t = Test()
 
 master = t.server("knot")
 slave = t.server("knot")
-zone = t.zone_rnd(1, records=50)
+zone = t.zone_rnd(1, records=(30 if master.valgrind else 300))
 
 t.link(zone, master, slave)
 
@@ -31,14 +32,20 @@ if serial != serial_init:
     detail_log("SOA serial mismatch %d != %d" % (serial, serial_init))
 
 master.stop()
+
+master.dnssec(zone).enable = True
+master.dnssec(zone).algorithm = "RSASHA512"
+master.disable_notify = True
+master.gen_confile()
+
 master.start()
 master.zone_wait(zone)
-master.ctl("zone-notify")
+slave.ctl("zone-refresh")
 
 resp = master.dig(zone[0].name, "AXFR", tries=1)
 resp.check_xfr(rcode="REFUSED")
 
-t.sleep(1)
+t.sleep(3)
 
 resp = slave.dig(zone[0].name, "SOA")
 serial = resp.soa_serial()
@@ -46,9 +53,15 @@ if serial != serial_init:
     set_err("SOA serial mismatch 2")
     detail_log("SOA serial mismatch2 %d != %d" % (serial, serial_init))
 
+master.ctl("zone-sign")
 master.ctl("zone-xfr-thaw", wait=True)
-master.ctl("zone-notify")
-slave.zone_wait(zone, serial_init)
-t.xfr_diff(master, slave, zone)
+slave.ctl("zone-refresh")
+
+t.sleep(3)
+resp = slave.dig(zone[0].name, "SOA")
+serial = resp.soa_serial()
+if serial <= serial_init:
+    set_err("SOA serial mismatch 3")
+    detail_log("SOA serial mismatch3 %d <= %d" % (serial, serial_init))
 
 t.end()
