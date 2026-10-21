@@ -141,14 +141,19 @@
 	_unused_ \
 	visibility void prefix ## _dynarray_sort(struct prefix ## _dynarray *dynarray) \
 	{ \
-		ntype *arr = prefix ## _dynarray_arr(dynarray); \
-		qsort(arr, dynarray->size, sizeof(*arr), prefix ## _dynarray_memb_cmp); \
+		if (dynarray->size > 1) { \
+			ntype *arr = prefix ## _dynarray_arr(dynarray); \
+			qsort(arr, dynarray->size, sizeof(*arr), prefix ## _dynarray_memb_cmp); \
+		} \
 		dynarray->sorted = true; \
 	} \
 	\
 	_unused_ \
 	visibility ntype *prefix ## _dynarray_bsearch(struct prefix ## _dynarray *dynarray, const ntype *bskey) \
 	{ \
+		if (dynarray->size < 1) { \
+			return NULL; \
+		} \
 		ntype *arr = prefix ## _dynarray_arr(dynarray); \
 		assert(dynarray->sorted || dynarray->size < 2); \
 		return bsearch(bskey, arr, dynarray->size, sizeof(*arr), prefix ## _dynarray_memb_cmp); \

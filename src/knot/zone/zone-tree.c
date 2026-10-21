@@ -90,11 +90,16 @@ int zone_tree_insert(zone_tree_t *tree, zone_node_t **node)
 	uint8_t *lf = knot_dname_lf((*node)->owner, lf_storage);
 	assert(lf);
 
+	trie_val_t *ins;
 	if (tree->cow != NULL) {
-		*trie_get_cow(tree->cow, lf + 1, *lf) = binode_first(*node);
+		ins = trie_get_cow(tree->cow, lf + 1, *lf);
 	} else {
-		*trie_get_ins(tree->trie, lf + 1, *lf) = binode_first(*node);
+		ins = trie_get_ins(tree->trie, lf + 1, *lf);
 	}
+	if (ins == NULL) {
+		return KNOT_ENOMEM;
+	}
+	*ins = binode_first(*node);
 
 	*node = zone_tree_fix_get(*node, tree);
 
