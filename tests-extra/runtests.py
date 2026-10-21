@@ -214,10 +214,8 @@ def run_test(ctx, module_entry):
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
 
-def run_case(ctx, module_entry, rep, setup=None):
+def run_case(ctx, module_entry, rep):
     try:
-        if setup:
-            setup()
         run_test(ctx, module_entry)
     except dnstest.utils.Skip as exc:
         return rep.skipped(format(exc))
@@ -293,35 +291,45 @@ def setup_namespace(uid, gid):
     except Exception:
         pass
 
+def namespace_process(ctx, module_entry, rep, uid, gid):
+    outcome = CASE_FAILED
+    try:
+        setup_namespace(uid, gid)
+        outcome = run_case(ctx, module_entry, rep)
+    except BaseException:
+        pass  # run_case already reported it
+    finally:
+        try:
+            if ctx.test:
+                ctx.test.end()
+            ctx.case_log.flush()
+            sys.stdout.flush()
+            sys.stderr.flush()
+        finally:
+            os._exit(outcome)
+
 def run_case_in_namespace(ctx, module_entry, rep):
     uid = os.getuid()
     gid = os.getgid()
 
-    pid = os.fork()
-    if pid == 0:
-        outcome = CASE_FAILED
-        try:
-            outcome = run_case(ctx, module_entry, rep,
-                               setup=lambda: setup_namespace(uid, gid))
-        except BaseException:
-            pass  # run_case already reported it
-        finally:
-            try:
-                if ctx.test:
-                    ctx.test.end()
-                ctx.case_log.flush()
-                sys.stdout.flush()
-                sys.stderr.flush()
-            finally:
-                os._exit(outcome)
+    t = multiprocessing.Process(
+        target=namespace_process,
+        args=(ctx, module_entry, rep, uid, gid)
+    )
+    t.start()
+    t.join()
 
-    _, status = os.waitpid(pid, 0)
-    if os.WIFEXITED(status):
-        rc = os.WEXITSTATUS(status)
-        if rc in (CASE_OK, CASE_FAILED, CASE_SKIPPED):
-            return rc
-        return rep.failed("FAILED (test process exited with %d)" % rc)
-    return rep.failed("FAILED (test process killed by signal %d)" % os.WTERMSIG(status))
+    rc = t.exitcode
+    if rc is not None:
+        if rc >= 0:
+            if rc in (CASE_OK, CASE_FAILED, CASE_SKIPPED):
+                return rc
+            return rep.failed("FAILED (test process exited with %d)" % rc)
+        else:
+            sig = -rc
+            return rep.failed("FAILED (test process killed by signal %d)" % sig)
+
+    return rep.failed("FAILED (test process did not exit cleanly)")
 
 def job(job_id, tasks, results, stop, done, print_lock):
     case_cnt = 0
