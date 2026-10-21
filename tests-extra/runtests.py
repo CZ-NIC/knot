@@ -35,6 +35,17 @@ CASE_OK, CASE_FAILED, CASE_SKIPPED = 0, 1, 2
 
 TESTS_DIR = "tests"
 
+ROOT_SERVERS = """
+198.41.0.4 a.root-servers.net.
+170.247.170.2 b.root-servers.net.
+192.33.4.12 c.root-servers.net.
+199.7.91.13 d.root-servers.net.
+2001:503:ba3e::2:30 a.root-servers.net.
+2801:1b8:10::b b.root-servers.net.
+2001:500:2::c c.root-servers.net.
+2001:500:2d::d d.root-servers.net.
+"""
+
 log = None
 outs_dir = None
 
@@ -279,17 +290,11 @@ def setup_namespace(uid, gid):
     try:
         # Inject IP mappings for root servers needed by specific test cases
         with open("/etc/hosts", "a", encoding="utf-8") as f:
-            f.write("198.41.0.4 a.root-servers.net.\n")
-            f.write("170.247.170.2 b.root-servers.net.\n")
-            f.write("192.33.4.12 c.root-servers.net.\n")
-            f.write("199.7.91.13 d.root-servers.net.\n")
-
-            f.write("2001:503:ba3e::2:30 a.root-servers.net\n")
-            f.write("2801:1b8:10::b b.root-servers.net\n")
-            f.write("2001:500:2::c c.root-servers.net\n")
-            f.write("2001:500:2d::d d.root-servers.net\n")
+            f.write(ROOT_SERVERS)
     except Exception:
         pass
+
+    os.environ["RESOLV_MULTI"] = "on"
 
 def namespace_process(ctx, module_entry, rep, uid, gid):
     outcome = CASE_FAILED
