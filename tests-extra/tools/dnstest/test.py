@@ -157,6 +157,8 @@ class Test(object):
             srv = dnstest.server.Bind()
         elif server == "dummy":
             srv = dnstest.server.Dummy()
+        elif server == "sinkhole":
+            srv = dnstest.server.Sinkhole()
         else:
             raise Failed("Unsupported server '%s'" % server)
 
