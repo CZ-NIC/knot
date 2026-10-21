@@ -88,6 +88,7 @@ enum knot_rr_type {
 	KNOT_RRTYPE_NSEC3PARAM =  51, /*!< NSEC3 parameters. */
 	KNOT_RRTYPE_TLSA       =  52, /*!< DANE record. */
 	KNOT_RRTYPE_SMIMEA     =  53, /*!< S/MIME cert association. */
+	KNOT_RRTYPE_DELEGPARAM =  54, /*!< Next generation delegation lookaside. */
 
 	KNOT_RRTYPE_CDS        =  59, /*!< Child delegation signer. */
 	KNOT_RRTYPE_CDNSKEY    =  60, /*!< Child DNS key. */
@@ -123,7 +124,6 @@ enum knot_rr_type {
 	KNOT_RRTYPE_ALIAS      = 65401, /*!< PRIVATE. Alias record. */
 
 	KNOT_RRTYPE_DELEG      = 61440, /*!< Next generation delegation. */
-	KNOT_RRTYPE_DELEGPARAM = 65433, /*!< Next generation delegation lookaside. */
 };
 
 /*!
