@@ -7,7 +7,7 @@ from dnstest.utils import set_err, detail_log
 
 t = Test(address=4, stress=False)
 
-stuck_parent = t.server("dummy", address="8.8.8.8", port="23") # this address/port shall time out
+stuck_parent = t.server("sinkhole") # this address/port shall time out
 master = t.server("knot")
 
 catz = t.zone("catalog.")
