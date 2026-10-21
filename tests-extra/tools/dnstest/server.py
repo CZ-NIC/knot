@@ -539,14 +539,14 @@ class Server(object):
 
             detail_log(SEP)
 
-    def stop(self, check=True):
+    def stop(self, check=True, timeout=None):
         if Context().test.stress and self.inquirer:
             self.inquirer.stop()
 
         if self.proc:
             try:
                 self.proc.terminate()
-                self.proc.wait(Server.STOP_TIMEOUT)
+                self.proc.wait(Server.STOP_TIMEOUT if timeout is None else timeout)
             except ProcessLookupError:
                 pass
             except:

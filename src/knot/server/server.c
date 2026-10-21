@@ -31,6 +31,7 @@
 #include "knot/server/udp-handler.h"
 #include "knot/server/tcp-handler.h"
 #include "knot/updates/acl.h"
+#include "knot/updates/zone-update.h"
 #include "knot/zone/redis.h"
 #include "knot/zone/timers.h"
 #include "knot/zone/zone.h"
@@ -825,6 +826,22 @@ static int configure_sockets(conf_t *conf, server_t *s)
 	}
 
 	return KNOT_EOK;
+}
+
+static void abort_external(zone_t *zone)
+{
+	pthread_mutex_lock(&zone->cu_lock);
+	if (zone->control_update != NULL && (zone->control_update->flags & UPDATE_WFEV)) {
+		knot_sem_post(&zone->control_update->external);
+	}
+	pthread_mutex_unlock(&zone->cu_lock);
+}
+
+static void server_abort_external_validations(server_t *s)
+{
+	if (s->zone_db != NULL) {
+		knot_zonedb_foreach(s->zone_db, abort_external);
+	}
 }
 
 #ifdef ENABLE_REDIS
@@ -1660,6 +1677,7 @@ void server_stop(server_t *server)
 	dt_stop(server->timerdb_sync);
 	dt_join(server->timerdb_sync);
 	/* Interrupt background workers. */
+	server_abort_external_validations(server);
 	worker_pool_stop(server->workers);
 
 	/* Clear 'running' flag. */
