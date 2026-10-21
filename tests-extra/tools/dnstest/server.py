@@ -28,6 +28,7 @@ import dnstest.response
 import dnstest.update
 import distutils.dir_util
 from shutil import copyfile
+import threading
 
 def zone_arg_check(zone):
     # Convert one item list to single object.
@@ -1952,3 +1953,41 @@ class Dummy(Server):
 
     def running(self):
         return True # Fake running
+
+class Sinkhole(Dummy):
+    ''' Sinkhole name server. Drops all incoming traffic and forces timeouts '''
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.sinkhole_stop_event = threading.Event()
+        self.sinkhole_thread = None
+
+    def start(self, clean=False, fatal=True):
+        if not self.sinkhole_thread:
+            def run():
+                family = socket.AF_INET6 if ipaddress.ip_address(self.addr).version == 6 else socket.AF_INET
+                s = socket.socket(family, socket.SOCK_STREAM)
+                s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                try:
+                    s.bind((self.addr, self.port))
+                    s.listen(5)
+                    while not self.sinkhole_stop_event.is_set():
+                        s.settimeout(1.0)
+                        try:
+                            conn, addr = s.accept()
+                            # Hold the connection open and do nothing to force a TCP hang
+                        except socket.timeout:
+                            continue
+                        except Exception:
+                            break
+                finally:
+                    s.close()
+
+            self.sinkhole_thread = threading.Thread(target=run, daemon=True)
+            self.sinkhole_thread.start()
+
+    def stop(self, check=True):
+        self.sinkhole_stop_event.set()
+
+    def kill(self):
+        self.sinkhole_stop_event.set()
