@@ -497,7 +497,9 @@ conf_t *conf_update(
 			conf->query_modules = s_conf->query_modules;
 			conf->query_plan = s_conf->query_plan;
 			knot_dynarray_foreach(mod, module_t *, module, s_conf->modules) {
-				mod_dynarray_add(&conf->modules, module);
+				if (mod_dynarray_add(&conf->modules, module) == NULL) {
+					return conf;
+				}
 			}
 		}
 	}

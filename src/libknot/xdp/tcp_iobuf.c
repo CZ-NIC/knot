@@ -189,6 +189,7 @@ int knot_tcp_inbufs_upd(struct iovec *buffer, struct iovec data, bool alloc_bufs
 			if (newbuf == NULL) {
 				free(buffer->iov_base);
 				buffer->iov_base = NULL;
+				buffer->iov_len = 0;
 				free(out);
 				return KNOT_ENOMEM;
 			}
