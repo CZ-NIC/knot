@@ -4,3 +4,9 @@
 [submodule "tests-fuzz/fuzz_packet.in"]
 	path = tests-fuzz/fuzz_packet.in
 	url = https://gitlab.nic.cz/knot/fuzzing/fuzz_packet.in.git
+[submodule "tests-fuzz/fuzz_tsig.in"]
+	path = tests-fuzz/fuzz_tsig.in
+	url = https://gitlab.nic.cz/knot/fuzzing/fuzz_tsig.in.git
+[submodule "tests-fuzz/fuzz_dnssec_verify.in"]
+	path = tests-fuzz/fuzz_dnssec_verify.in
+	url = https://gitlab.nic.cz/knot/fuzzing/fuzz_dnssec_verify.in.git
