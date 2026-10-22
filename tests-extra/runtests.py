@@ -259,6 +259,12 @@ def run_case(ctx, module_entry, rep):
     return rep.ok()
 
 def setup_namespace(uid, gid):
+    # necessary for t.pause()
+    try:
+        sys.stdin = open('/dev/tty', 'r', encoding='utf-8')
+    except OSError:
+        pass
+
     try:
         libc.prctl(15, b"runtests KnotNS-Worker", 0, 0, 0)
     except Exception:
