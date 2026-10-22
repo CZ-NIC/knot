@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import base64
 import os
 import random
 import re
@@ -274,6 +275,18 @@ class ZoneFile(object):
 
         with open(self.path, "a") as file:
             file.write("%s IN TXT %s\n" % (owner, rdata))
+
+    def append_rndDNSKEY(self, ttl=None):
+        '''Append random DNSKEY for algorithm 13'''
+
+        if ttl is None:
+            ttl = random.randint(0, 65535)
+
+        pubkey = os.urandom(64)
+        b64 = base64.b64encode(pubkey).decode("ascii")
+
+        with open(self.path, "a") as file:
+            file.write("@ %d DNSKEY 256 3 13 %s\n" % (ttl, b64))
 
     def gen_rnd_ddns(self, ddns, allow_ns=True):
         '''Walk zonefile, randomly mark some records to be removed by ddns and some added'''
