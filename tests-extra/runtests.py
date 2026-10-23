@@ -85,6 +85,8 @@ def parse_args(cmd_args):
                         action="store_true", help="stop execution on error")
     parser.add_argument("-x", "--xdp", dest="xdp", \
                         action="store_true", help="allow XDP testing")
+    parser.add_argument("--namespaces", dest="namespaces", \
+                        action="store_true", help="use Linux network namespaces for isolation (recommended for --jobs)")
     parser.add_argument("tests", metavar="[:]test[/case]", nargs="*", \
                         help="([exclude] | run) specific (test set | [test case])")
     args = parser.parse_args(cmd_args)
@@ -93,6 +95,7 @@ def parse_args(cmd_args):
     params.repeat = max(int(args.repeat), 0)
     params.jobs = max(int(args.jobs), 1) if args.jobs else 1
     params.addresses = max(int(args.addresses), 1) if args.addresses else 1
+    params.namespaces = args.namespaces
     params.common_data_dir = os.path.join(current_dir, "data")
     params.exit_on_error = args.error_exit
     params.xdp = args.xdp
