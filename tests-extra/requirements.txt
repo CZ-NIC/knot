@@ -1,5 +1,5 @@
 aioquic
-dnspython>=2.2.0
+dnspython==2.8.0 # other versions may break some tests
 jsonschema
 psutil
 pyyaml

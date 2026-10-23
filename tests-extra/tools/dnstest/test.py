@@ -33,7 +33,7 @@ class Test(object):
     XDP_LOCK_FILE = "/tmp/knottest-xdp-lock"
     LOCAL_ADDR_COMMON = {4: "127.0.0.1", 6: "::1"}
     LOCAL_ADDR_MULTI = LOCAL_ADDR_COMMON
-    if params.addresses > 1:
+    if not params.namespaces and params.addresses > 1:
         idx = 1 + Context().job_id % params.addresses
         LOCAL_ADDR_MULTI = {4: "127.0.1.%i" % idx, 6: "::1%i" % idx}
 
@@ -141,9 +141,12 @@ class Test(object):
     @property
     def hostname(self):
         hostname = socket.gethostname()
-        addrinfo = socket.getaddrinfo(hostname, 0, socket.AF_UNSPEC,
-                                      socket.SOCK_DGRAM, 0, socket.AI_CANONNAME)
-        return addrinfo[0][3] if addrinfo else hostname
+        try:
+            addrinfo = socket.getaddrinfo(hostname, 0, socket.AF_UNSPEC,
+                                          socket.SOCK_DGRAM, 0, socket.AI_CANONNAME)
+            return addrinfo[0][3]
+        except Exception:
+            return hostname
 
     def server(self, server, nsid=None, ident=None, version=None, \
                valgrind=None, address=None, port=None, ctlport=None, \

@@ -23,6 +23,12 @@ Python modules:
 To install necessary Python modules using pip, run:
 $ pip install -r requirements.txt
 
+Configure options:
+------------------
+
+To not skip any test, run configure as such:
+$ ./configure --with-gc-interval=30 --with-module-dnstap=yes --enable-quic --enable-redis
+
 Optional loopback addresses configuration:
 ------------------------------------------
 
@@ -43,6 +49,12 @@ Allow ptrace:
 or
 # vim /etc/sysctl.d/10-ptrace.conf
 # kernel.yama.ptrace_scope = 0
+
+For the use of namespaces allow the creation of namespaces by unprivileged users:
+$ sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+
+For massive parallelization over SSH, the following limit must be increased:
+$ echo 1000000 | sudo tee /sys/fs/cgroup/system.slice/ssh.service/pids.max
 
 XDP:
 ----
