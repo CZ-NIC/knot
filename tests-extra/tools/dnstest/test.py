@@ -33,7 +33,7 @@ class Test(object):
     XDP_LOCK_FILE = "/tmp/knottest-xdp-lock"
     LOCAL_ADDR_COMMON = {4: "127.0.0.1", 6: "::1"}
     LOCAL_ADDR_MULTI = LOCAL_ADDR_COMMON
-    if params.addresses > 1:
+    if not params.namespaces and params.addresses > 1:
         idx = 1 + Context().job_id % params.addresses
         LOCAL_ADDR_MULTI = {4: "127.0.1.%i" % idx, 6: "::1%i" % idx}
 
@@ -103,18 +103,32 @@ class Test(object):
         return True
 
     def _gen_port(self):
-        min_port = 1500
-        max_port = 65000
+        # chosen as "nice" numbers above well-known ports and below dynamic and/or private / ephemeral ports
+        if params.namespaces:
+            min_port = 1500
+            max_port = 10000
+        else:
+            min_port = 1500
+            max_port = 65000
 
-        port = Test.last_port
-        if port:
-            port = port + 1 if port < max_port else min_port
+        if params.namespaces:
+            port = Test.last_port + 1 if Test.last_port else min_port
+            while port < max_port:
+                if self._check_port(port):
+                    Test.last_port = port
+                    return port
+                port += 1
+            raise Failed("All port exhausted")
+        else:
+            port = Test.last_port
+            if port:
+                port = port + 1 if port < max_port else min_port
 
-        while not self._check_port(port):
-            port = random.randint(min_port, max_port)
+            while not self._check_port(port):
+                port = random.randint(min_port, max_port)
 
-        Test.last_port = port
-        return port
+            Test.last_port = port
+            return port
 
     def _gen_lock_file(self, srvname):
         try:
@@ -141,9 +155,12 @@ class Test(object):
     @property
     def hostname(self):
         hostname = socket.gethostname()
-        addrinfo = socket.getaddrinfo(hostname, 0, socket.AF_UNSPEC,
-                                      socket.SOCK_DGRAM, 0, socket.AI_CANONNAME)
-        return addrinfo[0][3] if addrinfo else hostname
+        try:
+            addrinfo = socket.getaddrinfo(hostname, 0, socket.AF_UNSPEC,
+                                          socket.SOCK_DGRAM, 0, socket.AI_CANONNAME)
+            return addrinfo[0][3]
+        except Exception:
+            return hostname
 
     def server(self, server, nsid=None, ident=None, version=None, \
                valgrind=None, address=None, port=None, ctlport=None, \

@@ -12,6 +12,7 @@ import sys
 import tempfile
 import time
 import traceback
+import subprocess
 
 current_dir = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(os.path.join(current_dir, "tools"))
@@ -19,9 +20,32 @@ from dnstest.context import Context
 import dnstest.params as params
 import dnstest.utils
 
+import ctypes
+import ctypes.util
+
+libc_name = ctypes.util.find_library('c')
+if not libc_name:
+    raise OSError("Could not locate the standard C library.")
+
+libc = ctypes.CDLL(libc_name, use_errno=True)
+
+PR_SET_DUMPABLE = 4
+UNPRIVILEGED_ID = 1000
+
 CASE_OK, CASE_FAILED, CASE_SKIPPED = 0, 1, 2
 
 TESTS_DIR = "tests"
+
+ROOT_SERVERS = """
+198.41.0.4 a.root-servers.net.
+170.247.170.2 b.root-servers.net.
+192.33.4.12 c.root-servers.net.
+199.7.91.13 d.root-servers.net.
+2001:503:ba3e::2:30 a.root-servers.net.
+2801:1b8:10::b b.root-servers.net.
+2001:500:2::c c.root-servers.net.
+2001:500:2d::d d.root-servers.net.
+"""
 
 log = None
 outs_dir = None
@@ -85,6 +109,8 @@ def parse_args(cmd_args):
                         action="store_true", help="stop execution on error")
     parser.add_argument("-x", "--xdp", dest="xdp", \
                         action="store_true", help="allow XDP testing")
+    parser.add_argument("--namespaces", dest="namespaces", \
+                        action="store_true", help="use Linux network namespaces for isolation (recommended for --jobs)")
     parser.add_argument("tests", metavar="[:]test[/case]", nargs="*", \
                         help="([exclude] | run) specific (test set | [test case])")
     args = parser.parse_args(cmd_args)
@@ -93,6 +119,7 @@ def parse_args(cmd_args):
     params.repeat = max(int(args.repeat), 0)
     params.jobs = max(int(args.jobs), 1) if args.jobs else 1
     params.addresses = max(int(args.addresses), 1) if args.addresses else 1
+    params.namespaces = args.namespaces
     params.common_data_dir = os.path.join(current_dir, "data")
     params.exit_on_error = args.error_exit
     params.xdp = args.xdp
@@ -199,9 +226,9 @@ def run_test(ctx, module_entry):
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
 
-def run_case(ctx, module_entry, rep, runner=run_test):
+def run_case(ctx, module_entry, rep):
     try:
-        runner(ctx, module_entry)
+        run_test(ctx, module_entry)
     except dnstest.utils.Skip as exc:
         return rep.skipped(format(exc))
     except (dnstest.utils.Failed, Exception) as exc:
@@ -231,6 +258,85 @@ def run_case(ctx, module_entry, rep, runner=run_test):
     if ctx.err:
         return rep.failed("FAILED" + ((" (" + ctx.err_msg + ")") if ctx.err_msg else ""))
     return rep.ok()
+
+def map_ids(inner_uid, outer_uid, inner_gid, outer_gid):
+    for path, data in (("/proc/self/setgroups", "deny\n"),
+                       ("/proc/self/uid_map", f"{inner_uid} {outer_uid} 1\n"),
+                       ("/proc/self/gid_map", f"{inner_gid} {outer_gid} 1\n")):
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(data)
+
+def setup_outer_namespace():
+    uid, gid = os.getuid(), os.getgid()
+    os.unshare(os.CLONE_NEWUSER | os.CLONE_NEWNET | os.CLONE_NEWNS)
+
+    if libc.prctl(PR_SET_DUMPABLE, 1, 0, 0, 0) != 0:
+        raise OSError(ctypes.get_errno(), "prctl(PR_SET_DUMPABLE) failed")
+
+    map_ids(0, uid, 0, gid)
+
+    res = subprocess.run(["ip", "link", "set", "lo", "up"],
+                            capture_output=True, text=True, check=False)
+    if res.returncode != 0:
+        raise dnstest.utils.Failed(res.stderr.strip() or res.stdout.strip())
+
+    # This is required exclusively for test cases that depend on external 
+    # ALIAS targets to resolve them locally.
+    try:
+        subprocess.run(["mount", "-t", "tmpfs", "tmpfs", "/etc"], check=True)
+    except Exception as e:
+        print(f"FAILED to setup resolv.conf - {e}")
+
+    try:
+        # Inject IP mappings for root servers needed by specific test cases
+        with open("/etc/hosts", "a", encoding="utf-8") as f:
+            f.write(ROOT_SERVERS)
+    except Exception:
+        pass
+
+    os.environ["RESOLV_MULTI"] = "on"
+
+def drop_to_unprivileged_user():
+    os.unshare(os.CLONE_NEWUSER)
+    map_ids(UNPRIVILEGED_ID, 0, UNPRIVILEGED_ID, 0)
+
+def namespace_process(ctx, module_entry, rep):
+    outcome = CASE_FAILED
+    try:
+        setup_outer_namespace()
+        drop_to_unprivileged_user()
+        outcome = run_case(ctx, module_entry, rep)
+    except BaseException:
+        pass  # run_case already reported it
+    finally:
+        try:
+            if ctx.test:
+                ctx.test.end()
+            ctx.case_log.flush()
+            sys.stdout.flush()
+            sys.stderr.flush()
+        finally:
+            os._exit(outcome)
+
+def run_case_in_namespace(ctx, module_entry, rep):
+    t = multiprocessing.Process(
+        target=namespace_process,
+        args=(ctx, module_entry, rep)
+    )
+    t.start()
+    t.join()
+
+    rc = t.exitcode
+    if rc is not None:
+        if rc >= 0:
+            if rc in (CASE_OK, CASE_FAILED, CASE_SKIPPED):
+                return rc
+            return rep.failed("FAILED (test process exited with %d)" % rc)
+        else:
+            sig = -rc
+            return rep.failed("FAILED (test process killed by signal %d)" % sig)
+
+    return rep.failed("FAILED (test process did not exit cleanly)")
 
 def job(job_id, tasks, results, stop, done, print_lock):
     case_cnt = 0
@@ -281,7 +387,11 @@ def job(job_id, tasks, results, stop, done, print_lock):
             continue
 
         module_entry = os.path.join(ctx.module_path, "test.py")
-        outcome = run_case(ctx, module_entry, rep, run_test)
+        outcome = CASE_FAILED
+        if params.namespaces:
+            outcome = run_case_in_namespace(ctx, module_entry, rep)
+        else:
+            outcome = run_case(ctx, module_entry, rep)
 
         if outcome == CASE_FAILED:
             fail_cnt += 1

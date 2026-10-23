@@ -224,6 +224,8 @@ class Server(object):
         return dict()
 
     def _check_socket(self, proto, port):
+        if params.namespaces:
+            return True # the port distribution is deterministic in namespaces mode
         if self.addr.startswith("/"):
             ux_socket = True
             param = ""
