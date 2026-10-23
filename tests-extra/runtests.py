@@ -30,6 +30,7 @@ if not libc_name:
 libc = ctypes.CDLL(libc_name, use_errno=True)
 
 PR_SET_DUMPABLE = 4
+UNPRIVILEGED_ID = 1000
 
 CASE_OK, CASE_FAILED, CASE_SKIPPED = 0, 1, 2
 
@@ -258,33 +259,24 @@ def run_case(ctx, module_entry, rep):
         return rep.failed("FAILED" + ((" (" + ctx.err_msg + ")") if ctx.err_msg else ""))
     return rep.ok()
 
-def setup_namespace(uid, gid):
-    # necessary for t.pause()
-    try:
-        sys.stdin = open('/dev/tty', 'r', encoding='utf-8')
-    except OSError:
-        pass
+def map_ids(inner_uid, outer_uid, inner_gid, outer_gid):
+    for path, data in (("/proc/self/setgroups", "deny\n"),
+                       ("/proc/self/uid_map", f"{inner_uid} {outer_uid} 1\n"),
+                       ("/proc/self/gid_map", f"{inner_gid} {outer_gid} 1\n")):
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(data)
 
-    try:
-        libc.prctl(15, b"runtests KnotNS-Worker", 0, 0, 0)
-    except Exception:
-        pass
+def setup_outer_namespace():
+    uid, gid = os.getuid(), os.getgid()
     os.unshare(os.CLONE_NEWUSER | os.CLONE_NEWNET | os.CLONE_NEWNS)
 
     if libc.prctl(PR_SET_DUMPABLE, 1, 0, 0, 0) != 0:
         raise OSError(ctypes.get_errno(), "prctl(PR_SET_DUMPABLE) failed")
 
-    with open("/proc/self/setgroups", "w", encoding="utf-8") as f:
-        f.write("deny\n")
-    with open("/proc/self/uid_map", "w", encoding="utf-8") as f:
-        f.write(f"0 {uid} 1\n")
-    with open("/proc/self/gid_map", "w", encoding="utf-8") as f:
-        f.write(f"0 {gid} 1\n")
+    map_ids(0, uid, 0, gid)
 
     res = subprocess.run(["ip", "link", "set", "lo", "up"],
                             capture_output=True, text=True, check=False)
-    if res.returncode != 0:
-        raise dnstest.utils.Failed(res.stderr.strip() or res.stdout.strip())
 
     # This is required exclusively for test cases that depend on external 
     # ALIAS targets to resolve them locally.
@@ -302,10 +294,15 @@ def setup_namespace(uid, gid):
 
     os.environ["RESOLV_MULTI"] = "on"
 
-def namespace_process(ctx, module_entry, rep, uid, gid):
+def drop_to_unprivileged_user():
+    os.unshare(os.CLONE_NEWUSER)
+    map_ids(UNPRIVILEGED_ID, 0, UNPRIVILEGED_ID, 0)
+
+def namespace_process(ctx, module_entry, rep):
     outcome = CASE_FAILED
     try:
-        setup_namespace(uid, gid)
+        setup_outer_namespace()
+        drop_to_unprivileged_user()
         outcome = run_case(ctx, module_entry, rep)
     except BaseException:
         pass  # run_case already reported it
@@ -320,12 +317,9 @@ def namespace_process(ctx, module_entry, rep, uid, gid):
             os._exit(outcome)
 
 def run_case_in_namespace(ctx, module_entry, rep):
-    uid = os.getuid()
-    gid = os.getgid()
-
     t = multiprocessing.Process(
         target=namespace_process,
-        args=(ctx, module_entry, rep, uid, gid)
+        args=(ctx, module_entry, rep)
     )
     t.start()
     t.join()
