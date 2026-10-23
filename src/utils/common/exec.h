@@ -63,13 +63,13 @@ void print_footer_xfr(const size_t  total_len,
  * \param query		Query packet.
  * \param exec_time	Time of the packet creation.
  * \param style		Style of the output.
+ * \param jsonw		JSON writer.
  *
- * \retval JSON witter	if success.
- * \retval NULL		if error.
  */
-jsonw_t *print_header_xfr_json(const knot_pkt_t *query,
-                               const time_t     exec_time,
-                               const style_t    *style);
+void print_header_xfr_json(const knot_pkt_t *query,
+                           const time_t     exec_time,
+                           const style_t    *style,
+                           jsonw_t          *jsonw);
 
 /*!
  * \brief Prints one XFR reply packet in JSON.
@@ -88,7 +88,7 @@ void print_data_xfr_json(jsonw_t          *w,
  * \param w		JSON writter.
  * \param style		Style of the output.
  */
-void print_footer_xfr_json(jsonw_t       **w,
+void print_footer_xfr_json(jsonw_t       *w,
                            const style_t *style);
 
 /*!
@@ -99,12 +99,14 @@ void print_footer_xfr_json(jsonw_t       **w,
  * \param net		Connection information.
  * \param exec_time	Time of the packet creation.
  * \param style		Style of the output.
+ * \param jsonw		JSON write context or NULL.
  */
 void print_packets_json(const knot_pkt_t *query,
                         const knot_pkt_t *reply,
                         const net_t      *net,
                         const time_t     exec_time,
-                        const style_t    *style);
+                        const style_t    *style,
+                        jsonw_t          *jsonw);
 
 /*!
  * \brief Prints one DNS packet.

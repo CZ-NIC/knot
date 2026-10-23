@@ -14,14 +14,13 @@
 #include "utils/common/params.h"
 #include "libknot/libknot.h"
 #include "contrib/ctype.h"
+#include "contrib/json.h"
 #include "contrib/macros.h"
 #include "contrib/sockaddr.h"
 #include "contrib/time.h"
 #include "contrib/openbsd/strlcat.h"
 #include "contrib/ucw/lists.h"
 #include "contrib/wire_ctx.h"
-
-static const char *JSON_INDENT = "  ";
 
 static knot_lookup_t rtypes[] = {
 	{ KNOT_RRTYPE_A,      "has IPv4 address" },
@@ -982,31 +981,16 @@ knot_pkt_t *create_empty_packet(const uint16_t max_size)
 	return packet;
 }
 
-jsonw_t *print_header_xfr_json(const knot_pkt_t *query,
-                               const time_t     exec_time,
-                               const style_t    *style)
+void print_header_xfr_json(const knot_pkt_t *query,
+                           const time_t     exec_time,
+                           const style_t    *style,
+                           jsonw_t          *jsonw)
 {
 	if (style == NULL) {
 		DBG_NULL;
-		return NULL;
+		return;
 	}
 
-	jsonw_t *w = jsonw_new(stdout, JSON_INDENT);
-	if (w == NULL) {
-		return NULL;
-	}
-
-	if (style->show_query) {
-		jsonw_object(w, NULL);
-		jsonw_object(w, "queryMessage");
-		print_packet_json(w, query, exec_time);
-		jsonw_end(w);
-		jsonw_list(w, "responseMessage");
-	} else {
-		jsonw_list(w, NULL);
-	}
-
-	return w;
 }
 
 void print_data_xfr_json(jsonw_t          *w,
@@ -1018,12 +1002,10 @@ void print_data_xfr_json(jsonw_t          *w,
 		return;
 	}
 
-	jsonw_object(w, NULL);
 	print_packet_json(w, reply, exec_time);
-	jsonw_end(w);
 }
 
-void print_footer_xfr_json(jsonw_t       **w,
+void print_footer_xfr_json(jsonw_t       *w,
                            const style_t *style)
 {
 	if (w == NULL || style == NULL) {
@@ -1031,13 +1013,6 @@ void print_footer_xfr_json(jsonw_t       **w,
 		return;
 	}
 
-	jsonw_end(*w); // list (responseMessage)
-	if (style->show_query) {
-		jsonw_end(*w); // object
-	}
-
-	jsonw_free(w);
-	*w = NULL;
 }
 
 void print_header_xfr(const knot_pkt_t *packet, const style_t *style)
@@ -1131,34 +1106,32 @@ void print_packets_json(const knot_pkt_t *query,
                         const knot_pkt_t *reply,
                         const net_t      *net,
                         const time_t     exec_time,
-                        const style_t    *style)
+                        const style_t    *style,
+                        jsonw_t          *jsonw)
 {
 	if (style == NULL) {
 		DBG_NULL;
 		return;
 	}
 
-	jsonw_t *w = jsonw_new(stdout, JSON_INDENT);
-	if (w == NULL) {
+	if (reply == NULL) {
 		return;
 	}
-	jsonw_object(w, NULL);
 
-	if (style->show_query) {
-		jsonw_object(w, "queryMessage");
-		print_packet_json(w, query, exec_time);
-		jsonw_end(w);
-		jsonw_object(w, "responseMessage");
+	jsonw_object(jsonw, NULL);
+	jsonw_str(jsonw, "type", "MESSAGE");
+	utils_json_events_dump();
+
+	if (style->show_query && query != NULL) {
+		jsonw_object(jsonw, "queryMessage");
+		print_packet_json(jsonw, query, exec_time);
+		jsonw_end(jsonw);
 	}
 
-	print_packet_json(w, reply, exec_time);
-
-	if (style->show_query) {
-		jsonw_end(w);
-	}
-
-	jsonw_end(w);
-	jsonw_free(&w);
+	jsonw_object(jsonw, "responseMessage");
+	print_packet_json(jsonw, reply, exec_time);
+	jsonw_end(jsonw);
+	jsonw_end(jsonw);
 }
 
 void print_packet(const knot_pkt_t *packet,

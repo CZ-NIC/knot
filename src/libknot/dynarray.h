@@ -114,7 +114,9 @@
 			dynarray->arr = prefix ## _dynarray_arr_arr__; \
 		} \
 		ntype *add_to = &prefix ## _dynarray_arr(dynarray)[dynarray->size++]; \
-		*add_to = *to_add; \
+		if (to_add != NULL) { \
+			*add_to = *to_add; \
+		} \
 		return add_to; \
 	} \
 	\

@@ -10,14 +10,39 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "contrib/json.h"
+#include "libknot/dynarray.h"
+
+typedef struct {
+	char type[32];
+	char text[224];
+} util_msg_event_t;
+
+knot_dynarray_declare(util_msg, util_msg_event_t, DYNARRAY_VISIBILITY_NORMAL, 2);
+
+extern jsonw_t *g_json;
+extern util_msg_dynarray_t g_json_events;
+
 #define ERROR_		";; ERROR: "
 #define INFO_		";; INFO: "
 #define WARNING_	";; WARNING: "
 #define DEBUG_		";; DEBUG: "
 
-#define ERR(msg, ...)	do { fprintf(stderr, ERROR_   msg "\n", ##__VA_ARGS__); fflush(stderr); } while (0)
+#define ERR(msg, ...)	do { \
+	if (g_json == NULL) { \
+		fprintf(stderr, ERROR_   msg "\n", ##__VA_ARGS__); fflush(stderr); \
+	} else { \
+		utils_json_error(msg, ##__VA_ARGS__); \
+	} \
+} while (0)
 #define INFO(msg, ...)	do { fprintf(stdout, INFO_    msg "\n", ##__VA_ARGS__); fflush(stdout); } while (0)
-#define WARN(msg, ...)	do { fprintf(stderr, WARNING_ msg "\n", ##__VA_ARGS__); fflush(stderr); } while (0)
+#define WARN(msg, ...)	do { \
+	if (g_json == NULL) { \
+		fprintf(stderr, WARNING_ msg "\n", ##__VA_ARGS__); fflush(stderr); \
+	} else { \
+		utils_json_event_add(msg, ##__VA_ARGS__); \
+	} \
+} while (0)
 #define DBG(msg, ...)	do { msg_debug(1, DEBUG_      msg "\n", ##__VA_ARGS__); fflush(stdout); } while (0)
 #define DBG2(msg, ...)	do { msg_debug(2, DEBUG_      msg "\n", ##__VA_ARGS__); fflush(stdout); } while (0)
 
@@ -34,6 +59,13 @@ int msg_debug(int level, const char *fmt, ...);
 #define WARN2(msg, ...)	do { fprintf(stderr, "warning: " msg "\n", ##__VA_ARGS__); fflush(stderr); } while (0)
 #define INFO2(msg, ...)	do { fprintf(stdout,             msg "\n", ##__VA_ARGS__); fflush(stdout); } while (0)
 
+inline static void stdout_wrap(void)
+{
+	if (g_json == NULL) {
+		printf("\n");
+	}
+}
+
 /*! \brief Prints an error message if stdout is in a state of error. */
 inline static bool stdout_write_err(void)
 {
@@ -43,3 +75,7 @@ inline static bool stdout_write_err(void)
 	}
 	return false;
 }
+
+void utils_json_event_add(const char *msg, ...);
+void utils_json_events_dump(void);
+void utils_json_error(const char *msg, ...);

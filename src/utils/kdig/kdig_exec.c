@@ -20,6 +20,8 @@
 #include "contrib/time.h"
 #include "contrib/ucw/lists.h"
 
+static const char *JSON_INDENT = "  ";
+
 #if USE_DNSTAP
 #include "contrib/dnstap/convert.h"
 #include "contrib/dnstap/message.h"
@@ -672,7 +674,7 @@ static int process_query_packet(const knot_pkt_t      *query,
 			ERR("can't print query packet");
 		}
 
-		printf("\n");
+		stdout_wrap();
 	}
 
 	// Loop over incoming messages, unless reply id is correct or timeout.
@@ -725,9 +727,10 @@ static int process_query_packet(const knot_pkt_t      *query,
 	// Check for TC bit and repeat query with TCP if required.
 	if (knot_wire_get_tc(reply->wire) != 0 &&
 	    ignore_tc == false && net->socktype == SOCK_DGRAM) {
-		printf("\n");
-		WARN("truncated reply from %s, retrying over TCP\n",
+		stdout_wrap();
+		WARN("truncated reply from %s, retrying over TCP",
 		     net->remote_str);
+		stdout_wrap();
 		knot_pkt_free(reply);
 		net_close_keepopen(net, query_ctx);
 
@@ -744,14 +747,14 @@ static int process_query_packet(const knot_pkt_t      *query,
 	check_reply_qr(reply);
 
 	// Print reply packet.
-	if (style->format != FORMAT_JSON) {
+	if (g_json == NULL) {
 		// Intentionaly start-end because of QUIC can have receive time.
 		print_packet(reply, net, in_len, time_diff_ms(&t_start, &t_end),
 		             timestamp, true, style);
 	} else {
 		knot_pkt_t *q = knot_pkt_new(query->wire, query->size, NULL);
 		(void)knot_pkt_parse(q, KNOT_PF_NOCANON);
-		print_packets_json(q, reply, net, timestamp, style);
+		print_packets_json(q, reply, net, timestamp, style, g_json);
 		knot_pkt_free(q);
 	}
 
@@ -766,9 +769,10 @@ static int process_query_packet(const knot_pkt_t      *query,
 
 	// Check for BADCOOKIE RCODE and repeat query with the new cookie if required.
 	if (knot_pkt_ext_rcode(reply) == KNOT_RCODE_BADCOOKIE && query_ctx->badcookie > 0) {
-		printf("\n");
-		WARN("bad cookie from %s, retrying with the received one\n",
+		stdout_wrap();
+		WARN("bad cookie from %s, retrying with the received one",
 		     net->remote_str);
+		stdout_wrap();
 		net_close_keepopen(net, query_ctx);
 
 		// Prepare new query context.
@@ -857,14 +861,14 @@ static int process_query_packet(const knot_pkt_t      *query,
 	return 0;
 
 fail:
-	if (style->format != FORMAT_JSON) {
+	if (g_json == NULL) {
 		// Intentionaly start-end because of QUIC can have receive time.
 		print_packet(reply, net, in_len, time_diff_ms(&t_start, &t_end),
 		             timestamp, true, style);
 	} else {
 		knot_pkt_t *q = knot_pkt_new(query->wire, query->size, NULL);
 		(void)knot_pkt_parse(q, KNOT_PF_NOCANON);
-		print_packets_json(q, reply, net, timestamp, style);
+		print_packets_json(q, reply, net, timestamp, style, g_json);
 		knot_pkt_free(q);
 	}
 
@@ -879,6 +883,10 @@ static int process_query(const query_t *query, net_t *net)
 	node_t     *server;
 	knot_pkt_t *out_packet;
 	int        ret;
+
+	if (query->style.format == FORMAT_JSON) {
+		g_json = jsonw_new(stdout, JSON_INDENT);
+	}
 
 	// Create query packet.
 	out_packet = create_query_packet(query);
@@ -955,7 +963,7 @@ static int process_query(const query_t *query, net_t *net)
 					net->local_info = NULL;
 					net->srv = net->srv->ai_next;
 					if (net->srv != NULL && query->style.show_query) {
-						printf("\n");
+						stdout_wrap();
 					}
 
 					continue;
@@ -975,7 +983,7 @@ static int process_query(const query_t *query, net_t *net)
 				    get_sockname(socktype));
 
 				if (query->style.show_query) {
-					printf("\n");
+					stdout_wrap();
 				}
 			}
 
@@ -987,7 +995,7 @@ static int process_query(const query_t *query, net_t *net)
 
 		// If not last server, print separation.
 		if (server->next->next && query->style.show_query) {
-			printf("\n");
+			stdout_wrap();
 		}
 next_server:
 		continue;
@@ -1002,6 +1010,9 @@ finish:
 	if (ret == KNOT_NET_EADDR) {
 		WARN("no servers to query");
 	}
+	if (g_json != NULL) {
+		jsonw_free(&g_json);
+	}
 
 	return ret;
 }
@@ -1014,6 +1025,7 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 {
 	struct timespec t_start, t_query, t_end;
 	time_t		timestamp;
+	knot_pkt_t      *q = NULL;
 	knot_pkt_t      *reply = NULL;
 	uint8_t         in[MAX_PACKET_SIZE];
 	int             in_len;
@@ -1022,7 +1034,6 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 	size_t          total_len = 0;
 	size_t          msg_count = 0;
 	size_t          rr_count = 0;
-	jsonw_t         *w = NULL;
 
 	// Get start query time.
 	timestamp = time(NULL);
@@ -1058,7 +1069,7 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 	// Print query packet if required.
 	if (style->show_query && style->format != FORMAT_JSON) {
 		// Create copy of query packet for parsing.
-		knot_pkt_t *q = knot_pkt_new(query->wire, query->size, NULL);
+		q = knot_pkt_new(query->wire, query->size, NULL);
 		if (q != NULL) {
 			if (knot_pkt_parse(q, KNOT_PF_NOCANON) == KNOT_EOK) {
 				print_packet(q, net, query->size,
@@ -1068,11 +1079,12 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 				ERR("can't print query packet");
 			}
 			knot_pkt_free(q);
+			q = NULL;
 		} else {
 			ERR("can't print query packet");
 		}
 
-		printf("\n");
+		stdout_wrap();
 	}
 
 	// Loop over reply messages unless first and last SOA serials differ.
@@ -1121,14 +1133,16 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 
 		// Print leading transfer information.
 		if (msg_count == 0) {
-			if (style->format != FORMAT_JSON) {
+			if (g_json == NULL) {
 				print_header_xfr(query, style);
 			} else {
-				knot_pkt_t *q = knot_pkt_new(query->wire, query->size, NULL);
+				q = knot_pkt_new(query->wire, query->size, NULL);
 				(void)knot_pkt_parse(q, KNOT_PF_NOCANON);
-				w = print_header_xfr_json(q, timestamp, style);
-				knot_pkt_free(q);
+				print_header_xfr_json(q, timestamp, style, g_json);
 			}
+		} else {
+			knot_pkt_free(q);
+			q = NULL;
 		}
 
 		// Check for error reply.
@@ -1180,10 +1194,11 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 		total_len += in_len;
 
 		// Print reply packet.
-		if (style->format != FORMAT_JSON) {
+		if (g_json == NULL) {
 			print_data_xfr(reply, style);
 		} else {
-			print_data_xfr_json(w, reply, timestamp);
+			print_packets_json(q, reply, net, timestamp, style, g_json);
+			//print_data_xfr_json(g_json, reply, timestamp);
 		}
 
 		// Fail to continue if TC is set.
@@ -1204,11 +1219,11 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 
 	// Print full transfer information.
 	t_end = time_now();
-	if (style->format != FORMAT_JSON) {
+	if (g_json == NULL) {
 		print_footer_xfr(total_len, msg_count, rr_count, net,
 		                 time_diff_ms(&t_query, &t_end), timestamp, style);
 	} else {
-		print_footer_xfr_json(&w, style);
+		print_footer_xfr_json(g_json, style);
 	}
 
 	net_close_keepopen(net, query_ctx);
@@ -1218,18 +1233,18 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 fail:
 	// Print partial transfer information.
 	t_end = time_now();
-	if (style->format != FORMAT_JSON) {
+	if (g_json == NULL) {
 		print_data_xfr(reply, style);
 		print_footer_xfr(total_len, msg_count, rr_count, net,
 		                 time_diff_ms(&t_query, &t_end), timestamp, style);
 	} else {
-		print_data_xfr_json(w, reply, timestamp);
-		print_footer_xfr_json(&w, style);
+		print_packets_json(q, reply, net, timestamp, style, g_json);
+		//print_data_xfr_json(g_json, reply, timestamp);
+		print_footer_xfr_json(g_json, style);
 	}
 
 	knot_pkt_free(reply);
 	net_close(net);
-	free(w);
 
 	return -1;
 }
@@ -1238,6 +1253,10 @@ static int process_xfr(const query_t *query, net_t *net)
 {
 	knot_pkt_t *out_packet;
 	int        ret;
+
+	if (query->style.format == FORMAT_JSON) {
+		g_json = jsonw_new(stdout, JSON_INDENT);
+	}
 
 	// Create query packet.
 	out_packet = create_query_packet(query);
@@ -1320,6 +1339,9 @@ finish:
 	}
 	sign_context_deinit(&sign_ctx);
 	knot_pkt_free(out_packet);
+	if (g_json != NULL) {
+		jsonw_free(&g_json);
+	}
 
 	return ret;
 }
@@ -1365,7 +1387,7 @@ int kdig_exec(const kdig_params_t *params)
 
 		// If not last query, print separation.
 		if (n->next->next && params->config->style.format == FORMAT_FULL) {
-			printf("\n");
+			stdout_wrap();
 		}
 	}
 
