@@ -10,3 +10,6 @@
 [submodule "tests-fuzz/fuzz_dnssec_verify.in"]
 	path = tests-fuzz/fuzz_dnssec_verify.in
 	url = https://gitlab.nic.cz/knot/fuzzing/fuzz_dnssec_verify.in.git
+[submodule "tests-fuzz/fuzz_svcb_render.in"]
+	path = tests-fuzz/fuzz_svcb_render.in
+	url = https://gitlab.nic.cz/knot/fuzzing/fuzz_svcb_render.in.git

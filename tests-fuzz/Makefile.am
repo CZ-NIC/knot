@@ -12,9 +12,11 @@ FUZZERS = \
 	fuzz_dname_to_str	\
 	fuzz_dname_from_str	\
 	fuzz_dnssec_verify	\
+	fuzz_svcb_render	\
 	fuzz_tsig
 
 check_PROGRAMS = $(FUZZERS)
+EXTRA_DIST = README.md
 
 # Simple function wrappers (libFuzzer, tests)
 
@@ -51,6 +53,13 @@ fuzz_dnssec_verify_LDADD    = \
 	$(top_builddir)/src/libcontrib.la	\
 	$(lmdb_LIBS)
 
+fuzz_svcb_render_SOURCES  = fuzz_svcb_render.c
+fuzz_svcb_render_CPPFLAGS = $(AM_CPPFLAGS)
+fuzz_svcb_render_LDADD    = \
+	$(top_builddir)/src/libknot.la		\
+	$(top_builddir)/src/libcontrib.la	\
+	$(lmdb_LIBS)
+
 fuzz_tsig_SOURCES  = fuzz_tsig.c
 fuzz_tsig_CPPFLAGS = $(AM_CPPFLAGS)
 fuzz_tsig_LDADD    = \
@@ -68,6 +77,7 @@ fuzz_zscanner_LDADD       += ${LIB_FUZZING_ENGINE} -lc++
 fuzz_dname_to_str_LDADD   += ${LIB_FUZZING_ENGINE} -lc++
 fuzz_dname_from_str_LDADD += ${LIB_FUZZING_ENGINE} -lc++
 fuzz_dnssec_verify_LDADD  += ${LIB_FUZZING_ENGINE} -lc++
+fuzz_svcb_render_LDADD    += ${LIB_FUZZING_ENGINE} -lc++
 fuzz_tsig_LDADD           += ${LIB_FUZZING_ENGINE} -lc++
 
 else
@@ -89,13 +99,16 @@ fuzz_dname_from_str_LDFLAGS   = ${fuzzer_LDFLAGS}
 fuzz_dnssec_verify_CPPFLAGS += ${fuzzer_CFLAGS}
 fuzz_dnssec_verify_LDFLAGS   = ${fuzzer_LDFLAGS}
 
+fuzz_svcb_render_CPPFLAGS += ${fuzzer_CFLAGS}
+fuzz_svcb_render_LDFLAGS   = ${fuzzer_LDFLAGS}
+
 fuzz_tsig_CPPFLAGS += ${fuzzer_CFLAGS}
 fuzz_tsig_LDFLAGS   = ${fuzzer_LDFLAGS}
 
 # Ensure that fuzzers execute successfully with a benign input
 
 TESTS = check/check_fuzzers.test
-EXTRA_DIST = check/check_fuzzers.test
+EXTRA_DIST += check/check_fuzzers.test
 
 else
 
@@ -104,6 +117,7 @@ fuzz_zscanner_SOURCES       += main.c
 fuzz_dname_to_str_SOURCES   += main.c
 fuzz_dname_from_str_SOURCES += main.c
 fuzz_dnssec_verify_SOURCES  += main.c
+fuzz_svcb_render_SOURCES    += main.c
 fuzz_tsig_SOURCES           += main.c
 
 TESTS = $(FUZZERS)
