@@ -9,7 +9,7 @@ from dnstest.test import Test
 
 FLOOD_COUNT = 128
 RELOAD_FREQ = FLOOD_COUNT // 16
-UPDATE_SIZE = 32
+UPDATE_SIZE = 12
 
 chars="qwertyuiopasdfghjklzxcvbnm123456789"
 
@@ -41,7 +41,7 @@ def flood(server, zone):
         if up_index % RELOAD_FREQ == 0:
             server.reload()
     return rr
-    
+
 random.seed()
 
 t = Test(address=4)
