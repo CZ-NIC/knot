@@ -16,6 +16,9 @@ t.link(zone, bind)
 
 t.start()
 
+knot.zone_wait(zone)
+bind.zone_wait(zone)
+
 # B1. Name Error.
 resp = knot.dig("a.c.x.w.example.", "A", dnssec=True)
 resp.check(rcode="NXDOMAIN", flags="QR AA", eflags="DO")

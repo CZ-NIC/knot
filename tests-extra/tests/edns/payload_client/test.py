@@ -18,6 +18,9 @@ t.link(zone, bind)
 
 t.start()
 
+knot.zone_wait(zone)
+bind.zone_wait(zone)
+
 # TC - TXT record doesn't fit into UDP message (no TSIG).
 resp = knot.dig("513resp.flags", "TXT", udp=True, tsig=False)
 resp.check(flags="TC")

@@ -18,6 +18,9 @@ knot.conf_srv().tcp_reuseport = True
 
 t.start()
 
+knot.zone_wait(zone)
+bind.zone_wait(zone)
+
 # B1. Answer.
 resp = knot.dig("x.w.example", "MX", dnssec=True)
 resp.check(rcode="NOERROR", flags="QR AA", eflags="DO")
