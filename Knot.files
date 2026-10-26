@@ -681,7 +681,11 @@ src/utils/kzonecheck/zone_check.h
 src/utils/kzonesign/main.c
 tests-fuzz/fuzz_dname_from_str.c
 tests-fuzz/fuzz_dname_to_str.c
+tests-fuzz/fuzz_dnssec_verify.c
+tests-fuzz/fuzz_edns.c
 tests-fuzz/fuzz_packet.c
+tests-fuzz/fuzz_svcb_render.c
+tests-fuzz/fuzz_tsig.c
 tests-fuzz/fuzz_zscanner.c
 tests-fuzz/main.c
 tests/contrib/test_atomic.c
