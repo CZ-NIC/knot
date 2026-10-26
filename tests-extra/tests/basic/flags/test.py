@@ -15,6 +15,9 @@ t.link(zone, bind)
 
 t.start()
 
+knot.zone_wait(zone)
+bind.zone_wait(zone)
+
 # RD flag preservation.
 resp = knot.dig("flags", "NS", flags="RD")
 resp.check(flags="QR AA RD", noflags="TC RA AD CD Z")
