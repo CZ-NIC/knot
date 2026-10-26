@@ -121,7 +121,6 @@ class Server(object):
     START_MAX_ATTEMPTS = 3  # During the test, fatal.
     START_INIT_ATTEMPTS = 1  # When starting a test, non-fatal.
     STOP_TIMEOUT = 30
-    COMPILE_TIMEOUT = 60
     DIG_TIMEOUT = 5
 
     # Instance counter.
@@ -325,14 +324,6 @@ class Server(object):
                 z.catalog_role = None
         else:
             z.catalog_role = ZoneCatalogRole.HIDDEN
-
-    def compile(self):
-        try:
-            p = Popen([self.control_bin] + self.compile_params,
-                      stdout=self.fout, stderr=self.ferr)
-            p.communicate(timeout=Server.COMPILE_TIMEOUT)
-        except:
-            raise Failed("Can't compile server='%s'" %self.name)
 
     def wait_for_pidfile(self, attempts=8):
         '''Wait for a PID file to disappear, with a timeout'''
