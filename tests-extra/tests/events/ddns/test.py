@@ -20,7 +20,7 @@ def randstr():
 sockets = []
 
 def send_upd(up):
-    if up.server.addr == "127.0.0.1":
+    if "." in up.server.addr:
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     else:
         sock = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM)
