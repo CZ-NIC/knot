@@ -13,6 +13,7 @@ FUZZERS = \
 	fuzz_dname_from_str	\
 	fuzz_dnssec_verify	\
 	fuzz_svcb_render	\
+	fuzz_edns		\
 	fuzz_tsig
 
 check_PROGRAMS = $(FUZZERS)
@@ -60,6 +61,13 @@ fuzz_svcb_render_LDADD    = \
 	$(top_builddir)/src/libcontrib.la	\
 	$(lmdb_LIBS)
 
+fuzz_edns_SOURCES  = fuzz_edns.c
+fuzz_edns_CPPFLAGS = $(AM_CPPFLAGS)
+fuzz_edns_LDADD    = \
+	$(top_builddir)/src/libknot.la		\
+	$(top_builddir)/src/libcontrib.la	\
+	$(lmdb_LIBS)
+
 fuzz_tsig_SOURCES  = fuzz_tsig.c
 fuzz_tsig_CPPFLAGS = $(AM_CPPFLAGS)
 fuzz_tsig_LDADD    = \
@@ -78,6 +86,7 @@ fuzz_dname_to_str_LDADD   += ${LIB_FUZZING_ENGINE} -lc++
 fuzz_dname_from_str_LDADD += ${LIB_FUZZING_ENGINE} -lc++
 fuzz_dnssec_verify_LDADD  += ${LIB_FUZZING_ENGINE} -lc++
 fuzz_svcb_render_LDADD    += ${LIB_FUZZING_ENGINE} -lc++
+fuzz_edns_LDADD           += ${LIB_FUZZING_ENGINE} -lc++
 fuzz_tsig_LDADD           += ${LIB_FUZZING_ENGINE} -lc++
 
 else
@@ -118,6 +127,7 @@ fuzz_dname_to_str_SOURCES   += main.c
 fuzz_dname_from_str_SOURCES += main.c
 fuzz_dnssec_verify_SOURCES  += main.c
 fuzz_svcb_render_SOURCES    += main.c
+fuzz_edns_SOURCES           += main.c
 fuzz_tsig_SOURCES           += main.c
 
 TESTS = $(FUZZERS)

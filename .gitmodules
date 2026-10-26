@@ -13,3 +13,6 @@
 [submodule "tests-fuzz/fuzz_svcb_render.in"]
 	path = tests-fuzz/fuzz_svcb_render.in
 	url = https://gitlab.nic.cz/knot/fuzzing/fuzz_svcb_render.in.git
+[submodule "tests-fuzz/fuzz_edns.in"]
+	path = tests-fuzz/fuzz_edns.in
+	url = https://gitlab.nic.cz/knot/fuzzing/fuzz_edns.in.git
