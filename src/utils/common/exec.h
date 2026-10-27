@@ -58,40 +58,6 @@ void print_footer_xfr(const size_t  total_len,
                       const style_t *style);
 
 /*!
- * \brief Prints initial JSON part of XFR output.
- *
- * \param query		Query packet.
- * \param exec_time	Time of the packet creation.
- * \param style		Style of the output.
- * \param jsonw		JSON writer.
- *
- */
-void print_header_xfr_json(const knot_pkt_t *query,
-                           const time_t     exec_time,
-                           const style_t    *style,
-                           jsonw_t          *jsonw);
-
-/*!
- * \brief Prints one XFR reply packet in JSON.
- *
- * \param w		JSON writter.
- * \param reply		Reply packet (possibly one of many).
- * \param exec_time	Time of the packet creation.
- */
-void print_data_xfr_json(jsonw_t          *w,
-                         const knot_pkt_t *reply,
-                         const time_t     exec_time);
-
-/*!
- * \brief Prints trailing JSON part of XFR output.
- *
- * \param w		JSON writter.
- * \param style		Style of the output.
- */
-void print_footer_xfr_json(jsonw_t       *w,
-                           const style_t *style);
-
-/*!
  * \brief Prints one or query/reply pair of DNS packets in JSON format.
  *
  * \param query		Query DNS packet.

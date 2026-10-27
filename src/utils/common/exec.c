@@ -981,40 +981,6 @@ knot_pkt_t *create_empty_packet(const uint16_t max_size)
 	return packet;
 }
 
-void print_header_xfr_json(const knot_pkt_t *query,
-                           const time_t     exec_time,
-                           const style_t    *style,
-                           jsonw_t          *jsonw)
-{
-	if (style == NULL) {
-		DBG_NULL;
-		return;
-	}
-
-}
-
-void print_data_xfr_json(jsonw_t          *w,
-                         const knot_pkt_t *reply,
-                         const time_t     exec_time)
-{
-	if (w == NULL) {
-		DBG_NULL;
-		return;
-	}
-
-	print_packet_json(w, reply, exec_time);
-}
-
-void print_footer_xfr_json(jsonw_t       *w,
-                           const style_t *style)
-{
-	if (w == NULL || style == NULL) {
-		DBG_NULL;
-		return;
-	}
-
-}
-
 void print_header_xfr(const knot_pkt_t *packet, const style_t *style)
 {
 	if (style == NULL) {

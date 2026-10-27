@@ -1138,7 +1138,6 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 			} else {
 				q = knot_pkt_new(query->wire, query->size, NULL);
 				(void)knot_pkt_parse(q, KNOT_PF_NOCANON);
-				print_header_xfr_json(q, timestamp, style, g_json);
 			}
 		} else {
 			knot_pkt_free(q);
@@ -1198,7 +1197,6 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 			print_data_xfr(reply, style);
 		} else {
 			print_packets_json(q, reply, net, timestamp, style, g_json);
-			//print_data_xfr_json(g_json, reply, timestamp);
 		}
 
 		// Fail to continue if TC is set.
@@ -1222,8 +1220,6 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 	if (g_json == NULL) {
 		print_footer_xfr(total_len, msg_count, rr_count, net,
 		                 time_diff_ms(&t_query, &t_end), timestamp, style);
-	} else {
-		print_footer_xfr_json(g_json, style);
 	}
 
 	net_close_keepopen(net, query_ctx);
@@ -1239,8 +1235,6 @@ fail:
 		                 time_diff_ms(&t_query, &t_end), timestamp, style);
 	} else {
 		print_packets_json(q, reply, net, timestamp, style, g_json);
-		//print_data_xfr_json(g_json, reply, timestamp);
-		print_footer_xfr_json(g_json, style);
 	}
 
 	knot_pkt_free(reply);
