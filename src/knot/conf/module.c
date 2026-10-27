@@ -108,7 +108,7 @@ static int mod_load(
 	yp_item_t **current_schema = &conf->schema;
 	yp_item_t *old_schema = rcu_xchg_pointer(current_schema, merged);
 	synchronize_rcu();
-	old_schema_dynarray_add(&conf->old_schemas, &old_schema);
+	(void)old_schema_dynarray_add(&conf->old_schemas, &old_schema);
 
 	return KNOT_EOK;
 }
@@ -264,7 +264,11 @@ int conf_mod_load_extra(
 		return ret;
 	}
 
-	mod_dynarray_add(&conf->modules, &mod);
+	if (mod_dynarray_add(&conf->modules, &mod) == NULL) {
+		dlclose(handle);
+		free(mod);
+		return KNOT_ENOMEM;
+	}
 
 	log_debug("module '%s', loaded shared", api->name);
 

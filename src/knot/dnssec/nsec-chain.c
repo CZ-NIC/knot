@@ -241,7 +241,7 @@ static int nsec_update_bitmap(zone_node_t *node,
 	const knot_dname_t *next = knot_rrset_empty(&old_nsec) ?
 	                           (const knot_dname_t *)"" :
 	                           knot_nsec_next(old_nsec.rrs.rdata);
-	knot_rrset_t new_nsec;
+	knot_rrset_t new_nsec = { 0 };
 	int ret = create_nsec_rrset(&new_nsec, node, next, data->ttl);
 
 	if (ret == KNOT_EOK && !knot_rrset_empty(&old_nsec)) {

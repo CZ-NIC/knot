@@ -99,7 +99,9 @@ static int add_node_to_a_t(const knot_dname_t *name, void *a_ctx)
 	uint8_t *lf = knot_dname_lf(name, lf_storage);
 
 	trie_val_t *val = trie_get_ins(ctx->a_t, lf + 1, *lf);
-	if (*val == NULL) {
+	if (val == NULL) {
+		return KNOT_ENOMEM;
+	} else if (*val == NULL) {
 		*val = calloc(1, sizeof(a_t_node_t));
 		if (*val == NULL) {
 			return KNOT_ENOMEM;
@@ -107,8 +109,13 @@ static int add_node_to_a_t(const knot_dname_t *name, void *a_ctx)
 	}
 
 	a_t_node_t *nodes = *(a_t_node_t **)val;
-	nodeptr_dynarray_add(&nodes->array, &ctx->node);
+	void *alloc = nodeptr_dynarray_add(&nodes->array, &ctx->node);
 	nodes->deduplicated = false;
+	if (alloc == NULL) {
+		free(*val);
+		trie_del(ctx->a_t, lf + 1, *lf, NULL);
+		return KNOT_ENOMEM;
+	}
 	return KNOT_EOK;
 }
 

@@ -59,6 +59,7 @@ static int load_soas(const zone_contents_t *zone1, const zone_contents_t *zone2,
 	changeset->soa_to = knot_rrset_copy(&soa_rrset2, NULL);
 	if (changeset->soa_to == NULL) {
 		knot_rrset_free(changeset->soa_from, NULL);
+		changeset->soa_from = NULL;
 		return KNOT_ENOMEM;
 	}
 

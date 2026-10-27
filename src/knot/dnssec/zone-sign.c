@@ -803,6 +803,9 @@ int knot_zone_sign_add_dnskeys(zone_keyset_t *zone_keys, const kdnssec_ctx_t *dn
 			ret = rrset_add_zone_ds(&add_r->cds, *ksk_for_cds, cds_dt);
 		}
 	}
+	if (kcdnskeys.size < 0) {
+		ret = KNOT_ENOMEM;
+	}
 
 	if (incremental && ret == KNOT_EOK) { // else rem_r is empty
 		ret = key_records_subtract(rem_r, add_r);
