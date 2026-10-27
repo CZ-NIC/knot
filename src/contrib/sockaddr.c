@@ -37,30 +37,32 @@ int sockaddr_len(const struct sockaddr_storage *ss)
 	}
 }
 
+static bool scope_applies(const struct in6_addr *a)
+{
+	return IN6_IS_ADDR_LINKLOCAL(a) || IN6_IS_ADDR_MC_LINKLOCAL(a) || IN6_IS_ADDR_MC_NODELOCAL(a);
+}
+
 static int cmp_ipv4(const struct sockaddr_in *a, const struct sockaddr_in *b,
                     bool ignore_port)
 {
-	// Convert from network to host byte order for correct comparison.
-	uint32_t a_host = ntohl(a->sin_addr.s_addr);
-	uint32_t b_host = ntohl(b->sin_addr.s_addr);
-
-	if (a_host < b_host) {
-		return -1;
-	} else if (a_host > b_host) {
-		return 1;
-	} else {
-		return ignore_port ? 0 : a->sin_port - b->sin_port;
+	// memcmp naturally compares network-byte-ordered unsigned integers
+	int ret = memcmp(&a->sin_addr, &b->sin_addr, sizeof(a->sin_addr));
+	if (!ignore_port && ret == 0) {
+		ret = memcmp(&a->sin_port, &b->sin_port, sizeof(a->sin_port));
 	}
+	return ret;
 }
 
 static int cmp_ipv6(const struct sockaddr_in6 *a, const struct sockaddr_in6 *b,
                     bool ignore_port)
 {
-	int ret = memcmp(&a->sin6_addr, &b->sin6_addr, sizeof(struct in6_addr));
-	if (ret == 0) {
-		ret = ignore_port ? 0 : a->sin6_port - b->sin6_port;
+	int ret = memcmp(&a->sin6_addr, &b->sin6_addr, sizeof(a->sin6_addr));
+	if (ret == 0 && scope_applies(&a->sin6_addr)) {
+		ret = (a->sin6_scope_id > b->sin6_scope_id) - (a->sin6_scope_id < b->sin6_scope_id);
 	}
-
+	if (!ignore_port && ret == 0) {
+		ret = memcmp(&a->sin6_port, &b->sin6_port, sizeof(a->sin6_port));
+	}
 	return ret;
 }
 
