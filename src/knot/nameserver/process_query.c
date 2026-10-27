@@ -753,6 +753,9 @@ bool process_query_acl_check(conf_t *conf, acl_action_t action,
 			                      zone_name, query, tls_session,
 			                      qdata->params->proto);
 		}
+	} else {
+		qdata->rcode_ede = KNOT_EDNS_EDE_TOO_EARLY;
+		// RCODE should be REFUSED (RFC 9250 §4.5) but NOTAUTH is returned
 	}
 
 	if (log_enabled_debug()) {

@@ -10,7 +10,7 @@ import subprocess
 
 SCRIPT = pathlib.Path(__file__).parent / "data" / "quic_client.py"
 
-def resp_check(server, qname, qtype, rdata=None, rcode="NOERROR", ticket_no=1, Ortt=False):
+def resp_check(server, qname, qtype, rdata=None, rcode="NOERROR", ticket_no=1, Ortt=False, ede26=False):
     cmdline = [str(SCRIPT), "--qname", str(qname), "--qtype", str(qtype),
                "--port", str(server.quic_port), str(server.addr),
                "--ticket", os.path.join(t.out_dir, f"ticket{ticket_no}")]
@@ -31,6 +31,7 @@ def resp_check(server, qname, qtype, rdata=None, rcode="NOERROR", ticket_no=1, O
     else:
         isset(res.stdout.count("[!] TLS SESSION RESUMPTION: NO") == 1, "no resumption")
         isset(res.stdout.count("[+] 0-RTT ACCEPTED") == 0, "no 0-RTT")
+    isset(ede26 == ("EDE 26" in res.stdout), "EDE TOO_EARLY NON/PRESENCE")
 
 t = Test(quic=True, tsig=False)
 
@@ -64,7 +65,7 @@ try:
     resp = master.dig(ZONE, "A")
     resp.check(rdata="127.0.0.127")
 
-    resp_check(master, ZONE, "A", rdata="127.0.0.128", ticket_no=2, Ortt=True, rcode="NOTAUTH")
+    resp_check(master, ZONE, "A", rdata="127.0.0.128", ticket_no=2, Ortt=True, rcode="NOTAUTH", ede26=True)
     isset(master.log_search_count(r'ACL, allowed.*QUIC$') == 1, "QUIC in ACL log still just once")
     isset(master.log_search_count(r'ACL, denied.*QUIC/0-RTT') == 1, "QUIC/0-RTT in ACL log")
     resp = master.dig(ZONE, "AAAA")
