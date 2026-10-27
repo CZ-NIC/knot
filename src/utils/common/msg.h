@@ -13,6 +13,8 @@
 #include "contrib/json.h"
 #include "libknot/dynarray.h"
 
+struct utils_net;
+
 typedef struct {
 	char type[32];
 	char text[224];
@@ -78,4 +80,5 @@ inline static bool stdout_write_err(void)
 
 void utils_json_event_add(const char *msg, ...);
 void utils_json_events_dump(void);
+void utils_json_transport(const struct utils_net *net);
 void utils_json_error(const char *msg, ...);

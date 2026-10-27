@@ -809,4 +809,15 @@ void print_quic(const quic_ctx_t *ctx)
 	gnutls_free(msg);
 }
 
+void print_quic_json(struct jsonw *j, const quic_ctx_t *ctx)
+{
+	if (ctx == NULL || !ctx->params.enable || ctx->tls->session == NULL) {
+		return;
+	}
+
+	jsonw_object(j, "quic");
+	jsonw_int(j, "version", ngtcp2_conn_get_negotiated_version(ctx->conn));
+	jsonw_end(j);
+}
+
 #endif

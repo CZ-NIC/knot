@@ -133,5 +133,6 @@ void https_ctx_deinit(https_ctx_t *ctx);
  * \param ctx  HTTPS context.
  */
 void print_https(const https_ctx_t *ctx);
+void print_https_json(struct jsonw *j, const https_ctx_t *ctx);
 
 #endif //LIBNGHTTP2

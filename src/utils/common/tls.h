@@ -12,6 +12,8 @@
 #include "contrib/sockaddr.h"
 #include "contrib/ucw/lists.h"
 
+struct jsonw;
+
 #define CERT_PIN_LEN 32
 
 /*! \brief TLS parameters. */
@@ -69,3 +71,4 @@ int tls_ctx_receive(tls_ctx_t *ctx, uint8_t *buf, const size_t buf_len);
 void tls_ctx_close(tls_ctx_t *ctx);
 void tls_ctx_deinit(tls_ctx_t *ctx);
 void print_tls(const tls_ctx_t *ctx);
+void print_tls_json(struct jsonw *j, const tls_ctx_t *ctx);

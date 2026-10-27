@@ -99,5 +99,6 @@ void quic_ctx_close(quic_ctx_t *ctx);
 void quic_ctx_deinit(quic_ctx_t *ctx);
 
 void print_quic(const quic_ctx_t *ctx);
+void print_quic_json(struct jsonw *j, const quic_ctx_t *ctx);
 
 #endif //ENABLE_QUIC

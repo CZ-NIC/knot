@@ -726,3 +726,20 @@ void print_tls(const tls_ctx_t *ctx)
 	}
 	gnutls_free(msg);
 }
+
+void print_tls_json(struct jsonw *j, const tls_ctx_t *ctx)
+{
+	if (ctx == NULL || ctx->params == NULL || !ctx->params->enable || ctx->session == NULL) {
+		return;
+	}
+
+	jsonw_object(j, "tls");
+	jsonw_str(j, "version", gnutls_protocol_get_name(gnutls_protocol_get_version(ctx->session)));
+	jsonw_str(j, "cipherSuite", gnutls_cipher_suite_get_name(gnutls_kx_get(ctx->session), gnutls_cipher_get(ctx->session), gnutls_mac_get(ctx->session)));
+	jsonw_str(j, "group", gnutls_group_get_name(gnutls_group_get(ctx->session)));
+	jsonw_str(j, "signatureScheme", gnutls_sign_get_name(gnutls_sign_algorithm_get(ctx->session)));
+	if (ctx->params->hostname != NULL) {
+		jsonw_str(j, "hostname", ctx->params->hostname);
+	}
+	jsonw_end(j);
+}

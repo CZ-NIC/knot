@@ -25,7 +25,7 @@ typedef struct {
 	char	*service;
 } srv_info_t;
 
-typedef struct {
+typedef struct utils_net {
 	/*! Socket descriptor. */
 	int sockfd;
 
@@ -73,6 +73,9 @@ typedef struct {
 		const struct sockaddr *dst;
 	} proxy;
 } net_t;
+
+knot_probe_proto_t get_protocol(const net_t *net);
+const char *get_protocol_str(const knot_probe_proto_t proto);
 
 /*!
  * \brief Creates and fills server structure.
@@ -172,6 +175,15 @@ int net_init_crypto(net_t                 *net,
                     const tls_params_t    *tls_params,
                     const https_params_t  *https_params,
                     const quic_params_t   *quic_params);
+
+/*!
+ * \brief Get previously specified remote hostname.
+ *
+ * \param net        Connection parameters.
+ *
+ * \return Hostname.
+ */
+const char *net_get_remote(const net_t *net);
 
 /*!
  * \brief Creates socket and connects (if TCP) to remote address specified

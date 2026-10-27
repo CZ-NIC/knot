@@ -513,4 +513,19 @@ void print_https(const https_ctx_t *ctx)
 	       ctx->path, ctx->status);
 }
 
+void print_https_json(jsonw_t *j, const https_ctx_t *ctx)
+{
+	if (!ctx || !ctx->params.enable || !ctx->authority || !ctx->path) {
+		return;
+	}
+
+	jsonw_object(j, "http");
+	jsonw_int(j, "version", 2);
+	jsonw_str(j, "method", ctx->params.method == POST ? "POST" : "GET");
+	// TODO: authority?
+	jsonw_str(j, "path", ctx->path);
+	jsonw_int(j, "status", ctx->status);
+	jsonw_end(j);
+}
+
 #endif //LIBNGHTTP2

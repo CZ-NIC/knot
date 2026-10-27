@@ -25,7 +25,7 @@
 #include "contrib/proxyv2/proxyv2.h"
 #include "contrib/sockaddr.h"
 
-static knot_probe_proto_t get_protocol(const net_t *net)
+knot_probe_proto_t get_protocol(const net_t *net)
 {
 #ifdef ENABLE_QUIC
 	if (net->quic.params.enable) {
@@ -47,7 +47,7 @@ static knot_probe_proto_t get_protocol(const net_t *net)
 	}
 }
 
-static const char *get_protocol_str(const knot_probe_proto_t proto)
+const char *get_protocol_str(const knot_probe_proto_t proto)
 {
 	switch (proto) {
 	case KNOT_PROBE_PROTO_UDP:
@@ -336,7 +336,7 @@ int net_init_crypto(net_t                 *net,
 	return KNOT_EOK;
 }
 
-static char *net_get_remote(const net_t *net)
+const char *net_get_remote(const net_t *net)
 {
 	if (net->tls.params->sni != NULL) {
 		return net->tls.params->sni;
@@ -432,7 +432,7 @@ int net_connect(net_t *net)
 #ifdef LIBNGHTTP2
 			if (net->https.params.enable) {
 				// Establish HTTPS connection.
-				char *remote = net_get_remote(net);
+				const char *remote = net_get_remote(net);
 				ret = tls_ctx_setup_remote_endpoint(&net->tls, &doh_alpn, 1, NULL,
 				        remote);
 				if (ret != 0) {
