@@ -660,8 +660,16 @@ int knot_quic_handle(knot_quic_table_t *table, knot_quic_reply_t *reply,
 			goto finish;
 		}
 
+		/* Only a Retry token makes this a connection after a Retry. A token
+		 * from NEW_TOKEN validates the address and nothing more: the original
+		 * DCID is still this Initial's, and there is no retry_scid to send.
+		 * Taking every token for a Retry sent an empty original_dcid and a
+		 * retry_scid to clients presenting a NEW_TOKEN token, which then
+		 * failed the connection's CID authentication (RFC 9000 7.3). */
+		bool retry_token = false;
 		if (header.tokenlen > 0) {
 			if (header.token[0] == NGTCP2_CRYPTO_TOKEN_MAGIC_RETRY) {
+				retry_token = true;
 				ret = ngtcp2_crypto_verify_retry_token(
 					&odcid, header.token, header.tokenlen,
 					(const uint8_t *)table->hash_secret,
@@ -701,7 +709,7 @@ int knot_quic_handle(knot_quic_table_t *table, knot_quic_reply_t *reply,
 		}
 
 		ret = conn_new(&conn->conn, &path, &dcid, &scid, &odcid, decoded_cids.version,
-		               now, idle_timeout, conn, true, header.tokenlen > 0);
+		               now, idle_timeout, conn, true, retry_token);
 		if (ret >= 0) {
 			ret = tls_init_conn_session(conn, true);
 		}
