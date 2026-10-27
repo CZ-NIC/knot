@@ -20,7 +20,7 @@
 #include "contrib/time.h"
 #include "contrib/ucw/lists.h"
 
-static const char *JSON_INDENT = "  ";
+static const char *JSON_INDENT = NULL;
 
 #if USE_DNSTAP
 #include "contrib/dnstap/convert.h"
