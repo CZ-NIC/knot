@@ -648,6 +648,15 @@ static int process_query_packet(const knot_pkt_t      *query,
 	// Get stop query time and start reply time.
 	t_query = time_now();
 
+	// Create copy of query packet for parsing.
+	knot_pkt_t *q = knot_pkt_new(query->wire, query->size, NULL);
+	if ((q == NULL || knot_pkt_parse(q, KNOT_PF_NOCANON) != KNOT_EOK) && style->show_query) {
+		ERR("can't print query packet");
+		stdout_wrap();
+		knot_pkt_free(q);
+		q = NULL;
+	}
+
 #if USE_DNSTAP
 	struct timespec t_query_full = time_diff(&t_start, &t_query);
 	t_query_full.tv_sec += timestamp;
@@ -658,22 +667,9 @@ static int process_query_packet(const knot_pkt_t      *query,
 #endif // USE_DNSTAP
 
 	// Print query packet if required.
-	if (style->show_query && style->format != FORMAT_JSON) {
-		// Create copy of query packet for parsing.
-		knot_pkt_t *q = knot_pkt_new(query->wire, query->size, NULL);
-		if (q != NULL) {
-			if (knot_pkt_parse(q, KNOT_PF_NOCANON) == KNOT_EOK) {
-				print_packet(q, net, query->size,
-				             time_diff_ms(&t_start, &t_query),
-				             timestamp, false, style);
-			} else {
-				ERR("can't print query packet");
-			}
-			knot_pkt_free(q);
-		} else {
-			ERR("can't print query packet");
-		}
-
+	if (q != NULL && g_json == NULL) {
+		print_packet(q, net, query->size, time_diff_ms(&t_start, &t_query),
+		             timestamp, false, style);
 		stdout_wrap();
 	}
 
@@ -752,10 +748,7 @@ static int process_query_packet(const knot_pkt_t      *query,
 		print_packet(reply, net, in_len, time_diff_ms(&t_start, &t_end),
 		             timestamp, true, style);
 	} else {
-		knot_pkt_t *q = knot_pkt_new(query->wire, query->size, NULL);
-		(void)knot_pkt_parse(q, KNOT_PF_NOCANON);
 		print_packets_json(q, reply, net, timestamp, style, g_json);
-		knot_pkt_free(q);
 	}
 
 	// Verify signature if a key was specified.
@@ -855,6 +848,7 @@ static int process_query_packet(const knot_pkt_t      *query,
 #endif // HAVE_KDIG_VALIDATION && !NO_DNSSEC_VALIDATION
 	}
 
+	knot_pkt_free(q);
 	knot_pkt_free(reply);
 	net_close_keepopen(net, query_ctx);
 
@@ -866,12 +860,10 @@ fail:
 		print_packet(reply, net, in_len, time_diff_ms(&t_start, &t_end),
 		             timestamp, true, style);
 	} else {
-		knot_pkt_t *q = knot_pkt_new(query->wire, query->size, NULL);
-		(void)knot_pkt_parse(q, KNOT_PF_NOCANON);
 		print_packets_json(q, reply, net, timestamp, style, g_json);
-		knot_pkt_free(q);
 	}
 
+	knot_pkt_free(q);
 	knot_pkt_free(reply);
 	net_close(net);
 
