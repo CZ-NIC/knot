@@ -234,6 +234,94 @@ static void test_range_match(void)
 	ok(ret == false, "match: range not supported for UNIX");
 }
 
+static void test_sockaddr_cmp(void)
+{
+	int ret;
+	struct sockaddr_storage a = { 0 };
+	struct sockaddr_storage b = { 0 };
+
+	// IPv4: identical addresses and ports.
+	check_sockaddr_set(&a, AF_INET, "192.0.2.1", 53);
+	check_sockaddr_set(&b, AF_INET, "192.0.2.1", 53);
+	ret = sockaddr_cmp(&a, &b, false);
+	ok(ret == 0, "cmp: ipv4 identical");
+
+	// IPv4: compare ports numerically, not in network byte order.
+	check_sockaddr_set(&a, AF_INET, "192.0.2.1", 1);
+	check_sockaddr_set(&b, AF_INET, "192.0.2.1", 256);
+	ret = sockaddr_cmp(&a, &b, false);
+	ok(ret < 0, "cmp: ipv4 port 1 < 256");
+
+	ret = sockaddr_cmp(&b, &a, false);
+	ok(ret > 0, "cmp: ipv4 port 256 > 1");
+
+	// IPv4: ignore ports.
+	ret = sockaddr_cmp(&a, &b, true);
+	ok(ret == 0, "cmp: ipv4 ignore port");
+
+	// IPv4: address comparison takes precedence over port.
+	check_sockaddr_set(&a, AF_INET, "192.0.2.1", 65535);
+	check_sockaddr_set(&b, AF_INET, "192.0.2.2", 1);
+	ret = sockaddr_cmp(&a, &b, false);
+	ok(ret < 0, "cmp: ipv4 address takes precedence over port");
+
+	// IPv6: identical addresses, scopes, and ports.
+	check_sockaddr_set(&a, AF_INET6, "fe80::1", 53);
+	check_sockaddr_set(&b, AF_INET6, "fe80::1", 53);
+	((struct sockaddr_in6 *)&a)->sin6_scope_id = 2;
+	((struct sockaddr_in6 *)&b)->sin6_scope_id = 2;
+
+	ret = sockaddr_cmp(&a, &b, false);
+	ok(ret == 0, "cmp: ipv6 identical");
+
+	// IPv6: different scope IDs must compare as different addresses.
+	((struct sockaddr_in6 *)&a)->sin6_scope_id = 2;
+	((struct sockaddr_in6 *)&b)->sin6_scope_id = 3;
+
+	ret = sockaddr_cmp(&a, &b, false);
+	ok(ret < 0, "cmp: ipv6 scope 2 < 3");
+
+	ret = sockaddr_cmp(&b, &a, false);
+	ok(ret > 0, "cmp: ipv6 scope 3 > 2");
+
+	// IPv6: scope IDs must still be compared when ignoring ports.
+	ret = sockaddr_cmp(&a, &b, true);
+	ok(ret < 0, "cmp: ipv6 scope compared when ignoring port");
+
+	// IPv6: non-link/node-local addresses ignore different scope ID
+	check_sockaddr_set(&a, AF_INET6, "2001:db8::1", 53);
+	check_sockaddr_set(&b, AF_INET6, "2001:db8::1", 53);
+	((struct sockaddr_in6 *)&a)->sin6_scope_id = 2;
+	((struct sockaddr_in6 *)&b)->sin6_scope_id = 3;
+	ret = sockaddr_cmp(&a, &b, false);
+	ok(ret == 0, "cmp: ipv6 ignore scopeID for non-linklocal");
+
+	// IPv6: ignore ports when addresses and scope IDs match.
+	((struct sockaddr_in6 *)&b)->sin6_port = htons(5353);
+
+	ret = sockaddr_cmp(&a, &b, true);
+	ok(ret == 0, "cmp: ipv6 ignore port");
+
+	ret = sockaddr_cmp(&a, &b, false);
+	ok(ret < 0, "cmp: ipv6 port 53 < 5353");
+
+	// IPv6: compare ports numerically, not in network byte order.
+	((struct sockaddr_in6 *)&a)->sin6_port = htons(1);
+	((struct sockaddr_in6 *)&b)->sin6_port = htons(256);
+
+	ret = sockaddr_cmp(&a, &b, false);
+	ok(ret < 0, "cmp: ipv6 port 1 < 256");
+
+	// IPv6: address comparison takes precedence over scope and port.
+	check_sockaddr_set(&a, AF_INET6, "2001:db8::1", 65535);
+	check_sockaddr_set(&b, AF_INET6, "2001:db8::2", 1);
+	((struct sockaddr_in6 *)&a)->sin6_scope_id = 100;
+	((struct sockaddr_in6 *)&b)->sin6_scope_id = 1;
+
+	ret = sockaddr_cmp(&a, &b, false);
+	ok(ret < 0, "cmp: ipv6 address takes precedence over scope and port");
+}
+
 int main(int argc, char *argv[])
 {
 	plan_lazy();
@@ -246,6 +334,9 @@ int main(int argc, char *argv[])
 
 	diag("sockaddr_range_match");
 	test_range_match();
+
+	diag("sockaddr_cmp");
+	test_sockaddr_cmp();
 
 	return 0;
 }
