@@ -378,6 +378,12 @@ static int request_produce(knot_requestor_t *req, knot_request_t *last,
 {
 	knot_layer_produce(&req->layer, last->query);
 
+	/* RFC 9250 4.2.1: a DNS message over QUIC carries message ID 0, the stream
+	   pairing it with its response. */
+	if (use_quic(last)) {
+		knot_wire_set_id(last->query->wire, 0);
+	}
+
 	/* NOTE: it would make more sense to reserve space for TSIG _before_ producing query packet,
 	         but layer_produce usually resets the packet including reserved space. */
 	int ret = knot_pkt_reserve(last->query, knot_tsig_wire_size(last->tsig.key));

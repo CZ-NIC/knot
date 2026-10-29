@@ -39,9 +39,10 @@ class DoQClientProtocol(QuicConnectionProtocol):
         if rdata:
             update = dns.update.Update(qname)
             update.add(qname, 60, qtype, rdata)
+            update.use_edns(0)
             dns_message = update.to_wire()
         else:
-            query = dns.message.make_query(qname, qtype)
+            query = dns.message.make_query(qname, qtype, use_edns=0)
             dns_message = query.to_wire()
 
         # DNS-over-QUIC:
