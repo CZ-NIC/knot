@@ -742,13 +742,11 @@ static int process_query_packet(const knot_pkt_t      *query,
 	// Check QR bit
 	check_reply_qr(reply);
 
-	// Print reply packet.
+	// Print reply packet. For JSON, print later when all validation is done.
 	if (g_json == NULL) {
 		// Intentionaly start-end because of QUIC can have receive time.
 		print_packet(reply, net, in_len, time_diff_ms(&t_start, &t_end),
 		             timestamp, true, style);
-	} else {
-		print_packets_json(q, reply, net, timestamp, style, g_json);
 	}
 
 	// Verify signature if a key was specified.
@@ -766,6 +764,9 @@ static int process_query_packet(const knot_pkt_t      *query,
 		WARN("bad cookie from %s, retrying with the received one",
 		     net->remote_str);
 		stdout_wrap();
+		if (g_json != NULL) {
+			print_packets_json(q, reply, net, timestamp, style, g_json);
+		}
 		net_close_keepopen(net, query_ctx);
 
 		// Prepare new query context.
@@ -846,6 +847,10 @@ static int process_query_packet(const knot_pkt_t      *query,
 			ERR("DNSSEC VALIDATION failed to proceed (%s)", knot_strerror(ret));
 		}
 #endif // HAVE_KDIG_VALIDATION && !NO_DNSSEC_VALIDATION
+	}
+
+	if (g_json != NULL) {
+		print_packets_json(q, reply, net, timestamp, style, g_json);
 	}
 
 	knot_pkt_free(q);
