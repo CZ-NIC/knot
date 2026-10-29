@@ -9,6 +9,7 @@
 #include "knot/dnssec/zone-nsec.h"
 #include "knot/dnssec/zone-sign.h"
 #include "knot/zone/adjust.h"
+#include "utils/common/msg.h"
 
 #define CNAME_LIMIT 3
 
@@ -29,17 +30,22 @@ static void kdv_log(kdig_validation_log_level_t log_level, kdig_validation_log_l
                     const char *prefix, const knot_dname_t *at, const char *msg, ...)
 {
 	if (set_level >= log_level) {
-		fprintf(stdout, ";; %s: ", prefix);
+		char buf[1024] = { 0 }, *at_txt = "", *at_pref = "";
 		va_list args;
 		va_start(args, msg);
-		vfprintf(stdout, msg, args);
+		vsnprintf(buf, sizeof(buf), msg, args);
 		va_end(args);
+
 		if (at != NULL) {
-			char at_txt[KNOT_DNAME_TXT_MAXLEN] = { 0 };
-			knot_dname_to_str(at_txt, at, sizeof(at_txt));
-			fprintf(stdout, " at %s\n", at_txt);
+			at_pref = " at ";
+			at_txt = alloca(KNOT_DNAME_TXT_MAXLEN);
+			knot_dname_to_str(at_txt, at, KNOT_DNAME_TXT_MAXLEN);
+		}
+
+		if (g_json == NULL) {
+			fprintf(stdout, ";; %s: %s%s%s\n", prefix, buf, at_pref, at_txt);
 		} else {
-			fprintf(stdout, "\n");
+			utils_json_event_add("DNSSEC %s: %s%s%s", prefix, buf, at_pref, at_txt);
 		}
 	}
 }

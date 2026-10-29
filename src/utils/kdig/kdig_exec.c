@@ -807,7 +807,9 @@ static int process_query_packet(const knot_pkt_t      *query,
 		struct kdig_dnssec_ctx *dv_ctx = query_ctx->dv_ctx;
 
 		if (dv_ctx == NULL) {
-			printf("\n;; DNSSEC VALIDATION:\n");
+			if (g_json == NULL) {
+				printf("\n;; DNSSEC VALIDATION:\n");
+			}
 			ret = kdig_dnssec_validate(reply, &dv_ctx, query_ctx->dnssec_validation, zone_name, &type_needed);
 		} else {
 			ret = kdig_dnssec_addpkt(dv_ctx, query_ctx->dnssec_validation, reply);
