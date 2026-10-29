@@ -34,6 +34,19 @@ int kdig_dnssec_validate(knot_pkt_t *pkt, struct kdig_dnssec_ctx **dv_ctx,
                          knot_dname_t zone_name[KNOT_DNAME_MAXLEN], uint16_t *type_needed);
 
 /*!
+ * \brief Add more records from another response in irder to solve KNOT_EAGAIN from kdig_dnssec_validate.
+ *
+ * \param ctx       DNSSEC validation context structure.
+ * \param level     Verbosity of the logging.
+ * \param pkt       The packet with a DNS response.
+ *
+ * \return KNOT_E*
+ *
+ * \note Call kdig_dnssec_validate afterwards again to finalize the validation.
+ */
+int kdig_dnssec_addpkt(struct kdig_dnssec_ctx *ctx, kdig_validation_log_level_t level, knot_pkt_t *pkt);
+
+/*!
  * \brief Free DNSSEC validation context.
  *
  * \param dv_ctx         Context structure to free.

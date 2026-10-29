@@ -774,6 +774,11 @@ int kdig_dnssec_validate(knot_pkt_t *pkt, kdig_dnssec_ctx_t **dv_ctx,
 	return ret;
 }
 
+int kdig_dnssec_addpkt(kdig_dnssec_ctx_t *ctx, kdig_validation_log_level_t level, knot_pkt_t *pkt)
+{
+	return rrsets_pkt2conts(pkt, ctx->conts, KNOT_AUTHORITY, 0, level);
+}
+
 void kdig_dnssec_free(kdig_dnssec_ctx_t *dv_ctx)
 {
 	if (dv_ctx != NULL) {

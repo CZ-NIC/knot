@@ -814,12 +814,11 @@ static int process_query_packet(const knot_pkt_t      *query,
 
 		if (dv_ctx == NULL) {
 			printf("\n;; DNSSEC VALIDATION:\n");
+			ret = kdig_dnssec_validate(reply, &dv_ctx, query_ctx->dnssec_validation, zone_name, &type_needed);
+		} else {
+			ret = kdig_dnssec_addpkt(dv_ctx, query_ctx->dnssec_validation, reply);
 		}
-
-		ret = kdig_dnssec_validate(reply, &dv_ctx, query_ctx->dnssec_validation, zone_name, &type_needed);
-		if (ret == KNOT_EAGAIN) { // need to re-query to get DNSKEY
-			knot_pkt_free(reply);
-
+		while (ret == KNOT_EAGAIN) { // need to re-query to get DNSKEY
 			query_t new_ctx = *query_ctx;
 			new_ctx.owner = knot_dname_to_str_alloc(zone_name);
 			if (new_ctx.owner == NULL) {
@@ -847,7 +846,8 @@ static int process_query_packet(const knot_pkt_t      *query,
 			                           sign_ctx, &new_ctx.style);
 			knot_pkt_free(new_query);
 			free(new_ctx.owner);
-			return ret;
+
+			ret = kdig_dnssec_validate(reply, &dv_ctx, query_ctx->dnssec_validation, zone_name, &type_needed); // RETRY
 		}
 		if (ret != KNOT_EOK) {
 			ERR("DNSSEC VALIDATION failed to proceed (%s)", knot_strerror(ret));
