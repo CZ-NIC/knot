@@ -197,7 +197,7 @@ int knot_dnssec_zone_sign(zone_update_t *update,
 		zone_set_master_serial(update->zone, zone_contents_serial(update->new_cont));
 	}
 
-	result = load_zone_keys(&ctx, &keyset, true);
+	result = load_zone_keys(&ctx, &keyset, true, true);
 	if (result != KNOT_EOK) {
 		log_zone_error(zone_name, "DNSSEC, failed to load keys (%s)",
 		               knot_strerror(result));
@@ -299,6 +299,10 @@ done:
 		update->flags |= UPDATE_SIGNED_FULL;
 	} else {
 		reschedule->next_sign = knot_dnssec_failover_delay(&ctx);
+		knot_time_t sooner_than_failover = schedule_next(&ctx, &keyset, ctx.offline_next_time, ctx.stats->expire);
+		if (sooner_than_failover > ctx.now /* also > 0 */ && sooner_than_failover < reschedule->next_sign) {
+			reschedule->next_sign = sooner_than_failover;
+		}
 		reschedule->next_rollover = 0;
 	}
 
@@ -346,7 +350,7 @@ int knot_dnssec_sign_update(zone_update_t *update, conf_t *conf)
 		}
 	}
 
-	result = load_zone_keys(&ctx, &keyset, false);
+	result = load_zone_keys(&ctx, &keyset, false, false);
 	if (result != KNOT_EOK) {
 		log_zone_error(zone_name, "DNSSEC, failed to load keys (%s)",
 		               knot_strerror(result));
