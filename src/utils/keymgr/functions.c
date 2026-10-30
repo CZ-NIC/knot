@@ -1140,7 +1140,7 @@ static void print_key_brief(const knot_kasp_key_t *key, key_info_t *info,
 		printf(" %s%sfor-later%s", COL_BOLD(c), COL_MGNT(c), COL_RST(c));
 	}
 
-	assert(info->missing || info->ks_name);
+	assert(info->missing || info->ks_name || key->is_pub_only);
 	if (info->missing) {
 		printf(" %s%smissing%s", COL_BOLD(c), COL_YELW(c), COL_RST(c));
 	} else if (info->ks_count > 1 && *info->ks_name != '-') {
