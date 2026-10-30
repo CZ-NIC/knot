@@ -1198,7 +1198,7 @@ static void print_key_full(const knot_kasp_key_t *key, key_info_t *info,
 	       (key->is_for_later ? "yes" : "no "), (info->missing ? "yes" : "no "),
 	       (trash ? "yes" : "no "));
 
-	if (info->missing) {
+	if (info->missing || key->is_pub_only) {
 		printf(" keystore=-/-");
 	} else {
 		assert(info->ks_name);
@@ -1242,7 +1242,7 @@ static void print_key_json(const knot_kasp_key_t *key, key_info_t *info,
 
 	char *ks_type = "-";
 	char *ks_name = ks_type;
-	if (!info->missing) {
+	if (!info->missing && !key->is_pub_only) {
 		ks_type = KS_TYPE(info);
 		assert(info->ks_name);
 		ks_name = (char *)info->ks_name;
