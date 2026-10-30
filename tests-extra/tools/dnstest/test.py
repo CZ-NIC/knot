@@ -77,9 +77,10 @@ class Test(object):
 
         self.servers = set()
 
-        dnstest.server.Knot.count = 0
-        dnstest.server.Bind.count = 0
-        dnstest.server.Dummy.count = 0
+        dnstest.server.Knot.counter = 0
+        dnstest.server.Bind.counter = 0
+        dnstest.server.Dummy.counter = 0
+        dnstest.server.Sinkhole.counter = 0
 
         Context().test = self
 
@@ -101,19 +102,23 @@ class Test(object):
 
         return True
 
-    def _gen_port(self):
-        min_port = 1500
-        max_port = 65000
+    def _gen_port(self, server, index):
+        if params.namespaces:
+            return server.PORTS_START + 10 * server.idx + index
+        else:
+            # chosen as "nice" numbers above well-known ports and below ephemeral ports
+            min_port = 1500
+            max_port = 32000
 
-        port = Test.last_port
-        if port:
-            port = port + 1 if port < max_port else min_port
+            port = Test.last_port
+            if port:
+                port = port + 1 if port < max_port else min_port
 
-        while not self._check_port(port):
-            port = random.randint(min_port, max_port)
+            while not self._check_port(port):
+                port = random.randint(min_port, max_port)
 
-        Test.last_port = port
-        return port
+            Test.last_port = port
+            return port
 
     def _gen_lock_file(self, srvname):
         try:
@@ -161,8 +166,6 @@ class Test(object):
         else:
             raise Failed("Unsupported server '%s'" % server)
 
-        type(srv).count += 1
-
         srv.data_dir = self.data_dir
 
         srv.nsid = nsid
@@ -198,7 +201,7 @@ class Test(object):
 
         srv.tsig_test = self.tsig
 
-        srv.name = "%s%s" % (server, srv.count)
+        srv.name = "%s%s" % (server, srv.idx)
         srv.dir = self.out_dir + "/" + srv.name
         srv.fout = srv.dir + "/stdout"
         srv.ferr = srv.dir + "/stderr"
@@ -266,26 +269,25 @@ class Test(object):
             raise Failed("Unsupported backend type '%s'" % kind)
 
     def generate_conf(self):
-        # Next two loops can't be merged!
         for server in self.servers:
             if server.fixed_port:
                 continue
 
-            server.port = self._gen_port()
-            server.ctlport = self._gen_port()
+            server.port = self._gen_port(server, 1)
             if self.tls:
-                server.tls_port = self._gen_port()
+                server.tls_port = self._gen_port(server, 3)
                 server.quic_port = server.tls_port if self.quic else None
             else:
-                server.quic_port = self._gen_port() if self.quic else None
-            server.xdp_port = self._gen_port() if server.xdp_port is not None else None
-            if server.xdp_port:
+                server.quic_port = self._gen_port(server, 3) if self.quic else None
+            server.xdp_port = self._gen_port(server, 2) if server.xdp_port is not None else None
+            if server.xdp_port and not params.namespaces:
                 server.xdp_cover_sock = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
                 server.xdp_cover_sock.bind((server.addr, server.xdp_port))
+            server.ctlport = self._gen_port(server, 5)
 
         for backend in sorted(self.backends, key=lambda e: e.get_prio()):
-            backend.port = self._gen_port()
-            backend.tls_port = self._gen_port()
+            backend.port = self._gen_port(backend, 1)
+            backend.tls_port = self._gen_port(backend, 2)
             backend.gen_confile()
 
         for server in self.servers:
