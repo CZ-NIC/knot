@@ -609,7 +609,7 @@ static int log_key_sort(const void *a, const void *b)
 /*!
  * \brief Load zone keys and init cryptographic context.
  */
-int load_zone_keys(kdnssec_ctx_t *ctx, zone_keyset_t *keyset_ptr, bool verbose)
+int load_zone_keys(kdnssec_ctx_t *ctx, zone_keyset_t *keyset_ptr, bool verbose, bool fail_return)
 {
 	if (!ctx || !keyset_ptr) {
 		return KNOT_EINVAL;
@@ -657,19 +657,19 @@ int load_zone_keys(kdnssec_ctx_t *ctx, zone_keyset_t *keyset_ptr, bool verbose)
 	if (ret != KNOT_EOK) {
 		log_zone_error(ctx->zone->dname, "DNSSEC, keys validation failed (%s)",
 		               knot_strerror(ret));
-		free_zone_keys(&keyset);
-		return ret;
 	}
 
-	ret = load_private_keys(ctx, &keyset);
-	if (ret != KNOT_EOK) {
-		free_zone_keys(&keyset);
-		return ret;
+	if (ret == KNOT_EOK) {
+		ret = load_private_keys(ctx, &keyset);
 	}
 
-	*keyset_ptr = keyset;
+	if (ret != KNOT_EOK && !fail_return) {
+		free_zone_keys(&keyset);
+	} else {
+		*keyset_ptr = keyset;
+	}
 
-	return KNOT_EOK;
+	return ret;
 }
 
 /*!

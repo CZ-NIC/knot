@@ -52,7 +52,7 @@ static int load_dnskey_rrset(kdnssec_ctx_t *ctx, knot_rrset_t **_dnskey, zone_ke
 	}
 	*_dnskey = dnskey;
 
-	int ret = load_zone_keys(ctx, keyset, false);
+	int ret = load_zone_keys(ctx, keyset, false, false);
 	if (ret != KNOT_EOK) {
 		ERR2("failed to load keys");
 		return ret;
@@ -326,7 +326,7 @@ static int ksr_sign_dnskey(kdnssec_ctx_t *ctx, knot_rrset_t *zsk, knot_time_t no
 		rrsig_refresh = ctx->policy->dnskey_ttl + ctx->policy->propagation_delay;
 	}
 
-	int ret = load_zone_keys(ctx, &keyset, false);
+	int ret = load_zone_keys(ctx, &keyset, false, false);
 	if (ret != KNOT_EOK) {
 		return ret;
 	}

@@ -167,10 +167,11 @@ knot_kasp_keystore_t *knot_store_for_key(knot_kasp_keystore_t *keystores, bool k
  * \param ctx            Zone signing context.
  * \param keyset_ptr     Resulting zone keyset.
  * \param verbose        Print key summary into log.
+ * \param fail_return    Keep resulting keyset if not validated successfully.
  *
  * \return Error code, KNOT_EOK if successful.
  */
-int load_zone_keys(kdnssec_ctx_t *ctx, zone_keyset_t *keyset_ptr, bool verbose);
+int load_zone_keys(kdnssec_ctx_t *ctx, zone_keyset_t *keyset_ptr, bool verbose, bool fail_return);
 
 /*!
  * \brief Free structure with zone keys and associated DNSSEC contexts.

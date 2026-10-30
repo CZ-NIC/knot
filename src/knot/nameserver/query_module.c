@@ -748,7 +748,7 @@ int knotd_mod_dnssec_load_keyset(knotd_mod_t *mod, bool verbose)
 		return KNOT_ENOMEM;
 	}
 
-	int ret = load_zone_keys(mod->dnssec, mod->keyset, verbose);
+	int ret = load_zone_keys(mod->dnssec, mod->keyset, verbose, false);
 	if (ret != KNOT_EOK) {
 		free(mod->keyset);
 		mod->keyset = NULL;
