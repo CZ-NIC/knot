@@ -196,6 +196,7 @@ int kdnssec_generate_key(kdnssec_ctx_t *ctx, kdnssec_generate_flags_t flags,
 	key->is_ksk = (flags & DNSKEY_GENERATE_KSK);
 	key->is_zsk = (flags & DNSKEY_GENERATE_ZSK);
 	key->is_for_later = (flags & DNSKEY_GENERATE_FOR_LATER);
+	key->is_pub_only = (flags & DNSKEY_GENERATE_PUB_ONLY);
 	key->timing.created = ctx->now;
 
 	r = kasp_zone_append(ctx->zone, key);
