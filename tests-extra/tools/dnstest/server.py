@@ -124,10 +124,11 @@ class Server(object):
     STOP_TIMEOUT = 30
     DIG_TIMEOUT = 5
 
-    # Instance counter.
-    count = 0
-
+    counter = 0
     def __init__(self):
+        type(self).counter += 1
+        self.idx = self.counter
+
         self.proc = None
         self.valgrind = []
         self.start_params = None
@@ -225,6 +226,8 @@ class Server(object):
         return dict()
 
     def _check_socket(self, proto, port):
+        if params.namespaces:
+            return True # the port distribution is deterministic in namespaces mode
         if self.addr.startswith("/"):
             ux_socket = True
             param = ""
@@ -1094,6 +1097,8 @@ class Server(object):
 
 class Bind(Server):
 
+    PORTS_START = 3000
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if not params.bind_bin:
@@ -1441,6 +1446,8 @@ class Bind(Server):
                 self.ctl("signing -nsec3param 1 %d %d - %s" % (n3flag, n3iters, z.name))
 
 class Knot(Server):
+
+    PORTS_START = 2000
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -1920,6 +1927,8 @@ class Knot(Server):
 class Dummy(Server):
     ''' Dummy name server. '''
 
+    PORTS_START = 4000
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.daemon_bin = None
@@ -1945,6 +1954,8 @@ class Dummy(Server):
 
 class Sinkhole(Dummy):
     ''' Sinkhole name server. Drops all incoming traffic and forces timeouts '''
+
+    PORTS_START = 5000
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
