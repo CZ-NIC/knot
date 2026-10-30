@@ -222,6 +222,7 @@ static bool genkeyargs(int argc, char *argv[], bool just_timing, key_params_t *k
 		bitmap_set(flags, DNSKEY_GENERATE_ZSK, known_params->is_csk ||
 		                                       !known_params->is_ksk);
 		bitmap_set(flags, DNSKEY_GENERATE_FOR_LATER, known_params->is_for_later);
+		bitmap_set(flags, DNSKEY_GENERATE_PUB_ONLY, known_params->is_pub_only);
 	}
 
 	// generate algorithms field
@@ -269,6 +270,8 @@ static bool genkeyargs(int argc, char *argv[], bool just_timing, key_params_t *k
 			bitmap_set(flags, DNSKEY_GENERATE_SEP_ON, res);
 		} else if (same_command_bool(argv[i], "for-later", &res)) {
 			bitmap_set(flags, DNSKEY_GENERATE_FOR_LATER, res);
+		} else if (same_command_bool(argv[i], "pub-only", &res)) {
+			bitmap_set(flags, DNSKEY_GENERATE_PUB_ONLY, res);
 		}else if (same_command_bool(argv[i], "adt", &res)) {
 			bitmap_set(flags, DNSKEY_GENERATE_ADT_ON, res);
 		} else if (!init_timestamps(argv[i], timing)) {
@@ -725,6 +728,7 @@ static int import_key(kdnssec_ctx_t *ctx, unsigned backend, const char *param,
 	kkey->is_ksk = (flags & DNSKEY_GENERATE_KSK);
 	kkey->is_zsk = (flags & DNSKEY_GENERATE_ZSK);
 	kkey->is_for_later = (flags & DNSKEY_GENERATE_FOR_LATER);
+	kkey->is_pub_only = (flags & DNSKEY_GENERATE_PUB_ONLY);
 
 	// append to zone
 	ret = kasp_zone_append(ctx->zone, kkey);
@@ -1041,6 +1045,7 @@ int keymgr_set_timing(knot_kasp_key_t *key, int argc, char *argv[])
 	kdnssec_generate_flags_t flags = ((key->is_ksk ? DNSKEY_GENERATE_KSK : 0) |
 	                                  (key->is_zsk ? DNSKEY_GENERATE_ZSK : 0) |
 	                                  (key->is_for_later ? DNSKEY_GENERATE_FOR_LATER : 0) |
+	                                  (key->is_pub_only ? DNSKEY_GENERATE_PUB_ONLY : 0) |
 	                                  ((dnssec_key_get_flags(key->key) & KNOT_DNSKEY_FLAG_ADT) ? DNSKEY_GENERATE_ADT_ON : 0));
 	kdnssec_generate_flags_t flags_prev = flags;
 
@@ -1051,6 +1056,7 @@ int keymgr_set_timing(knot_kasp_key_t *key, int argc, char *argv[])
 		}
 		key->timing = temp;
 		key->is_for_later = (flags & DNSKEY_GENERATE_FOR_LATER);
+		key->is_pub_only = (flags & DNSKEY_GENERATE_PUB_ONLY);
 		if (flags_prev != flags) {
 			normalize_generate_flags(&flags);
 			key->is_ksk = (flags & DNSKEY_GENERATE_KSK);

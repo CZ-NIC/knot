@@ -236,6 +236,9 @@ accepts values **yes** or **no**. If the value is omitted, it's interpreted as *
   *(bool)* The key will be determined for later use. It means once a new key ought
   to be generated, this one will be used instead if the key type and algorithm match.
 
+**pub-only**
+  *(bool)* The key will be not used for signing, its private part remains untouched.
+
 The following arguments are timestamps of key lifetime (see :ref:`DNSSEC Key states`):
 
 **pre_active**

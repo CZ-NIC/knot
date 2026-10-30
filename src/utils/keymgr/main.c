@@ -123,6 +123,7 @@ static void print_help(void)
 	       "  sep        Overrides the standard setting of SEP.\n"
 	       "  adt        ADT bit signaling DELEG support.\n"
 	       "  for-later  The key is for later use.\n"
+	       "  pub-only   The key is marked as public-only.\n"
 	       "  created/publish/ready/active/retire/remove/pre_active/post_active/retire_active/revoke"
 	       "             The timestamp of the key lifetime event (e.g. published=+1d active=1499770874)\n",
 	       PROGRAM_NAME, PROGRAM_NAME, PROGRAM_NAME, PROGRAM_NAME, CONF_DEFAULT_FILE,

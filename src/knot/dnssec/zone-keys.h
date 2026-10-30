@@ -75,6 +75,7 @@ typedef enum {
 	DNSKEY_GENERATE_SEP_ON    = (1 << 3), // SEP bit set on
 	DNSKEY_GENERATE_FOR_LATER = (1 << 4), // Pregenerated key for later automatic use.
 	DNSKEY_GENERATE_ADT_ON    = (1 << 5), // DELEG-awareness signaling flag
+	DNSKEY_GENERATE_PUB_ONLY  = (1 << 6), // Public-only flag
 } kdnssec_generate_flags_t;
 
 void normalize_generate_flags(kdnssec_generate_flags_t *flags);
