@@ -335,7 +335,7 @@ static bool alg_has_active_zsk(kdnssec_ctx_t *ctx, uint8_t alg)
 	for (size_t i = 0; i < ctx->zone->num_keys; i++) {
 		knot_kasp_key_t *k = &ctx->zone->keys[i];
 		if (dnssec_key_get_algorithm(k->key) == alg &&
-		    k->is_zsk && is_active(&k->timing, ctx->now)) {
+		    k->is_zsk && !k->is_pub_only && is_active(&k->timing, ctx->now)) {
 			return true;
 		}
 	}
