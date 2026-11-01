@@ -12,10 +12,11 @@
 #include "libknot/dnssec/key/dnskey.h"
 #include "libknot/dnssec/key/internal.h"
 #include "libknot/dnssec/key/privkey.h"
-#include "libknot/dnssec/keyid.h"
 #include "libknot/dnssec/keystore.h"
 #include "libknot/dnssec/keystore/internal.h"
+#include "libknot/dnssec/pem.h"
 #include "libknot/dnssec/shared/shared.h"
+#include "libknot/dnssec/shared/keyid_gnutls.h"
 
 /* -- internal API --------------------------------------------------------- */
 
@@ -39,6 +40,49 @@ int keystore_create(dnssec_keystore_t **store_ptr,
 	}
 
 	*store_ptr = store;
+	return KNOT_EOK;
+}
+
+int keystore_pem_generate(gnutls_pk_algorithm_t algorithm, unsigned bits,
+			  dnssec_binary_t *pem, const char *password, char **id)
+{
+	if (!pem || !id) {
+		return KNOT_EINVAL;
+	}
+
+	// generate key
+
+	_cleanup_x509_privkey_ gnutls_x509_privkey_t key = NULL;
+	int r = gnutls_x509_privkey_init(&key);
+	if (r != GNUTLS_E_SUCCESS) {
+		return KNOT_ENOMEM;
+	}
+
+	r = gnutls_x509_privkey_generate(key, algorithm, bits, 0);
+	if (r != GNUTLS_E_SUCCESS) {
+		return KNOT_KEY_EGENERATE;
+	}
+
+	// convert to PEM and export the ID
+
+	dnssec_binary_t _pem = { 0 };
+	r = dnssec_pem_from_x509(key, &_pem, password);
+	if (r != KNOT_EOK) {
+		return r;
+	}
+
+	// export key ID
+
+	char *_id = NULL;
+	r = keyid_x509_hex(key, &_id);
+	if (r != KNOT_EOK) {
+		dnssec_binary_free(&_pem);
+		return r;
+	}
+
+	*id = _id;
+	*pem = _pem;
+
 	return KNOT_EOK;
 }
 
