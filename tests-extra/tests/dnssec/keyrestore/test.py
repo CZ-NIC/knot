@@ -123,6 +123,8 @@ _, keys, _ = Keymgr.run_check(master.confile, zone.name, "list")
 for k in keys.splitlines():
     if k.split()[0] == newksk:
         PARENT_DS_KEYTAG = listline2keytag(k)
+    elif "zsk=yes" in k:
+        zsk = k.split()[0]
 
 master.zone_wait(zone, serial)
 check_dnssec(master, zone)
@@ -131,5 +133,44 @@ Keymgr.run_check(master.confile, zone.name, "delete", ksk)
 reconf_manual(master, zone, False)
 wait_for(master, zone.name, "DNSKEY", 2, 20)
 check_dnssec(master, zone)
+ksk = newksk
+
+privkey_del(master, ksk)
+privkey_del(master, zsk)
+serial = master.zone_wait(zone)
+
+up = master.update(zone)
+up.add("fail", 0, "TXT", "no private KSK and ZSK")
+up.send("SERVFAIL")
+
+master.ctl("zone-freeze " + zone.name)
+Keymgr.run_check(master.confile, zone.name, "set", ksk, "pub-only=true")
+Keymgr.run_check(master.confile, zone.name, "set", zsk, "pub-only=true")
+_, newksk, _ = Keymgr.run_check(master.confile, zone.name, "generate", "ksk=true", "zsk=false", "publish=+5s", "active=+5s")
+newksk = newksk.split()[0]
+
+_, keys, _ = Keymgr.run_check(master.confile, zone.name, "list")
+for k in keys.splitlines():
+    if k.split()[0] == newksk:
+        PARENT_DS_KEYTAG = listline2keytag(k)
+
+t.sleep(5)
+master.ctl("zone-keys-load +keepsoa " + zone.name, wait=True)
+master.zone_wait(zone, serial, equal=True, greater=False)
+check_dnssec(master, zone)
+resp = master.dig(zone.name, "DNSKEY", dnssec=True)
+resp.check_count(3, "DNSKEY")
+
+Keymgr.run_check(master.confile, zone.name, "set", newksk, "zsk=true")
+Keymgr.run_check(master.confile, zone.name, "delete", ksk)
+Keymgr.run_check(master.confile, zone.name, "delete", zsk)
+master.ctl("zone-sign " + zone.name)
+master.zone_wait(zone, serial)
+check_dnssec(master, zone)
+
+master.ctl("zone-thaw " + zone.name)
+wait_for(master, zone.name, "DNSKEY", 2, 20)
+master.ctl("zone-flush " + zone.name, wait=True)
+master.zone_verify(zone)
 
 t.end()
