@@ -63,6 +63,8 @@ static void print_help(void)
 	       "                 (syntax: import-pem <pem_file_path> <attribute_name>=<value>...)\n"
 	       "  import-pkcs11 Import key stored in PKCS11 storage. Specify its parameters manually.\n"
 	       "                 (syntax: import-pkcs11 <key_id> <attribute_name>=<value>...)\n"
+	       "  import-zonedb Import key stored in zone DB storage. Specify its parameters manually.\n"
+	       "                 (syntax: import-zonedb <key_id> <attribute_name>=<value>...)\n"
 	       "  nsec3-salt    Print current NSEC3 salt. If a parameter is specified, set new salt.\n"
 	       "                 (syntax: nsec3-salt [<new_salt>])\n"
 	       "  master-serial Print SOA serial of the remote master stored in KASP database when using on-slave signing.\n"
@@ -222,6 +224,9 @@ static int key_command(int argc, char *argv[], int opt_ind, knot_lmdb_db_t *kasp
 	} else if (same_command(argv[1], "import-pkcs11", false)) {
 		CHECK_MISSING_ARG("key ID to import not specified");
 		ret = keymgr_import_pkcs11(&kctx, argv[2], argc - 3, argv + 3);
+	} else if (same_command(argv[1], "import-zonedb", false)) {
+		CHECK_MISSING_ARG("key ID to import not specified");
+		ret = keymgr_import_zone_db(&kctx, argv[2], argc - 3, argv + 3);
 	} else if (same_command(argv[1], "nsec3-salt", false)) {
 		if (argc > 2) {
 			ret = keymgr_nsec3_salt_set(&kctx, argv[2]);

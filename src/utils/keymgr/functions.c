@@ -635,7 +635,7 @@ static int store_key_in_keystore(const char *param, unsigned backend,
 			return ret;
 		}
 	} else {
-		assert(backend == KEYSTORE_BACKEND_PKCS11 || exists);
+		assert(backend != KEYSTORE_BACKEND_PEM || exists);
 		*keyid = strdup(param);
 	}
 
@@ -744,6 +744,16 @@ int keymgr_import_pkcs11(kdnssec_ctx_t *ctx, char *key_id, int argc, char *argv[
 	dnssec_keyid_normalize(key_id);
 
 	return import_key(ctx, KEYSTORE_BACKEND_PKCS11, key_id, NULL, argc, argv);
+}
+
+int keymgr_import_zone_db(kdnssec_ctx_t *ctx, char *key_id, int argc, char *argv[])
+{
+	if (!dnssec_keyid_is_valid(key_id)) {
+		return KNOT_INVALID_KEY_ID;
+	}
+	dnssec_keyid_normalize(key_id);
+
+	return import_key(ctx, KEYSTORE_BACKEND_ZONEDB, key_id, NULL, argc, argv);
 }
 
 int keymgr_import_trash(kdnssec_ctx_t *ctx, char *key_id, int argc, char *argv[])
