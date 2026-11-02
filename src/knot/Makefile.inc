@@ -1,6 +1,6 @@
 libknotd_la_CPPFLAGS = $(AM_CPPFLAGS) $(CFLAG_VISIBILITY) $(libkqueue_CFLAGS) \
                        $(liburcu_CFLAGS) $(lmdb_CFLAGS) $(systemd_CFLAGS) \
-                       $(libdbus_CFLAGS) $(gnutls_CFLAGS) $(libhiredis_CFLAGS) \
+                       $(libdbus_CFLAGS) $(gnutls_CFLAGS) $(hiredis_CFLAGS) \
                        -DKNOTD_MOD_STATIC
 libknotd_la_LDFLAGS  = $(AM_LDFLAGS) -export-symbols-regex '^knotd_'
 libknotd_la_LIBADD   = $(dlopen_LIBS) $(libkqueue_LIBS) $(pthread_LIBS)

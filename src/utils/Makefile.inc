@@ -62,7 +62,7 @@ if HAVE_KDIG_VALIDATION
 noinst_LTLIBRARIES += libdummy.la
 
 libdummy_la_CPPFLAGS = $(AM_CPPFLAGS) $(liburcu_CFLAGS) $(systemd_CFLAGS) \
-                       $(libdbus_CFLAGS) $(libhiredis_CFLAGS)
+                       $(libdbus_CFLAGS) $(hiredis_CFLAGS)
 
 libdummy_la_SOURCES = \
 	utils/common/dummy.c
