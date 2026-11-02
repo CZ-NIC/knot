@@ -273,6 +273,7 @@ src/knot/events/events.h
 src/knot/events/handlers.h
 src/knot/events/handlers/backup.c
 src/knot/events/handlers/dnskey_sync.c
+src/knot/events/handlers/dnskeysign.c
 src/knot/events/handlers/dnssec.c
 src/knot/events/handlers/ds_check.c
 src/knot/events/handlers/ds_push.c

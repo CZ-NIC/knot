@@ -42,6 +42,7 @@ static const event_info_t EVENT_INFO[] = {
 	{ ZONE_EVENT_DS_CHECK,     event_ds_check,    "DS-check" },
 	{ ZONE_EVENT_DS_PUSH,      event_ds_push,     "DS-push" },
 	{ ZONE_EVENT_DNSKEY_SYNC,  event_dnskey_sync, "DNSKEY-sync" },
+	{ ZONE_EVENT_DNSKEYSIGN,   event_dnskeysign,  "DNSKEY-sign" },
 	{ 0 }
 };
 

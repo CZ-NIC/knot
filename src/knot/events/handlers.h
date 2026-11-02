@@ -42,3 +42,5 @@ int event_ds_check(conf_t *conf, zone_t *zone, zone_evflag_t flags);
 int event_ds_push(conf_t *conf, zone_t *zone, zone_evflag_t flags);
 /*! \brief After DNSSEC sign, synchronize DNSKEY+CDNSKEY+CDS using DDNS. */
 int event_dnskey_sync(conf_t *conf, zone_t *zone, zone_evflag_t flags);
+/*! \brief Special command to re-sign DNSKEY without SOA serial (or anything) changed. */
+int event_dnskeysign(conf_t *conf, zone_t *zone, zone_evflag_t flags);

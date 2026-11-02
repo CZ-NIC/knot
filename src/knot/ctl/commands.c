@@ -826,6 +826,10 @@ static int zone_keys_load(zone_t *zone, _unused_ ctl_args_t *args)
 		return KNOT_EOK;
 	}
 
+	if (MATCH_AND_FILTER(args, CTL_FILTER_KEYSLOAD_KEEPSOA)) {
+		return schedule_trigger(zone, args, ZONE_EVENT_DNSKEYSIGN, ZONE_EVFLAG_USER);
+	}
+
 	return schedule_trigger(zone, args, ZONE_EVENT_DNSSEC, ZONE_EVFLAG_USER);
 }
 

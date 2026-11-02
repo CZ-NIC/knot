@@ -211,7 +211,9 @@ Actions
 **zone-keys-load** [*zone*...]
   Trigger a load of DNSSEC keys and other signing material from KASP database
   (which might have been altered manually). If suitable, re-sign the zone
-  afterwards (keeping valid signatures intact). (#)
+  afterwards (keeping valid signatures intact). With the **+keepsoa** filter,
+  update and re-sign only the DNSKEY RRset, while keeping the rest of zone
+  (including SOA and its serial) untouched. (#)
 
 .. _knotc_zone-key-rollover:
 

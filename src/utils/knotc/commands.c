@@ -704,6 +704,11 @@ const filter_desc_t zone_flush_filters[] = {
 	{ NULL },
 };
 
+const filter_desc_t zone_keys_load_filters[] = {
+	{ "+keepsoa", CTL_FILTER_KEYSLOAD_KEEPSOA, false },
+	{ NULL },
+};
+
 const filter_desc_t zone_ksk_sbm_filters[] = {
 	{ "+ttl", CTL_FILTER_KSK_SBM_TTL, true },
 	{ NULL },
@@ -766,6 +771,9 @@ static const filter_desc_t *get_filter(ctl_cmd_t cmd, const char *filter_name)
 		break;
 	case CTL_ZONE_FLUSH:
 		fd = zone_flush_filters;
+		break;
+	case CTL_ZONE_KEYS_LOAD:
+		fd = zone_keys_load_filters;
 		break;
 	case CTL_ZONE_KSK_SBM:
 		fd = zone_ksk_sbm_filters;
@@ -1370,7 +1378,7 @@ static const cmd_help_t cmd_help_table[] = {
 	{ CMD_ZONE_RESTORE,    "[<zone>...] [<filter>...] +backupdir <dir>", "Restore zone data and metadata. (#)" },
 	{ CMD_ZONE_SIGN,       "[<zone>...]",                                "Re-sign the automatically signed zone. (#)" },
 	{ CMD_ZONE_VALIDATE,   "[<zone>...]",                                "Trigger a DNSSEC validation of the zone. (#)" },
-	{ CMD_ZONE_KEYS_LOAD,  "[<zone>...]",                                "Re-load keys from KASP database, sign the zone. (#)" },
+	{ CMD_ZONE_KEYS_LOAD,  "[<zone>...] [<filter>...]",                  "Re-load keys from KASP database, sign the zone. (#)" },
 	{ CMD_ZONE_KEY_ROLL,   " <zone> ksk|zsk",                            "Trigger immediate key rollover. (#)" },
 	{ CMD_ZONE_KSK_SBM,    " <zone>...",                                 "When KSK submission, confirm parent's DS presence. (#)" },
 	{ CMD_ZONE_FREEZE,     "[<zone>...]",                                "Temporarily postpone automatic zone-changing events. (#)" },
