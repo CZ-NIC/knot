@@ -1354,7 +1354,7 @@ static int rrset_foreach(zone_node_t *n, bool subtract_counterpart,
 	knot_rrset_t rrc = subtract_counterpart ? node_rrset(binode_counterpart(n), rr.type) : (knot_rrset_t){ 0 };
 	if (rrtype == KNOT_RRTYPE_ANY && rr.type == KNOT_RRTYPE_SOA) {
 		return KNOT_EOK; // ignore SOA if rrset specified by idx
-	} else if (knot_rrset_empty(&rrc)) {
+	} else if (knot_rrset_empty(&rrc) || rr.ttl != rrc.ttl) {
 		return cb(&rr, ctx);
 	} else if (knot_rdataset_subset(&rr.rrs, &rrc.rrs)) {
 		return KNOT_EOK;
