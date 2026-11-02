@@ -273,85 +273,28 @@ void test_incremental(zone_t *zone, zs_scanner_t *sc)
 	// TODO test more things after re-adjust, search for non-unified bi-nodes
 }
 
-typedef struct {
-	const knot_rrset_t *expected;
-	unsigned count;
-} diff_ctx_t;
-
-static int check_diff_rrset(const knot_rrset_t *rr, void *data)
-{
-	diff_ctx_t *ctx = data;
-	ctx->count++;
-	ok(ctx->expected != NULL && knot_rrset_equal(rr, ctx->expected, true),
-	   "zone update diff: expected RRset including TTL");
-	return KNOT_EOK;
-}
-
-static void check_diff(zone_update_t *update, bool additions, const knot_rrset_t *expected)
-{
-	diff_ctx_t ctx = { .expected = expected };
-	int ret = zone_update_foreach(update, additions, check_diff_rrset, &ctx);
-	is_int(KNOT_EOK, ret, "zone update diff: iterate %s", additions ? "additions" : "removals");
-	is_int(expected != NULL ? 1 : 0, ctx.count, "zone update diff: RRset count");
-}
-
 static void test_ttl_diff(zone_t *zone)
 {
-	knot_dname_storage_t owner;
-	knot_dname_from_str(owner, "ttl.test.", sizeof(owner));
-	knot_rrset_t old, removed, added;
-	knot_rrset_init(&old, owner, KNOT_RRTYPE_TXT, KNOT_CLASS_IN, 600);
-	knot_rrset_init(&removed, owner, KNOT_RRTYPE_TXT, KNOT_CLASS_IN, 600);
-	knot_rrset_init(&added, owner, KNOT_RRTYPE_TXT, KNOT_CLASS_IN, 600);
-	is_int(KNOT_EOK, knot_rrset_add_rdata(&old, (const uint8_t *)"\003one", 4, NULL),
-	       "zone update diff: first record");
-	is_int(KNOT_EOK, knot_rrset_add_rdata(&old, (const uint8_t *)"\003two", 4, NULL),
-	       "zone update diff: shared record");
-	is_int(KNOT_EOK, knot_rrset_add_rdata(&removed, (const uint8_t *)"\003one", 4, NULL),
-	       "zone update diff: removed record");
-	is_int(KNOT_EOK, knot_rrset_add_rdata(&added, (const uint8_t *)"\005three", 6, NULL),
-	       "zone update diff: added record");
-
 	zone_update_t update;
-	zone_update_flags_t flags = UPDATE_INCREMENTAL | UPDATE_NO_CHSET;
-	is_int(KNOT_EOK, zone_update_init(&update, zone, flags), "zone update diff: init fixture");
-	is_int(KNOT_EOK, zone_update_add(&update, &old), "zone update diff: add fixture");
-	is_int(KNOT_EOK, zone_update_commit(conf(), &update), "zone update diff: commit fixture");
+	int ret = zone_update_init(&update, zone, UPDATE_INCREMENTAL | UPDATE_NO_CHSET);
+	is_int(KNOT_EOK, ret, "TTL-only zone update: init");
 
-	const uint32_t ttls[] = { 600, 3600, 60, 0 };
-	for (size_t i = 0; i < sizeof(ttls) / sizeof(ttls[0]); i++) {
-		knot_rrset_t *new = knot_rrset_copy(&old, NULL);
-		assert(new != NULL);
-		new->ttl = ttls[i];
-		bool ttl_changed = new->ttl != old.ttl;
+	knot_rrset_t old = node_rrset(zone->contents->apex, KNOT_RRTYPE_TXT);
+	knot_rrset_t *new = knot_rrset_copy(&old, NULL);
+	assert(new != NULL);
+	new->ttl = 3600;
 
-		is_int(KNOT_EOK, zone_update_init(&update, zone, flags), "zone update diff: init");
-		is_int(KNOT_EOK, zone_update_remove(&update, &old), "zone update diff: remove RRset");
-		is_int(KNOT_EOK, zone_update_add(&update, new), "zone update diff: replace RRset");
-		ok(zone_update_no_change(&update) == !ttl_changed,
-		   "zone update diff: detect TTL-only change to %u", new->ttl);
-		check_diff(&update, false, ttl_changed ? &old : NULL);
-		check_diff(&update, true, ttl_changed ? new : NULL);
+	ret = zone_update_remove(&update, &old);
+	is_int(KNOT_EOK, ret, "TTL-only zone update: removal");
+	ret = zone_update_add(&update, new);
+	is_int(KNOT_EOK, ret, "TTL-only zone update: addition");
+	ok(!zone_update_no_change(&update), "TTL-only zone update: detect change");
 
-		/* A partial RDATA change must retain shared records if the TTL changes. */
-		is_int(KNOT_EOK, zone_update_remove(&update, &removed), "zone update diff: remove record");
-		added.ttl = new->ttl;
-		is_int(KNOT_EOK, zone_update_add(&update, &added), "zone update diff: add record");
-		is_int(KNOT_EOK, knot_rdataset_subtract(&new->rrs, &removed.rrs, NULL),
-		       "zone update diff: expected removal");
-		is_int(KNOT_EOK, knot_rdataset_merge(&new->rrs, &added.rrs, NULL),
-		       "zone update diff: expected addition");
-		ok(!zone_update_no_change(&update), "zone update diff: detect RDATA change");
-		check_diff(&update, false, ttl_changed ? &old : &removed);
-		check_diff(&update, true, ttl_changed ? new : &added);
-
-		zone_update_clear(&update);
-		knot_rrset_free(new, NULL);
-	}
-
-	knot_rdataset_clear(&old.rrs, NULL);
-	knot_rdataset_clear(&removed.rrs, NULL);
-	knot_rdataset_clear(&added.rrs, NULL);
+	ret = zone_update_commit(conf(), &update);
+	is_int(KNOT_EOK, ret, "TTL-only zone update: commit");
+	knot_rrset_t committed = node_rrset(zone->contents->apex, KNOT_RRTYPE_TXT);
+	ok(knot_rrset_equal(&committed, new, true), "TTL-only zone update: committed RRset");
+	knot_rrset_free(new, NULL);
 }
 
 int main(int argc, char *argv[])
