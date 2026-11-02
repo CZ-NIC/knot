@@ -14,3 +14,5 @@ int keymgr_keystore_test(const char *keystore_id, keymgr_list_params_t *params);
 
 int keymgr_keystore_bench(const char *keystore_id, keymgr_list_params_t *params,
                           uint16_t threads, int algorithm);
+
+const char *keystore_str(unsigned backend);

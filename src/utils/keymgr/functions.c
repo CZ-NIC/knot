@@ -13,6 +13,7 @@
 
 #include "utils/common/msg.h"
 #include "utils/keymgr/bind_privkey.h"
+#include "utils/keymgr/keystore.h"
 #include "contrib/base64.h"
 #include "contrib/color.h"
 #include "contrib/ctype.h"
@@ -1089,8 +1090,6 @@ static const timer_ctx_t trash_timers[] = {
 	{ NULL }
 };
 
-#define KS_TYPE(info) (info->backend == KEYSTORE_BACKEND_PEM) ? "PEM" : "PKCS11"
-
 static void print_key_brief(const knot_kasp_key_t *key, key_info_t *info,
                             keymgr_list_params_t *params)
 {
@@ -1139,7 +1138,8 @@ static void print_key_brief(const knot_kasp_key_t *key, key_info_t *info,
 	if (info->missing) {
 		printf(" %s%smissing%s", COL_BOLD(c), COL_YELW(c), COL_RST(c));
 	} else if (info->ks_count > 1 && *info->ks_name != '-') {
-		printf(" %s%s/%s%s", COL_YELW(c), KS_TYPE(info), info->ks_name, COL_RST(c));
+		printf(" %s%s/%s%s", COL_YELW(c), keystore_str(info->backend),
+		       info->ks_name, COL_RST(c));
 	}
 
 	static knot_dname_txt_storage_t buf;
@@ -1197,7 +1197,7 @@ static void print_key_full(const knot_kasp_key_t *key, key_info_t *info,
 		printf(" keystore=-/-");
 	} else {
 		assert(info->ks_name);
-		printf(" keystore=%s/%s", KS_TYPE(info), info->ks_name);
+		printf(" keystore=%s/%s", keystore_str(info->backend), info->ks_name);
 	}
 
 	static knot_dname_txt_storage_t buf;
@@ -1235,12 +1235,12 @@ static void print_key_json(const knot_kasp_key_t *key, key_info_t *info,
 	jsonw_bool(w,  "missing", info->missing);
 	jsonw_bool(w,  "trash", trash);
 
-	char *ks_type = "-";
-	char *ks_name = ks_type;
+	const char *ks_type = "-";
+	const char *ks_name = ks_type;
 	if (!info->missing) {
-		ks_type = KS_TYPE(info);
+		ks_type = keystore_str(info->backend);
 		assert(info->ks_name);
-		ks_name = (char *)info->ks_name;
+		ks_name = info->ks_name;
 	}
 	jsonw_str(w,   "backend", ks_type);
 	jsonw_str(w,   "keystore", ks_name);
