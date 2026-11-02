@@ -135,7 +135,8 @@ The following commands apply to all zones if `ZONE` is left empty.
 * `zone-restore` *analogous to `zone-backup`*
 * `zone-sign([ZONE], [FLAGS="B"])`
 * `zone-validate([ZONE], [FLAGS="B"])`
-* `zone-keys-load([ZONE], [FLAGS="B"])`
+* `zone-keys-load([ZONE], [FILTERS="s"], [FLAGS="B"])`
+  + filters: keep**s**oa
 * `zone-key-rollover([ZONE], TYPE="ksk"|"zsk", [FLAGS="B"])`
 * `zone-ksk-submitted([ZONE], [FILTERS="t", DATA], [FLAGS="B"])`
   + the **t**tl filter commands that removal of old KSK is postponed by the amount of seconds
