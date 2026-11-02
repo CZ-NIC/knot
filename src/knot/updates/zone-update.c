@@ -721,7 +721,13 @@ static int commit_journal(conf_t *conf, zone_update_t *update)
 	int ret = KNOT_EOK;
 	changeset_t *extra = (update->flags & UPDATE_EXTRA_CHSET) ? &update->extra_ch : NULL;
 
-	if (update->flags & UPDATE_NO_CHSET) {
+	if (update->flags & (UPDATE_FULL | UPDATE_KEEPSOA)) {
+		if (content == JOURNAL_CONTENT_ALL) {
+			return zone_in_journal_store(conf, update->zone, update->new_cont);
+		} else if (content != JOURNAL_CONTENT_NONE) { // zone_in_journal_store does this automatically
+			return zone_changes_clear(conf, update->zone);
+		}
+	} else 	if (update->flags & UPDATE_NO_CHSET) {
 		zone_diff_t diff;
 		get_zone_diff(&diff, update);
 		assert(!zone_update_no_change(update) || !(update->flags & UPDATE_EXTRA_CHSET));
@@ -734,11 +740,7 @@ static int commit_journal(conf_t *conf, zone_update_t *update)
 			ret = zone_change_store(conf, update->zone, &update->change, extra);
 		}
 	} else {
-		if (content == JOURNAL_CONTENT_ALL) {
-			return zone_in_journal_store(conf, update->zone, update->new_cont);
-		} else if (content != JOURNAL_CONTENT_NONE) { // zone_in_journal_store does this automatically
-			return zone_changes_clear(conf, update->zone);
-		}
+		assert(0);
 	}
 	return ret;
 }
@@ -766,7 +768,7 @@ static int commit_redis(conf_t *conf, zone_update_t *update)
 		return KNOT_ECONN;
 	}
 
-	bool incremental = ((update->flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) && update->zone->contents != NULL);
+	bool incremental = ((update->flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) && update->zone->contents != NULL && !(update->flags & UPDATE_KEEPSOA));
 	if (incremental) {
 		zone_redis_err_t err;
 		uint32_t redis_soa = 0, chset_soa = zone_update_from_serial(update);
@@ -816,7 +818,7 @@ static int commit_incremental(conf_t *conf, zone_update_t *update)
 {
 	assert(update);
 
-	if (zone_update_to(update) == NULL && !zone_update_no_change(update)) {
+	if (zone_update_to(update) == NULL && !zone_update_no_change(update) && !(update->flags & UPDATE_KEEPSOA)) {
 		/* No SOA in the update, create one according to the current policy */
 		int ret = zone_update_increment_soa(update, conf);
 		if (ret != KNOT_EOK) {
