@@ -422,17 +422,23 @@ AS_CASE([$enable_redis],
   [no], [],
   [*], [AC_MSG_ERROR([invalid value of --enable-redis])]
 )
+hiredis_CFLAGS=$(echo "$hiredis_CFLAGS" | sed 's|\(-I[^ ]*\)/hiredis\([ ]\|$\)|\1\2|g')
 AM_CONDITIONAL([ENABLE_REDIS], [test "$enable_redis" != "no"])
 AM_CONDITIONAL([ENABLE_REDIS_MODULE], [test "$enable_redis" != "no" && test "$enable_redis" != "client" && test "$enable_shared" = "yes"])
 
 AS_IF([test "$enable_redis" = "yes" -o "$enable_redis" = "client"], [
   AC_DEFINE([ENABLE_REDIS], [1], [Enable Redis support.])
-  AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <hiredis/hiredis.h>
-                                    #if (HIREDIS_MAJOR < 1) || (HIREDIS_MAJOR == 1 && HIREDIS_MINOR < 1)
-                                    #error "No TLS support in Redis (need >= 1.1.0)"
-                                    #endif]])],
+
+  save_CFLAGS="$CFLAGS"
+  CFLAGS="$CFLAGS $hiredis_CFLAGS"
+  AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include <hiredis/hiredis.h>
+                                       #if (HIREDIS_MAJOR < 1) || (HIREDIS_MAJOR == 1 && HIREDIS_MINOR < 1)
+                                       #error "No TLS support in Redis (need >= 1.1.0)"
+                                       #endif]])],
                  [AC_DEFINE([ENABLE_REDIS_TLS], [1], [Enable Redis TLS support.])],
                  [enable_redis="yes (no TLS)"])
+  CFLAGS="$save_CFLAGS"
+
   AS_IF([test "$enable_redis" = "yes" && test "$enable_shared" = "yes"], [
     enable_redis="${enable_redis} module"
   ])
