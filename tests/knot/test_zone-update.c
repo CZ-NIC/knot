@@ -273,6 +273,30 @@ void test_incremental(zone_t *zone, zs_scanner_t *sc)
 	// TODO test more things after re-adjust, search for non-unified bi-nodes
 }
 
+static void test_ttl_diff(zone_t *zone)
+{
+	zone_update_t update;
+	int ret = zone_update_init(&update, zone, UPDATE_INCREMENTAL | UPDATE_NO_CHSET);
+	is_int(KNOT_EOK, ret, "TTL-only zone update: init");
+
+	knot_rrset_t old = node_rrset(zone->contents->apex, KNOT_RRTYPE_TXT);
+	knot_rrset_t *new = knot_rrset_copy(&old, NULL);
+	assert(new != NULL);
+	new->ttl = 3600;
+
+	ret = zone_update_remove(&update, &old);
+	is_int(KNOT_EOK, ret, "TTL-only zone update: removal");
+	ret = zone_update_add(&update, new);
+	is_int(KNOT_EOK, ret, "TTL-only zone update: addition");
+	ok(!zone_update_no_change(&update), "TTL-only zone update: detect change");
+
+	ret = zone_update_commit(conf(), &update);
+	is_int(KNOT_EOK, ret, "TTL-only zone update: commit");
+	knot_rrset_t committed = node_rrset(zone->contents->apex, KNOT_RRTYPE_TXT);
+	ok(knot_rrset_equal(&committed, new, true), "TTL-only zone update: committed RRset");
+	knot_rrset_free(new, NULL);
+}
+
 int main(int argc, char *argv[])
 {
 	plan_lazy();
@@ -313,6 +337,7 @@ int main(int argc, char *argv[])
 	/* Test FULL update, commit it and use the result to test the INCREMENTAL update */
 	test_full(zone, &sc);
 	test_incremental(zone, &sc);
+	test_ttl_diff(zone);
 
 	zs_deinit(&sc);
 	zone_free(&zone);
