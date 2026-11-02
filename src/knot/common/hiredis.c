@@ -347,7 +347,10 @@ redisContext *rdb_connect(conf_t *conf, bool require_master, const char *info)
 		conf_val_next(&db_listen);
 	}
 
-	conf_val_reset(&db_listen);
+	if (db_listen.code != KNOT_ENOENT) {
+		conf_val_reset(&db_listen);
+	}
+
 	while (db_listen.code == KNOT_EOK) {
 		struct sockaddr_storage addr = conf_addr(&db_listen, NULL, NULL);
 
