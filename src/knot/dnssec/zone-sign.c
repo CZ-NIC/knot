@@ -219,6 +219,7 @@ static int add_missing_rrsigs(const knot_rrset_t *covered,
 		result = knot_synth_rrsig(covered->type,
 		    &sign_ctx->dnssec_ctx->offline_records.rrsig.rrs, &to_add.rrs, NULL);
 		if (result == KNOT_EOK) {
+			found_active_key = true;
 			// don't remove what shall be added
 			result = knot_rdataset_subtract(&to_remove.rrs, &to_add.rrs, NULL);
 		}
@@ -269,7 +270,7 @@ static int add_missing_rrsigs(const knot_rrset_t *covered,
 		}
 	}
 
-	assert(found_active_key || (sign_ctx->dnssec_ctx->policy->unsafe & UNSAFE_KEYSET));
+	assert(found_active_key || (sign_ctx->dnssec_ctx->policy->unsafe & UNSAFE_KEYSET) || sign_ctx->dnssec_ctx->policy->offline_ksk);
 	knot_rdataset_clear(&to_add.rrs, NULL);
 	knot_rdataset_clear(&to_remove.rrs, NULL);
 
