@@ -5,11 +5,13 @@ Restoring DNSSEC functionality upon losing private key(s).
 """
 
 from dnstest.keys import Keymgr
+import dnstest.params
 from dnstest.test import Test
 from dnstest.utils import *
 
 import os
 import re
+import subprocess
 import time
 
 import dns.dnssec
@@ -25,8 +27,9 @@ def privkey_del(server, keyid):
 def listline2keytag(line):
     return re.search(r"\btag=(\d+)", line).group(1)
 
-def reconf_manual(server, z, man):
+def reconf_manual(server, z, man, unsafe):
     server.dnssec(z).manual = man
+    server.dnssec(z).unsafe_operation = ("none" if unsafe is None else unsafe)
     server.gen_confile()
     server.reload()
 
@@ -115,9 +118,20 @@ up.add("fail", 0, "TXT", "no private KSK")
 up.send("SERVFAIL")
 
 Keymgr.run_check(master.confile, zone.name, "set", ksk, "pub-only=true")
-_, newksk, _ = Keymgr.run_check(master.confile, zone.name, "generate", "ksk=true", "zsk=false", "publish=+5s", "active=+5s")
+_, newksk, _ = Keymgr.run_check(master.confile, zone.name, "generate", "ksk=true", "zsk=false", "publish=+10s", "active=+10s")
 newksk = newksk.split()[0]
-reconf_manual(master, zone, True)
+reconf_manual(master, zone, True, "no-check-keyset")
+
+up = master.update(zone)
+up.add("pass1", 0, "TXT", "zone update working unsafe without operable KSK")
+up.send("NOERROR")
+serial = master.zone_wait(zone, serial)
+resp = master.dig("pass1." + zone.name, "TXT")
+resp.check(rcode="NOERROR")
+master.kdig("pass1." + zone.name, "TXT", validate=True)
+master.kdig("pass1." + zone.name, "AAAA", validate=True)
+master.kdig("pass2." + zone.name, "TXT", validate=True)
+master.kdig(zone.name, "DNSKEY", validate=True)
 
 _, keys, _ = Keymgr.run_check(master.confile, zone.name, "list")
 for k in keys.splitlines():
@@ -130,7 +144,7 @@ master.zone_wait(zone, serial)
 check_dnssec(master, zone)
 
 Keymgr.run_check(master.confile, zone.name, "delete", ksk)
-reconf_manual(master, zone, False)
+reconf_manual(master, zone, False, None)
 wait_for(master, zone.name, "DNSKEY", 2, 20)
 check_dnssec(master, zone)
 ksk = newksk
@@ -155,6 +169,8 @@ for k in keys.splitlines():
         PARENT_DS_KEYTAG = listline2keytag(k)
 
 t.sleep(5)
+with open(os.path.join(master.dir, "kjournalprint.outerr"), "a") as kjout:
+    subprocess.run([dnstest.params.kjournalprint_bin, "-c", master.confile, zone.name], stdout=kjout, stderr=subprocess.STDOUT)
 master.ctl("zone-keys-load +keepsoa " + zone.name, wait=True)
 master.zone_wait(zone, serial, equal=True, greater=False)
 check_dnssec(master, zone)
