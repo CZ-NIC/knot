@@ -243,6 +243,9 @@ static int add_query_edns(knot_pkt_t *packet, const query_t *query, uint16_t max
 	if (query->flags.do_flag) {
 		knot_edns_set_do(&opt_rr);
 	}
+	if (query->flags.co_flag) {
+		knot_edns_set_co(&opt_rr);
+	}
 	if (query->flags.de_flag) {
 		knot_edns_set_de(&opt_rr);
 	}
@@ -360,7 +363,8 @@ static bool use_edns(const query_t *query)
 	return query->edns > -1 || query->udp_size > -1 || query->nsid ||
 	       query->zoneversion || query->subnet.family != AF_UNSPEC ||
 	       query->flags.do_flag || query->cc.len > 0 || do_padding(query) ||
-	       query->flags.de_flag || !ednsopt_list_empty(&query->edns_opts);
+	       query->flags.de_flag || !ednsopt_list_empty(&query->edns_opts) ||
+	       query->flags.co_flag;
 }
 
 static knot_pkt_t *create_query_packet(const query_t *query)

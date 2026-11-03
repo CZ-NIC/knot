@@ -990,6 +990,8 @@ static void wire_ednsflags_to_str(rrset_dump_params_t *p)
 
 			if ((mask & KNOT_EDNS_DO_MASK)) {
 				dump_string(p, "DO");
+			} else if ((mask & KNOT_EDNS_CO_MASK)) {
+				dump_string(p, "CO");
 			} else if ((mask & KNOT_EDNS_DE_MASK)) {
 				dump_string(p, "DE");
 			} else {
