@@ -354,6 +354,8 @@ static void print_section_opt(const knot_pkt_t *packet, const style_t *style)
 		if (packet->opt_rr->ttl & mask) {
 			if (mask & KNOT_EDNS_DO_MASK) {
 				flend += snprintf(flend, 4, " do");
+			} else if (mask & KNOT_EDNS_CO_MASK) {
+				flend += snprintf(flend, 4, " co");
 			} else if (mask & KNOT_EDNS_DE_MASK) {
 				flend += snprintf(flend, 4, " de");
 			} else {
@@ -881,6 +883,8 @@ static void json_print_edns(jsonw_t *w, const knot_pkt_t *pkt)
 		if ((flags & mask)) {
 			if ((mask & KNOT_EDNS_DO_MASK)) {
 				jsonw_str(w, NULL, "DO");
+			} else if ((mask & KNOT_EDNS_CO_MASK)) {
+				jsonw_str(w, NULL, "CO");
 			} else if ((mask & KNOT_EDNS_DE_MASK)) {
 				jsonw_str(w, NULL, "DE");
 			} else {

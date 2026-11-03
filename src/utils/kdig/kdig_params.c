@@ -41,6 +41,7 @@ static const flags_t DEFAULT_FLAGS_DIG = {
 	.ad_flag = true,
 	.cd_flag = false,
 	.do_flag = false,
+	.co_flag = false,
 	.de_flag = false,
 };
 
@@ -272,6 +273,24 @@ static int opt_nodoflag(const char *arg, void *query)
 	query_t *q = query;
 
 	q->flags.do_flag = false;
+
+	return KNOT_EOK;
+}
+
+static int opt_coflag(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->flags.co_flag = true;
+
+	return KNOT_EOK;
+}
+
+static int opt_nocoflag(const char *arg, void *query)
+{
+	query_t *q = query;
+
+	q->flags.co_flag = false;
 
 	return KNOT_EOK;
 }
@@ -1602,6 +1621,9 @@ static const param_t kdig_opts2[] = {
 	{ "dnssec",         ARG_NONE,     opt_doflag },   // Alias.
 	{ "nodnssec",       ARG_NONE,     opt_nodoflag },
 
+	{ "coflag",         ARG_NONE,     opt_coflag },
+	{ "nocoflag",       ARG_NONE,     opt_nocoflag },
+
 	{ "deflag",         ARG_NONE,     opt_deflag },
 	{ "nodeflag",       ARG_NONE,     opt_nodeflag },
 
@@ -2437,6 +2459,7 @@ static void print_help(void)
 	       "       +[no]cdflag                Set CD flag.\n"
 	       "       +[no]doflag                Set DO flag.\n"
 	       "       +[no]dnssec                Same as +[no]doflag.\n"
+	       "       +[no]coflag                Set CO flag.\n"
 	       "       +[no]deflag                Set DE flag.\n"
 	       "       +[no]validate[=LEVEL]      Re-query for SOA and DNSKEY, validate DNSSEC.\n"
 	       "       +[no]all                   Show all packet sections.\n"

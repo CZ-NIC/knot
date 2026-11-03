@@ -177,6 +177,9 @@ Options
 **+**\ [\ **no**\ ]\ **dnssec**
   Same as **+**\ [\ **no**\ ]\ **doflag**
 
+**+**\ [\ **no**\ ]\ **coflag**
+  Set the CO flag.
+
 **+**\ [\ **no**\ ]\ **deflag**
   Set the DE flag.
 

@@ -28,6 +28,8 @@ enum {
 
 	/*! \brief Bit mask for DO bit. */
 	KNOT_EDNS_DO_MASK = (uint32_t)(1 << 15),
+	/*! \brief Bit mask for CO bit. */
+	KNOT_EDNS_CO_MASK = (uint32_t)(1 << 14),
 	/*! \brief Bit mask for DE bit. */
 	KNOT_EDNS_DE_MASK = (uint32_t)(1 << 13),
 
@@ -265,6 +267,16 @@ bool knot_edns_do(const knot_rrset_t *opt_rr)
 }
 
 /*!
+ * \brief Same as knot_edns_do() but for CO bit.
+ */
+static inline
+bool knot_edns_co(const knot_rrset_t *opt_rr)
+{
+	assert(opt_rr != NULL);
+	return opt_rr->ttl & KNOT_EDNS_CO_MASK;
+}
+
+/*!
  * \brief Same as knot_edns_do() but for DE bit.
  */
 static inline
@@ -287,6 +299,16 @@ void knot_edns_set_do(knot_rrset_t *opt_rr)
 {
 	assert(opt_rr != NULL);
 	opt_rr->ttl |= KNOT_EDNS_DO_MASK;
+}
+
+/*!
+ * \brief Same as knot_edns_set_do() but for CO bit.
+ */
+static inline
+void knot_edns_set_co(knot_rrset_t *opt_rr)
+{
+	assert(opt_rr != NULL);
+	opt_rr->ttl |= KNOT_EDNS_CO_MASK;
 }
 
 /*!

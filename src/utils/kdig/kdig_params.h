@@ -48,6 +48,8 @@ typedef struct {
 	bool	cd_flag;
 	/*!< DNSSEC OK flag. */
 	bool	do_flag;
+	/*!< Compact Denial of Existence OK flag. */
+	bool	co_flag;
 	/*!< DELEG-aware flag. */
 	bool	de_flag;
 } flags_t;
