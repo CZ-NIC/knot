@@ -936,6 +936,13 @@ int check_key(
 		return KNOT_EINVAL;
 	}
 
+	size_t len;
+	(void)conf_bin(&secret, &len);
+	if (len == 0) {
+		args->err_str = "empty key secret";
+		return KNOT_EINVAL;
+	}
+
 	return KNOT_EOK;
 }
 
