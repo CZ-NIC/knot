@@ -615,7 +615,7 @@ static int store_key_in_keystore(const char *param, unsigned backend,
 		if (ret != KNOT_EOK) {
 			close(fd);
 			err_import_key("", param);
-			goto fail;
+			return ret;
 		}
 
 		// read pem
@@ -623,28 +623,23 @@ static int store_key_in_keystore(const char *param, unsigned backend,
 		close(fd);
 		if (read_count == -1) {
 			dnssec_binary_free(&pem);
-			ret = knot_map_errno();
 			err_import_key("", param);
-			goto fail;
+			return knot_map_errno();
 		}
 
 		// put pem to keystore
 		ret = dnssec_keystore_import(keystore->keystore, &pem, keyid);
 		dnssec_binary_free(&pem);
 		if (ret != KNOT_EOK) {
-			err_import_key(*keyid, param);
-			goto fail;
+			err_import_key("", param);
+			return ret;
 		}
 	} else {
 		assert(backend == KEYSTORE_BACKEND_PKCS11 || exists);
 		*keyid = strdup(param);
 	}
-	return ret;
 
-fail:
-	free(*keyid);
-	*keyid = NULL;
-	return ret;
+	return KNOT_EOK;
 }
 
 static int import_key(kdnssec_ctx_t *ctx, unsigned backend, const char *param,
