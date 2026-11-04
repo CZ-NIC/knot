@@ -19,6 +19,12 @@
 #include "libknot/dnssec/key/internal.h"
 #include "libknot/libknot.h"
 
+#ifdef HAVE_MLDSA44
+#define MLDSA44_USAGE "18  (MLDSA44)             \n"
+#else
+#define MLDSA44_USAGE "                          \n"
+#endif
+
 #define PROGRAM_NAME "showkey"
 #define USAGE                                                               \
 	"NAME                                                           \n" \
@@ -45,7 +51,7 @@
 	"            5   (RSA-SHA1)           8   (RSA-SHA256)          \n" \
 	"            10  (RSA-SHA512)         13  (ECDSA-P256-SHA256)   \n" \
 	"            14  (ECDSA-P384-SHA384)  15  (ED25519)             \n" \
-	"            16  (ED448)                                        \n"
+	"            16  (ED448)              " MLDSA44_USAGE
 
 typedef struct {
 	char *pem;
@@ -371,6 +377,11 @@ int main(int argc, char **argv)
 			case DNSSEC_KEY_ALGORITHM_ED448:
 				args.keysize = 456;
 				break;
+#ifdef HAVE_MLDSA44
+			case DNSSEC_KEY_ALGORITHM_MLDSA44:
+				args.keysize = 1312;
+				break;
+#endif
 			default:
 				break;
 			}
