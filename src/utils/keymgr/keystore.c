@@ -33,6 +33,9 @@ const key_parameters_t *KEYS[] = {
 	&SAMPLE_ECDSA_P384_SHA384_KEY,
 	&SAMPLE_ED25519_KEY,
 	&SAMPLE_ED448_KEY,
+#ifdef HAVE_MLDSA44
+	&SAMPLE_MLDSA44_KEY,
+#endif
 	NULL
 };
 

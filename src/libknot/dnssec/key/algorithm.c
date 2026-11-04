@@ -53,9 +53,9 @@ static const struct limits *get_limits(dnssec_key_algorithm_t algorithm)
 
 #ifdef HAVE_MLDSA44
 	static const struct limits MLDSA44 = {
-		.min = 1312,
-		.max = 1312,
-		.def = 1312,
+		.min = 10496,
+		.max = 10496,
+		.def = 10496,
 	};
 #endif
 
