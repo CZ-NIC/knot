@@ -360,18 +360,23 @@ unsigned dnssec_key_get_size(const dnssec_key_t *key)
 	unsigned bits = 0;
 	uint8_t algorithm = dnssec_key_get_algorithm(key);
 	switch (algorithm) {
-	case 13:
+	case DNSSEC_KEY_ALGORITHM_ECDSA_P256_SHA256:
 		bits = 256;
 		break;
-	case 14:
+	case DNSSEC_KEY_ALGORITHM_ECDSA_P384_SHA384:
 		bits = 384;
 		break;
-	case 15:
+	case DNSSEC_KEY_ALGORITHM_ED25519:
 		bits = 256;
 		break;
-	case 16:
+	case DNSSEC_KEY_ALGORITHM_ED448:
 		bits = 456;
 		break;
+#ifdef HAVE_MLDSA44
+	case DNSSEC_KEY_ALGORITHM_MLDSA44:
+		bits = 1312 << 3;
+		break;
+#endif
 	default:
 		gnutls_pubkey_get_pk_algorithm(key->public_key, &bits);
 	}

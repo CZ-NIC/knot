@@ -50,6 +50,9 @@ static void check_defaults(void)
 	is_int(256, dnssec_algorithm_key_size_default(DNSSEC_KEY_ALGORITHM_ECDSA_P256_SHA256), "ecc default");
 	is_int(256, dnssec_algorithm_key_size_default(DNSSEC_KEY_ALGORITHM_ED25519),           "ed25519 default");
 	is_int(456, dnssec_algorithm_key_size_default(DNSSEC_KEY_ALGORITHM_ED448),             "ed448 default");
+#ifdef HAVE_MLDSA44
+	is_int(1312, dnssec_algorithm_key_size_default(DNSSEC_KEY_ALGORITHM_MLDSA44),          "mldsa44 default");
+#endif
 }
 
 int main(void)
@@ -61,6 +64,9 @@ int main(void)
 	ok_range(DNSSEC_KEY_ALGORITHM_ECDSA_P384_SHA384, 384, 384, "ECDSA/SHA384");
 	ok_range(DNSSEC_KEY_ALGORITHM_ED25519, 256, 256, "ED25519");
 	ok_range(DNSSEC_KEY_ALGORITHM_ED448, 456, 456, "ED448");
+#ifdef HAVE_MLDSA44
+	ok_range(DNSSEC_KEY_ALGORITHM_MLDSA44, 1312, 1312, "MLDSA44");
+#endif
 
 	null_range();
 
