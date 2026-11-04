@@ -182,6 +182,9 @@ int main(void)
 		{ "ECDSA",   &SAMPLE_ECDSA_P256_SHA256_KEY },
 		{ "ED25519", &SAMPLE_ED25519_KEY },
 		{ "ED448",   &SAMPLE_ED448_KEY },
+#ifdef HAVE_MLDSA44
+		{ "MLDSA44", &SAMPLE_MLDSA44_KEY },
+#endif
 		{ NULL }
 	};
 

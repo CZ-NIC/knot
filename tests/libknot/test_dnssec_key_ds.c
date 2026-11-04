@@ -92,10 +92,16 @@ int main(int argc, char *argv[])
 	test_key("ECDSA",   &SAMPLE_ECDSA_P256_SHA256_KEY);
 	test_key("ED25519", &SAMPLE_ED25519_KEY);
 	test_key("ED448",   &SAMPLE_ED448_KEY);
+#ifdef HAVE_MLDSA44
+	test_key("MLDSA44", &SAMPLE_MLDSA44_KEY);
+#endif
 
 	test_errors(&SAMPLE_ECDSA_P256_SHA256_KEY);
 	test_errors(&SAMPLE_ED25519_KEY);
 	test_errors(&SAMPLE_ED448_KEY);
+#ifdef HAVE_MLDSA44
+	test_errors(&SAMPLE_MLDSA44_KEY);
+#endif
 
 	dnssec_crypto_cleanup();
 
