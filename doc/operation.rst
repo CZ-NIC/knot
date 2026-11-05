@@ -1507,6 +1507,135 @@ Example for a PKCS #11 keystore (using the ``p11tool`` utility from
               grep -v -e '^$' -e '^[0-9]* objects deleted$'
    $ knotc -b zone-thaw
 
+.. _Restoring DNSSEC operation after loss of private keys:
+
+Restoring DNSSEC operation after loss of private keys
+=====================================================
+
+This chapter covers the scenario when one or more private keys in the keystore get
+accidentally deleted while their metadata remain present in KASP database. In such case,
+any signing event will start failing with a "DNSSEC, key XY, failed to load private key"
+message in the log. While new keys can be easily generated, the roll-over must be performed
+manually and in careful steps so that the zone doesn't turn BOGUS for any period of time.
+The procedure depends heavily on the situation and which keys were lost.
+
+KSK operable, ZSK missing
+-------------------------
+
+The existing KSK is promoted to a CSK (Combined Signing Key), now signing both the
+DNSKEY RRset and the rest of the zone. The missing ZSK has to be flagged as "public-only"
+so that Knot doesn't attempt to load the missing private key.
+
+In the following example, ``example.com.`` stands for the affected zone,  while ``KSK_id``
+and ``ZSK_id`` are the keyIDs of the existing KSK and missing ZSK, respectively, as read
+out from the output of ``keymgr example.com. list`` command::
+
+    $ keymgr example.com. list
+    $ keymgr example.com. set KSK_id zsk=true
+    $ keymgr example.com. set ZSK_id pub-only=true
+    $ keymgr example.com. list
+
+After following ``knotc zone-sign example.com.``, the DNSSEC operation is immediately
+restored. Note that with :ref:`automatic key management<dnssec-automatic-zsk-management>`,
+Knot might immediately start a signing-scheme roll-over (by generating a new KSK+ZSK pair)
+in order to reach back the configured setup. This can be avoided by prior setting of
+:ref:`policy_single-type-signing` (to keep operting with CSK) or
+:ref:`manual policy<policy_manual>` (to stop automatic key roll-overs).
+
+KSK operable, ZSK missing, Offline KSK
+--------------------------------------
+
+Within :ref:`DNSSEC Offline KSK` setup, it is infeasible to operate a CSK. In this case, the
+ZSK roll-over needs to be performed quickly and the zone has to be frozen during the period.
+
+TODO
+
+KSK missing, ZSK operable
+-------------------------
+
+The zone updates continue to function, it is just impossible to re-sign the DNSSKEY RRset.
+It is thus recommended to configure :ref:`manual policy<policy_manual>`  temporarily so
+that Knot doesn't attempt to initiate a ZSK roll-over before the KSK is restored.
+The rescue is achieved by manually
+performing a double-DS KSK roll-over. First, we generate the new KSK which is neither
+published nor active yet::
+
+    $ keymgr example.com. generate ksk=true zsk=false publish=0 ready=0 active=0
+    new_KSK_id
+    $ keymgr example.com. ds new_KSK_id
+
+The resulting DS record needs to be manually submitted to the parent zone, so that both old
+and this added DSs appear there concurrently. After waiting for the period of the parent DS
+TTL, we can set the new KSK as active and remove the old one::
+
+    $ keymgr example.com. list
+    $ keymgr example.com. set new_KSK_id publish=+0 active+0
+    $ keymgr example.com. delete old_KSK_id
+    $ keymgr example.com. list
+    $ knotc zone-keys-load example.com.
+
+Finally, we just revert the temporary setting of manual policy and remove the old DS from
+parent zone.
+
+Both KSK+ZSK missing or CSK missing
+-----------------------------------
+
+The core idea is to first resurrect the KSK like in previous scenario, and then promote it
+to a CSK as in the first one. Before starting with the process, it is wise to switch to
+:ref:`manual policy<policy_manual>` and freeze the zone updates with
+``knotc zone-freeze example.com.``
+in oder to avoid any interference from automatic key management or incremental zone updates.
+
+The first step is identical to the "KSK missing" scenario::
+
+    $ keymgr example.com. generate ksk=true zsk=false publish=0 ready=0 active=0
+    new_KSK_id
+    $ keymgr example.com. ds new_KSK_id
+
+After the new DS was added to the parent zone and its TTL period has passed, the new KSK
+can be activated, but it can't be used as a ZSK yet, as it hasn't been published before.
+Therefore, there is a special step that needs to be done so that the new KSK is added to
+the DNSKEY RRset and also used to sign the DNSKEY with its RRSIG, but any attempt to sign
+the rest of the zone is not made yet as it would fail. The
+``knotc zone-keys-load +keepsoa`` command is indended for exactly that::
+
+    $ keymgr example.com. list
+    $ keymgr example.com. set new_KSK_id publish=+0 active+0
+    $ keymgr example.com. delete old_KSK_id         # do NOT in case of a CSK
+    $ keymgr example.com. set ZSK_id pub-only=true
+    $ keymgr example.com. list
+    $ knotc zone-keys-load +nosoa example.com.
+
+After this, the DNKSEY RRset contains the new KSK and is signed by it. It also contains the
+lost ZSK which the rest of the (frozen) zone is signed with, therefore, this new state
+preserves the whole trust chain down to individual RRsets. There is different problem though.
+As the SOA has been unchanged, its ``serial`` field is also unincremented, so that propagation
+of the new zone contents to secondary servers needs to be performed manually, e.g. by calling
+``knotc zone-retransfer example.com.`` on them. In the case of ZONEMD presence, this also
+becomes invalid and its validation on secondaries needs to be overridden.
+
+The zone needs to remain public in this state for the duration of DNSKEY TTL. After that,
+we can finally promote the new KSK to CSK and start the cleanup by deleting the old ZSK::
+
+    $ keymgr example.com. list
+    $ keymgr example.com. set new_KSK_id zsk=true
+    $ keymgr example.com. delete ZSK_id
+    $ keymgr example.com. list
+    $ knotc zone-sign example.com.
+
+...and wrap it up with ``knotc zone-thaw`` together with switching back to automatic key
+management.
+
+Loss of private keys during key-rollovers
+-----------------------------------------
+
+Previous scenarios came with the assumption that the loss of private keys happens during
+normal zone operation when no key roll-over is taking place. Following sub-chapters briefly
+touch various cases of private key loss during different phases of roll-overs of different
+types.
+
+TODO
+
 .. _Controlling a running daemon:
 
 Daemon controls
