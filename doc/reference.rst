@@ -2211,6 +2211,10 @@ Possible values:
 - ``ecdsap384sha384``
 - ``ed25519``
 - ``ed448``
+- ``mldsa44``
+
+.. NOTE::
+   The ``mldsa44`` algorithm is available only if GnuTLS is linked against the leancrypto library.
 
 *Default:* ``ecdsap256sha256``
 
@@ -2219,18 +2223,18 @@ Possible values:
 ksk-size
 --------
 
-A length of newly generated :abbr:`KSK (Key Signing Key)` or
+A length (in bits) of newly generated :abbr:`KSK (Key Signing Key)` or
 :abbr:`CSK (Combined Signing Key)` keys.
 
 *Default:* ``2048`` (rsa*), ``256`` (ecdsap256), ``384`` (ecdsap384), ``256`` (ed25519),
-``456`` (ed448)
+``456`` (ed448), ``10496`` (mldsa44)
 
 .. _policy_zsk-size:
 
 zsk-size
 --------
 
-A length of newly generated :abbr:`ZSK (Zone Signing Key)` keys.
+A length (in bits) of newly generated :abbr:`ZSK (Zone Signing Key)` keys.
 
 *Default:* see default for :ref:`ksk-size<policy_ksk-size>`
 
