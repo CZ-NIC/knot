@@ -19,7 +19,7 @@
 #define DFLT_ID "-"
 
 #define TEST_FORMAT  "%-20s %9s %9s %9s %9s\n"
-#define BENCH_FORMAT "%-20s %9"
+#define BENCH_FORMAT "%-20s %9s %9s\n"
 #define BENCH_TIME   3000
 
 const key_parameters_t *KEYS[] = {
@@ -39,30 +39,18 @@ const key_parameters_t *KEYS[] = {
 	NULL
 };
 
-static int create_dnskeys(dnssec_keystore_t *keystore, const char *id,
-                          dnssec_key_algorithm_t algorithm,
-                          dnssec_key_t **test_key_ptr, dnssec_key_t **ref_key_ptr)
+static int create_dnskey(dnssec_keystore_t *keystore, const char *id,
+                         dnssec_key_algorithm_t algorithm, dnssec_key_t **key_ptr)
 {
-	dnssec_key_t *test_key = NULL;
-	if (dnssec_key_new(&test_key) != KNOT_EOK ||
-	    dnssec_key_set_algorithm(test_key, algorithm) != KNOT_EOK ||
-	    dnssec_keystore_get_private(keystore, id, test_key) != KNOT_EOK) {
-		dnssec_key_free(test_key);
+	dnssec_key_t *key = NULL;
+	if (dnssec_key_new(&key) != KNOT_EOK ||
+	    dnssec_key_set_algorithm(key, algorithm) != KNOT_EOK ||
+	    dnssec_keystore_get_private(keystore, id, key) != KNOT_EOK) {
+		dnssec_key_free(key);
 		return KNOT_ERROR;
 	}
 
-	dnssec_binary_t rdata;
-	dnssec_key_t *ref_key = NULL;
-	if (dnssec_key_new(&ref_key) != KNOT_EOK ||
-	    dnssec_key_get_rdata(test_key, &rdata) != KNOT_EOK ||
-	    dnssec_key_set_rdata(ref_key, &rdata) != KNOT_EOK) {
-		dnssec_key_free(test_key);
-		dnssec_key_free(ref_key);
-		return KNOT_ERROR;
-	}
-
-	*test_key_ptr = test_key;
-	*ref_key_ptr = ref_key;
+	*key_ptr = key;
 
 	return KNOT_EOK;
 }
@@ -257,7 +245,7 @@ done:
 }
 
 struct result {
-	unsigned long signs;
+	unsigned long ops;
 	unsigned long time;
 };
 
@@ -266,7 +254,7 @@ typedef struct {
 	struct result *results;
 } bench_ctx_t;
 
-static int bench(dthread_t *dt)
+static int bench_sign(dthread_t *dt)
 {
 	assert(dt != NULL && dt->data != NULL);
 
@@ -275,7 +263,7 @@ static int bench(dthread_t *dt)
 	struct result *result = &data->results[dt_get_id(dt)];
 
 	result->time = 0;
-	result->signs = 0;
+	result->ops = 0;
 
 	uint8_t input_data[64];
 	dnssec_binary_t input = {
@@ -301,10 +289,119 @@ static int bench(dthread_t *dt)
 
 		clock_gettime(CLOCK_MONOTONIC, &end_ts);
 		result->time = time_diff_ms(&start_ts, &end_ts);
-		result->signs++;
+		result->ops++;
 	}
 
 	return KNOT_EOK;
+}
+
+static int bench_verify(dthread_t *dt)
+{
+	assert(dt != NULL && dt->data != NULL);
+
+	bench_ctx_t *data = dt->data;
+	dnssec_sign_ctx_t *ctx = data->ctxs[dt_get_id(dt)];
+	struct result *result = &data->results[dt_get_id(dt)];
+
+	result->time = 0;
+	result->ops = 0;
+
+	uint8_t input_data[64];
+	dnssec_binary_t input = {
+		.data = input_data,
+		.size = sizeof(input_data)
+	};
+	(void)dnssec_random_binary(&input);
+
+	dnssec_binary_t signature = { 0 };
+	if (dnssec_sign_init(ctx) != KNOT_EOK ||
+	    dnssec_sign_add(ctx, &input) != KNOT_EOK ||
+	    dnssec_sign_write(ctx, DNSSEC_SIGN_NORMAL, &signature) != KNOT_EOK) {
+		dnssec_binary_free(&signature);
+		result->time = 0;
+		return KNOT_EOK;
+	}
+
+	struct timespec start_ts, end_ts;
+	clock_gettime(CLOCK_MONOTONIC, &start_ts);
+
+	while (result->time < BENCH_TIME) {
+		if (dnssec_sign_init(ctx) != KNOT_EOK ||
+		    dnssec_sign_add(ctx, &input) != KNOT_EOK ||
+		    dnssec_sign_verify(ctx, false, &signature) != KNOT_EOK) {
+			result->time = 0;
+			break;
+		}
+
+		clock_gettime(CLOCK_MONOTONIC, &end_ts);
+		result->time = time_diff_ms(&start_ts, &end_ts);
+		result->ops++;
+	}
+
+	dnssec_binary_free(&signature);
+
+	return KNOT_EOK;
+}
+
+static int run_pass(int threads, runnable_t fn, void *data)
+{
+	int ret = KNOT_EOK;
+	dt_unit_t *pool = dt_create(threads, fn, NULL, data);
+	if (pool == NULL ||
+	    dt_start(pool) != KNOT_EOK ||
+	    dt_join(pool) != KNOT_EOK) {
+		ret = KNOT_ERROR;
+	}
+	dt_delete(&pool);
+	return ret;
+}
+
+static unsigned rate(const struct result *results, unsigned threads)
+{
+	double f = 0.0;
+	for (unsigned t = 0; t < threads; t++) {
+		if (results[t].time == 0) {
+			return 0;
+		}
+		f += results[t].ops * 1000.0 / results[t].time;
+	}
+	return (unsigned)(f + 0.5); // round to nearest integer
+}
+
+static void fmt_rate(char *buf, size_t len, unsigned rate_val, bool ok)
+{
+	if (ok && rate_val > 0) {
+		(void)snprintf(buf, len, "%u", rate_val);
+	} else {
+		(void)snprintf(buf, len, "n/a");
+	}
+}
+
+static int run_bench(uint16_t threads, dnssec_key_t *key, struct result *results,
+                     runnable_t bench_fn)
+{
+	dnssec_key_t *keys[threads];
+	dnssec_sign_ctx_t *ctxs[threads];
+	memset(keys, 0, sizeof(keys));
+	memset(ctxs, 0, sizeof(ctxs));
+
+	int ret = KNOT_ERROR;
+	for (unsigned t = 0; t < threads; t++) {
+		keys[t] = dnssec_key_dup(key);
+		if (!keys[t] || dnssec_sign_new(&ctxs[t], keys[t]) != KNOT_EOK) {
+			goto cleanup;
+		}
+	}
+
+	bench_ctx_t ctx = { .ctxs = ctxs, .results = results };
+	ret = run_pass(threads, bench_fn, &ctx);
+
+cleanup:
+	for (unsigned t = 0; t < threads; t++) {
+		dnssec_sign_free(ctxs[t]);
+		dnssec_key_free(keys[t]);
+	}
+	return ret;
 }
 
 int keymgr_keystore_bench(const char *keystore_id, keymgr_list_params_t *params,
@@ -318,9 +415,9 @@ int keymgr_keystore_bench(const char *keystore_id, keymgr_list_params_t *params,
 	}
 
 	const bool c = params->color;
-	printf("%s" BENCH_FORMAT"s\n" "%s",
+	printf("%s" BENCH_FORMAT "%s",
 	       COL_UNDR(c),
-	       "Algorithm", "Sigs/sec",
+	       "Algorithm", "Sign/s", "Verify/s",
 	       COL_RST(c));
 
 	for (int i = 0; KEYS[i] != NULL; i++) {
@@ -328,77 +425,49 @@ int keymgr_keystore_bench(const char *keystore_id, keymgr_list_params_t *params,
 			continue;
 		}
 
-		dnssec_key_t *keys[threads];
-		dnssec_sign_ctx_t *ctxs[threads];
-		struct result results[threads];
-		bench_ctx_t d = {
-			.ctxs = ctxs,
-			.results = results,
-		};
-		memset(keys, 0, sizeof(keys));
-		memset(ctxs, 0, sizeof(ctxs));
-		memset(results, 0, sizeof(results));
+		struct result sign_results[threads];
+		struct result verify_results[threads];
+		memset(sign_results, 0, sizeof(sign_results));
+		memset(verify_results, 0, sizeof(verify_results));
 
 		char *id = NULL;
-		dnssec_key_t *test_key = NULL;
+		dnssec_key_t *key = NULL;
+
 		ret = dnssec_keystore_generate(store, KEYS[i]->algorithm,
 		                               KEYS[i]->bit_size, NULL, &id);
-		if (ret != KNOT_EOK ||
-		    dnssec_key_new(&test_key) != KNOT_EOK ||
-		    dnssec_key_set_algorithm(test_key, KEYS[i]->algorithm) != KNOT_EOK ||
-		    dnssec_keystore_get_private(store, id, test_key) != KNOT_EOK) {
-			ret = KNOT_ERROR;
+		if (ret != KNOT_EOK) {
 			goto finish;
 		}
 
-		for (unsigned t = 0; t < threads; t++) {
-			keys[t] = dnssec_key_dup(test_key);
-			if (keys[t] == NULL ||
-			    dnssec_sign_new(&ctxs[t], keys[t]) != KNOT_EOK) {
-				ret = KNOT_ERROR;
-				goto finish;
-			}
-		}
-
-		dt_unit_t *pool = dt_create(threads, bench, NULL, &d);
-		if (pool == NULL ||
-		    dt_start(pool) != KNOT_EOK ||
-		    dt_join(pool) != KNOT_EOK) {
-			dt_delete(&pool);
-			ret = KNOT_ERROR;
+		ret = create_dnskey(store, id, KEYS[i]->algorithm, &key);
+		if (ret != KNOT_EOK) {
 			goto finish;
 		}
-		dt_delete(&pool);
+
+		ret = run_bench(threads, key, sign_results, bench_sign);
+		if (ret != KNOT_EOK) {
+			goto finish;
+		}
+
+		ret = run_bench(threads, key, verify_results, bench_verify);
+
 finish:
-		for (unsigned t = 0; t < threads; t++) {
-			dnssec_key_free(keys[t]);
-			dnssec_sign_free(ctxs[t]);
-		}
-		dnssec_key_free(test_key);
-		(void)dnssec_keystore_remove(store, id);
-		free(id);
-
-		double result_f = 0.5; // 0.5 to ensure correct rounding
-		for (struct result *it = d.results; it < d.results + threads; ++it) {
-			if (it->time == 0) {
-				result_f = 0.;
-				break;
-			}
-			result_f += it->signs * 1000. / it->time;
+		dnssec_key_free(key);
+		if (id != NULL) {
+			(void)dnssec_keystore_remove(store, id);
+			free(id);
 		}
 
-		const knot_lookup_t *alg_info = knot_lookup_by_id(
-			knot_dnssec_alg_names, KEYS[i]->algorithm);
+		const knot_lookup_t *alg_info = knot_lookup_by_id(knot_dnssec_alg_names,
+		                                                  KEYS[i]->algorithm);
 		assert(alg_info);
 		char *name_keysz = sprintf_alloc("%s %db", alg_info->name, KEYS[i]->bit_size);
 		assert(name_keysz);
 
-		const unsigned result = (unsigned)result_f;
-		if (ret == KNOT_EOK && result > 0) {
-			printf(BENCH_FORMAT"u\n", name_keysz, result);
-		} else {
-			printf(BENCH_FORMAT"s\n", name_keysz, "n/a");
-		}
+		char sign_s[16], verify_s[16];
+		fmt_rate(sign_s, sizeof(sign_s), rate(sign_results, threads), ret == KNOT_EOK);
+		fmt_rate(verify_s, sizeof(verify_s), rate(verify_results, threads), ret == KNOT_EOK);
+		printf(BENCH_FORMAT, name_keysz, sign_s, verify_s);
 		free(name_keysz);
 	}
 
