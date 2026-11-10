@@ -3,26 +3,101 @@
  *  For more information, see <https://www.knot-dns.cz/>
  */
 
+#include <errno.h>
+#include <stdlib.h>
+
+#include "contrib/ctype.h"
 #include "contrib/time.h"
+#include "contrib/wire_ctx.h"
 #include "knot/include/module.h"
 #include "knot/modules/rrl/functions.h"
 #include "knot/modules/rrl/kru.h"
+#include "libknot/yparser/yptrafo.h"
+#include "libknot/yparser/ypschema.h"
 
 #define MOD_RATE_LIMIT		"\x0A""rate-limit"
 #define MOD_INST_LIMIT		"\x0D""instant-limit"
 #define MOD_T_RATE_LIMIT	"\x0F""time-rate-limit"
 #define MOD_T_INST_LIMIT	"\x12""time-instant-limit"
+#define MOD_AGGREG_V4		"\x10""aggregation-ipv4"
+#define MOD_AGGREG_V6		"\x10""aggregation-ipv6"
 #define MOD_SLIP		"\x04""slip"
 #define MOD_TBL_SIZE		"\x0A""table-size"
 #define MOD_WHITELIST		"\x09""whitelist"
 #define MOD_LOG_PERIOD		"\x0A""log-period"
 #define MOD_DRY_RUN		"\x07""dry-run"
 
+#define INST_MAX		1000000
+#define MULT_MAX		4200
+static_assert(KRU_LIMIT / MULT_MAX > INST_MAX, "inconsistent limits");
+
+static int aggreg_to_bin(
+	YP_TXT_BIN_PARAMS,
+	uint8_t prefix_max)
+{
+	YP_CHECK_PARAMS_BIN;
+
+	char *end;
+	unsigned long prefix, multiplier;
+
+	if (!is_digit(*in->position)) {
+		return KNOT_EINVAL;
+	}
+
+	errno = 0;
+	prefix = strtoul((const char *)in->position, &end, 10);
+	if (errno == ERANGE || *end != ':' || prefix == 0 || prefix > prefix_max) {
+		return KNOT_EINVAL;
+	}
+
+	wire_ctx_skip(in, (uint8_t *)end - in->position + 1);
+
+	errno = 0;
+	multiplier = strtoul((const char *)in->position, &end, 10);
+	if (errno == ERANGE || *end != '\0' || multiplier == 0 || multiplier > MULT_MAX) {
+		return KNOT_EINVAL;
+	}
+
+	wire_ctx_write_u8(out, prefix);
+	wire_ctx_write_u32(out, multiplier);
+
+	YP_CHECK_RET;
+}
+
+static int aggreg_to_bin_v4(YP_TXT_BIN_PARAMS)
+{
+	return aggreg_to_bin(in, out, stop, 32);
+}
+
+static int aggreg_to_bin_v6(YP_TXT_BIN_PARAMS)
+{
+	return aggreg_to_bin(in, out, stop, 128);
+}
+
+static int aggreg_to_txt(
+	YP_BIN_TXT_PARAMS)
+{
+	YP_CHECK_PARAMS_TXT;
+
+	unsigned prefix = wire_ctx_read_u8(in);
+	unsigned multiplier = wire_ctx_read_u32(in);
+	int ret = snprintf((char *)out->position, wire_ctx_available(out),
+	                   "%u:%u", prefix, multiplier);
+	if (ret <= 0 || ret >= wire_ctx_available(out)) {
+		return KNOT_ESPACE;
+	}
+	wire_ctx_skip(out, ret);
+
+	YP_CHECK_RET;
+}
+
 const yp_item_t rrl_conf[] = {
-	{ MOD_INST_LIMIT,    YP_TINT, YP_VINT = { 1,  (1ll << 32) / 768 - 1, 125 } },
-	{ MOD_RATE_LIMIT,    YP_TINT, YP_VINT = { 0, ((1ll << 32) / 768 - 1) * 1000, 50 } },
-	{ MOD_T_INST_LIMIT,  YP_TINT, YP_VINT = { 1, 1000000, 5000 } },
-	{ MOD_T_RATE_LIMIT,  YP_TINT, YP_VINT = { 0, 1000000000, 5000 } },
+	{ MOD_INST_LIMIT,    YP_TINT, YP_VINT = { 1, INST_MAX, 125 } },
+	{ MOD_RATE_LIMIT,    YP_TINT, YP_VINT = { 0, INST_MAX * 1000, 50 } },
+	{ MOD_T_INST_LIMIT,  YP_TINT, YP_VINT = { 1, INST_MAX, 5000 } },
+	{ MOD_T_RATE_LIMIT,  YP_TINT, YP_VINT = { 0, INST_MAX * 1000, 5000 } },
+	{ MOD_AGGREG_V4,     YP_TDATA, YP_VDATA = { 0, NULL, aggreg_to_bin_v4, aggreg_to_txt }, YP_FMULTI },
+	{ MOD_AGGREG_V6,     YP_TDATA, YP_VDATA = { 0, NULL, aggreg_to_bin_v6, aggreg_to_txt }, YP_FMULTI },
 	{ MOD_SLIP,          YP_TINT, YP_VINT = { 0, 100, 1 } },
 	{ MOD_TBL_SIZE,      YP_TINT, YP_VINT = { 1, INT32_MAX, 524288 } },
 	{ MOD_WHITELIST,     YP_TNET, YP_VNONE, YP_FMULTI },
@@ -46,6 +121,19 @@ int rrl_conf_check(knotd_conf_check_args_t *args)
 		args->err_str = "time rate limit is higher than 1000 times time instant limit";
 		return KNOT_EINVAL;
 	}
+
+	knotd_conf_t aggreg = knotd_conf_check_item(args, MOD_AGGREG_V4);
+	if (aggreg.count > RRL_PREFIX_COUNT_MAX) {
+		args->err_str = "number of IPv4 aggregation prefixes is higher than 8";
+		return KNOT_EINVAL;
+	}
+	knotd_conf_free(&aggreg);
+	aggreg = knotd_conf_check_item(args, MOD_AGGREG_V6);
+	if (aggreg.count > RRL_PREFIX_COUNT_MAX) {
+		args->err_str = "number of IPv6 aggregation prefixes is higher than 8";
+		return KNOT_EINVAL;
+	}
+	knotd_conf_free(&aggreg);
 
 	return KNOT_EOK;
 }
@@ -189,6 +277,20 @@ static void ctx_free(rrl_ctx_t *ctx)
 
 #define CHECK_RET(cmd) if ((ret = (cmd)) != KNOT_EOK) return ret;
 
+static const rrl_aggregation_t *aggreg_conf(knotd_mod_t *mod, rrl_aggregation_t *out, bool v4)
+{
+	knotd_conf_t conf = knotd_conf_mod(mod, v4 ? MOD_AGGREG_V4 : MOD_AGGREG_V6);
+	out->count = conf.count;
+	for (size_t i = 0; i < conf.count; i++) {
+		assert(conf.multi[i].data_len == sizeof(uint8_t) + sizeof(uint32_t));
+		out->prefixes[i] = (conf.multi[i].data)[0];
+		out->multipliers[i] = knot_wire_read_u32(conf.multi[i].data + sizeof(uint8_t));
+	}
+	knotd_conf_free(&conf);
+
+	return (out->count > 0) ? out : (v4 ? &dflt_aggreg_v4 : &dflt_aggreg_v6);
+}
+
 int rrl_load(knotd_mod_t *mod)
 {
 	rrl_ctx_t *ctx = calloc(1, sizeof(rrl_ctx_t));
@@ -210,8 +312,11 @@ int rrl_load(knotd_mod_t *mod)
 
 	uint32_t rate_limit = knotd_conf_mod(mod, MOD_RATE_LIMIT).single.integer;
 	if (rate_limit > 0) {
+		rrl_aggregation_t aggreg_v4, aggreg_v6;
 		uint32_t inst_limit = knotd_conf_mod(mod, MOD_INST_LIMIT).single.integer;
-		ctx->rate_table = rrl_create(size, inst_limit, rate_limit, true, log_period);
+		ctx->rate_table = rrl_create(size, inst_limit, rate_limit, true, log_period,
+		                             aggreg_conf(mod, &aggreg_v4, true),
+		                             aggreg_conf(mod, &aggreg_v6, false));
 		if (ctx->rate_table == NULL) {
 			ctx_free(ctx);
 			return KNOT_ENOMEM;
@@ -221,8 +326,11 @@ int rrl_load(knotd_mod_t *mod)
 
 	uint32_t time_limit = knotd_conf_mod(mod, MOD_T_RATE_LIMIT).single.integer;
 	if (time_limit > 0) {
+		rrl_aggregation_t aggreg_v4, aggreg_v6;
 		uint32_t inst_limit = knotd_conf_mod(mod, MOD_T_INST_LIMIT).single.integer;
-		ctx->time_table = rrl_create(size, inst_limit, time_limit, false, log_period);
+		ctx->time_table = rrl_create(size, inst_limit, time_limit, false, log_period,
+		                             aggreg_conf(mod, &aggreg_v4, true),
+		                             aggreg_conf(mod, &aggreg_v6, false));
 		if (ctx->time_table == NULL) {
 			ctx_free(ctx);
 			return KNOT_ENOMEM;

@@ -9,6 +9,18 @@
 #include <sys/socket.h>
 
 #include "knot/include/module.h"
+#include "knot/modules/rrl/kru.h"
+
+#define RRL_PREFIX_COUNT_MAX	8
+
+typedef struct {
+	uint8_t count;
+	uint8_t prefixes[RRL_PREFIX_COUNT_MAX];
+	kru_price_t multipliers[RRL_PREFIX_COUNT_MAX];
+} rrl_aggregation_t;
+
+extern const rrl_aggregation_t dflt_aggreg_v4;
+extern const rrl_aggregation_t dflt_aggreg_v6;
 
 typedef struct rrl_table rrl_table_t;
 
@@ -20,11 +32,14 @@ typedef struct rrl_table rrl_table_t;
  * \param rate_limit Rate limit.
  * \param rw_mode If disabled, RW operation is divided into R and W operations.
  * \param log_period If nonzero, maximum logging period (in milliseconds).
+ * \param aggreg_v4 Configuration of IPv4 aggregation.
+ * \param aggreg_v6 Configuration of IPv6 aggregation.
  *
  * \return created table or NULL.
  */
 rrl_table_t *rrl_create(size_t size, uint32_t instant_limit, uint32_t rate_limit,
-                        bool rw_mode, uint32_t log_period);
+                        bool rw_mode, uint32_t log_period, const rrl_aggregation_t *aggreg_v4,
+                        const rrl_aggregation_t *aggreg_v6);
 
 typedef struct {
 	knotd_mod_t *mod;

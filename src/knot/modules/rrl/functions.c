@@ -6,7 +6,6 @@
 #include <stdatomic.h>
 
 #include "knot/modules/rrl/functions.h"
-#include "knot/modules/rrl/kru.h"
 #include "contrib/macros.h"
 #include "contrib/musl/inet_ntop.h"
 #include "contrib/sockaddr.h"
@@ -14,22 +13,28 @@
 #include "libknot/dnssec/random.h"
 
 // CIDR block prefix lengths for v4/v6 (hardcoded also in unit tests).
-#define RRL_V4_PREFIXES  (uint8_t[])       {  18,  20, 24, 32 }
-#define RRL_V4_RATE_MULT (kru_price_t[])   { 768, 256, 32,  1 }
+const rrl_aggregation_t dflt_aggreg_v4 = {
+	.count = 4,
+	.prefixes =    {  18,  20,  24,  32 },
+	.multipliers = { 768, 256,  32,   1 },
+};
 
-#define RRL_V6_PREFIXES  (uint8_t[])       { 32, 48, 56, 64, 128 }
-#define RRL_V6_RATE_MULT (kru_price_t[])   { 64,  4,  3,  2,   1 }
-
-#define RRL_V4_PREFIXES_CNT (sizeof(RRL_V4_PREFIXES) / sizeof(*RRL_V4_PREFIXES))
-#define RRL_V6_PREFIXES_CNT (sizeof(RRL_V6_PREFIXES) / sizeof(*RRL_V6_PREFIXES))
-#define RRL_MAX_PREFIXES_CNT ((RRL_V4_PREFIXES_CNT > RRL_V6_PREFIXES_CNT) ? RRL_V4_PREFIXES_CNT : RRL_V6_PREFIXES_CNT)
+const rrl_aggregation_t dflt_aggreg_v6 = {
+	.count = 5,
+	.prefixes =    {  32,  48,  56,  64, 128 },
+	.multipliers = {  64,   4,   3,   2,   1 },
+};
 
 #define RRL_LIMIT_KOEF 1/2 // Avoid probabilistic rounding wherever possible.
 
 struct rrl_table {
-	kru_price_t v4_prices[RRL_V4_PREFIXES_CNT];
-	kru_price_t v6_prices[RRL_V6_PREFIXES_CNT];
+	kru_price_t v4_prices[RRL_PREFIX_COUNT_MAX];
+	uint8_t v4_prefixes[RRL_PREFIX_COUNT_MAX];
+	kru_price_t v6_prices[RRL_PREFIX_COUNT_MAX];
+	uint8_t v6_prefixes[RRL_PREFIX_COUNT_MAX];
 	uint32_t log_period;
+	uint8_t v4_count;
+	uint8_t v6_count;
 	bool rw_mode;
 	_Atomic uint32_t log_time;
 	_Alignas(64) uint8_t kru[];
@@ -84,9 +89,12 @@ static void rrl_log_limited(rrl_log_params_t *params, const struct sockaddr_stor
 }
 
 rrl_table_t *rrl_create(size_t size, uint32_t instant_limit, uint32_t rate_limit,
-                        bool rw_mode, uint32_t log_period)
+                        bool rw_mode, uint32_t log_period, const rrl_aggregation_t *aggreg_v4,
+                        const rrl_aggregation_t *aggreg_v6)
 {
-	if (size == 0 || instant_limit == 0 || rate_limit == 0) {
+	if (size == 0 || instant_limit == 0 || rate_limit == 0 ||
+	    aggreg_v4 == NULL || aggreg_v4->count == 0 ||
+	    aggreg_v6 == NULL || aggreg_v6->count == 0) {
 		return NULL;
 	}
 
@@ -113,12 +121,16 @@ rrl_table_t *rrl_create(size_t size, uint32_t instant_limit, uint32_t rate_limit
 		return NULL;
 	}
 
-	for (size_t i = 0; i < RRL_V4_PREFIXES_CNT; i++) {
-		rrl->v4_prices[i] = base_price / RRL_V4_RATE_MULT[i];
+	rrl->v4_count = aggreg_v4->count;
+	for (size_t i = 0; i < aggreg_v4->count; i++) {
+		rrl->v4_prices[i] = base_price / aggreg_v4->multipliers[i];
+		rrl->v4_prefixes[i] = aggreg_v4->prefixes[i];
 	}
 
-	for (size_t i = 0; i < RRL_V6_PREFIXES_CNT; i++) {
-		rrl->v6_prices[i] = base_price / RRL_V6_RATE_MULT[i];
+	rrl->v6_count = aggreg_v6->count;
+	for (size_t i = 0; i < aggreg_v6->count; i++) {
+		rrl->v6_prices[i] = base_price / aggreg_v6->multipliers[i];
+		rrl->v6_prefixes[i] = aggreg_v6->prefixes[i];
 	}
 
 	rrl->rw_mode = rw_mode;
@@ -150,12 +162,12 @@ int rrl_query(rrl_table_t *rrl, const struct sockaddr_storage *remote, rrl_log_p
 
 		if (rrl->rw_mode) {
 			prefix = KRU.limited_multi_prefix_or(
-				(struct kru *)rrl->kru, now, 1, key, RRL_V6_PREFIXES,
-				rrl->v6_prices, RRL_V6_PREFIXES_CNT, NULL);
+				(struct kru *)rrl->kru, now, 1, key, rrl->v6_prefixes,
+				rrl->v6_prices, rrl->v6_count, NULL);
 		} else {
 			load = KRU.load_multi_prefix_max(
-				(struct kru *)rrl->kru, now, 1, key, RRL_V6_PREFIXES,
-				NULL, RRL_V6_PREFIXES_CNT, &prefix);
+				(struct kru *)rrl->kru, now, 1, key, rrl->v6_prefixes,
+				NULL, rrl->v6_count, &prefix);
 		}
 	} else {
 		struct sockaddr_in *ipv4 = (struct sockaddr_in *)remote;
@@ -163,12 +175,12 @@ int rrl_query(rrl_table_t *rrl, const struct sockaddr_storage *remote, rrl_log_p
 
 		if (rrl->rw_mode) {
 			prefix = KRU.limited_multi_prefix_or(
-				(struct kru *)rrl->kru, now, 0, key, RRL_V4_PREFIXES,
-				rrl->v4_prices, RRL_V4_PREFIXES_CNT, NULL);
+				(struct kru *)rrl->kru, now, 0, key, rrl->v4_prefixes,
+				rrl->v4_prices, rrl->v4_count, NULL);
 		} else {
 			load = KRU.load_multi_prefix_max(
-				(struct kru *)rrl->kru, now, 0, key, RRL_V4_PREFIXES,
-				NULL, RRL_V4_PREFIXES_CNT, &prefix);
+				(struct kru *)rrl->kru, now, 0, key, rrl->v4_prefixes,
+				NULL, rrl->v4_count, &prefix);
 		}
 	}
 
@@ -211,26 +223,26 @@ void rrl_update(rrl_table_t *rrl, const struct sockaddr_storage *remote, size_t 
 		struct sockaddr_in6 *ipv6 = (struct sockaddr_in6 *)remote;
 		memcpy(key, &ipv6->sin6_addr, 16);
 
-		kru_price_t prices[RRL_V6_PREFIXES_CNT];
-		for (size_t i = 0; i < RRL_V6_PREFIXES_CNT; i++) {
+		kru_price_t prices[rrl->v6_count];
+		for (size_t i = 0; i < rrl->v6_count; i++) {
 			prices[i] = MIN(value * rrl->v6_prices[i], (kru_price_t)-1LL);
 		}
 
 		(void)KRU.load_multi_prefix_max((struct kru *)rrl->kru, now,
-		                                1, key, RRL_V6_PREFIXES, prices,
-		                                RRL_V6_PREFIXES_CNT, NULL);
+		                                1, key, rrl->v6_prefixes, prices,
+		                                rrl->v6_count, NULL);
 	} else {
 		struct sockaddr_in *ipv4 = (struct sockaddr_in *)remote;
 		memcpy(key, &ipv4->sin_addr, 4);
 
-		kru_price_t prices[RRL_V4_PREFIXES_CNT];
-		for (size_t i = 0; i < RRL_V4_PREFIXES_CNT; i++) {
+		kru_price_t prices[rrl->v4_count];
+		for (size_t i = 0; i < rrl->v4_count; i++) {
 			prices[i] = MIN(value * rrl->v4_prices[i], (kru_price_t)-1LL);
 		}
 
 		(void)KRU.load_multi_prefix_max((struct kru *)rrl->kru, now,
-		                                0, key, RRL_V4_PREFIXES, prices,
-		                                RRL_V4_PREFIXES_CNT, NULL);
+		                                0, key, rrl->v4_prefixes, prices,
+		                                rrl->v4_count, NULL);
 	}
 }
 

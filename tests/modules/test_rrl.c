@@ -29,14 +29,17 @@ int fakeclock_gettime(clockid_t clockid, struct timespec *tp);
 #define TICK_QUERIES_LOG  13   // at most 1024 queries per host per tick
 
 // Accessing RRL configuration of INSTANT/RATE limits for V4/V6 and specific prefix.
-#define LIMIT(type, Vx, prefix) (RRL_MULT(Vx, prefix) * RRL_ ## type ## _LIMIT)
+#define RRL_AGGREG(version) dflt_aggreg_v##version
+#define LIMIT(type, version, prefix) (RRL_MULT(version, prefix) * RRL_##type##_LIMIT)
+#define RRL_MULT(version, prefix) get_mult(&RRL_AGGREG(version), prefix)
 
-#define RRL_CONFIG(Vx, name) RRL_ ## Vx ## _ ## name
-#define RRL_MULT(Vx, prefix) get_mult(RRL_CONFIG(Vx, PREFIXES), RRL_CONFIG(Vx, RATE_MULT), RRL_CONFIG(Vx, PREFIXES_CNT), prefix)
-static inline kru_price_t get_mult(uint8_t prefixes[], kru_price_t mults[], size_t cnt, uint8_t wanted_prefix) {
-	for (size_t i = 0; i < cnt; i++)
-		if (prefixes[i] == wanted_prefix)
-			return mults[i];
+static inline kru_price_t get_mult(const rrl_aggregation_t *aggreg, uint8_t wanted_prefix)
+{
+	for (size_t i = 0; i < aggreg->count; i++) {
+		if (aggreg->prefixes[i] == wanted_prefix) {
+			return aggreg->multipliers[i];
+		}
+	}
 	assert(0);
 	return 0;
 }
@@ -45,12 +48,12 @@ static inline kru_price_t get_mult(uint8_t prefixes[], kru_price_t mults[], size
 int DIFF = 0;
 
 // Instant limits and rate limits per msec.
-#define INST(Vx, prefix)  (LIMIT(INSTANT, Vx, prefix) + DIFF)
-#define RATEM(Vx, prefix) (LIMIT(RATE, Vx, prefix) / 1000 + DIFF)
+#define INST(version, prefix)  (LIMIT(INSTANT, version, prefix) + DIFF)
+#define RATEM(version, prefix) (LIMIT(RATE, version, prefix) / 1000 + DIFF)
 
 // Expected range of limits for parallel test.
-#define RANGE_INST(Vx, prefix)   INST(Vx, prefix) - 1,         INST(Vx, prefix) + RRL_THREADS - 1 + DIFF
-#define RANGE_RATEM(Vx, prefix)  RATEM(Vx, prefix) - 1 - DIFF, RATEM(Vx, prefix) + RRL_THREADS - DIFF
+#define RANGE_INST(version, prefix)   INST(version, prefix) - 1,         INST(version, prefix) + RRL_THREADS - 1 + DIFF
+#define RANGE_RATEM(version, prefix)  RATEM(version, prefix) - 1 - DIFF, RATEM(version, prefix) + RRL_THREADS - DIFF
 #define RANGE_UNLIM(queries)     queries,                      queries
 
 /* Fix seed for randomness in RLL module. Change if improbable collisions arise. (one byte) */
@@ -219,7 +222,8 @@ void test_rrl(bool rw_mode)
 	fakeclock_init();
 
 	/* create rrl table */
-	rrl = rrl_create(RRL_TABLE_SIZE, RRL_INSTANT_LIMIT, RRL_RATE_LIMIT, rw_mode, 0);
+	rrl = rrl_create(RRL_TABLE_SIZE, RRL_INSTANT_LIMIT, RRL_RATE_LIMIT, rw_mode,
+	                 0, &dflt_aggreg_v4, &dflt_aggreg_v6);
 	ok(rrl != NULL, "rrl(%s): create", impl_name);
 	assert(rrl);
 
@@ -234,62 +238,60 @@ void test_rrl(bool rw_mode)
 	}
 
 	/* IPv4 multi-prefix tests */
-	static_assert(RRL_V4_PREFIXES_CNT == 4,
-			"There are no more IPv4 limited prefixes (/32, /24, /20, /18 will be tested).");
+	assert(dflt_aggreg_v4.count == 4);
 
-	count_test("IPv4 instant limit /32", INST(V4, 32), 0,
+	count_test("IPv4 instant limit /32", INST(4, 32), 0,
 			AF_INET, "128.0.0.0", 0, 0);
 
 	count_test("IPv4 instant limit /32 not applied on /31", -1, 0,
 			AF_INET, "128.0.0.1", 0, 0);
 
-	count_test("IPv4 instant limit /24", INST(V4, 24) - INST(V4, 32) - 1, 0,
+	count_test("IPv4 instant limit /24", INST(4, 24) - INST(4, 32) - 1, 0,
 			AF_INET, "128.0.0.%d", 2, 255);
 
 	count_test("IPv4 instant limit /24 not applied on /23", -1, 0,
 			AF_INET, "128.0.1.0", 0, 0);
 
-	count_test("IPv4 instant limit /20", INST(V4, 20) - INST(V4, 24) - 1, 0.001,
+	count_test("IPv4 instant limit /20", INST(4, 20) - INST(4, 24) - 1, 0.001,
 			AF_INET, "128.0.%d.%d", 2, 15);
 
 	count_test("IPv4 instant limit /20 not applied on /19", -1, 0,
 			AF_INET, "128.0.16.0", 0, 0);
 
-	count_test("IPv4 instant limit /18", INST(V4, 18) - INST(V4, 20) - 1, 0.01,
+	count_test("IPv4 instant limit /18", INST(4, 18) - INST(4, 20) - 1, 0.01,
 			AF_INET, "128.0.%d.%d", 17, 63);
 
 	count_test("IPv4 instant limit /18 not applied on /17", -1, 0,
 			AF_INET, "128.0.64.0", 0, 0);
 
 	/* IPv6 multi-prefix tests */
-	static_assert(RRL_V6_PREFIXES_CNT == 5,
-			"There are no more IPv6 limited prefixes (/128, /64, /56, /48, /32 will be tested).");
+	assert(dflt_aggreg_v6.count == 5);
 
-	count_test("IPv6 instant limit /128, independent to IPv4", INST(V6, 128), 0,
+	count_test("IPv6 instant limit /128, independent to IPv4", INST(6, 128), 0,
 			AF_INET6, "8000::", 0, 0);
 
 	count_test("IPv6 instant limit /128 not applied on /127", -1, 0,
 			AF_INET6, "8000::1", 0, 0);
 
-	count_test("IPv6 instant limit /64", INST(V6, 64) - INST(V6, 128) - 1, 0,
+	count_test("IPv6 instant limit /64", INST(6, 64) - INST(6, 128) - 1, 0,
 			AF_INET6, "8000:0:0:0:%02x%02x::", 0x01, 0xff);
 
 	count_test("IPv6 instant limit /64 not applied on /63", -1, 0,
 			AF_INET6, "8000:0:0:1::", 0, 0);
 
-	count_test("IPv6 instant limit /56", INST(V6, 56) - INST(V6, 64) - 1, rw_mode ? 0 : 0.01,
+	count_test("IPv6 instant limit /56", INST(6, 56) - INST(6, 64) - 1, rw_mode ? 0 : 0.01,
 			AF_INET6, "8000:0:0:00%02x:%02x00::", 0x02, 0xff);
 
 	count_test("IPv6 instant limit /56 not applied on /55", -1, 0,
 			AF_INET6, "8000:0:0:0100::", 0, 0);
 
-	count_test("IPv6 instant limit /48", INST(V6, 48) - INST(V6, 56) - 1, 0.01,
+	count_test("IPv6 instant limit /48", INST(6, 48) - INST(6, 56) - 1, 0.01,
 			AF_INET6, "8000:0:0:%02x%02x::", 0x02, 0xff);
 
 	count_test("IPv6 instant limit /48 not applied on /47", -1, 0,
 			AF_INET6, "8000:0:1::", 0, 0);
 
-	count_test("IPv6 instant limit /32", INST(V6, 32) - INST(V6, 48) - 1, rw_mode ? 0.001 : 0,
+	count_test("IPv6 instant limit /32", INST(6, 32) - INST(6, 48) - 1, rw_mode ? 0.001 : 0,
 			AF_INET6, "8000:0:%02x%02x::", 0x02, 0xff);
 
 	count_test("IPv6 instant limit /32 not applied on /31", -1, 0,
@@ -298,10 +300,10 @@ void test_rrl(bool rw_mode)
 	/* limit after 1 msec */
 	fakeclock_tick++;
 
-	count_test("IPv4 rate limit /32 after 1 msec", RATEM(V4, 32), 0,
+	count_test("IPv4 rate limit /32 after 1 msec", RATEM(4, 32), 0,
 			AF_INET, "128.0.0.0", 0, 0);
 
-	count_test("IPv6 rate limit /128 after 1 msec", RATEM(V6, 128), 0,
+	count_test("IPv6 rate limit /128 after 1 msec", RATEM(6, 128), 0,
 			AF_INET6, "8000::", 0, 0);
 
 	/* parallel tests */
@@ -310,31 +312,31 @@ void test_rrl(bool rw_mode)
 		{32, 32, {
 			/* queries per tick, family, address, min passed, max passed */
 			{1024, AF_INET,  "%d.%d.%d.1",   RANGE_UNLIM (  1024   )},
-			{1024, AF_INET,  "3.3.3.3",      RANGE_INST  ( V4,  32 )},
-			{ 512, AF_INET,  "4.4.4.4",      RANGE_INST  ( V4,  32 )},
+			{1024, AF_INET,  "3.3.3.3",      RANGE_INST  ( 4,  32 )},
+			{ 512, AF_INET,  "4.4.4.4",      RANGE_INST  ( 4,  32 )},
 			{1024, AF_INET6, "%x%x:%x00::1", RANGE_UNLIM (  1024   )},
-			{1024, AF_INET6, "3333::3333",   RANGE_INST  ( V6, 128 )},
-			{ 512, AF_INET6, "4444::4444",   RANGE_INST  ( V6, 128 )}
+			{1024, AF_INET6, "3333::3333",   RANGE_INST  ( 6, 128 )},
+			{ 512, AF_INET6, "4444::4444",   RANGE_INST  ( 6, 128 )}
 		}},
 		{33, 255, {
 			{1024, AF_INET,  "%d.%d.%d.1",   RANGE_UNLIM (  1024   )},
-			{1024, AF_INET,  "3.3.3.3",      RANGE_RATEM ( V4,  32 )},
-			{ 512, AF_INET,  "4.4.4.4",      RANGE_RATEM ( V4,  32 )},
+			{1024, AF_INET,  "3.3.3.3",      RANGE_RATEM ( 4,  32 )},
+			{ 512, AF_INET,  "4.4.4.4",      RANGE_RATEM ( 4,  32 )},
 			{1024, AF_INET6, "%x%x:%x00::1", RANGE_UNLIM (  1024   )},
-			{1024, AF_INET6, "3333::3333",   RANGE_RATEM ( V6, 128 )},
-			{ 512, AF_INET6, "4444::4444",   RANGE_RATEM ( V6, 128 )},
+			{1024, AF_INET6, "3333::3333",   RANGE_RATEM ( 6, 128 )},
+			{ 512, AF_INET6, "4444::4444",   RANGE_RATEM ( 6, 128 )},
 		}},
 		{256, 511, {
-			{1024, AF_INET,  "3.3.3.3",      RANGE_RATEM ( V4,  32 )},
-			{1024, AF_INET6, "3333::3333",   RANGE_RATEM ( V6, 128 )}
+			{1024, AF_INET,  "3.3.3.3",      RANGE_RATEM ( 4,  32 )},
+			{1024, AF_INET6, "3333::3333",   RANGE_RATEM ( 6, 128 )}
 		}},
 		{512, 512, {
 			{1024, AF_INET,  "%d.%d.%d.1",   RANGE_UNLIM (  1024   )},
-			{1024, AF_INET,  "3.3.3.3",      RANGE_RATEM ( V4,  32 )},
-			{ 512, AF_INET,  "4.4.4.4",      RANGE_INST  ( V4,  32 )},
+			{1024, AF_INET,  "3.3.3.3",      RANGE_RATEM ( 4,  32 )},
+			{ 512, AF_INET,  "4.4.4.4",      RANGE_INST  ( 4,  32 )},
 			{1024, AF_INET6, "%x%x:%x00::1", RANGE_UNLIM (  1024   )},
-			{1024, AF_INET6, "3333::3333",   RANGE_RATEM ( V6, 128 )},
-			{ 512, AF_INET6, "4444::4444",   RANGE_INST  ( V6, 128 )}
+			{1024, AF_INET6, "3333::3333",   RANGE_RATEM ( 6, 128 )},
+			{ 512, AF_INET6, "4444::4444",   RANGE_INST  ( 6, 128 )}
 		}},
 		{0}
 	};
