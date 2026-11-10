@@ -18,7 +18,7 @@
 
 #define DFLT_ID "-"
 
-#define TEST_FORMAT  "%-20s %9s %9s %9s %9s\n"
+#define TEST_FORMAT  "%-20s %9s %9s %9s %9s %9s\n"
 #define BENCH_FORMAT "%-20s %7s %9s\n"
 #define BENCH_TIME   3000
 
@@ -38,6 +38,17 @@ const key_parameters_t *KEYS[] = {
 #endif
 	NULL
 };
+
+static const dnssec_binary_t fixed_input = {
+	.data = (uint8_t *)"WuSEFCiFEKDTKuErihBW76q7p70dHuCfS6c1ffCK6ST",
+	.size = 43
+};
+
+typedef struct {
+	dnssec_key_t *test_key;
+	dnssec_key_t *ref_key;
+	dnssec_binary_t sign;
+} test_ctx_t;
 
 static int create_dnskeys(dnssec_keystore_t *keystore, const char *id,
                           dnssec_key_algorithm_t algorithm,
@@ -67,69 +78,72 @@ static int create_dnskeys(dnssec_keystore_t *keystore, const char *id,
 	return KNOT_EOK;
 }
 
-static int test_sign(dnssec_key_t *test_key, dnssec_key_t *ref_key)
+static void test_ctx_deinit(test_ctx_t *ctx)
 {
-	static const dnssec_binary_t input = {
-		.data = (uint8_t *)"WuSEFCiFEKDTKuErihBW76q7p70dHuCfS6c1ffCK6ST",
-		.size = 43
-	};
+	dnssec_key_free(ctx->test_key);
+	dnssec_key_free(ctx->ref_key);
+	dnssec_binary_free(&ctx->sign);
+	memset(ctx, 0, sizeof(*ctx));
+}
 
-	dnssec_binary_t sign = { 0 };
+static int test_ctx_init(test_ctx_t *ctx, dnssec_keystore_t *store,
+                         const char *keyid, dnssec_key_algorithm_t algorithm)
+{
+	memset(ctx, 0, sizeof(*ctx));
+	return create_dnskeys(store, keyid, algorithm, &ctx->test_key, &ctx->ref_key);
+}
 
-	dnssec_sign_ctx_t *ctx = NULL;
-	if (dnssec_sign_new(&ctx, test_key) != KNOT_EOK ||
-	    dnssec_sign_add(ctx, &input) != KNOT_EOK ||
-	    dnssec_sign_write(ctx, DNSSEC_SIGN_NORMAL, &sign) != KNOT_EOK) {
-		dnssec_binary_free(&sign);
-		dnssec_sign_free(ctx);
-		return KNOT_ERROR;
+static int test_sign(test_ctx_t *ctx)
+{
+	dnssec_sign_ctx_t *sign_ctx = NULL;
+	int ret = KNOT_ERROR;
+
+	if (dnssec_sign_new(&sign_ctx, ctx->test_key) == KNOT_EOK &&
+	    dnssec_sign_add(sign_ctx, &fixed_input) == KNOT_EOK &&
+	    dnssec_sign_write(sign_ctx, DNSSEC_SIGN_NORMAL, &ctx->sign) == KNOT_EOK) {
+		ret = KNOT_EOK;
 	}
 
-	if (dnssec_sign_init(ctx) != KNOT_EOK ||
-	    dnssec_sign_add(ctx, &input) != KNOT_EOK ||
-	    dnssec_sign_verify(ctx, false, &sign) != KNOT_EOK) {
-		dnssec_binary_free(&sign);
-		dnssec_sign_free(ctx);
-		return KNOT_ERROR;
+	dnssec_sign_free(sign_ctx);
+	return ret;
+}
+
+static int test_verify(test_ctx_t *ctx)
+{
+	dnssec_key_t *keys[] = { ctx->test_key, ctx->ref_key };
+
+	for (size_t i = 0; i < sizeof(keys) / sizeof(keys[0]); i++) {
+		dnssec_sign_ctx_t *sign_ctx = NULL;
+		if (dnssec_sign_new(&sign_ctx, keys[i]) != KNOT_EOK ||
+		    dnssec_sign_add(sign_ctx, &fixed_input) != KNOT_EOK ||
+		    dnssec_sign_verify(sign_ctx, false, &ctx->sign) != KNOT_EOK) {
+			dnssec_sign_free(sign_ctx);
+			return KNOT_ERROR;
+		}
+		dnssec_sign_free(sign_ctx);
 	}
-
-	dnssec_sign_free(ctx);
-	ctx = NULL;
-
-	if (dnssec_sign_new(&ctx, ref_key) != KNOT_EOK ||
-	    dnssec_sign_add(ctx, &input) != KNOT_EOK ||
-	    dnssec_sign_verify(ctx, false, &sign) != KNOT_EOK) {
-		dnssec_binary_free(&sign);
-		dnssec_sign_free(ctx);
-		return KNOT_ERROR;
-	}
-
-	dnssec_binary_free(&sign);
-	dnssec_sign_free(ctx);
 
 	return KNOT_EOK;
 }
 
-static int test_key_use(dnssec_keystore_t *store, const char *keyid,
-                        dnssec_key_algorithm_t algorithm)
+static void test_key_use(dnssec_keystore_t *store, const char *keyid,
+                         dnssec_key_algorithm_t algorithm,
+                         bool *sign_ok, bool *verify_ok)
 {
-	dnssec_key_t *test_key = NULL;
-	dnssec_key_t *ref_key = NULL;
+	*sign_ok = false;
+	*verify_ok = false;
 
-	if (create_dnskeys(store, keyid, algorithm, &test_key, &ref_key) != KNOT_EOK) {
-		return KNOT_ERROR;
+	test_ctx_t ctx;
+	if (test_ctx_init(&ctx, store, keyid, algorithm) != KNOT_EOK) {
+		return;
 	}
 
-	if (test_sign(test_key, ref_key) != KNOT_EOK) {
-		dnssec_key_free(test_key);
-		dnssec_key_free(ref_key);
-		return KNOT_ERROR;
+	*sign_ok = (test_sign(&ctx) == KNOT_EOK);
+	if (*sign_ok) {
+		*verify_ok = (test_verify(&ctx) == KNOT_EOK);
 	}
 
-	dnssec_key_free(test_key);
-	dnssec_key_free(ref_key);
-
-	return KNOT_EOK;
+	test_ctx_deinit(&ctx);
 }
 
 static void test_algorithm(dnssec_keystore_t *store,
@@ -139,7 +153,8 @@ static void test_algorithm(dnssec_keystore_t *store,
 		bool generate;
 		bool import;
 		bool remove;
-		bool use;
+		bool sign;
+		bool verify;
 	} res = { 0 };
 
 	char *id = NULL;
@@ -148,8 +163,7 @@ static void test_algorithm(dnssec_keystore_t *store,
 	if (ret == KNOT_EOK) {
 		res.generate = true;
 
-		ret = test_key_use(store, id, params->algorithm);
-		res.use = (ret == KNOT_EOK);
+		test_key_use(store, id, params->algorithm, &res.sign, &res.verify);
 
 		ret = dnssec_keystore_remove(store, id);
 		res.remove = (ret == KNOT_EOK);
@@ -160,11 +174,13 @@ static void test_algorithm(dnssec_keystore_t *store,
 	if (ret == KNOT_EOK) {
 		res.import = true;
 
-		ret = test_key_use(store, id, params->algorithm);
 		if (res.generate) {
-			res.use &= (ret == KNOT_EOK);
+			bool sign_ok, verify_ok;
+			test_key_use(store, id, params->algorithm, &sign_ok, &verify_ok);
+			res.sign &= sign_ok;
+			res.verify &= verify_ok;
 		} else {
-			res.use = (ret == KNOT_EOK);
+			test_key_use(store, id, params->algorithm, &res.sign, &res.verify);
 		}
 
 		ret = dnssec_keystore_remove(store, id);
@@ -187,7 +203,8 @@ static void test_algorithm(dnssec_keystore_t *store,
 	       res.generate ? "yes" : "no",
 	       res.import   ? "yes" : "no",
 	       res.remove   ? "yes" : "no",
-	       res.use      ? "yes" : "no");
+	       res.sign     ? "yes" : "no",
+	       res.verify   ? "yes" : "no");
 
 	free(name_keysz);
 }
@@ -245,7 +262,7 @@ int keymgr_keystore_test(const char *keystore_id, keymgr_list_params_t *params)
 	const bool c = params->color;
 	printf("%s" TEST_FORMAT "%s",
 	       COL_UNDR(c),
-	       "Algorithm", "Generate", "Import", "Remove", "Use",
+	       "Algorithm", "Generate", "Import", "Remove", "Sign", "Verify",
 	       COL_RST(c));
 	for (int i = 0; KEYS[i] != NULL; i++) {
 		test_algorithm(store, KEYS[i]);
@@ -454,11 +471,6 @@ int keymgr_keystore_bench(const char *keystore_id, keymgr_list_params_t *params,
 	printf("%s" BENCH_FORMAT "%s",
 	       COL_UNDR(c),	       "Algorithm", "Sign/s", "Verify/s",
 	       COL_RST(c));
-
-	static const dnssec_binary_t fixed_input = {
-		.data = (uint8_t *)"WuSEFCiFEKDTKuErihBW76q7p70dHuCfS6c1ffCK6ST",
-		.size = 43
-	};
 
 	for (int i = 0; KEYS[i] != NULL; i++) {
 		if (algorithm > 0 && algorithm != KEYS[i]->algorithm) {
