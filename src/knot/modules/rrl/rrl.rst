@@ -67,6 +67,8 @@ Module reference
    - id: STR
      rate-limit: INT
      instant-limit: INT
+     aggregation-ipv4: INT:INT ...
+     aggregation-ipv6: INT:INT ...
      slip: INT
      time-rate-limit: INT
      time-instant-limit: INT
@@ -89,12 +91,9 @@ rate-limit
 
 Maximal allowed number of UDP queries per second from a single IPv6 or IPv4 address.
 
-Rate limiting is performed for the whole address and several chosen prefixes.
-The limits of prefixes are constant multiples of :ref:`mod-rrl_rate-limit`.
-
-The specific prefixes and multipliers, which might be adjusted in the future, are
-for IPv6 /128: 1, /64: 2, /56: 3, /48: 4, /32: 64;
-for IPv4 /32: 1, /24: 32, /20: 256, /18: 768.
+Rate limiting is performed for the whole address and/or several chosen prefixes.
+The limits of prefixes are constant multiples of :ref:`mod-rrl_rate-limit`. See
+:ref:`mod-rrl_aggregation-ipv4` and :ref:`mod-rrl_aggregation-ipv6`.
 
 With each host/network, a counter of unrestricted responses is associated;
 if the counter would exceed its capacity, it is not incremented and the response is restricted.
@@ -125,6 +124,36 @@ The :ref:`mod-rrl_instant-limit` may be at least :ref:`mod-rrl_rate-limit` **/ 1
 counters are zeroed each millisecond.
 
 *Default:* ``125``
+
+.. _mod-rrl_aggregation-ipv4:
+
+aggregation-ipv4
+................
+
+Specifies the IPv4 address prefixes used for rate limiting and their respective
+limit multipliers. Each entry consists of a prefix length and a multiplier,
+separated by a colon. The maximum number of entries is `8`, and the maximum
+multiplier value is `4200`.
+
+The prefix limit is calculated as a multiple of :ref:`mod-rrl_rate-limit`
+or :ref:`mod-rrl_instant-limit`, respectively.
+
+*Default:* ``[ 32:1, 24:32, 20:256, 18:768 ]``
+
+.. _mod-rrl_aggregation-ipv6:
+
+aggregation-ipv6
+................
+
+Specifies the IPv6 address prefixes used for rate limiting and their respective
+limit multipliers. Each entry consists of a prefix length and a multiplier,
+separated by a colon. The maximum number of entries is `8`, and the maximum
+multiplier value is `4200`.
+
+The prefix limit is calculated as a multiple of :ref:`mod-rrl_rate-limit`
+or :ref:`mod-rrl_instant-limit`, respectively.
+
+*Default:* ``[ 128:1, 64:2, 56:3, 48:4, 32:64 ]``
 
 .. _mod-rrl_slip:
 
