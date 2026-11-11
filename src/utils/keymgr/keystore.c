@@ -469,7 +469,8 @@ int keymgr_keystore_bench(const char *keystore_id, keymgr_list_params_t *params,
 
 	const bool c = params->color;
 	printf("%s" BENCH_FORMAT "%s",
-	       COL_UNDR(c),	       "Algorithm", "Sign/s", "Verify/s",
+	       COL_UNDR(c),
+	       "Algorithm", "Sign/s", "Verify/s",
 	       COL_RST(c));
 
 	for (int i = 0; KEYS[i] != NULL; i++) {
