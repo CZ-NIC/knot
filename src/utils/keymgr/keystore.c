@@ -4,6 +4,10 @@
  */
 
 #include <stdio.h>
+#include <assert.h>
+#include <stdbool.h>
+#include <string.h>
+#include <time.h>
 
 #include "utils/keymgr/keystore.h"
 
@@ -18,7 +22,7 @@
 
 #define DFLT_ID "-"
 
-#define TEST_FORMAT  "%-20s %9s %9s %9s %9s\n"
+#define TEST_FORMAT  "%-20s %10s %5s %7s %7s %13s %5s %7s %7s\n"
 #define BENCH_FORMAT "%-20s %9s %9s\n"
 #define BENCH_TIME   3000
 
@@ -39,6 +43,18 @@ const key_parameters_t *KEYS[] = {
 	NULL
 };
 
+typedef enum {
+	TEST_NONE = 0,
+	TEST_OK,
+	TEST_ERR,
+} test_state_t;
+
+typedef struct {
+	dnssec_binary_t input;
+	dnssec_binary_t signature;
+	dnssec_key_t *key;
+} test_ctx_t;
+
 static int create_dnskey(dnssec_keystore_t *keystore, const char *id,
                          dnssec_key_algorithm_t algorithm, dnssec_key_t **key_ptr)
 {
@@ -55,113 +71,122 @@ static int create_dnskey(dnssec_keystore_t *keystore, const char *id,
 	return KNOT_EOK;
 }
 
-static int test_sign(dnssec_key_t *test_key, dnssec_key_t *ref_key)
+static int test_ctx_init(test_ctx_t *ctx, dnssec_keystore_t *store,
+                         const char *keyid, dnssec_key_algorithm_t algorithm)
 {
-	static const dnssec_binary_t input = {
-		.data = (uint8_t *)"WuSEFCiFEKDTKuErihBW76q7p70dHuCfS6c1ffCK6ST",
-		.size = 43
-	};
+	memset(ctx, 0, sizeof(*ctx));
+	ctx->input.data = (uint8_t *)"WuSEFCiFEKDTKuErihBW76q7p70dHuCfS6c1ffCK6ST";
+	ctx->input.size = strlen((char *)ctx->input.data);
+	assert(ctx->input.size > 0);
+	return create_dnskey(store, keyid, algorithm, &ctx->key);
+}
 
-	dnssec_binary_t sign = { 0 };
+static void test_ctx_deinit(test_ctx_t *ctx)
+{
+	dnssec_key_free(ctx->key);
+	dnssec_binary_free(&ctx->signature);
+	memset(ctx, 0, sizeof(*ctx));
+}
 
-	dnssec_sign_ctx_t *ctx = NULL;
-	if (dnssec_sign_new(&ctx, test_key) != KNOT_EOK ||
-	    dnssec_sign_add(ctx, &input) != KNOT_EOK ||
-	    dnssec_sign_write(ctx, DNSSEC_SIGN_NORMAL, &sign) != KNOT_EOK) {
-		dnssec_binary_free(&sign);
-		dnssec_sign_free(ctx);
+static int test_sign(test_ctx_t *ctx)
+{
+	dnssec_sign_ctx_t *sign_ctx = NULL;
+
+	if (dnssec_sign_new(&sign_ctx, ctx->key) != KNOT_EOK ||
+	    dnssec_sign_add(sign_ctx, &ctx->input) != KNOT_EOK ||
+	    dnssec_sign_write(sign_ctx, DNSSEC_SIGN_NORMAL, &ctx->signature) != KNOT_EOK) {
+		dnssec_sign_free(sign_ctx);
 		return KNOT_ERROR;
 	}
 
-	if (dnssec_sign_init(ctx) != KNOT_EOK ||
-	    dnssec_sign_add(ctx, &input) != KNOT_EOK ||
-	    dnssec_sign_verify(ctx, false, &sign) != KNOT_EOK) {
-		dnssec_binary_free(&sign);
-		dnssec_sign_free(ctx);
-		return KNOT_ERROR;
-	}
-
-	dnssec_sign_free(ctx);
-	ctx = NULL;
-
-	if (dnssec_sign_new(&ctx, ref_key) != KNOT_EOK ||
-	    dnssec_sign_add(ctx, &input) != KNOT_EOK ||
-	    dnssec_sign_verify(ctx, false, &sign) != KNOT_EOK) {
-		dnssec_binary_free(&sign);
-		dnssec_sign_free(ctx);
-		return KNOT_ERROR;
-	}
-
-	dnssec_binary_free(&sign);
-	dnssec_sign_free(ctx);
+	dnssec_sign_free(sign_ctx);
 
 	return KNOT_EOK;
 }
 
-static int test_key_use(dnssec_keystore_t *store, const char *keyid,
-                        dnssec_key_algorithm_t algorithm)
+static int test_verify(test_ctx_t *ctx)
 {
-	dnssec_key_t *test_key = NULL;
-	dnssec_key_t *ref_key = NULL;
+	dnssec_sign_ctx_t *sign_ctx = NULL;
 
-	if (create_dnskeys(store, keyid, algorithm, &test_key, &ref_key) != KNOT_EOK) {
+	if (dnssec_sign_new(&sign_ctx, ctx->key) != KNOT_EOK ||
+	    dnssec_sign_add(sign_ctx, &ctx->input) != KNOT_EOK ||
+	    dnssec_sign_verify(sign_ctx, false, &ctx->signature) != KNOT_EOK) {
+		dnssec_sign_free(sign_ctx);
 		return KNOT_ERROR;
 	}
 
-	if (test_sign(test_key, ref_key) != KNOT_EOK) {
-		dnssec_key_free(test_key);
-		dnssec_key_free(ref_key);
-		return KNOT_ERROR;
-	}
-
-	dnssec_key_free(test_key);
-	dnssec_key_free(ref_key);
+	dnssec_sign_free(sign_ctx);
 
 	return KNOT_EOK;
 }
 
-static void test_algorithm(dnssec_keystore_t *store,
-                           const key_parameters_t *params)
+static void test_key_use(dnssec_keystore_t *store, const char *keyid,
+                         dnssec_key_algorithm_t algorithm,
+                         test_state_t *sign_ok, test_state_t *verify_ok)
+{
+	test_ctx_t ctx;
+	if (test_ctx_init(&ctx, store, keyid, algorithm) != KNOT_EOK) {
+		return;
+	}
+
+	*sign_ok = (test_sign(&ctx) == KNOT_EOK) ? TEST_OK : TEST_ERR;
+	if (*sign_ok == TEST_OK) {
+		*verify_ok = (test_verify(&ctx) == KNOT_EOK) ? TEST_OK : TEST_ERR;
+	}
+
+	test_ctx_deinit(&ctx);
+}
+
+static void print_result_cell(test_state_t success, int width, bool color)
+{
+	char buf[32];
+	(void)snprintf(buf, sizeof(buf), "%*s", width,
+	               (success == TEST_OK) ? "YES" : (success == TEST_ERR ? " no" : " - "));
+
+	if (success == TEST_OK && color) {
+		printf("%s%s%s", COL_BOLD(color), buf, COL_RST(color));
+	} else {
+		printf("%s", buf);
+	}
+}
+
+static void test_algorithm(dnssec_keystore_t *store, const key_parameters_t *params, bool c)
 {
 	struct {
-		bool generate;
-		bool import;
-		bool remove;
-		bool use;
+		test_state_t generate;
+		test_state_t ge_sign;
+		test_state_t ge_verify;
+		test_state_t ge_remove;
+		test_state_t import;
+		test_state_t im_sign;
+		test_state_t im_verify;
+		test_state_t im_remove;
 	} res = { 0 };
 
 	char *id = NULL;
 	int ret = dnssec_keystore_generate(store, params->algorithm,
 	                                   params->bit_size, NULL, &id);
 	if (ret == KNOT_EOK) {
-		res.generate = true;
+		res.generate = TEST_OK;
 
-		ret = test_key_use(store, id, params->algorithm);
-		res.use = (ret == KNOT_EOK);
+		test_key_use(store, id, params->algorithm, &res.ge_sign, &res.ge_verify);
 
-		ret = dnssec_keystore_remove(store, id);
-		res.remove = (ret == KNOT_EOK);
+		res.ge_remove = (dnssec_keystore_remove(store, id) == KNOT_EOK) ? TEST_OK : TEST_ERR;
 		free(id);
+	} else {
+		res.generate = TEST_ERR;
 	}
 
 	ret = dnssec_keystore_import(store, &params->pem, &id);
 	if (ret == KNOT_EOK) {
-		res.import = true;
+		res.import = TEST_OK;
 
-		ret = test_key_use(store, id, params->algorithm);
-		if (res.generate) {
-			res.use &= (ret == KNOT_EOK);
-		} else {
-			res.use = (ret == KNOT_EOK);
-		}
+		test_key_use(store, id, params->algorithm, &res.im_sign, &res.im_verify);
 
-		ret = dnssec_keystore_remove(store, id);
-		if (res.generate) {
-			res.remove &= (ret == KNOT_EOK);
-		} else {
-			res.remove = (ret == KNOT_EOK);
-		}
+		res.im_remove = (dnssec_keystore_remove(store, id) == KNOT_EOK) ? TEST_OK : TEST_ERR;
 		free(id);
+	} else {
+		res.import = TEST_ERR;
 	}
 
 	const knot_lookup_t *alg_info = knot_lookup_by_id(knot_dnssec_alg_names,
@@ -170,12 +195,17 @@ static void test_algorithm(dnssec_keystore_t *store,
 	char *name_keysz = sprintf_alloc("%s %db", alg_info->name, params->bit_size);
 	assert(name_keysz);
 
-	printf(TEST_FORMAT,
-	       name_keysz,
-	       res.generate ? "yes" : "no",
-	       res.import   ? "yes" : "no",
-	       res.remove   ? "yes" : "no",
-	       res.use      ? "yes" : "no");
+	// the alignment of the output was chosen by hand to make it look nice in a terminal
+	printf("%-20s ", name_keysz);
+	print_result_cell(res.generate,   7, c);
+	print_result_cell(res.ge_sign,    8, c);
+	print_result_cell(res.ge_verify,  8, c);
+	print_result_cell(res.ge_remove,  8, c);
+	print_result_cell(res.import,    12, c);
+	print_result_cell(res.im_sign,    8, c);
+	print_result_cell(res.im_verify,  8, c);
+	print_result_cell(res.im_remove,  8, c);
+	printf("\n");
 
 	free(name_keysz);
 }
@@ -207,13 +237,13 @@ static int init_keystore(dnssec_keystore_t **store, const char *keystore_id,
 		printf("Keystore default");
 	} else {
 		printf("Keystore id '%s'", keystore_id);
-	};
+	}
 	printf(", type %s", (keystores[0].backend == KEYSTORE_BACKEND_PEM ? "PEM" : "PKCS #11"));
 	if (threads > 0) {
 		printf(", threads %u", threads);
 	}
 	if (algorithm > 0) {
-		printf(", algorithm %u", algorithm);
+		printf(", algorithm %d", algorithm);
 	}
 	printf("\n\n");
 
@@ -227,21 +257,23 @@ int keymgr_keystore_test(const char *keystore_id, keymgr_list_params_t *params)
 
 	int ret = init_keystore(&store, keystore_id, 0, -1);
 	if (ret != KNOT_EOK) {
-		goto done;
+		return ret;
 	}
 
 	const bool c = params->color;
 	printf("%s" TEST_FORMAT "%s",
 	       COL_UNDR(c),
-	       "Algorithm", "Generate", "Import", "Remove", "Use",
+	       "Algorithm", "Generate:", "Sign", "Verify", "Remove",
+	                    "Import:",   "Sign", "Verify", "Remove",
 	       COL_RST(c));
+
 	for (int i = 0; KEYS[i] != NULL; i++) {
-		test_algorithm(store, KEYS[i]);
+		test_algorithm(store, KEYS[i], c);
 	}
-done:
+
 	dnssec_keystore_deinit(store);
 
-	return ret;
+	return KNOT_EOK;
 }
 
 struct result {
