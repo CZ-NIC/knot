@@ -28,7 +28,7 @@ outcome.
      - ECDSA
      - RSA
      - Tested
-   * - `Utimaco SecurityServer (V4) <https://hsm.utimaco.com/products-hardware-security-modules/general-purpose-hsm/securityserver-cse/>`_ [#fn-utimaco]_
+   * - `Utimaco SecurityServer (V4) <https://utimaco.com/>`_ [#fn-utimaco]_
      - yes
      - yes
      - n/a
@@ -38,7 +38,7 @@ outcome.
        | 2048
        | 4096
      - 2018-09
-   * - `Trustway Proteccio NetHSM <https://atos.net/en/solutions/cyber-security/data-protection-and-governance/hardware-security-module-trustway-proteccio-nethsm>`_
+   * - `Trustway Proteccio NetHSM <https://eviden.com/en/products/cybersecurity/data-protection/hsm/proteccio-hsm>`_
      - yes
      - ECDSA only
      - n/a
@@ -48,7 +48,7 @@ outcome.
        | 2048
        | 4096
      - 2019-03
-   * - `Ultra Electronics CIS Keyper Plus (Model 9860-2) <https://www.ultra.group/our-business-units/intelligence-communications/cyber/key-management/#acc-keyperplus>`_
+   * - `Ultra Electronics CIS Keyper Plus (Model 9860-2) <https://www.ultra-ic.com/>`_
      - yes
      - RSA only
      - n/a
@@ -58,7 +58,7 @@ outcome.
        | 2048
        | 4096
      - 2020-01
-   * - `SoftHSM 2.0 <https://www.opendnssec.org/softhsm/>`_ [#fn-softhsm]_
+   * - `SoftHSM 2.0 <https://www.softhsm.org/>`_ [#fn-softhsm]_
      - yes
      - yes
      - | ed25519
@@ -102,7 +102,7 @@ outcome.
      - 2025-12
 
 .. in progress: key ID checks have to be disabled in code
-   * - `Yubikey NEO <https://www.yubico.com/products/yubikey-hardware/yubikey-neo/>`_
+   * - `Yubikey NEO <https://support.yubico.com/s/article/YubiKey-NEO>`_
      - |no|
      - |no|
      - |no|
