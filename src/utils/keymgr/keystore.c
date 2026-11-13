@@ -88,36 +88,51 @@ static void test_ctx_deinit(test_ctx_t *ctx)
 	memset(ctx, 0, sizeof(*ctx));
 }
 
+static int create_signature(dnssec_sign_ctx_t *sign_ctx, dnssec_binary_t *input,
+                            dnssec_binary_t *signature)
+{
+	if (dnssec_sign_init(sign_ctx) != KNOT_EOK ||
+	    dnssec_sign_add(sign_ctx, input) != KNOT_EOK ||
+	    dnssec_sign_write(sign_ctx, DNSSEC_SIGN_NORMAL, signature) != KNOT_EOK) {
+		dnssec_binary_free(signature);
+		return KNOT_ERROR;
+	}
+	return KNOT_EOK;
+}
+
+static int verify_signature(dnssec_sign_ctx_t *sign_ctx, dnssec_binary_t *input,
+                            dnssec_binary_t *signature)
+{
+	if (dnssec_sign_init(sign_ctx) != KNOT_EOK ||
+	    dnssec_sign_add(sign_ctx, input) != KNOT_EOK ||
+	    dnssec_sign_verify(sign_ctx, false, signature) != KNOT_EOK) {
+		return KNOT_ERROR;
+	}
+	return KNOT_EOK;
+}
+
 static int test_sign(test_ctx_t *ctx)
 {
 	dnssec_sign_ctx_t *sign_ctx = NULL;
-
-	if (dnssec_sign_new(&sign_ctx, ctx->key) != KNOT_EOK ||
-	    dnssec_sign_add(sign_ctx, &ctx->input) != KNOT_EOK ||
-	    dnssec_sign_write(sign_ctx, DNSSEC_SIGN_NORMAL, &ctx->signature) != KNOT_EOK) {
-		dnssec_sign_free(sign_ctx);
+	if (dnssec_sign_new(&sign_ctx, ctx->key) != KNOT_EOK) {
 		return KNOT_ERROR;
 	}
 
+	int ret = create_signature(sign_ctx, &ctx->input, &ctx->signature);
 	dnssec_sign_free(sign_ctx);
-
-	return KNOT_EOK;
+	return ret;
 }
 
 static int test_verify(test_ctx_t *ctx)
 {
 	dnssec_sign_ctx_t *sign_ctx = NULL;
-
-	if (dnssec_sign_new(&sign_ctx, ctx->key) != KNOT_EOK ||
-	    dnssec_sign_add(sign_ctx, &ctx->input) != KNOT_EOK ||
-	    dnssec_sign_verify(sign_ctx, false, &ctx->signature) != KNOT_EOK) {
-		dnssec_sign_free(sign_ctx);
+	if (dnssec_sign_new(&sign_ctx, ctx->key) != KNOT_EOK) {
 		return KNOT_ERROR;
 	}
 
+	int ret = verify_signature(sign_ctx, &ctx->input, &ctx->signature);
 	dnssec_sign_free(sign_ctx);
-
-	return KNOT_EOK;
+	return ret;
 }
 
 static void test_key_use(dnssec_keystore_t *store, const char *keyid,
@@ -309,10 +324,7 @@ static int bench_sign(dthread_t *dt)
 
 	while (result->time < BENCH_TIME) {
 		dnssec_binary_t sign = { 0 };
-		if (dnssec_sign_init(ctx) != KNOT_EOK ||
-		    dnssec_sign_add(ctx, &input) != KNOT_EOK ||
-		    dnssec_sign_write(ctx, DNSSEC_SIGN_NORMAL, &sign) != KNOT_EOK) {
-			dnssec_binary_free(&sign);
+		if (create_signature(ctx, &input, &sign) != KNOT_EOK) {
 			result->time = 0;
 			break;
 		}
@@ -346,10 +358,7 @@ static int bench_verify(dthread_t *dt)
 	(void)dnssec_random_binary(&input);
 
 	dnssec_binary_t signature = { 0 };
-	if (dnssec_sign_init(ctx) != KNOT_EOK ||
-	    dnssec_sign_add(ctx, &input) != KNOT_EOK ||
-	    dnssec_sign_write(ctx, DNSSEC_SIGN_NORMAL, &signature) != KNOT_EOK) {
-		dnssec_binary_free(&signature);
+	if (create_signature(ctx, &input, &signature) != KNOT_EOK) {
 		result->time = 0;
 		return KNOT_EOK;
 	}
@@ -358,9 +367,7 @@ static int bench_verify(dthread_t *dt)
 	clock_gettime(CLOCK_MONOTONIC, &start_ts);
 
 	while (result->time < BENCH_TIME) {
-		if (dnssec_sign_init(ctx) != KNOT_EOK ||
-		    dnssec_sign_add(ctx, &input) != KNOT_EOK ||
-		    dnssec_sign_verify(ctx, false, &signature) != KNOT_EOK) {
+		if (verify_signature(ctx, &input, &signature) != KNOT_EOK) {
 			result->time = 0;
 			break;
 		}
