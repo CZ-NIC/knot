@@ -24,6 +24,8 @@
                                       * (usually padded up to N*128 bytes!) to
                                       * accommodate most DNS queries but remain small enough. */
 
+#define KNOT_TLS_TICKET_EXPIRATION  600
+
 struct gnutls_priority_st;
 struct gnutls_session_int;
 struct gnutls_x509_crt_int;
