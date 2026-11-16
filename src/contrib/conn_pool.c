@@ -68,6 +68,9 @@ static void *closing_thread(void *_arg)
 		knot_timediff_t timeout = conn_pool_timeout(pool, 0);
 		assert(timeout != 0);
 
+		int prev_state;
+		pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &prev_state);
+
 		while (true) {
 			conn_pool_fd_t old_fd = get_old(pool, now - timeout + 1, &next);
 			if (old_fd != CONN_POOL_FD_INVALID) {
@@ -76,6 +79,8 @@ static void *closing_thread(void *_arg)
 				break;
 			}
 		}
+
+		pthread_setcancelstate(prev_state, NULL);
 
 		if (next == 0) {
 			sleep(timeout);
