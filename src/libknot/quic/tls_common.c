@@ -457,6 +457,7 @@ int knot_tls_session(struct gnutls_session_int **session,
 
 	int ret = gnutls_init(session, (server ? GNUTLS_SERVER : GNUTLS_CLIENT) | tls_flags);
 	if (ret == GNUTLS_E_SUCCESS) {
+		gnutls_db_set_cache_expiration(*session, KNOT_TLS_TICKET_EXPIRATION);
 		gnutls_certificate_send_x509_rdn_sequence(*session, 1);
 		gnutls_certificate_server_set_request(*session, GNUTLS_CERT_REQUEST);
 		ret = gnutls_priority_set(*session, priority);
