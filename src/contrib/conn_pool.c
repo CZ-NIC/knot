@@ -96,7 +96,7 @@ conn_pool_t *conn_pool_init(size_t capacity, knot_timediff_t timeout,
                             conn_pool_close_cb_t close_cb,
                             conn_pool_invalid_cb_t invalid_cb)
 {
-	if (capacity == 0 || timeout == 0) {
+	if (capacity == 0 || timeout <= 0) {
 		return NULL;
 	}
 
@@ -151,7 +151,7 @@ knot_timediff_t conn_pool_timeout(conn_pool_t *pool,
 	pthread_mutex_lock(&pool->mutex);
 
 	knot_timediff_t prev = pool->timeout;
-	if (new_timeout != 0) {
+	if (new_timeout > 0) {
 		pool->timeout = new_timeout;
 	}
 
