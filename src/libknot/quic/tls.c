@@ -78,6 +78,7 @@ knot_tls_conn_t *knot_tls_conn_new(knot_tls_ctx_t *ctx, int sock_fd)
 
 	gnutls_transport_set_int(res->session, sock_fd); // Use internal recv/send/poll.
 	gnutls_handshake_set_timeout(res->session, ctx->handshake_timeout);
+	gnutls_session_set_ptr(res->session, res);
 
 	return res;
 fail:

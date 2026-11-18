@@ -45,6 +45,7 @@ typedef struct knot_tls_conn {
 	int fd;
 	unsigned fd_clones_count;
 	knot_tls_conn_flag_t flags;
+	uint32_t ticket_lifetime;
 } knot_tls_conn_t;
 
 /*!

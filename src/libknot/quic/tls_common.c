@@ -24,6 +24,9 @@
 #include "contrib/string.h"
 #include "libknot/attribute.h"
 #include "libknot/error.h"
+#include "libknot/quic/tls.h"
+#include "libknot/quic/quic_conn.h"
+#include "libknot/wire.h"
 
 typedef struct knot_creds {
 	knot_atomic_ptr_t cert_creds; // Current credentials.
@@ -426,6 +429,26 @@ void knot_creds_free(struct knot_creds *creds)
 	free(creds);
 }
 
+static int ticket_hook_tls(gnutls_session_t session, unsigned int htype, unsigned when,
+                           unsigned int incoming, const gnutls_datum_t *msg)
+{
+	knot_tls_conn_t *conn = gnutls_session_get_ptr(session);
+	assert(conn);
+	uint32_t value = (msg->size > 4) ? knot_wire_read_u32(msg->data) : 0;
+	conn->ticket_lifetime = value;
+	return 0;
+}
+
+static int ticket_hook_quic(gnutls_session_t session, unsigned int htype, unsigned when,
+                            unsigned int incoming, const gnutls_datum_t *msg)
+{
+	nc_conn_ref_placeholder_t *conn_ref = gnutls_session_get_ptr(session);
+	assert(conn_ref);
+	uint32_t value = (msg->size > 4) ? knot_wire_read_u32(msg->data) : 0;
+	((knot_quic_conn_t *)conn_ref->user_data)->ticket_lifetime = value;
+	return 0;
+}
+
 _public_
 int knot_tls_session(struct gnutls_session_int **session,
                      struct knot_creds *creds,
@@ -460,6 +483,8 @@ int knot_tls_session(struct gnutls_session_int **session,
 		gnutls_db_set_cache_expiration(*session, KNOT_TLS_TICKET_EXPIRATION);
 		gnutls_certificate_send_x509_rdn_sequence(*session, 1);
 		gnutls_certificate_server_set_request(*session, GNUTLS_CERT_REQUEST);
+		gnutls_handshake_set_hook_function(*session, GNUTLS_HANDSHAKE_NEW_SESSION_TICKET,
+		                                   GNUTLS_HOOK_PRE, quic ? ticket_hook_quic : ticket_hook_tls);
 		ret = gnutls_priority_set(*session, priority);
 	}
 	if (server && ret == GNUTLS_E_SUCCESS) {
