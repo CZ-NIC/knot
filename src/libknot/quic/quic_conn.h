@@ -69,6 +69,7 @@ typedef enum {
 
 typedef struct knot_quic_conn {
 	int heap_node_placeholder; // MUST be first field of the struct
+	uint32_t ticket_lifetime;
 	uint64_t next_expiry;
 
 	nc_conn_ref_placeholder_t conn_ref; // placeholder for internal struct ngtcp2_crypto_conn_ref
