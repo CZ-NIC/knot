@@ -436,9 +436,10 @@ static int solve_add_different_ttl(zone_update_t *update, const knot_rrset_t *ad
 		return KNOT_EOK;
 	}
 
+	uint32_t add_ttl = add->ttl;
 	const zone_node_t *exist_node = zone_contents_find_node(update->new_cont, add->owner);
 	const knot_rrset_t exist_rr = node_rrset(exist_node, add->type);
-	if (knot_rrset_empty(&exist_rr) || exist_rr.ttl == add->ttl) {
+	if (knot_rrset_empty(&exist_rr) || exist_rr.ttl == add_ttl) {
 		return KNOT_EOK;
 	}
 
@@ -450,7 +451,7 @@ static int solve_add_different_ttl(zone_update_t *update, const knot_rrset_t *ad
 	char type[16] = "";
 	knot_rrtype_to_string(add->type, type, sizeof(type));
 	log_zone_notice(update->zone->name, "TTL mismatch, owner %s, type %s, "
-	                "TTL set to %u", owner, type, add->ttl);
+	                "TTL set to %u", owner, type, add_ttl);
 
 	knot_rrset_t *exist_copy = knot_rrset_copy(&exist_rr, NULL);
 	if (exist_copy == NULL) {
@@ -458,7 +459,7 @@ static int solve_add_different_ttl(zone_update_t *update, const knot_rrset_t *ad
 	}
 	int ret = zone_update_remove(update, exist_copy);
 	if (ret == KNOT_EOK) {
-		exist_copy->ttl = add->ttl;
+		exist_copy->ttl = add_ttl;
 		ret = zone_update_add(update, exist_copy);
 	}
 	knot_rrset_free(exist_copy, NULL);
@@ -474,13 +475,16 @@ int zone_update_add(zone_update_t *update, const knot_rrset_t *rrset)
 		return KNOT_EOK;
 	}
 
+	int ret = solve_add_different_ttl(update, rrset);
+	if (ret != KNOT_EOK) {
+		return ret;
+	}
+
 	// apply_add_rr might modify given rrset to what was really added (in non-strict mode)
 	knot_rrset_t *rrset_copy = knot_rrset_copy(rrset, NULL);
 	if (rrset_copy == NULL) {
 		return KNOT_ENOMEM;
 	}
-
-	int ret = KNOT_EOK;
 
 	if (update->flags & UPDATE_INCREMENTAL) {
 		if (rrset->type == KNOT_RRTYPE_SOA) {
@@ -501,30 +505,17 @@ int zone_update_add(zone_update_t *update, const knot_rrset_t *rrset)
 
 		zone_node_t *n = NULL;
 		ret = zone_contents_add_rr(update->new_cont, rrset, &n);
-		if (ret == KNOT_ETTL) {
-			knot_dname_txt_storage_t buff;
-			char *owner = knot_dname_to_str(buff, rrset->owner, sizeof(buff));
-			if (owner == NULL) {
-				owner = "";
-			}
-			char type[16] = "";
-			knot_rrtype_to_string(rrset->type, type, sizeof(type));
-			log_zone_notice(update->new_cont->apex->owner,
-			                "TTL mismatch, owner %s, type %s, "
-			                "TTL set to %u", owner, type, rrset->ttl);
-			ret = KNOT_EOK;
-		}
+		assert(ret != KNOT_ETTL);
 	} else {
 		ret = KNOT_EINVAL;
 	}
 
 chset_add:
 	if ((update->flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) && ret == KNOT_EOK) {
-		ret = solve_add_different_ttl(update, rrset_copy);
-		if (ret == KNOT_EOK && !(update->flags & UPDATE_NO_CHSET)) {
+		if (!(update->flags & UPDATE_NO_CHSET)) {
 			ret = changeset_add_addition(&update->change, rrset_copy, CHANGESET_CHECK);
 		}
-		if (ret == KNOT_EOK && (update->flags & UPDATE_EXTRA_CHSET)) {
+		if ((update->flags & UPDATE_EXTRA_CHSET)) {
 			ret = changeset_add_addition(&update->extra_ch, rrset_copy, CHANGESET_CHECK);
 		}
 	}
