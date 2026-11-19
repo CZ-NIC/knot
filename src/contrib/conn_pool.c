@@ -194,7 +194,7 @@ conn_pool_fd_t conn_pool_get(conn_pool_t *pool,
 
 	pthread_mutex_unlock(&pool->mutex);
 
-	if (fd != CONN_POOL_FD_INVALID && pool->invalid_cb(fd)) {
+	if (fd != CONN_POOL_FD_INVALID && pool->invalid_cb != NULL && pool->invalid_cb(fd)) {
 		pool->close_cb(fd);
 		fd = CONN_POOL_FD_INVALID;
 	}
@@ -266,10 +266,4 @@ bool conn_pool_invalid_cb_dflt(conn_pool_fd_t fd)
 	errno = 0;
 	int peek = recv((int)fd, &unused, 1, MSG_PEEK | MSG_DONTWAIT);
 	return (peek == 0 || peek > 0 || errno == ECONNRESET); // closed || pending data || reset (alternative: errno != 0 && errno != EAGAIN)
-}
-
-bool conn_pool_invalid_cb_allvalid(conn_pool_fd_t fd)
-{
-	(void)fd;
-	return false;
 }

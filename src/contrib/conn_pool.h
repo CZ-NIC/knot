@@ -47,7 +47,7 @@ extern conn_pool_t *global_redis_pool; // pool for connections to Redis database
  * \param capacity     Connection pool capacity (must be positive number).
  * \param timeout      Connection timeout (must be positive number).
  * \param close_cb     Callback for closing fd.
- * \param invalid_cb   Callback detecting if given fd is already unusable.
+ * \param invalid_cb   Callback detecting if given fd is already unusable (or NULL).
  *
  * \return Connection pool or NULL if error.
  */
@@ -124,8 +124,3 @@ void conn_pool_close_cb_dflt(conn_pool_fd_t fd);
  * \brief Default invalidness callback detecting socket not ready to write.
  */
 bool conn_pool_invalid_cb_dflt(conn_pool_fd_t fd);
-
-/*!
- * \brief Default invalidness callback always reporting valid fd.
- */
-bool conn_pool_invalid_cb_allvalid(conn_pool_fd_t fd);
