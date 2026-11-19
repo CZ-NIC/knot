@@ -38,6 +38,7 @@
 #define QUIC_SEND_RETRY                  NGTCP2_ERR_RETRY
 #define QUIC_SEND_STATELESS_RESET        (-NGTCP2_STATELESS_RESET_TOKENLEN)
 #define QUIC_SEND_CONN_CLOSE             (-KNOT_QUIC_HANDLE_RET_CLOSE)
+#define QUIC_SEND_INVALID_TOKEN          (-KNOT_QUIC_HANDLE_RET_CLOSE - 1)
 
 #define TLS_CALLBACK_ERR     (-1)
 
@@ -691,7 +692,7 @@ int knot_quic_handle(knot_quic_table_t *table, knot_quic_reply_t *reply,
 				memcpy(&odcid, &dcid, sizeof(odcid));
 			}
 			if (ret != 0) {
-				ret = KNOT_EOK;
+				ret = -QUIC_SEND_INVALID_TOKEN;
 				goto finish;
 			}
 		} else {
@@ -848,6 +849,7 @@ static int send_special(knot_quic_table_t *quic_table, knot_quic_reply_t *rpl,
 	int dvc_ret = NGTCP2_ERR_FATAL;
 
 	if ((rpl->handle_ret == -QUIC_SEND_VERSION_NEGOTIATION ||
+	     rpl->handle_ret == -QUIC_SEND_INVALID_TOKEN ||
 	     rpl->handle_ret == -QUIC_SEND_RETRY) &&
 	    rpl->in_payload != NULL && rpl->in_payload->iov_len > 0) {
 		dvc_ret = ngtcp2_pkt_decode_version_cid(
@@ -915,6 +917,19 @@ static int send_special(knot_quic_table_t *quic_table, knot_quic_reply_t *rpl,
 		ret = ngtcp2_pkt_write_stateless_reset(
 			rpl->out_payload->iov_base, rpl->out_payload->iov_len,
 			stateless_reset_token, sreset_rand, sizeof(sreset_rand)
+		);
+		break;
+	case -QUIC_SEND_INVALID_TOKEN:
+		if (dvc_ret != NGTCP2_NO_ERROR) {
+			rpl->free_reply(rpl);
+			return KNOT_ERROR;
+		}
+		// To the client's SCID, protected with the keys of the DCID it chose
+		ngtcp2_cid_init(&dcid, decoded_cids.scid, decoded_cids.scidlen);
+		ngtcp2_cid_init(&scid, decoded_cids.dcid, decoded_cids.dcidlen);
+		ret = ngtcp2_crypto_write_connection_close(
+			rpl->out_payload->iov_base, rpl->out_payload->iov_len,
+			decoded_cids.version, &dcid, &scid, NGTCP2_INVALID_TOKEN, NULL, 0
 		);
 		break;
 	case -QUIC_SEND_CONN_CLOSE:
