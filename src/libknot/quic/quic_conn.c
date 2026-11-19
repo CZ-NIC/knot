@@ -7,6 +7,7 @@
 #include <gnutls/gnutls.h>
 #include <ngtcp2/ngtcp2.h>
 #include <stdio.h>
+#include <pthread.h>
 #include <string.h>
 
 #include "libknot/quic/quic_conn.h"
@@ -31,6 +32,16 @@ static int cmp_expiry_heap_nodes(void *c1, void *c2)
 	if (((knot_quic_conn_t *)c1)->next_expiry < ((knot_quic_conn_t *)c2)->next_expiry) return -1;
 	if (((knot_quic_conn_t *)c1)->next_expiry > ((knot_quic_conn_t *)c2)->next_expiry) return 1;
 	return 0;
+}
+
+static uint64_t process_secret[4];
+static pthread_once_t process_secret_once = PTHREAD_ONCE_INIT;
+
+static void process_secret_init(void)
+{
+	for (size_t i = 0; i < sizeof(process_secret) / sizeof(process_secret[0]); i++) {
+		process_secret[i] = dnssec_random_uint64_t();
+	}
 }
 
 _public_
@@ -69,10 +80,15 @@ knot_quic_table_t *knot_quic_table_new(size_t max_conns, size_t max_ibufs, size_
 
 	res->creds = creds;
 
-	res->hash_secret[0] = dnssec_random_uint64_t();
-	res->hash_secret[1] = dnssec_random_uint64_t();
-	res->hash_secret[2] = dnssec_random_uint64_t();
-	res->hash_secret[3] = dnssec_random_uint64_t();
+	/* One secret for the whole process, not one per table: it derives the
+	 * tokens (NEW_TOKEN and Retry) and the stateless reset tokens, and every
+	 * UDP worker has a table of its own. A client reconnecting from a new
+	 * port is handed (SO_REUSEPORT) to whichever worker its address hashes
+	 * to, and must find its token valid there; a stateless reset sent by a
+	 * worker that does not hold the connection must carry the token the
+	 * client was given. */
+	pthread_once(&process_secret_once, process_secret_init);
+	memcpy(res->hash_secret, process_secret, sizeof(res->hash_secret));
 
 	return res;
 }
