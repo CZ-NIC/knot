@@ -687,6 +687,8 @@ int knot_quic_handle(knot_quic_table_t *table, knot_quic_reply_t *reply,
 					addr_len((struct sockaddr_in6 *)reply->ip_rem),
 					QUIC_REGULAR_TOKEN_TIMEOUT, now
 				);
+				/* A NEW_TOKEN token: the original DCID is this Initial's. */
+				memcpy(&odcid, &dcid, sizeof(odcid));
 			}
 			if (ret != 0) {
 				ret = KNOT_EOK;
