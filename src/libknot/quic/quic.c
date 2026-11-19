@@ -281,6 +281,13 @@ static int remove_connection_id(ngtcp2_conn *conn, const ngtcp2_cid *cid,
 	return 0;
 }
 
+void knot_quic_conn_rem_odcid(knot_quic_conn_t *conn)
+{
+	const ngtcp2_transport_params *tp = ngtcp2_conn_get_local_transport_params2(conn->conn);
+	const ngtcp2_cid *old_cid = tp->retry_scid_present ? &tp->retry_scid : &tp->original_dcid;
+	(void)remove_connection_id(conn->conn, old_cid, conn);
+}
+
 static int handshake_completed_cb(ngtcp2_conn *conn, void *user_data)
 {
 	knot_quic_conn_t *ctx = (knot_quic_conn_t *)user_data;
@@ -288,6 +295,8 @@ static int handshake_completed_cb(ngtcp2_conn *conn, void *user_data)
 
 	assert(!(ctx->flags & KNOT_QUIC_CONN_HANDSHAKE_DONE));
 	ctx->flags |= KNOT_QUIC_CONN_HANDSHAKE_DONE;
+
+	knot_quic_conn_rem_odcid(ctx);
 
 	if (!ngtcp2_conn_is_server(conn)) {
 		return knot_tls_pin_check(ctx->tls_session, ctx->quic_table->creds) == KNOT_EOK
@@ -730,6 +739,17 @@ int knot_quic_handle(knot_quic_table_t *table, knot_quic_reply_t *reply,
 			*out_conn = conn; // we need knot_quic_cleanup() by the caller afterwards
 			goto finish;
 		}
+
+		// RFC 9000 5.2: until its handshake completes, the client goes on
+		// sending to the CID it chose (0-RTT packets, and Initials, sent
+		// before the server's first reply reaches it); they belong to this
+		// connection. It is either params.retry_scid or ODCID.
+		(void)quic_table_insert(conn, &client_dcid, table);
+#ifndef NDEBUG
+		const ngtcp2_transport_params *tp = ngtcp2_conn_get_local_transport_params2(conn->conn);
+		const ngtcp2_cid *old_cid = tp->retry_scid_present ? &tp->retry_scid : &tp->original_dcid;
+		assert(ngtcp2_cid_eq(old_cid, &client_dcid));
+#endif
 	}
 
 	ngtcp2_pkt_info pi = { .ecn = reply->ecn, };
