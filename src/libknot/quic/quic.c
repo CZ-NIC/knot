@@ -439,7 +439,7 @@ static void user_qlog(void *user_data, uint32_t flags, const void *data, size_t 
 static int conn_new(ngtcp2_conn **pconn, const ngtcp2_path *path, const ngtcp2_cid *scid,
                     const ngtcp2_cid *dcid, const ngtcp2_cid *odcid, uint32_t version,
                     uint64_t now, uint64_t idle_timeout_ns,
-                    knot_quic_conn_t *qconn, bool server, bool retry_sent)
+                    knot_quic_conn_t *qconn, bool server, const ngtcp2_cid *retry_scid)
 {
 	knot_quic_table_t *qtable = qconn->quic_table;
 
@@ -522,10 +522,10 @@ static int conn_new(ngtcp2_conn **pconn, const ngtcp2_path *path, const ngtcp2_c
 		params.original_dcid_present = true;
 	}
 
-	if (retry_sent) {
-		assert(scid);
+	// RFC 9000 7.3: the Source Connection ID of the Retry the client acted on.
+	if (retry_scid != NULL) {
 		params.retry_scid_present = 1;
-		params.retry_scid = *scid;
+		params.retry_scid = *retry_scid;
 	}
 	if (dnssec_random_buffer(params.stateless_reset_token, NGTCP2_STATELESS_RESET_TOKENLEN) != KNOT_EOK) {
 		return KNOT_ERROR;
@@ -567,7 +567,7 @@ int knot_quic_client(knot_quic_table_t *table, struct sockaddr_in6 *dest,
 	path.local.addrlen = addr_len((const struct sockaddr_in6 *)via);
 
 	int ret = conn_new(&conn->conn, &path, &dcid, &scid, NULL, NGTCP2_PROTO_VER_V1, now,
-	                   5000000000L, conn, false, false);
+	                   5000000000L, conn, false, NULL);
 	if (ret == KNOT_EOK) {
 		ret = tls_init_conn_session(conn, false);
 	}
@@ -696,6 +696,9 @@ int knot_quic_handle(knot_quic_table_t *table, knot_quic_reply_t *reply,
 			memcpy(&odcid, &dcid, sizeof(odcid));
 		}
 
+		// The CID the client chose, before the server chooses its own
+		ngtcp2_cid client_dcid = dcid;
+
 		// server chooses his CID to his liking
 		if (!init_unique_cid(&dcid, 0, table)) {
 			ret = KNOT_ERROR;
@@ -708,8 +711,10 @@ int knot_quic_handle(knot_quic_table_t *table, knot_quic_reply_t *reply,
 			goto finish;
 		}
 
+		// After a Retry the client sends to the Retry's Source Connection
+		// ID, so that is this Initial's DCID, before the server chose its own.
 		ret = conn_new(&conn->conn, &path, &dcid, &scid, &odcid, decoded_cids.version,
-		               now, idle_timeout, conn, true, retry_token);
+		               now, idle_timeout, conn, true, retry_token ? &client_dcid : NULL);
 		if (ret >= 0) {
 			ret = tls_init_conn_session(conn, true);
 		}
