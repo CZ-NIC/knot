@@ -7,6 +7,7 @@
 #include <gnutls/gnutls.h>
 #include <ngtcp2/ngtcp2.h>
 #include <stdio.h>
+#include <pthread.h>
 #include <string.h>
 
 #include "libknot/quic/quic_conn.h"
@@ -25,6 +26,21 @@
 
 #define STREAM_INCR 4 // DoQ only uses client-initiated bi-directional streams, so stream IDs increment by four
 #define BUCKETS_PER_CONNS 8 // Each connecion has several dCIDs, and each CID takes one hash table bucket.
+
+/*
+ * One secret for the whole process, not one per table: it derives the
+ * tokens (NEW_TOKEN and Retry) and the stateless reset tokens, and every
+ * UDP worker has a table of its own.
+ */
+static uint64_t process_secret[4];
+static pthread_once_t process_secret_once = PTHREAD_ONCE_INIT;
+
+static void process_secret_init(void)
+{
+	for (size_t i = 0; i < ARRAY_SIZE(process_secret); i++) {
+		process_secret[i] = dnssec_random_uint64_t();
+	}
+}
 
 static int cmp_expiry_heap_nodes(void *c1, void *c2)
 {
@@ -69,10 +85,8 @@ knot_quic_table_t *knot_quic_table_new(size_t max_conns, size_t max_ibufs, size_
 
 	res->creds = creds;
 
-	res->hash_secret[0] = dnssec_random_uint64_t();
-	res->hash_secret[1] = dnssec_random_uint64_t();
-	res->hash_secret[2] = dnssec_random_uint64_t();
-	res->hash_secret[3] = dnssec_random_uint64_t();
+	pthread_once(&process_secret_once, process_secret_init);
+	memcpy(res->hash_secret, process_secret, sizeof(res->hash_secret));
 
 	return res;
 }
