@@ -209,9 +209,9 @@ void quic_conn_mark_used(knot_quic_conn_t *conn, knot_quic_table_t *table);
  * \brief Remove connection/CID link from table.
  *
  * \param pcid     CID to be removed.
- * \param table    QUIC table.
+ * \param conn     QUIC conn the CID belongs to.
  */
-void quic_table_rem2(knot_quic_cid_t **pcid, knot_quic_table_t *table);
+void quic_table_rem2(const struct ngtcp2_cid *cid, knot_quic_conn_t *conn);
 
 /*!
  * \brief Remove specified stream from QUIC connection, freeing all buffers.
