@@ -11,6 +11,8 @@
 #include "libknot/quic/tls.h"
 #include "contrib/conn_pool.h"
 
+#define TLS_LOG_PREFIX "TLS requestor"
+
 int knot_tls_req_ctx_init(knot_tls_req_ctx_t *ctx,
                           int fd,
                           const struct sockaddr_storage *remote,
@@ -43,6 +45,7 @@ int knot_tls_req_ctx_init(knot_tls_req_ctx_t *ctx,
 	intptr_t sessticket = conn_pool_get(global_sessticket_pool, local, remote, NULL);
 	if (sessticket != CONN_POOL_FD_INVALID) {
 		int ret = knot_tls_session_load(ctx->conn, (void *)sessticket);
+		log_debug(TLS_LOG_PREFIX ", loading session %p", (void *)sessticket);
 		if (ret != KNOT_EOK) {
 			global_sessticket_pool->close_cb(sessticket);
 			sessticket = CONN_POOL_FD_INVALID;
@@ -60,8 +63,11 @@ void knot_tls_req_ctx_maint(knot_tls_req_ctx_t *ctx, struct knot_request *r)
 	    knot_tls_session_available(ctx->conn)) {
 		void *sessticket = knot_tls_session_save(ctx->conn);
 		if (sessticket != NULL) {
+			log_debug(TLS_LOG_PREFIX ", storing session %p, lifetime %u",
+			          sessticket, ctx->conn->ticket_lifetime);
 			intptr_t tofree = conn_pool_put(global_sessticket_pool, &r->source,
-			                                &r->remote, NULL, (intptr_t)sessticket);
+			                                &r->remote, NULL, ctx->conn->ticket_lifetime,
+			                                (intptr_t)sessticket);
 			global_sessticket_pool->close_cb(tofree);
 		}
 	}

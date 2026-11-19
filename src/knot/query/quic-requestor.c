@@ -20,9 +20,11 @@
 
 #define QUIC_BUF_SIZE 4096
 
+#define QUIC_LOG_PREFIX "QUIC requestor"
+
 static void quic_log_cb(const char *line)
 {
-	log_fmt(LOG_DEBUG, LOG_SOURCE_QUIC, "QUIC requestor, %s", line);
+	log_fmt(LOG_DEBUG, LOG_SOURCE_QUIC, QUIC_LOG_PREFIX ", %s", line);
 }
 
 typedef union {
@@ -84,8 +86,11 @@ static int quic_exchange(knot_quic_conn_t *conn, knot_quic_reply_t *r, int timeo
 	    knot_quic_session_available(conn)) {
 		void *sessticket = knot_quic_session_save(conn);
 		if (sessticket != NULL) {
+			log_debug(QUIC_LOG_PREFIX ", storing session %p, lifetime %u",
+			          sessticket, conn->ticket_lifetime);
 			intptr_t tofree = conn_pool_put(global_sessticket_pool, r->ip_loc,
-			                                r->ip_rem, NULL, (intptr_t)sessticket);
+			                                r->ip_rem, NULL, conn->ticket_lifetime,
+			                                (intptr_t)sessticket);
 			global_sessticket_pool->close_cb(tofree);
 		}
 	}
@@ -210,6 +215,7 @@ int knot_qreq_connect(struct knot_quic_reply **out,
 	}
 	if (sessticket != CONN_POOL_FD_INVALID) {
 		ret = knot_quic_session_load(conn, (void *)sessticket);
+		log_debug(QUIC_LOG_PREFIX ", loading session %p", (void *)sessticket);
 		if (ret != KNOT_EOK) {
 			global_sessticket_pool->close_cb(sessticket);
 			sessticket = CONN_POOL_FD_INVALID;
