@@ -24,6 +24,7 @@ typedef struct {
 	char dev[IFNAMSIZ];
 	conn_pool_fd_t fd;
 	knot_time_t last_active;
+	knot_time_t expiry; // 0 = never expires
 } conn_pool_memb_t;
 
 typedef struct {
@@ -103,6 +104,7 @@ conn_pool_fd_t conn_pool_get(conn_pool_t *pool,
  * \param src    Connestion source address.
  * \param dst    Connection destination adress.
  * \param dev    Connection source device binding, if any (can be NULL).
+ * \param lftime Explicit lifetime of the item (0 means not specified).
  * \param fd     Connection file descriptor.
  *
  * \retval -1    If connection stored to free slot.
@@ -113,6 +115,7 @@ conn_pool_fd_t conn_pool_put(conn_pool_t *pool,
                              const struct sockaddr_storage *src,
                              const struct sockaddr_storage *dst,
                              const char *dev,
+                             uint32_t lftime,
                              conn_pool_fd_t fd);
 
 /*!

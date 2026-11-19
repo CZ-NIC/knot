@@ -19,11 +19,11 @@ static void test_dev_keying(void)
 
 	// Same source/destination, different (or no) device -- must be tracked
 	// as independent connections, not collapsed into one another.
-	ok(conn_pool_put(pool, &src, &dst, "eth0", 10) == CONN_POOL_FD_INVALID,
+	ok(conn_pool_put(pool, &src, &dst, "eth0", 0, 10) == CONN_POOL_FD_INVALID,
 	   "conn_pool: put eth0 connection to a free slot");
-	ok(conn_pool_put(pool, &src, &dst, "eth1", 20) == CONN_POOL_FD_INVALID,
+	ok(conn_pool_put(pool, &src, &dst, "eth1", 0, 20) == CONN_POOL_FD_INVALID,
 	   "conn_pool: put eth1 connection to a free slot");
-	ok(conn_pool_put(pool, &src, &dst, NULL, 30) == CONN_POOL_FD_INVALID,
+	ok(conn_pool_put(pool, &src, &dst, NULL, 0, 30) == CONN_POOL_FD_INVALID,
 	   "conn_pool: put no-device connection to a free slot");
 
 	ok(conn_pool_get(pool, &src, &dst, "eth2") == CONN_POOL_FD_INVALID,
