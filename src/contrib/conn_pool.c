@@ -64,7 +64,7 @@ static void *closing_thread(void *_arg)
 	conn_pool_t *pool = _arg;
 
 	while (true) {
-		knot_time_t now = knot_time(), next = 0;
+		knot_time_t now = time_now().tv_sec, next = 0;
 		knot_timediff_t timeout = conn_pool_timeout(pool, 0);
 		assert(timeout != 0);
 
@@ -211,7 +211,7 @@ static void pool_push(conn_pool_t *pool, size_t i,
 	conn_pool_memb_t *conn = &pool->conns[i];
 	assert(conn->last_active == 0);
 	assert(pool->usage < pool->capacity);
-	conn->last_active = knot_time();
+	conn->last_active = time_now().tv_sec;
 	conn->fd = fd;
 	memcpy(&conn->src, src, sizeof(conn->src));
 	memcpy(&conn->dst, dst, sizeof(conn->dst));
