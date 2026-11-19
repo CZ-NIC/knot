@@ -10,8 +10,7 @@
 
 static void test_dev_keying(void)
 {
-	conn_pool_t *pool = conn_pool_init(4, 60000, conn_pool_close_cb_dflt,
-	                                   conn_pool_invalid_cb_allvalid);
+	conn_pool_t *pool = conn_pool_init(4, 60000, conn_pool_close_cb_dflt, NULL);
 	ok(pool != NULL, "conn_pool: init");
 
 	struct sockaddr_storage src = { 0 }, dst = { 0 };

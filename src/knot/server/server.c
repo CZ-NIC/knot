@@ -1821,7 +1821,7 @@ static int reconfigure_remote_pool(conf_t *conf, server_t *server)
 			size_t max_tickets = conf_bg_threads(conf) * rmt_count * 2; // Two addresses per remote.
 			conn_pool_t *new_pool =
 				conn_pool_init(max_tickets, SESSION_TICKET_POOL_TIMEOUT,
-				               free_sess_ticket, conn_pool_invalid_cb_allvalid);
+				               free_sess_ticket, NULL);
 			if (new_pool == NULL) {
 				return KNOT_ENOMEM;
 			}
