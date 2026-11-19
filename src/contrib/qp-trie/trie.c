@@ -13,10 +13,14 @@
 #include "contrib/mempattern.h"
 #include "libknot/errcode.h"
 
+#ifndef uint
 typedef unsigned int uint;
+#define uint uint
+#endif
+typedef uint bitmap_t; /*!< Bit-maps, using the range of 1<<0 to 1<<16 (inclusive). */
+
 typedef uint64_t trie_index_t; /*!< nibble index into a key */
 typedef uint64_t word; /*!< A type-punned word */
-typedef uint bitmap_t; /*!< Bit-maps, using the range of 1<<0 to 1<<16 (inclusive). */
 
 typedef char static_assert_pointer_fits_in_word
 	[sizeof(word) >= sizeof(uintptr_t) ? 1 : -1];
@@ -134,10 +138,10 @@ typedef char static_assert_bmp_fits
 #define TMASK_LEAF (~(word)(TFLAG_BRANCH | TFLAG_COW))
 
 /*! \brief mask for extracting nibble index */
-#define TMASK_INDEX TMASK(TWIDTH_INDEX,  TSHIFT_INDEX)
+#define TMASK_INDEX TMASK(TWIDTH_INDEX, TSHIFT_INDEX)
 
 /*! \brief mask for extracting bitmap */
-#define TMASK_BMP TMASK(TWIDTH_BMP,  TSHIFT_BMP)
+#define TMASK_BMP TMASK(TWIDTH_BMP, TSHIFT_BMP)
 
 /*! \brief bitmap entry for NOBYTE */
 #define BMP_NOBYTE (BIG1 << TSHIFT_BMP)
@@ -172,7 +176,7 @@ static node_t mkbranch(trie_index_t index, bitmap_t bmp, node_t *twigs)
 /*! \brief Make an empty root node. */
 static node_t empty_root(void)
 {
-	return mkbranch(TMAX_INDEX-1, 0, NULL);
+	return mkbranch(TMAX_INDEX - 1, 0, NULL);
 }
 
 /*! \brief Propagate error codes. */
@@ -190,12 +194,14 @@ static bool isbranch(const node_t *t)
 	return t->i & TFLAG_BRANCH;
 }
 
+/*! \brief Get the key stored in a leaf. */
 static tkey_t *tkey(const node_t *t)
 {
 	assert(!isbranch(t));
 	return (tkey_t *)(uintptr_t)(t->i & TMASK_LEAF);
 }
 
+/*! \brief Get pointer to the value stored in a leaf. */
 static trie_val_t *tvalp(node_t *t)
 {
 	assert(!isbranch(t));
@@ -209,6 +215,7 @@ static trie_index_t branch_index(const node_t *t)
 	return (t->i & TMASK_INDEX) >> TSHIFT_INDEX;
 }
 
+/*! \brief Given a branch node, return the bitmap of present children. */
 static bitmap_t branch_bmp(const node_t *t)
 {
 	assert(isbranch(t));
@@ -216,7 +223,7 @@ static bitmap_t branch_bmp(const node_t *t)
 }
 
 /*!
- * \brief Count the number of set bits.
+ * \brief Count the children of a branch node.
  *
  * \TODO This implementation may be relatively slow on some HW.
  */
@@ -247,7 +254,7 @@ static bitmap_t keybit(trie_index_t ni, const trie_key_t *key, uint32_t len)
 	uint8_t ki = (uint8_t)key[bytei];
 	uint nibble = (ni & 1) ? (ki & 0xf) : (ki >> 4);
 
-	// skip one for NOBYTE nibbles after the end of the key
+	// skip one for BMP_NOBYTE nibbles after the end of the key
 	return BIG1 << (nibble + 1 + TSHIFT_BMP);
 }
 
@@ -281,7 +288,7 @@ static node_t* twig(node_t *t, uint i)
 	return twigs(t) + i;
 }
 
-/*! \brief Get twig number of a child node TODO: better description. */
+/*! \brief Get the position of a child node within its parent's twigs array. */
 static uint twig_number(node_t *child, node_t *parent)
 {
 	// twig array index using pointer arithmetic
@@ -455,8 +462,8 @@ trie_val_t* trie_get_try_wildcard(trie_t *tbl, const trie_key_t *key, uint32_t l
 	const tkey_t * const lcp_key = tkey(t);
 
 	// Find the last matching zero byte or -1 (source of synthesis)
-	int i_lmz = -1;
-	for (int i = 0; i < len && i < lcp_key->len && key[i] == lcp_key->chars[i]; ++i) {
+	int64_t i_lmz = -1; // signed type so -1 value is a distinct sentinel value
+	for (uint32_t i = 0; i < len && i < lcp_key->len && key[i] == lcp_key->chars[i]; ++i) {
 		if (key[i] == '\0' && i < len - 1) // do not count the terminating zero
 			i_lmz = i;
 		// Shortcut: we may have found an exact match.
@@ -467,8 +474,8 @@ trie_val_t* trie_get_try_wildcard(trie_t *tbl, const trie_key_t *key, uint32_t l
 		return lcp_key->len == 0 ? tvalp(t) : NULL;
 
 	// Construct the key of the wildcard we need and look it up.
-	const int wild_len = i_lmz + 3;
-	uint8_t wild_key[wild_len];
+	const uint32_t wild_len = (uint32_t)(i_lmz + 3);
+	trie_key_t wild_key[wild_len];
 	memcpy(wild_key, key, wild_len - 2);
 	wild_key[wild_len - 2] = '*';
 	wild_key[wild_len - 1] = '\0'; // LF is always 0-terminated ATM
@@ -503,7 +510,7 @@ static void del_found(trie_t *tbl, node_t *t, node_t *p, bitmap_t b, trie_val_t 
 	memmove(tp + ci, tp + ci + 1, sizeof(node_t) * (cc - ci - 1));
 	p->i &= ~b;
 	node_t *newt = mm_realloc(&tbl->mm, tp, sizeof(node_t) * (cc - 1),
-				  sizeof(node_t) * cc);
+	                          sizeof(node_t) * cc);
 	if (likely(newt != NULL))
 		p->p = newt;
 	// We can ignore mm_realloc failure because an oversized twig
@@ -618,8 +625,8 @@ static inline int ns_longer(nstack_t *ns)
  *  branching-point-on-edge or the branching-point itself.
  *
  *  \param idiff  Set the index of first differing nibble, or TMAX_INDEX for an exact match
- *  \param tbit  Set the bit of the closest leaf's nibble at index idiff
- *  \param kbit  Set the bit of the key's nibble at index idiff
+ *  \param tbit   Set the bit of the closest leaf's nibble at index idiff
+ *  \param kbit   Set the bit of the key's nibble at index idiff
  *
  *  \return KNOT_EOK or KNOT_ENOMEM.
  */
@@ -641,21 +648,21 @@ static int ns_find_branch(nstack_t *ns, const trie_key_t *key, uint32_t len,
 		uint i = hastwig(t, b) ? twigoff(t, b) : 0;
 		ns->stack[ns->len++] = twig(t, i);
 	}
-	tkey_t *lkey = tkey(ns->stack[ns->len-1]);
+	tkey_t *lkey = tkey(ns->stack[ns->len - 1]);
 	// Find index of the first char that differs.
 	size_t bytei = 0;
 	uint32_t klen = lkey->len;
-	for (bytei = 0; bytei < MIN(len,klen); bytei++) {
+	for (bytei = 0; bytei < MIN(len, klen); bytei++) {
 		if (key[bytei] != lkey->chars[bytei])
 			break;
 	}
 	// Find which half-byte has matched.
 	trie_index_t index = bytei << 1;
-	if (bytei == len && len == lkey->len) { // found equivalent key
+	if (bytei == len && len == klen) { // found equivalent key
 		index = TMAX_INDEX;
 		goto success;
 	}
-	if (likely(bytei < MIN(len,klen))) {
+	if (likely(bytei < MIN(len, klen))) {
 		uint8_t k2 = (uint8_t)lkey->chars[bytei];
 		uint8_t k1 = (uint8_t)key[bytei];
 		if (((k1 ^ k2) & 0xf0) == 0)
@@ -762,18 +769,18 @@ static int ns_prev_leaf(nstack_t *ns)
  *     If false, prefix leaf or anything else under the current node DOES count.
  * \return KNOT_EOK on success, KNOT_ENOENT on not-found, or possibly KNOT_ENOMEM.
  */
-static int ns_next_leaf(nstack_t *ns, const bool skip_pefixed)
+static int ns_next_leaf(nstack_t *ns, const bool skip_prefixed)
 {
 	assert(ns && ns->len > 0);
 
 	node_t *t = ns->stack[ns->len - 1];
-	if (!skip_pefixed && isbranch(t))
+	if (!skip_prefixed && isbranch(t))
 		return ns_first_leaf(ns);
 	for (; ns->len >= 2; --ns->len) {
 		t = ns->stack[ns->len - 1];
 		node_t *p = ns->stack[ns->len - 2];
 		uint ci = twig_number(t, p);
-		if (skip_pefixed && ci == 0 && hastwig(t, BMP_NOBYTE)) {
+		if (skip_prefixed && ci == 0 && hastwig(t, BMP_NOBYTE)) {
 			// Keys in the subtree of p are suffixes of the key of t,
 			// so we've got to go one level higher
 			// (this can't happen more than once)
