@@ -272,7 +272,8 @@ static int remove_connection_id(ngtcp2_conn *conn, const ngtcp2_cid *cid,
 	assert(ctx->conn == conn);
 
 	knot_quic_cid_t **torem = quic_table_lookup2(cid, ctx->quic_table);
-	if (torem != NULL) {
+	assert(torem != NULL);
+	if (*torem != NULL) {
 		assert((*torem)->conn == ctx);
 		quic_table_rem2(torem, ctx->quic_table);
 	}
