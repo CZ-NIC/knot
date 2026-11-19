@@ -959,11 +959,11 @@ int knot_quic_send(knot_quic_table_t *quic_table, knot_quic_conn_t *conn,
                    knot_quic_reply_t *reply, unsigned max_msgs,
                    knot_quic_send_flag_t flags)
 {
-	if (quic_table == NULL || conn == NULL || reply == NULL) {
+	if (quic_table == NULL || (conn == NULL && reply->handle_ret == 0) || reply == NULL) {
 		return KNOT_EINVAL;
 	} else if (reply->handle_ret < 0) {
 		return reply->handle_ret;
-	} else if ((conn->flags & KNOT_QUIC_CONN_BLOCKED) && !(flags & KNOT_QUIC_SEND_IGNORE_BLOCKED)) {
+	} else if (conn != NULL && (conn->flags & KNOT_QUIC_CONN_BLOCKED) && !(flags & KNOT_QUIC_SEND_IGNORE_BLOCKED)) {
 		return KNOT_EOK;
 	} else if (reply->handle_ret > 0) {
 		return send_special(quic_table, reply, conn);
