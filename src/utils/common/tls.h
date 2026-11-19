@@ -5,6 +5,8 @@
 
 #pragma once
 
+#include <arpa/inet.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <netdb.h>
 #include <gnutls/gnutls.h>
@@ -69,3 +71,21 @@ int tls_ctx_receive(tls_ctx_t *ctx, uint8_t *buf, const size_t buf_len);
 void tls_ctx_close(tls_ctx_t *ctx);
 void tls_ctx_deinit(tls_ctx_t *ctx);
 void print_tls(const tls_ctx_t *ctx);
+
+/*!
+ * \brief Whether a name is an IPv4 or IPv6 address literal.
+ *
+ * RFC 6066 section 3: "Literal IPv4 and IPv6 addresses are not permitted in
+ * HostName". A name the user did not give, taken from the server address,
+ * must not be sent as the server name: GnuTLS servers (Knot DNS) refuse an
+ * IPv6 literal there, and others look it up as a name and present a
+ * certificate for another one. The certificate is still verified against
+ * the address.
+ */
+static inline bool tls_name_is_address(const char *name)
+{
+	struct in6_addr addr6;
+	struct in_addr addr4;
+	return name != NULL && (inet_pton(AF_INET, name, &addr4) == 1 ||
+	                        inet_pton(AF_INET6, name, &addr6) == 1);
+}

@@ -257,7 +257,10 @@ int https_ctx_init(https_ctx_t *ctx, tls_ctx_t *tls_ctx, const https_params_t *p
 
 	ctx->tls = tls_ctx;
 	ctx->params = *params;
-	ctx->authority = (tls_ctx->params->hostname) ? strdup(tls_ctx->params->hostname) : NULL;
+	// An address as the hostname is left to sockaddr_to_authority(), which
+	// brackets an IPv6 one as RFC 3986 section 3.2.2 asks.
+	ctx->authority = (tls_ctx->params->hostname && !tls_name_is_address(tls_ctx->params->hostname)) ?
+	                 strdup(tls_ctx->params->hostname) : NULL;
 	ctx->path = strdup((ctx->params.path) ? ctx->params.path : (char *)default_path);
 	ctx->stream = -1;
 

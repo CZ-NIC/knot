@@ -340,7 +340,8 @@ static char *net_get_remote(const net_t *net)
 {
 	if (net->tls.params->sni != NULL) {
 		return net->tls.params->sni;
-	} else if (net->tls.params->hostname != NULL) {
+	} else if (net->tls.params->hostname != NULL &&
+	           !tls_name_is_address(net->tls.params->hostname)) {
 		return net->tls.params->hostname;
 	} else if (strchr(net->remote_str, ':') == NULL) {
 		char *at = strchr(net->remote_str, '@');
