@@ -270,14 +270,7 @@ static int remove_connection_id(ngtcp2_conn *conn, const ngtcp2_cid *cid,
 {
 	knot_quic_conn_t *ctx = (knot_quic_conn_t *)user_data;
 	assert(ctx->conn == conn);
-
-	knot_quic_cid_t **torem = quic_table_lookup2(cid, ctx->quic_table);
-	assert(torem != NULL);
-	if (*torem != NULL) {
-		assert((*torem)->conn == ctx);
-		quic_table_rem2(torem, ctx->quic_table);
-	}
-
+	quic_table_rem2(cid, ctx);
 	return 0;
 }
 
@@ -286,7 +279,7 @@ void knot_quic_conn_rem_odcid(knot_quic_conn_t *conn)
 	assert(conn);
 	const ngtcp2_transport_params *tp = ngtcp2_conn_get_local_transport_params2(conn->conn);
 	const ngtcp2_cid *old_cid = tp->retry_scid_present ? &tp->retry_scid : &tp->original_dcid;
-	(void)remove_connection_id(conn->conn, old_cid, conn);
+	quic_table_rem2(old_cid, conn);
 }
 
 static int handshake_completed_cb(ngtcp2_conn *conn, void *user_data)

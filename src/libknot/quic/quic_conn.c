@@ -260,12 +260,19 @@ void quic_conn_mark_used(knot_quic_conn_t *conn, knot_quic_table_t *table)
 	conn_heap_reschedule(conn, table);
 }
 
-void quic_table_rem2(knot_quic_cid_t **pcid, knot_quic_table_t *table)
+void quic_table_rem2(const struct ngtcp2_cid *cid, knot_quic_conn_t *conn)
 {
-	knot_quic_cid_t *cid = *pcid;
-	*pcid = cid->next;
-	free(cid);
-	table->pointers--;
+	knot_quic_cid_t **pcid = quic_table_lookup2(cid, conn->quic_table);
+	assert(pcid != NULL);
+	while (*pcid != NULL && (*pcid)->conn != conn) {
+		pcid = &(*pcid)->next;
+	}
+	if (*pcid != NULL) {
+		knot_quic_cid_t *tofree = *pcid;
+		*pcid = tofree->next;
+		free(tofree);
+		conn->quic_table->pointers--;
+	}
 }
 
 _public_
@@ -311,13 +318,7 @@ void knot_quic_table_rem(knot_quic_conn_t *conn, knot_quic_table_t *table)
 	ngtcp2_conn_get_scid(conn->conn, scids);
 
 	for (size_t i = 0; i < num_scid; i++) {
-		knot_quic_cid_t **pcid = quic_table_lookup2(&scids[i], table);
-		assert(pcid != NULL);
-		if (*pcid == NULL) {
-			continue;
-		}
-		assert((*pcid)->conn == conn);
-		quic_table_rem2(pcid, table);
+		quic_table_rem2(&scids[i], conn);
 	}
 
 	int pos = heap_find(table->expiry_heap, (heap_val_t *)conn);
