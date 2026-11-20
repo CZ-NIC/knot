@@ -462,21 +462,8 @@ static struct found find_equal(trie_t *tbl, const trie_key_t *key, uint32_t len)
 
 trie_val_t* trie_get_try(trie_t *tbl, const trie_key_t *key, uint32_t len)
 {
-	assert(tbl);
-	if (!tbl->weight)
-		return NULL;
-	node_t *t = &tbl->root;
-	while (isbranch(t)) {
-		__builtin_prefetch(twigs(t));
-		bitmap_t b = twigbit(t, key, len);
-		if (!hastwig(t, b))
-			return NULL;
-		t = twig(t, twigoff(t, b));
-	}
-	tkey_t *lkey = tkey(t);
-	if (key_cmp(key, len, lkey->chars, lkey->len) != 0)
-		return NULL;
-	return tvalp(t);
+	struct found found = find_equal(tbl, key, len);
+	return found.l ? tvalp(found.l) : NULL;
 }
 
 /* Optimization: the approach isn't ideal, as e.g. walking through the prefix
@@ -520,8 +507,11 @@ trie_val_t* trie_get_try_wildcard(trie_t *tbl, const trie_key_t *key, uint32_t l
 
 /*! \brief Delete leaf t with parent p; b is the bit for t under p.
  * Optionally return the deleted value via val. */
-static int del_found(trie_t *tbl, node_t *t, node_t *p, bitmap_t b, trie_val_t *val)
+static int del_found(trie_t *tbl, struct found found, trie_val_t *val)
 {
+	node_t *t = found.l;
+	node_t * const p = found.p;
+
 	if (!t)
 		return KNOT_ENOENT;
 	assert(!tkey(t)->cow);
@@ -546,7 +536,7 @@ static int del_found(trie_t *tbl, node_t *t, node_t *p, bitmap_t b, trie_val_t *
 		return KNOT_EOK;
 	}
 	memmove(tp + ci, tp + ci + 1, sizeof(node_t) * (cc - ci - 1));
-	p->i &= ~b;
+	p->i &= ~found.b;
 	node_t *newt = mm_realloc(&tbl->mm, tp, sizeof(node_t) * (cc - 1),
 	                          sizeof(node_t) * cc);
 	if (likely(newt != NULL))
@@ -559,24 +549,8 @@ static int del_found(trie_t *tbl, node_t *t, node_t *p, bitmap_t b, trie_val_t *
 
 int trie_del(trie_t *tbl, const trie_key_t *key, uint32_t len, trie_val_t *val)
 {
-	assert(tbl);
-	if (!tbl->weight)
-		return KNOT_ENOENT;
-	node_t *t = &tbl->root; // current and parent node
-	node_t *p = NULL;
-	bitmap_t b = 0;
-	while (isbranch(t)) {
-		__builtin_prefetch(twigs(t));
-		b = twigbit(t, key, len);
-		if (!hastwig(t, b))
-			return KNOT_ENOENT;
-		p = t;
-		t = twig(t, twigoff(t, b));
-	}
-	tkey_t *lkey = tkey(t);
-	if (key_cmp(key, len, lkey->chars, lkey->len) != 0)
-		return KNOT_ENOENT;
-	return del_found(tbl, t, p, b, val);
+	struct found found = find_equal(tbl, key, len);
+	return del_found(tbl, found, val);
 }
 
 /*!
@@ -1176,23 +1150,22 @@ void trie_it_del(trie_it_t *it)
 	assert(it && it->len);
 	if (it->len == 0)
 		return;
-	node_t *t = it->stack[it->len - 1];
-	assert(!isbranch(t));
-	bitmap_t b; // del_found() needs to know which bit to zero in the bitmap
-	node_t *p;
-	if (it->len == 1) { // deleting the root
-		p = NULL;
-		b = 0; // unused
-	} else {
-		p = it->stack[it->len - 2];
-		assert(isbranch(p));
+	struct found found = {
+		.l = it->stack[it->len - 1],
+		.p = NULL,
+		.b = 0, // del_found() needs to know which bit to zero in the bitmap
+	};
+	assert(!isbranch(found.l));
+	if (it->len > 1) { // deleting the root
+		found.p = it->stack[it->len - 2];
+		assert(isbranch(found.p));
 		size_t len;
 		const trie_key_t *key = trie_it_key(it, &len);
-		b = twigbit(p, key, len);
+		found.b = twigbit(found.p, key, len);
 	}
 	// We could trie_it_{next,prev,...}(it) now, in case we wanted that semantics.
 	it->len = 0;
-	(void)del_found(ns_gettrie(it), t, p, b, NULL);
+	(void)del_found(ns_gettrie(it), found, NULL);
 }
 
 
@@ -1423,9 +1396,13 @@ int trie_del_cow(trie_cow_t *cow, const trie_key_t *key, uint32_t len, trie_val_
 	if (idiff != TMAX_INDEX)
 		return KNOT_ENOENT;
 	ERR_RETURN(cow_pushdown(cow, ns));
-	node_t *t = ns->stack[ns->len - 1];
 	node_t *p = ns->len >= 2 ? ns->stack[ns->len - 2] : NULL;
-	(void)del_found(tbl, t, p, p ? twigbit(p, key, len) : 0, val);
+	struct found found = {
+		.l = ns->stack[ns->len - 1],
+		.p = p,
+		.b = p ? twigbit(p, key, len) : 0
+	};
+	(void)del_found(tbl, found, val);
 	}
 	return KNOT_EOK;
 }
