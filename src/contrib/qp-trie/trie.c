@@ -230,7 +230,7 @@ static bitmap_t branch_bmp(const node_t *t)
 static uint branch_weight(const node_t *t)
 {
 	assert(isbranch(t));
-	uint n = __builtin_popcount(t->i & TMASK_BMP);
+	uint n = __builtin_popcount(branch_bmp(t));
 	assert(n > 1 && n <= TWIDTH_BMP);
 	return n;
 }
@@ -240,7 +240,7 @@ static uint twigoff(const node_t *t, bitmap_t bit)
 {
 	assert(isbranch(t));
 	assert(__builtin_popcount(bit) == 1);
-	return __builtin_popcount(t->i & TMASK_BMP & (bit - 1));
+	return __builtin_popcount(branch_bmp(t) & (bit - 1));
 }
 
 /*! \brief Extract a nibble from a key and turn it into a bitmask. */
