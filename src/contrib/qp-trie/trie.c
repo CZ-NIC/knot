@@ -483,9 +483,11 @@ trie_val_t* trie_get_try_wildcard(trie_t *tbl, const trie_key_t *key, uint32_t l
 }
 
 /*! \brief Delete leaf t with parent p; b is the bit for t under p.
- * Optionally return the deleted value via val.  The function can't fail. */
-static void del_found(trie_t *tbl, node_t *t, node_t *p, bitmap_t b, trie_val_t *val)
+ * Optionally return the deleted value via val. */
+static int del_found(trie_t *tbl, node_t *t, node_t *p, bitmap_t b, trie_val_t *val)
 {
+	if (!t)
+		return KNOT_ENOENT;
 	assert(!tkey(t)->cow);
 	mm_free(&tbl->mm, tkey(t));
 	if (val != NULL)
@@ -494,7 +496,7 @@ static void del_found(trie_t *tbl, node_t *t, node_t *p, bitmap_t b, trie_val_t 
 	if (unlikely(!p)) { // whole trie was a single leaf
 		assert(tbl->weight == 0);
 		tbl->root = empty_root();
-		return;
+		return KNOT_EOK;
 	}
 	// remove leaf t as child of p
 	node_t *tp = twigs(p);
@@ -505,7 +507,7 @@ static void del_found(trie_t *tbl, node_t *t, node_t *p, bitmap_t b, trie_val_t 
 		// collapse binary node p: move the other child to the parent
 		*p = tp[1 - ci];
 		mm_free(&tbl->mm, tp);
-		return;
+		return KNOT_EOK;
 	}
 	memmove(tp + ci, tp + ci + 1, sizeof(node_t) * (cc - ci - 1));
 	p->i &= ~b;
@@ -516,6 +518,7 @@ static void del_found(trie_t *tbl, node_t *t, node_t *p, bitmap_t b, trie_val_t 
 	// We can ignore mm_realloc failure because an oversized twig
 	// array is OK - only beware that next time the prev_size
 	// passed to mm_realloc will not be correct; TODO?
+	return KNOT_EOK;
 }
 
 int trie_del(trie_t *tbl, const trie_key_t *key, uint32_t len, trie_val_t *val)
@@ -537,8 +540,7 @@ int trie_del(trie_t *tbl, const trie_key_t *key, uint32_t len, trie_val_t *val)
 	tkey_t *lkey = tkey(t);
 	if (key_cmp(key, len, lkey->chars, lkey->len) != 0)
 		return KNOT_ENOENT;
-	del_found(tbl, t, p, b, val);
-	return KNOT_EOK;
+	return del_found(tbl, t, p, b, val);
 }
 
 /*!
@@ -1154,7 +1156,7 @@ void trie_it_del(trie_it_t *it)
 	}
 	// We could trie_it_{next,prev,...}(it) now, in case we wanted that semantics.
 	it->len = 0;
-	del_found(ns_gettrie(it), t, p, b, NULL);
+	(void)del_found(ns_gettrie(it), t, p, b, NULL);
 }
 
 
@@ -1387,7 +1389,7 @@ int trie_del_cow(trie_cow_t *cow, const trie_key_t *key, uint32_t len, trie_val_
 	ERR_RETURN(cow_pushdown(cow, ns));
 	node_t *t = ns->stack[ns->len - 1];
 	node_t *p = ns->len >= 2 ? ns->stack[ns->len - 2] : NULL;
-	del_found(tbl, t, p, p ? twigbit(p, key, len) : 0, val);
+	(void)del_found(tbl, t, p, p ? twigbit(p, key, len) : 0, val);
 	}
 	return KNOT_EOK;
 }
