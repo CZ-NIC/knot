@@ -471,10 +471,10 @@ int knot_tls_session(struct gnutls_session_int **session,
 
 	gnutls_init_flags_t tls_flags = GNUTLS_NO_SIGNAL;
 	if (early_data) {
-		tls_flags |= GNUTLS_ENABLE_EARLY_DATA;
+		tls_flags |= GNUTLS_ENABLE_EARLY_DATA | GNUTLS_NO_AUTO_SEND_TICKET;
 #ifdef ENABLE_QUIC // Next flags aren't available in older GnuTLS versions.
 		if (quic) {
-			tls_flags |= GNUTLS_NO_END_OF_EARLY_DATA | GNUTLS_NO_AUTO_SEND_TICKET;
+			tls_flags |= GNUTLS_NO_END_OF_EARLY_DATA;
 		}
 #endif
 	}
