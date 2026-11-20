@@ -179,27 +179,34 @@ conn_pool_fd_t conn_pool_get(conn_pool_t *pool,
 		return CONN_POOL_FD_INVALID;
 	}
 
-	conn_pool_fd_t fd = CONN_POOL_FD_INVALID;
-	pthread_mutex_lock(&pool->mutex);
+	const char *dev_str = (dev != NULL) ? dev : "";
 
-	for (size_t i = 0; i < pool->capacity; i++) {
-		if (pool->conns[i].last_active != 0 &&
-		    sockaddr_cmp(&pool->conns[i].dst, dst, false) == 0 &&
-		    sockaddr_cmp(&pool->conns[i].src, src, true) == 0 &&
-		    strcmp(pool->conns[i].dev, (dev != NULL) ? dev : "") == 0) {
-			fd = pool_pop(pool, i);
-			break;
+	while (true) {
+		conn_pool_fd_t fd = CONN_POOL_FD_INVALID;
+
+		pthread_mutex_lock(&pool->mutex);
+		for (size_t i = 0; i < pool->capacity; i++) {
+			if (pool->conns[i].last_active != 0 &&
+			    sockaddr_cmp(&pool->conns[i].dst, dst, false) == 0 &&
+			    sockaddr_cmp(&pool->conns[i].src, src, true) == 0 &&
+			    strcmp(pool->conns[i].dev, dev_str) == 0) {
+				fd = pool_pop(pool, i);
+				break;
+			}
 		}
+		pthread_mutex_unlock(&pool->mutex);
+
+		if (fd == CONN_POOL_FD_INVALID) {
+			return CONN_POOL_FD_INVALID; // no (more) matching connections
+		}
+
+		if (pool->invalid_cb != NULL && pool->invalid_cb(fd)) {
+			pool->close_cb(fd);
+			continue; // stale connection, try the next matching one
+		}
+
+		return fd;
 	}
-
-	pthread_mutex_unlock(&pool->mutex);
-
-	if (fd != CONN_POOL_FD_INVALID && pool->invalid_cb != NULL && pool->invalid_cb(fd)) {
-		pool->close_cb(fd);
-		fd = CONN_POOL_FD_INVALID;
-	}
-
-	return fd;
 }
 
 static void pool_push(conn_pool_t *pool, size_t i,
