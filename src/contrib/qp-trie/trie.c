@@ -208,6 +208,13 @@ static trie_val_t *tvalp(node_t *t)
 	return &t->p;
 }
 
+/*! \brief Only keep the lowest bit in the bitmap (least significant -> twigs[0]). */
+static bitmap_t bitmap_lowest_bit(bitmap_t w)
+{
+	assert((w & ~TMASK_BMP) == 0);
+	return (bitmap_t)1 << __builtin_ctz(w);
+}
+
 /*! \brief Given a branch node, return the index of the corresponding nibble in the key. */
 static trie_index_t branch_index(const node_t *t)
 {
@@ -466,6 +473,41 @@ trie_val_t* trie_get_try(trie_t *tbl, const trie_key_t *key, uint32_t len)
 	return found.l ? tvalp(found.l) : NULL;
 }
 
+/** Find item with the first key (lexicographical order). */
+static struct found find_first(trie_t *tbl)
+{
+	assert(tbl);
+	if (!tbl->weight) {
+		struct found ret0;
+		memset(&ret0, 0, sizeof(ret0));
+		return ret0;
+	}
+	/* Current node and parent while descending (returned values basically). */
+	node_t *t = &tbl->root;
+	node_t *p = NULL;
+	while (isbranch(t)) {
+		p = t;
+		t = twig(p, 0);
+	}
+	return (struct found) {
+		.l = t,
+		.p = p,
+		.b = p ? bitmap_lowest_bit(branch_bmp(p)) : 0,
+	};
+}
+
+trie_val_t* trie_get_first(trie_t *tbl, trie_key_t **key, uint32_t *len)
+{
+	struct found found = find_first(tbl);
+	if (!found.l)
+		return NULL;
+	if (key)
+		*key = tkey(found.l)->chars;
+	if (len)
+		*len = tkey(found.l)->len;
+	return tvalp(found.l);
+}
+
 /* Optimization: the approach isn't ideal, as e.g. walking through the prefix
  * is duplicated and we explicitly construct the wildcard key.  Still, it's close
  * to optimum which would be significantly more complicated and error-prone to write. */
@@ -551,6 +593,24 @@ static int del_found(trie_t *tbl, struct found found, trie_val_t *val)
 int trie_del(trie_t *tbl, const trie_key_t *key, uint32_t len, trie_val_t *val)
 {
 	struct found found = find_equal(tbl, key, len);
+	return del_found(tbl, found, val);
+}
+
+int trie_del_first(trie_t *tbl, trie_key_t *key, uint32_t *len, trie_val_t *val)
+{
+	struct found found = find_first(tbl);
+	if (!found.l)
+		return KNOT_ENOENT;
+	if (key) {
+		if (!len)
+			return KNOT_EINVAL;
+		if (*len < tkey(found.l)->len)
+			return KNOT_ENOBUFS;
+		memcpy(key, tkey(found.l)->chars, tkey(found.l)->len);
+	}
+	if (len) { // makes sense even with key == NULL
+		*len = tkey(found.l)->len;
+	}
 	return del_found(tbl, found, val);
 }
 
