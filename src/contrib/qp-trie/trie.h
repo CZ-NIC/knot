@@ -65,6 +65,10 @@ size_t trie_weight(const trie_t *tbl);
 /*! \brief Search the trie, returning NULL on failure. */
 trie_val_t* trie_get_try(trie_t *tbl, const trie_key_t *key, uint32_t len);
 
+/*!
+ * \brief Return pointer to the minimum.  Optionally with key and its length. */
+trie_val_t* trie_get_first(trie_t *tbl, trie_key_t **key, uint32_t *len);
+
 /*! \brief Search the trie including DNS wildcard semantics, returning NULL on failure.
  *
  * \note We assume the key is in knot_dname_lf() format, i.e. labels are ordered
@@ -101,6 +105,15 @@ int trie_apply(trie_t *tbl, int (*f)(trie_val_t *, void *), void *d);
  * If val!=NULL and deletion succeeded, the deleted value is set.
  */
 int trie_del(trie_t *tbl, const trie_key_t *key, uint32_t len, trie_val_t *val);
+
+/*!
+ * \brief Remove the first item, returning KNOT_EOK on success.
+ *
+ * You may optionally get the key and/or value.
+ * The key is copied, so you need to pass sufficient len,
+ * otherwise KNOT_ENOBUFS is returned.
+ */
+int trie_del_first(trie_t *tbl, trie_key_t *key, uint32_t *len, trie_val_t *val);
 
 
 /*! \brief Create a new iterator pointing to the first element (if any).
