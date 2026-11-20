@@ -69,6 +69,9 @@ knot_tls_conn_t *knot_tls_conn_new(knot_tls_ctx_t *ctx, int sock_fd)
 	}
 	res->ctx = ctx;
 	res->fd = sock_fd;
+	if (ctx->flags & KNOT_TLS_SERVER) {
+		res->flags |= KNOT_TLS_CONN_SERVER;
+	}
 
 	int ret = knot_tls_session(&res->session, ctx->creds, ctx->priority,
 	                           ctx->flags);
@@ -170,6 +173,14 @@ int knot_tls_handshake(knot_tls_conn_t *conn, bool oneshot)
 
 	switch (ret) {
 	case GNUTLS_E_SUCCESS:
+		if (conn->flags & KNOT_TLS_CONN_SERVER) {
+			do {
+				ret = gnutls_session_ticket_send(conn->session, 1, 0);
+			} while (ret == GNUTLS_E_AGAIN || ret == GNUTLS_E_INTERRUPTED);
+			if (ret != GNUTLS_E_SUCCESS) {
+				return KNOT_NET_EHSHAKE;
+			}
+		}
 		conn->flags |= KNOT_TLS_CONN_HANDSHAKE_DONE;
 		return knot_tls_pin_check(conn->session, conn->ctx->creds) == KNOT_EOK
 		       && knot_tls_cert_check(conn->session, conn->ctx->creds) == KNOT_EOK
