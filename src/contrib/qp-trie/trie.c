@@ -528,6 +528,7 @@ static int del_found(trie_t *tbl, struct found found, trie_val_t *val)
 	node_t *tp = twigs(p);
 	uint ci = twig_number(t, p);
 	uint cc = branch_weight(p); // child count
+	assert(ci >= 0 && ci < cc);
 
 	if (cc == 2) {
 		// collapse binary node p: move the other child to the parent
@@ -722,6 +723,7 @@ static int ns_last_leaf(nstack_t *ns)
 		if (!isbranch(t))
 			return KNOT_EOK;
 		uint lasti = branch_weight(t) - 1;
+		assert(lasti >= 0);
 		ns->stack[ns->len++] = twig(t, lasti);
 	} while (true);
 }
@@ -765,6 +767,7 @@ static int ns_prev_leaf(nstack_t *ns)
 		t = ns->stack[ns->len - 1];
 		node_t *p = ns->stack[ns->len - 2];
 		uint ci = twig_number(t, p);
+		assert(ci >= 0 && ci <= 16);
 		if (ci == 0) // we've got to go up again
 			continue;
 		// t isn't the first child -> go down the previous one
