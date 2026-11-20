@@ -424,6 +424,42 @@ size_t trie_weight(const trie_t *tbl)
 	return tbl->weight;
 }
 
+struct found {
+	node_t *l;	/**< the found leaf (NULL if not found) */
+	node_t *p;	/**< the leaf's parent (if exists) */
+	bitmap_t b;	/**< bit-mask with a single bit marking l under p */
+};
+
+/** Search trie for an item with the given key (equality only). */
+static struct found find_equal(trie_t *tbl, const trie_key_t *key, uint32_t len)
+{
+	assert(tbl);
+	struct found ret0;
+	memset(&ret0, 0, sizeof(ret0));
+	if (!tbl->weight)
+		return ret0;
+	/* Current node and parent while descending (returned values basically). */
+	node_t *t = &tbl->root;
+	node_t *p = NULL;
+	bitmap_t b = 0;
+	while (isbranch(t)) {
+		__builtin_prefetch(twigs(t));
+		b = twigbit(t, key, len);
+		if (!hastwig(t, b))
+			return ret0;
+		p = t;
+		t = twig(t, twigoff(t, b));
+	}
+	tkey_t *lkey = tkey(t);
+	if (key_cmp(key, len, lkey->chars, lkey->len) != 0)
+		return ret0;
+	return (struct found) {
+		.l = t,
+		.p = p,
+		.b = b,
+	};
+}
+
 trie_val_t* trie_get_try(trie_t *tbl, const trie_key_t *key, uint32_t len)
 {
 	assert(tbl);
