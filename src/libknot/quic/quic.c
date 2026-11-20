@@ -292,10 +292,14 @@ static int handshake_completed_cb(ngtcp2_conn *conn, void *user_data)
 		       && knot_tls_cert_check(ctx->tls_session, ctx->quic_table->creds) == KNOT_EOK
 		               ? 0
 		               : NGTCP2_ERR_CALLBACK_FAILURE;
-	}
-
-	if (gnutls_session_ticket_send(ctx->tls_session, 1, 0) != GNUTLS_E_SUCCESS) {
-		return TLS_CALLBACK_ERR;
+	} else {
+		int ret;
+		do {
+			ret = gnutls_session_ticket_send(ctx->tls_session, 1, 0);
+		} while (ret == GNUTLS_E_AGAIN || ret == GNUTLS_E_INTERRUPTED);
+		if (ret != GNUTLS_E_SUCCESS) {
+			return TLS_CALLBACK_ERR;
+		}
 	}
 
 	uint8_t token[NGTCP2_CRYPTO_MAX_REGULAR_TOKENLEN];
