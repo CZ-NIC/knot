@@ -203,8 +203,13 @@ PKG_CHECK_MODULES([gnutls], [gnutls >= 3.6.12], [
      gnutls_quic=yes], [gnutls_quic=no])
 
   AC_RUN_IFELSE(
-    [AC_LANG_PROGRAM([[#include <gnutls/gnutls.h>]],
-      [[return gnutls_group_get_id("MLKEM768") == GNUTLS_GROUP_INVALID;]])],
+    [AC_LANG_PROGRAM([[#include <gnutls/gnutls.h>
+                       #include <gnutls/abstract.h>]],
+                     [[gnutls_privkey_t key;
+                       if (gnutls_privkey_init(&key) != GNUTLS_E_SUCCESS) return 1;
+                       int ret = gnutls_privkey_generate(key, GNUTLS_PK_MLDSA44, 0, 0);
+                       gnutls_privkey_deinit(key);
+                       return ret != GNUTLS_E_SUCCESS;]])],
     [AC_DEFINE([HAVE_MLDSA44], [1], [ML-DSA-44 available])
      enable_mldsa44=yes],
     [enable_mldsa44=no])
