@@ -90,7 +90,9 @@ libcontrib_la_SOURCES = \
 	contrib/url-parser/url_parser.c		\
 	contrib/url-parser/url_parser.h		\
 	contrib/vpool/vpool.c			\
-	contrib/vpool/vpool.h
+	contrib/vpool/vpool.h			\
+	contrib/zis2_tree.c			\
+	contrib/zis2_tree.h
 
 if HAVE_LIBDNSTAP
 noinst_LTLIBRARIES += libdnstap.la
