@@ -66,7 +66,8 @@ check_PROGRAMS = \
 	contrib/test_strtonum			\
 	contrib/test_time			\
 	contrib/test_toeplitz			\
-	contrib/test_wire_ctx
+	contrib/test_wire_ctx			\
+	contrib/test_zis2_tree
 
 if HAVE_DAEMON
 check_PROGRAMS += \

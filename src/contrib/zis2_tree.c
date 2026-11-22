@@ -28,7 +28,7 @@ static bool isbranch(const zis2_tree_t *t, const zis2_node_t *n)
 
 static size_t node_alloc_size(const zis2_tree_t *t, const zis2_size_t capacity, zis2_size_t depth)
 {
-	return sizeof(zis2_node_t) + (t->has_bitmap ? BITMAP_SIZE : 0) + (capacity * t->hash_len) + (isbranch(t, n) ? (capacity * sizeof(zis2_node_t *)) : 0);
+	return sizeof(zis2_node_t) + (t->has_bitmap ? BITMAP_SIZE : 0) + (capacity * t->hash_len) + ((depth < t->depth - 1) ? (capacity * sizeof(zis2_node_t *)) : 0);
 }
 
 static zis2_char_t *node_hashable_start(const zis2_node_t *n)
@@ -68,6 +68,15 @@ static zis2_char_t *node_hash_at(const zis2_tree_t *t, const zis2_node_t *n, zis
 {
 	assert(idx < n->size || idx == n->capacity /* just for the shortcut in node_pchild */);
 	return (zis2_char_t *)(n + 1) + node_bitmap_size(t, n) + (idx * t->hash_len);
+}
+
+static void invalidate_hash_at(const zis2_tree_t *t, const zis2_node_t *n, zis2_size_t idx)
+{
+	*(zis2_size_t *)node_hash_at(t, n, idx) = 0;
+}
+
+static bool hash_invalid(const zis2_char_t *hash) {
+	return *(zis2_size_t *)hash == 0;
 }
 
 static zis2_node_t **node_pchild(const zis2_tree_t *t, const zis2_node_t *n, zis2_size_t idx)
@@ -210,6 +219,7 @@ static int node_add(zis2_tree_t *t, zis2_node_t **pn, const zis2_char_t *hash)
 	int ret = 0;
 	zis2_size_t at = node_bsearch(t, n, hash, &hit);
 	if (isbranch(t, n) && hit) {
+		invalidate_hash_at(t, n, at);
 		return node_add(t, node_pchild(t, n, at), hash);
 	}
 	if (!isbranch(t, n) && hit && t->no_same_leaf) {
@@ -229,13 +239,13 @@ static int node_add(zis2_tree_t *t, zis2_node_t **pn, const zis2_char_t *hash)
 		}
 		n = *pn;
 	}
-	node_grow(t, n, at);
+	node_grow(t, n, at); // NOTE this automatically invalidates hash at added position
 	if (isbranch(t, n)) {
 		zis2_node_t **addto = node_pchild(t, n, at);
 		*addto = add;
 		ret = node_add(t, addto, hash);
 		if (ret == 0 && t->has_bitmap) {
-			node_bitmap_set(t, n, at, true);
+			node_bitmap_set(t, n, hash[n->depth], true);
 		}
 	} else {
 		memcpy(node_hash_at(t, n, at), hash, t->hash_len);
@@ -256,6 +266,7 @@ static int node_rem(zis2_tree_t *t, zis2_node_t **pn, const zis2_char_t *hash)
 		return -ENOENT;
 	}
 	if (isbranch(t, n)) {
+		invalidate_hash_at(t, n, at);
 		ret = node_rem(t, node_pchild(t, n, at), hash);
 		if (ret != 0) {
 			return ret;
@@ -278,6 +289,80 @@ static int node_rem(zis2_tree_t *t, zis2_node_t **pn, const zis2_char_t *hash)
 		ret = node_realloc(t, pn, n->capacity / 2);
 	}
 	return ret;
+}
+
+static int node_rehash(zis2_tree_t *t, zis2_node_t *n, zis2_char_t *n_hash, zis2_hash_cb hash_fun, void *hf_ctx)
+{
+	if (!hash_invalid(n_hash)) {
+		return 0;
+	}
+
+	if (isbranch(t, n)) {
+		uint8_t *child_hash = node_hash_at(t, n, 0);
+		node_foreach(t, n, child) {
+			int ret = node_rehash(t, child, child_hash, hash_fun, hf_ctx);
+			if (ret != 0) {
+				return ret;
+			}
+			child_hash += t->hash_len;
+		}
+	}
+
+	return hash_fun(n_hash, node_hashable_start(n), node_hashable_length(t, n), hf_ctx, t->algorithm);
+}
+
+static int node_check(zis2_tree_t *t, zis2_node_t *n)
+{
+	const zis2_char_t *prev = node_leaf_at(t, n, 0);
+	for (zis2_size_t i = 1; i < n->size; i++) {
+		const zis2_char_t *cur = node_leaf_at(t, n, i);
+		int cmp = memcmp(cur, prev, t->hash_len);
+		if (cmp < 0) {
+			return -EILSEQ;
+		} else if (cmp == 0 && isbranch(t, n)) {
+			return -EEXIST;
+		}
+		prev = cur;
+	}
+
+	zis2_size_t bits = 0;
+	const zis2_char_t *cur = node_leaf_at(t, n, 0);
+	for (zis2_size_t i = 0; i < node_bitmap_size(t, n); i++) {
+		zis2_char_t byte = node_bitmap(t, n)[i];
+		for (int j = 0; j < 8; j++) {
+			if (byte & 1) {
+				if (cur[n->depth] != i * 8 + j) {
+					return -EADV;
+				}
+				bits++;
+				if (bits < n->size) {
+					cur = node_leaf_at(t, n, bits);
+				}
+			}
+			byte >>= 1;
+		}
+	}
+	if (node_bitmap_size(t, n) > 0 && bits != n->size) {
+		return -ELNRNG;
+	}
+
+	if (n->size > n->capacity || (n->size == 0 && n != t->root) ||
+	    n->capacity < INITIAL_CAPACITY || n->size * 2 + 2 < n->capacity) {
+		return -EXFULL;
+	}
+	if (isbranch(t, n)){
+		if (n->capacity > 256) {
+			return -EDQUOT;
+		}
+
+		node_foreach(t, n, child) {
+			int ret = node_check(t, child);
+			if (ret != 0) {
+				return ret;
+			}
+		}
+	}
+	return 0;
 }
 
 zis2_tree_t *zis2_tree_new(zis2_size_t depth, zis2_size_t hash_len, bool has_bitmap, struct knot_mm *mm)
@@ -322,5 +407,76 @@ int zis2_tree_rem(zis2_tree_t *tree, const zis2_char_t *hash)
 		return -EINVAL;
 	}
 	return node_rem(tree, &tree->root, hash);
+}
+
+int zis2_tree_hash(zis2_tree_t *tree, zis2_hash_cb hash_fun, void *hf_ctx, zis2_char_t *out)
+{
+	if (tree == NULL || hash_fun == NULL || out == NULL) {
+		return -EINVAL;
+	}
+
+	memset(out, 0, tree->hash_len);
+	return node_rehash(tree, tree->root, out, hash_fun, hf_ctx);
+}
+
+int zis2_tree_check(zis2_tree_t *tree)
+{
+	if (tree == NULL || tree->root == NULL) {
+		return -EINVAL;
+	}
+	return node_check(tree, tree->root);
+}
+
+#include <stdio.h>
+
+static void print_hash(zis2_char_t *hash, zis2_size_t len)
+{
+	const static char hex[] = "0123456789abcdef";
+	for (zis2_size_t i = 0; i < len; i++) {
+		putchar(hex[ hash[i] >> 4 ]);
+		putchar(hex[ hash[i] & 15 ]);
+	}
+}
+
+static void node_print(zis2_tree_t *t, zis2_node_t *n, zis2_char_t *n_hash, bool last_child)
+{
+	static const char pipes[] = "||||||||||||||||||||||||||||||||";
+	if (n->depth > 0) {
+		printf("%.*s%c%c%c", n->depth - 1, pipes, 0xe2, 0x94, last_child ? 0x94 : 0x9c);
+	}
+
+	if (isbranch(t, n)) {
+		printf("* ");
+		if (t->has_bitmap) {
+			printf("b:");
+			print_hash(node_bitmap(t, n), node_bitmap_size(t, n));
+			printf(" ");
+		}
+	}
+
+	if (n_hash != NULL) {
+		print_hash(n_hash, t->hash_len);
+		printf("\n");
+	} else {
+		printf("(root)\n");
+	}
+
+	if (isbranch(t, n)) {
+		uint8_t *child_hash = node_hash_at(t, n, 0);
+		zis2_node_t *last = node_child(t, n, n->size - 1);
+		node_foreach(t, n, child) {
+			node_print(t, child, child_hash, child == last);
+			child_hash += t->hash_len;
+		}
+	}
+}
+
+void zis2_tree_print(zis2_tree_t *tree)
+{
+	if (tree == NULL) {
+		printf("(NULL)\n");
+	} else {
+		node_print(tree, tree->root, NULL, false);
+	}
 }
 

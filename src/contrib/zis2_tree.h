@@ -74,3 +74,27 @@ int zis2_tree_add(zis2_tree_t *tree, const zis2_char_t *hash);
  * \return 0 if OK; -ENOMEM, -EINVAL, -ENOENT
  */
 int zis2_tree_rem(zis2_tree_t *tree, const zis2_char_t *hash);
+
+/*!
+ * \brief Recompute changed nodes' hashes and output the root hash.
+ *
+ * \param tree       Tree to get hash of.
+ * \param hash_fun   Hash function callback.
+ * \param hf_ctx     Arbitrary context for the callback, possibly NULL.
+ * \param out        Output: hash of length tree->hash_len.
+ *
+ * \return 0 on success, non-zero error code from the callback.
+ */
+int zis2_tree_hash(zis2_tree_t *tree, zis2_hash_cb hash_fun, void *hf_ctx, zis2_char_t *out);
+
+/*!
+ * \brief Internal tree data structure consistency check for debugging.
+ *
+ * \return 0 if OK, various < 0 on different errors.
+ */
+int zis2_tree_check(zis2_tree_t *tree);
+
+/*!
+ * \brief Dump the tree structure to stdout for debugging.
+ */
+void zis2_tree_print(zis2_tree_t *tree);

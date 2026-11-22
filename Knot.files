@@ -709,6 +709,7 @@ tests/contrib/test_strtonum.c
 tests/contrib/test_time.c
 tests/contrib/test_toeplitz.c
 tests/contrib/test_wire_ctx.c
+tests/contrib/test_zis2_tree.c
 tests/knot/test_acl.c
 tests/knot/test_changeset.c
 tests/knot/test_conf.c
