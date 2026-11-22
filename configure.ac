@@ -189,8 +189,10 @@ AM_CONDITIONAL([FAST_PARSER], [test "$enable_fastparser" = "yes"])
 PKG_CHECK_MODULES([gnutls], [gnutls >= 3.6.12], [
   save_CFLAGS=$CFLAGS
   save_LIBS=$LIBS
+  save_LDFLAGS=$LDFLAGS
   CFLAGS="$CFLAGS $gnutls_CFLAGS"
   LIBS="$LIBS $gnutls_LIBS"
+  LDFLAGS="$LDFLAGS -Wl,-rpath,$($PKG_CONFIG --variable=libdir gnutls)"
 
   AC_CHECK_FUNC([gnutls_pkcs11_copy_pubkey],
     [AC_DEFINE([HAVE_GNUTLS_PKCS11], [1], [gnutls_pkcs11_copy_pubkey available])
@@ -201,13 +203,22 @@ PKG_CHECK_MODULES([gnutls], [gnutls >= 3.6.12], [
      gnutls_quic=yes], [gnutls_quic=no])
 
   AC_CHECK_FUNC([gnutls_pubkey_import_mldsa_raw],
-    [AC_DEFINE([HAVE_MLDSA44], [1], [MLDSA44 available]),
-     enable_mldsa44=yes],
-    [enable_mldsa44=no],
-    [#include <gnutls/gnutls.h>])
+    [AC_RUN_IFELSE(
+       [AC_LANG_PROGRAM([[#include <gnutls/gnutls.h>
+                          #include <gnutls/abstract.h>]],
+                        [[gnutls_privkey_t key;
+                          if (gnutls_privkey_init(&key) != GNUTLS_E_SUCCESS) return 1;
+                          int ret = gnutls_privkey_generate(key, GNUTLS_PK_MLDSA44, 0, 0);
+                          gnutls_privkey_deinit(key);
+                          return ret != GNUTLS_E_SUCCESS;]])],
+       [AC_DEFINE([HAVE_MLDSA44], [1], [ML-DSA-44 available])
+        enable_mldsa44=yes],
+       [enable_mldsa44=no])],
+    [enable_mldsa44=no])
 
   CFLAGS=$save_CFLAGS
   LIBS=$save_LIBS
+  LDFLAGS=$save_LDFLAGS
 ], [
   AS_IF([test "$enable_redis" != "module"], [AC_MSG_ERROR([GnuTLS library not found])])
 ])
@@ -953,7 +964,7 @@ result_msg_base="
     D-Bus support:          ${enable_dbus}
     POSIX capabilities:     ${enable_cap_ng}
     PKCS #11 support:       ${enable_pkcs11}
-    MLDSA44 support:        ${enable_mldsa44}
+    ML-DSA-44 support:      ${enable_mldsa44}
 
     Code coverage:          ${enable_code_coverage}
     Valgrind Memcheck:      ${with_memcheck}
