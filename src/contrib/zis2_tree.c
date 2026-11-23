@@ -20,37 +20,40 @@
 #define INITIAL_CAPACITY 8
 #define BITMAP_SIZE 32
 
-// TODO maybe put an extra field into zis2_node in order to optimize this? There is a placeholder there anyway
+/*
+ * Tree structure:
+ * - root
+ * - one or more levels of intermediate (Level-1) branch nodes, isbranch(n) == true
+ * - one level of final (Level-2) branch nodes, isbranch == false !!
+ * - one level of leaves, which are actually not nodes in the tree, but only hashes stored at Level-2 nodes
+ */
+
+static bool isbranch_depth(const zis2_tree_t *t, zis2_size_t depth)
+{
+	assert(depth < t->depth);
+	return depth != t->depth - 1;
+}
+
 static bool isbranch(const zis2_tree_t *t, const zis2_node_t *n)
 {
-	return n->depth < t->depth - 1;
+	assert(isbranch_depth(t, n->depth) == (bool)n->isbranch);
+	return (bool)n->isbranch;
 }
 
-static size_t node_alloc_size(const zis2_tree_t *t, const zis2_size_t capacity, zis2_size_t depth)
+static size_t node_alloc_size(const zis2_tree_t *t, zis2_size_t capacity, zis2_size_t depth)
 {
-	return sizeof(zis2_node_t) + (t->has_bitmap ? BITMAP_SIZE : 0) + (capacity * t->hash_len) + ((depth < t->depth - 1) ? (capacity * sizeof(zis2_node_t *)) : 0);
-}
-
-static zis2_char_t *node_hashable_start(const zis2_node_t *n)
-{
-	return (zis2_char_t *)(&n->depth);
-}
-
-static size_t node_hashable_length(const zis2_tree_t *t, const zis2_node_t *n)
-{
-	return sizeof(n->depth) + (t->has_bitmap ? BITMAP_SIZE : 0) + (n->capacity * t->hash_len);
-}
-
-static zis2_char_t *node_bitmap(const zis2_tree_t *t, const zis2_node_t *n)
-{
-	assert(isbranch(t, n));
-	assert(t->has_bitmap);
-	return (zis2_char_t *)n + sizeof(*n);
+	return sizeof(zis2_node_t) + (t->has_bitmap ? BITMAP_SIZE : 0) + (capacity * t->hash_len) + (isbranch_depth(t, depth) ? (capacity * sizeof(zis2_node_t *)) : 0);
 }
 
 static size_t node_bitmap_size(const zis2_tree_t *t, const zis2_node_t *n)
 {
 	return (t->has_bitmap && isbranch(t, n)) ? BITMAP_SIZE : 0;
+}
+
+static zis2_char_t *node_bitmap(const zis2_tree_t *t, const zis2_node_t *n)
+{
+	assert(node_bitmap_size(t, n) > 0);
+	return (zis2_char_t *)n + sizeof(*n);
 }
 
 static void node_bitmap_set(const zis2_tree_t *t, zis2_node_t *n, zis2_size_t idx, bool set)
@@ -77,6 +80,7 @@ static void invalidate_hash_at(const zis2_tree_t *t, const zis2_node_t *n, zis2_
 
 static bool hash_invalid(const zis2_char_t *hash) {
 	return *(zis2_size_t *)hash == 0;
+	// if by chance a legitimate hash starts with four zero bytes, than it's just performance penalty
 }
 
 static zis2_node_t **node_pchild(const zis2_tree_t *t, const zis2_node_t *n, zis2_size_t idx)
@@ -91,46 +95,85 @@ static zis2_node_t *node_child(const zis2_tree_t *t, const zis2_node_t *n, zis2_
 	return *node_pchild(t, n, idx);
 }
 
+static zis2_char_t *node_hashable_start(const zis2_tree_t *t, const zis2_node_t *n)
+{
+	//return (zis2_char_t *)(&n->depth);
+	return (zis2_char_t *)(n + 1);
+}
+
+static size_t node_hashable_length(const zis2_tree_t *t, const zis2_node_t *n)
+{
+	return (t->has_bitmap ? BITMAP_SIZE : 0) + (n->capacity * t->hash_len);
+}
+
 #define node_foreach(t, n, iter_name) \
-	for (zis2_node_t *__node_foreach_start = node_child((t), (n), 0), *iter_name = __node_foreach_start; \
-	     iter_name != __node_foreach_start + (n)->size; \
-	     iter_name++)
+	for (zis2_node_t **__node_foreach_start = node_pchild((t), (n), 0), \
+	                 **__node_foreach_end   = __node_foreach_start + (n)->size, \
+	                 **__node_foreach_cur   = __node_foreach_start, \
+	                 *iter_name             = *__node_foreach_cur; \
+	     __node_foreach_cur != __node_foreach_end; \
+	     iter_name = *++__node_foreach_cur)
 
 static zis2_char_t *node_leaf_at(const zis2_tree_t *t, const zis2_node_t *n, zis2_size_t idx)
 {
-	return isbranch(t, n) ? node_child(t, n, idx)->any_leaf : node_hash_at(t, n, idx);
+	while (isbranch(t, n)) {
+		n = node_child(t, n, idx);
+		idx = 0;
+	}
+	return node_hash_at(t, n, idx);
+	//return isbranch(t, n) ? node_child(t, n, idx)->any_leaf : node_hash_at(t, n, idx);
 }
 
-static void node_leaf_fix(const zis2_tree_t *t, zis2_node_t *n)
-{
-	n->any_leaf = node_leaf_at(t, n, 0);
-}
 
-static int node_cmp(const zis2_tree_t *t, const zis2_node_t *n, zis2_size_t idx, const zis2_char_t *hash)
+/*static int node_cmp(const zis2_tree_t *t, const zis2_node_t *n, zis2_size_t idx, const zis2_char_t *hash)
 {
 	if (isbranch(t, n)) {
 		return memcmp(node_leaf_at(t, n, idx), hash, n->depth + 1);
 	} else {
 		return memcmp(node_hash_at(t, n, idx), hash, t->hash_len); // in fact, leading n->depth bytes could be skipped from comparing
 	}
-}
+}*/
 
-// TODO: try to optimize by splitting to isbranch versus !isbranch cases?
 static zis2_size_t node_bsearch(const zis2_tree_t *t, const zis2_node_t *n, const zis2_char_t *hash, bool *hit)
 {
 	zis2_size_t beg = 0, end = n->size;
-	while (beg < end) {
-		long mid = (beg + end) / 2;
-		int cmp = node_cmp(t, n, mid, hash);
-		if (cmp == 0) {
-			*hit = true;
-			return mid;
-		} else if (cmp > 0) {
-			end = mid;
-		} else {
-			beg = mid + 1;
+
+	if (end == 0) {
+		return 0;
+	}
+
+	if (isbranch(t, n)) {
+		zis2_node_t **pchilds = node_pchild(t, n, 0);
+		zis2_char_t ref = hash[n->depth];
+		while (beg < end) {
+			zis2_size_t mid = (beg + end) / 2;
+			zis2_char_t found = (pchilds[mid])->order;
+			if (found == ref) {
+				*hit = true;
+				return mid;
+			} else if (found > ref) {
+				end = mid;
+			} else {
+				beg = mid + 1;
+			}
+		}
+	} else {
+		zis2_char_t *hashes = node_hash_at(t, n, 0);
+		while (beg < end) {
+			zis2_size_t mid = (beg + end) / 2;
+			zis2_char_t *found = hashes + mid * t->hash_len;
+			int cmp = memcmp(found, hash, t->hash_len); // in fact, leading n->depth bytes could be skipped from comparing, but this is better aligned
+			if (cmp == 0) {
+				*hit = true;
+				return mid;
+			} else if (cmp > 0) {
+				end = mid;
+			} else {
+				beg = mid + 1;
+			}
 		}
 	}
+
 	return beg;
 }
 
@@ -139,15 +182,13 @@ static void node_grow(const zis2_tree_t *t, zis2_node_t *n, zis2_size_t at)
 	assert(n->size < n->capacity);
 	assert(at <= n->size);
 	zis2_size_t nmove = n->size - at;
+	n->size++;
 	if (nmove > 0) {
 		memmove(node_hash_at(t, n, at + 1), node_hash_at(t, n, at), nmove * t->hash_len);
-		memset(node_hash_at(t, n, at), 0, t->hash_len);
 		if (isbranch(t, n)) {
 			memmove(node_pchild(t, n, at + 1), node_pchild(t, n, at), nmove * sizeof(zis2_node_t *));
-			memset(node_pchild(t, n, at), 0, sizeof(zis2_node_t *));
 		}
 	}
-	n->size++;
 }
 
 static void node_shrink(const zis2_tree_t *t, zis2_node_t *n, zis2_size_t at)
@@ -185,11 +226,14 @@ static int node_realloc(zis2_tree_t *t, zis2_node_t **pn, zis2_size_t new_capaci
 	return 0;
 }
 
-static zis2_node_t *node_new(zis2_tree_t *t, zis2_size_t depth)
+static zis2_node_t *node_new(zis2_tree_t *t, zis2_size_t depth, zis2_char_t order)
 {
 	size_t asize = node_alloc_size(t, INITIAL_CAPACITY, depth);
 	zis2_node_t *n = mm_calloc(t->mm, 1, asize);
 	if (n != NULL) {
+		n->order = order;
+		assert(depth < t->depth);
+		n->isbranch = (bool)(depth != t->depth - 1);
 		n->capacity = INITIAL_CAPACITY;
 		n->depth = depth;
 		t->alloc_size += asize;
@@ -226,7 +270,7 @@ static int node_add(zis2_tree_t *t, zis2_node_t **pn, const zis2_char_t *hash)
 		return -EEXIST;
 	}
 	if (isbranch(t, n) && !hit) {
-		add = node_new(t, n->depth + 1);
+		add = node_new(t, n->depth + 1, hash[n->depth]);
 		if (add == NULL) {
 			return -ENOMEM;
 		}
@@ -239,7 +283,8 @@ static int node_add(zis2_tree_t *t, zis2_node_t **pn, const zis2_char_t *hash)
 		}
 		n = *pn;
 	}
-	node_grow(t, n, at); // NOTE this automatically invalidates hash at added position
+	node_grow(t, n, at);
+	invalidate_hash_at(t, n, at);
 	if (isbranch(t, n)) {
 		zis2_node_t **addto = node_pchild(t, n, at);
 		*addto = add;
@@ -251,7 +296,7 @@ static int node_add(zis2_tree_t *t, zis2_node_t **pn, const zis2_char_t *hash)
 		memcpy(node_hash_at(t, n, at), hash, t->hash_len);
 	}
 	if (ret == 0) {
-		node_leaf_fix(t, n);
+		//node_leaf_fix(t, n);
 	}
 	return ret;
 }
@@ -280,7 +325,7 @@ static int node_rem(zis2_tree_t *t, zis2_node_t **pn, const zis2_char_t *hash)
 	}
 
 	if (n->size > 0) {
-		node_leaf_fix(t, n);
+		//node_leaf_fix(t, n);
 	}
 	if (isbranch(t, n) && t->has_bitmap) {
 		node_bitmap_set(t, n, at, false);
@@ -308,14 +353,20 @@ static int node_rehash(zis2_tree_t *t, zis2_node_t *n, zis2_char_t *n_hash, zis2
 		}
 	}
 
-	return hash_fun(n_hash, node_hashable_start(n), node_hashable_length(t, n), hf_ctx, t->algorithm);
+	return hash_fun(n_hash, node_hashable_start(t, n), node_hashable_length(t, n), hf_ctx, t->algorithm);
 }
 
 static int node_check(zis2_tree_t *t, zis2_node_t *n)
 {
 	const zis2_char_t *prev = node_leaf_at(t, n, 0);
+	if (n->depth > 0 && prev[n->depth - 1] != n->order) {
+		return -ESPIPE;
+	}
 	for (zis2_size_t i = 1; i < n->size; i++) {
 		const zis2_char_t *cur = node_leaf_at(t, n, i);
+		if (n->depth > 0 && cur[n->depth - 1] != n->order) {
+			return -ESPIPE;
+		}
 		int cmp = memcmp(cur, prev, t->hash_len);
 		if (cmp < 0) {
 			return -EILSEQ;
@@ -329,7 +380,7 @@ static int node_check(zis2_tree_t *t, zis2_node_t *n)
 	const zis2_char_t *cur = node_leaf_at(t, n, 0);
 	for (zis2_size_t i = 0; i < node_bitmap_size(t, n); i++) {
 		zis2_char_t byte = node_bitmap(t, n)[i];
-		for (int j = 0; j < 8; j++) {
+		for (int j = 0; j < 8 && byte != 0; j++) {
 			if (byte & 1) {
 				if (cur[n->depth] != i * 8 + j) {
 					return -EADV;
@@ -347,7 +398,8 @@ static int node_check(zis2_tree_t *t, zis2_node_t *n)
 	}
 
 	if (n->size > n->capacity || (n->size == 0 && n != t->root) ||
-	    n->capacity < INITIAL_CAPACITY || n->size * 2 + 2 < n->capacity) {
+	    n->capacity < INITIAL_CAPACITY ||
+	    (n->size * 2 + 2 < n->capacity && n->capacity > INITIAL_CAPACITY)) {
 		return -EXFULL;
 	}
 	if (isbranch(t, n)){
@@ -368,14 +420,14 @@ static int node_check(zis2_tree_t *t, zis2_node_t *n)
 zis2_tree_t *zis2_tree_new(zis2_size_t depth, zis2_size_t hash_len, bool has_bitmap, struct knot_mm *mm)
 {
 	size_t asize = sizeof(zis2_tree_t) + hash_len;
-	zis2_tree_t *t = mm_alloc(mm, asize);
+	zis2_tree_t *t = mm_calloc(mm, 1, asize);
 	if (t != NULL) {
 		t->depth = depth;
 		t->hash_len = hash_len;
 		t->has_bitmap = has_bitmap;
 		t->alloc_size = asize;
 		t->mm = mm;
-		t->root = node_new(t, 0);
+		t->root = node_new(t, 0, 0);
 		if (t->root == NULL) {
 			free(t);
 			return NULL;
@@ -438,15 +490,21 @@ static void print_hash(zis2_char_t *hash, zis2_size_t len)
 	}
 }
 
-static void node_print(zis2_tree_t *t, zis2_node_t *n, zis2_char_t *n_hash, bool last_child)
+static void print_depth(zis2_size_t depth, bool last_child)
 {
 	static const char pipes[] = "||||||||||||||||||||||||||||||||";
-	if (n->depth > 0) {
-		printf("%.*s%c%c%c", n->depth - 1, pipes, 0xe2, 0x94, last_child ? 0x94 : 0x9c);
+	if (depth > 0) {
+		printf("%.*s%c%c%c", depth - 1, pipes, 0xe2, 0x94, last_child ? 0x94 : 0x9c);
 	}
+}
+
+static void node_print(zis2_tree_t *t, zis2_node_t *n, zis2_char_t *n_hash, bool last_child)
+{
+	print_depth(n->depth, last_child);
+
+	printf("* [%02x] ", n->order);
 
 	if (isbranch(t, n)) {
-		printf("* ");
 		if (t->has_bitmap) {
 			printf("b:");
 			print_hash(node_bitmap(t, n), node_bitmap_size(t, n));
@@ -467,6 +525,12 @@ static void node_print(zis2_tree_t *t, zis2_node_t *n, zis2_char_t *n_hash, bool
 		node_foreach(t, n, child) {
 			node_print(t, child, child_hash, child == last);
 			child_hash += t->hash_len;
+		}
+	} else {
+		for (zis2_size_t i = 0; i < n->size; i++) {
+			print_depth(n->depth + 1, i == n->size - 1);
+			print_hash(node_hash_at(t, n, i), t->hash_len);
+			printf("\n");
 		}
 	}
 }

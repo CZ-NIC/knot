@@ -28,38 +28,45 @@ int main(int argc, char *argv[])
 
 	plan_lazy();
 
-	zis2_tree_t *t = zis2_tree_new(4, 4, true, NULL);
+	zis2_tree_t *t = zis2_tree_new(3, 4, true, NULL);
 	assert(t != NULL);
 
 	uint8_t first[4] = { 1, 2 };
 	ok(0 == zis2_tree_add(t, first), "add first");
 	ok(0 == zis2_tree_hash(t, hash_uint32_add, NULL, oh), "rehash ok");
-	zis2_tree_print(t);
-	is_int(*(uint32_t *)first + 4 /* sizes throughout depth */ + 4 /* bitmaps */, out_hash, "first hash");
+	is_int(*(uint32_t *)first + 6 /* bitmaps */, out_hash, "first hash");
 	ok(0 == zis2_tree_check(t), "first tree ok");
 
-	/*uint8_t second[8] = { 1, 3 };
-	ok(0 == hs_tree_add(&t, second), "add second");
-	ok(0 == hs_tree_hash(&t, hash_uint64_xor, NULL, &hash), "rehash ok");
-	ok(hash[1] == 1, "second byte xored");
-	check_tree(&t);
+	uint8_t second[4] = { 1, 3 };
+	ok(0 == zis2_tree_add(t, second), "add second");
+	ok(0 == zis2_tree_hash(t, hash_uint32_add, NULL, oh), "rehash ok");
+	is_int(*(uint32_t *)first + *(uint32_t *)second + 6 + 8, out_hash, "second hash");
+	ok(0 == zis2_tree_check(t), "second tree ok");
 
-	uint8_t third[8] = { 2, 3 };
-	ok(0 == hs_tree_add(&t, third), "add third");
-	ok(0 == hs_tree_hash(&t, hash_uint64_xor, NULL, &hash), "rehash ok");
-	ok(hash[0] == 2, "third hash first byte");
-	check_tree(&t);
+	uint8_t third[4] = { 2, 3 };
+	ok(0 == zis2_tree_add(t, third), "add third");
+	ok(0 == zis2_tree_hash(t, hash_uint32_add, NULL, oh), "rehash ok");
+	is_int(*(uint32_t *)first + *(uint32_t *)second + *(uint32_t *)third + 6 + 8 + 12, out_hash, "third hash");
+	ok(0 == zis2_tree_check(t), "third tree ok");
 
-	ok(-EEXIST == hs_tree_add(&t, first), "add existing first");
-	check_tree(&t);
+	uint8_t fourth[4] = { 1, 3, 0, 1 };
+	ok(0 == zis2_tree_add(t, fourth), "add fourth");
+	ok(0 == zis2_tree_hash(t, hash_uint32_add, NULL, oh), "rehash ok");
+	is_int(*(uint32_t *)first + *(uint32_t *)second + *(uint32_t *)third + *(uint32_t *)fourth + 6 + 8 + 12, out_hash, "fourth hash");
+	ok(0 == zis2_tree_check(t), "fourth tree ok");
 
-	ok(0 == hs_tree_rem(&t, first), "remove first");
-	ok(0 == hs_tree_hash(&t, hash_uint64_xor, NULL, &hash), "rehash ok");
-	ok(hash[1] == 0, "without first hash");
-	check_tree(&t);
+	ok(0 == zis2_tree_add(t, first), "add existing first");
+	ok(0 == zis2_tree_hash(t, hash_uint32_add, NULL, oh), "rehash ok");
+	is_int(*(uint32_t *)first * 2 + *(uint32_t *)second + *(uint32_t *)third + *(uint32_t *)fourth + 6 + 8 + 12, out_hash, "refirst hash");
+	ok(0 == zis2_tree_check(t), "refirst tree ok");
 
-	ok(-ENOENT == hs_tree_rem(&t, first), "remove removed first");
-	check_tree(&t);*/
+	ok(0 == zis2_tree_rem(t, second), "remove second");
+	ok(0 == zis2_tree_hash(t, hash_uint32_add, NULL, oh), "rehash ok");
+	ok(*(uint32_t *)first * 2 + *(uint32_t *)third + *(uint32_t *)fourth + 6 + 12, "without second hash");
+	ok(0 == zis2_tree_check(t), "without second tree ok");
+
+	ok(-ENOENT == zis2_tree_rem(t, second), "remove removed second");
+	ok(0 == zis2_tree_check(t), "removal aborted tree ok");
 
 	zis2_tree_free(t);
 	return 0;

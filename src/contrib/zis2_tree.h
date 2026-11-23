@@ -15,11 +15,15 @@ typedef uint32_t zis2_size_t;
 typedef uint8_t zis2_char_t;
 
 typedef struct zis2_node {
-	zis2_char_t *any_leaf;
+	//zis2_char_t *any_leaf;
+	zis2_char_t order;
+	zis2_char_t isbranch;
+
 	zis2_size_t capacity;
 	zis2_size_t size;
-	zis2_size_t __alignment_placeholder;
-	zis2_size_t depth; // this MUST be the last
+
+	zis2_size_t depth;
+
 	// Follows:
 	// bitmap 32B (only if tree->has_bitmap and not leaf parent)
 	// child hashes (capacity * tree->hash_len)
