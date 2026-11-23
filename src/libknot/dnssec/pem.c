@@ -39,7 +39,7 @@ int dnssec_pem_to_x509(const dnssec_binary_t *pem, gnutls_x509_privkey_t *key,
 	}
 	if (r != GNUTLS_E_SUCCESS) {
 		gnutls_x509_privkey_deinit(_key);
-		return KNOT_KEY_EIMPORT;
+		return (r == GNUTLS_E_DECRYPTION_FAILED) ? KNOT_KEY_EDECRYPT : KNOT_KEY_EIMPORT;
 	}
 
 	*key = _key;

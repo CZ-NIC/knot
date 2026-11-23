@@ -39,6 +39,7 @@ typedef struct {
 	unsigned backend;
 	bool ksk_only;
 	bool missing;
+	bool undecrypt;
 	bool trash;
 	bool all_zones;
 	uint16_t keytag;
@@ -157,10 +158,14 @@ static bool same_command_bool(const char *arg, const char *cmd, bool *res)
 static key_info_t key_missing(kdnssec_ctx_t *ctx, const knot_kasp_key_t *key)
 {
 	key_info_t out = { .ks_count = ctx->keystores[0].count };
-	out.missing = !key->is_pub_only &&
-	              KNOT_EOK != kdnssec_load_private(ctx->keystores, key->id,
-	                                               key->key, &out.ks_name, &out.backend,
-	                                               &out.ksk_only);
+
+	if (!key->is_pub_only) {
+		int ret = kdnssec_load_private(ctx->keystores, key->id, key->key,
+		                               &out.ks_name, &out.backend, &out.ksk_only);
+		out.missing = (ret != KNOT_EOK);
+		out.undecrypt = (ret == KNOT_KEY_EDECRYPT);
+	}
+
 	return out;
 }
 
@@ -1122,7 +1127,9 @@ static void print_key_brief(const knot_kasp_key_t *key, key_info_t *info,
 	}
 
 	assert(info->missing || info->ks_name);
-	if (info->missing) {
+	if (info->undecrypt) {
+		printf(" %s%sundecryptable%s", COL_BOLD(c), COL_YELW(c), COL_RST(c));
+	} else if (info->missing) {
 		printf(" %s%smissing%s", COL_BOLD(c), COL_YELW(c), COL_RST(c));
 	} else if (info->ks_count > 1 && *info->ks_name != '-') {
 		printf(" %s%s/%s%s", COL_YELW(c), keystore_str(info->backend),
@@ -1171,13 +1178,13 @@ static void print_key_full(const knot_kasp_key_t *key, key_info_t *info,
 	uint16_t keytag = trash ? info->keytag : dnssec_key_get_keytag(key->key);
 
 	printf("%s ksk=%s zsk=%s tag=%05d algorithm=%-2d size=%-4u"
-	       " adt=%s public-only=%s for-later=%s missing=%s trash=%s",
+	       " adt=%s public-only=%s for-later=%s undecryptable=%s missing=%s trash=%s",
 	       key->id, (key->is_ksk ? "yes" : "no "), (key->is_zsk ? "yes" : "no "),
 	       keytag, (int)dnssec_key_get_algorithm(key->key),
 	       dnssec_key_get_size(key->key),
 	       ((dnssec_key_get_flags(key->key) & KNOT_DNSKEY_FLAG_ADT) ? "yes" : "no "),
-	       (key->is_pub_only ? "yes" : "no "),
-	       (key->is_for_later ? "yes" : "no "), (info->missing ? "yes" : "no "),
+	       (key->is_pub_only ? "yes" : "no "), (key->is_for_later ? "yes" : "no "),
+	       (info->undecrypt ? "yes" : "no "), (info->missing ? "yes" : "no "),
 	       (trash ? "yes" : "no "));
 
 	if (info->missing) {
@@ -1219,6 +1226,7 @@ static void print_key_json(const knot_kasp_key_t *key, key_info_t *info,
 	jsonw_bool(w,  "adt", (dnssec_key_get_flags(key->key) & KNOT_DNSKEY_FLAG_ADT) != 0);
 	jsonw_bool(w,  "public-only", key->is_pub_only);
 	jsonw_bool(w,  "for-later", key->is_for_later);
+	jsonw_bool(w,  "undecryptable", info->undecrypt);
 	jsonw_bool(w,  "missing", info->missing);
 	jsonw_bool(w,  "trash", trash);
 
