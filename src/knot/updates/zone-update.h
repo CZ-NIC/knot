@@ -33,13 +33,6 @@ typedef struct zone_update {
 	dnssec_validation_hint_t validation_hint;
 } zone_update_t;
 
-typedef struct {
-	zone_update_t *update;          /*!< The update we're iterating over. */
-	zone_tree_it_t tree_it;         /*!< Iterator for the new zone. */
-	const zone_node_t *cur_node;    /*!< Current node in the new zone. */
-	bool nsec3;                     /*!< Set when we're using the NSEC3 node tree. */
-} zone_update_iter_t;
-
 typedef enum {
 	// Mutually exclusive flags
 	UPDATE_FULL           = 1 << 0, /*!< Replace the old zone by a complete new one. */
@@ -56,6 +49,26 @@ typedef enum {
 	UPDATE_EVOK           = 1 << 12, /*!< External validation accepted the update. */
 	UPDATE_DIFF_NOSEMCHK  = 1 << 13, /*!< Diff: silently continue without ESEMCHECK if unchanged SOA serial.*/
 } zone_update_flags_t;
+
+typedef enum {
+	UPDATE_IT_REMOVALS  = 0,
+	UPDATE_IT_ADDITIONS = 1,
+	UPDATE_IT_BOTH      = 2,
+} zone_update_what_t;
+
+typedef struct {
+	zone_update_t *update;          /*!< The update being iterated. */
+	zone_tree_it_t tree_it;         /*!< Iterator for the diff trees. */
+	zone_update_what_t what;        /*!< What part is being iterated. */
+	bool have_soa_first;            /*!< Iteration just started with introducing SOA as first.*/
+	bool subtract_counterpart;      /*!< Subtract counterpart RRsets upon iteration. */
+	int ret;                        /*!< Error code from internal operations. */
+	int node_pos;                   /*!< Index of current RRset in current node. */
+	knot_rrset_t cur_rr;            /*!< Current RRset. */
+	knot_rdataset_t buf;            /*!< Internal rdataset to be cleared. */
+	zone_diff_t diff;               /*!< Diff structure. */
+} zone_update_it_t;
+
 
 /*!
  * \brief Inits given zone update structure, new memory context is created.
@@ -333,6 +346,57 @@ typedef int (*rrset_cb_t)(const knot_rrset_t *, void *);
  * \return KNOT_E* emitted by the callback or error in iteration.
  */
 int zone_update_foreach(zone_update_t *update, bool additions, rrset_cb_t cb, void *ctx);
+
+/*!
+ * \brief Initialize iteration over zone update added/removed RRsets.
+ *
+ * \param it          Iterator to be initialized.
+ * \param update      Zone update to iterate through.
+ * \param what        Iterate through removed/added/both RRsets.
+ *
+ * \return KNOT_E*
+ *
+ * \note In case of FULL update, the iteration through removals returns no RRsets and additions the whole zone.
+ */
+int zone_update_it_begin(zone_update_it_t *it, zone_update_t *update, zone_update_what_t what);
+
+/*!
+ * \brief Return true if the iteration is finished.
+ */
+bool zone_update_it_finished(zone_update_it_t *it);
+
+/*!
+ * \brief Return current RRset being iterated at.
+ */
+knot_rrset_t *zone_update_it_val(zone_update_it_t *it);
+
+/*!
+ * \brief The iterator points at some RRset in zone apex.
+ */
+bool zone_update_it_apex(zone_update_it_t *it);
+
+/*!
+ * \brief Currently iterating through additions.
+ */
+inline static bool zone_update_it_addition(zone_update_it_t *it)
+{
+	return it->what == UPDATE_IT_ADDITIONS;
+}
+
+/*!
+ * \brief Advance the iterator by one RRset forward.
+ */
+void zone_update_it_next(zone_update_it_t *it);
+
+/*!
+ * \brief Iterator destructor.
+ *
+ * \param it                 Iterator structure to be freed.
+ * \param combine_ret        Other error code that combines with internal one.
+ *
+ * \return Either combine_ret or some error code from the iterator.
+ */
+int zone_update_it_free(zone_update_it_t *it, int combine_ret);
 
 /*!
  * \brief Return whether apex DNSKEY, CDNSKEY, or CDS is updated.

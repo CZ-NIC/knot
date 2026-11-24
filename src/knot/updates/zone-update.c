@@ -1026,51 +1026,42 @@ int zone_update_verify_digest(conf_t *conf, zone_update_t *update)
 	return ret;
 }
 
-typedef struct {
-	FILE *f;
-	char *buf;
-	size_t buflen;
-	knot_dump_style_t style;
-} dump_changeset_ctx_t;
-
-static int dump_rrset(const knot_rrset_t *rr, void *ctx_void)
-{
-	dump_changeset_ctx_t *ctx = ctx_void;
-
-	int ret = knot_rrset_txt_dump(rr, &ctx->buf, &ctx->buflen, &ctx->style);
-	if (ret > 0) {
-		ret = (fprintf(ctx->f, "%s", ctx->buf) < 0 ? knot_map_errno() : 1);
-	}
-	return ret < 0 ? ret : KNOT_EOK;
-}
-
 static int dump_changeset_part(zone_update_t *up, bool additions,
                                const char *fname, const char *mode)
 {
-	dump_changeset_ctx_t ctx;
-	ctx.f = fopen(fname, mode);
-	if (ctx.f == NULL) {
+	FILE *f = fopen(fname, mode);
+	if (f == NULL) {
 		return knot_map_errno();
 	}
-	ctx.buflen = 1024;
-	ctx.buf = malloc(ctx.buflen);
-	if (ctx.buf == NULL) {
-		(void)fclose(ctx.f);
+	size_t buflen = 1024;
+	char *buf = malloc(buflen);
+	if (buf == NULL) {
+		(void)fclose(f);
 		return KNOT_ENOMEM;
 	}
-	ctx.style = KNOT_DUMP_STYLE_DEFAULT;
-	ctx.style.now = knot_time();
+	knot_dump_style_t style = KNOT_DUMP_STYLE_DEFAULT;
+	style.now = knot_time();
 
 	int ret;
-	if (fprintf(ctx.f, ";; %s records\n", additions ? "Added" : "Removed") > 0) {
-		ret = zone_update_foreach(up, additions, dump_rrset, &ctx);
+	if (fprintf(f, ";; %s records\n", additions ? "Added" : "Removed") > 0) {
+		zone_update_it_t it = { 0 };
+		ret = zone_update_it_begin(&it, up, additions);
+		while (ret >= 0 && !zone_update_it_finished(&it)) {
+			const knot_rrset_t *rr = zone_update_it_val(&it);
+			ret = knot_rrset_txt_dump(rr, &buf, &buflen, &style);
+			if (ret > 0) {
+				ret = (fprintf(f, "%s", buf) < 0 ? knot_map_errno() : 1);
+			}
+			zone_update_it_next(&it);
+		}
+		ret = zone_update_it_free(&it, MIN(ret, KNOT_EOK));
 	} else {
 		ret = knot_map_errno();
 	}
-	if (fclose(ctx.f) == -1 && ret == KNOT_EOK) {
+	if (fclose(f) == -1 && ret == KNOT_EOK) {
 		ret = knot_map_errno();
 	}
-	free(ctx.buf);
+	free(buf);
 	return ret;
 }
 
@@ -1339,27 +1330,29 @@ bool zone_update_no_change(zone_update_t *update)
 
 static int rrset_foreach(zone_node_t *n, bool subtract_counterpart,
                          int idx, uint16_t rrtype, // two exclusive possibilities how to define which rrset in the node
-                         rrset_cb_t cb, void *ctx)
+                         knot_rdataset_t *toclear_buf,
+                         knot_rrset_t *out)
 {
+	memset(toclear_buf, 0, sizeof(*toclear_buf));
+	memset(out, 0, sizeof(*out));
 	knot_rrset_t rr = (rrtype == KNOT_RRTYPE_ANY) ? node_rrset_at(n, idx) : node_rrset(n, rrtype);
 	knot_rrset_t rrc = subtract_counterpart ? node_rrset(binode_counterpart(n), rr.type) : (knot_rrset_t){ 0 };
 	if (rrtype == KNOT_RRTYPE_ANY && rr.type == KNOT_RRTYPE_SOA) {
 		return KNOT_EOK; // ignore SOA if rrset specified by idx
 	} else if (knot_rrset_empty(&rrc) || rr.ttl != rrc.ttl) {
-		return cb(&rr, ctx);
+		*out = rr;
+		return KNOT_EOK;
 	} else if (knot_rdataset_subset(&rr.rrs, &rrc.rrs)) {
 		return KNOT_EOK;
 	} else {
-		knot_rdataset_t rd_copy = { 0 };
-		int ret = knot_rdataset_copy(&rd_copy, &rr.rrs, NULL);
+		int ret = knot_rdataset_copy(toclear_buf, &rr.rrs, NULL);
 		if (ret == KNOT_EOK) {
-			ret = knot_rdataset_subtract(&rd_copy, &rrc.rrs, NULL);
+			ret = knot_rdataset_subtract(toclear_buf, &rrc.rrs, NULL);
 		}
 		if (ret == KNOT_EOK) {
-			rr.rrs = rd_copy;
-			ret = cb(&rr, ctx);
+			rr.rrs = *toclear_buf;
+			*out = rr;
 		}
-		knot_rdataset_clear(&rd_copy, NULL);
 		return ret;
 	}
 }
@@ -1367,12 +1360,18 @@ static int rrset_foreach(zone_node_t *n, bool subtract_counterpart,
 static int trees_foreach(zone_tree_t *nodes, zone_tree_t *nsec3_nodes, bool subtract_counterparts,
                          rrset_cb_t cb, void *ctx)
 {
+	knot_rrset_t rr;
+	knot_rdataset_t tmp;
 	zone_tree_it_t it = { 0 };
 	int ret = zone_tree_it_double_begin(nodes, nsec3_nodes, &it);
 	while (!zone_tree_it_finished(&it) && ret == KNOT_EOK) {
 		zone_node_t *n = zone_tree_it_val(&it);
 		for (int i = 0; i < n->rrset_count && ret == KNOT_EOK; i++) {
-			ret = rrset_foreach(n, subtract_counterparts, i, KNOT_RRTYPE_ANY, cb, ctx);
+			ret = rrset_foreach(n, subtract_counterparts, i, KNOT_RRTYPE_ANY, &tmp, &rr);
+			if (ret == KNOT_EOK && !knot_rrset_empty(&rr)) {
+				ret = cb(&rr, ctx);
+			}
+			knot_rdataset_clear(&tmp, NULL);
 		}
 		zone_tree_it_next(&it);
 	}
@@ -1393,7 +1392,13 @@ int zone_update_foreach(zone_update_t *update, bool additions, rrset_cb_t cb, vo
 			zone_diff_reverse(&diff);
 		}
 
-		int ret = rrset_foreach(diff.apex, true, 0, KNOT_RRTYPE_SOA, cb, ctx);
+		knot_rrset_t soa;
+		knot_rdataset_t tmp;
+		int ret = rrset_foreach(diff.apex, true, 0, KNOT_RRTYPE_SOA, &tmp, &soa);
+		if (!knot_rrset_empty(&soa) && ret == KNOT_EOK) {
+			ret = cb(&soa, ctx);
+		}
+		knot_rdataset_clear(&tmp, NULL);
 		if (ret == KNOT_EOK) {
 			ret = trees_foreach(&diff.nodes, &diff.nsec3s, true, cb, ctx);
 		}
@@ -1416,6 +1421,140 @@ int zone_update_foreach(zone_update_t *update, bool additions, rrset_cb_t cb, vo
 	} else {
 		return KNOT_EOK;
 	}
+}
+
+bool zone_update_it_finished(zone_update_it_t *it)
+{
+	return it->ret != KNOT_EOK || it->node_pos < 0 || zone_tree_it_finished(&it->tree_it);
+}
+
+static bool zone_update_it_find_rrset(zone_update_it_t *it)
+{
+	zone_node_t *n = zone_tree_it_val(&it->tree_it);
+	while (it->node_pos >= n->rrset_count) {
+		zone_tree_it_next(&it->tree_it);
+		if (zone_tree_it_finished(&it->tree_it)) {
+			if (it->what == UPDATE_IT_BOTH) {
+				it->ret = zone_update_it_free(it, KNOT_EOK);
+				if (it->ret == KNOT_EOK) {
+					it->ret = zone_update_it_begin(it, it->update, UPDATE_IT_ADDITIONS);
+				}
+				return it->ret == KNOT_EOK && !zone_update_it_finished(it);
+			} else {
+				it->node_pos = -1;
+				return false;
+			}
+		}
+		n = zone_tree_it_val(&it->tree_it);
+		it->node_pos = 0;
+	}
+	return true;
+}
+
+static void zone_update_it_find_nonempty(zone_update_it_t *it)
+{
+	memset(&it->cur_rr, 0, sizeof(it->cur_rr));
+	while (!zone_update_it_finished(it) && zone_update_it_find_rrset(it)) {
+		knot_rdataset_clear(&it->buf, NULL);
+		zone_node_t *n = zone_tree_it_val(&it->tree_it);
+		it->ret = rrset_foreach(n, it->subtract_counterpart, it->node_pos, KNOT_RRTYPE_ANY, &it->buf, &it->cur_rr);
+		if (knot_rrset_empty(&it->cur_rr)) {
+			it->node_pos++;
+		} else {
+			break;
+		}
+	}
+}
+
+int zone_update_it_begin(zone_update_it_t *it, zone_update_t *update, zone_update_what_t what)
+{
+	if (it == NULL || update == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	it->have_soa_first = false;
+	it->subtract_counterpart = false;
+	it->node_pos = 0;
+	it->what = what;
+	it->update = update;
+
+	if (update->flags & UPDATE_NO_CHSET) {
+		get_zone_diff(&it->diff, update);
+		if (what != UPDATE_IT_ADDITIONS) {
+			zone_diff_reverse(&it->diff);
+		}
+		it->subtract_counterpart = true;
+
+		it->ret = zone_tree_it_double_begin(&it->diff.nodes, &it->diff.nsec3s, &it->tree_it);
+		if (it->ret == KNOT_EOK) {
+			it->ret = rrset_foreach(it->diff.apex, true, 0, KNOT_RRTYPE_SOA, &it->buf, &it->cur_rr);
+		}
+		if (it->ret == KNOT_EOK && knot_rrset_empty(&it->cur_rr)) {
+			zone_update_it_find_nonempty(it);
+		} else {
+			it->have_soa_first = true;
+		}
+	} else if (update->flags & (UPDATE_INCREMENTAL | UPDATE_HYBRID)) {
+		knot_rrset_t *soa = (what == UPDATE_IT_ADDITIONS) ? update->change.soa_to : update->change.soa_from;
+		zone_contents_t *c = (what == UPDATE_IT_ADDITIONS) ? update->change.add : update->change.remove;
+		it->ret = zone_tree_it_double_begin(c->nodes, c->nsec3_nodes, &it->tree_it);
+		if (soa == NULL || update->change.soa_to == NULL) {
+			zone_update_it_find_nonempty(it);
+		} else {
+			it->cur_rr = *soa;
+			it->have_soa_first = true;
+		}
+		it->diff.apex = c->apex;
+	} else if (what != UPDATE_IT_REMOVALS) {
+		it->what = UPDATE_IT_ADDITIONS;
+		knot_rrset_t soa = node_rrset(update->new_cont->apex, KNOT_RRTYPE_SOA);
+		it->ret = zone_tree_it_double_begin(update->new_cont->nodes, update->new_cont->nsec3_nodes, &it->tree_it);
+		if (knot_rrset_empty(&soa)) {
+			zone_update_it_find_nonempty(it);
+		} else {
+			it->cur_rr = soa;
+			it->have_soa_first = true;
+		}
+		it->diff.apex = update->new_cont->apex;
+	} else {
+		return KNOT_EOK;
+	}
+
+	return it->ret;
+}
+
+knot_rrset_t *zone_update_it_val(zone_update_it_t *it)
+{
+	return zone_update_it_finished(it) ? NULL : &it->cur_rr;
+}
+
+bool zone_update_it_apex(zone_update_it_t *it)
+{
+	zone_node_t *n = zone_tree_it_val(&it->tree_it);
+	return n == it->diff.apex || n == binode_counterpart(it->diff.apex);
+}
+
+void zone_update_it_next(zone_update_it_t *it)
+{
+	if (!zone_update_it_finished(it)) {
+		if (it->have_soa_first) {
+			it->have_soa_first = false;
+		} else {
+			it->node_pos++;
+		}
+		zone_update_it_find_nonempty(it);
+	}
+}
+
+int zone_update_it_free(zone_update_it_t *it, int combine_ret)
+{
+	if (it == NULL || it->tree_it.it == NULL) {
+		return combine_ret;
+	}
+	knot_rdataset_clear(&it->buf, NULL);
+	zone_tree_it_free(&it->tree_it);
+	memset(&it->tree_it, 0, sizeof(it->tree_it));
+	return combine_ret == KNOT_EOK ? it->ret : combine_ret;
 }
 
 static bool zone_diff_rdataset(const zone_contents_t *c, uint16_t rrtype)

@@ -1211,16 +1211,6 @@ static int send_rrset(const knot_rrset_t *rrset, send_ctx_t *ctx)
 	return KNOT_EOK;
 }
 
-static int send_rrset_callback(const knot_rrset_t *rrset, void *ctx_void)
-{
-	send_ctx_t *ctx = ctx_void;
-	char *owner = knot_dname_to_str(ctx->owner, rrset->owner, sizeof(ctx->owner));
-	if (owner == NULL) {
-		return KNOT_EINVAL;
-	}
-	return send_rrset(rrset, ctx);
-}
-
 static int send_node(zone_node_t *node, void *ctx_void)
 {
 	send_ctx_t *ctx = ctx_void;
@@ -1388,17 +1378,20 @@ static int zone_txn_diff_l(zone_t *zone, ctl_args_t *args)
 		return zone_flag_txn_get(zone, args, CTL_FILTER_DIFF_ADD_R);
 	}
 
+	zone_update_it_t it = { 0 };
 	send_ctx_t *ctx = &ctl_globals[args->thread_idx].send_ctx;
 	int ret = init_send_ctx(ctx, zone->name, args);
 	if (ret == KNOT_EOK) {
-		ctx->data[KNOT_CTL_IDX_FILTERS] = CTL_FILTER_DIFF_REM_R;
-		ret = zone_update_foreach(zone->control_update, false, send_rrset_callback, ctx);
+		ret = zone_update_it_begin(&it, zone->control_update, UPDATE_IT_BOTH);
 	}
-	if (ret == KNOT_EOK) {
-		ctx->data[KNOT_CTL_IDX_FILTERS] = CTL_FILTER_DIFF_ADD_R;
-		ret = zone_update_foreach(zone->control_update, true, send_rrset_callback, ctx);
+	while (ret == KNOT_EOK && !zone_update_it_finished(&it)) {
+		knot_rrset_t *rr = zone_update_it_val(&it);
+		ctx->data[KNOT_CTL_IDX_FILTERS] = zone_update_it_addition(&it) ? CTL_FILTER_DIFF_ADD_R : CTL_FILTER_DIFF_REM_R;
+		char *owner = knot_dname_to_str(ctx->owner, rr->owner, sizeof(ctx->owner));
+		ret = owner != NULL ? send_rrset(rr, ctx) : KNOT_EINVAL;
+		zone_update_it_next(&it);
 	}
-
+	ret = zone_update_it_free(&it, ret);
 	return ret;
 }
 
