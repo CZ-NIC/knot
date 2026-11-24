@@ -28,6 +28,11 @@ struct dnssec_digest_ctx;
 typedef struct dnssec_digest_ctx dnssec_digest_ctx_t;
 
 /*!
+ * \brief Length of hash output for given algorithm.
+ */
+size_t dnssec_digest_length(dnssec_digest_t algorithm);
+
+/*!
  * \brief Initialize digest context.
  *
  * \param algorithm   Hasing algorithm to be used.
@@ -68,5 +73,26 @@ int dnssec_digest(dnssec_digest_ctx_t *ctx, dnssec_binary_t *data);
  * \return DNSSEC_E*
  */
 int dnssec_digest_finish(dnssec_digest_ctx_t *ctx, dnssec_binary_t *out);
+
+/*!
+ * \brief Finalize and dispose context, put the hash into pre-allocated buffer.
+ *
+ * \param ctx   Digest context.
+ * \param out   Output: computed hash. Must be pre-allocated to dnssec_digest_length(algorithm).
+ *
+ * \return DNSSEC_E*
+ */
+int dnssec_digest_finish2(dnssec_digest_ctx_t *ctx, uint8_t *out);
+
+/*!
+ * \brief Hash a single chunk of data in one go.
+ *
+ * \param algorithm   Hasing algorithm to be used.
+ * \param data        Data to be hashed.
+ * \param out         Output: computed hash. Must be pre-allocated to dnssec_digest_length(algorithm).
+ *
+ * \return DNSSEC_E*
+ */
+int dnssec_digest_fast(dnssec_digest_t algorithm, dnssec_binary_t *data, uint8_t *out);
 
 /*! @} */

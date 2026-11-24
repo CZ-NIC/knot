@@ -26,6 +26,12 @@ static gnutls_digest_algorithm_t lookup_algorithm(dnssec_digest_t algorithm)
 }
 
 _public_
+size_t dnssec_digest_length(dnssec_digest_t algorithm)
+{
+	return gnutls_hash_get_len(lookup_algorithm(algorithm));
+}
+
+_public_
 int dnssec_digest_init(dnssec_digest_t algorithm, dnssec_digest_ctx_t **out_ctx)
 {
 	if (out_ctx == NULL) {
@@ -92,4 +98,31 @@ int dnssec_digest_finish(dnssec_digest_ctx_t *ctx, dnssec_binary_t *out)
 
 	dnssec_digest_clear(ctx);
 	return KNOT_EOK;
+}
+
+_public_
+int dnssec_digest_finish2(dnssec_digest_ctx_t *ctx, uint8_t *out)
+{
+	if (ctx == NULL || out == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	gnutls_hash_output(ctx->gtctx, out);
+	dnssec_digest_clear(ctx);
+	return KNOT_EOK;
+}
+
+_public_
+int dnssec_digest_fast(dnssec_digest_t algorithm, dnssec_binary_t *data, uint8_t *out)
+{
+	if (data == NULL || out == NULL) {
+		return KNOT_EINVAL;
+	}
+
+	gnutls_digest_algorithm_t gtalg = lookup_algorithm(algorithm);
+	if (gtalg == GNUTLS_DIG_UNKNOWN) {
+		return KNOT_EALGORITHM;
+	}
+
+	return gnutls_hash_fast(gtalg, data->data, data->size, out);
 }

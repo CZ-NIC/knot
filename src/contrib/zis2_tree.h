@@ -92,6 +92,14 @@ int zis2_tree_rem(zis2_tree_t *tree, const zis2_char_t *hash);
 int zis2_tree_hash(zis2_tree_t *tree, zis2_hash_cb hash_fun, void *hf_ctx, zis2_char_t *out);
 
 /*!
+ * \brief Checks if tree is empty.
+ */
+inline static bool zis2_tree_empty(const zis2_tree_t *tree)
+{
+	return tree == NULL || tree->root->size == 0;
+}
+
+/*!
  * \brief Internal tree data structure consistency check for debugging.
  *
  * \return 0 if OK, various < 0 on different errors.

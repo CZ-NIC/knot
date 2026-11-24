@@ -5,7 +5,15 @@
 
 #pragma once
 
+#include <string.h>
+
+#include "contrib/zis2_tree.h"
 #include "knot/zone/contents.h"
+
+/*!
+ * \brief Clear persistent ZONEMD computation context.
+ */
+void zone_contents_digest_clear(zone_contents_digest_t *dig);
 
 /*!
  * \brief Compute hash over whole zone by concatenating RRSets in wire format.

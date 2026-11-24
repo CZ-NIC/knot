@@ -13,6 +13,18 @@
 #include "knot/zone/node.h"
 #include "knot/zone/zone-tree.h"
 
+/*!
+ * \brief Persistent context structure for ZONEMD computation.
+ *
+ * \hint Use in pair: one for ZONEMD verification on input, one for generating new.
+ */
+struct zis2_tree;
+typedef struct {
+	int algorithm;
+	int scheme;
+	void *ctx;
+} zone_contents_digest_t;
+
 enum zone_contents_find_dname_result {
 	ZONE_NAME_NOT_FOUND = 0,
 	ZONE_NAME_FOUND     = 1
@@ -25,6 +37,8 @@ typedef struct zone_contents {
 	zone_tree_t *nsec3_nodes;
 
 	trie_t *adds_tree; // "additionals tree" for reverse lookup of nodes affected by additionals
+
+	zone_contents_digest_t digest[2];
 
 	// Responding normal queries is protected by rcu_read_lock, but for long
 	// outgoing XFRs, zone-specific lock is better.

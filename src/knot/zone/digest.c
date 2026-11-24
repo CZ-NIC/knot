@@ -16,17 +16,30 @@
 
 #define DIGEST_BUF_MIN 4096
 
+/*! \brief Non-persistent context for one digest computation event. */
 typedef struct {
 	size_t buf_size;
 	uint8_t *buf;
-	struct dnssec_digest_ctx *digest_ctx;
 	bool ignore_dnssec;
 } contents_digest_ctx_t;
 
-static int digest_rrset(knot_rrset_t *rrset, bool is_apex, void *vctx)
+void zone_contents_digest_clear(zone_contents_digest_t *dig)
 {
-	contents_digest_ctx_t *ctx = vctx;
+	if (dig->scheme == ZONEMD_SCHEME_MERKLE3) {
+		zis2_tree_free(dig->ctx);
+	}
+	memset(dig, 0, sizeof(*dig));
+}
 
+static int hash_cb(uint8_t *out, const uint8_t *in, size_t amount, void *ctx, int algorithm)
+{
+	(void)ctx;
+	dnssec_binary_t in_bin = { .size = amount, .data = (void *)in };
+	return dnssec_digest_fast(algorithm, &in_bin, out);
+}
+
+static int digest_rrset(knot_rrset_t *rrset, bool is_apex, bool remove, zone_contents_digest_t *dctx, contents_digest_ctx_t *ctx)
+{
 	// ignore apex ZONEMD
 	if (is_apex && rrset->type == KNOT_RRTYPE_ZONEMD) {
 		return KNOT_EOK;
@@ -80,19 +93,38 @@ static int digest_rrset(knot_rrset_t *rrset, bool is_apex, void *vctx)
 
 	// digest serialized RRSet
 	dnssec_binary_t bufbin = { ret, ctx->buf };
-	return dnssec_digest(ctx->digest_ctx, &bufbin);
+	if (dctx->scheme == ZONEMD_SCHEME_SIMPLE) {
+		return dnssec_digest(dctx->ctx, &bufbin);
+	} else if (ctx->scheme == ZONEMD_SCHEME_MERKLE3) {
+		uint8_t rrhash[dnssec_digest_length(dctx->algorithm)];
+		ret = dnssec_digest_fast(dctx->algorithm, &bufbin, rrhash);
+		if (ret == KNOT_EOK && remove) {
+			ret = zis2_tree_rem(dctx->ctx, rrhash);
+		} else if (ret == KNOT_EOK) {
+			ret = zis2_tree_add(dctx->ctx, rrhash);
+		}
+		return ret;
+	} else {
+		assert(0);
+		return KNOT_EINVAL;
+	}
 }
 
-int zone_contents_digest(const zone_contents_t *contents, int algorithm,
-                         bool ignore_dnssec,
-                         uint8_t **out_digest, size_t *out_size)
+int zone_contents_digest(zone_contents_t *contents,
+                         zone_update_t *update,
+                         int algorithm, int scheme,
+                         bool ignore_dnssec, bool validate,
+                         uint8_t *out)
 {
-	if (out_digest == NULL || out_size == NULL) {
+	if (out == NULL || (contents == NULL) == (update == NULL)) {
 		return KNOT_EINVAL;
 	}
 
-	if (contents == NULL) {
-		return KNOT_EEMPTYZONE;
+	zone_contents_digest_t *dctx = &contents->digest[validate];
+	if (algorithm != dctx->algorithm || scheme != dctx->scheme) {
+		zone_contents_digest_clear(dctx);
+		dctx->algorithm = algorithm;
+		dctx->scheme = scheme;
 	}
 
 	contents_digest_ctx_t ctx = {
@@ -104,36 +136,62 @@ int zone_contents_digest(const zone_contents_t *contents, int algorithm,
 		return KNOT_ENOMEM;
 	}
 
-	int ret = dnssec_digest_init(algorithm, &ctx.digest_ctx);
+	bool incremental = (scheme == ZONEMD_SCHEME_MERKLE3 && dctx->ctx != NULL && update != NULL && (update->flags & UPDATE_INCREMENTAL));
+
+	int ret = KNOT_EOK;
+	if (scheme == ZONEMD_SCHEME_SIMPLE) {
+		ret = dnssec_digest_init(algorithm, (dnssec_digest_ctx_t **)&dctx->ctx);
+	} else if (scheme == ZONEMD_SCHEME_MERKLE3 && dctx->ctx == NULL) {
+		dctx->ctx = zis2_tree_new(3, dnssec_digest_length(algorithm), true, NULL);
+		ret = dctx->ctx == NULL ? KNOT_ENOMEM : KNOT_EOK;
+	}
+
+	if (incremental) {
+		zone_update_it_t it = { 0 };
+		ret = zone_update_it_begin(&it, update, UPDATE_IT_BOTH);
+		while (ret == KNOT_EOK && !zone_update_it_finished(&it)) {
+			knot_rrset_t *rr = zone_update_it_val(&it);
+			ret = digest_rrset(rr, zone_update_it_apex(&it), !zone_update_it_addition(&it), dctx, &ctx);
+			zone_update_it_next(&it);
+		}
+		ret = zone_update_it_free(&it, ret);
+	} else {
+		zone_tree_sorted2rr_it_t it = { 0 };
+		ret = zone_tree_sorted2rr_it_begin(contents->nodes, contents->nsec3_nodes, &it);
+		bool is_apex = true;
+
+		while (!zone_tree_sorted2rr_it_finished(&it) && ret == KNOT_EOK) {
+			knot_rrset_t rr = zone_tree_sorted2rr_it_val(&it);
+			if (is_apex && !knot_dname_is_equal(rr.owner, contents->apex->owner)) {
+				is_apex = false;
+			}
+
+			ret = digest_rrset(&rr, is_apex, false, dctx, &ctx);
+			zone_tree_sorted2rr_it_next(&it);
+		}
+		zone_tree_sorted2rr_it_free(&it);
+	}
+
 	if (ret != KNOT_EOK) {
+		if (scheme == ZONEMD_SCHEME_SIMPLE) {
+			dnssec_digest_clear(dctx->ctx);
+		} else if (scheme == ZONEMD_SCHEME_MERKLE3) {
+			zis2_tree_free(dctx->ctx);
+		}
+		zone_contents_digest_clear(dctx);
 		free(ctx.buf);
 		return ret;
 	}
-
-	zone_tree_sorted2rr_it_t it = { 0 };
-	ret = zone_tree_sorted2rr_it_begin(contents->nodes, contents->nsec3_nodes, &it);
-	bool is_apex = true;
-
-	while (!zone_tree_sorted2rr_it_finished(&it) && ret == KNOT_EOK) {
-		knot_rrset_t rr = zone_tree_sorted2rr_it_val(&it);
-		if (is_apex && !knot_dname_is_equal(rr.owner, contents->apex->owner)) {
-			is_apex = false;
-		}
-
-		ret = digest_rrset(&rr, is_apex, &ctx);
-		zone_tree_sorted2rr_it_next(&it);
-	}
-	zone_tree_sorted2rr_it_free(&it);
-
 	dnssec_binary_t res = { 0 };
-	if (ret == KNOT_EOK) {
-		ret = dnssec_digest_finish(ctx.digest_ctx, &res);
+	if (scheme == ZONEMD_SCHEME_SIMPLE) {
+		ret = dnssec_digest_finish2(dctx->ctx, out);
+	} else if (scheme == ZONEMD_SCHEME_MERKLE3) {
+		ret = zis2_tree_hash(dctx->ctx, hash_cb, NULL, out);
 	} else {
-		dnssec_digest_clear(ctx.digest_ctx);
+		assert(0);
+		ret = KNOT_EINVAL;
 	}
 	free(ctx.buf);
-	*out_digest = res.data;
-	*out_size = res.size;
 	return ret;
 }
 
