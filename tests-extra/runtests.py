@@ -12,6 +12,9 @@ import sys
 import tempfile
 import time
 import traceback
+import enum
+import subprocess
+import ctypes
 
 current_dir = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(os.path.join(current_dir, "tools"))
@@ -19,7 +22,26 @@ from dnstest.context import Context
 import dnstest.params as params
 import dnstest.utils
 
+class CaseRes(enum.IntEnum):
+    OK = 0
+    FAILED = 1
+    SKIPPED = 2
+
+PR_SET_DUMPABLE = 4
+UNPRIVILEGED_ID = 1000
+
 TESTS_DIR = "tests"
+
+ROOT_SERVERS = """
+198.41.0.4           a.root-servers.net.
+2001:503:ba3e::2:30  a.root-servers.net.
+170.247.170.2        b.root-servers.net.
+2801:1b8:10::b       b.root-servers.net.
+192.33.4.12          c.root-servers.net.
+2001:500:2::c        c.root-servers.net.
+199.7.91.13          d.root-servers.net.
+2001:500:2d::d       d.root-servers.net.
+"""
 
 log = None
 outs_dir = None
@@ -83,6 +105,8 @@ def parse_args(cmd_args):
                         action="store_true", help="stop execution on error")
     parser.add_argument("-x", "--xdp", dest="xdp", \
                         action="store_true", help="allow XDP testing")
+    parser.add_argument("-N", "--namespaces", dest="namespaces", \
+                        action="store_true", help="use Linux network namespaces for isolation")
     parser.add_argument("tests", metavar="[:]test[/case]", nargs="*", \
                         help="([exclude] | run) specific (test set | [test case])")
     args = parser.parse_args(cmd_args)
@@ -91,6 +115,7 @@ def parse_args(cmd_args):
     params.repeat = max(int(args.repeat), 0)
     params.jobs = max(int(args.jobs), 1) if args.jobs else 1
     params.addresses = max(int(args.addresses), 1) if args.addresses else 1
+    params.namespaces = args.namespaces
     params.common_data_dir = os.path.join(current_dir, "data")
     params.exit_on_error = args.error_exit
     params.xdp = args.xdp
@@ -157,6 +182,178 @@ def log_failed(log_dir, msg, indent=True):
     print("%s%s" % ("  " if indent else "", msg), file=file)
     file.close()
 
+class CaseReport:
+    def __init__(self, test, case_n, stop, done, print_lock):
+        self.err_label = (" * %s/%s" % (test, case_n)).ljust(35)
+        self.fail_label = ("%s/%s" % (test, case_n)).ljust(32)
+        self.stop = stop
+        self.done = done
+        self.print_lock = print_lock
+        self.start_time = time.time()
+
+    def _duration(self):
+        duration = time.time() - self.start_time
+        return f" ({duration:.1f} s)"
+
+    def _print(self, func, msg):
+        progress_print(self.done.value, self.print_lock, func, self.err_label + msg)
+
+    def ok(self):
+        self._print(log.info, "OK" + self._duration())
+        return CaseRes.OK
+
+    def skipped(self, reason):
+        self._print(log.error, "SKIPPED (%s)" % reason)
+        return CaseRes.SKIPPED
+
+    def failed(self, msg):
+        suffix = self._duration()
+        self._print(log.error, msg + suffix)
+        log_failed(outs_dir, self.fail_label + msg + suffix)
+        self.stop.value = True
+        return CaseRes.FAILED
+
+    def missing(self):
+        self._print(log.error, "MISSING")
+        return CaseRes.SKIPPED
+
+def run_test(ctx, module_entry):
+    spec = importlib.util.spec_from_file_location(ctx.module_name, module_entry)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+
+def run_case(ctx, module_entry, rep):
+    try:
+        run_test(ctx, module_entry)
+    except dnstest.utils.Skip as exc:
+        return rep.skipped(format(exc))
+    except (dnstest.utils.Failed, Exception) as exc:
+        save_traceback(ctx.out_dir, exc)
+        desc = format(exc)
+        kind = "FAILED" if isinstance(exc, dnstest.utils.Failed) else "EXCEPTION"
+        msg = "%s (%s)" % (kind, desc if desc else exc.__class__.__name__)
+        if kind == "FAILED" and ctx.err and ctx.err_msg:
+            msg += " AND (" + ctx.err_msg + ")"
+        if params.debug:
+            print()
+            traceback.print_exc()
+        return rep.failed(msg)
+    except BaseException as exc:
+        save_traceback(ctx.out_dir, exc)
+        if params.debug:
+            print()
+            traceback.print_exc()
+        else:
+            print()
+            log.info("INTERRUPTED")
+        # Stop servers if still running.
+        if ctx.test:
+            ctx.test.end()
+        sys.exit(1)
+
+    if ctx.err:
+        return rep.failed("FAILED" + ((" (" + ctx.err_msg + ")") if ctx.err_msg else ""))
+    return rep.ok()
+
+def map_ids(inner_uid, outer_uid, inner_gid, outer_gid):
+    for path, data in (("/proc/self/setgroups", "deny\n"),
+                       ("/proc/self/uid_map", f"{inner_uid} {outer_uid} 1\n"),
+                       ("/proc/self/gid_map", f"{inner_gid} {outer_gid} 1\n")):
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(data)
+
+def set_dumpable(value=1):
+    libc = ctypes.CDLL(None, use_errno=True)
+
+    libc.prctl.argtypes = [ctypes.c_int, ctypes.c_ulong, ctypes.c_ulong,
+                           ctypes.c_ulong, ctypes.c_ulong]
+    libc.prctl.restype = ctypes.c_int
+
+    if libc.prctl(PR_SET_DUMPABLE, value, 0, 0, 0) != 0:
+        err = ctypes.get_errno()
+        raise OSError(err, os.strerror(err), "prctl(PR_SET_DUMPABLE)")
+
+def setup_outer_namespace():
+    uid, gid = os.getuid(), os.getgid()
+    os.unshare(os.CLONE_NEWUSER | os.CLONE_NEWNET | os.CLONE_NEWNS)
+
+    set_dumpable(1)
+
+    map_ids(0, uid, 0, gid)
+
+    res = subprocess.run(["ip", "link", "set", "lo", "up"],
+                         capture_output=True, text=True, check=False)
+    if res.returncode != 0:
+        raise dnstest.utils.Failed(res.stderr.strip() or res.stdout.strip())
+
+    # This is required exclusively for test cases that depend on external
+    # ALIAS targets to resolve them locally.
+    try:
+        subprocess.run(["mount", "-t", "tmpfs", "tmpfs", "/etc"], check=True)
+    except Exception as e:
+        print(f"FAILED to setup resolv.conf - {e}")
+
+    try:
+        # Inject IP mappings for root servers needed by specific test cases
+        with open("/etc/hosts", "a", encoding="utf-8") as f:
+            f.write(ROOT_SERVERS)
+    except Exception:
+        pass
+
+    os.environ["RESOLV_MULTI"] = "on"
+
+def drop_to_unprivileged_user():
+    os.unshare(os.CLONE_NEWUSER)
+    map_ids(UNPRIVILEGED_ID, 0, UNPRIVILEGED_ID, 0)
+
+def namespace_process(ctx, module_entry, rep):
+    outcome = CaseRes.FAILED
+
+    # namespace setup
+    try:
+        setup_outer_namespace()
+        drop_to_unprivileged_user()
+    except Exception as e:
+        save_traceback(ctx.out_dir, e)
+        msg = format(e)
+        if not msg:
+            msg = e.__class__.__name__
+        outcome = rep.failed("EXCEPTION (namespace setup: %s)" % msg)
+        os._exit(outcome)
+
+    # running the test
+    outcome = run_case(ctx, module_entry, rep)
+
+    # cleanup
+    try:
+        if ctx.test:
+            ctx.test.end()
+        ctx.case_log.flush()
+        sys.stdout.flush()
+        sys.stderr.flush()
+    finally:
+        os._exit(outcome)
+
+def run_case_in_namespace(ctx, module_entry, rep):
+    t = multiprocessing.Process(
+        target=namespace_process,
+        args=(ctx, module_entry, rep)
+    )
+    t.start()
+    t.join()
+
+    rc = t.exitcode
+    if rc is not None:
+        if rc >= 0:
+            if rc in (CaseRes.OK, CaseRes.FAILED, CaseRes.SKIPPED):
+                return rc
+            return rep.failed("FAILED (test process exited with %d)" % rc)
+        else:
+            sig = -rc
+            return rep.failed("FAILED (test process killed by signal %d)" % sig)
+
+    return rep.failed("FAILED (test process did not exit cleanly)")
+
 def job(job_id, tasks, results, stop, done, print_lock):
     case_cnt = 0
     fail_cnt = 0
@@ -174,8 +371,7 @@ def job(job_id, tasks, results, stop, done, print_lock):
 
         test_dir = os.path.join(current_dir, TESTS_DIR, test)
         case_n = case if params.repeat == 1 else case + " #" + str(repeat)
-        case_str_err = (" * %s/%s" % (test, case_n)).ljust(35)
-        case_str_fail = ("%s/%s" % (test, case_n)).ljust(32)
+        rep = CaseReport(test, case_n, stop, done, print_lock)
         case_cnt += 1
 
         case_dir = os.path.join(test_dir, case)
@@ -183,7 +379,7 @@ def job(job_id, tasks, results, stop, done, print_lock):
         if not os.path.isfile(test_file):
             skip_cnt += 1
             done.value += 1
-            progress_print(done.value, print_lock, log.error, case_str_err + "MISSING")
+            rep.missing()
             continue
 
         try:
@@ -200,75 +396,24 @@ def job(job_id, tasks, results, stop, done, print_lock):
             ctx.test = None
             ctx.err = False
             ctx.err_msg = ""
-        except OsError:
-            msg = "EXCEPTION (no dir \'%s\')" % out_dir
+        except OSError:
             done.value += 1
-            progress_print(done.value, print_lock, log.error, case_str_err + msg)
-            log_failed(outs_dir, case_str_fail + msg)
+            rep.failed("EXCEPTION (no dir '%s')" % out_dir)
             fail_cnt += 1
-            stop.value = True
             continue
 
-        try:
-            module_entry = os.path.join(ctx.module_path, "test.py")
-            spec = importlib.util.spec_from_file_location(ctx.module_name, module_entry)
-            mod = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(mod)
-        except dnstest.utils.Skip as exc:
-            progress_print(done.value, print_lock, log.error, case_str_err + "SKIPPED (%s)" % format(exc))
-            skip_cnt += 1
-        except dnstest.utils.Failed as exc:
-            save_traceback(ctx.out_dir, exc)
-
-            desc = format(exc)
-            msg = "FAILED (%s)" % (desc if desc else exc.__class__.__name__)
-            if ctx.err and ctx.err_msg:
-                msg += " AND (" + ctx.err_msg + ")"
-            progress_print(done.value, print_lock, log.error, case_str_err + msg)
-            log_failed(outs_dir, case_str_fail + msg)
-
-            if params.debug:
-                print()
-                traceback.print_exc()
-
-            fail_cnt += 1
-            stop.value = True
-        except Exception as exc:
-            save_traceback(ctx.out_dir, exc)
-
-            desc = format(exc)
-            msg = "EXCEPTION (%s)" % (desc if desc else exc.__class__.__name__)
-            progress_print(done.value, print_lock, log.error, case_str_err + msg)
-            log_failed(outs_dir, case_str_fail + msg)
-
-            if params.debug:
-                print()
-                traceback.print_exc()
-
-            fail_cnt += 1
-            stop.value = True
-        except BaseException as exc:
-            save_traceback(ctx.out_dir, exc)
-            if params.debug:
-                print()
-                traceback.print_exc()
-            else:
-                print()
-                log.info("INTERRUPTED")
-                # Stop servers if still running.
-            if ctx.test:
-                ctx.test.end()
-            sys.exit(1)
+        module_entry = os.path.join(ctx.module_path, "test.py")
+        outcome = CaseRes.FAILED
+        if params.namespaces:
+            outcome = run_case_in_namespace(ctx, module_entry, rep)
         else:
-            if ctx.err:
-                msg = "FAILED" + \
-                      ((" (" + ctx.err_msg + ")") if ctx.err_msg else "")
-                progress_print(done.value, print_lock, log.info, case_str_err + msg)
-                log_failed(outs_dir, case_str_fail + msg)
-                fail_cnt += 1
-                stop.value = True
-            else:
-                progress_print(done.value, print_lock, log.info, case_str_err + "OK")
+            outcome = run_case(ctx, module_entry, rep)
+
+        if outcome == CaseRes.FAILED:
+            fail_cnt += 1
+        elif outcome == CaseRes.SKIPPED:
+            skip_cnt += 1
+
         done.value += 1
         # Stop servers if still running.
         if ctx.test:

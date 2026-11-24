@@ -10,15 +10,20 @@ import sys
 import time
 
 class Redis(object):
+
+    PORTS_START = 8000
+
     counter = 0
     def __init__(self, addr, wrk_dir, redis_bin, redis_cli, knotso, tls=False):
+        type(self).counter += 1
+        self.idx = self.counter
+
         self.addr = addr
         self.port = None
         self.tls = tls
         self.tls_port = None
         self.pin = None
-        Redis.counter += 1
-        self.wrk_dir = os.path.join(wrk_dir, str(Redis.counter))
+        self.wrk_dir = os.path.join(wrk_dir, str(self.idx))
         self.redis_bin = redis_bin
         self.redis_cli = redis_cli
         self.knotso = knotso

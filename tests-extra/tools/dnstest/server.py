@@ -28,6 +28,7 @@ import dnstest.response
 import dnstest.update
 import distutils.dir_util
 from shutil import copyfile
+import threading
 
 def zone_arg_check(zone):
     # Convert one item list to single object.
@@ -121,13 +122,13 @@ class Server(object):
     START_MAX_ATTEMPTS = 3  # During the test, fatal.
     START_INIT_ATTEMPTS = 1  # When starting a test, non-fatal.
     STOP_TIMEOUT = 30
-    COMPILE_TIMEOUT = 60
     DIG_TIMEOUT = 5
 
-    # Instance counter.
-    count = 0
-
+    counter = 0
     def __init__(self):
+        type(self).counter += 1
+        self.idx = self.counter
+
         self.proc = None
         self.valgrind = []
         self.start_params = None
@@ -225,6 +226,8 @@ class Server(object):
         return dict()
 
     def _check_socket(self, proto, port):
+        if params.namespaces:
+            return True # the port distribution is deterministic in namespaces mode
         if self.addr.startswith("/"):
             ux_socket = True
             param = ""
@@ -325,14 +328,6 @@ class Server(object):
                 z.catalog_role = None
         else:
             z.catalog_role = ZoneCatalogRole.HIDDEN
-
-    def compile(self):
-        try:
-            p = Popen([self.control_bin] + self.compile_params,
-                      stdout=self.fout, stderr=self.ferr)
-            p.communicate(timeout=Server.COMPILE_TIMEOUT)
-        except:
-            raise Failed("Can't compile server='%s'" %self.name)
 
     def wait_for_pidfile(self, attempts=8):
         '''Wait for a PID file to disappear, with a timeout'''
@@ -1102,6 +1097,8 @@ class Server(object):
 
 class Bind(Server):
 
+    PORTS_START = 3000
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if not params.bind_bin:
@@ -1449,6 +1446,8 @@ class Bind(Server):
                 self.ctl("signing -nsec3param 1 %d %d - %s" % (n3flag, n3iters, z.name))
 
 class Knot(Server):
+
+    PORTS_START = 2000
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -1928,6 +1927,8 @@ class Knot(Server):
 class Dummy(Server):
     ''' Dummy name server. '''
 
+    PORTS_START = 4000
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.daemon_bin = None
@@ -1950,3 +1951,43 @@ class Dummy(Server):
 
     def running(self):
         return True # Fake running
+
+class Sinkhole(Dummy):
+    ''' Sinkhole name server. Drops all incoming traffic and forces timeouts '''
+
+    PORTS_START = 5000
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.sinkhole_stop_event = threading.Event()
+        self.sinkhole_thread = None
+
+    def start(self, clean=False, fatal=True):
+        if not self.sinkhole_thread:
+            def run():
+                family = socket.AF_INET6 if ipaddress.ip_address(self.addr).version == 6 else socket.AF_INET
+                s = socket.socket(family, socket.SOCK_STREAM)
+                s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                try:
+                    s.bind((self.addr, self.port))
+                    s.listen(5)
+                    while not self.sinkhole_stop_event.is_set():
+                        s.settimeout(1.0)
+                        try:
+                            conn, addr = s.accept()
+                            # Hold the connection open and do nothing to force a TCP hang
+                        except socket.timeout:
+                            continue
+                        except Exception:
+                            break
+                finally:
+                    s.close()
+
+            self.sinkhole_thread = threading.Thread(target=run, daemon=True)
+            self.sinkhole_thread.start()
+
+    def stop(self, check=True):
+        self.sinkhole_stop_event.set()
+
+    def kill(self):
+        self.sinkhole_stop_event.set()

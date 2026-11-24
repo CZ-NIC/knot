@@ -8,6 +8,7 @@ import socket
 import errno
 import psutil
 import time
+import enum
 import dns.name
 import dns.zone
 import zone_generate
@@ -20,6 +21,17 @@ import dnstest.redis
 import dnstest.keys
 import dnstest.zonefile
 
+class ServerPortIdx(enum.IntEnum):
+    UDP = 1
+    XDP = 2
+    TLS = 3
+    QUIC = 3 # intentionally shares TLS's slot: with tls=True, quic reuses the TLS port
+    CTL = 5
+
+class BackendPortIdx(enum.IntEnum):
+    TCP = 1
+    TLS = 2
+
 def repo_file(*path):
     module_path = os.path.dirname(os.path.realpath(__file__))
     repo_path = os.path.realpath(os.path.join(module_path, "..", "..", ".."))
@@ -31,11 +43,10 @@ class Test(object):
 
     MAX_START_TRIES = 3
     XDP_LOCK_FILE = "/tmp/knottest-xdp-lock"
-    LOCAL_ADDR_COMMON = {4: "127.0.0.1", 6: "::1"}
-    LOCAL_ADDR_MULTI = LOCAL_ADDR_COMMON
-    if params.addresses > 1:
+    LOCAL_ADDR = {4: "127.0.0.1", 6: "::1"}
+    if not params.namespaces and params.addresses > 1:
         idx = 1 + Context().job_id % params.addresses
-        LOCAL_ADDR_MULTI = {4: "127.0.1.%i" % idx, 6: "::1%i" % idx}
+        LOCAL_ADDR = {4: "127.0.1.%i" % idx, 6: "::1%i" % idx}
 
     # Value of the last generated port.
     last_port = None
@@ -57,11 +68,11 @@ class Test(object):
         self.tls = tls
 
         if address == 4 or address == 6:
-            self.addr = Test.LOCAL_ADDR_COMMON[address]
+            self.addr = Test.LOCAL_ADDR[address]
         elif address:
             self.addr = address
         else:
-            self.addr = Test.LOCAL_ADDR_MULTI[random.choice([4, 6])]
+            self.addr = Test.LOCAL_ADDR[random.choice([4, 6])]
 
         self.backends = set()
 
@@ -78,9 +89,10 @@ class Test(object):
 
         self.servers = set()
 
-        dnstest.server.Knot.count = 0
-        dnstest.server.Bind.count = 0
-        dnstest.server.Dummy.count = 0
+        dnstest.server.Knot.counter = 0
+        dnstest.server.Bind.counter = 0
+        dnstest.server.Dummy.counter = 0
+        dnstest.server.Sinkhole.counter = 0
 
         Context().test = self
 
@@ -102,19 +114,23 @@ class Test(object):
 
         return True
 
-    def _gen_port(self):
-        min_port = 1500
-        max_port = 65000
+    def _gen_port(self, server, index):
+        if params.namespaces:
+            return server.PORTS_START + 10 * server.idx + index
+        else:
+            # chosen as "nice" numbers above well-known ports and below ephemeral ports
+            min_port = 1500
+            max_port = 32000
 
-        port = Test.last_port
-        if port:
-            port = port + 1 if port < max_port else min_port
+            port = Test.last_port
+            if port:
+                port = port + 1 if port < max_port else min_port
 
-        while not self._check_port(port):
-            port = random.randint(min_port, max_port)
+            while not self._check_port(port):
+                port = random.randint(min_port, max_port)
 
-        Test.last_port = port
-        return port
+            Test.last_port = port
+            return port
 
     def _gen_lock_file(self, srvname):
         try:
@@ -141,9 +157,12 @@ class Test(object):
     @property
     def hostname(self):
         hostname = socket.gethostname()
-        addrinfo = socket.getaddrinfo(hostname, 0, socket.AF_UNSPEC,
-                                      socket.SOCK_DGRAM, 0, socket.AI_CANONNAME)
-        return addrinfo[0][3] if addrinfo else hostname
+        try:
+            addrinfo = socket.getaddrinfo(hostname, 0, socket.AF_UNSPEC,
+                                          socket.SOCK_DGRAM, 0, socket.AI_CANONNAME)
+            return addrinfo[0][3]
+        except Exception:
+            return hostname
 
     def server(self, server, nsid=None, ident=None, version=None, \
                valgrind=None, address=None, port=None, ctlport=None, \
@@ -154,10 +173,10 @@ class Test(object):
             srv = dnstest.server.Bind()
         elif server == "dummy":
             srv = dnstest.server.Dummy()
+        elif server == "sinkhole":
+            srv = dnstest.server.Sinkhole()
         else:
             raise Failed("Unsupported server '%s'" % server)
-
-        type(srv).count += 1
 
         srv.data_dir = self.data_dir
 
@@ -166,7 +185,7 @@ class Test(object):
         srv.version = version
 
         if address == 4 or address == 6:
-            srv.addr = Test.LOCAL_ADDR_COMMON[address]
+            srv.addr = Test.LOCAL_ADDR[address]
         elif address:
             srv.addr = address
         else:
@@ -194,7 +213,7 @@ class Test(object):
 
         srv.tsig_test = self.tsig
 
-        srv.name = "%s%s" % (server, srv.count)
+        srv.name = "%s%s" % (server, srv.idx)
         srv.dir = self.out_dir + "/" + srv.name
         srv.fout = srv.dir + "/stdout"
         srv.ferr = srv.dir + "/stderr"
@@ -262,26 +281,25 @@ class Test(object):
             raise Failed("Unsupported backend type '%s'" % kind)
 
     def generate_conf(self):
-        # Next two loops can't be merged!
         for server in self.servers:
             if server.fixed_port:
                 continue
 
-            server.port = self._gen_port()
-            server.ctlport = self._gen_port()
+            server.port = self._gen_port(server, ServerPortIdx.UDP)
             if self.tls:
-                server.tls_port = self._gen_port()
+                server.tls_port = self._gen_port(server, ServerPortIdx.TLS)
                 server.quic_port = server.tls_port if self.quic else None
             else:
-                server.quic_port = self._gen_port() if self.quic else None
-            server.xdp_port = self._gen_port() if server.xdp_port is not None else None
-            if server.xdp_port:
+                server.quic_port = self._gen_port(server, ServerPortIdx.QUIC) if self.quic else None
+            server.xdp_port = self._gen_port(server, ServerPortIdx.XDP) if server.xdp_port is not None else None
+            if server.xdp_port and not params.namespaces:
                 server.xdp_cover_sock = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
                 server.xdp_cover_sock.bind((server.addr, server.xdp_port))
+            server.ctlport = self._gen_port(server, ServerPortIdx.CTL)
 
         for backend in sorted(self.backends, key=lambda e: e.get_prio()):
-            backend.port = self._gen_port()
-            backend.tls_port = self._gen_port()
+            backend.port = self._gen_port(backend, BackendPortIdx.TCP)
+            backend.tls_port = self._gen_port(backend, BackendPortIdx.TLS)
             backend.gen_confile()
 
         for server in self.servers:
