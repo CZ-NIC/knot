@@ -60,16 +60,18 @@ XDP:
 ----
 
 XDP testing with Valgrind requires running under root. Testing with ASAN is
-possible if lsof has two following capabilities:
+possible with a capability-granting wrapper. To create enter the directory with
+this README and run:
 
-$ sudo setcap "CAP_SYS_PTRACE,CAP_DAC_OVERRIDE+ep" `which lsof`
-
-And knotd has set (in the case of --enable-shared, call it for ../src/.libs/knotd):
-
-$ sudo setcap "CAP_NET_RAW,CAP_NET_ADMIN,CAP_SYS_ADMIN,CAP_IPC_LOCK,CAP_SYS_PTRACE+ep" `readlink -f ../src/knotd`
+$ cp "$(readlink -f "$(which setpriv)")" ./xdp_setpriv
+$ sudo setcap "cap_setpcap,cap_sys_admin,cap_net_admin,cap_net_raw,cap_bpf,cap_sys_resource,cap_ipc_lock,cap_sys_ptrace,cap_dac_override+eip" ./xdp_setpriv
 
 Tcpdump:
 --------
 
 $ sudo setcap "CAP_NET_RAW+ep" `which tcpdump`
 
+Usage:
+------
+
+$ ./runtests.sh

@@ -256,16 +256,22 @@ def run_case(ctx, module_entry, rep):
     return rep.ok()
 
 def release_privileges(uid, gid):
-    os.unshare(os.CLONE_NEWUSER)
-    LIBC.become_unprivileged(uid, gid)
+    if params.xdp:
+        LIBC.drop_all_capabilities()
+    else:
+        os.unshare(os.CLONE_NEWUSER)
+        LIBC.become_unprivileged(uid, gid)
 
 def setup_outer_namespace():
     uid, gid = os.getuid(), os.getgid()
-    os.unshare(os.CLONE_NEWUSER | os.CLONE_NEWNET | os.CLONE_NEWNS)
 
-    LIBC.set_dumpable(1)
-
-    LIBC.become_root(uid, gid)
+    if params.xdp:
+        os.unshare(os.CLONE_NEWNET | os.CLONE_NEWNS)
+        LIBC.mount(None, b"/", None, LIBC.MS_REC | LIBC.MS_PRIVATE)
+    else:
+        os.unshare(os.CLONE_NEWUSER | os.CLONE_NEWNET | os.CLONE_NEWNS)
+        LIBC.set_dumpable(1)
+        LIBC.become_root(uid, gid)
 
     res = subprocess.run(["ip", "link", "set", "lo", "up"],
                          capture_output=True, text=True, check=False)

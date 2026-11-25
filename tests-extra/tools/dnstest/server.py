@@ -225,6 +225,13 @@ class Server(object):
     def conf_defaults_server(self):
         return dict()
 
+    def _setpriv_prefix(self, caps):
+        if params.xdp_setpriv_bin and params.xdp and getattr(self, "xdp_port", None) is not None:
+            return [params.xdp_setpriv_bin,
+                    "--inh-caps=" + caps,
+                    "--ambient-caps=" + caps]
+        return []
+
     def _check_socket(self, proto, port):
         if params.namespaces:
             return True # the port distribution is deterministic in namespaces mode
@@ -242,7 +249,7 @@ class Server(object):
 
         for i in range(5):
             pids = []
-            proc = Popen(["lsof", param, iface],
+            proc = Popen(self._setpriv_prefix(params.xdp_lsof_caps) + ["lsof", param, iface],
                          stdout=PIPE, stderr=PIPE, universal_newlines=True)
             (out, err) = proc.communicate()
             for line in out.split("\n"):
@@ -355,8 +362,8 @@ class Server(object):
             if os.path.isfile(self.ferr):
                 copyfile(self.ferr, self.ferr + str(int(time.time())))
 
-            if self.daemon_bin != None:
-                self.proc = Popen(self.valgrind + [self.daemon_bin] + \
+            if self.daemon_bin is not None:
+                self.proc = Popen(self._setpriv_prefix(params.xdp_knotd_caps) + self.valgrind + [self.daemon_bin] + \
                                   self.start_params,
                                   stdout=open(self.fout, mode=mode),
                                   stderr=open(self.ferr, mode=mode),

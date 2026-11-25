@@ -48,6 +48,13 @@ namespaces = False
 # Indication of allowed XDP testing
 xdp = False
 
+# Capabilities needed for XDP testing
+xdp_knotd_caps = "+sys_admin,+net_admin,+net_raw,+bpf,+sys_resource,+ipc_lock,+sys_ptrace"
+xdp_lsof_caps = "+sys_ptrace,+dac_override"
+
+# SETPRIV_XDP - binary for setting capabilities
+xdp_setpriv_bin = get_binary("SETPRIV_XDP", "./xdp_setpriv")
+
 # KNOT_TEST_VALGRIND - valgrind binary if defined.
 valgrind_bin = get_binary("KNOT_TEST_VALGRIND", "valgrind")
 # KNOT_TEST_VALGRIND_FLAGS - valgrind flags.

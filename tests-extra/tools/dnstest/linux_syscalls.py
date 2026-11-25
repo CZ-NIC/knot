@@ -2,12 +2,28 @@ import ctypes
 import os
 from typing import Optional
 
+class _CapHeader(ctypes.Structure):
+        _fields_ = [
+                ("version", ctypes.c_uint32),
+                ("pid", ctypes.c_int),
+        ]
+
+class _CapData(ctypes.Structure):
+        _fields_ = [
+                ("effective", ctypes.c_uint32),
+                ("permitted", ctypes.c_uint32),
+                ("inheritable", ctypes.c_uint32),
+        ]
+
 class LinuxSyscalls:
         PR_SET_DUMPABLE = 4
+        PR_CAP_AMBIENT = 47
+        PR_CAP_AMBIENT_CLEAR_ALL = 4
 
         MS_REC = 0x4000
         MS_PRIVATE = 0x40000
 
+        _LINUX_CAPABILITY_VERSION_3 = 0x20080522
         _instance: Optional["LinuxSyscalls"] = None
 
         def __new__(cls) -> "LinuxSyscalls":
@@ -38,6 +54,12 @@ class LinuxSyscalls:
                                 ctypes.c_ulong,
                         ]
                         libc.prctl.restype = ctypes.c_int
+
+                        libc.capset.argtypes = [
+                                ctypes.POINTER(_CapHeader),
+                                ctypes.POINTER(_CapData),
+                        ]
+                        libc.capset.restype = ctypes.c_int
 
                         self._libc = libc
                 return self._libc
@@ -91,3 +113,17 @@ class LinuxSyscalls:
                 ctypes.set_errno(0)
                 if libc.prctl(self.PR_SET_DUMPABLE, value, 0, 0, 0) != 0:
                         self._raise_errno("prctl(PR_SET_DUMPABLE)")
+
+        def drop_all_capabilities(self) -> None:
+                libc = self._get_libc()
+
+                ctypes.set_errno(0)
+                if libc.prctl(self.PR_CAP_AMBIENT, self.PR_CAP_AMBIENT_CLEAR_ALL, 0, 0, 0) != 0:
+                        self._raise_errno("PR_CAP_AMBIENT_CLEAR_ALL")
+
+                header = _CapHeader(version=self._LINUX_CAPABILITY_VERSION_3, pid=0)
+                empty_caps = (_CapData * 2)()
+
+                ctypes.set_errno(0)
+                if libc.capset(ctypes.byref(header), empty_caps) != 0:
+                        self._raise_errno("capset")
