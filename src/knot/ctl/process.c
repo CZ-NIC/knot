@@ -31,8 +31,8 @@ int ctl_process(knot_ctl_t *ctl, server_t *server, unsigned thread_idx, bool *ex
 		int cmd_exec = true, cmd_ret = KNOT_EOK;
 		int ret = knot_ctl_receive(args.ctl, &args.type, &args.data);
 		if (ret != KNOT_EOK) {
-			log_ctl_debug("control, failed to receive (%s)",
-			              knot_strerror(ret));
+			log_ctl_debug("control, thread %d, failed to receive (%s)",
+			              thread_idx, knot_strerror(ret));
 			return ret;
 		}
 
@@ -79,19 +79,23 @@ int ctl_process(knot_ctl_t *ctl, server_t *server, unsigned thread_idx, bool *ex
 
 		ctl_cmd_t cmd = ctl_str_to_cmd(cmd_name);
 		if (cmd == CTL_CONF_LIST) {
-			log_ctl_debug("control, received command '%s'%s", cmd_name, extra);
+			log_ctl_debug("control, thread %d, received command '%s'%s",
+			              thread_idx, cmd_name, extra);
 		} else if (cmd != CTL_NONE) {
 			if (zone_name != NULL) {
 				log_ctl_zone_str_info(zone_name,
-				             "control, received command '%s'%s", cmd_name, extra);
+				             "control, thread %d, received command '%s'%s",
+				             thread_idx, cmd_name, extra);
 			} else {
-				log_ctl_info("control, received command '%s'%s", cmd_name, extra);
+				log_ctl_info("control, thread %d, received command '%s'%s",
+				             thread_idx, cmd_name, extra);
 			}
 		} else if (cmd_name != NULL){
-			log_ctl_debug("control, invalid command '%s'%s", cmd_name, extra);
+			log_ctl_debug("control, thread %d, invalid command '%s'%s",
+			              thread_idx, cmd_name, extra);
 			continue;
 		} else {
-			log_ctl_debug("control, empty command%s", extra);
+			log_ctl_debug("control, thread %d, empty command%s", thread_idx, extra);
 			continue;
 		}
 
@@ -125,16 +129,16 @@ int ctl_process(knot_ctl_t *ctl, server_t *server, unsigned thread_idx, bool *ex
 			// as a ctl/communication error either.
 			break;
 		default:
-			log_ctl_debug("control, command '%s' (%s)", cmd_name,
-			              knot_strerror(cmd_ret));
+			log_ctl_debug("control, thread %d, command '%s' (%s)",
+			              thread_idx, cmd_name, knot_strerror(cmd_ret));
 			break;
 		}
 
 		// Finalize the answer block.
 		ret = knot_ctl_send(ctl, KNOT_CTL_TYPE_BLOCK, NULL);
 		if (ret != KNOT_EOK) {
-			log_ctl_debug("control, failed to reply (%s)",
-			              knot_strerror(ret));
+			log_ctl_debug("control, thread %d, failed to reply (%s)",
+			              thread_idx, knot_strerror(ret));
 		}
 
 		// Stop if required.
@@ -142,8 +146,8 @@ int ctl_process(knot_ctl_t *ctl, server_t *server, unsigned thread_idx, bool *ex
 			// Finalize the answer message.
 			ret = knot_ctl_send(ctl, KNOT_CTL_TYPE_END, NULL);
 			if (ret != KNOT_EOK) {
-				log_ctl_debug("control, failed to reply (%s)",
-				              knot_strerror(ret));
+				log_ctl_debug("control, thread %d, failed to reply (%s)",
+				              thread_idx, knot_strerror(ret));
 			}
 
 			return cmd_ret;

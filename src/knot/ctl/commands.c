@@ -162,7 +162,8 @@ void ctl_send_error(ctl_args_t *args, const char *msg)
 
 	int ret = knot_ctl_send(args->ctl, KNOT_CTL_TYPE_DATA, &data);
 	if (ret != KNOT_EOK) {
-		log_ctl_debug("control, failed to send error (%s)", knot_strerror(ret));
+		log_ctl_debug("control, thread %d, failed to send error (%s)",
+		              args->thread_idx, knot_strerror(ret));
 	}
 }
 
@@ -206,7 +207,8 @@ static int zones_apply(ctl_args_t *args, int (*fcn)(zone_t *, ctl_args_t *))
 
 		if (failed && ret != KNOT_EPARSEFAIL) {
 			ret = KNOT_CTL_EZONE;
-			log_ctl_error("control, error (%s)", knot_strerror(ret));
+			log_ctl_error("control, thread %d, error (%s)",
+			              args->thread_idx, knot_strerror(ret));
 			ctl_send_error(args, knot_strerror(ret));
 		}
 
@@ -221,7 +223,8 @@ static int zones_apply(ctl_args_t *args, int (*fcn)(zone_t *, ctl_args_t *))
 		}
 		if (ret != KNOT_EOK && ret != KNOT_EPARSEFAIL) {
 			log_ctl_zone_str_error(args->data[KNOT_CTL_IDX_ZONE],
-			                       "control, error (%s)", knot_strerror(ret));
+			                       "control, thread %d, error (%s)",
+			                       args->thread_idx, knot_strerror(ret));
 			ctl_send_error(args, knot_strerror(ret));
 		}
 
@@ -234,8 +237,8 @@ static int zones_apply(ctl_args_t *args, int (*fcn)(zone_t *, ctl_args_t *))
 
 		// Log the other zones the same way as the first one from process.c.
 		log_ctl_zone_str_info(args->data[KNOT_CTL_IDX_ZONE],
-		                      "control, received command '%s'",
-		                      args->data[KNOT_CTL_IDX_CMD]);
+		                      "control, thread %d, received command '%s'",
+		                      args->thread_idx, args->data[KNOT_CTL_IDX_CMD]);
 	}
 
 	return ret;
@@ -770,9 +773,8 @@ static int zones_apply_backup(ctl_args_t *args, bool restore_mode)
 	/* QUIC - server key and cert backup. */
 	ret = backup_quic(ctx, args->server->quic_active || args->server->tls_active);
 	if (ret != KNOT_EOK) {
-		log_ctl_error("control, QUIC %s error (%s)",
-		              restore_mode ? "restore" : "backup",
-		              knot_strerror(ret));
+		log_ctl_error("control, thread %d, QUIC %s error (%s)", args->thread_idx,
+		              restore_mode ? "restore" : "backup", knot_strerror(ret));
 		ctl_send_error(args, knot_strerror(ret));
 		ret = KNOT_EOK;
 		goto done;
@@ -783,7 +785,8 @@ static int zones_apply_backup(ctl_args_t *args, bool restore_mode)
 		ctx->backup_global = true;
 		ret = global_backup(ctx, &args->server->catalog, NULL);
 		if (ret != KNOT_EOK) {
-			log_ctl_error("control, error (%s)", knot_strerror(ret));
+			log_ctl_error("control, thread %d, error (%s)",
+			              args->thread_idx, knot_strerror(ret));
 			ctl_send_error(args, knot_strerror(ret));
 			ret = KNOT_EOK;
 			goto done;
@@ -1734,8 +1737,8 @@ static int catalog_orphans_sweep(server_t *server)
 	return (ret == KNOT_EOK) ? ret2 : ret;
 }
 
-static void log_if_orphans_error(knot_dname_t *zone_name, int err, char *db_type,
-                                 bool *failed)
+static void log_if_orphans_error(ctl_args_t *args, knot_dname_t *zone_name, int err,
+                                 char *db_type, bool *failed)
 {
 	if (err == KNOT_EOK || err == KNOT_ENOENT || err == KNOT_EFILE) {
 		return;
@@ -1744,8 +1747,8 @@ static void log_if_orphans_error(knot_dname_t *zone_name, int err, char *db_type
 	*failed = true;
 	const char *error = knot_strerror(err);
 
-	char *msg = sprintf_alloc("control, failed to purge orphan from %s database (%s)",
-	                          db_type, error);
+	char *msg = sprintf_alloc("control, thread %d, failed to purge orphan from %s database (%s)",
+	                          args->thread_idx, db_type, error);
 	if (msg == NULL) {
 		return;
 	}
@@ -1770,14 +1773,14 @@ static int orphans_purge(ctl_args_t *args)
 		if (MATCH_AND_FILTER(args, CTL_FILTER_PURGE_KEYS)) {
 			ret = kasp_db_sweep_keys(&args->server->kaspdb,
 			                         zone_exists, args->server->zone_db);
-			log_if_orphans_error(NULL, ret, "keys", &failed);
+			log_if_orphans_error(args, NULL, ret, "keys", &failed);
 		}
 
 		// Purge KASP DB.
 		if (only_orphan || MATCH_AND_FILTER(args, CTL_FILTER_PURGE_KASPDB)) {
 			ret = kasp_db_sweep(&args->server->kaspdb,
 			                    zone_exists, args->server->zone_db);
-			log_if_orphans_error(NULL, ret, "KASP", &failed);
+			log_if_orphans_error(args, NULL, ret, "KASP", &failed);
 		}
 
 		// Purge zone journals of unconfigured zones.
@@ -1785,20 +1788,20 @@ static int orphans_purge(ctl_args_t *args)
 			ret = journals_walk(&args->server->journaldb,
 			                    drop_journal_if_orphan, args->server);
 			ret = (ret == KNOT_ENODB ? KNOT_EOK : ret);
-			log_if_orphans_error(NULL, ret, "journal", &failed);
+			log_if_orphans_error(args, NULL, ret, "journal", &failed);
 		}
 
 		// Purge timers of unconfigured zones.
 		if (only_orphan || MATCH_AND_FILTER(args, CTL_FILTER_PURGE_TIMERS)) {
 			ret = zone_timers_sweep(&args->server->timerdb,
 			                        zone_exists, args->server->zone_db);
-			log_if_orphans_error(NULL, ret, "timer", &failed);
+			log_if_orphans_error(args, NULL, ret, "timer", &failed);
 		}
 
 		// Purge and remove orphan members of non-existing/non-catalog zones.
 		if (only_orphan || MATCH_AND_FILTER(args, CTL_FILTER_PURGE_CATALOG)) {
 			ret = catalog_orphans_sweep(args->server);
-			log_if_orphans_error(NULL, ret, "catalog", &failed);
+			log_if_orphans_error(args, NULL, ret, "catalog", &failed);
 		}
 
 		if (failed) {
@@ -1812,8 +1815,8 @@ static int orphans_purge(ctl_args_t *args)
 				                    sizeof(buff));
 			if (zone_name == NULL) {
 				log_ctl_zone_str_error(args->data[KNOT_CTL_IDX_ZONE],
-				                       "control, error (%s)",
-				                       knot_strerror(KNOT_EINVAL));
+				                       "control, thread %d, error (%s)",
+				                       args->thread_idx, knot_strerror(KNOT_EINVAL));
 				ctl_send_error(args, knot_strerror(KNOT_EINVAL));
 				return KNOT_EINVAL;
 			}
@@ -1825,7 +1828,7 @@ static int orphans_purge(ctl_args_t *args)
 					if (knot_lmdb_open(&args->server->kaspdb) == KNOT_EOK) {
 						ret = kasp_db_delete_keys(&args->server->kaspdb, zone_name,
 						                          true, false, true);
-						log_if_orphans_error(zone_name, ret, "keys", &failed);
+						log_if_orphans_error(args, zone_name, ret, "keys", &failed);
 					}
 				}
 
@@ -1833,7 +1836,7 @@ static int orphans_purge(ctl_args_t *args)
 				if (only_orphan || MATCH_AND_FILTER(args, CTL_FILTER_PURGE_KASPDB)) {
 					if (knot_lmdb_open(&args->server->kaspdb) == KNOT_EOK) {
 						ret = kasp_db_delete_all(&args->server->kaspdb, zone_name);
-						log_if_orphans_error(zone_name, ret, "KASP", &failed);
+						log_if_orphans_error(args, zone_name, ret, "KASP", &failed);
 					}
 				}
 
@@ -1841,20 +1844,20 @@ static int orphans_purge(ctl_args_t *args)
 				if (only_orphan || MATCH_AND_FILTER(args, CTL_FILTER_PURGE_JOURNAL)) {
 					zone_journal_t j = { &args->server->journaldb, zone_name };
 					ret = journal_scrape_with_md(j, true);
-					log_if_orphans_error(zone_name, ret, "journal", &failed);
+					log_if_orphans_error(args, zone_name, ret, "journal", &failed);
 				}
 
 				// Purge zone timers.
 				if (only_orphan || MATCH_AND_FILTER(args, CTL_FILTER_PURGE_TIMERS)) {
 					ret = zone_timers_sweep(&args->server->timerdb,
 					                        zone_names_distinct, zone_name);
-					log_if_orphans_error(zone_name, ret, "timer", &failed);
+					log_if_orphans_error(args, zone_name, ret, "timer", &failed);
 				}
 
 				// Purge Catalog.
 				if (only_orphan || MATCH_AND_FILTER(args, CTL_FILTER_PURGE_CATALOG)) {
 					ret = catalog_zone_purge(args->server, NULL, zone_name);
-					log_if_orphans_error(zone_name, ret, "catalog", &failed);
+					log_if_orphans_error(args, zone_name, ret, "catalog", &failed);
 				}
 
 				if (failed) {
@@ -1872,8 +1875,8 @@ static int orphans_purge(ctl_args_t *args)
 
 			// Log the other zones the same way as the first one from process.c.
 			log_ctl_zone_str_info(args->data[KNOT_CTL_IDX_ZONE],
-			                      "control, received command '%s'",
-			                      args->data[KNOT_CTL_IDX_CMD]);
+			                      "control, thread %d, received command '%s'",
+			                      args->thread_idx, args->data[KNOT_CTL_IDX_CMD]);
 		}
 	}
 
