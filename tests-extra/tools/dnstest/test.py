@@ -57,6 +57,7 @@ class Test(object):
 
     rel_time = time.time()
     start_time = 0
+    xdp_server = None
 
     def __init__(self, address=None, tsig=None, stress=True, quic=False, tls=False):
         if not os.path.exists(Context().out_dir):
@@ -143,6 +144,16 @@ class Test(object):
             if e.errno == errno.EEXIST:
                 return False
 
+    def xdp_acquire(self, srvname):
+        if params.namespaces:
+            # lo is private to this test's netns; allow one XDP server per test
+            if self.xdp_server is not None:
+                return False
+            self.xdp_server = srvname
+            return True
+        else:
+            return self._gen_lock_file(srvname)
+
     def _clean_lock_file(self):
         try:
             with open(self.XDP_LOCK_FILE, "r") as f:
@@ -226,8 +237,9 @@ class Test(object):
         xdp_enable = (params.xdp and xdp_enable and \
                       server == "knot" and \
                       srv.addr.startswith("::") and \
-                      random.choice([False, True]) and \
-                      self._gen_lock_file(srv.name))
+                      random.choice([False, True]))
+        if xdp_enable:
+            xdp_enable = self.xdp_acquire(srv.name)
         if xdp_enable:
             srv.xdp_port = 0
 
