@@ -95,6 +95,9 @@ void quic_handler(knotd_qdata_params_t *params, knot_layer_t *layer,
 		(void)knot_quic_send(table, conn, &rpl, QUIC_MAX_SEND_PER_RECV, 0);
 
 		knot_quic_cleanup(&conn, 1);
+	} else if (rpl.handle_ret > 0) {
+		// A reply with no conn, such as Version Negotiation and others.
+		(void)knot_quic_send(table, conn, &rpl, QUIC_MAX_SEND_PER_RECV, 0);
 	}
 
 	(void)process_query_proto(params, KNOTD_STAGE_PROTO_END);

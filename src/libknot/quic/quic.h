@@ -104,6 +104,11 @@ uint32_t knot_quic_conn_rtt(knot_quic_conn_t *conn);
 uint16_t knot_quic_conn_local_port(knot_quic_conn_t *conn);
 
 /*!
+ * \brief Remove ODCID (or Retry SCID if retry took place) link to this conn from table.
+ */
+void knot_quic_conn_rem_odcid(knot_quic_conn_t *conn);
+
+/*!
  * \brief Create new outgoing QUIC connection.
  *
  * \param table       QUIC connections table to be added to.

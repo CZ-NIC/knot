@@ -38,6 +38,7 @@
 #define QUIC_SEND_RETRY                  NGTCP2_ERR_RETRY
 #define QUIC_SEND_STATELESS_RESET        (-NGTCP2_STATELESS_RESET_TOKENLEN)
 #define QUIC_SEND_CONN_CLOSE             (-KNOT_QUIC_HANDLE_RET_CLOSE)
+#define QUIC_SEND_INVALID_TOKEN          (-KNOT_QUIC_HANDLE_RET_CLOSE - 1)
 
 #define TLS_CALLBACK_ERR     (-1)
 
@@ -269,14 +270,16 @@ static int remove_connection_id(ngtcp2_conn *conn, const ngtcp2_cid *cid,
 {
 	knot_quic_conn_t *ctx = (knot_quic_conn_t *)user_data;
 	assert(ctx->conn == conn);
-
-	knot_quic_cid_t **torem = quic_table_lookup2(cid, ctx->quic_table);
-	if (torem != NULL) {
-		assert((*torem)->conn == ctx);
-		quic_table_rem2(torem, ctx->quic_table);
-	}
-
+	quic_table_rem2(cid, ctx);
 	return 0;
+}
+
+void knot_quic_conn_rem_odcid(knot_quic_conn_t *conn)
+{
+	assert(conn);
+	const ngtcp2_transport_params *tp = ngtcp2_conn_get_local_transport_params2(conn->conn);
+	const ngtcp2_cid *old_cid = tp->retry_scid_present ? &tp->retry_scid : &tp->original_dcid;
+	quic_table_rem2(old_cid, conn);
 }
 
 static int handshake_completed_cb(ngtcp2_conn *conn, void *user_data)
@@ -286,6 +289,8 @@ static int handshake_completed_cb(ngtcp2_conn *conn, void *user_data)
 
 	assert(!(ctx->flags & KNOT_QUIC_CONN_HANDSHAKE_DONE));
 	ctx->flags |= KNOT_QUIC_CONN_HANDSHAKE_DONE;
+
+	knot_quic_conn_rem_odcid(ctx);
 
 	if (!ngtcp2_conn_is_server(conn)) {
 		return knot_tls_pin_check(ctx->tls_session, ctx->quic_table->creds) == KNOT_EOK
@@ -439,7 +444,7 @@ static void user_qlog(void *user_data, uint32_t flags, const void *data, size_t 
 static int conn_new(ngtcp2_conn **pconn, const ngtcp2_path *path, const ngtcp2_cid *scid,
                     const ngtcp2_cid *dcid, const ngtcp2_cid *odcid, uint32_t version,
                     uint64_t now, uint64_t idle_timeout_ns,
-                    knot_quic_conn_t *qconn, bool server, bool retry_sent)
+                    knot_quic_conn_t *qconn, bool server, const ngtcp2_cid *retry_scid)
 {
 	knot_quic_table_t *qtable = qconn->quic_table;
 
@@ -522,10 +527,10 @@ static int conn_new(ngtcp2_conn **pconn, const ngtcp2_path *path, const ngtcp2_c
 		params.original_dcid_present = true;
 	}
 
-	if (retry_sent) {
-		assert(scid);
+	// RFC 9000 7.3: the Source Connection ID of the Retry the client acted on.
+	if (retry_scid != NULL) {
 		params.retry_scid_present = 1;
-		params.retry_scid = *scid;
+		params.retry_scid = *retry_scid;
 	}
 	if (dnssec_random_buffer(params.stateless_reset_token, NGTCP2_STATELESS_RESET_TOKENLEN) != KNOT_EOK) {
 		return KNOT_ERROR;
@@ -567,7 +572,7 @@ int knot_quic_client(knot_quic_table_t *table, struct sockaddr_in6 *dest,
 	path.local.addrlen = addr_len((const struct sockaddr_in6 *)via);
 
 	int ret = conn_new(&conn->conn, &path, &dcid, &scid, NULL, NGTCP2_PROTO_VER_V1, now,
-	                   5000000000L, conn, false, false);
+	                   5000000000L, conn, false, NULL);
 	if (ret == KNOT_EOK) {
 		ret = tls_init_conn_session(conn, false);
 	}
@@ -687,14 +692,19 @@ int knot_quic_handle(knot_quic_table_t *table, knot_quic_reply_t *reply,
 					addr_len((struct sockaddr_in6 *)reply->ip_rem),
 					QUIC_REGULAR_TOKEN_TIMEOUT, now
 				);
+				/* A NEW_TOKEN token: the original DCID is this Initial's. */
+				memcpy(&odcid, &dcid, sizeof(odcid));
 			}
 			if (ret != 0) {
-				ret = KNOT_EOK;
+				ret = -QUIC_SEND_INVALID_TOKEN;
 				goto finish;
 			}
 		} else {
 			memcpy(&odcid, &dcid, sizeof(odcid));
 		}
+
+		// The CID the client chose, before the server chooses its own
+		ngtcp2_cid client_dcid = dcid;
 
 		// server chooses his CID to his liking
 		if (!init_unique_cid(&dcid, 0, table)) {
@@ -708,8 +718,10 @@ int knot_quic_handle(knot_quic_table_t *table, knot_quic_reply_t *reply,
 			goto finish;
 		}
 
+		// After a Retry the client sends to the Retry's Source Connection
+		// ID, so that is this Initial's DCID, before the server chose its own.
 		ret = conn_new(&conn->conn, &path, &dcid, &scid, &odcid, decoded_cids.version,
-		               now, idle_timeout, conn, true, retry_token);
+		               now, idle_timeout, conn, true, retry_token ? &client_dcid : NULL);
 		if (ret >= 0) {
 			ret = tls_init_conn_session(conn, true);
 		}
@@ -718,6 +730,17 @@ int knot_quic_handle(knot_quic_table_t *table, knot_quic_reply_t *reply,
 			*out_conn = conn; // we need knot_quic_cleanup() by the caller afterwards
 			goto finish;
 		}
+
+		// RFC 9000 5.2: until its handshake completes, the client goes on
+		// sending to the CID it chose (0-RTT packets, and Initials, sent
+		// before the server's first reply reaches it); they belong to this
+		// connection. It is either params.retry_scid or ODCID.
+		(void)quic_table_insert(conn, &client_dcid, table);
+#ifndef NDEBUG
+		const ngtcp2_transport_params *tp = ngtcp2_conn_get_local_transport_params2(conn->conn);
+		const ngtcp2_cid *old_cid = tp->retry_scid_present ? &tp->retry_scid : &tp->original_dcid;
+		assert(ngtcp2_cid_eq(old_cid, &client_dcid));
+#endif
 	}
 
 	ngtcp2_pkt_info pi = { .ecn = reply->ecn, };
@@ -841,6 +864,7 @@ static int send_special(knot_quic_table_t *quic_table, knot_quic_reply_t *rpl,
 	int dvc_ret = NGTCP2_ERR_FATAL;
 
 	if ((rpl->handle_ret == -QUIC_SEND_VERSION_NEGOTIATION ||
+	     rpl->handle_ret == -QUIC_SEND_INVALID_TOKEN ||
 	     rpl->handle_ret == -QUIC_SEND_RETRY) &&
 	    rpl->in_payload != NULL && rpl->in_payload->iov_len > 0) {
 		dvc_ret = ngtcp2_pkt_decode_version_cid(
@@ -910,6 +934,19 @@ static int send_special(knot_quic_table_t *quic_table, knot_quic_reply_t *rpl,
 			stateless_reset_token, sreset_rand, sizeof(sreset_rand)
 		);
 		break;
+	case -QUIC_SEND_INVALID_TOKEN:
+		if (dvc_ret != NGTCP2_NO_ERROR) {
+			rpl->free_reply(rpl);
+			return KNOT_ERROR;
+		}
+		// To the client's SCID, protected with the keys of the DCID it chose
+		ngtcp2_cid_init(&dcid, decoded_cids.scid, decoded_cids.scidlen);
+		ngtcp2_cid_init(&scid, decoded_cids.dcid, decoded_cids.dcidlen);
+		ret = ngtcp2_crypto_write_connection_close(
+			rpl->out_payload->iov_base, rpl->out_payload->iov_len,
+			decoded_cids.version, &dcid, &scid, NGTCP2_INVALID_TOKEN, NULL, 0
+		);
+		break;
 	case -QUIC_SEND_CONN_CLOSE:
 		if (rpl->tls_alert != 0) {
 			ngtcp2_ccerr_set_tls_alert(&ccerr, rpl->tls_alert, NULL, 0);
@@ -952,11 +989,11 @@ int knot_quic_send(knot_quic_table_t *quic_table, knot_quic_conn_t *conn,
                    knot_quic_reply_t *reply, unsigned max_msgs,
                    knot_quic_send_flag_t flags)
 {
-	if (quic_table == NULL || conn == NULL || reply == NULL) {
+	if (quic_table == NULL || (conn == NULL && reply->handle_ret == 0) || reply == NULL) {
 		return KNOT_EINVAL;
 	} else if (reply->handle_ret < 0) {
 		return reply->handle_ret;
-	} else if ((conn->flags & KNOT_QUIC_CONN_BLOCKED) && !(flags & KNOT_QUIC_SEND_IGNORE_BLOCKED)) {
+	} else if (conn != NULL && (conn->flags & KNOT_QUIC_CONN_BLOCKED) && !(flags & KNOT_QUIC_SEND_IGNORE_BLOCKED)) {
 		return KNOT_EOK;
 	} else if (reply->handle_ret > 0) {
 		return send_special(quic_table, reply, conn);

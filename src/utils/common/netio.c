@@ -340,7 +340,8 @@ static char *net_get_remote(const net_t *net)
 {
 	if (net->tls.params->sni != NULL) {
 		return net->tls.params->sni;
-	} else if (net->tls.params->hostname != NULL) {
+	} else if (net->tls.params->hostname != NULL &&
+	           !tls_name_is_address(net->tls.params->hostname)) {
 		return net->tls.params->hostname;
 	} else if (strchr(net->remote_str, ':') == NULL) {
 		char *at = strchr(net->remote_str, '@');
@@ -432,15 +433,11 @@ int net_connect(net_t *net)
 #ifdef LIBNGHTTP2
 			if (net->https.params.enable) {
 				// Establish HTTPS connection.
-				char *remote = net_get_remote(net);
-				ret = tls_ctx_setup_remote_endpoint(&net->tls, &doh_alpn, 1, NULL,
-				        remote);
+				ret = tls_ctx_setup_remote_endpoint(&net->tls, &doh_alpn, 1,
+				        knot_tls_priority(true), net_get_remote(net));
 				if (ret != 0) {
 					net_close(net);
 					return ret;
-				}
-				if (remote && net->https.authority == NULL) {
-					net->https.authority = strdup(remote);
 				}
 				ret = https_ctx_connect(&net->https, sockfd,
 				        (struct sockaddr_storage *)net->srv->ai_addr);

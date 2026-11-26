@@ -5,6 +5,8 @@
 
 #pragma once
 
+#include <arpa/inet.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <netdb.h>
 #include <gnutls/gnutls.h>
@@ -69,3 +71,11 @@ int tls_ctx_receive(tls_ctx_t *ctx, uint8_t *buf, const size_t buf_len);
 void tls_ctx_close(tls_ctx_t *ctx);
 void tls_ctx_deinit(tls_ctx_t *ctx);
 void print_tls(const tls_ctx_t *ctx);
+
+static inline bool tls_name_is_address(const char *name)
+{
+	struct in6_addr addr6;
+	struct in_addr addr4;
+	return name != NULL && (inet_pton(AF_INET, name, &addr4) == 1 ||
+	                        inet_pton(AF_INET6, name, &addr6) == 1);
+}

@@ -7,6 +7,7 @@
 #include <gnutls/gnutls.h>
 #include <ngtcp2/ngtcp2.h>
 #include <stdio.h>
+#include <pthread.h>
 #include <string.h>
 
 #include "libknot/quic/quic_conn.h"
@@ -25,6 +26,21 @@
 
 #define STREAM_INCR 4 // DoQ only uses client-initiated bi-directional streams, so stream IDs increment by four
 #define BUCKETS_PER_CONNS 8 // Each connecion has several dCIDs, and each CID takes one hash table bucket.
+
+/*
+ * One secret for the whole process, not one per table: it derives the
+ * tokens (NEW_TOKEN and Retry) and the stateless reset tokens, and every
+ * UDP worker has a table of its own.
+ */
+static uint64_t process_secret[4];
+static pthread_once_t process_secret_once = PTHREAD_ONCE_INIT;
+
+static void process_secret_init(void)
+{
+	for (size_t i = 0; i < ARRAY_SIZE(process_secret); i++) {
+		process_secret[i] = dnssec_random_uint64_t();
+	}
+}
 
 static int cmp_expiry_heap_nodes(void *c1, void *c2)
 {
@@ -69,10 +85,8 @@ knot_quic_table_t *knot_quic_table_new(size_t max_conns, size_t max_ibufs, size_
 
 	res->creds = creds;
 
-	res->hash_secret[0] = dnssec_random_uint64_t();
-	res->hash_secret[1] = dnssec_random_uint64_t();
-	res->hash_secret[2] = dnssec_random_uint64_t();
-	res->hash_secret[3] = dnssec_random_uint64_t();
+	pthread_once(&process_secret_once, process_secret_init);
+	memcpy(res->hash_secret, process_secret, sizeof(res->hash_secret));
 
 	return res;
 }
@@ -246,12 +260,19 @@ void quic_conn_mark_used(knot_quic_conn_t *conn, knot_quic_table_t *table)
 	conn_heap_reschedule(conn, table);
 }
 
-void quic_table_rem2(knot_quic_cid_t **pcid, knot_quic_table_t *table)
+void quic_table_rem2(const struct ngtcp2_cid *cid, knot_quic_conn_t *conn)
 {
-	knot_quic_cid_t *cid = *pcid;
-	*pcid = cid->next;
-	free(cid);
-	table->pointers--;
+	knot_quic_cid_t **pcid = quic_table_lookup2(cid, conn->quic_table);
+	assert(pcid != NULL);
+	while (*pcid != NULL && (*pcid)->conn != conn) {
+		pcid = &(*pcid)->next;
+	}
+	if (*pcid != NULL) {
+		knot_quic_cid_t *tofree = *pcid;
+		*pcid = tofree->next;
+		free(tofree);
+		conn->quic_table->pointers--;
+	}
 }
 
 _public_
@@ -288,18 +309,16 @@ void knot_quic_table_rem(knot_quic_conn_t *conn, knot_quic_table_t *table)
 	assert(conn->streams_count <= 0);
 	assert(conn->obufs_size == 0);
 
+	if (!(conn->flags & KNOT_QUIC_CONN_HANDSHAKE_DONE)) {
+		knot_quic_conn_rem_odcid(conn);
+	}
+
 	size_t num_scid = ngtcp2_conn_get_scid(conn->conn, NULL);
 	ngtcp2_cid *scids = calloc(num_scid, sizeof(*scids));
 	ngtcp2_conn_get_scid(conn->conn, scids);
 
 	for (size_t i = 0; i < num_scid; i++) {
-		knot_quic_cid_t **pcid = quic_table_lookup2(&scids[i], table);
-		assert(pcid != NULL);
-		if (*pcid == NULL) {
-			continue;
-		}
-		assert((*pcid)->conn == conn);
-		quic_table_rem2(pcid, table);
+		quic_table_rem2(&scids[i], conn);
 	}
 
 	int pos = heap_find(table->expiry_heap, (heap_val_t *)conn);
