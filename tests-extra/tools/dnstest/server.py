@@ -815,9 +815,6 @@ class Server(object):
         if source is not None:
             dig_flags += " -b " + source
 
-        check_log("DIG %s %s %s @%s -p %i %s" %
-                  (rname, rtype_str, rclass, addr, self.port, dig_flags))
-
         # Set TSIG for a normal query if explicitly specified.
         key_params = dict()
         if tsig != None:
@@ -842,20 +839,23 @@ class Server(object):
 
         for t in range(tries):
             try:
+                qport = self.query_port(xdp)
+                check_log("DIG %s %s %s @%s -p %i %s" %
+                                  (rname, rtype_str, rclass, addr, qport, dig_flags))
                 if rtype.upper() == "AXFR":
                     resp = dns.query.xfr(addr, rname, rtype, rclass,
-                                         port=self.query_port(xdp), lifetime=timeout,
+                                         port=qport, lifetime=timeout,
                                          use_udp=udp, **key_params)
                 elif rtype.upper() == "IXFR":
                     resp = dns.query.xfr(addr, rname, rtype, rclass,
-                                         port=self.query_port(xdp), lifetime=timeout,
+                                         port=qport, lifetime=timeout,
                                          use_udp=udp, serial=int(serial),
                                          **key_params)
                 elif udp:
-                    resp = dns.query.udp(query, addr, port=self.query_port(xdp),
+                    resp = dns.query.udp(query, addr, port=qport,
                                          timeout=timeout, source=source)
                 else:
-                    resp = dns.query.tcp(query, addr, port=self.query_port(xdp),
+                    resp = dns.query.tcp(query, addr, port=qport,
                                          timeout=timeout, source=source)
 
                 if not log_no_sep:
