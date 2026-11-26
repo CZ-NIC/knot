@@ -21,14 +21,12 @@ sys.path.append(os.path.join(current_dir, "tools"))
 from dnstest.context import Context
 import dnstest.params as params
 import dnstest.utils
+import dnstest.linux_syscalls
 
 class CaseRes(enum.IntEnum):
     OK = 0
     FAILED = 1
     SKIPPED = 2
-
-PR_SET_DUMPABLE = 4
-UNPRIVILEGED_ID = 1000
 
 TESTS_DIR = "tests"
 
@@ -42,6 +40,8 @@ ROOT_SERVERS = """
 199.7.91.13          d.root-servers.net.
 2001:500:2d::d       d.root-servers.net.
 """
+
+LIBC = None
 
 log = None
 outs_dir = None
@@ -255,31 +255,17 @@ def run_case(ctx, module_entry, rep):
         return rep.failed("FAILED" + ((" (" + ctx.err_msg + ")") if ctx.err_msg else ""))
     return rep.ok()
 
-def map_ids(inner_uid, outer_uid, inner_gid, outer_gid):
-    for path, data in (("/proc/self/setgroups", "deny\n"),
-                       ("/proc/self/uid_map", f"{inner_uid} {outer_uid} 1\n"),
-                       ("/proc/self/gid_map", f"{inner_gid} {outer_gid} 1\n")):
-        with open(path, "w", encoding="utf-8") as f:
-            f.write(data)
-
-def set_dumpable(value=1):
-    libc = ctypes.CDLL(None, use_errno=True)
-
-    libc.prctl.argtypes = [ctypes.c_int, ctypes.c_ulong, ctypes.c_ulong,
-                           ctypes.c_ulong, ctypes.c_ulong]
-    libc.prctl.restype = ctypes.c_int
-
-    if libc.prctl(PR_SET_DUMPABLE, value, 0, 0, 0) != 0:
-        err = ctypes.get_errno()
-        raise OSError(err, os.strerror(err), "prctl(PR_SET_DUMPABLE)")
+def release_privileges(uid, gid):
+    os.unshare(os.CLONE_NEWUSER)
+    LIBC.become_unprivileged(uid, gid)
 
 def setup_outer_namespace():
     uid, gid = os.getuid(), os.getgid()
     os.unshare(os.CLONE_NEWUSER | os.CLONE_NEWNET | os.CLONE_NEWNS)
 
-    set_dumpable(1)
+    LIBC.set_dumpable(1)
 
-    map_ids(0, uid, 0, gid)
+    LIBC.become_root(uid, gid)
 
     res = subprocess.run(["ip", "link", "set", "lo", "up"],
                          capture_output=True, text=True, check=False)
@@ -289,7 +275,7 @@ def setup_outer_namespace():
     # This is required exclusively for test cases that depend on external
     # ALIAS targets to resolve them locally.
     try:
-        subprocess.run(["mount", "-t", "tmpfs", "tmpfs", "/etc"], check=True)
+        LIBC.mount(b"tmpfs", b"/etc", b"tmpfs", 0)
     except Exception as e:
         print(f"FAILED to setup resolv.conf - {e}")
 
@@ -302,9 +288,7 @@ def setup_outer_namespace():
 
     os.environ["RESOLV_MULTI"] = "on"
 
-def drop_to_unprivileged_user():
-    os.unshare(os.CLONE_NEWUSER)
-    map_ids(UNPRIVILEGED_ID, 0, UNPRIVILEGED_ID, 0)
+    release_privileges(uid, gid)
 
 def namespace_process(ctx, module_entry, rep):
     outcome = CaseRes.FAILED
@@ -312,7 +296,6 @@ def namespace_process(ctx, module_entry, rep):
     # namespace setup
     try:
         setup_outer_namespace()
-        drop_to_unprivileged_user()
     except Exception as e:
         save_traceback(ctx.out_dir, e)
         msg = format(e)
@@ -492,6 +475,10 @@ def main(args):
     except Exception as e:
         log.error(str(e))
         sys.exit(1)
+
+    if params.namespaces:
+        global LIBC
+        LIBC = dnstest.linux_syscalls.LinuxSyscalls()
 
     ref_time = datetime.datetime.now().replace(microsecond=0)
 
