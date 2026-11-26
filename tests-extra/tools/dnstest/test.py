@@ -236,7 +236,6 @@ class Test(object):
 
         xdp_enable = (params.xdp and xdp_enable and \
                       server == "knot" and \
-                      srv.addr.startswith("::") and \
                       random.choice([False, True]))
         if xdp_enable:
             xdp_enable = self.xdp_acquire(srv.name)
@@ -306,7 +305,10 @@ class Test(object):
                 server.quic_port = self._gen_port(server, ServerPortIdx.QUIC) if self.quic else None
             server.xdp_port = self._gen_port(server, ServerPortIdx.XDP) if server.xdp_port is not None else None
             if server.xdp_port and not params.namespaces:
-                server.xdp_cover_sock = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
+                if server.addr.startswith("::"):
+                    server.xdp_cover_sock = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
+                else:
+                    server.xdp_cover_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 server.xdp_cover_sock.bind((server.addr, server.xdp_port))
             server.ctlport = self._gen_port(server, ServerPortIdx.CTL)
 

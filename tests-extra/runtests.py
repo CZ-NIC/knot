@@ -268,6 +268,7 @@ def setup_outer_namespace():
     if params.xdp:
         os.unshare(os.CLONE_NEWNET | os.CLONE_NEWNS)
         LIBC.mount(None, b"/", None, LIBC.MS_REC | LIBC.MS_PRIVATE)
+        LIBC.set_sysctl("net.ipv4.conf.all.accept_local", 1)
     else:
         os.unshare(os.CLONE_NEWUSER | os.CLONE_NEWNET | os.CLONE_NEWNS)
         LIBC.set_dumpable(1)

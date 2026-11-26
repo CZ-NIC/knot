@@ -127,3 +127,8 @@ class LinuxSyscalls:
                 ctypes.set_errno(0)
                 if libc.capset(ctypes.byref(header), empty_caps) != 0:
                         self._raise_errno("capset")
+
+        def set_sysctl(self, key, value):
+                path = "/proc/sys/" + key.replace(".", "/")
+                with open(path, "w") as f:
+                        f.write(str(value))

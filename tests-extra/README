@@ -66,6 +66,17 @@ this README and run:
 $ cp "$(readlink -f "$(which setpriv)")" ./xdp_setpriv
 $ sudo setcap "cap_setpcap,cap_sys_admin,cap_net_admin,cap_net_raw,cap_bpf,cap_sys_resource,cap_ipc_lock,cap_sys_ptrace,cap_dac_override+eip" ./xdp_setpriv
 
+IPv4 note:
+  XDP on 127.0.0.1 needs net.ipv4.conf.all.accept_local=1, because the
+  replies sent by knotd through AF_XDP loop back with a local source address
+  and the kernel drops them otherwise. With --namespaces the runner sets this
+  inside each test's network namespace, so nothing is needed. Without
+  --namespaces, set it on the host:
+
+  $ sudo sysctl -w net.ipv4.conf.all.accept_local=1
+
+  This changes the host's network configuration; revert it afterwards if needed.
+
 Tcpdump:
 --------
 
