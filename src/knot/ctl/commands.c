@@ -295,9 +295,7 @@ static int zone_status(zone_t *zone, ctl_args_t *args)
 		if (zone->contents == NULL) {
 			ret = snprintf(buff, sizeof(buff), STATUS_EMPTY);
 		} else {
-			knot_rdataset_t *soa = node_rdataset(zone->contents->apex,
-			                                     KNOT_RRTYPE_SOA);
-			ret = snprintf(buff, sizeof(buff), "%u", knot_soa_serial(soa->rdata));
+			ret = snprintf(buff, sizeof(buff), "%u", zone_contents_serial(zone->contents));
 		}
 		rcu_read_unlock();
 		if (ret < 0 || ret >= sizeof(buff)) {
@@ -311,6 +309,33 @@ static int zone_status(zone_t *zone, ctl_args_t *args)
 			return ret;
 		} else {
 			type = KNOT_CTL_TYPE_EXTRA;
+		}
+
+		bool check_master = false;
+		if (slave) {
+			conf_val_t val = conf_zone_get(conf(), C_DNSSEC_SIGNING, zone->name);
+			check_master = conf_bool(&val) || zone_includes_configured(conf(), zone);
+		}
+		if (check_master) {
+			uint32_t master_serial;
+			ret = zone_get_master_serial(zone, &master_serial);
+			if (ret == KNOT_EOK) {
+				data[KNOT_CTL_IDX_TYPE] = "master-serial";
+
+				ret = snprintf(buff, sizeof(buff), "%u", master_serial);
+				if (ret < 0 || ret >= sizeof(buff)) {
+					return KNOT_ESPACE;
+				}
+
+				data[KNOT_CTL_IDX_DATA] = buff;
+
+				ret = knot_ctl_send(args->ctl, type, &data);
+				if (ret != KNOT_EOK) {
+					return ret;
+				} else {
+					type = KNOT_CTL_TYPE_EXTRA;
+				}
+			}
 		}
 	}
 
