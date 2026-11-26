@@ -265,6 +265,11 @@ def release_privileges(uid, gid):
 def setup_outer_namespace():
     uid, gid = os.getuid(), os.getgid()
 
+    try:
+        sys.stdin = open('/dev/tty', 'r', encoding='utf-8')
+    except OSError:
+        pass
+
     if params.xdp:
         os.unshare(os.CLONE_NEWNET | os.CLONE_NEWNS)
         LIBC.mount(None, b"/", None, LIBC.MS_REC | LIBC.MS_PRIVATE)
