@@ -29,7 +29,6 @@ typedef enum {
 	KNOT_TLS_CONN_AUTHORIZED     = (1 << 3),
 	KNOT_TLS_CONN_EARLY_DATA     = (1 << 4), // data has been received in 0-RTT, possibly unsafe to use (as DDNS)
 	KNOT_TLS_CONN_EARLY_READDONE = (1 << 5), // early data has been already read (or none), don't attempt to read them further
-	KNOT_TLS_CONN_SERVER         = (1 << 6),
 } knot_tls_conn_flag_t;
 
 typedef struct knot_tls_ctx {
