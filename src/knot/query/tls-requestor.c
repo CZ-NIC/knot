@@ -61,7 +61,7 @@ void knot_tls_req_ctx_maint(knot_tls_req_ctx_t *ctx, struct knot_request *r)
 		void *sessticket = knot_tls_session_save(ctx->conn);
 		if (sessticket != NULL) {
 			intptr_t tofree = conn_pool_put(global_sessticket_pool, &r->source,
-			                                &r->remote, NULL, (intptr_t)sessticket);
+			                                &r->remote, NULL, 0, (intptr_t)sessticket);
 			global_sessticket_pool->close_cb(tofree);
 		}
 	}

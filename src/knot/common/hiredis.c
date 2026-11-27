@@ -411,7 +411,7 @@ void rdb_disconnect(redisContext *rdb, bool pool_save)
 		if (sockaddr_set(&addr, AF_INET6, rdb->tcp.host, rdb->tcp.port) == KNOT_EOK ||
 		    sockaddr_set(&addr, AF_INET, rdb->tcp.host, rdb->tcp.port) == KNOT_EOK ||
 		    sockaddr_set(&addr, AF_UNIX, rdb->unix_sock.path, 0) == KNOT_EOK) {
-			rdb = (void *)conn_pool_put(global_redis_pool, &addr, &addr, NULL, (intptr_t)rdb);
+			rdb = (void *)conn_pool_put(global_redis_pool, &addr, &addr, NULL, 0, (intptr_t)rdb);
 		}
 	}
 

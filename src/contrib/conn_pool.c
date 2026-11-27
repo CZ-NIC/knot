@@ -25,18 +25,18 @@ const conn_pool_fd_t CONN_POOL_FD_INVALID = -1;
 static conn_pool_fd_t pool_pop(conn_pool_t *pool, size_t i);
 
 /*!
- * \brief Try to get an open connection older than specified timestamp.
+ * \brief Try to get an open connection that is expired.
  *
  * \param pool           Pool to search in.
- * \param older_than     Timestamp that the connection must be older than.
- * \param next_oldest    Out: the timestamp of the oldest connection (other than the returned).
+ * \param now            Current timestamp, or 0 for matching any expire time.
+ * \param next_oldest    Out: expire timestampt of second oldest connection (other than the returned).
  *
  * \return -1 if error (no such connection), >= 0 connection file descriptor.
  *
  * \warning The returned connection is not necessarily the oldest one.
  */
 static conn_pool_fd_t get_old(conn_pool_t *pool,
-                              knot_time_t older_than,
+                              knot_time_t now,
                               knot_time_t *next_oldest)
 {
 	assert(pool);
@@ -47,8 +47,8 @@ static conn_pool_fd_t get_old(conn_pool_t *pool,
 	pthread_mutex_lock(&pool->mutex);
 
 	for (size_t i = 0; i < pool->capacity; i++) {
-		knot_time_t la = pool->conns[i].last_active;
-		if (fd == CONN_POOL_FD_INVALID && knot_time_cmp(la, older_than) < 0) {
+		knot_time_t la = pool->conns[i].expire;
+		if (fd == CONN_POOL_FD_INVALID && knot_time_cmp(la, now) < 0) {
 			fd = pool_pop(pool, i);
 		} else if (knot_time_cmp(la, *next_oldest) < 0) {
 			*next_oldest = la;
@@ -72,7 +72,7 @@ static void *closing_thread(void *_arg)
 		pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &prev_state);
 
 		while (true) {
-			conn_pool_fd_t old_fd = get_old(pool, now - timeout + 1, &next);
+			conn_pool_fd_t old_fd = get_old(pool, now, &next);
 			if (old_fd != CONN_POOL_FD_INVALID) {
 				pool->close_cb(old_fd);
 			} else {
@@ -85,7 +85,7 @@ static void *closing_thread(void *_arg)
 		if (next == 0) {
 			sleep(timeout);
 		} else {
-			sleep(next + timeout - now);
+			sleep(next - now);
 		}
 	}
 
@@ -162,7 +162,7 @@ knot_timediff_t conn_pool_timeout(conn_pool_t *pool,
 static conn_pool_fd_t pool_pop(conn_pool_t *pool, size_t i)
 {
 	conn_pool_memb_t *conn = &pool->conns[i];
-	assert(conn->last_active != 0);
+	assert(conn->expire != 0);
 	assert(pool->usage > 0);
 	conn_pool_fd_t fd = conn->fd;
 	memset(conn, 0, sizeof(*conn));
@@ -179,18 +179,20 @@ conn_pool_fd_t conn_pool_get(conn_pool_t *pool,
 		return CONN_POOL_FD_INVALID;
 	}
 
+	knot_time_t now = knot_time();
 	conn_pool_fd_t fd = CONN_POOL_FD_INVALID;
 	pthread_mutex_lock(&pool->mutex);
 
 	for (size_t i = 0; i < pool->capacity; i++) {
-		if (pool->conns[i].last_active != 0 &&
+		knot_time_t i_expire = pool->conns[i].expire;
+		if (i_expire != 0 &&
 		    sockaddr_cmp(&pool->conns[i].dst, dst, false) == 0 &&
 		    sockaddr_cmp(&pool->conns[i].src, src, true) == 0 &&
 		    strcmp(pool->conns[i].dev, (dev != NULL) ? dev : "") == 0) {
 			fd = pool_pop(pool, i);
 
 			// NOTE: here calling invalid_cb() and close_cb() callbacks within locked pool->mutex. Ensure that your routines in those callbacks are in practice instant!
-			if (pool->invalid_cb != NULL && pool->invalid_cb(fd)) {
+			if (knot_time_cmp(i_expire, now) < 0 || (pool->invalid_cb != NULL && pool->invalid_cb(fd))) {
 				pool->close_cb(fd);
 				fd = CONN_POOL_FD_INVALID;
 			} else {
@@ -208,12 +210,13 @@ static void pool_push(conn_pool_t *pool, size_t i,
                       const struct sockaddr_storage *src,
                       const struct sockaddr_storage *dst,
                       const char *dev,
+                      knot_time_t expire,
                       conn_pool_fd_t fd)
 {
 	conn_pool_memb_t *conn = &pool->conns[i];
-	assert(conn->last_active == 0);
+	assert(conn->expire == 0);
 	assert(pool->usage < pool->capacity);
-	conn->last_active = knot_time();
+	conn->expire = (expire != 0 ? expire : knot_time() + pool->timeout);
 	conn->fd = fd;
 	memcpy(&conn->src, src, sizeof(conn->src));
 	memcpy(&conn->dst, dst, sizeof(conn->dst));
@@ -225,6 +228,7 @@ conn_pool_fd_t conn_pool_put(conn_pool_t *pool,
                              const struct sockaddr_storage *src,
                              const struct sockaddr_storage *dst,
                              const char *dev,
+                             knot_time_t expire,
                              conn_pool_fd_t fd)
 {
 	if (pool == NULL || pool->capacity == 0) {
@@ -237,9 +241,9 @@ conn_pool_fd_t conn_pool_put(conn_pool_t *pool,
 	pthread_mutex_lock(&pool->mutex);
 
 	for (size_t i = 0; i < pool->capacity; i++) {
-		knot_time_t la = pool->conns[i].last_active;
+		knot_time_t la = pool->conns[i].expire;
 		if (la == 0) {
-			pool_push(pool, i, src, dst, dev, fd);
+			pool_push(pool, i, src, dst, dev, expire, fd);
 			pthread_mutex_unlock(&pool->mutex);
 			return CONN_POOL_FD_INVALID;
 		} else if (knot_time_cmp(la, oldest_time) < 0) {
@@ -250,7 +254,7 @@ conn_pool_fd_t conn_pool_put(conn_pool_t *pool,
 
 	assert(oldest_i < pool->capacity);
 	conn_pool_fd_t oldest_fd = pool_pop(pool, oldest_i);
-	pool_push(pool, oldest_i, src, dst, dev, fd);
+	pool_push(pool, oldest_i, src, dst, dev, expire, fd);
 	pthread_mutex_unlock(&pool->mutex);
 	return oldest_fd;
 }

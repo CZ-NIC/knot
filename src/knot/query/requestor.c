@@ -310,6 +310,7 @@ void knot_request_free(knot_request_t *request, knot_mm_t *mm)
 		                                 &request->source,
 		                                 &request->remote,
 		                                 request->source_dev,
+		                                 0,
 		                                 (conn_pool_fd_t)request->fd);
 	}
 	if (request->fd >= 0) {

@@ -85,7 +85,7 @@ static int quic_exchange(knot_quic_conn_t *conn, knot_quic_reply_t *r, int timeo
 		void *sessticket = knot_quic_session_save(conn);
 		if (sessticket != NULL) {
 			intptr_t tofree = conn_pool_put(global_sessticket_pool, r->ip_loc,
-			                                r->ip_rem, NULL, (intptr_t)sessticket);
+			                                r->ip_rem, NULL, 0, (intptr_t)sessticket);
 			global_sessticket_pool->close_cb(tofree);
 		}
 	}
