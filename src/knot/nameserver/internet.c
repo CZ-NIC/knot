@@ -169,6 +169,10 @@ static int put_authority_soa(knot_pkt_t *pkt, knotd_qdata_t *qdata,
 {
 	knot_rrset_t soa = node_rrset(zone->apex, KNOT_RRTYPE_SOA);
 	knot_rrset_t rrsigs = node_rrset(zone->apex, KNOT_RRTYPE_RRSIG);
+	if (qdata->extra->online_signing && qdata->extra->zone_cname_suppressed) {
+		/* This negative response applies only to the synthesized view. */
+		soa.ttl = 0;
+	}
 	return process_query_put_rr(pkt, qdata, &soa, &rrsigs,
 	                            KNOT_COMPR_HINT_NONE,
 	                            KNOT_PF_NOTRUNC | KNOT_PF_SOAMINTTL);
@@ -377,7 +381,8 @@ static knotd_in_state_t follow_cname(knot_pkt_t *pkt, uint16_t rrtype, knotd_qda
 	return KNOTD_IN_STATE_FOLLOW;
 }
 
-static knotd_in_state_t name_found(knot_pkt_t *pkt, knotd_qdata_t *qdata)
+static knotd_in_state_t name_found(knotd_in_state_t state, knot_pkt_t *pkt,
+                                   knotd_qdata_t *qdata)
 {
 	uint16_t qtype = knot_pkt_qtype(pkt);
 
@@ -399,7 +404,15 @@ static knotd_in_state_t name_found(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 		return KNOTD_IN_STATE_MISS;
 	}
 
-	if (node_rrtype_exists(qdata->extra->node, KNOT_RRTYPE_CNAME)
+	bool has_cname = node_rrtype_exists(qdata->extra->node, KNOT_RRTYPE_CNAME);
+	/* A synthesized name with other data cannot also be a CNAME. The
+	 * signed zone needs a denial proof that describes the synthesized view. */
+	if (has_cname && state == KNOTD_IN_STATE_NODATA && !qdata->extra->contents->dnssec) {
+		qdata->extra->zone_cname_suppressed = true;
+		return KNOTD_IN_STATE_NODATA;
+	}
+
+	if (has_cname
 	    && qtype != KNOT_RRTYPE_CNAME
 	    && qtype != KNOT_RRTYPE_RRSIG
 	    && qtype != KNOT_RRTYPE_NSEC
@@ -425,7 +438,8 @@ static knotd_in_state_t name_found(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 	}
 }
 
-static knotd_in_state_t name_not_found(knot_pkt_t *pkt, knotd_qdata_t *qdata)
+static knotd_in_state_t name_not_found(knotd_in_state_t state, knot_pkt_t *pkt,
+                                       knotd_qdata_t *qdata)
 {
 	/* Name is covered by wildcard. */
 	if (qdata->extra->encloser->flags & NODE_FLAGS_WILDCARD_CHILD) {
@@ -438,7 +452,7 @@ static knotd_in_state_t name_not_found(knot_pkt_t *pkt, knotd_qdata_t *qdata)
 		assert(qdata->extra->node != NULL);
 
 		/* Follow expanded wildcard. */
-		knotd_in_state_t next_state = name_found(pkt, qdata);
+		knotd_in_state_t next_state = name_found(state, pkt, qdata);
 
 		/* Put to wildcard node list. */
 		if (wildcard_has_visited(qdata, wildcard_node)) {
@@ -484,9 +498,9 @@ static knotd_in_state_t solve_name(knotd_in_state_t state, knot_pkt_t *pkt,
 
 	switch (ret) {
 	case ZONE_NAME_FOUND:
-		return name_found(pkt, qdata);
+		return name_found(state, pkt, qdata);
 	case ZONE_NAME_NOT_FOUND:
-		return name_not_found(pkt, qdata);
+		return name_not_found(state, pkt, qdata);
 	case KNOT_EOUTOFZONE:
 		assert(state == KNOTD_IN_STATE_FOLLOW); /* CNAME/DNAME chain only. */
 		return KNOTD_IN_STATE_HIT;
