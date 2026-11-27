@@ -64,6 +64,7 @@ libknot.so.17 libknot17 #MINVER#
  dnssec_keystore_init@Base 3.6.0
  dnssec_keystore_init_pkcs11@Base 3.6.0
  dnssec_keystore_init_pkcs8@Base 3.6.0
+ dnssec_keystore_init_zonedb@Base 3.7.0
  dnssec_keystore_open@Base 3.6.0
  dnssec_keystore_remove@Base 3.6.0
  dnssec_keystore_set_private@Base 3.6.0
