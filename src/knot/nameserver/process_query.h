@@ -25,6 +25,10 @@ typedef struct knotd_qdata_extra {
 	const zone_node_t *node, *encloser, *previous;
 
 	uint8_t cname_chain; /*!< Length of the CNAME chain so far. */
+	/* A suppressed zone CNAME is excluded from online NSEC proofs. The
+	 * online signer also requests a zero negative SOA TTL for that view. */
+	bool online_signing;
+	bool zone_cname_suppressed;
 
 	/* Extensions. */
 	void *ext;

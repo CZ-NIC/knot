@@ -864,6 +864,11 @@ static knotd_in_state_t geoip_process(knotd_in_state_t state, knot_pkt_t *pkt,
 
 	geo_trie_val_t *data = *val;
 
+	// A zone fallback or a negative answer can also depend on the client subnet.
+	if (ctx->mode != MODE_WEIGHTED && qdata->ecs != NULL && qdata->ecs->scope_len == 0) {
+		qdata->ecs->scope_len = qdata->ecs->source_len;
+	}
+
 	// Check if EDNS Client Subnet is available.
 	struct sockaddr_storage ecs_addr = { 0 };
 	const struct sockaddr_storage *remote = knotd_qdata_remote_addr(qdata);
@@ -941,7 +946,11 @@ static knotd_in_state_t geoip_process(knotd_in_state_t state, knot_pkt_t *pkt,
 
 		return KNOTD_IN_STATE_HIT;
 	} else {
-		// view was found, but no suitable rrtype
+		// A query with a broad source prefix may match a more specific view.
+		if (qdata->ecs != NULL && qdata->ecs->source_len > 0 &&
+		    netmask > qdata->ecs->scope_len) {
+			qdata->ecs->scope_len = netmask;
+		}
 		return KNOTD_IN_STATE_NODATA;
 	}
 }

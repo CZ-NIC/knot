@@ -78,6 +78,13 @@ typedef struct {
 	bool zone_doomed;
 } online_sign_ctx_t;
 
+static knotd_in_state_t mark_online_signing(knotd_in_state_t state, knot_pkt_t *pkt,
+                                            knotd_qdata_t *qdata, knotd_mod_t *mod)
+{
+	qdata->extra->online_signing = true;
+	return state;
+}
+
 static bool want_dnssec(knotd_qdata_t *qdata)
 {
 	return knot_pkt_has_dnssec(qdata->query);
@@ -91,6 +98,11 @@ static uint32_t dnskey_ttl(knotd_qdata_t *qdata)
 
 static uint32_t nsec_ttl(knotd_qdata_t *qdata)
 {
+	if (qdata->extra->zone_cname_suppressed) {
+		/* An aggressive negative cache must not reuse the view-specific proof. */
+		return 0;
+	}
+
 	knot_rrset_t soa = knotd_qdata_zone_apex_rrset(qdata, KNOT_RRTYPE_SOA);
 	return knot_soa_minimum(soa.rrs.rdata);
 }
@@ -126,12 +138,13 @@ static void bitmap_add_zone(dnssec_nsec_bitmap_t *map, const zone_node_t *node)
  * \brief Add bitmap records which can be synthesized by other modules.
  *
  * \param qtype  Current QTYPE, will never be added into the map.
+ * \param omit_cname  Exclude CNAME for a name with synthesized data.
  */
 static void bitmap_add_forced(dnssec_nsec_bitmap_t *map, uint16_t qtype,
-                              const uint16_t *force_types)
+                              const uint16_t *force_types, bool omit_cname)
 {
 	for (int i = 0; force_types[i] > 0; i++) {
-		if (force_types[i] != qtype) {
+		if (force_types[i] != qtype && !(omit_cname && force_types[i] == KNOT_RRTYPE_CNAME)) {
 			dnssec_nsec_bitmap_add(map, force_types[i]);
 		}
 	}
@@ -158,9 +171,10 @@ static dnssec_nsec_bitmap_t *synth_bitmap(const knotd_qdata_t *qdata,
 
 	bitmap_add_synth(map, is_apex);
 
-	bitmap_add_zone(map, qdata->extra->node);
-	if (force_types != NULL && !node_rrtype_exists(qdata->extra->node, KNOT_RRTYPE_CNAME)) {
-		bitmap_add_forced(map, qtype, force_types);
+	const zone_node_t *node = qdata->extra->zone_cname_suppressed ? NULL : qdata->extra->node;
+	bitmap_add_zone(map, node);
+	if (force_types != NULL && !node_rrtype_exists(node, KNOT_RRTYPE_CNAME)) {
+		bitmap_add_forced(map, qtype, force_types, qdata->extra->zone_cname_suppressed);
 	}
 
 	return map;
@@ -711,6 +725,8 @@ int online_sign_load(knotd_mod_t *mod)
 	}
 
 	knotd_mod_ctx_set(mod, ctx);
+
+	CHECK_RET(knotd_mod_in_hook(mod, KNOTD_STAGE_PREANSWER, mark_online_signing));
 
 	CHECK_RET(knotd_mod_in_hook(mod, KNOTD_STAGE_ANSWER, pre_routine));
 
