@@ -188,16 +188,18 @@ conn_pool_fd_t conn_pool_get(conn_pool_t *pool,
 		    sockaddr_cmp(&pool->conns[i].src, src, true) == 0 &&
 		    strcmp(pool->conns[i].dev, (dev != NULL) ? dev : "") == 0) {
 			fd = pool_pop(pool, i);
-			break;
+
+			// NOTE: here calling invalid_cb() and close_cb() callbacks within locked pool->mutex. Ensure that your routines in those callbacks are in practice instant!
+			if (pool->invalid_cb != NULL && pool->invalid_cb(fd)) {
+				pool->close_cb(fd);
+				fd = CONN_POOL_FD_INVALID;
+			} else {
+				break;
+			}
 		}
 	}
 
 	pthread_mutex_unlock(&pool->mutex);
-
-	if (fd != CONN_POOL_FD_INVALID && pool->invalid_cb != NULL && pool->invalid_cb(fd)) {
-		pool->close_cb(fd);
-		fd = CONN_POOL_FD_INVALID;
-	}
 
 	return fd;
 }
