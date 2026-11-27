@@ -690,12 +690,6 @@ static void json_print_edns_generic(jsonw_t *w, const knot_rrset_t *rr)
 	jsonw_end(w);
 }
 
-static void json_edns_unknown(jsonw_t *w, uint8_t *optdata, uint16_t optype, uint16_t optlen)
-{
-	(void)optype;
-	jsonw_hex(w, "value", optdata, optlen);
-}
-
 static bool all_zero(const uint8_t * const str, const size_t len)
 {
 	for (const uint8_t *p = str; p != str + len; p++) {
@@ -716,138 +710,122 @@ static bool all_print(const uint8_t * const str, const size_t len)
 	return true;
 }
 
-static void json_edns_ecs(jsonw_t *w, uint8_t *optdata, uint16_t optlen,
-                          char *tmps, size_t tmps_size)
-{
-	knot_edns_client_subnet_t ecs = { 0 };
-	struct sockaddr_storage addr = { 0 };
-
-	int ret = knot_edns_client_subnet_parse(&ecs, optdata, optlen);
-	if (ret == KNOT_EOK) {
-		ret = knot_edns_client_subnet_get_addr(&addr, &ecs);
-	}
-	if (ret == KNOT_EOK) {
-		ret = sockaddr_tostr(tmps, tmps_size, &addr);
-		assert(ret > 0);
-
-		(void)snprintf(tmps + ret, tmps_size - ret,
-		               "/%d/%d", ecs.source_len, ecs.scope_len);
-
-		jsonw_str(w, "value", tmps);
-	} else {
-		jsonw_hex(w, "value", optdata, optlen);
-	}
-}
-
-static int json_edns_zoneversion(jsonw_t *w, uint8_t *optdata, uint16_t optlen,
-                                 const knot_pkt_t *pkt)
-{
-	const knot_dname_t *qname = knot_pkt_qname(pkt);
-
-	knot_dname_storage_t zone;
-	uint8_t type;
-	uint32_t version;
-	int ret = knot_edns_zoneversion_parse(zone, &type, &version, optdata,
-	                                      optlen, qname);
-	if (ret != KNOT_EOK && ret != KNOT_ENOENT) {
-		return ret;
-	}
-
-	jsonw_object(w, "value");
-	if (ret == KNOT_EOK) {
-		json_dname(w, "ZONE", zone);
-		if (type == KNOT_EDNS_ZONEVERSION_TYPE_SOA) {
-			jsonw_str(w, "TYPE", "SOA-SERIAL");
-		} else {
-			jsonw_int(w, "TYPE", type);
-		}
-		jsonw_ulong(w, "VERSION", version);
-	}
-	jsonw_end(w);
-
-	return KNOT_EOK;
-}
-
 static void json_edns_opt(jsonw_t *w, uint8_t *optdata, uint16_t optype,
                           uint16_t optlen, const knot_pkt_t *pkt)
 {
-	char tmps[KNOT_DNAME_TXT_MAXLEN] = { 0 };
-	uint32_t tmpu = 0;
-	uint16_t tmphu = 0;
+	struct {
+		union {
+			knot_dname_storage_t dn;
+			struct {
+				knot_edns_client_subnet_t ecs;
+				struct sockaddr_storage addr;
+			};
+		};
+		union {
+			knot_dname_txt_storage_t s;
+			struct {
+				knot_edns_cookie_t cc;
+				knot_edns_cookie_t sc;
+			};
+		};
+		uint32_t u;
+		uint16_t hu;
+		uint8_t bu;
+	} tmp = { 0 };
 
 	jsonw_object(w, NULL);
 	jsonw_int(w, "code", optype);
 	const knot_lookup_t *item = knot_lookup_by_id(knot_edns_opt_names, optype);
 	if (item == NULL) {
-		snprintf(tmps, sizeof(tmps), "OPT%hu", optype);
+		snprintf(tmp.s, sizeof(tmp.s), "OPT%hu", optype);
 	} else {
-		snprintf(tmps, sizeof(tmps), "%s", item->name);
+		snprintf(tmp.s, sizeof(tmp.s), "%s", item->name);
 	}
-	jsonw_str(w, "name", tmps);
+	jsonw_str(w, "name", tmp.s);
+
+	bool show_hex = true;
+	bool malformed = false;
 
 	switch (optype) {
 	case KNOT_EDNS_OPTION_NSID:
-		jsonw_object(w, "value");
-		jsonw_hex(w, "HEX", optdata, optlen);
-		if (all_print(optdata, optlen)) {
+		if (optlen > 0 && all_print(optdata, optlen)) {
+			jsonw_object(w, "value");
 			jsonw_str_len(w, "TEXT", optdata, optlen, true);
+			jsonw_end(w);
 		}
-		jsonw_end(w);
 		break;
 	case KNOT_EDNS_OPTION_CLIENT_SUBNET:
-		json_edns_ecs(w, optdata, optlen, tmps, sizeof(tmps));
+		if (knot_edns_client_subnet_parse(&tmp.ecs, optdata, optlen) == KNOT_EOK &&
+		    knot_edns_client_subnet_get_addr(&tmp.addr, &tmp.ecs) == KNOT_EOK &&
+		    sockaddr_tostr(tmp.s, sizeof(tmp.s), &tmp.addr) > 0) {
+			jsonw_object(w, "value");
+			jsonw_str(w, "ADDRESS", tmp.s);
+			jsonw_int(w, "SOURCE", tmp.ecs.source_len);
+			jsonw_int(w, "SCOPE", tmp.ecs.scope_len);
+			jsonw_end(w);
+		} else {
+			malformed = true;
+		}
 		break;
 	case KNOT_EDNS_OPTION_EXPIRE:
-		if (optlen == 0) {
-			jsonw_null(w, "value");
-		} else if (optlen == sizeof(tmpu)) {
-			tmpu = knot_wire_read_u32(optdata);
-			jsonw_int(w, "value", tmpu);
-		} else {
-			json_edns_unknown(w, optdata, optype, optlen);
+		if (optlen == sizeof(tmp.u)) {
+			tmp.u = knot_wire_read_u32(optdata);
+			jsonw_object(w, "value");
+			jsonw_int(w, "EXPIRE", tmp.u);
+			jsonw_end(w);
+		} else if (optlen > 0) {
+			malformed = 1;
 		}
 		break;
 	case KNOT_EDNS_OPTION_COOKIE:
-		jsonw_list(w, "value");
-		tmphu = MIN(optlen, KNOT_EDNS_COOKIE_CLNT_SIZE);
-		jsonw_hex(w, NULL, optdata, tmphu);
-		if (optlen > tmphu) {
-			jsonw_hex(w, NULL, optdata + tmphu, optlen - tmphu);
+		if (knot_edns_cookie_parse(&tmp.cc, &tmp.sc, optdata, optlen) == KNOT_EOK) {
+			jsonw_object(w, "value");
+			jsonw_hex(w, "CLIENT", tmp.cc.data, tmp.cc.len);
+			if (tmp.sc.len > 0) {
+				jsonw_hex(w, "SERVER", tmp.sc.data, tmp.sc.len);
+			}
+			jsonw_end(w);
+			show_hex = false;
+		} else {
+			malformed = true;
 		}
-		jsonw_end(w);
 		break;
 	case KNOT_EDNS_OPTION_TCP_KEEPALIVE:
-		if (optlen == sizeof(tmphu)) {
-			tmphu = knot_wire_read_u16(optdata);
-			jsonw_int(w, "value", tmphu);
+		if (optlen == sizeof(tmp.hu)) {
+			tmp.hu = knot_wire_read_u16(optdata);
+			jsonw_object(w, "value");
+			jsonw_int(w, "TIMEOUT", tmp.hu);
+			jsonw_end(w);
 		} else {
-			json_edns_unknown(w, optdata, optype, optlen);
+			malformed = true;
 		}
 		break;
 	case KNOT_EDNS_OPTION_PADDING:
 		jsonw_object(w, "value");
 		jsonw_int(w, "LENGTH", optlen);
-		if (!all_zero(optdata, optlen)) {
-			jsonw_hex(w, "HEX", optdata, optlen);
+		if (all_zero(optdata, optlen)) {
+			show_hex = false;
 		}
 		jsonw_end(w);
 		break;
 	case KNOT_EDNS_OPTION_CHAIN:
 		if (knot_dname_wire_check(optdata, optdata + optlen, NULL) > 0 &&
-		    knot_dname_to_str(tmps, optdata, sizeof(tmps)) != NULL) {
-			jsonw_str(w, "value", tmps);
+		    knot_dname_to_str(tmp.s, optdata, sizeof(tmp.s)) != NULL) {
+			jsonw_object(w, "value");
+			jsonw_str(w, "TRUST-POINT", tmp.s);
+			jsonw_end(w);
 		} else {
-			json_edns_unknown(w, optdata, optype, optlen);
+			malformed = true;
 		}
 		break;
 	case KNOT_EDNS_OPTION_EDE:
-		if (optlen < sizeof(uint16_t)) {
-			json_edns_unknown(w, optdata, optype, optlen);
+		if (optlen < sizeof(tmp.hu)) {
+			malformed = true;
 		} else {
-			tmphu = knot_wire_read_u16(optdata);
+			tmp.hu = knot_wire_read_u16(optdata);
 			jsonw_object(w, "value");
-			jsonw_int(w, "CODE", tmphu);
-			item = knot_lookup_by_id(knot_edns_ede_names, tmphu);
+			jsonw_int(w, "CODE", tmp.hu);
+			item = knot_lookup_by_id(knot_edns_ede_names, tmp.hu);
 			if (item != NULL) {
 				jsonw_str(w, "Purpose", item->name);
 			}
@@ -858,13 +836,28 @@ static void json_edns_opt(jsonw_t *w, uint8_t *optdata, uint16_t optype,
 		}
 		break;
 	case KNOT_EDNS_OPTION_ZONEVERSION:
-		if (json_edns_zoneversion(w, optdata, optlen, pkt) != KNOT_EOK) {
-			json_edns_unknown(w, optdata, optype, optlen);
+		if (knot_edns_zoneversion_parse(tmp.dn, &tmp.bu, &tmp.u, optdata,
+		                                optlen, knot_pkt_qname(pkt)) == KNOT_EOK &&
+		    knot_dname_to_str(tmp.s, tmp.dn, sizeof(tmp.s)) != NULL) {
+			jsonw_object(w, "value");
+			jsonw_str(w, "ZONE", tmp.s);
+			jsonw_int(w, "TYPE", tmp.bu);
+			jsonw_ulong(w, "VERSION", tmp.u);
+			jsonw_end(w);
+		} else if (optlen > 0) {
+			malformed = true;
 		}
 		break;
 	default:
-		json_edns_unknown(w, optdata, optype, optlen);
 		break;
+	}
+
+	if (malformed) {
+		show_hex = true;
+		jsonw_bool(w, "malformed", true);
+	}
+	if (show_hex) {
+		jsonw_hex(w, "valueHEX", optdata, optlen);
 	}
 
 	jsonw_end(w);
