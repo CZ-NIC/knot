@@ -33,6 +33,7 @@
 static const knot_lookup_t keystore_backends[] = {
 	{ KEYSTORE_BACKEND_PEM,    "pem" },
 	{ KEYSTORE_BACKEND_PKCS11, "pkcs11" },
+	{ KEYSTORE_BACKEND_ZONEDB, "zonedb" },
 	{ 0, NULL }
 };
 
@@ -351,6 +352,7 @@ static const yp_item_t desc_keystore[] = {
 	{ C_BACKEND,   YP_TOPT,  YP_VOPT = { keystore_backends, KEYSTORE_BACKEND_PEM },
 	                         CONF_IO_FRLD_ZONES },
 	{ C_CONFIG,    YP_TSTR,  YP_VSTR = { "keys" }, CONF_IO_FRLD_ZONES },
+	{ C_PASSWORD,  YP_TSTR,  YP_VNONE, CONF_IO_FRLD_ZONES },
 	{ C_KSK_ONLY,  YP_TBOOL, YP_VNONE },
 	{ C_KEY_LABEL, YP_TBOOL, YP_VNONE },
 	{ C_COMMENT,   YP_TSTR,  YP_VNONE },

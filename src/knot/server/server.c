@@ -969,7 +969,7 @@ static int rdb_listener_run(struct dthread *thread)
 
 		// Note the timeout should be lower than the TLS timeout (see hiredis_attach_gnutls())
 		redisReply *reply = redisCommand(s->rdb_ctx, "XREAD BLOCK %d STREAMS %b %s",
-		                                 4000, RDB_EVENT_KEY, strlen(RDB_EVENT_KEY), since);
+		                                 4000, RDB_KEY_EVENT, RDB_KEY_LEN, since);
 		if (reply == NULL) {
 			if (dt_is_cancelled(thread)) {
 				break;
@@ -1784,7 +1784,7 @@ static void free_redis_conn(intptr_t ptr)
 
 static bool invalid_redis_conn(intptr_t ptr)
 {
-	return ptr == CONN_POOL_FD_INVALID || !zone_redis_ping((void *)ptr);
+	return ptr == CONN_POOL_FD_INVALID || !rdb_ping((void *)ptr);
 }
 
 static uint64_t db_listen_hash(conf_val_t *val)

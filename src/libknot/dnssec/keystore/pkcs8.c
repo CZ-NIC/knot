@@ -27,6 +27,7 @@
  */
 typedef struct {
 	char *dir_name;
+	char *password;
 } pkcs8_dir_handle_t;
 
 /* -- internal functions --------------------------------------------------- */
@@ -165,48 +166,6 @@ static bool key_is_duplicate(int open_error, pkcs8_dir_handle_t *handle,
 	return dnssec_binary_cmp(&old, pem) == 0;
 }
 
-static int pem_generate(gnutls_pk_algorithm_t algorithm, unsigned bits,
-			dnssec_binary_t *pem, char **id)
-{
-	assert(pem);
-	assert(id);
-
-	// generate key
-
-	_cleanup_x509_privkey_ gnutls_x509_privkey_t key = NULL;
-	int r = gnutls_x509_privkey_init(&key);
-	if (r != GNUTLS_E_SUCCESS) {
-		return KNOT_ENOMEM;
-	}
-
-	r = gnutls_x509_privkey_generate(key, algorithm, bits, 0);
-	if (r != GNUTLS_E_SUCCESS) {
-		return KNOT_KEY_EGENERATE;
-	}
-
-	// convert to PEM and export the ID
-
-	dnssec_binary_t _pem = { 0 };
-	r = dnssec_pem_from_x509(key, &_pem);
-	if (r != KNOT_EOK) {
-		return r;
-	}
-
-	// export key ID
-
-	char *_id = NULL;
-	r = keyid_x509_hex(key, &_id);
-	if (r != KNOT_EOK) {
-		dnssec_binary_free(&_pem);
-		return r;
-	}
-
-	*id = _id;
-	*pem = _pem;
-
-	return KNOT_EOK;
-}
-
 /* -- internal API --------------------------------------------------------- */
 
 static int pkcs8_ctx_new(void **ctx_ptr)
@@ -239,7 +198,7 @@ static int pkcs8_init(void *ctx, const char *config)
 	return make_dir(config, DIR_INIT_MODE, true);
 }
 
-static int pkcs8_open(void *ctx, const char *config)
+static int pkcs8_open(void *ctx, const char *config, const char *password)
 {
 	if (!ctx || !config) {
 		return KNOT_EINVAL;
@@ -252,7 +211,17 @@ static int pkcs8_open(void *ctx, const char *config)
 		return KNOT_ENOENT;
 	}
 
+	char *pass = NULL;
+	if (password) {
+		pass = strdup(password);
+		if (!pass) {
+			free(path);
+			return KNOT_ENOMEM;
+		}
+	}
+
 	handle->dir_name = path;
+	handle->password = pass;
 
 	return KNOT_EOK;
 }
@@ -266,6 +235,7 @@ static int pkcs8_close(void *ctx)
 	pkcs8_dir_handle_t *handle = ctx;
 
 	free(handle->dir_name);
+	free(handle->password);
 	memset(handle, 0, sizeof(*handle));
 
 	return KNOT_EOK;
@@ -286,7 +256,7 @@ static int pkcs8_generate_key(void *ctx, gnutls_pk_algorithm_t algorithm,
 
 	char *id = NULL;
 	_cleanup_binary_ dnssec_binary_t pem = { 0 };
-	int r = pem_generate(algorithm, bits, &pem, &id);
+	int r = keystore_pem_generate(algorithm, bits, &pem, handle->password, &id);
 	if (r != KNOT_EOK) {
 		return r;
 	}
@@ -332,7 +302,7 @@ static int pkcs8_import_key(void *ctx, const dnssec_binary_t *pem, char **id_ptr
 
 	char *id = NULL;
 	_cleanup_x509_privkey_ gnutls_x509_privkey_t key = NULL;
-	int r = dnssec_pem_to_x509(pem, &key);
+	int r = dnssec_pem_to_x509(pem, &key, handle->password);
 	if (r != KNOT_EOK) {
 		return r;
 	}
@@ -437,7 +407,7 @@ static int pkcs8_get_private(void *ctx, const char *id, gnutls_privkey_t *key_pt
 	// construct the key
 
 	gnutls_privkey_t key = NULL;
-	r = dnssec_pem_to_privkey(&pem, &key);
+	r = dnssec_pem_to_privkey(&pem, &key, handle->password);
 	if (r != KNOT_EOK) {
 		return r;
 	}
@@ -455,8 +425,10 @@ static int pkcs8_set_private(void *ctx, gnutls_privkey_t key)
 		return KNOT_EINVAL;
 	}
 
+	pkcs8_dir_handle_t *handle = ctx;
+
 	_cleanup_binary_ dnssec_binary_t pem = { 0 };
-	int r = dnssec_pem_from_privkey(key, &pem);
+	int r = dnssec_pem_from_privkey(key, &pem, handle->password);
 	if (r != KNOT_EOK) {
 		return r;
 	}

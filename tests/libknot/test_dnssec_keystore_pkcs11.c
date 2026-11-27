@@ -383,7 +383,7 @@ int main(int argc, char *argv[])
 	r = dnssec_keystore_init(store, config);
 	ok(r == KNOT_EOK, "dnssec_keystore_init()");
 
-	r = dnssec_keystore_open(store, config);
+	r = dnssec_keystore_open(store, config, NULL);
 	ok(r == KNOT_EOK, "dnssec_keystore_open()");
 
 	// key manipulation

@@ -13,6 +13,7 @@
 
 #include "utils/common/msg.h"
 #include "utils/keymgr/bind_privkey.h"
+#include "utils/keymgr/keystore.h"
 #include "contrib/base64.h"
 #include "contrib/color.h"
 #include "contrib/ctype.h"
@@ -38,6 +39,7 @@ typedef struct {
 	unsigned backend;
 	bool ksk_only;
 	bool missing;
+	bool undecrypt;
 	bool trash;
 	bool all_zones;
 	uint16_t keytag;
@@ -156,10 +158,14 @@ static bool same_command_bool(const char *arg, const char *cmd, bool *res)
 static key_info_t key_missing(kdnssec_ctx_t *ctx, const knot_kasp_key_t *key)
 {
 	key_info_t out = { .ks_count = ctx->keystores[0].count };
-	out.missing = !key->is_pub_only &&
-	              KNOT_EOK != kdnssec_load_private(ctx->keystores, key->id,
-	                                               key->key, &out.ks_name, &out.backend,
-	                                               &out.ksk_only);
+
+	if (!key->is_pub_only) {
+		int ret = kdnssec_load_private(ctx->keystores, key->id, key->key,
+		                               &out.ks_name, &out.backend, &out.ksk_only);
+		out.missing = (ret != KNOT_EOK);
+		out.undecrypt = (ret == KNOT_KEY_EDECRYPT);
+	}
+
 	return out;
 }
 
@@ -283,16 +289,6 @@ static bool genkeyargs(int argc, char *argv[], bool just_timing, key_params_t *k
 	}
 
 	return true;
-}
-
-static bool genkeyargs_ksk(int argc, char *argv[])
-{
-	for (int i = 0; i < argc; i++) {
-		if (same_command(argv[i], "ksk=", true) && str2bool(argv[i] + 4)) {
-			return true;
-		}
-	}
-	return false;
 }
 
 static bool _check_lower(knot_time_t a, knot_time_t b,
@@ -624,7 +620,7 @@ static int store_key_in_keystore(const char *param, unsigned backend,
 		if (ret != KNOT_EOK) {
 			close(fd);
 			err_import_key("", param);
-			goto fail;
+			return ret;
 		}
 
 		// read pem
@@ -632,28 +628,23 @@ static int store_key_in_keystore(const char *param, unsigned backend,
 		close(fd);
 		if (read_count == -1) {
 			dnssec_binary_free(&pem);
-			ret = knot_map_errno();
 			err_import_key("", param);
-			goto fail;
+			return knot_map_errno();
 		}
 
 		// put pem to keystore
 		ret = dnssec_keystore_import(keystore->keystore, &pem, keyid);
 		dnssec_binary_free(&pem);
 		if (ret != KNOT_EOK) {
-			err_import_key(*keyid, param);
-			goto fail;
+			err_import_key("", param);
+			return ret;
 		}
 	} else {
-		assert(backend == KEYSTORE_BACKEND_PKCS11 || exists);
+		assert(backend != KEYSTORE_BACKEND_PEM || exists);
 		*keyid = strdup(param);
 	}
-	return ret;
 
-fail:
-	free(*keyid);
-	*keyid = NULL;
-	return ret;
+	return KNOT_EOK;
 }
 
 static int import_key(kdnssec_ctx_t *ctx, unsigned backend, const char *param,
@@ -675,7 +666,8 @@ static int import_key(kdnssec_ctx_t *ctx, unsigned backend, const char *param,
 
 	knot_kasp_keystore_t *keystore = knot_store_for_key(ctx->keystores,
 	                                 (flags & DNSKEY_GENERATE_KSK));
-	if (keystore == NULL) {
+	if (keystore == NULL ||
+	    (backend != KEYSTORE_BACKEND_PEM && keystore->backend != backend)) {
 		return KNOT_DNSSEC_ENOKEYSTORE;
 	}
 
@@ -754,18 +746,19 @@ int keymgr_import_pkcs11(kdnssec_ctx_t *ctx, char *key_id, int argc, char *argv[
 	if (!dnssec_keyid_is_valid(key_id)) {
 		return KNOT_INVALID_KEY_ID;
 	}
-
-	knot_kasp_keystore_t *keystore = knot_store_for_key(ctx->keystores, genkeyargs_ksk(argc, argv));
-
-	if (keystore == NULL || keystore->backend != KEYSTORE_BACKEND_PKCS11) {
-		knot_dname_txt_storage_t dname_str;
-		(void)knot_dname_to_str(dname_str, ctx->zone->dname, sizeof(dname_str));
-		ERR2("not a PKCS #11 keystore for zone %s", dname_str);
-		return KNOT_ERROR;
-	}
-
 	dnssec_keyid_normalize(key_id);
+
 	return import_key(ctx, KEYSTORE_BACKEND_PKCS11, key_id, NULL, argc, argv);
+}
+
+int keymgr_import_zone_db(kdnssec_ctx_t *ctx, char *key_id, int argc, char *argv[])
+{
+	if (!dnssec_keyid_is_valid(key_id)) {
+		return KNOT_INVALID_KEY_ID;
+	}
+	dnssec_keyid_normalize(key_id);
+
+	return import_key(ctx, KEYSTORE_BACKEND_ZONEDB, key_id, NULL, argc, argv);
 }
 
 int keymgr_import_trash(kdnssec_ctx_t *ctx, char *key_id, int argc, char *argv[])
@@ -1089,8 +1082,6 @@ static const timer_ctx_t trash_timers[] = {
 	{ NULL }
 };
 
-#define KS_TYPE(info) (info->backend == KEYSTORE_BACKEND_PEM) ? "PEM" : "PKCS11"
-
 static void print_key_brief(const knot_kasp_key_t *key, key_info_t *info,
                             keymgr_list_params_t *params)
 {
@@ -1136,10 +1127,13 @@ static void print_key_brief(const knot_kasp_key_t *key, key_info_t *info,
 	}
 
 	assert(info->missing || info->ks_name);
-	if (info->missing) {
+	if (info->undecrypt) {
+		printf(" %s%sundecryptable%s", COL_BOLD(c), COL_YELW(c), COL_RST(c));
+	} else if (info->missing) {
 		printf(" %s%smissing%s", COL_BOLD(c), COL_YELW(c), COL_RST(c));
 	} else if (info->ks_count > 1 && *info->ks_name != '-') {
-		printf(" %s%s/%s%s", COL_YELW(c), KS_TYPE(info), info->ks_name, COL_RST(c));
+		printf(" %s%s/%s%s", COL_YELW(c), keystore_str(info->backend),
+		       info->ks_name, COL_RST(c));
 	}
 
 	static knot_dname_txt_storage_t buf;
@@ -1184,20 +1178,20 @@ static void print_key_full(const knot_kasp_key_t *key, key_info_t *info,
 	uint16_t keytag = trash ? info->keytag : dnssec_key_get_keytag(key->key);
 
 	printf("%s ksk=%s zsk=%s tag=%05d algorithm=%-2d size=%-4u"
-	       " adt=%s public-only=%s for-later=%s missing=%s trash=%s",
+	       " adt=%s public-only=%s for-later=%s undecryptable=%s missing=%s trash=%s",
 	       key->id, (key->is_ksk ? "yes" : "no "), (key->is_zsk ? "yes" : "no "),
 	       keytag, (int)dnssec_key_get_algorithm(key->key),
 	       dnssec_key_get_size(key->key),
 	       ((dnssec_key_get_flags(key->key) & KNOT_DNSKEY_FLAG_ADT) ? "yes" : "no "),
-	       (key->is_pub_only ? "yes" : "no "),
-	       (key->is_for_later ? "yes" : "no "), (info->missing ? "yes" : "no "),
+	       (key->is_pub_only ? "yes" : "no "), (key->is_for_later ? "yes" : "no "),
+	       (info->undecrypt ? "yes" : "no "), (info->missing ? "yes" : "no "),
 	       (trash ? "yes" : "no "));
 
 	if (info->missing) {
 		printf(" keystore=-/-");
 	} else {
 		assert(info->ks_name);
-		printf(" keystore=%s/%s", KS_TYPE(info), info->ks_name);
+		printf(" keystore=%s/%s", keystore_str(info->backend), info->ks_name);
 	}
 
 	static knot_dname_txt_storage_t buf;
@@ -1232,15 +1226,16 @@ static void print_key_json(const knot_kasp_key_t *key, key_info_t *info,
 	jsonw_bool(w,  "adt", (dnssec_key_get_flags(key->key) & KNOT_DNSKEY_FLAG_ADT) != 0);
 	jsonw_bool(w,  "public-only", key->is_pub_only);
 	jsonw_bool(w,  "for-later", key->is_for_later);
+	jsonw_bool(w,  "undecryptable", info->undecrypt);
 	jsonw_bool(w,  "missing", info->missing);
 	jsonw_bool(w,  "trash", trash);
 
-	char *ks_type = "-";
-	char *ks_name = ks_type;
+	const char *ks_type = "-";
+	const char *ks_name = ks_type;
 	if (!info->missing) {
-		ks_type = KS_TYPE(info);
+		ks_type = keystore_str(info->backend);
 		assert(info->ks_name);
-		ks_name = (char *)info->ks_name;
+		ks_name = info->ks_name;
 	}
 	jsonw_str(w,   "backend", ks_type);
 	jsonw_str(w,   "keystore", ks_name);

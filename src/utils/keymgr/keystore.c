@@ -253,7 +253,7 @@ static int init_keystore(dnssec_keystore_t **store, const char *keystore_id,
 	} else {
 		printf("Keystore id '%s'", keystore_id);
 	}
-	printf(", type %s", (keystores[0].backend == KEYSTORE_BACKEND_PEM ? "PEM" : "PKCS #11"));
+	printf(", type %s", keystore_str(keystores[0].backend));
 	if (threads > 0) {
 		printf(", threads %u", threads);
 	}
@@ -513,4 +513,14 @@ finish:
 	dnssec_keystore_deinit(store);
 
 	return KNOT_EOK;
+}
+
+const char *keystore_str(unsigned backend)
+{
+	switch (backend) {
+	case KEYSTORE_BACKEND_PEM:    return "PEM";
+	case KEYSTORE_BACKEND_PKCS11: return "PKCS11";
+	case KEYSTORE_BACKEND_ZONEDB: return "zonedb";
+	default:                      return "unknown";
+	}
 }

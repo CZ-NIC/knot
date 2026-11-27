@@ -18,7 +18,7 @@ typedef struct keystore_functions {
 	void (*ctx_free)(void *ctx);
 	// keystore init/open/close
 	int (*init)(void *ctx, const char *config);
-	int (*open)(void *ctx, const char *config);
+	int (*open)(void *ctx, const char *config, const char *password);
 	int (*close)(void *ctx);
 	// keystore access
 	int (*generate_key)(void *ctx, gnutls_pk_algorithm_t algorithm,
@@ -37,3 +37,6 @@ struct dnssec_keystore {
 
 int keystore_create(dnssec_keystore_t **store_ptr,
 		    const keystore_functions_t *functions);
+
+int keystore_pem_generate(gnutls_pk_algorithm_t algorithm, unsigned bits,
+			  dnssec_binary_t *pem, const char *password, char **id);

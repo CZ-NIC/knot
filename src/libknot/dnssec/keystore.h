@@ -54,6 +54,14 @@ int dnssec_keystore_init_pkcs8(dnssec_keystore_t **store);
  */
 int dnssec_keystore_init_pkcs11(dnssec_keystore_t **store);
 
+typedef struct {
+	struct redisContext *(*connect)(void *conf);
+	void (*disconnect)(struct redisContext *rdb, bool pool_save);
+	void *conf;
+} dnssec_zonedb_conn_t;
+
+int dnssec_keystore_init_zonedb(dnssec_keystore_t **store, dnssec_zonedb_conn_t *conn);
+
 /*!
  * Deinitialize private key store context.
  *
@@ -69,7 +77,7 @@ int dnssec_keystore_init(dnssec_keystore_t *store, const char *config);
 /*!
  * Open private key store.
  */
-int dnssec_keystore_open(dnssec_keystore_t *store, const char *config);
+int dnssec_keystore_open(dnssec_keystore_t *store, const char *config, const char *password);
 
 /*!
  * Close private key store.

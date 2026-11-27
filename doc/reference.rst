@@ -1422,14 +1422,17 @@ the zone database is only possible over TLS, and a peer certificate is required.
 ``keystore`` section
 ====================
 
-DNSSEC keystore configuration.
+A keystore is a container for private keys. A keystore holds the private key
+material only. The key metadata (timers, algorithm, etc.) is always kept in
+the KASP database.
 
 ::
 
  keystore:
    - id: STR
-     backend: pem | pkcs11
+     backend: pem | pkcs11 | zonedb
      config: STR
+     password: STR
      ksk-only: BOOL
      key-label: BOOL
 
@@ -1440,7 +1443,6 @@ id
 
 A keystore identifier.
 
-
 .. _keystore_backend:
 
 backend
@@ -1450,8 +1452,12 @@ A key storage backend type.
 
 Possible values:
 
-- ``pem`` – PEM files.
-- ``pkcs11`` – PKCS #11 storage.
+- ``pem`` – Private keys are stored in PKCS #8 PEM format, one file per key.
+- ``pkcs11`` – Private keys are stored in a PKCS #11 compatible cryptographic
+  device (e.g. an :ref:`HSM<compatible_pkcs11_devices>`).
+- ``zonedb`` – Private keys are stored in a :ref:`zone database<Database_zone_backend>`,
+  possibly together with the zone data. The connection to the database is taken
+  from the :ref:`zone database configuration<database_zone-db-listen>`.
 
 *Default:* ``pem``
 
@@ -1460,17 +1466,42 @@ Possible values:
 config
 ------
 
-A backend specific configuration. A directory with PEM files (the path can
-be specified as a relative path to :ref:`kasp-db<database_kasp-db>`) or
-a configuration string for PKCS #11 storage (`<pkcs11-uri> <module-path>`).
-The PKCS #11 URI Scheme is defined in :rfc:`7512`.
+A backend specific configuration. Its meaning and requirements depend on
+the :ref:`backend<keystore_backend>`:
+
+- ``pem`` – A path to the directory with key files. A relative path is
+  relative to :ref:`kasp-db<database_kasp-db>`.
+- ``pkcs11`` – A PKCS #11 configuration string in the form
+  ``"<pkcs11-uri> <module-path>"``
+  (e.g. ``"pkcs11:token=knot;pin-value=1234 /usr/lib/softhsm/libsofthsm2.so"``).
+  The PKCS #11 URI Scheme is defined in :rfc:`7512`. The PIN is part of this
+  string.
+- ``zonedb`` – Must not be set.
+
+*Default:* :ref:`kasp-db<database_kasp-db>`\ ``/keys`` (``pem`` backend only)
+
+.. _keystore_password:
+
+password
+--------
+
+An optional password used to encrypt the private keys in the keystore using PBES2
+with AES-256. When set, newly generated, imported, and backed-up keys are stored
+encrypted. Existing unencrypted keys remain readable. This option applies to the
+``pem`` and ``zonedb`` :ref:`backends<keystore_backend>` only.
 
 .. NOTE::
-   Example configuration string for PKCS #11::
+   Changing the password doesn't re-encrypt keys already stored in
+   the keystore. The password is stored in the configuration in plain text,
+   so it protects the keys at rest (e.g. database or backups), not against a reader
+   of the configuration.
 
-     "pkcs11:token=knot;pin-value=1234 /usr/lib64/pkcs11/libsofthsm2.so"
+.. NOTE::
+   Password protection adds some performance overhead, because PBES2 derives
+   the encryption key from the password using a computationally expensive
+   function. This may be noticeable with a large number of zones or keys.
 
-*Default:* :ref:`kasp-db<database_kasp-db>`\ ``/keys``
+*Default:* not set
 
 .. _keystore_ksk-only:
 
@@ -1487,8 +1518,9 @@ Zone signing keys will be stored in subsequent keystore without this option enab
 key-label
 ---------
 
-If enabled in combination with the PKCS #11 :ref:`keystore_backend`, generated keys
-are labeled in the form ``<zone_name> KSK|ZSK``.
+If enabled, generated keys are labeled in the form ``<zone_name> KSK|ZSK``.
+This option applies to the ``pkcs11`` and ``zonedb``
+:ref:`backends<keystore_backend>` only.
 
 *Default:* ``off``
 

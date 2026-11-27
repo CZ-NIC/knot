@@ -159,6 +159,8 @@ src/contrib/proxyv2/proxyv2.c
 src/contrib/proxyv2/proxyv2.h
 src/contrib/qp-trie/trie.c
 src/contrib/qp-trie/trie.h
+src/contrib/rdb/common.c
+src/contrib/rdb/common.h
 src/contrib/redis/redismodule.h
 src/contrib/semaphore.c
 src/contrib/semaphore.h
@@ -480,6 +482,7 @@ src/libknot/dnssec/keystore/internal.h
 src/libknot/dnssec/keystore/keystore.c
 src/libknot/dnssec/keystore/pkcs11.c
 src/libknot/dnssec/keystore/pkcs8.c
+src/libknot/dnssec/keystore/zonedb.c
 src/libknot/dnssec/keytag.h
 src/libknot/dnssec/nsec.h
 src/libknot/dnssec/nsec/bitmap.c

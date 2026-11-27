@@ -8,15 +8,9 @@
 #include "knot/conf/conf.h"
 #include "knot/zone/node.h"
 #include "redis/knot.h"
+#include "contrib/rdb/common.h"
 
-#ifdef ENABLE_REDIS
-#include <hiredis/hiredis.h>
-#else // ENABLE_REDIS
-struct redisContext;
-#endif // ENABLE_REDIS
 struct zone_contents;
-
-typedef char zone_redis_err_t[128];
 
 typedef struct {
 	struct redisContext *rdb;
@@ -31,7 +25,7 @@ typedef struct {
 
 	size_t unread;
 
-	zone_redis_err_t err;
+	rdb_err_t err;
 } zone_redis_txn_t;
 
 /*!
@@ -39,21 +33,6 @@ typedef struct {
  */
 struct redisContext *zone_redis_connect(conf_t *conf, bool require_master);
 void zone_redis_disconnect(struct redisContext *ctx, bool pool_save);
-
-/*!
- * \brief Check if the conection to the DB is still alive.
- */
-bool zone_redis_ping(struct redisContext *ctx);
-
-/*!
- * \brief Check the connected DB role.
- *
- * \retval -1	Error
- * \retval  0	Master
- * \retval  1	Replica
- * \retval  2	Sentinel
- */
-int zone_redis_role(struct redisContext *ctx);
 
 /*!
  * \brief Start a writing stransaction into Redis zone database.
@@ -113,7 +92,7 @@ int zone_redis_txn_abort(zone_redis_txn_t *txn);
  */
 int zone_redis_serial(struct redisContext *rdb, uint8_t instance,
                       const knot_dname_t *zone, uint32_t *serial,
-                      zone_redis_err_t err);
+                      rdb_err_t err);
 
 /*!
  * \brief Load whole zone contents from Redis.
@@ -129,7 +108,7 @@ int zone_redis_serial(struct redisContext *rdb, uint8_t instance,
  */
 int zone_redis_load(struct redisContext *rdb, uint8_t instance,
                     const knot_dname_t *zone_name, struct zone_contents **out,
-                    zone_redis_err_t err);
+                    rdb_err_t err);
 
 /*!
  * \brief Callback type for handling data read by zone_redis_load_upd().
@@ -163,4 +142,4 @@ typedef int (*zone_redis_load_upd_cb_t)(const knot_rrset_t *rr, bool add, void *
 int zone_redis_load_upd(struct redisContext *rdb, uint8_t instance,
                         const knot_dname_t *zone_name, uint32_t soa_from,
                         zone_redis_load_upd_cb_t cb, void *ctx,
-                        zone_redis_err_t err);
+                        rdb_err_t err);

@@ -113,6 +113,7 @@
 #define C_NSEC3_SALT_LIFETIME	"\x13""nsec3-salt-lifetime"
 #define C_NSID			"\x04""nsid"
 #define C_OFFLINE_KSK		"\x0B""offline-ksk"
+#define C_PASSWORD		"\x08""password"
 #define C_PARENT		"\x06""parent"
 #define C_PARENT_DELAY		"\x0C""parent-delay"
 #define C_PIDFILE		"\x07""pidfile"
@@ -222,6 +223,7 @@
 enum {
 	KEYSTORE_BACKEND_PEM    = 1,
 	KEYSTORE_BACKEND_PKCS11 = 2,
+	KEYSTORE_BACKEND_ZONEDB = 3,
 };
 
 enum {
