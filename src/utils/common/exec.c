@@ -615,12 +615,12 @@ static void json_dname(jsonw_t *w, const char *key, const knot_dname_t *dname)
 	}
 }
 
-static void json_rdata(jsonw_t *w, const knot_rrset_t *rrset)
+static bool json_rdata(jsonw_t *w, const knot_rrset_t *rrset)
 {
 	char type[16];
 	if (knot_rrtype_to_string(rrset->type, type, sizeof(type)) <= 0 ||
 	    strncmp(type, "TYPE", 4) == 0) { // Unknown/hex format.
-		return;
+		return false;
 	}
 
 	char key[32] = "rdata";
@@ -631,6 +631,7 @@ static void json_rdata(jsonw_t *w, const knot_rrset_t *rrset)
 	if (knot_rrset_txt_dump_data(rrset, 0, data, sizeof(data), style) > 0) {
 		jsonw_str(w, key, data);
 	}
+	return true;
 }
 
 static void json_print_section(jsonw_t *w, const char *name,
@@ -664,11 +665,12 @@ static void json_print_section(jsonw_t *w, const char *name,
 			jsonw_str(w, "CLASSname", str);
 		}
 		jsonw_int(w, "TTL", rr->ttl);
+		bool have_rdata = false;
 		if (rr->type != KNOT_RRTYPE_OPT) { // OPT with HEX rdata.
-			json_rdata(w, rr);
+			have_rdata = json_rdata(w, rr);
 		}
 		jsonw_int(w, "RDLENGTH", rr->rrs.rdata->len);
-		if (rr->rrs.rdata->len > 0 ) {
+		if (rr->rrs.rdata->len > 0 && !have_rdata) {
 			jsonw_hex(w, "RDATAHEX", rr->rrs.rdata->data, rr->rrs.rdata->len);
 		}
 		jsonw_end(w);
@@ -922,14 +924,13 @@ static void print_packet_json(jsonw_t *w, const knot_pkt_t *pkt, time_t time)
 
 	char str[16];
 
-	struct tm tm;
 	char date[64];
-	localtime_r(&time, &tm);
-	strftime(date, sizeof(date), "%Y-%m-%dT%H:%M:%S%z", &tm);
-	jsonw_str(w, "dateString", date);
+	if (knot_time_print(TIME_PRINT_ISO8601, knot_time(), date, sizeof(date)) == 0) {
+		jsonw_str(w, "dateString", date);
+	}
 	jsonw_ulong(w, "dateSeconds", time);
 
-	jsonw_int(w, "msgLength", pkt->size);
+	jsonw_int(w, "messageLength", pkt->size);
 
 	if (pkt->parsed >= KNOT_WIRE_HEADER_SIZE) {
 		jsonw_int(w, "ID", knot_wire_get_id(pkt->wire));
