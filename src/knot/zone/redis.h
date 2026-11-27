@@ -41,6 +41,11 @@ struct redisContext *zone_redis_connect(conf_t *conf, bool require_master);
 void zone_redis_disconnect(struct redisContext *ctx, bool pool_save);
 
 /*!
+ * \brief Return true if the connection is known to have died.
+ */
+bool zone_redis_disconnected(struct redisContext *ctx);
+
+/*!
  * \brief Check if the conection to the DB is still alive.
  */
 bool zone_redis_ping(struct redisContext *ctx);

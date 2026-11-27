@@ -6,6 +6,7 @@
 #include <poll.h>
 #include <string.h>
 
+#include "contrib/conn_pool.h"
 #include "knot/zone/redis.h"
 #include "knot/zone/contents.h"
 
@@ -23,6 +24,11 @@ struct redisContext *zone_redis_connect(conf_t *conf, bool require_master)
 void zone_redis_disconnect(struct redisContext *ctx, bool pool_save)
 {
 	return rdb_disconnect(ctx, pool_save);
+}
+
+bool zone_redis_disconnected(struct redisContext *ctx)
+{
+	return (ctx == NULL || ctx->err != REDIS_OK || conn_pool_invalid_cb_dflt(ctx->fd));
 }
 
 bool zone_redis_ping(struct redisContext *ctx)
