@@ -760,11 +760,10 @@ int kdig_dnssec_validate(knot_pkt_t *pkt, kdig_dnssec_ctx_t **dv_ctx,
 	int ret = dnssec_validate(pkt, dv_ctx, level, zone_name, type_needed);
 	if (ret == 1) {
 		LOG_OUTCOME(level, NULL, "Invalid!");
-		ret = KNOT_EOK;
 	} else if (ret == KNOT_DNSSEC_ENOSIG) { // ONLY the case when no RRSIG at all
 		LOG_ERROR(level, NULL, "Missing any RRSIGs.");
 		LOG_OUTCOME(level, NULL, "Invalid!");
-		ret = KNOT_EOK;
+		ret = 2;
 	} else if (ret == KNOT_EOK) {
 		LOG_OUTCOME(level, NULL, "Valid!");
 	}

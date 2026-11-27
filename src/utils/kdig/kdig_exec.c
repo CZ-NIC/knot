@@ -752,14 +752,22 @@ static int process_query_packet(const knot_pkt_t      *query,
 	// Verify signature if a key was specified.
 	if (sign_ctx->digest != NULL) {
 		ret = verify_packet(reply, sign_ctx);
+		g_json_verify[GJV_TSIG] = "verified";
 		if (ret != KNOT_EOK) {
+			g_json_verify[GJV_TSIG] = (ret == KNOT_ENOTSIG ? "missing" : "failed");
+
 			WARN("reply verification for %s (%s)",
 			     net->remote_str, knot_strerror(ret));
 		}
 	}
 
+	if (knot_pkt_edns_option(query, KNOT_EDNS_OPTION_COOKIE) != NULL) {
+		g_json_verify[GJV_COOKIE] = "good";
+	}
+
 	// Check for BADCOOKIE RCODE and repeat query with the new cookie if required.
 	if (knot_pkt_ext_rcode(reply) == KNOT_RCODE_BADCOOKIE && query_ctx->badcookie > 0) {
+		g_json_verify[GJV_COOKIE] = "bad";
 		stdout_wrap();
 		WARN("bad cookie from %s, retrying with the received one",
 		     net->remote_str);
@@ -845,8 +853,13 @@ static int process_query_packet(const knot_pkt_t      *query,
 
 			ret = kdig_dnssec_validate(reply, &dv_ctx, query_ctx->dnssec_validation, zone_name, &type_needed); // RETRY
 		}
-		if (ret != KNOT_EOK) {
+		if (ret < 0) {
 			ERR("DNSSEC VALIDATION failed to proceed (%s)", knot_strerror(ret));
+			g_json_verify[GJV_DNSSEC] = "failed";
+		} else if (ret > 0) {
+			g_json_verify[GJV_DNSSEC] = "bogus";
+		} else {
+			g_json_verify[GJV_DNSSEC] = "valid";
 		}
 #endif // HAVE_KDIG_VALIDATION && !NO_DNSSEC_VALIDATION
 	}
@@ -1155,7 +1168,9 @@ static int process_xfr_packet(const knot_pkt_t      *query,
 			// Verify 1. signature if a key was specified.
 			if (sign_ctx->digest != NULL) {
 				ret = verify_packet(reply, sign_ctx);
+				g_json_verify[GJV_TSIG] = "verified";
 				if (ret != KNOT_EOK) {
+					g_json_verify[GJV_TSIG] = (ret == KNOT_ENOTSIG ? "missing" : "failed");
 					style_t tsig_style = {
 						.format = style->format,
 						.style = style->style,

@@ -15,6 +15,9 @@ knot_dynarray_define(util_msg, util_msg_event_t, DYNARRAY_VISIBILITY_NORMAL);
 jsonw_t *g_json = NULL;
 util_msg_dynarray_t g_json_events = { 0 };
 
+const char *g_json_verify[GJV_COUNT] = { 0 };
+const char *g_json_verify_name[GJV_COUNT] = { "tsig", "cookie", "dnssec" };
+
 static volatile int MSG_DBG_STATE = 0; /* Positive if debugging is enabled. */
 
 int msg_enable_debug(int level)
@@ -125,4 +128,24 @@ void utils_json_error(const char *msg, ...)
 	jsonw_str(g_json, "text", buf);
 	jsonw_end(g_json);
 	jsonw_end(g_json);
+}
+
+void utils_json_verify(void)
+{
+	bool have_verify = false;
+	for (int i = 0; i < GJV_COUNT; i++) {
+		if (g_json_verify[i] != NULL) {
+			if (!have_verify) {
+				jsonw_object(g_json, "verification");
+				have_verify = true;
+			}
+			jsonw_object(g_json, g_json_verify_name[i]);
+			jsonw_str(g_json, "status", g_json_verify[i]);
+			jsonw_end(g_json);
+		}
+	}
+	if (have_verify) {
+		jsonw_end(g_json);
+	}
+	memset(g_json_verify, 0, sizeof(g_json_verify));
 }

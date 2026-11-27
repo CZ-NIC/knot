@@ -1094,6 +1094,7 @@ void print_packets_json(const knot_pkt_t *query,
 	jsonw_str(jsonw, "type", "MESSAGE");
 	utils_json_events_dump();
 	utils_json_transport(net);
+	utils_json_verify();
 
 	if (style->show_query && query != NULL) {
 		jsonw_object(jsonw, "queryMessage");

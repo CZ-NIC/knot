@@ -15,6 +15,8 @@
 
 struct utils_net;
 
+enum { GJV_TSIG, GJV_COOKIE, GJV_DNSSEC, GJV_COUNT };
+
 typedef struct {
 	char type[32];
 	char text[224];
@@ -24,6 +26,8 @@ knot_dynarray_declare(util_msg, util_msg_event_t, DYNARRAY_VISIBILITY_NORMAL, 2)
 
 extern jsonw_t *g_json;
 extern util_msg_dynarray_t g_json_events;
+extern const char *g_json_verify[GJV_COUNT];
+extern const char *g_json_verify_name[GJV_COUNT];
 
 #define ERROR_		";; ERROR: "
 #define INFO_		";; INFO: "
@@ -82,3 +86,4 @@ void utils_json_event_add(const char *msg, ...);
 void utils_json_events_dump(void);
 void utils_json_transport(const struct utils_net *net);
 void utils_json_error(const char *msg, ...);
+void utils_json_verify(void);
